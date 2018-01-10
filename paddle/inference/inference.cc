@@ -169,7 +169,7 @@ void InferenceEngine::Execute(const std::vector<framework::LoDTensor>& feeds,
   }
 
   auto* place = new platform::CPUPlace();
-  framework::InitDevices({"CPU"});
+  framework::InitDevices();
   framework::Executor* executor = new framework::Executor(*place);
   framework::Scope* scope = new framework::Scope();
 
