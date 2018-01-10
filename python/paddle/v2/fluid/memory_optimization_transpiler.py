@@ -39,13 +39,13 @@ class ControlFlowGraph(object):
         block_size = program_desc.num_blocks()
 
         # TODO(qijun) handle Program with if/while operators
-        self.global_block = program_desc.block(0)
-        self.op_size = self.global_block.op_size()
+        self.global_block_desc = program_desc.block(0)
+        self.op_size = self.global_block_desc.op_size()
 
         op_node_connections = [(i, i + 1) for i in range(self.op_size - 1)]
         self._add_connections(op_node_connections)
 
-        self.ops = [self.global_block.op(i) for i in range(self.op_size)]
+        self.ops = [self.global_block_desc.op(i) for i in range(self.op_size)]
 
         for i in range(self.op_size):
             self._uses[i].update(self.ops[i].input_arg_names())
@@ -105,16 +105,17 @@ class ControlFlowGraph(object):
         self.pool = []
         for i in range(self.op_size):
             if self.pool:
-                out_pair = [(x, self.global_block.var(str(x)).shape())
+                out_pair = [(x, self.global_block_desc.var(str(x)).shape())
                             for x in self._defs[i]]
                 for x, x_shape in out_pair:
-                    if not self.global_block.var(str(x)).persistable():
+                    if not self.global_block_desc.var(str(x)).persistable():
                         for index, cache_pair in enumerate(self.pool):
                             cache_var = cache_pair[0]
                             cache_shape = cache_pair[1]
                             if x_shape == cache_shape:
-                                x_dtype = self.global_block.var(str(x)).dtype()
-                                cache_dtype = self.global_block.var(
+                                x_dtype = self.global_block_desc.var(str(
+                                    x)).dtype()
+                                cache_dtype = self.global_block_desc.var(
                                     str(cache_var)).dtype()
                                 # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
                                 # and dtype_to_size[cache_dtype]
@@ -126,6 +127,9 @@ class ControlFlowGraph(object):
                                     self.pool.pop(index)
                                     _rename_arg_(
                                         self.ops, x, cache_var, begin_idx=i)
+                                    self._program.current_block().var(str(
+                                        x)).desc = self.global_block_desc.var(
+                                            str(cache_var))
                                     self._update_graph(
                                         x, cache_var, begin_idx=i)
                                     break
@@ -133,12 +137,13 @@ class ControlFlowGraph(object):
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
             can_optimize = filter(
-                lambda x: not self.global_block.var(str(x)).persistable(),
+                lambda x: not self.global_block_desc.var(str(x)).persistable(),
                 in_diff)
             if can_optimize:
                 for var_name in can_optimize:
-                    self.pool.append((
-                        var_name, self.global_block.var(str(var_name)).shape()))
+                    self.pool.append(
+                        (var_name,
+                         self.global_block_desc.var(str(var_name)).shape()))
 
     def get_program(self):
         return self._program

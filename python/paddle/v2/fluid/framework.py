@@ -236,6 +236,9 @@ class Variable(object):
 
     __repr__ = __str__
 
+    def set_desc(self, input):
+        self.desc = input
+
     @property
     def persistable(self):
         return self.desc.persistable()
