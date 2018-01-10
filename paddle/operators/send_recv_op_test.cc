@@ -136,8 +136,6 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"OptimizeProgram", program_proto});
   recv_op = f::OpRegistry::CreateOp("recv", {{"RX", {"x1"}}}, {}, attrs);
   recv_op->Run(scope, place);
-
-  std::cout << "servernet end" << std::endl;
 }
 
 void PrintTop(std::string name, float *data) {
