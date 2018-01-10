@@ -69,7 +69,7 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
@@ -90,7 +90,7 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
@@ -100,8 +100,7 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
 
 class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxPool2dWithIndexOpMaker(framework::OpProto *proto,
-                            framework::OpAttrChecker *op_checker)
+  MaxPool2dWithIndexOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
@@ -178,8 +177,7 @@ Example:
 
 class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxPool3dWithIndexOpMaker(framework::OpProto *proto,
-                            framework::OpAttrChecker *op_checker)
+  MaxPool3dWithIndexOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor) The input tensor of pooling operator. "

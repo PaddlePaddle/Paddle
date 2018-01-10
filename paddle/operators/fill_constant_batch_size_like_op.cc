@@ -49,10 +49,10 @@ class FillConstantBatchSizeLikeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        static_cast<framework::DataType>(ctx.Attr<int>("dtype")),
+        static_cast<framework::proto::DataType>(ctx.Attr<int>("dtype")),
         ctx.device_context());
   }
 };
@@ -60,13 +60,12 @@ class FillConstantBatchSizeLikeOp : public framework::OperatorWithKernel {
 class FillConstantBatchSizeLikeOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  FillConstantBatchSizeLikeOpMaker(framework::OpProto *proto,
-                                   framework::OpAttrChecker *op_checker)
+  FillConstantBatchSizeLikeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddInput("Input",
              "(Tensor) Tensor "
              "whose dim_idx th dimension is used to specify the batch_size");

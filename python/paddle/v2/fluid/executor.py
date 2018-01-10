@@ -1,10 +1,29 @@
 import numpy as np
-from . import core
+import contextlib
 from framework import Program, default_main_program
+from . import core
 
-__all__ = ['Executor', 'g_scope']
+__all__ = ['Executor', 'global_scope', 'scope_guard', 'switch_scope']
 
 g_scope = core.Scope()
+
+
+def global_scope():
+    return g_scope
+
+
+def switch_scope(scope):
+    global g_scope
+    ex = g_scope
+    g_scope = scope
+    return ex
+
+
+@contextlib.contextmanager
+def scope_guard(scope):
+    ex = switch_scope(scope)
+    yield
+    switch_scope(ex)
 
 
 def as_numpy(tensor):
@@ -46,7 +65,8 @@ class Executor(object):
             p.set_place(each)
             act_places.append(p)
 
-        self.executor = core.Executor(act_places)
+        # TODO(dzhwinter) : only use the first place
+        self.executor = core.Executor(act_places[0])
         self.places = places
 
     def aslodtensor(self, data):
@@ -109,7 +129,7 @@ class Executor(object):
             raise TypeError()
 
         if scope is None:
-            scope = g_scope
+            scope = global_scope()
 
         program = program.clone()
         global_block = program.global_block()
@@ -141,7 +161,7 @@ class Executor(object):
                 outputs={'Out': [fetch_var]},
                 attrs={'col': i})
 
-        self.executor.run(program.desc, scope, 0, True)
+        self.executor.run(program.desc, scope, 0, True, True)
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
             for i in xrange(len(fetch_list))

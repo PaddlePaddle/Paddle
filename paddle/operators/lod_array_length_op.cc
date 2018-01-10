@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
@@ -26,7 +26,7 @@ class LoDArrayLengthOp : public framework::OperatorBase {
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &out =
         *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
@@ -38,8 +38,7 @@ class LoDArrayLengthOp : public framework::OperatorBase {
 
 class LoDArrayLengthProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoDArrayLengthProtoMaker(framework::OpProto *proto,
-                           framework::OpAttrChecker *op_checker)
+  LoDArrayLengthProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(LoDTensorArray) The input tensor array.");
     AddOutput("Out", "(Tensor) 1x1 CPU Tensor of length, int64_t");

@@ -29,10 +29,8 @@ class PriorBoxOp : public framework::OperatorWithKernel {
 
     auto image_dims = ctx->GetInputDim("Image");
     auto input_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE(image_dims.size() == 4,
-                   "The format of input tensor is NCHW.");
-    PADDLE_ENFORCE(input_dims.size() == 4,
-                   "The format of input tensor is NCHW.");
+    PADDLE_ENFORCE(image_dims.size() == 4, "The format of image is NCHW.");
+    PADDLE_ENFORCE(input_dims.size() == 4, "The format of input is NCHW.");
 
     PADDLE_ENFORCE_LT(input_dims[2], image_dims[2],
                       "The height of input must smaller than image.");
@@ -43,8 +41,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     auto min_sizes = ctx->Attrs().Get<std::vector<int>>("min_sizes");
     auto max_sizes = ctx->Attrs().Get<std::vector<int>>("max_sizes");
     auto variances = ctx->Attrs().Get<std::vector<float>>("variances");
-    auto input_aspect_ratio =
-        ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
+    auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
     bool flip = ctx->Attrs().Get<bool>("flip");
 
     PADDLE_ENFORCE_GT(min_sizes.size(), 0,
@@ -53,10 +50,10 @@ class PriorBoxOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(min_sizes[i], 0, "min_sizes[%d] must be positive.", i);
     }
 
-    std::vector<float> aspect_ratios;
-    expand_aspect_ratios(input_aspect_ratio, flip, aspect_ratios);
+    std::vector<float> aspect_ratios_vec;
+    ExpandAspectRatios(aspect_ratios, flip, aspect_ratios_vec);
 
-    int num_priors = aspect_ratios.size() * min_sizes.size();
+    int num_priors = aspect_ratios_vec.size() * min_sizes.size();
     if (max_sizes.size() > 0) {
       PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
                         "The length of min_size and max_size must be equal.");
@@ -75,47 +72,26 @@ class PriorBoxOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GT(variances[i], 0.0,
                           "variance[%d] must be greater than 0.", i);
       }
-    } else if (variances.size() == 1) {
-      PADDLE_ENFORCE_GT(variances[0], 0.0,
-                        "variance[0] must be greater than 0.");
     }
-
-    const int img_h = ctx->Attrs().Get<int>("img_h");
-    PADDLE_ENFORCE_GT(img_h, 0, "img_h should be larger than 0.");
-    const int img_w = ctx->Attrs().Get<int>("img_w");
-    PADDLE_ENFORCE_GT(img_w, 0, "img_w should be larger than 0.");
 
     const float step_h = ctx->Attrs().Get<float>("step_h");
     PADDLE_ENFORCE_GT(step_h, 0.0, "step_h should be larger than 0.");
     const float step_w = ctx->Attrs().Get<float>("step_w");
     PADDLE_ENFORCE_GT(step_w, 0.0, "step_w should be larger than 0.");
 
-    const int layer_height = input_dims[2];
-    const int layer_width = input_dims[3];
-
-    std::vector<int64_t> dim_vec(5);
-    dim_vec[0] = 2;
-    dim_vec[1] = layer_height;
-    dim_vec[2] = layer_width;
-    dim_vec[3] = num_priors;
-    dim_vec[4] = 4;
-    auto output_dim = framework::make_ddim(dim_vec);
-    ctx->SetOutputDim("Out", output_dim);
-  }
-
- protected:
-  framework::OpKernelType GetKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("Image")->type()),
-        ctx.device_context());
+    std::vector<int64_t> dim_vec(4);
+    dim_vec[0] = input_dims[2];
+    dim_vec[1] = input_dims[3];
+    dim_vec[2] = num_priors;
+    dim_vec[3] = 4;
+    ctx->SetOutputDim("Boxes", framework::make_ddim(dim_vec));
+    ctx->SetOutputDim("Variances", framework::make_ddim(dim_vec));
   }
 };
 
 class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PriorBoxOpMaker(framework::OpProto* proto,
-                  framework::OpAttrChecker* op_checker)
+  PriorBoxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
              "(Tensor, default Tensor<float>), "
@@ -123,15 +99,22 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Image",
              "(Tensor, default Tensor<float>), "
              "the input image data of PriorBoxOp, The format is NCHW.");
-    AddOutput("Out",
+    AddOutput("Boxes",
               "(Tensor, default Tensor<float>), the output prior boxes of "
-              "PriorBoxOp. The format is [2, layer_height, layer_width, "
-              "num_priors, 4]");
+              "PriorBoxOp. The format is [layer_height, layer_width, "
+              "num_priors, 4]. layer_height is the height of input, "
+              "layer_width is the height of input, num_priors is the box "
+              "count of each position.");
+    AddOutput("Variances",
+              "(Tensor, default Tensor<float>), the expanded variances of "
+              "PriorBoxOp. The format is [layer_height, layer_width, "
+              "num_priors, 4]. layer_height is the height of input, "
+              "layer_width is the height of input, num_priors is the box "
+              "count of each position.");
     AddAttr<std::vector<int>>("min_sizes", "(vector<int>) ",
                               "List of min sizes of generated prior boxes.");
     AddAttr<std::vector<int>>("max_sizes", "(vector<int>) ",
-                              "List of max sizes of generated prior boxes.")
-        .SetDefault({});
+                              "List of max sizes of generated prior boxes.");
     AddAttr<std::vector<float>>(
         "aspect_ratios", "(vector<float>) ",
         "List of aspect ratios of generated prior boxes.")
@@ -144,8 +127,6 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddAttr<bool>("clip", "(bool) ", "Whether to clip out-of-boundary boxes.")
         .SetDefault(true);
-    AddAttr<int>("img_w", "").SetDefault(0);
-    AddAttr<int>("img_h", "").SetDefault(0);
     AddAttr<float>("step_w",
                    "Prior boxes step across width, 0 for auto calculation.")
         .SetDefault(0.0);
@@ -159,6 +140,11 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Prior box operator
 Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+Each position of the input produce N prior boxes, N is determined by
+ the count of min_sizes, max_sizes and aspect_ratios, The size of the
+ box is in range(min_size, max_size) interval, which is generated in
+ sequence according to the aspect_ratios.
+
 Please get more information from the following papers:
 https://arxiv.org/abs/1512.02325.
 )DOC");

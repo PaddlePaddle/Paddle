@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
 #include "paddle/memory/memcpy.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -33,7 +34,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
     auto *out_true =
@@ -44,12 +45,15 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     auto &x_lod = x.lod();
     auto &mask_dim = mask.dims();
 
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+
     std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #ifdef PADDLE_WITH_CUDA
-      framework::CopyFrom(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
+      framework::Copy(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else
       PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
 #endif
@@ -107,9 +111,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
         // out[offset: offset+len] = x[each_range.begin: each_range.end]
         auto slice = out->Slice(static_cast<int>(offset),
                                 static_cast<int>(offset + len));
-        framework::CopyFrom(x.Slice(static_cast<int>(each_range.begin),
-                                    static_cast<int>(each_range.end)),
-                            x.place(), dev_ctx, &slice);
+        framework::Copy(x.Slice(static_cast<int>(each_range.begin),
+                                static_cast<int>(each_range.end)),
+                        x.place(), dev_ctx, &slice);
         offset += len;
       }
     }
@@ -118,8 +122,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
 
 class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitLoDTensorOpProtoMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+  SplitLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input LoDTensor");
     AddInput("Mask", "A bool column vector which mask the input");
@@ -164,8 +167,8 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("merge_lod_tensor");
     grad_op->SetInput("InTrue", OutputGrad("OutTrue"));
     grad_op->SetInput("InFalse", OutputGrad("OutFalse"));
@@ -173,7 +176,7 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput("X", Input("X"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

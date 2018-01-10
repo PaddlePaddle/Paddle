@@ -1,10 +1,10 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,8 +20,7 @@ namespace operators {
 class SoftmaxWithCrossEntropyOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxWithCrossEntropyOpMaker(framework::OpProto* proto,
-                                 framework::OpAttrChecker* op_checker)
+  SoftmaxWithCrossEntropyOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The unscaled log probabilities "
@@ -119,7 +118,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
@@ -160,7 +159,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(
@@ -174,8 +173,8 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto* grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad_op = new framework::OpDesc();
     grad_op->SetType("softmax_with_cross_entropy_grad");
     grad_op->SetInput("Label", Input("Label"));
     grad_op->SetInput("Softmax", Output("Softmax"));
@@ -184,7 +183,7 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
     grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

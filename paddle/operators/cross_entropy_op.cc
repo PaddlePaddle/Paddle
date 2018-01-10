@@ -51,7 +51,7 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()),
@@ -101,7 +101,7 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()),
@@ -111,19 +111,18 @@ class CrossEntropyGradientOp : public framework::OperatorWithKernel {
 
 class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CrossEntropyOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  CrossEntropyOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "(Tensor, default Tensor<float>), a 2-D tensor with shape N x D, "
-             "where N is the batch size and D is the number of classes. "
+             "(Tensor, default Tensor<float>), a 2-D tensor with shape [N x D],"
+             " where N is the batch size and D is the number of classes. "
              "This input is a probability computed by the previous operator, "
              "which is almost always the result of a softmax operator.");
     AddInput("Label",
              "(Tensor), the ground truth which is a 2-D tensor. When "
              "soft_label is set to false, Label is a Tensor<int64> with shape "
              "[N x 1]. When soft_label is set to true, Label is a "
-             "Tensor<float/double> with shape [N x K].");
+             "Tensor<float/double> with shape [N x D].");
     AddOutput("Y",
               "(Tensor, default Tensor<float>), a 2-D tensor with shape "
               "[N x 1]. The cross entropy loss.");
