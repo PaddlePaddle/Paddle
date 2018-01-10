@@ -101,6 +101,8 @@ avg_cost = fluid.layers.mean(x=cost)
 optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 opts = optimizer.minimize(avg_cost)
 
+accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+
 # memopt_program = fluid.default_main_program()
 memopt_program = fluid.memory_optimize(fluid.default_main_program())
 
@@ -119,13 +121,16 @@ exe.run(fluid.default_startup_program())
 
 i = 0
 for pass_id in range(PASS_NUM):
+    accuracy.reset(exe)
     for data in train_reader():
-        loss, = exe.run(memopt_program,
-                        feed=feeder.feed(data),
-                        fetch_list=[avg_cost])
-        print("loss:" + str(loss))
+        loss, acc = exe.run(memopt_program,
+                            feed=feeder.feed(data),
+                            fetch_list=[avg_cost] + accuracy.metrics)
+        pass_acc = accuracy.eval(exe)
+        print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
+            pass_acc))
         i = i + 1
         # this model is slow, so if we can train two mini batch, we think it works properly.
-        if i > 2:
+        if i > 20:
             exit(0)
 exit(1)
