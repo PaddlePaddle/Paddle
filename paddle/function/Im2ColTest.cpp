@@ -202,10 +202,10 @@ void TestIm2ColMobileFunctor() {
                           padding,
                           dilation,
                           dilation,
+                          channels,
                           0,
-                          height,
-                          0,
-                          width);
+                          outputHeight,
+                          outputHeight * outputWidth);
 
                   autotest::TensorCheckEqual(*output1, *output2);
                 }
