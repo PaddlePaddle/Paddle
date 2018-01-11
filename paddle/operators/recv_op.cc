@@ -142,7 +142,6 @@ class RecvOp : public framework::OperatorBase {
         detail::DeserializeFromMessage(v.second, dev_ctx, var);
       }
 
-      std::cout << "recv parameter end" << std::endl;
       if (exit_flag) {
         break;
       }
