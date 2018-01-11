@@ -131,5 +131,33 @@ TEST(LoD, ToAbsOffset) {
   EXPECT_EQ(abs_lod, expected);
 }
 
+TEST(LoD, SplitLoDTensor) {
+  LoD lod;
+  lod.push_back(std::vector<size_t>({0, 2, 4, 5, 6}));
+  lod.push_back(std::vector<size_t>({0, 1, 6, 8, 13, 15, 20}));
+
+  platform::CPUPlace place;
+  LoDTensor lod_tensor;
+  lod_tensor.Resize({20, 1});
+  float* dst_ptr = lod_tensor.mutable_data<float>(place);
+  for (int i = 0; i < lod_tensor.numel(); ++i) {
+    dst_ptr[i] = i;
+  }
+  lod_tensor.set_lod(lod);
+
+  std::vector<platform::Place> places{platform::CPUPlace(),
+                                      platform::CPUPlace()};
+  LoD lod0;
+  lod0.push_back(std::vector<size_t>({0, 2, 4}));
+  lod0.push_back(std::vector<size_t>({0, 1, 6, 8, 13}));
+  LoD lod1;
+  lod1.push_back(std::vector<size_t>({0, 1, 2}));
+  lod1.push_back(std::vector<size_t>({0, 2, 7}));
+
+  auto lods = lod_tensor.SplitLoDTensor(places);
+  EXPECT_EQ(lods[0].lod(), lod0);
+  EXPECT_EQ(lods[1].lod(), lod1);
+}
+
 }  // namespace framework
 }  // namespace paddle
