@@ -147,7 +147,8 @@ class ParallelOpTest(BaseParallelForTest):
         self.run_test(
             callback=__network__,
             feed={
-                'img': numpy.random.random(size=(128, 784)).astype('float32')
+                'img':
+                numpy.random.random(size=(128 * 3, 784)).astype('float32')
             },
             fetch='fc1.w@GRAD')
 
