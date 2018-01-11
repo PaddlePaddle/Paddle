@@ -22,16 +22,16 @@ template <typename T>
 __global__ void SequenceScaleKernel(T* seq, size_t* lod, const T* scales,
                                     const size_t num_seq,
                                     const size_t seq_width) {
-  size_t idx = blockIdx.x * blockDim.y + threadIdx.y;
+  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
-  if (idx < lod[num_seq]) {
+  if (idx < lod[num_seq] * seq_width) {
     size_t i = 0;
     for (i = 0; i < num_seq; ++i) {
       if (idx < lod[i + 1] * seq_width) {
         break;
       }
     }
-    seq[i] *= scales[i];
+    seq[idx] *= scales[i];
   }
 }
 

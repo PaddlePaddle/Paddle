@@ -27,19 +27,21 @@ namespace math {
  *  All sequences will be padded to the same length and stored in a transposed
  * shape.
  *  Example:
- *    seq     (s0, s0, s0, s0; s1, s1; s2, s2, s2; s3)
- *    padding (s0, s1, s2, s3; s0, s1, s2, 0; s0, 0, s2, 0; s0, 0, 0, 0)
+ *    Given:
+ *      seq = (s0, s0, s0, s0; s1, s1; s2, s2, s2; s3)
+ *      scales = (2, 3, 4, 5)
+ *    then:
+ *      result = (2*s0, 2*s0, 2*s0, 2*s0; 3*s1, 3*s1; 4*s2, 4*s2, 4*s2; 5*s3)
+
  *
- * \param context       device context of this functor.
+ * \param context       Device context of this functor.
  * \param seq           LoDTensor which is stored in sequence format, the shape
  *                      is [total_sequence_length, sequence_width] where
  *                      total_sequence_length is the sum of all sequences'
  *                      length.
- * \param padding       Tensor which is padded to the same length, the shape is
- *                      [max_sequence_length, num_sequences, sequence_width].
- * \param norm_by_times whether dividing sequence's length.
+ * \param scales        Array<T>. The i-th sequence will be scaled by scales[i].
+ * \param num_seq       Number of sequence
  *
- * \note  transposition is also done in this functor.
  */
 template <typename DeviceContext, typename T>
 class ScaleLoDTensorFunctor {
