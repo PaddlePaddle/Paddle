@@ -13,8 +13,8 @@
 - Docker Image
 
   We use different base Docker Image to run the benchmark on Kubernetes:
-  - PaddlePaddle v2: paddlepaddle/paddle:[commit-id]
-  - PaddlePaddle Fluid: paddlepaddle/paddle:0.10.0
+  - PaddlePaddle v2: paddlepaddle/paddle:0.11.0
+  - PaddlePaddle Fluid: paddlepaddle/paddle:[commit-id]
   - TensorFlow: tensorflow/tensorflow:1.5.0-rc0
 
 - Model
