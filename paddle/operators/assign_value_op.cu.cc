@@ -14,23 +14,6 @@ limitations under the License. */
 
 #include "paddle/operators/assign_value_op.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename T>
-class AssignValueGPUKernel : public AssignValueKernel<T> {
- protected:
-  virtual void Copy(void* dst, const void* src, size_t size,
-                    const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    paddle::platform::GpuMemcpyAsync(dst, src, size, cudaMemcpyHostToDevice,
-                                     dev_ctx.stream());
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(assign_value, ops::AssignValueGPUKernel<int>,
-                        ops::AssignValueGPUKernel<float>);
+REGISTER_OP_CUDA_KERNEL(assign_value, ops::AssignValueKernel<int>,
+                        ops::AssignValueKernel<float>);

@@ -63,20 +63,11 @@ $$Out = values$$
   }
 };
 
-template <typename T>
-class AssignValueCPUKernel : public AssignValueKernel<T> {
- protected:
-  virtual void Copy(void *dst, const void *src, size_t size,
-                    const framework::ExecutionContext &ctx) const {
-    std::memcpy(dst, src, size);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(assign_value, ops::AssignValueOp, ops::AssignValueOpMaker);
-REGISTER_OP_CPU_KERNEL(assign_value, ops::AssignValueCPUKernel<int>,
-                       ops::AssignValueCPUKernel<float>)
+REGISTER_OP_CPU_KERNEL(assign_value, ops::AssignValueKernel<int>,
+                       ops::AssignValueKernel<float>);
