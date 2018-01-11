@@ -58,6 +58,5 @@ else:
                                       fetch_list=[avg_cost])
 
             if avg_loss_value[0] < 10.0:
-                exit(
-                    0)  # if avg cost less than 10.0, we think our code is good.
+                exit(0)
 exit(1)
