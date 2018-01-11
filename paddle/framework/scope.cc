@@ -88,8 +88,9 @@ void Scope::DeleteScope(Scope* scope) {
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
   this->kids_.erase(it);
+  delete scope;
   // Make delete async.
-  Async([scope] { delete scope; });
+  // Async([scope] { delete scope; });
 }
 
 void Scope::Rename(const std::string& origin_name,
