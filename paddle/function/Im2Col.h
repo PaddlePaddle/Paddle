@@ -98,6 +98,7 @@ public:
                   int dilationWidth = 1);
 };
 
+#if 0
 template <class T>
 class Im2ColMobileFunctor {
 public:
@@ -144,6 +145,58 @@ public:
               imData[imRowIdx * inputWidth + imColIdx];
         }
       }
+    }
+  }
+};
+#endif
+
+template <class T>
+class Im2ColMobileFunctor {
+public:
+  void operator()(const T* imData,
+                  const TensorShape& imShape,
+                  T* colData,
+                  const TensorShape& colShape,
+                  int strideHeight,
+                  int strideWidth,
+                  int paddingHeight,
+                  int paddingWidth,
+                  int dilationHeight,
+                  int dilationWidth,
+                  int inputChannels,
+                  int colOffset,
+                  int colOutputHeight,
+                  int colWidth) {
+    int inputHeight = imShape[1];
+    int inputWidth = imShape[2];
+    int filterHeight = colShape[1];
+    int filterWidth = colShape[2];
+    int outputWidth = colShape[4];
+
+    for (int ic = 0; ic < inputChannels; ic++) {
+      for (int oh = 0; oh < colOutputHeight; oh++) {
+        T* dstData = colData + oh * outputWidth;
+        for (int fh = 0; fh < filterHeight; fh++) {
+          for (int fw = 0; fw < filterWidth; fw++) {
+            int imRowIdx = (oh + colOffset) * strideHeight + fh - paddingHeight;
+            if (imRowIdx < 0 || imRowIdx >= inputHeight) {
+              memset(dstData, 0, outputWidth * sizeof(T));
+            } else {
+              for (int ow = 0; ow < outputWidth; ow++) {
+                int imColIdx = ow * strideWidth + fw - paddingWidth;
+                if (imColIdx < 0 || imColIdx >= inputWidth) {
+                  dstData[ow] = T(0);
+                } else {
+                  dstData[ow] = imData[imRowIdx * inputWidth + imColIdx];
+                }
+              }
+            }
+            dstData += colWidth;
+          }
+        }
+      }
+      colData += filterHeight * filterWidth * colWidth;
+      imData += inputHeight * inputWidth;
     }
   }
 };
