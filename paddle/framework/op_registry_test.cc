@@ -25,7 +25,8 @@ namespace framework {
 class CosineOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope, const platform::Place& place) const override {}
+  void Run(const Scope& scope, const platform::Place& place,
+           const ProgramDesc& pdesc) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -44,7 +45,8 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 class MyTestOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope, const platform::Place& place) const override {}
+  void Run(const Scope& scope, const platform::Place& place,
+           const ProgramDesc& pdesc) const override {}
 };
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -92,7 +94,8 @@ TEST(OpRegistry, CreateOp) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
-  op->Run(scope, cpu_place);
+  paddle::framework::ProgramDesc pdesc;
+  op->Run(scope, cpu_place, pdesc);
   float scale_get = op->Attr<float>("scale");
   ASSERT_EQ(scale_get, scale);
 }
@@ -133,7 +136,8 @@ TEST(OpRegistry, DefaultValue) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
-  op->Run(scope, cpu_place);
+  paddle::framework::ProgramDesc pdesc;
+  op->Run(scope, cpu_place, pdesc);
   ASSERT_EQ(op->Attr<float>("scale"), 1.0);
 }
 
@@ -184,7 +188,8 @@ TEST(OpRegistry, CustomChecker) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  op->Run(scope, cpu_place);
+  paddle::framework::ProgramDesc pdesc;
+  op->Run(scope, cpu_place, pdesc);
   int test_attr = op->Attr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
 }
@@ -251,8 +256,8 @@ TEST(OperatorRegistrar, CPU) {
 
   op_desc.set_type("op_with_kernel");
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-
-  op->Run(scope, cpu_place);
+  paddle::framework::ProgramDesc pdesc;
+  op->Run(scope, cpu_place, pdesc);
 }
 
 TEST(OperatorRegistrar, CUDA) {
@@ -262,8 +267,8 @@ TEST(OperatorRegistrar, CUDA) {
 
   op_desc.set_type("op_with_kernel");
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-
-  op->Run(scope, cuda_place);
+  paddle::framework::ProgramDesc pdesc;
+  op->Run(scope, cuda_place, pdesc);
 }
 
 static int op_test_value = 0;
@@ -369,23 +374,24 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
   // TODO(qiao) add priority back
   // use all available kernels
   paddle::framework::UseALL();
-  op->Run(scope, cuda_place);
+  paddle::framework::ProgramDesc pdesc;
+  op->Run(scope, cuda_place, pdesc);
   EXPECT_EQ(op_test_value, -10);
 
   // remove cuda kernels
   paddle::framework::UseCPU();
-  op->Run(scope, cpu_place);
+  op->Run(scope, cpu_place, pdesc);
 
   EXPECT_EQ(op_test_value, -9);
 
   // add cuda kernels
   paddle::framework::UseCUDA();
-  op->Run(scope, cuda_place);
+  op->Run(scope, cuda_place, pdesc);
 
   EXPECT_EQ(op_test_value, -10);
 
   // use cudnn kernel
   paddle::framework::UseCUDNN();
-  op->Run(scope, cuda_place);
+  op->Run(scope, cuda_place, pdesc);
   EXPECT_EQ(op_test_value, -20);
 }

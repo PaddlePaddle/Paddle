@@ -24,8 +24,8 @@ class FeedOp : public framework::OperatorBase {
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     auto feed_var_name = Input("X");
     auto *feed_var = scope.FindVar(feed_var_name);
 

@@ -51,8 +51,8 @@ class IncrementOp : public framework::OperatorBase {
               const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &out =
         *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();

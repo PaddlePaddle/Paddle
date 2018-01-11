@@ -55,8 +55,8 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
                      const framework::VariableNameMap& outputs,
                      const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope& scope,
-           const platform::Place& dev_place) const override {
+  void Run(const framework::Scope& scope, const platform::Place& dev_place,
+           const framework::ProgramDesc& pdesc) const override {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(dev_place);
 

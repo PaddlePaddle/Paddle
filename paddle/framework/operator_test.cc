@@ -28,7 +28,8 @@ class OpWithoutKernelTest : public OperatorBase {
   OpWithoutKernelTest(const std::string& type, const VariableNameMap& inputs,
                       const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
-  void Run(const Scope& scope, const platform::Place& place) const override {
+  void Run(const Scope& scope, const platform::Place& place,
+           const ProgramDesc& pdesc) const override {
     ++op_run_num;
     ASSERT_EQ(static_cast<int>(inputs_.size()), 1);
     ASSERT_EQ(static_cast<int>(outputs_.size()), 1);
@@ -86,7 +87,9 @@ TEST(OperatorBase, all) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   scope.Var("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
-  op->Run(scope, cpu_place);
+
+  paddle::framework::ProgramDesc pdesc;
+  op->Run(scope, cpu_place, pdesc);
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
 
@@ -211,7 +214,8 @@ TEST(OpKernel, all) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
-  op->Run(scope, cpu_place);
+  paddle::framework::ProgramDesc pdesc;
+  op->Run(scope, cpu_place, pdesc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
 }
 
@@ -248,7 +252,8 @@ TEST(OpKernel, multi_inputs) {
   scope.Var("y1")->GetMutable<LoDTensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  op->Run(scope, cpu_place);
+  paddle::framework::ProgramDesc pdesc;
+  op->Run(scope, cpu_place, pdesc);
 }
 
 class OperatorClone : public paddle::framework::OperatorBase {
@@ -260,7 +265,8 @@ class OperatorClone : public paddle::framework::OperatorBase {
                 const paddle::framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const paddle::framework::Scope& scope,
-           const paddle::platform::Place& place) const override {}
+           const paddle::platform::Place& place,
+           const paddle::framework::ProgramDesc& pdesc) const override {}
 };
 
 TEST(Operator, Clone) {

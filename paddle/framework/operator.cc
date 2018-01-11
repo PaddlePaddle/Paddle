@@ -481,8 +481,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const Scope& scope_;
 };
 
-void OperatorWithKernel::Run(const Scope& scope,
-                             const platform::Place& place) const {
+void OperatorWithKernel::Run(const Scope& scope, const platform::Place& place,
+                             const ProgramDesc& pdesc) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

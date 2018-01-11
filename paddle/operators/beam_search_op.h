@@ -188,8 +188,8 @@ class BeamSearchOp : public framework::OperatorBase {
     PADDLE_THROW("Not Implemented");
   }
 
-  void Run(const framework::Scope& scope,
-           const platform::Place& dev_place) const override {
+  void Run(const framework::Scope& scope, const platform::Place& dev_place,
+           const framework::ProgramDesc& pdesc) const override {
     LOG(INFO) << "run beam search op";
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));

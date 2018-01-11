@@ -72,8 +72,8 @@ class ParallelDoOp : public framework::OperatorBase {
                const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
@@ -165,8 +165,8 @@ class ParallelDoGradOp : public OperatorBase {
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     // // get device context from pool
     // platform::DeviceContextPool &pool =
     //        platform::DeviceContextPool::Instance();
@@ -233,7 +233,7 @@ class ParallelDoGradOp : public OperatorBase {
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, s_buf}}}, {{"Out", {s}}},
             framework::AttributeMap{});
-        sum_op->Run(*sub_scopes[0], places[0]);
+        sum_op->Run(*sub_scopes[0], places[0], pdesc);
         WaitOnPlaces(places);
       }
 

@@ -135,7 +135,7 @@ void StartServerNet(bool is_sparse) {
 
   attrs.insert({"OptimizeProgram", program_proto});
   recv_op = f::OpRegistry::CreateOp("recv", {{"RX", {"x1"}}}, {}, attrs);
-  recv_op->Run(scope, place);
+  recv_op->Run(scope, place, program);
 }
 
 TEST(SendRecvOp, CPUDense) {
@@ -151,7 +151,8 @@ TEST(SendRecvOp, CPUDense) {
   attrs.insert({"epmap", std::vector<std::string>({"127.0.0.1:6174"})});
   auto send_op = f::OpRegistry::CreateOp("send", {{"X", {"x1"}}},
                                          {{"Out", {"Out"}}}, attrs);
-  send_op->Run(scope, place);
+  f::ProgramDesc pdesc;
+  send_op->Run(scope, place, pdesc);
 
   auto in_var = scope.Var("x1");
   auto tensor = in_var->GetMutable<f::LoDTensor>();
@@ -182,7 +183,8 @@ TEST(SendRecvOp, CPUSparse) {
   attrs.insert({"epmap", std::vector<std::string>({"127.0.0.1:6174"})});
   auto send_op = f::OpRegistry::CreateOp("send", {{"X", {"x1"}}},
                                          {{"Out", {"Out"}}}, attrs);
-  send_op->Run(scope, place);
+  f::ProgramDesc pdesc;
+  send_op->Run(scope, place, pdesc);
 
   auto x0 = scope.Var("x0")->GetMutable<f::SelectedRows>();
   auto x1 = scope.Var("x1")->GetMutable<f::SelectedRows>();

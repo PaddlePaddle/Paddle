@@ -42,13 +42,14 @@ TEST(SaveLoadOp, CPU) {
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "save", {{"X", {"test_var"}}}, {}, attrs);
-  save_op->Run(scope, place);
+  paddle::framework::ProgramDesc pdesc;
+  save_op->Run(scope, place, pdesc);
 
   auto load_var = scope.Var("out_var");
   auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
-  load_op->Run(scope, place);
+  load_op->Run(scope, place, pdesc);
   int* actual = target->data<int>();
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     EXPECT_EQ(expect[i], actual[i]);

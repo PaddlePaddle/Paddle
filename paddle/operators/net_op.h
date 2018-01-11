@@ -64,10 +64,10 @@ class NetOp : public framework::OperatorBase {
    * scope will be used instead. If no OpContext is provicded, default context
    * will be used.
    */
-  void Run(const framework::Scope& scope,
-           const platform::Place& place) const override {
+  void Run(const framework::Scope& scope, const platform::Place& place,
+           const framework::ProgramDesc& pdesc) const override {
     for (auto& op : ops_) {
-      op->Run(scope, place);
+      op->Run(scope, place, pdesc);
     }
   }
 

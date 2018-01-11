@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/op_kernel_type.h"
+#include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor.h"
@@ -114,7 +115,8 @@ class OperatorBase {
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   /// Net will call this function to Run an op.
-  virtual void Run(const Scope& scope, const platform::Place& place) const = 0;
+  virtual void Run(const Scope& scope, const platform::Place& place,
+                   const ProgramDesc& pdesc) const = 0;
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
@@ -192,7 +194,8 @@ class OperatorBase {
 class NOP : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope, const platform::Place& place) const override {}
+  void Run(const Scope& scope, const platform::Place& place,
+           const ProgramDesc& pdesc) const override {}
   std::unique_ptr<OperatorBase> Clone() const override {
     return std::unique_ptr<OperatorBase>(new NOP(*this));
   }
@@ -387,7 +390,8 @@ class OperatorWithKernel : public OperatorBase {
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const Scope& scope, const platform::Place& place) const final;
+  void Run(const Scope& scope, const platform::Place& place,
+           const ProgramDesc& pdesc) const final;
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {

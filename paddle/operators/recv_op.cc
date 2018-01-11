@@ -83,8 +83,8 @@ class RecvOp : public framework::OperatorBase {
     return std::string(ret);
   }
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &dev_place,
+           const framework::ProgramDesc &pdesc) const override {
     // FIXME(typhoonzero): no new scopes for every run.
     framework::Scope &recv_scope = scope.NewScope();
     rpc_service_->SetScope(&recv_scope);

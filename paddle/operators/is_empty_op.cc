@@ -28,8 +28,8 @@ class IsEmptyOp : public framework::OperatorBase {
             const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     // get input
     auto *var = scope.FindVar(Input(kInput));
     PADDLE_ENFORCE_NOT_NULL(var);
