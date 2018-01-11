@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/framework/op_kernel_type.h"
+#include "paddle/framework/tensor.h"
 #include "paddle/framework/variable.h"
 
 namespace paddle {
@@ -22,10 +23,10 @@ namespace framework {
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
-void TransDataLayout(const std::vector<int>& axis,
-                     const platform::DeviceContext* ctx,
-                     const KernelTypePair& kernel_pair, const Variable& in,
-                     Variable* out);
+void TransDataLayout(const OpKernelType& kernel_type_for_var,
+                     const OpKernelType& expected_kernel_type,
+                     const std::vector<int>& axis, const Tensor& in,
+                     Tensor* out);
 
 }  // namespace framework
 }  // namespace paddle

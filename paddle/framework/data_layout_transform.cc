@@ -47,12 +47,15 @@ struct CastDataLayout {
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
                      const OpKernelType& expected_kernel_type,
                      const std::vector<int>& axis, const Tensor& in,
-                     const platform::Place& dst_place, Tensor* out) {
+                     Tensor* out) {
   PADDLE_ENFORCE(
-      platform::places_are_same_class(in.place(), dst_place),
+      platform::places_are_same_class(kernel_type_for_var.place_,
+                                      expected_kernel_type.place_),
       "TransDataLayout only support DataLayout transform on same place!");
 
   PADDLE_ENFORCE(arity(in.dims()) == 4, "Input Arity only support 4!");
+
+  auto& pool = platform::DeviceContextPool::Instance();
 
   auto src_dim = in.dims();
   std::vector<int64_t> dst_dim;
@@ -63,10 +66,11 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   }
 
   out->Resize(make_ddim(dst_dim));
-  out->mutable_data(in.place(), in.type());
+  out->mutable_data(expected_kernel_type.place_, in.type());
 
-  framework::VisitDataType(framework::ToDataType(in.type()),
-                           CastDataLayout(ctx, axis, in, out));
+  framework::VisitDataType(
+      framework::ToDataType(in.type()),
+      CastDataLayout(pool.Get(expected_kernel_type.place_), axis, in, out));
 
   out->set_layout(expected_kernel_type.data_layout_);
 }
