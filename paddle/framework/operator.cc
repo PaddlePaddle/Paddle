@@ -531,9 +531,10 @@ void OperatorWithKernel::Run(const Scope& scope,
             }
             VLOG(3) << "need to do transform for var " << var_name;
             auto* trans_var = new_scope.Var(var_name);
-            auto* out = DataTransform(expected_kernel_key, kernel_type_for_var,
-                                      *tensor_in);
-            CopyVariableWithTensor(*var, *out, *trans_var);
+            Tensor trans_out = Tensor();
+            DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
+                          &trans_out);
+            CopyVariableWithTensor(*var, trans_out, *trans_var);
           }
         }
       }

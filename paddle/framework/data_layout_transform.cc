@@ -19,6 +19,18 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
+  PADDLE_ENFORCE_NE(from, to,
+                    "layout transform should transform different layout");
+  if (from == DataLayout::kNCHW && to == DataLayout::kNHWC) {
+    return {0, 2, 3, 1};
+  } else if (from == DataLayout::kNHWC && to == DataLayout::kNCHW) {
+    return {0, 3, 1, 2};
+  } else {
+    PADDLE_THROW("unsupported transform");
+  }
+}
+
 struct CastDataLayout {
   CastDataLayout(const platform::DeviceContext* ctx,
                  const std::vector<int>& axis, const framework::Tensor& in,
@@ -44,8 +56,7 @@ struct CastDataLayout {
 };
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
-                     const OpKernelType& expected_kernel_type,
-                     const std::vector<int>& axis, const Tensor& in,
+                     const OpKernelType& expected_kernel_type, const Tensor& in,
                      Tensor* out) {
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_type_for_var.place_,
@@ -59,6 +70,8 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   auto src_dim = in.dims();
   std::vector<int64_t> dst_dim;
 
+  auto axis = GetAxis(kernel_type_for_var.data_layout_,
+                      expected_kernel_type.data_layout_);
   dst_dim.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];

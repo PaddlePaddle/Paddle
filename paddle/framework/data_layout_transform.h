@@ -21,14 +21,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-static std::vector<int> NHWC2NCHW = {0, 3, 1, 2};
-static std::vector<int> NCHW2NHWC = {0, 2, 3, 1};
-
-using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
+std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
-                     const OpKernelType& expected_kernel_type,
-                     const std::vector<int>& axis, const Tensor& in,
+                     const OpKernelType& expected_kernel_type, const Tensor& in,
                      Tensor* out);
 
 }  // namespace framework

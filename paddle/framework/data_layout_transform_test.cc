@@ -32,12 +32,12 @@ TEST(DataTransform, DataLayout) {
   auto kernel_ncwh = OpKernelType(proto::DataType::FP32, place,
                                   DataLayout::kNCHW, LibraryType::kPlain);
 
-  { TransDataLayout(kernel_nhwc, kernel_ncwh, NHWC2NCHW, in, &out); }
+  TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out);
 
   EXPECT_TRUE(out.layout() == DataLayout::kNCHW);
   EXPECT_TRUE(out.dims() == make_ddim({2, 2, 3, 1}));
 
-  { TransDataLayout(kernel_ncwh, kernel_nhwc, NCHW2NHWC, in, &out); }
+  TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out);
 
   EXPECT_TRUE(in.layout() == DataLayout::kNHWC);
   EXPECT_TRUE(in.dims() == make_ddim({2, 3, 1, 2}));
