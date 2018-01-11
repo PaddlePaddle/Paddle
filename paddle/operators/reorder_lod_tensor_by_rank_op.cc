@@ -50,8 +50,8 @@ X = [Seq0, Seq1, Seq2, Seq3]. The indices in RankTable are [3, 0, 2, 1].
 Out =  [Seq3, Seq0, Seq2, Seq1] with a new LoD information.
 
 If the LoD information of Input(X) is empty, this means Input(X) is not a
-sequcence. This is also identical to a batch of sequences, each sequence in
-which has a fixed length 1. In this case, the reorder_lod_tensor_by_rank operator
+sequcence. This is also identical to a batch of sequences each sequence in which
+has a fixed length 1. In this case, the reorder_lod_tensor_by_rank operator
 reorders each slice of Input(X) along the first axis according to
 Input(RankTable).
 
@@ -62,7 +62,7 @@ Out = [Slice3, Slice0, Slice2, Slice1] with no LoD information is appended.
 
 NOTE: This operator sorts Input(X) according to a given LoDRankTable which dose
 not need to be calculated according to Input(X). It can be calculated according
-to other different sequence, and then this operator sorts Input(X) according
+to another different sequence, and then this operator sorts Input(X) according
 to the given LoDRankTable.
 
 )DOC");

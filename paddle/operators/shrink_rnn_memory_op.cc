@@ -80,7 +80,7 @@ class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 This operator is used to shrink output batch of memory defined in dynamic RNN.
 
 Dynamic RNN is able to handle variable-length sequences, in which, sequences in
-a mini-batch are sorted by its length first. After that, the longest sequence
+a mini-batch are sorted by their lengths first. After that, the longest sequence
 becomes the first one in the sorted batch, followed by the second longest, the
 third longest, and so on. Dynamic RNN then slices a batch input timestep by
 timestep from the sorted input. Once any sequence in the input batch reaches its

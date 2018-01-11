@@ -690,7 +690,7 @@ def lod_tensor_to_array(x, table):
     """ Convert a LOD_TENSOR_ARRAY to an TensorArray.
 
     Args:
-        x (Variable|list): The LoD tensor to be converted to a LoD tensor array.
+        x (Variable|list): The lod tensor to be converted to a lod tensor array.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
                                 descending order.
@@ -723,7 +723,7 @@ def array_to_lod_tensor(x, table):
     """Convert a LoD_Tensor_Aarry to an LoDTensor.
 
     Args:
-        x (Variable|list): The LoD Tensor Array to be converted to a tensor.
+        x (Variable|list): The lod tensor array to be converted to a tensor.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
                                 descending order.
