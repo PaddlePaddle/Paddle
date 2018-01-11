@@ -97,10 +97,10 @@ class TestConv3dOp(OpTest):
                 place,
                 set(['Input', 'Filter']),
                 'Output',
-                max_relative_error=0.02)
+                max_relative_error=0.03)
         else:
             self.check_grad(
-                set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+                set(['Input', 'Filter']), 'Output', max_relative_error=0.03)
 
     def test_check_grad_no_filter(self):
         if self.use_cudnn:
@@ -108,13 +108,13 @@ class TestConv3dOp(OpTest):
             self.check_grad_with_place(
                 place, ['Input'],
                 'Output',
-                max_relative_error=0.02,
+                max_relative_error=0.03,
                 no_grad_set=set(['Filter']))
         else:
             self.check_grad(
                 ['Input'],
                 'Output',
-                max_relative_error=0.02,
+                max_relative_error=0.03,
                 no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
@@ -123,13 +123,13 @@ class TestConv3dOp(OpTest):
             self.check_grad_with_place(
                 place, ['Filter'],
                 'Output',
-                max_relative_error=0.02,
+                max_relative_error=0.03,
                 no_grad_set=set(['Input']))
         else:
             self.check_grad(
                 ['Filter'],
                 'Output',
-                max_relative_error=0.02,
+                max_relative_error=0.03,
                 no_grad_set=set(['Input']))
 
     def init_test_case(self):

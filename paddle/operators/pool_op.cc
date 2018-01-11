@@ -98,7 +98,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
       layout_, library_);
 }
 
