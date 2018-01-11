@@ -105,8 +105,11 @@ class ControlFlowGraph(object):
         self.pool = []
         for i in range(self.op_size):
             if self.pool:
+                defs_can_optimize = filter(
+                    lambda x: self.global_block_desc.var(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
+                    self._defs[i])
                 out_pair = [(x, self.global_block_desc.var(str(x)).shape())
-                            for x in self._defs[i]]
+                            for x in defs_can_optimize]
                 for x, x_shape in out_pair:
                     if not self.global_block_desc.var(str(x)).persistable():
                         for index, cache_pair in enumerate(self.pool):
@@ -139,6 +142,9 @@ class ControlFlowGraph(object):
             can_optimize = filter(
                 lambda x: not self.global_block_desc.var(str(x)).persistable(),
                 in_diff)
+            can_optimize = filter(
+                lambda x: self.global_block_desc.var(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
+                can_optimize)
             if can_optimize:
                 for var_name in can_optimize:
                     self.pool.append(
