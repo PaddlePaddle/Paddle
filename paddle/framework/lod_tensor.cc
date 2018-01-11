@@ -225,20 +225,38 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
-  PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
   PADDLE_ENFORCE(dims()[0] % places.size() == 0,
                  "Batch size should be divided by places size");
 
   std::vector<LoDTensor> lods;
   for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
-    int begin = place_idx * dims()[0] / places.size();
-    int end = (place_idx + 1) * dims()[0] / places.size();
+    size_t batch_size = lod().empty() ? dims()[0] : NumElements(0);
+    size_t begin = place_idx * batch_size / places.size();
+    size_t end = (place_idx + 1) * batch_size / places.size();
 
-    auto src = Slice(begin, end);
-    auto &dst_place = places[place_idx];
     LoDTensor dst;
-    framework::Copy(src, dst_place, &dst);
+    if (lod().empty()) {
+      auto src = Slice(begin, end);
+      auto &dst_place = places[place_idx];
+      framework::Copy(src, dst_place, &dst);
+    } else {
+      auto lod_and_offset = GetSubLoDAndAbsoluteOffset(lod(), begin, end, 0);
 
+      auto &offset = lod_and_offset.second;
+      auto src = Slice(offset.first, offset.second);
+      auto &dst_place = places[place_idx];
+      framework::Copy(src, dst_place, &dst);
+
+      LoD my_lod;
+      for (auto &l : lod_and_offset.first) {
+        std::vector<size_t> v{0};
+        for (auto &ll : l) {
+          v.push_back(ll + v.back());
+        }
+        my_lod.emplace_back(v);
+      }
+      dst.set_lod(my_lod);
+    }
     lods.emplace_back(dst);
   }
 
