@@ -120,7 +120,10 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     if (FLAGS_check_nan_inf) {
       for (auto& vname : op->OutputVars(true)) {
         auto* var = local_scope->FindVar(vname);
-        if (var == nullptr) continue;
+        if (var == nullptr) {
+          VLOG(3) << "varname not found:" << vname;
+          continue;
+        }
         if (var->IsType<framework::LoDTensor>()) {
           CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
         }

@@ -109,6 +109,8 @@ class RecvOp : public framework::OperatorBase {
       // Get from multiple trainers, we don't care about order in which
       // the gradient arrives, just add suffix 0~n then average the gradient.
       for (size_t i = 0; i < param_count * trainer_count; ++i) {
+        VLOG(3) << "param_count:" << param_count << std::endl;
+        VLOG(3) << "trainer_count:" << trainer_count << std::endl;
         // blocking get one var from client.
         const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
@@ -147,6 +149,8 @@ class RecvOp : public framework::OperatorBase {
       if (exit_flag) {
         break;
       }
+
+      VLOG(3) << "get all param:" << std::endl;
       rpc_service_->Reset();
 
       std::string program_str = Attr<std::string>("OptimizeProgram");

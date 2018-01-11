@@ -21,7 +21,7 @@ import paddle.v2.fluid as fluid
 import os
 import sys
 
-TRAINERS = 2
+TRAINERS = 1
 BATCH_SIZE = 128
 PASS_NUM = 1
 
