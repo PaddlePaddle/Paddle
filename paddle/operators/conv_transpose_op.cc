@@ -55,6 +55,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
     output_shape.push_back((in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] +
                            filter_extent);
   }
+  ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
 
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
@@ -114,6 +115,14 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Used in cudnn kernel only. workspace size for cudnn, in MB, "
                "workspace is a section of GPU memory which will be "
@@ -194,6 +203,14 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(OpProto* proto,
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Used in cudnn kernel only. workspace size for cudnn, in MB, "
                "workspace is a section of GPU memory which will be "

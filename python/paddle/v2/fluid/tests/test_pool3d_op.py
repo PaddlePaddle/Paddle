@@ -1,5 +1,7 @@
 import unittest
 import numpy as np
+
+import paddle.v2.fluid.core as core
 from op_test import OpTest
 
 
@@ -164,32 +166,32 @@ class TestCase5(TestCase2):
 
 
 #--------------------test pool3d--------------------
-class TestCudnnCase1(TestPool3d_Op):
+class TestCUDNNCase1(TestPool3d_Op):
     def init_op_type(self):
         self.op_type = "pool3d"
 
 
-class TestCudnnCase2(TestCase1):
+class TestCUDNNCase2(TestCase1):
     def init_op_type(self):
         self.op_type = "pool3d"
 
 
-class TestCudnnCase3(TestCase2):
+class TestCUDNNCase3(TestCase2):
     def init_op_type(self):
         self.op_type = "pool3d"
 
 
-class TestCudnnCase4(TestCase3):
+class TestCUDNNCase4(TestCase3):
     def init_op_type(self):
         self.op_type = "pool3d"
 
 
-class TestCudnnCase5(TestCase4):
+class TestCUDNNCase5(TestCase4):
     def init_op_type(self):
         self.op_type = "pool3d"
 
 
-class TestCudnnCase6(TestCase5):
+class TestCUDNNCase6(TestCase5):
     def init_op_type(self):
         self.op_type = "pool3d"
 

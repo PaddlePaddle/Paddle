@@ -222,6 +222,14 @@ Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
   AddAttr<int>("workspace_size_MB",
                "Only used in cudnn kernel. workspace size for cudnn, in MB, "
                "workspace is a section of GPU memory which will be "
