@@ -132,6 +132,8 @@ void MKLDNNLayer::reshapeInput(int& batchsize,
   if (w != 0) {
     width = w;
   }
+  height = height != 0 ? height : 1;
+  width = width != 0 ? width : 1;
 }
 
 void MKLDNNLayer::reshapeOutput(size_t height, size_t width) {

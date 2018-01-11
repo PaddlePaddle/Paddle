@@ -62,7 +62,7 @@ struct ForRange<CUDADeviceContext> {
 
   template <typename Function>
   inline void operator()(Function func) const {
-    constexpr size_t num_threads = 1024;
+    constexpr int num_threads = 1024;
     int block_size = limit_ <= num_threads ? limit_ : num_threads;
     int grid_size = (limit_ + num_threads - 1) / num_threads;
 

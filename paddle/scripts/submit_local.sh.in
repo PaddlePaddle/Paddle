@@ -71,9 +71,7 @@ function threads_config() {
   # auto set OMP_NUM_THREADS and MKL_NUM_THREADS
   # according to trainer_count and total processors
   # only when MKL enabled
-  if [ "@WITH_MKL@" == "OFF" ]; then
-    return 0
-  fi
+  # auto set OPENBLAS_NUM_THREADS when do not use MKL
   processors=`grep "processor" /proc/cpuinfo|sort -u|wc -l`
   trainers=`grep -Eo 'trainer_count.[0-9]+' <<< "$@" |grep -Eo '[0-9]+'|xargs`
   if [ -z $trainers ]; then
@@ -83,12 +81,22 @@ function threads_config() {
   if [ $threads -eq 0 ]; then
     threads=1
   fi
-  if [ -z "$OMP_NUM_THREADS" ]; then
-    export OMP_NUM_THREADS=$threads
+  if [ "@WITH_MKL@" == "ON" ]; then
+    if [ -z "$OMP_NUM_THREADS" ]; then
+      export OMP_NUM_THREADS=$threads
+    fi
+    if [ -z "$MKL_NUM_THREADS" ]; then
+      export MKL_NUM_THREADS=$threads
+    fi
+  else
+    if [ -z "$OPENBLAS_NUM_THREADS" ]; then
+      export OPENBLAS_NUM_THREADS=$threads
+    fi
+    if [ $threads -gt 1 ] && [ -z "$OPENBLAS_MAIN_FREE" ]; then
+      export OPENBLAS_MAIN_FREE=1
+    fi
   fi
-  if [ -z "$MKL_NUM_THREADS" ]; then
-    export MKL_NUM_THREADS=$threads
-  fi
+  
 }
 
 PADDLE_CONF_HOME="$HOME/.config/paddle"
@@ -150,7 +158,7 @@ fi
 case "$1" in
     "train")
         threads_config $@
-        # echo $OMP_NUM_THREADS $MKL_NUM_THREADS
+        # echo $OMP_NUM_THREADS $MKL_NUM_THREADS $OPENBLAS_NUM_THREADS
         ${DEBUGGER} $PADDLE_BIN_PATH/paddle_trainer ${@:2}
         ;;
     "merge_model")

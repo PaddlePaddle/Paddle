@@ -49,7 +49,7 @@ class FillConstantBatchSizeLikeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         static_cast<framework::proto::DataType>(ctx.Attr<int>("dtype")),

@@ -17,10 +17,6 @@ TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 
-USE_CPU = core.kUseCPU()
-USE_CUDNN = core.kUseMKLDNN()
-USE_MKLDNN = core.kUseMKLDNN()
-
 
 def grad_var_name(var_name):
     """
@@ -147,9 +143,11 @@ class Variable(object):
                  dtype=None,
                  lod_level=None,
                  persistable=None,
+                 error_clip=None,
                  stop_gradient=False,
                  **kwargs):
         self.block = block
+        self.error_clip = error_clip
 
         if name is None:
             name = Variable._unique_var_name_()
@@ -237,6 +235,9 @@ class Variable(object):
         return _debug_string_(proto, throw_on_error)
 
     __repr__ = __str__
+
+    def set_desc(self, input):
+        self.desc = input
 
     @property
     def persistable(self):
@@ -452,7 +453,7 @@ class Operator(object):
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
-            'recv'
+            'recv', 'parallel_do'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -626,6 +627,17 @@ class Block(object):
             raise ValueError("var %s not in this block" % name)
         return v
 
+    def var_recursive(self, name):
+        if self.has_var(name):
+            return self.var(name)
+        else:
+            if self.idx == 0:
+                raise ValueError("var %s is not in block(%d) nor its parents." %
+                                 name, self.idx)
+            else:
+                parent_block = self.program.block(self.parent_idx)
+                return parent_block.var_recursive(name)
+
     def all_parameters(self):
         return list(self.iter_parameters())
 
@@ -744,6 +756,7 @@ class Block(object):
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
                 clip_attr=p.clip_attr,
+                error_clip=p.error_clip,
                 name=v.name)
             self.vars[new_p.name] = new_p
 
@@ -762,6 +775,9 @@ class Program(object):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
         return _debug_string_(proto, throw_on_error)
+
+    def get_desc(self):
+        return self.desc
 
     def clone(self):
         p = Program()
