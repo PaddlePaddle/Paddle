@@ -1,23 +1,12 @@
 from ..registry import register_layer
 
 __activations__ = [
-    'abs',
-    'ceil',
-    'exp',
-    'floor',
-    'log',
-    'relu',
-    'round',
-    'sigmoid',
-    'sqrt',
-    'square',
-    'tanh',
+    'abs', 'tanh', 'sigmoid', 'relu', 'sqrt', 'ceil', 'floor', 'log', 'round'
 ]
 
 __all__ = [
     'mean',
     'mul',
-    'dropout',
     'reshape',
     'scale',
     'transpose',
