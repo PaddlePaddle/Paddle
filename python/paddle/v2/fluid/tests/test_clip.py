@@ -34,6 +34,9 @@ fluid.backward.append_backward(
 hidden1_grad = prog.block(0).var(hidden1.name + "@GRAD")
 hidden1_grad_clip = prog_clip.block(0).var(hidden1.name + "@GRAD")
 
+hidden2_grad = prog.block(0).var(hidden2.name + "@GRAD")
+hidden2_grad_clip = prog_clip.block(0).var(hidden2.name + "@GRAD")
+
 train_reader = paddle.batch(
     paddle.reader.shuffle(
         paddle.dataset.mnist.train(), buf_size=8192),
@@ -49,11 +52,16 @@ for data in train_reader():
     count += 1
     if count > 5:
         break
-    out = exe.run(prog, feed=feeder.feed(data), fetch_list=[hidden1_grad])
-    out_clip = exe.run(prog_clip,
-                       feed=feeder.feed(data),
-                       fetch_list=[hidden1_grad_clip])
-    if not (out[0].clip(min=CLIP_MIN, max=CLIP_MAX) == out_clip[0]).all():
+    out1, out2 = exe.run(prog,
+                         feed=feeder.feed(data),
+                         fetch_list=[hidden1_grad, hidden2_grad])
+    out1_clip, out2_clip = exe.run(
+        prog_clip,
+        feed=feeder.feed(data),
+        fetch_list=[hidden1_grad_clip, hidden2_grad_clip])
+    if not ((out1.clip(
+            min=CLIP_MIN, max=CLIP_MAX) == out1_clip).all() and
+            (out2 == out2_clip).all()):
         exit(1)
 
 exit(0)
