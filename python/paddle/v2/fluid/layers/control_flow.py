@@ -687,11 +687,10 @@ def topk(input, k):
 
 
 def lod_tensor_to_array(x, table):
-    """This function performs the operation that converts an LOD_Tensor to
-       an array.
+    """ Convert a LOD_TENSOR_ARRAY to an TensorArray.
 
     Args:
-        x (Variable|list): The tensor that needs to be converted to an array.
+        x (Variable|list): The LoD tensor to be converted to a LoD tensor array.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
                                 descending order.
@@ -721,10 +720,10 @@ def lod_tensor_to_array(x, table):
 
 
 def array_to_lod_tensor(x, table):
-    """This function converts an LOD_TENSOR_ARRAY to an LODTensor.
+    """Convert a LoD_Tensor_Aarry to an LoDTensor.
 
     Args:
-        x (Variable|list): The array that needs to be converted to a tensor.
+        x (Variable|list): The LoD Tensor Array to be converted to a tensor.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
                                 descending order.
@@ -752,7 +751,8 @@ def array_to_lod_tensor(x, table):
 
 
 def increment(x, value=1.0, in_place=True):
-    """This function performs an operation that increments each value in the
+    """
+    This function performs an operation that increments each value in the
     input :math:`x` by an amount: :math:`value` as mentioned in the input
     parameter. This operation is performed in-place by default.
 
@@ -785,8 +785,9 @@ def increment(x, value=1.0, in_place=True):
 
 
 def array_write(x, i, array=None):
-    """This function writes the given input variable to the specifict position
-    which is indicated by the arrary index to an output LOD_TENSOR_ARRAY. If the
+    """
+    This function writes the given input variable to the specified position
+    indicating by the arrary index to an output LOD_TENSOR_ARRAY. If the
     output LOD_TENSOR_ARRAY is not given(None), a new one will be created and
     returned.
 

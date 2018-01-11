@@ -146,10 +146,10 @@ def fill_constant(shape, dtype, value, out=None):
     """
     **fill_constant**
 
-    This function creates a tensor with the specified *shape* and
-    *dtype*, and initializes it with the constant given by *value*.
+    This function creates a tensor with the specified `shape` and
+    `dtype`, and initializes it with the constant specifed by `value`.
 
-    The attribute *stop_gradient* of the created tensor is set to True.
+    The attribute `stop_gradient` of the created tensor is set to True.
 
     Args:
         shape(tuple|list|None): Shape of the output tensor.
@@ -166,6 +166,7 @@ def fill_constant(shape, dtype, value, out=None):
 
           data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
     """
+
     helper = LayerHelper("fill_constant", **locals())
     if out is None:
         out = helper.create_tmp_variable(dtype=dtype)
