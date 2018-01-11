@@ -983,7 +983,7 @@ def batch_norm(input,
         default_initializer=Constant(1.0))
 
     bias = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=True)
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
         dtype=input.dtype,
