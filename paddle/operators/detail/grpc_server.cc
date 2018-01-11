@@ -28,7 +28,9 @@ class RequestBase {
  public:
   explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
                        grpc::ServerCompletionQueue* cq)
-      : service_(service), cq_(cq), status_(PROCESS) {}
+      : service_(service), cq_(cq), status_(PROCESS) {
+    assert(cq_);
+  }
   virtual ~RequestBase() {}
   virtual void Process() { assert(false); }
 
@@ -182,7 +184,6 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
   void* tag = NULL;
   bool ok = false;
   while (true) {
-    assert(cq);
     if (!cq->Next(&tag, &ok)) {
       LOG(INFO) << cq_name << " get CompletionQueue shutdown!";
       break;
@@ -194,7 +195,6 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
     }
 
     RequestBase* base = (RequestBase*)tag;
-    assert(base->cq_);
     if (!ok) {
       LOG(WARNING) << cq_name << " recv no regular event";
       TryToRegisterNewOne();

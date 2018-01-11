@@ -100,6 +100,8 @@ class RecvOp : public framework::OperatorBase {
       // TODO(gognwb): simply this loop.
       // Get from multiple trainers, we don't care about order in which
       // the gradient arrives, just add suffix 0~n then average the gradient.
+      VLOG(4) << "param_count:" << param_count
+              << " trainer_count:" << trainer_count;
       for (size_t i = 0; i < param_count * trainer_count; ++i) {
         // blocking get one var from client.
         const detail::MessageWithName &v = rpc_service_->Get();
@@ -140,6 +142,7 @@ class RecvOp : public framework::OperatorBase {
         detail::DeserializeFromMessage(v.second, dev_ctx, var);
       }
 
+      std::cout << "recv parameter end" << std::endl;
       if (exit_flag) {
         break;
       }
