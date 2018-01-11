@@ -138,6 +138,9 @@ class TensorPrintOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(input_var);
     auto& tensor = input_var->Get<framework::LoDTensor>();
 
+    // TODO(ChunweiYan) support GPU
+    PADDLE_ENFORCE(framework::is_cpu_place(tensor.place()));
+
     Formater formater;
     if (Attr<bool>("print_tensor_name")) {
       formater.name = Inputs("input").front();
