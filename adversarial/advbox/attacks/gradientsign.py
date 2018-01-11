@@ -43,6 +43,7 @@ class IteratorGradientSignAttack(Attack):
     This attack was originally implemented by Alexey Kurakin(Google Brain).
     Paper link: https://arxiv.org/pdf/1607.02533.pdf
     """
+
     def _apply(self, image_label, epsilons=100, steps=10):
         """
         Apply the iterative gradient sign attack.
