@@ -53,7 +53,7 @@ void InitDevices() {
 #ifdef PADDLE_WITH_CUDA
   int count = platform::GetCUDADeviceCount();
   for (int i = 0; i < count; ++i) {
-    places.emplace_back(
+    pairs.emplace_back(
         std::make_pair(platform::CUDAPlace(i), LibraryType::kPlain));
   }
 #else
