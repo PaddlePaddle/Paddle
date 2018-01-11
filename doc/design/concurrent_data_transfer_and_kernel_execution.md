@@ -50,15 +50,15 @@ class Channel {
 ...
 concurrent_program = Program()
 with program(concurrent_program):
-    image = data_layer(...)
-    label = data_layer(...)
+    image = fluid.layers.data_layer(...)
+    label = fluid.layers.data_layer(...)
     places = get_places()
     channel_list = create_channel_list(name="data_buffer")
     with parallel.for(places) as for_loop:
-        cur_channel = create_channel(channel_list, for_loop.i, channel_size=2)  
+        cur_channel = fluid.layers.create_channel(channel_list, for_loop.i, channel_size=2)  
         # if channel_list has the specific channel, 
         # this function will return it directly.
-        send_to_channel(input=[for_loop.input(image), 
+        fluid.layers.send_to_channel(input=[for_loop.input(image), 
                                 for_loop.input(label)], out=cur_channel)
 
 main_program = Program()
@@ -66,8 +66,8 @@ with program(main_program):
     places = get_places()
     channel_list = create_channel_list(name="data_buffer")
     with parallel.for(places) as for_loop:
-        cur_channel = get_channel(channel_list, for_loop.i)
-        image, label = receive_from_channel(input=cur_channel)
+        cur_channel = fluid.layers.get_channel(channel_list, for_loop.i)
+        image, label = fluid.layers.receive_from_channel(input=cur_channel)
         
         y_predict = fluid.layers.fc(input=image, size=1, act=None)
         cost = fluid.layers.square_error_cost(input=y_predict, label=label)
