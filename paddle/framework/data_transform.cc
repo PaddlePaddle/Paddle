@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/framework/data_transform.h"
 
 #include "paddle/framework/data_device_transform.h"
+#include "paddle/framework/data_layout_transform.h"
 
 namespace paddle {
 namespace framework {
@@ -26,6 +27,10 @@ Tensor* DataTransform(const OpKernelType& expected_kernel_type,
   if (!platform::is_same_place(kernel_type_for_var.place_,
                                expected_kernel_type.place_)) {
     out = DeviceTransform(input_tensor, expected_kernel_type.place_);
+  }
+  if (expected_kernel_type.data_layout_ != kernel_type_for_var.data_layout_) {
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, {}, input_tensor,
+                    out);
   }
   PADDLE_ENFORCE_NOT_NULL(out, "out should not be null");
   return out;

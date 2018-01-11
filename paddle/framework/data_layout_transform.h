@@ -21,6 +21,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+static std::vector<int> NHWC2NCHW = {0, 3, 1, 2};
+static std::vector<int> NCHW2NHWC = {0, 2, 3, 1};
+
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,

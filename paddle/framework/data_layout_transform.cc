@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/framework/data_layout_transform.h"
 
-#include "paddle/framework/tensor.h"
 #include "paddle/operators/math/math_function.h"
 
 namespace paddle {
