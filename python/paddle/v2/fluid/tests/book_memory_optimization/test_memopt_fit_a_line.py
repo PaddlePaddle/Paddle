@@ -14,7 +14,9 @@ avg_cost = fluid.layers.mean(x=cost)
 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
 sgd_optimizer.minimize(avg_cost)
 
+# memopt_program = fluid.default_main_program()
 memopt_program = fluid.memory_optimize(fluid.default_main_program())
+
 BATCH_SIZE = 200
 
 train_reader = paddle.batch(

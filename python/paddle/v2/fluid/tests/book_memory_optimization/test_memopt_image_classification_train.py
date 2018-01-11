@@ -103,6 +103,7 @@ opts = optimizer.minimize(avg_cost)
 
 accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
+# memopt_program = fluid.default_main_program()
 memopt_program = fluid.memory_optimize(fluid.default_main_program())
 
 BATCH_SIZE = 128
