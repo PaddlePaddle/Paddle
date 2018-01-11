@@ -14,7 +14,7 @@ __all__ = [
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
     'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
-    'sequence_first_step', 'sequence_last_step', 'dropout'
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'warpctc'
 ]
 
 
@@ -248,13 +248,13 @@ def gru_unit(input,
             h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
 
     The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
-    of the equation above, the :math:`z_t` is split into 3 parts - 
-    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to 
-    implement a full GRU unit operator for an input, a fully 
+    of the equation above, the :math:`z_t` is split into 3 parts -
+    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to
+    implement a full GRU unit operator for an input, a fully
     connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
 
-    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates 
-    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is 
+    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates
+    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is
     an intermediate candidate hidden output, which is denoted by :math:`m_t`.
     This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
     and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
@@ -276,7 +276,7 @@ def gru_unit(input,
         .. code-block:: python
 
              # assuming we have x_t_data and prev_hidden of size=10
-             x_t = fluid.layers.fc(input=x_t_data, size=30) 
+             x_t = fluid.layers.fc(input=x_t_data, size=30)
              hidden_val, r_h_val, gate_val = fluid.layers.gru_unit(input=x_t,
                                                     hidden = prev_hidden)
 
@@ -1504,3 +1504,54 @@ def reduce_min(input, dim=None, keep_dim=False):
             'reduce_all': True if dim == None else False
         })
     return out
+
+
+def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
+    """
+    An operator integrating the open source warp-ctc  library
+    to compute Connectionist Temporal Classification (CTC) loss.
+    It can be aliased as softmax with ctc, since a native softmax activation is
+    interated to the warp-ctc library, to to normlize values for each row of the
+    input tensor.
+
+    Args:
+       input(Variable): (LodTensor, default: LoDTensor<float>),
+         the unscaled probabilities of variable-length sequences,
+         which is a 2-D Tensor with LoD information.
+         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+         sequences' length and num_classes is the true number of classes.
+         (not including the blank label).
+       label(Variable): (LodTensor, default: LoDTensor<int>), the ground truth
+         of variable-length sequence, which is a 2-D Tensor with LoD
+         information. It is of the shape [Lg, 1], where Lg is th sum of
+         all labels' length.
+       blank: (int, default: 0), the blank label of Connectionist
+         Temporal Classification (CTC) loss, which is in the
+         half-opened interval [0, num_classes + 1).
+       norm_by_times: (bool, default: false), whether to
+         normalize the gradients by the number of time-step,
+         which is also the sequence's length.
+
+    Returns:
+        Variable: The Connectionist Temporal Classification (CTC) loss, which is a 2-D Tensor of the shape [batch_size, 1].
+
+    Examples:
+        .. code-block:: python
+
+            y = layers.data(name='y', shape=[11, 8], dtype='float32', lod_level=1)
+            y_predict = layers.data(name='y_predict', shape=[11, 1], dtype='float32')
+            cost = layers.warpctc(input=y_predict, label=y)
+
+    """
+    helper = LayerHelper('warpctc', **kwargs)
+    loss_out = helper.create_tmp_variable(dtype=input.dtype)
+    grad_out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type='warpctc',
+        inputs={'Logits': [input],
+                'Label': [label]},
+        outputs={'WarpCTCGrad': [grad_out],
+                 'Loss': [loss_out]},
+        attrs={'blank': blank,
+               'norm_by_times': norm_by_times})
+    return loss_out
