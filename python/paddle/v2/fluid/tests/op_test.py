@@ -77,7 +77,8 @@ def set_input(scope, op, inputs, place):
                 __set_input__(in_name, inputs[in_name])
 
 
-def get_numeric_gradient(scope,
+def get_numeric_gradient(place,
+                         scope,
                          op,
                          inputs,
                          input_to_check,
@@ -85,7 +86,7 @@ def get_numeric_gradient(scope,
                          delta=0.005,
                          in_place=False):
     # FIXME: change this method by compile time concepts
-    set_input(scope, op, inputs, core.CPUPlace())
+    set_input(scope, op, inputs, place)
 
     def product(dim):
         return reduce(lambda a, b: a * b, dim, 1)
@@ -93,7 +94,7 @@ def get_numeric_gradient(scope,
     def get_output():
         sum = []
         for output_name in output_names:
-            op.run(scope, core.CPUPlace())
+            op.run(scope, place)
             sum.append(
                 np.array(scope.find_var(output_name).get_tensor()).mean())
         return np.array(sum).mean()
@@ -127,7 +128,7 @@ def get_numeric_gradient(scope,
     # we use a for loop to compute the gradient of every element.
     for i in xrange(tensor_size):
         if in_place:
-            set_input(scope, op, inputs, core.CPUPlace())
+            set_input(scope, op, inputs, place)
 
         # get one input element throw it's index i.
         origin = __get_elem__(tensor_to_check, i)
@@ -137,7 +138,7 @@ def get_numeric_gradient(scope,
         y_pos = get_output()
 
         if in_place:
-            set_input(scope, op, inputs, core.CPUPlace())
+            set_input(scope, op, inputs, place)
 
         x_neg = origin - delta
         __set_elem__(tensor_to_check, i, x_neg)
@@ -351,7 +352,10 @@ class OpTest(unittest.TestCase):
         if core.is_compile_gpu() and core.op_support_gpu(self.op_type):
             places.append(core.CUDAPlace(0))
         for place in places:
-            self.check_output_with_place(place, atol)
+            self.check_grad_with_place(place, inputs_to_check, output_names,
+                                       no_grad_set, numeric_grad_delta,
+                                       in_place, max_relative_error,
+                                       user_defined_grads)
 
     def check_grad_with_place(self,
                               place,
@@ -377,6 +381,7 @@ class OpTest(unittest.TestCase):
 
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
+                place,
                 self.scope,
                 self.op,
                 self.inputs,
@@ -390,7 +395,7 @@ class OpTest(unittest.TestCase):
 
         self.__assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                                max_relative_error,
-                               "Gradient Check On %s" % str(cpu_place))
+                               "Gradient Check On %s" % str(place))
 
     @staticmethod
     def _create_var_descs_(block, var_dict):

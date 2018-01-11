@@ -44,6 +44,7 @@ def avg_pool2D_forward_naive(x, ksize, strides, paddings, global_pool=0):
 
 class TestPool2d_Op(OpTest):
     def setUp(self):
+        self.use_cudnn = False
         self.init_test_case()
         self.init_global_pool()
         self.init_op_type()
@@ -62,16 +63,27 @@ class TestPool2d_Op(OpTest):
             'ksize': self.ksize,
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
+            'use_cudnn': self.use_cudnn,
+            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
 
         self.outputs = {'Out': output.astype('float32')}
 
     def test_check_output(self):
-        self.check_output()
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
 
     def test_check_grad(self):
-        if self.pool_type != "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                set(['X']), 'Out', max_relative_error=0.07)
+        else:
+            if self.pool_type != "max":
+                self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
     def init_test_case(self):
         self.shape = [2, 3, 5, 5]
@@ -156,31 +168,37 @@ class TestCase5(TestCase2):
 #--------------------test pool2d--------------------
 class TestCUDNNCase1(TestPool2d_Op):
     def init_op_type(self):
+        self.use_cudnn = True
         self.op_type = "pool2d"
 
 
 class TestCUDNNCase2(TestCase1):
     def init_op_type(self):
+        self.use_cudnn = True
         self.op_type = "pool2d"
 
 
 class TestCUDNNCase3(TestCase2):
     def init_op_type(self):
+        self.use_cudnn = True
         self.op_type = "pool2d"
 
 
 class TestCUDNNCase4(TestCase3):
     def init_op_type(self):
+        self.use_cudnn = True
         self.op_type = "pool2d"
 
 
 class TestCUDNNCase5(TestCase4):
     def init_op_type(self):
+        self.use_cudnn = True
         self.op_type = "pool2d"
 
 
 class TestCUDNNCase6(TestCase5):
     def init_op_type(self):
+        self.use_cudnn = True
         self.op_type = "pool2d"
 
 

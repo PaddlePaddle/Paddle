@@ -461,39 +461,48 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   Scope& new_scope = scope.NewScope();
 
-  for (auto& var_name_item : this->Inputs()) {
-    for (auto& var_name : var_name_item.second) {
-      auto* var = scope.FindVar(var_name);
-      if (var && VarIsTensor(var)) {
-        auto* tensor_in = GetTensorFromVar(var);
-        if (tensor_in->IsInitialized()) {
-          auto kernel_type_for_var = this->GetKernelTypeForVar(
-              var_name_item.first, *tensor_in, expected_kernel_key);
-          if (kernel_type_for_var != expected_kernel_key) {
-            auto out_var_names = OutputVars(true);
-            if (std::find(out_var_names.begin(), out_var_names.end(),
-                          var_name) != out_var_names.end()) {
-              PADDLE_THROW(
-                  "var %s is both input and output, "
-                  "does not support transform",
-                  var_name);
-            }
-            VLOG(3) << "need to do transform for var " << var_name;
-            auto* trans_var = new_scope.Var(var_name);
-            Tensor* out = nullptr;
-            DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
-                          out);
-            CopyVariableWithTensor(*var, *out, *trans_var);
-          }
-        }
-      }
-    }
+  if (expected_kernel_key.library_type_ != LibraryType::kCUDNN) {
+    // for (auto& var_name_item : this->Inputs()) {
+    //   for (auto& var_name : var_name_item.second) {
+    //     auto* var = scope.FindVar(var_name);
+    //     if (var && VarIsTensor(var)) {
+    //       auto* tensor_in = GetTensorFromVar(var);
+    //       if (tensor_in->IsInitialized()) {
+    //         auto kernel_type_for_var = this->GetKernelTypeForVar(
+    //             var_name_item.first, *tensor_in, expected_kernel_key);
+    //         if (kernel_type_for_var != expected_kernel_key) {
+    //           auto out_var_names = OutputVars(true);
+    //           if (std::find(out_var_names.begin(), out_var_names.end(),
+    //                         var_name) != out_var_names.end()) {
+    //             PADDLE_THROW(
+    //                 "var %s is both input and output, "
+    //                 "does not support transform",
+    //                 var_name);
+    //           }
+    //           VLOG(3) << "need to do transform for var " << var_name;
+    //           auto* trans_var = new_scope.Var(var_name);
+    //           std::shared_ptr<Tensor> out(new Tensor);
+    //           DataTransform(expected_kernel_key, kernel_type_for_var,
+    //                         *tensor_in, out.get());
+    //           CopyVariableWithTensor(*var, *(out.get()), *trans_var);
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
   }
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  kernel_iter->second->Compute(ExecutionContext(
-      *this, new_scope, *pool.Get(expected_kernel_key.place_)));
+  auto new_ctx =
+      ExecutionContext(*this, new_scope, *pool.Get(expected_kernel_key.place_));
+  VLOG(3) << "construct ExecutionContext ";
+  if (kernel_iter == kernels.end()) {
+    VLOG(3) << " Not such kernel";
+  }
+  auto& final_kernel = kernel_iter->second;
+  VLOG(3) << " before compute ";
+  final_kernel->Compute(new_ctx);
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(

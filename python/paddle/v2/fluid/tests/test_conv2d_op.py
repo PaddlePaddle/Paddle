@@ -49,7 +49,7 @@ def conv2d_forward_naive(input, filter, group, conv_param):
 
 class TestConv2dOp(OpTest):
     def setUp(self):
-        self.use_cudnn = True
+        self.use_cudnn = False
         self.init_op_type()
         self.init_group()
         self.init_dilation()
@@ -82,34 +82,47 @@ class TestConv2dOp(OpTest):
         else:
             self.check_output()
 
-    # def test_check_grad(self):
-    #     if self.use_cudnn:
-    #         place = core.CUDAPlace(0)
-    #         self.check_grad_with_place(place, set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
-    #     else:
-    #         self.check_grad(
-    #             set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+    def test_check_grad(self):
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                set(['Input', 'Filter']),
+                'Output',
+                max_relative_error=0.02)
+        else:
+            self.check_grad(
+                set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
-    # def test_check_grad_no_filter(self):
-    #     if self.use_cudnn:
-    #         place = core.CUDAPlace(0)
-    #         self.check_grad_with_place(                ['Input'],
-    #             'Output',
-    #             max_relative_error=0.02,
-    #             no_grad_set=set(['Filter']))
-    #     else:
-    #         self.check_grad(
-    #             ['Input'],
-    #             'Output',
-    #             max_relative_error=0.02,
-    #             no_grad_set=set(['Filter']))
+    def test_check_grad_no_filter(self):
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Input'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Filter']))
+        else:
+            self.check_grad(
+                ['Input'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Filter']))
 
-    # def test_check_grad_no_input(self):
-    #     self.check_grad(
-    #         ['Filter'],
-    #         'Output',
-    #         max_relative_error=0.02,
-    #         no_grad_set=set(['Input']))
+    def test_check_grad_no_input(self):
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Filter'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Input']))
+        else:
+            self.check_grad(
+                ['Filter'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -129,76 +142,90 @@ class TestConv2dOp(OpTest):
         self.op_type = "conv2d"
 
 
-# class TestWithPad(TestConv2dOp):
-#     def init_test_case(self):
-#         self.pad = [1, 1]
-#         self.stride = [1, 1]
-#         self.input_size = [2, 3, 5, 5]  # NCHW
-#         assert np.mod(self.input_size[1], self.groups) == 0
-#         f_c = self.input_size[1] / self.groups
-#         self.filter_size = [6, f_c, 3, 3]
+class TestWithPad(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3]
 
-# class TestWithStride(TestConv2dOp):
-#     def init_test_case(self):
-#         self.pad = [1, 1]
-#         self.stride = [2, 2]
-#         self.input_size = [2, 3, 6, 6]  # NCHW
-#         assert np.mod(self.input_size[1], self.groups) == 0
-#         f_c = self.input_size[1] / self.groups
-#         self.filter_size = [6, f_c, 3, 3]
 
-# class TestWithGroup(TestConv2dOp):
-#     def init_group(self):
-#         self.groups = 3
+class TestWithStride(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 6, 6]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3]
 
-# class TestWith1x1(TestConv2dOp):
-#     def init_test_case(self):
-#         self.pad = [0, 0]
-#         self.stride = [1, 1]
-#         self.input_size = [2, 3, 5, 5]  # NCHW
-#         assert np.mod(self.input_size[1], self.groups) == 0
-#         f_c = self.input_size[1] / self.groups
-#         self.filter_size = [6, f_c, 1, 1]
 
-#     def init_group(self):
-#         self.groups = 3
+class TestWithGroup(TestConv2dOp):
+    def init_group(self):
+        self.groups = 3
 
-# class TestWithDilation(TestConv2dOp):
-#     def init_test_case(self):
-#         self.pad = [0, 0]
-#         self.stride = [1, 1]
-#         self.input_size = [2, 3, 10, 10]  # NCHW
-#         assert np.mod(self.input_size[1], self.groups) == 0
-#         f_c = self.input_size[1] / self.groups
-#         self.filter_size = [6, f_c, 3, 3]
 
-#     def init_dilation(self):
-#         self.dilations = [2, 2]
+class TestWith1x1(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 1, 1]
 
-#     def init_group(self):
-#         self.groups = 3
+    def init_group(self):
+        self.groups = 3
+
+
+class TestWithDilation(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 10, 10]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
+    def init_dilation(self):
+        self.dilations = [2, 2]
+
+    def init_group(self):
+        self.groups = 3
+
 
 #----------------Conv2dCUDNN----------------
-# class TestCUDNN(TestConv2dOp):
-#     def init_op_type(self):
-#         self.use_cudnn = True
-#         self.op_type = "conv2d"
+class TestCUDNN(TestConv2dOp):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
 
-# class TestCUDNNWithPad(TestWithPad):
-#     def init_op_type(self):
-#         self.op_type = "conv2d"
 
-# class TestCUDNNWithStride(TestWithStride):
-#     def init_op_type(self):
-#         self.op_type = "conv2d"
+class TestCUDNNWithPad(TestWithPad):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
 
-# class TestCUDNNWithGroup(TestWithGroup):
-#     def init_op_type(self):
-#         self.op_type = "conv2d"
 
-# class TestCUDNNWith1x1(TestWith1x1):
-#     def init_op_type(self):
-#         self.op_type = "conv2d"
+class TestCUDNNWithStride(TestWithStride):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
+
+
+class TestCUDNNWithGroup(TestWithGroup):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
+
+
+class TestCUDNNWith1x1(TestWith1x1):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
+
 
 #  cudnn v5 does not support dilation conv.
 # class TestCUDNNWithDilation(TestWithDilation):

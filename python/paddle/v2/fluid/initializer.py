@@ -134,6 +134,7 @@ class UniformInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
+        print "uniform random seed", self._seed
         op = block.prepend_op(
             type="uniform_random",
             outputs={"Out": var},
@@ -184,6 +185,8 @@ class NormalInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
+
+        print "normal random seed", self._seed
         op = block.prepend_op(
             type="gaussian_random",
             outputs={"Out": var},
@@ -262,6 +265,7 @@ class XavierInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
+        print "xavier default seed", self._seed
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
             op = block.prepend_op(
