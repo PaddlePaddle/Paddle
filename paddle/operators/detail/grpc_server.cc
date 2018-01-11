@@ -100,6 +100,8 @@ class RequestGet final : public RequestBase {
 void AsyncGRPCServer::RunSyncUpdate() {
   grpc::ServerBuilder builder;
   builder.AddListeningPort(address_, grpc::InsecureServerCredentials());
+  builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
+  builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
   builder.RegisterService(&service_);
 
   cq_send_ = builder.AddCompletionQueue();
@@ -162,6 +164,7 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
 void AsyncGRPCServer::SetFinishOrDelete(RequestBase*& last) {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
+    VLOG(4) << "delete Requestget status:" << last->Status();
     delete last;
     last = NULL;
     return;
@@ -179,18 +182,21 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
   void* tag = NULL;
   bool ok = false;
   while (true) {
+    assert(cq);
     if (!cq->Next(&tag, &ok)) {
       LOG(INFO) << cq_name << " get CompletionQueue shutdown!";
       break;
     }
 
+    assert(tag);
     if (wait && !done_) {
       Wait();
     }
 
     RequestBase* base = (RequestBase*)tag;
+    assert(base->cq_);
     if (!ok) {
-      VLOG(4) << cq_name << " recv no regular event";
+      LOG(WARNING) << cq_name << " recv no regular event";
       TryToRegisterNewOne();
       delete base;
       continue;
