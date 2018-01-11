@@ -187,6 +187,31 @@ void NeuralNetwork::init(const ModelConfig& config,
     CHECK(it != layerMap_.end());
     outputLayers_.push_back(it->second);
   }
+
+  for (const auto& layer : layers_) {
+    const auto& name = layer->getName();
+    bool isMiddleLayer = true;
+
+    // if data layer
+    for (const auto& dataLayer : dataLayers_) {
+      if (name == dataLayer->getName()) {
+        isMiddleLayer = false;
+        break;
+      }
+    }
+
+    // if output layer
+    for (const auto& dataLayer : outputLayers_) {
+      if (name == dataLayer->getName()) {
+        isMiddleLayer = false;
+        break;
+      }
+    }
+
+    if (isMiddleLayer) {
+      middleLayers_.push_back(layer);
+    }
+  }
 }
 
 void NeuralNetwork::connect(LayerPtr agentLayer,
@@ -324,6 +349,13 @@ Argument NeuralNetwork::getLayerOutput(const std::string& layerName) {
 void NeuralNetwork::onPassEnd() {
   for (auto& layer : layers_) {
     layer->onPassEnd();
+  }
+}
+
+void NeuralNetwork::releaseOutput() {
+  for (auto& layer : middleLayers_) {
+    Argument& arg = layer->getOutput();
+    arg.value.reset();
   }
 }
 

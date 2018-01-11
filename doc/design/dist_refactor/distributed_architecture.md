@@ -52,8 +52,9 @@ The IR for PaddlePaddle after refactoring is called a `Block`, it specifies the 
 
 The user can not directly specify the parameter update rule for the parameter server in the Python module, since the parameter server does not use the same computation definition as the trainer. Instead, the update rule is baked inside the parameter server. The user can not specify the update rule explicitly.
 
-This could be fixed by making the parameter server run the same computation definition as the trainer (the user's Python module). For a detailed explanation, refer to this document -
-[Design Doc: Operation Graph Based Parameter Server](./parameter_server.md)
+This could be fixed by making the parameter server also run an IR, which can be different to the trainer side
+For a detailed explanation, refer to this document -
+[Design Doc: Parameter Server](./parameter_server.md)
 
 ## Distributed Training Architecture
 
@@ -61,66 +62,109 @@ The revamped distributed training architecture can address the above discussed l
 
 <img src="src/distributed_architecture.png"/>
 
-The major components in the architecture are: *PaddlePaddle Python*, *PaddlePaddle converter* and *PaddlePaddle runtime*.
+The major components are: *Python API*, *Distribute Transpiler* and *Remote Executor*.
 
-### PaddlePaddle Python
+### Python API
 
-PaddlePaddle Python is the Python library that user's Python code invokes, to read the data. build the neural network topology, start training, etc.
+Python API is the Python library that user's Python code invokes, to read the data, build the neural network topology, and start training, etc.
 
 ```Python
-paddle.init()
-input = paddle.op.recordIO("/home/data/mnist.recordio") # file stored on the cluster
-img, label = input[0], input[1]
-hidden = paddle.layer.fc(input=img, size=200, act=paddle.activation.Tanh())
-prediction = paddle.layer.fc(input=img, size=10, act=paddle.activation.Softmax())
-cost = paddle.layer.classification_cost(input=prediction, label=label)
-optimizer = paddle.optimizer.SGD(cost, learning_rate=0.01)
-session = paddle.session.NewRemote(num_trainer=3, num_ps=2, GPU_per_trainer=1)
-for i in range(1000):
-	_, cost_val = session.eval(targets=[cost, optimizer])
-	print cost_val
+images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype='float32')
+label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+...
+predict = fluid.layers.fc(input=conv_pool_2, size=10, act="softmax")
+cost = fluid.layers.cross_entropy(input=predict, label=label)
+avg_cost = fluid.layers.mean(x=cost)
+optimizer = fluid.optimizer.Adam(learning_rate=0.01)
+optimizer.minimize(avg_cost)
+
+train_reader = paddle.batch(
+    paddle.reader.shuffle(
+        paddle.dataset.mnist.train(), buf_size=500),
+    batch_size=BATCH_SIZE)
+
+place = fluid.CPUPlace()
+exe = fluid.Executor(place)
+
+for pass_id in range(10):
+    for data in train_reader():
+        loss, acc = exe.run(trainer_prog,
+                            feed=feeder.feed(data),
+                            fetch_list=[avg_cost])
 ```
 
-The above code is what a typical Python trainer code is, the neural network topology is built using the helper functions such as `paddle.layer.fc`. Training is done by calling `session.eval` iteratively.
+The code above is a typical local training program, the "Training Program" is built using helper functions such as
+`fluid.layer.fc`. The training is done by calling `Executor.run`
+iteratively.
 
-#### session.eval
+For more details, the implementation of IR is [Program](../program.md), and `ProgramDesc` is the protobuf type.
 
-As shown in the graph, `session.eval` sends the IR and the evaluation inputs or targets to the PaddlePaddle cluster for evaluation.
-The targets can be any variable in the computation graph. When the target is say, the `optimizer` variable, the neural network will be optimized once. When the target is the `cost` variable, `session.eval` returns the cost value. Based on what the target is, an appropriate action is taken.
+[Executor](../executor.md) simply runs the `ProgramDesc`. For local training you generally use
+`Executor` to run the program locally. For any kind of distributed training, you can use
+`RemoteExecutor` to specify desired distributed training method with some optional arguments.
 
-The Python `session` is a wrapper of the C++ `Session` class. For more information about `Session`, refer to this document - [Design Doc: Session](./session.md).
+### Distributed Transpiler
 
-### PaddlePaddle Converter
+The Distributed Transpiler automatically converts the IR (in protobuf format) to partitioned IRs. Then
+the Remote Executor dispatches the new IRs to Remote Executors across the cluster.
+Below are the steps that are followed :
 
-The PaddlePaddle converter automatically converts the IR in the request (IR and evaluation inputs/targets) from PaddlePaddle Python to partitioned IRs and dispatches the new IRs and evaluation inputs/targets to different PaddlePaddle runtimes. Below are the steps that are followed :
-
-1. Add a `feed` OP that feeds the eval inputs, and a `fetch` OP that fetches the eval targets to the IR.
-
-2. Extract a new computation (sub)graph with the `feed` and `fetch` OPs as the boundary. The runtime does not need to run the OP that is not dependent on the `fetch` OP.
-
-3. Optimize the computation graph.
-
-4. Place the OPs in the graph onto different devices on different PaddlePaddle runtime according to a placement algorithm and the device constraints specified by the user.
-
-5. Partition the graph according to runtime boundaries and add `send` / `recv` OP pair on the runtime boundaries.
-
-6. Dispatch the partitioned graph to different PaddlePaddle runtimes.
-
-7. PaddlePaddle runtimes with the `fetch` OP reports evaluation results back to the converter, the converter reports the evaluation results back to the PaddlePaddle Python.
-
-The output IRs will be cached to optimize the conversion latency.
+1. User only need to change `Executor` to `RemoteExecutor` to change local program to distributed program.
+1. `RemoteExecutor` calls `Distributed Transpiler` to "transpile" user's program to several IRs representing a
+   distributed training program:
+   1. Parse configurations from `RemoteExecutor`.
+   1. Determine the type of distributed program, can be DataParallelism, ModelParallelism or Streaming.
+   1. Partition the `ProgramDesc` according to type and add `send` / `recv` OP pair on the boundaries. Take
+      DataParallelism type for example, it removes the optimization operators and add a `send` OP to the
+      "trainer" role, then add the optimization operators to the parameter server role within the `recv` OP.
+1. Dispatch the partitioned graph to different `RemoteExecutor` in the cluster.
+1. `RemoteExecutor` on each node run the received `ProgramDesc` utill the end.
 
 
-#### Placement Algorithm
+### RemoteExecutor
+
+As shown in the graph, `RemoteExecutor.run` sends the IR to the cluster for Execution.
+You can also use parameter `fetch_list` to interactively fetch variable back to local for
+log printing.
+
+The Python `RemoteExecutor` is derived from `Executor` class.
+
+```python
+exe = RemoteExecutor(
+    feed=feeder.feed(data),
+    fetch_list=[avg_cost],
+    job_desc=JobDesc(
+      jobname,
+      num_trainer,
+      num_pserver,
+      cpu_per_trainer,
+      gpu_per_trainer,
+      mem_per_trainer,
+      cpu_per_pserver,
+      mem_per_pserver
+    ))
+for data in train_reader():
+    loss, acc = exe.run(trainer_prog,
+                        feed=feeder.feed(data),
+                        fetch_list=[avg_cost])
+```
+
+`JobDesc` object describe the distributed job resource specification to run on
+Cluster environment.
+
+<img src="src/remote_executor.png"/>
+
+`RemoteExecutor.run` sends the `ProgramDesc` and
+[TrainingJob](https://github.com/PaddlePaddle/cloud/blob/develop/doc/autoscale/README.md#training-job-resource)
+to a server in the cluster which executes `RemoteExecutor.listen`. This server is responsible
+to start the final Kubernetes Jobs to run the different role of `ProgramDesc`.
+
+
+### Placement Algorithm
 
 Our first implementation will only support "trainer-parameter server" placement: the parameters, initializers, and optimizers are all placed on the PaddlePaddle runtimes with the parameter server role. Everything else will be placed on the PaddlePaddle runtimes with the trainer role. This has the same functionality as the "trainer-parameter server" architecture of PaddlePaddle v0.10.0, but is more generic and flexible.
 
 In the future, a more general placement algorithm should be implemented, which makes placements according to the input IR, and a model of device computation time and device communication time. Model parallelism requires the generic placement algorithm.
-
-
-### PaddlePaddle Runtime
-
-The PaddlePaddle runtime owns multiple devices (e.g., CPUs, GPUs) and runs the IR. The runtime does not need to do OP placement since it is already done by the converter.
 
 
 ### Local Training Architecture
@@ -132,9 +176,18 @@ The local training architecture will be the same as the distributed training arc
 
 ### Training Data
 
-In PaddlePaddle v0.10.0, training data is typically read with a [data reader](../reader/README.md) from Python. This approach is no longer efficient when training in a distributed fashion since the Python process no longer runs on the same node with the trainer processes. The Python reader will need to read from the distributed filesystem (assuming it has the required access) and send to the trainers, doubling the network traffic.
+In PaddlePaddle v0.10.0, training data is typically read
+with [data reader](../reader/README.md) from Python. This approach is
+no longer efficient when training distributedly since the Python
+process no longer runs on the same node with the trainer processes,
+the Python reader will need to read from the distributed filesystem
+(assuming it has the access) and send to the trainers, doubling the
+network traffic.
 
-When doing distributed training, the user can still use Python data reader: the training data are sent with `session.eval`. However this should be used for debugging purpose only. The users are encouraged to use the read data OPs.
+When doing distributed training, the user can still use Python data
+reader: the training data are sent with `Executor.run`. However, should
+be used for debugging purpose only. The users are encouraged to use
+the read data OPs.
 
 
 ## References:

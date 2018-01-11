@@ -230,7 +230,6 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 namespace ops = paddle::operators;
 REGISTER_OP(conv2d, ops::ConvOp, ops::Conv2DOpMaker, conv2d_grad,
             ops::ConvOpGrad);
-namespace ops = paddle::operators;
 REGISTER_OP(conv3d, ops::ConvOp, ops::Conv3DOpMaker, conv3d_grad,
             ops::ConvOpGrad);
 
