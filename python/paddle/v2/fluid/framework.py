@@ -215,6 +215,8 @@ class Variable(object):
         self.block.vars[name] = self
         self.op = None
         self.stop_gradient = stop_gradient
+        self.param_names = list()
+        self.bias_names = list()
 
     def __str__(self):
         return self.to_string(True)
@@ -273,6 +275,20 @@ class Variable(object):
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
+
+    def param(self, i=0):
+        return self._get_param_impl_(self.param_names, i)
+
+    def bias(self, i=0):
+        return self._get_param_impl_(self.bias_names, i)
+
+    def _get_param_impl_(self, names, i):
+        global_block = self.block.program.global_block()
+        assert isinstance(global_block, Block)
+        return global_block.var(names[i])
+
+    def grad(self):
+        return self.block.var(grad_var_name(self.name))
 
 
 def get_all_op_protos():
@@ -443,7 +459,7 @@ class Operator(object):
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
                 elif isinstance(attrs[attr_name], core.BlockDesc) or \
-                   isinstance(attrs[attr_name], core.ProgramDesc):
+                        isinstance(attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
                         attr_name, attrs[attr_name].serialize_to_string())
                 else:

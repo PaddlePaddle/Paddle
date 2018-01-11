@@ -1,7 +1,8 @@
 import copy
 import itertools
 
-from framework import Variable, Parameter, default_main_program, default_startup_program, \
+from framework import Variable, Parameter, default_main_program, \
+    default_startup_program, \
     unique_name, dtype_is_floating
 from paddle.v2.fluid.initializer import Constant, Xavier
 from param_attr import ParamAttr
@@ -14,6 +15,9 @@ class LayerHelper(object):
         name = self.kwargs.get('name', None)
         if name is None:
             self.kwargs['name'] = unique_name(self.layer_type)
+
+        self.param_names = list()
+        self.bias_names = list()
 
     @property
     def name(self):
@@ -109,6 +113,11 @@ class LayerHelper(object):
         if attr.name is None:
             attr.name = unique_name(".".join([self.name, suffix]))
 
+        if is_bias:
+            self.bias_names.append(attr.name)
+        else:
+            self.param_names.append(attr.name)
+
         self.startup_program.global_block().create_parameter(
             dtype=dtype, shape=shape, **attr.to_kwargs(with_initializer=True))
         return self.main_program.global_block().create_parameter(
@@ -201,3 +210,14 @@ class LayerHelper(object):
         if not isinstance(param, cls):
             raise TypeError("The input {0} parameter of method {1} must be {2}",
                             param_name, self.layer_type, cls.__name__)
+
+    def bind_param(self, *out):
+        for each in out:
+            assert isinstance(each, Variable)
+            each.param_names = self.param_names
+            each.bias_names = self.bias_names
+
+        if len(out) == 1:
+            return out[0]
+        else:
+            return out

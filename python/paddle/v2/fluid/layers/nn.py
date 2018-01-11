@@ -136,7 +136,7 @@ def fc(input,
     # add bias
     pre_activation = helper.append_bias_op(pre_bias)
     # add activation
-    return helper.append_activation(pre_activation)
+    return helper.bind_param(helper.append_activation(pre_activation))
 
 
 def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
@@ -178,7 +178,7 @@ def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
                 'W': w},
         outputs={'Out': tmp},
         attrs={'is_sparse': is_sparse})
-    return tmp
+    return helper.bind_param(tmp)
 
 
 # TODO(qijun): expose H0 and C0
@@ -225,7 +225,7 @@ def dynamic_lstm(input,
             'cell_activation': cell_activation,
             'candidate_activation': candidate_activation
         })
-    return hidden, cell
+    return helper.bind_param(hidden, cell)
 
 
 def gru_unit(input,
@@ -324,7 +324,7 @@ def gru_unit(input,
             'gate_activation': 1,
         })
 
-    return updated_hidden, reset_hidden_pre, gate
+    return helper.bind_param(updated_hidden, reset_hidden_pre, gate)
 
 
 def linear_chain_crf(input, label, param_attr=None):
@@ -350,7 +350,7 @@ def linear_chain_crf(input, label, param_attr=None):
             "LogLikelihood": log_likelihood
         })
 
-    return log_likelihood
+    return helper.bind_param(log_likelihood)
 
 
 def crf_decoding(input, param_attr, label=None):
@@ -628,7 +628,7 @@ def sequence_conv(input,
             'contextLength': filter_size
         })
     pre_act = helper.append_bias_op(pre_bias)
-    return helper.append_activation(pre_act)
+    return helper.bind_param(helper.append_activation(pre_act))
 
 
 def conv2d(input,
@@ -766,7 +766,7 @@ def conv2d(input,
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
 
-    return helper.append_activation(pre_act)
+    return helper.bind_param(helper.append_activation(pre_act))
 
 
 def sequence_pool(input, pool_type, **kwargs):
@@ -1029,7 +1029,7 @@ def batch_norm(input,
                "epsilon": epsilon,
                "is_test": is_test})
 
-    return helper.append_activation(batch_norm_out)
+    return helper.bind_param(helper.append_activation(batch_norm_out))
 
 
 def beam_search_decode(ids, scores):
@@ -1145,7 +1145,7 @@ def conv2d_transpose(input,
         outputs={'Output': out},
         attrs=op_attr)
 
-    return out
+    return helper.bind_param(out)
 
 
 def sequence_expand(x, y):
