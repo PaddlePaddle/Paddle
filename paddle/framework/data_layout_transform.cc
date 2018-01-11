@@ -44,23 +44,17 @@ struct CastDataLayout {
   }
 };
 
-void TransDataLayout(const std::vector<int>& axis,
-                     const platform::DeviceContext* ctx,
-                     const KernelTypePair& kernel_pair, const Variable& in,
-                     Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only support Tensor transform!.");
+void TransDataLayout(const OpKernelType& kernel_type_for_var,
+                     const OpKernelType& expected_kernel_type,
+                     const std::vector<int>& axis, const Tensor& in,
+                     const platform::Place& dst_place, Tensor* out) {
   PADDLE_ENFORCE(
-      platform::places_are_same_class(kernel_pair.first.place_,
-                                      kernel_pair.second.place_),
+      platform::places_are_same_class(in.place(), dst_place),
       "TransDataLayout only support DataLayout transform on same place!");
-  PADDLE_ENFORCE(kernel_pair.first.data_type_ == kernel_pair.second.data_type_,
-                 "TransDataLayout only support Datatype are same!");
 
-  auto src = in.Get<Tensor>();
-  auto* dst = out->GetMutable<Tensor>();
-  PADDLE_ENFORCE(arity(src.dims()) == 4, "Input Arity Only Suppport 4!");
+  PADDLE_ENFORCE(arity(in.dims()) == 4, "Input Arity only support 4!");
 
-  auto src_dim = src.dims();
+  auto src_dim = in.dims();
   std::vector<int64_t> dst_dim;
 
   dst_dim.resize(axis.size());
@@ -68,14 +62,13 @@ void TransDataLayout(const std::vector<int>& axis,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  dst->Resize(make_ddim(dst_dim));
-  auto place = kernel_pair.second.place_;
-  dst->mutable_data(place, src.type());
+  out->Resize(make_ddim(dst_dim));
+  out->mutable_data(in.place(), in.type());
 
-  auto src_type = kernel_pair.first.data_type_;
-  framework::VisitDataType(src_type, CastDataLayout(ctx, axis, src, dst));
+  framework::VisitDataType(framework::ToDataType(in.type()),
+                           CastDataLayout(ctx, axis, in, out));
 
-  dst->set_layout(kernel_pair.second.data_layout_);
+  out->set_layout(expected_kernel_type.data_layout_);
 }
 
 }  // namespace framework
