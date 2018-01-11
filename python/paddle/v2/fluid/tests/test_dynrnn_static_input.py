@@ -56,7 +56,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
         ndarray = np.zeros(shape=dims).astype('float32')
         for i in xrange(np.product(dims)):
             ndarray.ravel()[i] = lod_tensor.get_float_element(i)
-        return ndarray
+        return ndarray, lod_tensor.lod()
 
     def build_graph(self, only_forward=False):
         x_tensor = fluid.layers.data(
@@ -142,22 +142,28 @@ class TestDyRnnStaticInput(unittest.TestCase):
         ]
 
         static_step_outs = []
+        static_step_lods = []
 
         for i in xrange(self._max_sequence_len):
             end = len(x_seq_len) - bisect.bisect_left(x_seq_len_sorted, i + 1)
-            end = sum(static_seq_len_reordered[:end])
+            lod = [0]
+            for i in xrange(end):
+                lod.append(static_seq_len_reordered[i] + lod[-1])
+            static_step_lods.append([lod])
+            end = lod[-1]
             static_step_outs.append(
                 np.array(static_reordered[:end]).astype('float32'))
 
-        return static_step_outs
+        return static_step_outs, static_step_lods
 
     def test_step_out(self):
         static_step_outs = self.build_graph(only_forward=True)
         self.exe.run(framework.default_startup_program())
-        expected_step_outs = self.get_expected_static_step_outs()
+        expected_outs, expected_lods = self.get_expected_static_step_outs()
         for i in xrange(self._max_sequence_len):
-            step_out = self.fetch_value(static_step_outs[i])
-            self.assertTrue(np.allclose(step_out, expected_step_outs[i]))
+            step_out, lod = self.fetch_value(static_step_outs[i])
+            self.assertTrue(np.allclose(step_out, expected_outs[i]))
+            self.assertTrue(np.allclose(lod, expected_lods[i]))
 
     def test_network_gradient(self):
         pass  #still have bug (seed doesn't work)
@@ -165,11 +171,10 @@ class TestDyRnnStaticInput(unittest.TestCase):
         static_input_grad, loss = self.build_graph()
         self.exe.run(framework.default_startup_program())
 
-        actual_gradients = self.fetch_value(static_input_grad)
+        actual_gradients, actual_lod = self.fetch_value(static_input_grad)
 
         static_input_shape = self.static_input_tensor.get_dims()
         numeric_gradients = np.zeros(shape=static_input_shape).astype('float32')
-        #print(actual_gradient)
         print(actual_gradients)
         # calculate numeric gradients
         tensor_size = np.product(static_input_shape)
@@ -177,13 +182,12 @@ class TestDyRnnStaticInput(unittest.TestCase):
             origin = self.static_input_tensor.get_float_element(i)
             x_pos = origin + self._delta
             self.static_input_tensor.set_float_element(i, x_pos)
-            y_pos = self.fetch_value(loss)[0]
+            y_pos = self.fetch_value(loss)[0][0]
             x_neg = origin - self._delta
             self.static_input_tensor.set_float_element(i, x_neg)
-            y_neg = self.fetch_value(loss)[0]
+            y_neg = self.fetch_value(loss)[0][0]
             self.static_input_tensor.set_float_element(i, origin)
             numeric_gradients.ravel()[i] = (y_pos - y_neg) / self._delta / 2
-
         print(numeric_gradients)
         '''
 
