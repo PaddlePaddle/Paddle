@@ -190,7 +190,7 @@ class WhileGradOp : public framework::OperatorBase {
             auto var_name = pg_names[param_id];
             auto zero_op = framework::OpRegistry::CreateOp(
                 "fill_constant", framework::VariableNameMap{},
-                {{"Out", {pg_names[param_id]}}}, attrs);
+                {{"Out", {var_name}}}, attrs);
             zero_op->Run(scope, dev_place);
             scope.FindVar(var_name)
                 ->GetMutable<framework::LoDTensor>()
