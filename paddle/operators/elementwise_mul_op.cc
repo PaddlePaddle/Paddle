@@ -22,7 +22,7 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
  public:
   ElementwiseMulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Mul", "$Out = X \\odot\\ Y$");
+    SetComment("Mul", "Out = X \\odot\\ Y");
     AddComment(comment_);
   }
 };
