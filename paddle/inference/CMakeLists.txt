@@ -1,12 +1,20 @@
-set(FLUID_CORE_MODULES
-    backward proto_desc paddle_memory executor prune init ${GLOB_OP_LIB})
+set(FLUID_CORE_MODULES proto_desc paddle_memory executor prune init)
 
 cc_library(paddle_fluid_api
     SRCS inference.cc
-    DEPS ${FLUID_CORE_MODULES})
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
-# Merge all modules into a simgle static library
-cc_library(paddle_fluid DEPS paddle_fluid_api ${FLUID_CORE_MODULES})
+# Merge all modules into a single static library
+cc_library(paddle_fluid DEPS paddle_fluid_api ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
+
+# Create shared library
+add_library(paddle_fluid_shared SHARED inference.cc)
+
+target_circle_link_libraries(paddle_fluid_shared
+  ARCHIVE_START
+  ${GLOB_OP_LIB}
+  ARCHIVE_END
+  ${FLUID_CORE_MODULES})
 
 # ptools
 # just for testing, we may need to change the storing format for inference_model
