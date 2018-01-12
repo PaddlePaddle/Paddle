@@ -479,7 +479,7 @@ void OperatorWithKernel::Run(const Scope& scope,
         if (tensor_in->IsInitialized()) {
           auto kernel_type_for_var = this->GetKernelTypeForVar(
               var_name_item.first, *tensor_in, expected_kernel_key);
-          if (kernel_type_for_var != expected_kernel_key) {
+          if (TransFromNeeded(kernel_type_for_var, expected_kernel_key)) {
             auto out_var_names = OutputVars(true);
             if (std::find(out_var_names.begin(), out_var_names.end(),
                           var_name) != out_var_names.end()) {
@@ -488,7 +488,8 @@ void OperatorWithKernel::Run(const Scope& scope,
                   "does not support transform",
                   var_name);
             }
-            VLOG(3) << "need to do transform for var " << var_name;
+            VLOG(3) << "Transform Variable " << var_name << " from "
+                    << kernel_type_for_var << " to " << expected_kernel_key;
             auto* trans_var = new_scope.Var(var_name);
             std::shared_ptr<Tensor> out(new Tensor);
             DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
