@@ -31,7 +31,8 @@ def create_op(scope, op_type, inputs, outputs, attrs):
             kwargs[in_name] = []
             if in_dup:
                 sub_in = inputs[in_name]
-                for sub_in_name, _ in sub_in:
+                for item in sub_in:
+                    sub_in_name, _ = item[0], item[1]
                     __create_var__(in_name, sub_in_name)
             else:
                 __create_var__(in_name, in_name)
@@ -71,7 +72,8 @@ def set_input(scope, op, inputs, place):
         if in_name in inputs:
             if in_dup:
                 sub_in = inputs[in_name]
-                for sub_in_name, sub_in_val in sub_in:
+                for item in sub_in:
+                    sub_in_name, sub_in_val = item[0], item[1]
                     __set_input__(sub_in_name, sub_in_val)
             else:
                 __set_input__(in_name, inputs[in_name])
