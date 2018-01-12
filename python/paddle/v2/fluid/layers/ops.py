@@ -16,6 +16,7 @@ __all__ = [
     'elementwise_sub',
     'elementwise_mul',
     'clip',
+    'clip_by_norm',
     'sequence_softmax',
 ] + __activations__
 
