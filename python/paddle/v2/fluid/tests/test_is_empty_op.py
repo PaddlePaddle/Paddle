@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from paddle.v2.fluid.op import Operator
 import paddle.v2.fluid.core as core
+from paddle.v2.fluid.framework import Program
 
 
 def create_tensor(scope, name, np_data):
@@ -33,7 +34,7 @@ class TestIsEmptyOp(unittest.TestCase):
 
     def one_case(self, input, target):
         op = Operator(type="is_empty", X=input, Out="out")
-        op.run(self.scope, core.CPUPlace())
+        op.run(self.scope, core.CPUPlace(), Program().desc)
         out = self.scope.var("out").get_tensor()
         self.assertEqual(np.array(out)[0], target)
 

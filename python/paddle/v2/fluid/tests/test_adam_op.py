@@ -3,6 +3,7 @@ import numpy as np
 from op_test import OpTest
 from paddle.v2.fluid import core
 from paddle.v2.fluid.op import Operator
+from paddle.v2.fluid.framework import Program
 
 
 class TestAdamOp1(OpTest):
@@ -274,7 +275,7 @@ class TestSparseAdamOp(unittest.TestCase):
 
         # create and run sgd operator
         adam_op = Operator("adam", **op_args)
-        adam_op.run(scope, place)
+        adam_op.run(scope, place, Program().desc)
 
         for key, np_array in self.outputs.iteritems():
             out_var = scope.var(key).get_tensor()

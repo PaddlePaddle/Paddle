@@ -3,6 +3,7 @@ import paddle.v2.fluid.core as core
 import unittest
 import numpy as np
 from paddle.v2.fluid.op import Operator, CondOp
+from paddle.v2.fluid.framework import Program
 
 
 class PySimpleCond(object):
@@ -65,7 +66,7 @@ class TestCondOp(unittest.TestCase):
         self.create_global_variables()
         self.create_cond_op()
         self.create_sub_net()
-        self.condop.run(self.scope, core.CPUPlace())
+        self.condop.run(self.scope, core.CPUPlace(), Program().desc)
         return np.array(self.scope.find_var("Out").get_tensor())
 
     def create_global_variables(self):

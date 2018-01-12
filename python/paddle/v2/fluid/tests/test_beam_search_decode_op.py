@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.op import Operator
+from paddle.v2.fluid.framework import Program
 
 
 class TestBeamSearchDecodeOp(unittest.TestCase):
@@ -57,7 +58,7 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
             SentenceIds="sentence_ids",
             SentenceScores="sentence_scores")
 
-        beam_search_decode_op.run(self.scope, self.cpu_place)
+        beam_search_decode_op.run(self.scope, self.cpu_place, Program().desc)
 
         expected_lod = [[0, 4, 8], [0, 1, 3, 6, 9, 10, 13, 16, 19]]
         self.assertEqual(sentence_ids.lod(), expected_lod)
