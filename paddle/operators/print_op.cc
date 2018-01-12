@@ -31,13 +31,13 @@ struct Formater {
   int summarize;
   void* data{nullptr};
 
-  void operator()() {
+  void operator()(size_t size) {
     PrintMessage();
     PrintName();
     PrintDims();
     PrintDtype();
     PrintLod();
-    PrintData();
+    PrintData(size);
   }
 
  private:
@@ -75,36 +75,34 @@ struct Formater {
     }
   }
 
-  void PrintData() {
+  void PrintData(size_t size) {
     PADDLE_ENFORCE_NOT_NULL(data);
     // print float
     if (dtype.hash_code() == typeid(float).hash_code()) {
-      Display<float>();
+      Display<float>(size);
     }
     if (dtype.hash_code() == typeid(double).hash_code()) {
-      Display<double>();
+      Display<double>(size);
     }
     if (dtype.hash_code() == typeid(int).hash_code()) {
-      Display<int>();
+      Display<int>(size);
     }
     if (dtype.hash_code() == typeid(int64_t).hash_code()) {
-      Display<int64_t>();
+      Display<int64_t>(size);
     }
   }
 
   template <typename T>
-  void Display() {
+  void Display(size_t size) {
     auto* d = (T*)data;
-    int size = std::accumulate(dims.begin(), dims.end(), 1,
-                               [](int a, int b) { return a * b; });
     CLOG << "\tdata: ";
     if (summarize != -1) {
-      summarize = std::min(size, summarize);
+      summarize = std::min(size, (size_t)summarize);
       for (int i = 0; i < summarize; i++) {
         CLOG << d[i] << ",";
       }
     } else {
-      for (int i = 0; i < size; i++) {
+      for (size_t i = 0; i < size; i++) {
         CLOG << d[i] << ",";
       }
     }
@@ -157,7 +155,7 @@ class TensorPrintOp : public framework::OperatorBase {
     }
     formater.summarize = Attr<int>("summarize");
     formater.data = (void*)tensor.data<void>();
-    formater();
+    formater(tensor.numel());
   }
 
  private:
