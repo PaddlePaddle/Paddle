@@ -19,13 +19,13 @@ limitations under the License. */
 
 #include <unistd.h>
 
-#include "paddle/framework/data_type.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/proto_desc.h"
-#include "paddle/operators/detail/send_recv_impl.h"
+#include "paddle/operators/detail/grpc_server.h"
+#include "paddle/operators/detail/sendrecvop_utils.h"
 #include "paddle/operators/detail/simple_block_queue.h"
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
@@ -33,16 +33,23 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void RunServer(Server **rpc_server,
-               std::shared_ptr<detail::SendRecvServerImpl> service,
-               const std::string &server_address) {
-  ServerBuilder builder;
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  builder.RegisterService(service.get());
-  std::unique_ptr<Server> server(builder.BuildAndStart());
-  *rpc_server = server.get();
-  LOG(INFO) << "Server listening on " << server_address;
-  server->Wait();
+void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
+  service->RunSyncUpdate();
+  VLOG(4) << "RunServer thread end";
+}
+
+static void CreateTensorFromMessageType(framework::Variable *var,
+                                        sendrecv::VarType var_type) {
+  if (var_type == sendrecv::VarType::LOD_TENSOR) {
+    var->GetMutable<framework::LoDTensor>();
+  } else if (var_type == sendrecv::VarType::SELECTED_ROWS) {
+    var->GetMutable<framework::SelectedRows>();
+  } else {
+    PADDLE_THROW(
+        "VraibleMessage type %d is not in "
+        "[LoDTensor, SelectedRows]",
+        var_type);
+  }
 }
 
 class RecvOp : public framework::OperatorBase {
@@ -52,10 +59,9 @@ class RecvOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {
     if (!rpc_service_) {
-      rpc_service_.reset(new detail::SendRecvServerImpl());
       std::string endpoint = Attr<std::string>("endpoint");
-      server_thread_.reset(
-          new std::thread(RunServer, &rpc_server_, rpc_service_, endpoint));
+      rpc_service_.reset(new detail::AsyncGRPCServer(endpoint));
+      server_thread_.reset(new std::thread(RunServer, rpc_service_));
     }
   }
 
@@ -63,7 +69,7 @@ class RecvOp : public framework::OperatorBase {
     detail::MessageWithName term_msg;
     term_msg.first = LISTEN_TERMINATE_MESSAGE;
     rpc_service_->Push(term_msg);
-    rpc_server_->Shutdown();
+    rpc_service_->ShutDown();
     server_thread_->join();
   }
 
@@ -86,10 +92,12 @@ class RecvOp : public framework::OperatorBase {
     auto grad_list = Attr<std::vector<std::string>>("GradList");
     auto trainer_count = Attr<int>("Trainers");
     size_t param_count = param_list.size();
+
     rpc_service_->Reset();
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
     while (!exit_flag) {
+      // TODO(gognwb): simply this loop.
       // Get from multiple trainers, we don't care about order in which
       // the gradient arrives, just add suffix 0~n then average the gradient.
       for (size_t i = 0; i < param_count * trainer_count; ++i) {
@@ -97,6 +105,7 @@ class RecvOp : public framework::OperatorBase {
         const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
         if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
+          VLOG(4) << "received LISTEN_TERMINATE_MESSAGE and RunOp.Run() exit";
           exit_flag = true;
           break;
         }
@@ -105,15 +114,19 @@ class RecvOp : public framework::OperatorBase {
         if (it != grad_list.end()) {
           param_var_name = param_list[it - grad_list.begin()];
         } else {
-          LOG(ERROR) << "grad have no paired param found!";
+          LOG(ERROR) << "grad have no paired param found!\"" << grad_var_name
+                     << "\"";
         }
         VLOG(3) << "recved grad: " << grad_var_name
                 << " updating param: " << param_var_name;
+
         auto *merged_grad = recv_scope.FindVar(grad_var_name);
         if (merged_grad == nullptr) {
-          // create output of merged var.
-          auto merged_var = recv_scope.Var(grad_var_name);
-          merged_var->GetMutable<framework::LoDTensor>();
+          auto *ptr = recv_scope.Var(grad_var_name);
+          CreateTensorFromMessageType(ptr, v.second.type());
+          VLOG(3) << "Create Variable " << grad_var_name
+                  << " on recv scope, which pointer is " << ptr << " type is "
+                  << v.second.type();
         }
 
         if (trainer_count > 1) {
@@ -126,9 +139,11 @@ class RecvOp : public framework::OperatorBase {
         auto &dev_ctx = *pool.Get(dev_place);
         detail::DeserializeFromMessage(v.second, dev_ctx, var);
       }
+
       if (exit_flag) {
         break;
       }
+
       rpc_service_->Reset();
 
       std::string program_str = Attr<std::string>("OptimizeProgram");
@@ -143,17 +158,14 @@ class RecvOp : public framework::OperatorBase {
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
+
       rpc_service_->Done();
       grads_counter_.clear();
     }  // while(true)
   }
 
  protected:
-  // grpc server instance to track status and gracefully shutdown.
-  // borrow an pointer from server thread.
-  Server *rpc_server_{nullptr};
-  // grpc send/recv service implement to register.
-  std::shared_ptr<detail::SendRecvServerImpl> rpc_service_;
+  std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
   std::shared_ptr<std::thread> server_thread_;
   mutable std::unordered_map<std::string, int> grads_counter_;
 };

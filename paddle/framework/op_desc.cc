@@ -66,6 +66,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                       out);
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
+
   bool IsRuntime() const override;
 
  protected:
@@ -383,7 +384,7 @@ void OpDesc::InferVarType(BlockDesc *block) const {
     for (auto &out_pair : this->outputs_) {
       for (auto &out_var_name : out_pair.second) {
         block->FindRecursiveOrCreateVar(out_var_name)
-            ->SetType(proto::VarDesc::LOD_TENSOR);
+            .SetType(proto::VarDesc::LOD_TENSOR);
       }
     }
   }

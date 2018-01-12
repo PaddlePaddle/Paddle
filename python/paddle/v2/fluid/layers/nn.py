@@ -14,7 +14,7 @@ __all__ = [
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
     'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
-    'sequence_first_step', 'sequence_last_step'
+    'sequence_first_step', 'sequence_last_step', 'dropout'
 ]
 
 
@@ -64,14 +64,14 @@ def fc(input,
                               is flattened: the first `num_flatten_dims`
                               dimensions will be flatten to form the first
                               dimension of the final matrix (height of the
-                              matrix), and the rest `rank(X) - num_col_dims`
+                              matrix), and the rest `rank(X) - num_flatten_dims`
                               dimensions are flattened to form the second
                               dimension of the final matrix (width of the matrix).
                               For example, suppose `X` is a 6-dimensional tensor
                               with a shape [2, 3, 4, 5, 6], and
-                              `x_num_col_dims` = 3. Then, the flattened matrix
+                              `num_flatten_dims` = 3. Then, the flattened matrix
                               will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-                              By default, `x_num_col_dims` is set to 1.
+                              By default, `num_flatten_dims` is set to 1.
        param_attr(ParamAttr|list): The parameter attribute for learnable
                                    parameters/weights of the fully connected
                                    layer.
@@ -243,18 +243,21 @@ def gru_unit(input,
 
             r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
 
-            ch_t & = actNode(xc_t + W_c dot(r_t, h_{t-1}) + b_c)
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
 
-            h_t & = dot((1-u_t), ch_{t-1}) + dot(u_t, h_t)
+            h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
 
     The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
     of the equation above, the :math:`z_t` is split into 3 parts - 
-    :math:`xu_t`, :math:`xr_t` and :math:`xc_t`. This means that in order to 
+    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to 
     implement a full GRU unit operator for an input, a fully 
     connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
 
-    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t - 1})`
-    and concatenation of :math:`u_t`, :math:`r_t` and :math:`ch_t`.
+    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates 
+    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is 
+    an intermediate candidate hidden output, which is denoted by :math:`m_t`.
+    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
+    and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
 
     Args:
         input (Variable): The fc transformed input value of current step.
@@ -380,6 +383,21 @@ def cos_sim(X, Y, **kwargs):
         outputs={'Out': [out],
                  'XNorm': [xnorm],
                  'YNorm': [ynorm]})
+    return out
+
+
+def dropout(x, dropout_prob, is_test=False, seed=0, **kwargs):
+    helper = LayerHelper('dropout', **kwargs)
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+    helper.append_op(
+        type='dropout',
+        inputs={'X': [x]},
+        outputs={'Out': [out],
+                 'Mask': [mask]},
+        attrs={'dropout_prob': dropout_prob,
+               'is_test': is_test,
+               'seed': seed})
     return out
 
 
@@ -813,6 +831,11 @@ def sequence_pool(input, pool_type, **kwargs):
                  "MaxIndex": max_index},
         attrs={"pooltype": pool_type.upper()})
 
+    # when pool_type is max, variable max_index is initialized,
+    # so we stop the gradient explicitly here
+    if pool_type == 'max':
+        max_index.stop_gradient = True
+
     return pool_out
 
 
@@ -960,14 +983,20 @@ def batch_norm(input,
         default_initializer=Constant(1.0))
 
     bias = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=True)
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
-        dtype=input.dtype, shape=param_shape, persistable=True)
+        dtype=input.dtype,
+        shape=param_shape,
+        persistable=True,
+        stop_gradient=True)
     helper.set_variable_initializer(var=mean, initializer=Constant(0.0))
 
     variance = helper.create_global_variable(
-        dtype=input.dtype, shape=param_shape, persistable=True)
+        dtype=input.dtype,
+        shape=param_shape,
+        persistable=True,
+        stop_gradient=True)
     helper.set_variable_initializer(var=variance, initializer=Constant(1.0))
 
     # create output
@@ -975,8 +1004,8 @@ def batch_norm(input,
     mean_out = mean
     # variance and variance out share the same memory
     variance_out = variance
-    saved_mean = helper.create_tmp_variable(dtype)
-    saved_variance = helper.create_tmp_variable(dtype)
+    saved_mean = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
 
     batch_norm_out = helper.create_tmp_variable(dtype)
 

@@ -53,7 +53,7 @@ class SumOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
@@ -122,17 +122,17 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
 
     for (auto& name : op_desc.Input("X")) {
       VLOG(10) << name << " "
-               << block->FindRecursiveOrCreateVar(name)->GetType();
+               << block->FindRecursiveOrCreateVar(name).GetType();
     }
 
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string& name) {
-          return block->FindRecursiveOrCreateVar(name)->GetType() ==
+          return block->FindRecursiveOrCreateVar(name).GetType() ==
                  framework::proto::VarDesc::LOD_TENSOR;
         });
 
     auto is_tensor_array = [block](const std::string& name) {
-      return detail::Ref(block->FindRecursiveOrCreateVar(name)).GetType() ==
+      return block->FindRecursiveOrCreateVar(name).GetType() ==
              framework::proto::VarDesc::LOD_TENSOR_ARRAY;
     };
 
@@ -146,8 +146,7 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
         std::ostringstream os;
         for (auto& each : inputs) {
           os << "    " << each << " type is "
-             << detail::Ref(block->FindRecursiveOrCreateVar(each)).GetType()
-             << "\n";
+             << block->FindRecursiveOrCreateVar(each).GetType() << "\n";
         }
         PADDLE_ENFORCE(all_inputs_are_tensor_array,
                        "Not all inputs are tensor array:\n%s", os.str());
@@ -158,7 +157,7 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
     }
 
     auto out_var_name = op_desc.Output("Out").front();
-    auto& out_var = detail::Ref(block->FindRecursiveOrCreateVar(out_var_name));
+    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
     out_var.SetType(var_type);
     auto& in_var = detail::Ref(block->FindVarRecursive(inputs.front()));
     out_var.SetDataType(in_var.GetDataType());

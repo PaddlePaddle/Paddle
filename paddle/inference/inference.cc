@@ -38,23 +38,16 @@ void InferenceEngine::LoadInferenceModel(
   LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
 // PicklingTools cannot parse the vector of strings correctly.
 #else
-  // program_desc_str
-  // the inference.model is stored by following python codes:
-  //  inference_program = fluid.io.get_inference_program(predict)
-  //  model_filename = "recognize_digits_mlp.inference.model/inference.model"
-  //  with open(model_filename, "w") as f:
-  //      program_str = inference_program.desc.serialize_to_string()
-  //          f.write(struct.pack('q', len(program_str)))
-  //          f.write(program_str)
-  std::string model_filename = dirname + "/inference.model";
+  std::string model_filename = dirname + "/__model__.dat";
   LOG(INFO) << "loading model from " << model_filename;
-  std::ifstream fs(model_filename, std::ios_base::binary);
-  int64_t size = 0;
-  fs.read(reinterpret_cast<char*>(&size), sizeof(int64_t));
-  LOG(INFO) << "program_desc_str's size: " << size;
+  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
   std::string program_desc_str;
-  program_desc_str.resize(size);
-  fs.read(&program_desc_str[0], size);
+  inputfs.seekg(0, std::ios::end);
+  program_desc_str.resize(inputfs.tellg());
+  inputfs.seekg(0, std::ios::beg);
+  LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
+  inputfs.read(&program_desc_str[0], program_desc_str.size());
+  inputfs.close();
 #endif
   program_ = new framework::ProgramDesc(program_desc_str);
   GenerateLoadProgram(dirname);
@@ -176,7 +169,7 @@ void InferenceEngine::Execute(const std::vector<framework::LoDTensor>& feeds,
   }
 
   auto* place = new platform::CPUPlace();
-  framework::InitDevices({"CPU"});
+  framework::InitDevices();
   framework::Executor* executor = new framework::Executor(*place);
   framework::Scope* scope = new framework::Scope();
 
