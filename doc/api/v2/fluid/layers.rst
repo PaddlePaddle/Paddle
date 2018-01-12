@@ -38,6 +38,16 @@ elementwise_add
 ..  autofunction:: paddle.v2.fluid.layers.elementwise_add
     :noindex:
 
+elementwise_sub
+---------------
+..  autofunction:: paddle.v2.fluid.layers.elementwise_sub
+    :noindex:
+
+elementwise_mul
+---------------
+..  autofunction:: paddle.v2.fluid.layers.elementwise_mul
+    :noindex:
+
 elementwise_div
 ---------------
 ..  autofunction:: paddle.v2.fluid.layers.elementwise_div
