@@ -29,7 +29,12 @@ DEFINE_bool(op_sync, false,
 namespace paddle {
 namespace framework {
 
-std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
+std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
+    std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
+    std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
+    std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN),
+    std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
+};
 
 static DDim GetDims(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);

@@ -82,7 +82,7 @@ class TestPool2d_Op(OpTest):
         if self.use_cudnn and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                set(['X']), 'Out', max_relative_error=0.07)
+                place, set(['X']), 'Out', max_relative_error=0.07)
         elif self.pool_type != "max":
             self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
