@@ -18,13 +18,14 @@ from param_attr import ParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace
 from distribute_transpiler import DistributeTranspiler
+from distribute_transpiler_simple import SimpleDistributeTranspiler
 import clip
 
 Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + [
     'io', 'initializer', 'layers', 'nets', 'optimizer', 'backward',
     'regularizer', 'LoDTensor', 'CPUPlace', 'CUDAPlace', 'Tensor', 'ParamAttr'
-    'DataFeeder', 'clip', 'DistributeTranspiler'
+    'DataFeeder', 'clip', 'SimpleDistributeTranspiler', 'DistributeTranspiler'
 ]
 
 
