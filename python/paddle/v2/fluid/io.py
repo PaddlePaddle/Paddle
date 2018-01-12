@@ -11,7 +11,7 @@ __all__ = [
 
 
 def is_parameter(var):
-    """Check whether the variable is a Parameter
+    """Check whether the variable is a Parameter.
 
     This function checks whether the input variable is a Parameter.
 
@@ -19,7 +19,7 @@ def is_parameter(var):
         var : The input variable.
 
     Returns:
-        boolean result whether the variable is a Parameter
+        boolean result whether the variable is a Parameter.
     """
     return isinstance(var, Parameter)
 
