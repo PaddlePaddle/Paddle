@@ -2,8 +2,16 @@ from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'cast', 'concat', 'sums', 'assign',
-    'fill_constant_batch_size_like', 'fill_constant', 'ones', 'zeros'
+    'create_tensor',
+    'create_parameter',
+    'cast',
+    'concat',
+    'sums',
+    'assign',
+    'fill_constant_batch_size_like',
+    'fill_constant',
+    'ones',
+    'zeros',
 ]
 
 
