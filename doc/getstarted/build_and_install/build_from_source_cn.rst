@@ -32,6 +32,11 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
 
    pip install build/python/dist/*.whl
 
+如果机器中已经安装过PaddlePaddle，请卸载再安装：
+
+.. code-block:: bash
+
+   pip install build/python/dist/*.whl -U
 
 .. _run_test:
 
