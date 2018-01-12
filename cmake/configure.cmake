@@ -141,8 +141,3 @@ if(WITH_GOLANG)
   endif()
 
 endif(WITH_GOLANG)
-
-if(MEMORY_BENCHMARK)
-  add_definitions(-DFLUID_MEMORY_BENCHMARK)
-endif()
-
