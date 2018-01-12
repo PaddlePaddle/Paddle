@@ -42,7 +42,8 @@ def create_op(scope, op_type, inputs, outputs, attrs):
             kwargs[out_name] = []
             if out_dup:
                 sub_out = outputs[out_name]
-                for sub_out_name, _ in sub_out:
+                for item in sub_out:
+                    sub_out_name, _ = item[0], item[1]
                     __create_var__(out_name, sub_out_name)
             else:
                 __create_var__(out_name, out_name)
@@ -286,7 +287,8 @@ class OpTest(unittest.TestCase):
                 if not isinstance(sub_out, list):
                     raise AssertionError("sub_out type %s is not list",
                                          type(sub_out))
-                for sub_out_name, expect in sub_out:
+                for item in sub_out:
+                    sub_out_name, expect = item[0], item[1]
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
                     actual_t = np.array(actual)
