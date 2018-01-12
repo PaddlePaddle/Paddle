@@ -92,6 +92,9 @@ function threads_config() {
     if [ -z "$OPENBLAS_NUM_THREADS" ]; then
       export OPENBLAS_NUM_THREADS=$threads
     fi
+    if [ $threads -gt 1 ] && [ -z "$OPENBLAS_MAIN_FREE" ]; then
+      export OPENBLAS_MAIN_FREE=1
+    fi
   fi
   
 }

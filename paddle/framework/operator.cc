@@ -11,16 +11,20 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <algorithm>
 
 #include "paddle/framework/data_transform.h"
-#include "paddle/framework/device_data_transform.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
+
+DEFINE_bool(op_sync, false,
+            "Default cuda is asynchronous device, set to True will"
+            "force op run in synchronous mode.");
 
 namespace paddle {
 namespace framework {
@@ -543,8 +547,14 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  kernel_iter->second->Compute(ExecutionContext(
-      *this, new_scope, *pool.Get(expected_kernel_key.place_)));
+  auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
+  kernel_iter->second->Compute(
+      ExecutionContext(*this, new_scope, *new_dev_ctx));
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_op_sync) {
+    new_dev_ctx->Wait();
+  }
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(
