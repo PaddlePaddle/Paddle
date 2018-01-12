@@ -48,7 +48,7 @@ def round_robin(params_grads, pserver_endpoints):
     return param_grad_map
 
 
-class DistributeTranspiler:
+class SimpleDistributeTranspiler:
     def transpile(self,
                   optimize_ops,
                   params_grads,
