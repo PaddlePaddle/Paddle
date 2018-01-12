@@ -2,6 +2,7 @@ import math
 import unittest
 from paddle.v2.fluid.distribute_transpiler import split_dense_variable
 import paddle.v2.fluid as fluid
+import paddle.v2.fluid.core as core
 import random
 
 
@@ -19,9 +20,9 @@ class TestSplitVar(unittest.TestCase):
         program = fluid.Program()
         for shape in shapes:
             var = program.global_block().create_var(
-                name=str(random.randint(10000)),
+                name=str(random.randint(10000, 99999)),
                 persistable=True,
-                dtype=core.VarDesc.VarType.LOD_TENSOR,
+                # dtype=core.VarDesc.VarType.LOD_TENSOR,
                 shape=shape)
             var_list.append(var)
         blocks = split_dense_variable(var_list, 10)
