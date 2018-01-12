@@ -687,10 +687,10 @@ def topk(input, k):
 
 
 def lod_tensor_to_array(x, table):
-    """ Convert a LOD_TENSOR_ARRAY to an TensorArray.
+    """ Convert a LOD_TENSOR to an LOD_TENSOR_ARRAY.
 
     Args:
-        x (Variable|list): The lod tensor to be converted to a lod tensor array.
+        x (Variable|list): The LOD tensor to be converted to a LOD tensor array.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
                                 descending order.
@@ -802,7 +802,7 @@ def array_write(x, i, array=None):
                                returned.
 
     Returns:
-        Variable: The ouput LOD_TENSOR_ARRAY where the input tensor is written.
+        Variable: The output LOD_TENSOR_ARRAY where the input tensor is written.
 
     Examples:
         .. code-block::python

@@ -41,26 +41,25 @@ Input(X) according to the information provided by Input(RankTable).
 
 For example:
 
-If the indices stored in the Input(RankTable) is [3, 0, 2, 1], the
-Input(X) will be reordered that the forth sequence in Input(X) will become the
-first one, and then followed by the originally first, third, and the second one.
+If the indices stored in the Input(RankTable) are [3, 0, 2, 1], the
+Input(X) will be reordered that the fourth sequence in Input(X) will become the
+first one, and then followed by the original first, third, and the second one.
 
 This is:
 X = [Seq0, Seq1, Seq2, Seq3]. The indices in RankTable are [3, 0, 2, 1].
 Out =  [Seq3, Seq0, Seq2, Seq1] with a new LoD information.
 
-If the LoD information of Input(X) is empty, this means Input(X) is not a
-sequcence. This is also identical to a batch of sequences each sequence in which
-has a fixed length 1. In this case, the reorder_lod_tensor_by_rank operator
-reorders each slice of Input(X) along the first axis according to
-Input(RankTable).
+If the LoD information of Input(X) is empty, this means Input(X) is not sequence
+data. This is also identical to a batch of sequences where each sequence has a
+fixed length 1. In this case, the reorder_lod_tensor_by_rank operator reorders
+each slice of Input(X) along the first axis according to Input(RankTable).
 
 This is:
 X = [Slice0, Slice1, Slice2, Slice3] and its LoD information is empty. The
 indices in RankTable are [3, 0, 2, 1].
 Out = [Slice3, Slice0, Slice2, Slice1] with no LoD information is appended.
 
-NOTE: This operator sorts Input(X) according to a given LoDRankTable which dose
+NOTE: This operator sorts Input(X) according to a given LoDRankTable which does
 not need to be calculated according to Input(X). It can be calculated according
 to another different sequence, and then this operator sorts Input(X) according
 to the given LoDRankTable.
