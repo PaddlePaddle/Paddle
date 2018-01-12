@@ -221,7 +221,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-// TODO(tonyyang-svail): make this function support LoD
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
