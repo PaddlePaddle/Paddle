@@ -19,7 +19,7 @@ class TestGaussianRandomOp(unittest.TestCase):
         self.gaussian_random_test(place=fluid.CPUPlace())
 
     def test_gpu(self):
-        if core.with_gpu():
+        if core.is_compile_gpu():
             self.gaussian_random_test(place=fluid.CUDAPlace(0))
 
     def gaussian_random_test(self, place):
