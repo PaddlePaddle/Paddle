@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -20,6 +21,10 @@ limitations under the License. */
 #include "paddle/framework/operator.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
+
+DEFINE_bool(op_sync, false,
+            "Default cuda is asynchronous device, set to True will"
+            "force op run in synchronous mode.");
 
 namespace paddle {
 namespace framework {
@@ -75,12 +80,29 @@ static DDim GetDims(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return DDim({-1});
-  } else if (var->IsType<LoDTensor>()) {
+  }
+
+  if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
   } else if (var->IsType<SelectedRows>()) {
     return var->Get<SelectedRows>().GetCompleteDims();
   } else {
     return DDim({-1});
+  }
+}
+
+static LoD GetLoD(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  auto default_lod = LoD({{}});
+
+  if (var == nullptr) {
+    return default_lod;
+  }
+
+  if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>().lod();
+  } else {
+    return default_lod;
   }
 }
 
@@ -125,7 +147,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
       if (scope) {
-        ss << "(" << GetDims(*scope, input.second[i]) << ")";
+        ss << "[" << GetDims(*scope, input.second[i]) << "]";
+        ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
       if (i != input.second.size() - 1) {
         ss << ", ";
@@ -144,7 +167,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
       if (scope) {
-        ss << "(" << GetDims(*scope, output.second[i]) << ")";
+        ss << "[" << GetDims(*scope, output.second[i]) << "]";
+        ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
       if (i != output.second.size() - 1) {
         ss << ", ";
@@ -543,8 +567,14 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  kernel_iter->second->Compute(ExecutionContext(
-      *this, new_scope, *pool.Get(expected_kernel_key.place_)));
+  auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
+  kernel_iter->second->Compute(
+      ExecutionContext(*this, new_scope, *new_dev_ctx));
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_op_sync) {
+    new_dev_ctx->Wait();
+  }
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(
