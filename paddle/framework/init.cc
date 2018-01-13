@@ -43,21 +43,26 @@ void InitGflags(std::vector<std::string> &argv) {
 
 void InitDevices() {
   /*Init all avaiable devices by default */
+  std::vector<std::pair<platform::Place, framework::LibraryType>> pairs;
+  pairs.emplace_back(std::make_pair(platform::CPUPlace(), LibraryType::kPlain));
 
-  std::vector<platform::Place> places;
-  places.emplace_back(platform::CPUPlace());
+#ifdef PADDLE_WITH_MKLDNN
+  pairs.emplace_back(
+      std::make_pair(platform::CPUPlace(), LibraryType::kMKLDNN));
+#endif
 
 #ifdef PADDLE_WITH_CUDA
   int count = platform::GetCUDADeviceCount();
   for (int i = 0; i < count; ++i) {
-    places.emplace_back(platform::CUDAPlace(i));
+    pairs.emplace_back(
+        std::make_pair(platform::CUDAPlace(i), LibraryType::kPlain));
   }
 #else
   LOG(WARNING)
       << "'GPU' is not supported, Please re-compile with WITH_GPU option";
 #endif
 
-  platform::DeviceContextPool::Init(places);
+  platform::DeviceContextPool::Init(pairs);
 }
 
 void InitGLOG(const std::string &prog_name) {

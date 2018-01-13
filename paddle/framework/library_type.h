@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <cctype>
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -26,6 +27,10 @@ enum class LibraryType {
   kMKLDNN = 1,
   kCUDNN = 2,
 };
+
+inline bool is_mkldnn_lib(const LibraryType& library_type) {
+  return library_type == LibraryType::kMKLDNN;
+}
 
 inline std::string LibraryTypeToString(const LibraryType& library_type) {
   switch (library_type) {

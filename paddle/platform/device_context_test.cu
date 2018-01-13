@@ -70,16 +70,21 @@ TEST(Device, DeviceContextPool) {
 }
 
 int main(int argc, char** argv) {
-  std::vector<paddle::platform::Place> places;
+  std::vector<
+      std::pair<paddle::platform::Place, paddle::framework::LibraryType>>
+      pairs;
 
-  places.emplace_back(paddle::platform::CPUPlace());
+  pairs.emplace_back(std::make_pair(paddle::platform::CPUPlace(),
+                                    paddle::framework::LibraryType::kPlain));
+
   int count = paddle::platform::GetCUDADeviceCount();
   for (int i = 0; i < count; ++i) {
-    places.emplace_back(paddle::platform::CUDAPlace(i));
+    pairs.emplace_back(std::make_pair(paddle::platform::CUDAPlace(i),
+                                      paddle::framework::LibraryType::kPlain));
   }
 
   VLOG(0) << " DeviceCount " << count;
-  paddle::platform::DeviceContextPool::Init(places);
+  paddle::platform::DeviceContextPool::Init(pairs);
 
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/platform/mkldnn_helper.h"
 #endif
 
+#include "paddle/framework/library_type.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -160,7 +161,9 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  explicit DeviceContextPool(const std::vector<platform::Place>& places);
+  explicit DeviceContextPool(
+      const std::vector<std::pair<platform::Place, framework::LibraryType>>&
+          places);
 
   static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool, "Need to Create DeviceContextPool first!");
@@ -168,9 +171,11 @@ class DeviceContextPool {
   }
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
+  static DeviceContextPool& Init(
+      const std::vector<std::pair<platform::Place, framework::LibraryType>>&
+          piars) {
     if (pool == nullptr) {
-      pool = new DeviceContextPool(places);
+      pool = new DeviceContextPool(piars);
     }
     return *pool;
   }

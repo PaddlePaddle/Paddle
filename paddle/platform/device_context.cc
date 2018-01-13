@@ -29,18 +29,33 @@ const platform::DeviceContext* DeviceContextPool::Get(
 }
 
 DeviceContextPool::DeviceContextPool(
-    const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(places.size(), 0);
-  for (size_t i = 0; i < places.size(); i++) {
-    if (platform::is_cpu_place(places[i])) {
-      device_contexts_.emplace(places[i],
-                               new platform::CPUDeviceContext(
-                                   boost::get<platform::CPUPlace>(places[i])));
-    } else if (platform::is_gpu_place(places[i])) {
+    const std::vector<std::pair<platform::Place, framework::LibraryType>>&
+        paris) {
+  PADDLE_ENFORCE_GT(paris.size(), 0);
+  for (size_t i = 0; i < paris.size(); i++) {
+    auto& place = paris[i].first;
+    auto& lib = paris[i].second;
+    if (platform::is_cpu_place(place)) {
+      if (framework::is_mkldnn_lib(lib)) {
+#ifdef PADDLE_WITH_MKLDNN
+        device_contexts_.emplace(place,
+                                 new platform::MKLDNNDeviceContext(
+                                     boost::get<platform::CPUPlace>(place)));
+#else
+        PADDLE_THROW(
+            "'MKLDNN' is not supported, Please re-compile with WITH_MKL"
+            "option");
+#endif
+      } else {
+        device_contexts_.emplace(place,
+                                 new platform::CPUDeviceContext(
+                                     boost::get<platform::CPUPlace>(place)));
+      }
+    } else if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-      device_contexts_.emplace(places[i],
+      device_contexts_.emplace(place,
                                new platform::CUDADeviceContext(
-                                   boost::get<platform::CUDAPlace>(places[i])));
+                                   boost::get<platform::CUDAPlace>(place)));
 #else
       PADDLE_THROW(
           "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "

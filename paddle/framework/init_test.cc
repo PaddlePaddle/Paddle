@@ -22,5 +22,9 @@ TEST(InitDevices, CPU) {
 
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
+#ifdef PADDLE_WITH_MKLDNN
+  ASSERT_GE(pool.size(), 2U);
+#else
   ASSERT_GE(pool.size(), 1U);
+#endif
 }
