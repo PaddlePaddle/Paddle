@@ -13,7 +13,8 @@ class TestOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
   DEFINE_OP_CLONE_METHOD(TestOp);
-  void Run(const Scope& scope, const platform::Place& place) const override {
+  void Run(const Scope& scope, const platform::Place& place,
+           const framework::ProgramDesc& pdesc) const override {
     ++run_cnt;
   }
 };

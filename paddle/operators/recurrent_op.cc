@@ -226,8 +226,8 @@ class RecurrentOp : public RecurrentBase {
               const framework::AttributeMap &attrs)
       : RecurrentBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
     VLOG(3) << "Static RNN input sequence length = " << seq_len;
     StepScopes scopes = CreateStepScopes(scope, seq_len);
@@ -315,8 +315,8 @@ class RecurrentGradOp : public RecurrentBase {
                   const framework::AttributeMap &attrs)
       : RecurrentBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     auto seq_len = static_cast<size_t>(GetSequenceLength(scope));
     StepScopes scopes = CreateStepScopes(scope, seq_len);
     auto reverse = Attr<bool>(kReverse);
@@ -419,7 +419,7 @@ class RecurrentGradOp : public RecurrentBase {
             auto zero_op = framework::OpRegistry::CreateOp(
                 "fill_constant", framework::VariableNameMap{},
                 {{"Out", {pg_names[param_id]}}}, attrs);
-            zero_op->Run(scope, place);
+            zero_op->Run(scope, place, pdesc);
           }
 
           auto new_inside_name = cur_scope.Rename(inside_grad_name);
@@ -428,7 +428,7 @@ class RecurrentGradOp : public RecurrentBase {
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum", {{"X", {pg_names[param_id], new_inside_name}}},
               {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
-          sum_op->Run(cur_scope, place);
+          sum_op->Run(cur_scope, place, pdesc);
 
           cur_scope.Rename(new_inside_name, inside_grad_name);
         }

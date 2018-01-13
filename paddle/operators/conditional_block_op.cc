@@ -50,8 +50,8 @@ class ConditionalBlockOp : public ConditionalOp {
                      const framework::VariableNameMap &outputs,
                      const framework::AttributeMap &attrs)
       : ConditionalOp(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &dev_place,
+           const framework::ProgramDesc &pdesc) const override {
     auto xs = InputTensors(scope);
     bool need_run = std::all_of(
         xs.begin(), xs.end(),
@@ -103,8 +103,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
                          const framework::VariableNameMap &outputs,
                          const framework::AttributeMap &attrs)
       : ConditionalOp(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &dev_place,
+           const framework::ProgramDesc &pdesc) const override {
     auto xs = this->InputTensors(scope);
     bool need_run = std::all_of(
         xs.begin(), xs.end(),
@@ -121,18 +121,20 @@ class ConditionalBlockGradOp : public ConditionalOp {
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
 
       AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("Params"),
-                                  Outputs(framework::GradVarName("Params")));
+                                  Outputs(framework::GradVarName("Params")),
+                                  pdesc);
 
       AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("X"),
-                                  Outputs(framework::GradVarName("X")));
+                                  Outputs(framework::GradVarName("X")), pdesc);
     }
   }
 
  private:
-  void AssignLocalGradientToGlobal(
-      const platform::Place &place, const framework::Scope &cur_scope,
-      const std::vector<std::string> &p_names,
-      const std::vector<std::string> &pg_names) const {
+  void AssignLocalGradientToGlobal(const platform::Place &place,
+                                   const framework::Scope &cur_scope,
+                                   const std::vector<std::string> &p_names,
+                                   const std::vector<std::string> &pg_names,
+                                   const framework::ProgramDesc &pdesc) const {
     for (size_t i = 0; i < p_names.size(); ++i) {
       auto out_grad_name = pg_names[i];
       auto in_grad_name = framework::GradVarName(p_names[i]);
@@ -144,7 +146,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto assign = framework::OpRegistry::CreateOp(
           "assign", {{"X", {new_in_grad_name}}}, {{"Out", {out_grad_name}}},
           framework::AttributeMap{});
-      assign->Run(cur_scope, place);
+      assign->Run(cur_scope, place, pdesc);
       cur_scope.Rename(new_in_grad_name, in_grad_name);
     }
   }

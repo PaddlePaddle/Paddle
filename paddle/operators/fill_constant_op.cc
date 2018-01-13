@@ -33,8 +33,8 @@ class FillConstantInferShape : public framework::InferShapeBase {
 class FillConstantOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &dev_place,
+           const framework::ProgramDesc &pdesc) const override {
     auto data_type =
         static_cast<framework::proto::DataType>(Attr<int>("dtype"));
     auto value = Attr<float>("value");

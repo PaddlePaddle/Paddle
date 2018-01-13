@@ -1,6 +1,7 @@
 import logging
 from paddle.v2.fluid.op import Operator, DynamicRecurrentOp
 import paddle.v2.fluid.core as core
+from paddle.v2.fluid.framework import Program
 import unittest
 import numpy as np
 
@@ -31,7 +32,7 @@ class BeamSearchOpTester(unittest.TestCase):
             level=0,
             beam_size=2,
             end_id=0, )
-        op.run(self.scope, core.CPUPlace())
+        op.run(self.scope, core.CPUPlace(), Program().desc)
         selected_ids = self.scope.find_var("selected_ids").get_tensor()
         print 'selected_ids', np.array(selected_ids)
         print 'lod', selected_ids.lod()

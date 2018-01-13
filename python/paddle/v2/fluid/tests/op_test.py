@@ -93,7 +93,7 @@ def get_numeric_gradient(scope,
     def get_output():
         sum = []
         for output_name in output_names:
-            op.run(scope, core.CPUPlace())
+            op.run(scope, core.CPUPlace(), Program().desc)
             sum.append(
                 np.array(scope.find_var(output_name).get_tensor()).mean())
         return np.array(sum).mean()

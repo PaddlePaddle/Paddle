@@ -25,8 +25,8 @@ class LoadOp : public framework::OperatorBase {
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     auto filename = Attr<std::string>("file_path");
     std::ifstream fin(filename);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",

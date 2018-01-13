@@ -26,8 +26,8 @@ class FetchOp : public framework::OperatorBase {
           const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     auto fetch_var_name = Input("X");
     auto *fetch_var = scope.FindVar(fetch_var_name);
     PADDLE_ENFORCE(fetch_var != nullptr,

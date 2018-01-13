@@ -4,6 +4,7 @@ import paddle.v2.fluid.core as core
 from paddle.v2.fluid.op import Operator
 from op_test import OpTest
 import math
+from paddle.v2.fluid.framework import Program
 
 
 class TestAdagradOp1(OpTest):
@@ -113,7 +114,7 @@ class TestSparseAdagradOp(unittest.TestCase):
             LearningRate='LearningRate',
             epsilon=2.0)
 
-        adagrad_op.run(scope, place)
+        adagrad_op.run(scope, place, Program().desc)
 
         # get and compare moment result
         moment_result_array = np.array(moment)

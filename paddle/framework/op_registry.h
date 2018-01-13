@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/framework/grad_op_desc_maker.h"
 #include "paddle/framework/op_desc.h"
 #include "paddle/framework/operator.h"
+#include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/shape_inference.h"
 

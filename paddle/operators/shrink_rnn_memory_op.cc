@@ -27,8 +27,8 @@ class ShrinkRNNMemoryOp : public ArrayOp {
                     const framework::AttributeMap &attrs)
       : ArrayOp(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     auto *x_var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x_var != nullptr, "Input X must be set");
     auto &x_tensor = x_var->Get<framework::LoDTensor>();
@@ -108,8 +108,8 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
                         const framework::AttributeMap &attrs)
       : ArrayOp(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &place,
+           const framework::ProgramDesc &pdesc) const override {
     auto *dout_var = scope.FindVar(Input(framework::GradVarName("Out")));
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
     PADDLE_ENFORCE(dx_var != nullptr, "Input Gradient should not be nullptr");

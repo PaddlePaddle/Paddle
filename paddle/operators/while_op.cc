@@ -39,8 +39,8 @@ class WhileOp : public framework::OperatorBase {
           const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &dev_place,
+           const framework::ProgramDesc &pdesc) const override {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
@@ -97,8 +97,8 @@ class WhileGradOp : public framework::OperatorBase {
               const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &dev_place,
+           const framework::ProgramDesc &pdesc) const override {
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
@@ -190,7 +190,7 @@ class WhileGradOp : public framework::OperatorBase {
             auto zero_op = framework::OpRegistry::CreateOp(
                 "fill_constant", framework::VariableNameMap{},
                 {{"Out", {pg_names[param_id]}}}, attrs);
-            zero_op->Run(scope, dev_place);
+            zero_op->Run(scope, dev_place, pdesc);
           }
         }
 
@@ -198,7 +198,7 @@ class WhileGradOp : public framework::OperatorBase {
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {pg_names[param_id], new_inside_name}}},
             {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
-        sum_op->Run(cur_scope, dev_place);
+        sum_op->Run(cur_scope, dev_place, pdesc);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
     }

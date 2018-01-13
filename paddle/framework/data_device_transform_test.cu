@@ -108,6 +108,7 @@ TEST(Operator, CPUtoGPU) {
   InitDevices();
 
   paddle::framework::Scope scope;
+  paddle::framework::ProgramDesc pdesc;
   paddle::platform::CPUPlace cpu_place;
 
   // create an op to run on CPU
@@ -126,7 +127,7 @@ TEST(Operator, CPUtoGPU) {
 
   // get output
   auto* output = scope.Var("OUT1");
-  cpu_op->Run(scope, cpu_place);
+  cpu_op->Run(scope, cpu_place, pdesc);
 
   auto* output_ptr = output->Get<LoDTensor>().data<float>();
   for (int i = 0; i < 2 * 3; ++i) {
@@ -149,7 +150,7 @@ TEST(Operator, CPUtoGPU) {
   paddle::platform::CUDAPlace cuda_place(0);
   // get output
   auto* output2 = scope.Var("OUT2");
-  gpu_op->Run(scope, cuda_place);
+  gpu_op->Run(scope, cuda_place, pdesc);
 
   // auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
   DeviceContextPool& pool = DeviceContextPool::Instance();

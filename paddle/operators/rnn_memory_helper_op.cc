@@ -24,8 +24,8 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
                     const framework::VariableNameMap &outputs,
                     const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &dev_place,
+           const framework::ProgramDesc &pdesc) const override {
     auto mem_var_name = Input("X");
     auto *mem_var = scope.FindVar(mem_var_name);
     PADDLE_ENFORCE(mem_var != nullptr,
@@ -76,8 +76,8 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
                         const framework::VariableNameMap &outputs,
                         const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void Run(const framework::Scope &scope, const platform::Place &dev_place,
+           const framework::ProgramDesc &pdesc) const override {
     auto out_grad_var_name = Input(framework::GradVarName("Out"));
     auto *out_grad_var = scope.FindVar(out_grad_var_name);
 
@@ -100,7 +100,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 
       auto zero_op = framework::OpRegistry::CreateOp(
           "fill_constant", {}, {{"Out", {in_grad_var_name}}}, attrs);
-      zero_op->Run(scope, dev_place);
+      zero_op->Run(scope, dev_place, pdesc);
     } else {
       auto &out_grad_tensor = out_grad_var->Get<framework::LoDTensor>();
       auto *in_grad_tensor = in_grad_var->GetMutable<framework::LoDTensor>();

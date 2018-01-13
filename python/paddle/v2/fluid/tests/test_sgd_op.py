@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.op import Operator
+from paddle.v2.fluid.framework import Program
 from op_test import OpTest
 
 
@@ -55,7 +56,7 @@ class TestSparseSGDOp(unittest.TestCase):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate')
-        sgd_op.run(scope, place)
+        sgd_op.run(scope, place, Program().desc)
 
         # get and compare result
         result_array = np.array(param)
