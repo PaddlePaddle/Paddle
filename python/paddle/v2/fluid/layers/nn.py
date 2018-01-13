@@ -14,7 +14,7 @@ __all__ = [
     'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
     'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
-    'sequence_first_step', 'sequence_last_step'
+    'sequence_first_step', 'sequence_last_step', 'dropout'
 ]
 
 
@@ -383,6 +383,21 @@ def cos_sim(X, Y, **kwargs):
         outputs={'Out': [out],
                  'XNorm': [xnorm],
                  'YNorm': [ynorm]})
+    return out
+
+
+def dropout(x, dropout_prob, is_test=False, seed=0, **kwargs):
+    helper = LayerHelper('dropout', **kwargs)
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+    helper.append_op(
+        type='dropout',
+        inputs={'X': [x]},
+        outputs={'Out': [out],
+                 'Mask': [mask]},
+        attrs={'dropout_prob': dropout_prob,
+               'is_test': is_test,
+               'seed': seed})
     return out
 
 
@@ -968,7 +983,7 @@ def batch_norm(input,
         default_initializer=Constant(1.0))
 
     bias = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=True)
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
         dtype=input.dtype,

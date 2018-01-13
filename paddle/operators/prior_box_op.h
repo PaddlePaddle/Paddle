@@ -23,14 +23,14 @@ namespace operators {
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                bool flip,
                                std::vector<float>& output_aspect_ratior) {
-  constexpr float eps = 1e-6;
+  constexpr float epsilon = 1e-6;
   output_aspect_ratior.clear();
   output_aspect_ratior.push_back(1.);
   for (size_t i = 0; i < input_aspect_ratior.size(); ++i) {
     float ar = input_aspect_ratior[i];
     bool already_exist = false;
     for (size_t j = 0; j < output_aspect_ratior.size(); ++j) {
-      if (fabs(ar - output_aspect_ratior[j]) < eps) {
+      if (fabs(ar - output_aspect_ratior[j]) < epsilon) {
         already_exist = true;
         break;
       }

@@ -12,9 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/prior_box_op.h"
+#pragma once
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    prior_box, ops::PriorBoxOpKernel<paddle::platform::CUDAPlace, float>,
-    ops::PriorBoxOpKernel<paddle::platform::CUDAPlace, double>);
+#include "paddle/framework/op_kernel_type.h"
+#include "paddle/framework/variable.h"
+#include "paddle/platform/device_context.h"
+
+namespace paddle {
+namespace framework {
+
+using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
+
+void TransDataType(const platform::DeviceContext* ctx,
+                   const KernelTypePair& kernel_pair, const Variable& in,
+                   Variable* out);
+
+}  // namespace framework
+}  // namespace paddle

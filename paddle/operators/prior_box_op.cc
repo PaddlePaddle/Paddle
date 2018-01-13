@@ -103,13 +103,13 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor, default Tensor<float>), the output prior boxes of "
               "PriorBoxOp. The format is [layer_height, layer_width, "
               "num_priors, 4]. layer_height is the height of input, "
-              "layer_width is the height of input, num_priors is the box "
+              "layer_width is the width of input, num_priors is the box "
               "count of each position.");
     AddOutput("Variances",
               "(Tensor, default Tensor<float>), the expanded variances of "
               "PriorBoxOp. The format is [layer_height, layer_width, "
               "num_priors, 4]. layer_height is the height of input, "
-              "layer_width is the height of input, num_priors is the box "
+              "layer_width is the width of input, num_priors is the box "
               "count of each position.");
     AddAttr<std::vector<int>>("min_sizes", "(vector<int>) ",
                               "List of min sizes of generated prior boxes.");
