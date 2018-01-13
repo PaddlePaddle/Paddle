@@ -179,6 +179,10 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     T* warpctc_grad_data =
         warpctc_grad->mutable_data<T>(warpctc_logits.dims(), ctx.GetPlace());
 
+    math::SetConstant<DeviceContext, T>()(
+        ctx.template device_context<DeviceContext>(), warpctc_grad,
+        static_cast<T>(0));
+
     // warpctc accesses labels in CPU memory
     Tensor warpctc_label;
     Copy(*label, platform::CPUPlace(), ctx.device_context(), &warpctc_label);
@@ -215,10 +219,9 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
         *warpctc_grad, norm_by_times);
 
     const T* loss_grad_data = loss_grad->data<T>();
-    const size_t num_seq = loss_grad->dims()[0];
     math::ScaleLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), *logits_grad,
-        loss_grad_data, num_seq);
+        loss_grad_data);
   }
 };
 

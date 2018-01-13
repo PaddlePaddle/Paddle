@@ -47,7 +47,7 @@ template <typename DeviceContext, typename T>
 class ScaleLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context, framework::LoDTensor& seq,
-                  const T* scales, const size_t num_seq);
+                  const T* scales);
 };
 
 }  // namespace math
