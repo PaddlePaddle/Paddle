@@ -22,10 +22,10 @@ template <typename T>
 class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  framework::LoDTensor& seq, const T* scales,
-                  const size_t num_seq) {
+                  framework::LoDTensor& seq, const T* scales) {
     const size_t level = 0;
     auto lod = seq.lod();
+    const size_t num_seq = lod[level].size() - 1;
     size_t seq_width = seq.dims()[1];
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
 

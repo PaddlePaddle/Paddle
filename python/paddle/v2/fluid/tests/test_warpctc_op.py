@@ -193,7 +193,7 @@ class TestWarpCTCOp(OpTest):
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.01)
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.007)
 
 
 if __name__ == "__main__":
