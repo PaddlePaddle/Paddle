@@ -7,7 +7,6 @@ __activations__ = [
 __all__ = [
     'mean',
     'mul',
-    'dropout',
     'reshape',
     'scale',
     'transpose',

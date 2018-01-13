@@ -58,15 +58,11 @@ def __bootstrap__():
 
     read_env_flags = ['use_pinned_memory', 'check_nan_inf']
     if core.is_compile_gpu():
-        read_env_flags.append('fraction_of_gpu_memory_to_use')
+        read_env_flags += ['fraction_of_gpu_memory_to_use', 'op_sync']
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
-
-    if core.is_compile_gpu():
-        core.init_devices(["CPU", "GPU:0"])
-    else:
-        core.init_devices(["CPU"])
+    core.init_devices()
 
 
 __bootstrap__()

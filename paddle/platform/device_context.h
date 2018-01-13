@@ -185,6 +185,8 @@ class DeviceContextPool {
         const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
   }
 
+  size_t size() const { return device_contexts_.size(); }
+
  private:
   static DeviceContextPool* pool;
   constexpr static int LEFT_SHIFT = 8;
