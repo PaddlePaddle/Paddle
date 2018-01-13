@@ -4,7 +4,10 @@ import layers
 from framework import Program, unique_name, Variable, program_guard
 from layer_helper import LayerHelper
 
-__all__ = ['Accuracy', 'ChunkEvaluator']
+__all__ = [
+    'Accuracy',
+    'ChunkEvaluator',
+]
 
 
 def _clone_var_(block, var):
@@ -21,19 +24,19 @@ def _clone_var_(block, var):
 class Evaluator(object):
     """
     Base Class for all evaluators
-    
+
     Args:
-        name(str): The name of evaluator. such as, "accuracy". Used for generate 
+        name(str): The name of evaluator. such as, "accuracy". Used for generate
             temporary variable name.
-        main_program(Program, optional): The evaluator should be added to this 
+        main_program(Program, optional): The evaluator should be added to this
             main_program. Default default_main_program()
-        startup_program(Program, optional):The parameter should be added to this 
+        startup_program(Program, optional):The parameter should be added to this
             startup_program. Default default_startup_program()
-            
+
     Attributes:
-        states(list): The list of state variables. states will be reset to zero 
+        states(list): The list of state variables. states will be reset to zero
             when `reset` is invoked.
-        metrics(list): The list of metrics variables. They will be calculate 
+        metrics(list): The list of metrics variables. They will be calculate
             every mini-batch
     """
 
@@ -66,14 +69,14 @@ class Evaluator(object):
 
     def create_state(self, suffix, dtype, shape):
         """
-        Create state variable. 
-        
+        Create state variable.
+
         NOTE: It is not a public API.
-        
+
         Args:
-            suffix(str): the state suffix. 
-            dtype(str|core.DataType): the state data type 
-            shape(tuple|list): the shape of state 
+            suffix(str): the state suffix.
+            dtype(str|core.DataType): the state data type
+            shape(tuple|list): the shape of state
 
         Returns: State variable
 
@@ -127,8 +130,8 @@ class Accuracy(Evaluator):
 
 class ChunkEvaluator(Evaluator):
     """
-    Accumulate counter numbers output by chunk_eval from mini-batches and 
-    compute the precision recall and F1-score using the accumulated counter 
+    Accumulate counter numbers output by chunk_eval from mini-batches and
+    compute the precision recall and F1-score using the accumulated counter
     numbers.
     """
 
