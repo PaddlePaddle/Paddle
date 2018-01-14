@@ -153,6 +153,7 @@ op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
 
 # Regist multiple Kernel to pybind
+if (WITH_GPU)
 op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS vol2col)
 op_library(pool_op SRCS pool_op.cc pool_op.cu.cc pool_cudnn_op.cu.cc DEPS pooling)
 op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
@@ -160,6 +161,11 @@ op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
 file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(conv2d, CUDNN);\n")
 file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(pool2d, CUDNN);\n")
 file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(conv2d_transpose, CUDNN);\n")
+else()
+op_library(conv_op SRCS conv_op.cc DEPS vol2col)
+op_library(pool_op SRCS pool_op.cc DEPS pooling)
+op_library(conv_transpose_op SRCS conv_transpose_op.cc DEPS vol2col)
+endif()
 
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
