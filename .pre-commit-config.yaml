@@ -32,7 +32,7 @@
         types:
         - go
 -   repo: https://github.com/dzhwinter/pre-commit-hooks
-    sha: 96076570f0bad53aa70dc27318af4bb76c011ed5
+    sha: 0c7cd23b9a1fbf5b0c789b4d7ae887539d89d73c
     hooks:
     -   id: copyright_checker
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py)$
