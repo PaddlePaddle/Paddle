@@ -31,3 +31,9 @@
     -   id: go-fmt
         types:
         - go
+-   repo: https://github.com/dzhwinter/pre-commit-hooks
+    sha: 96076570f0bad53aa70dc27318af4bb76c011ed5
+    hooks:
+    -   id: copyright_checker
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py)$
+        exclude: (?!.*third_party)^.*$ | (?!.*book)^.*$
