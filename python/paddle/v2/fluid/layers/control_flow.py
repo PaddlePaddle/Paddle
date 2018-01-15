@@ -117,7 +117,8 @@ def Print(input,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
-          print_tensor_lod=True):
+          print_tensor_lod=True,
+          print_phase='both'):
     '''
     **Print operator**
 
@@ -128,18 +129,21 @@ def Print(input,
     tensor `t`.
 
     Args:
-      input(Variable): A Tensor to print.
-      summarize(int): Print this number of elements in the tensor, will print all
-                 if left negative.
-      message(str): A string message to print as a prefix.
-      first_n(int): Only log `first_n` number of times.
-      print_tensor_name(bool): Print the tensor name.
-      print_tensor_type(bool): Print the tensor type.
-      print_tensor_shape(bool): Print the tensor shape.
-      print_tensor_lod(bool): Print the tensor lod.
+        input (Variable): A Tensor to print.
+        summarize (int): Print this number of elements in the tensor, will print
+                all if left is negative.
+        message (str): A string message to print as a prefix.
+        first_n (int): Only log `first_n` number of times.
+        print_tensor_name (bool): Print the tensor name.
+        print_tensor_type (bool): Print the tensor type.
+        print_tensor_shape (bool): Print the tensor shape.
+        print_tensor_lod (bool): Print the tensor lod.
+        print_phase (bool): Which phase to displace, including 'forward',
+                'backward' and 'both'. If set to 'backward' or 'both', will
+                print the gradients of input tensor.
 
     Returns:
-      None
+        Variable: Output tensor, same data with input tensor.
 
     Examples:
         .. code-block:: python
@@ -149,10 +153,10 @@ def Print(input,
               message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
-    out = helper.create_tmp_variable(dtype='int32')
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='print',
-        inputs={'input': input},
+        inputs={'In': input},
         attrs={
             'first_n': first_n,
             'summarize': summarize,
@@ -161,7 +165,9 @@ def Print(input,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,
             'print_tensor_lod': print_tensor_lod,
-        })
+            'print_phase': print_phase.upper()
+        },
+        outputs={'Out': out})
     return out
 
 
