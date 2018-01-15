@@ -6,8 +6,8 @@ import numpy
 
 class TestReorderLoDTensor(unittest.TestCase):
     num_seq = 5
-    # [name, dim, lod_level] pair indicating data info of source and target
-    data_desc = (['input', 9, 0], ['ref', 5, 1])
+    # [name, shape, lod_level] pair indicating data info of source and target
+    data_desc = (['input', [9], 0], ['ref', [5], 1])
 
     @classmethod
     def setUpClass(cls):
@@ -16,10 +16,10 @@ class TestReorderLoDTensor(unittest.TestCase):
     @classmethod
     def set_program(cls):
         dat = fluid.layers.data(
-            name=cls.data_desc[0][0], shape=[cls.data_desc[0][1]])
+            name=cls.data_desc[0][0], shape=cls.data_desc[0][1])
         dat.stop_gradient = False
         rank_dat = fluid.layers.data(
-            name=cls.data_desc[1][0], shape=[cls.data_desc[1][1]])
+            name=cls.data_desc[1][0], shape=cls.data_desc[1][1])
         table = fluid.layers.lod_rank_table(rank_dat)
         new_dat = fluid.layers.reorder_lod_tensor_by_rank(
             x=dat, rank_table=table)
@@ -49,7 +49,7 @@ class TestReorderLoDTensor(unittest.TestCase):
         self.data = {}
         for desc in self.data_desc:
             data_name = desc[0]
-            data_dim = desc[1]
+            data_shape = desc[1]
             data_lod_level = desc[2]
             data_lod = []
             for i in range(data_lod_level):
@@ -59,9 +59,9 @@ class TestReorderLoDTensor(unittest.TestCase):
                     size=self.num_seq if i == 0 else lod_level_i[-1])
                 lod_level_i = [0] + numpy.cumsum(lod_level_i).tolist()
                 data_lod.append(lod_level_i)
-            data_value = numpy.random.random(size=[
-                data_lod[-1][-1] if data_lod else self.num_seq, data_dim
-            ]).astype('float32')
+            data_value = numpy.random.random(
+                size=[data_lod[-1][-1] if data_lod else self.num_seq
+                      ] + data_shape).astype('float32')
             self.data[data_name] = (data_value, data_lod)
 
     def set_inputs(self, place):
@@ -163,8 +163,6 @@ class TestReorderLoDTensor(unittest.TestCase):
                 numpy.allclose(
                     numpy.array(actual_grad), expect_grad, atol=0.001))
             self.assertEqual(expect_grad_lod, actual_grad.lod())
-        global outputs_from_tensor_implicit_lod
-        outputs_from_tensor_implicit_lod = self.actual_outputs
 
         # compare outputs between LodTensors with explicit and implicit lod
         # use the same data but set the input lod explicitly
