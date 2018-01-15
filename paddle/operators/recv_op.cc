@@ -96,6 +96,8 @@ class RecvOp : public framework::OperatorBase {
     rpc_service_->Reset();
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
+    VLOG(4) << "param_count:" << param_count
+            << " trainer_count:" << trainer_count;
     while (!exit_flag) {
       // TODO(gognwb): simply this loop.
       // Get from multiple trainers, we don't care about order in which
