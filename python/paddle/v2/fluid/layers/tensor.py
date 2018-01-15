@@ -180,7 +180,7 @@ def assign(input, output):
     return output
 
 
-def fill_constant(shape, dtype, value, out=None):
+def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
     **fill_constant**
 
@@ -211,9 +211,12 @@ def fill_constant(shape, dtype, value, out=None):
         type='fill_constant',
         inputs={},
         outputs={'Out': [out]},
-        attrs={'shape': shape,
-               'dtype': out.dtype,
-               'value': float(value)})
+        attrs={
+            'shape': shape,
+            'dtype': out.dtype,
+            'value': float(value),
+            'force_cpu': force_cpu
+        })
     out.stop_gradient = True
     return out
 
