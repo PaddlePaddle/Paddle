@@ -74,7 +74,7 @@ const proto::TensorDesc &VarDesc::tensor_desc() const {
     case proto::VarDesc::LOD_TENSOR_ARRAY:
       return desc_.tensor_array().tensor();
     default:
-      PADDLE_THROW("The type of var '", this->Name(), "' is unsupported.");
+      PADDLE_THROW("The type of var %s is unsupported.", this->Name());
   }
 }
 

@@ -134,7 +134,7 @@ void GetCublasDsoHandle(void** dso_handle) {
 #endif
 }
 
-void GetCudnnDsoHandle(void** dso_handle) {
+void GetCUDNNDsoHandle(void** dso_handle) {
 #if defined(__APPLE__) || defined(__OSX__)
   GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", dso_handle,
                              false);
