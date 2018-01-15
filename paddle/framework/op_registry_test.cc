@@ -368,24 +368,6 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
 
   // TODO(qiao) add priority back
   // use all available kernels
-  paddle::framework::UseALL();
   op->Run(scope, cuda_place);
   EXPECT_EQ(op_test_value, -10);
-
-  // remove cuda kernels
-  paddle::framework::UseCPU();
-  op->Run(scope, cpu_place);
-
-  EXPECT_EQ(op_test_value, -9);
-
-  // add cuda kernels
-  paddle::framework::UseCUDA();
-  op->Run(scope, cuda_place);
-
-  EXPECT_EQ(op_test_value, -10);
-
-  // use cudnn kernel
-  paddle::framework::UseCUDNN();
-  op->Run(scope, cuda_place);
-  EXPECT_EQ(op_test_value, -20);
 }
