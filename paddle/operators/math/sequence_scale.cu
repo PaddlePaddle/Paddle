@@ -13,16 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/sequence_scale.h"
+#include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename T>
+using platform::PADDLE_CUDA_NUM_THREADS;
+
+template <typename T, int BlockSize>
 __global__ void SequenceScaleKernel(T* seq, size_t* lod, const T* scales,
                                     const size_t seq_width) {
-  if (threadIdx.x < (lod[blockIdx.x + 1] - lod[blockIdx.x]) * seq_width) {
-    int idx = lod[blockIdx.x] * seq_width + threadIdx.x;
+  for (int i = threadIdx.x;
+       i < (lod[blockIdx.x + 1] - lod[blockIdx.x]) * seq_width;
+       i += BlockSize) {
+    int idx = lod[blockIdx.x] * seq_width + i;
     seq[idx] *= scales[blockIdx.x];
   }
 }
@@ -39,8 +44,8 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
     T* seq_data = seq.mutable_data<T>(context.GetPlace());
 
-    int threads = 1024;
-    SequenceScaleKernel<T><<<num_seq, threads, 0, context.stream()>>>(
+    SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
+        num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
         seq_data, abs_offset_lod[level].data(), scales, seq_width);
   }
 };
