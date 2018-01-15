@@ -74,8 +74,12 @@ class RequestSend final : public RequestBase {
 class RequestGet final : public RequestBase {
  public:
   explicit RequestGet(sendrecv::SendRecvService::AsyncService* service,
-                      grpc::ServerCompletionQueue* cq, framework::Scope* scope)
-      : RequestBase(service, cq), responder_(&ctx_), scope_(scope) {
+                      grpc::ServerCompletionQueue* cq, framework::Scope* scope,
+                      const platform::DeviceContext* dev_ctx)
+      : RequestBase(service, cq),
+        responder_(&ctx_),
+        scope_(scope),
+        dev_ctx_(dev_ctx) {
     service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_, this);
   }
 
@@ -85,7 +89,7 @@ class RequestGet final : public RequestBase {
     // proc request.
     std::string var_name = request_.varname();
     auto* var = scope_->FindVar(var_name);
-    SerializeToMessage(var_name, var, platform::CPUDeviceContext(), &reply_);
+    SerializeToMessage(var_name, var, *dev_ctx_, &reply_);
     // TODO(gongwb): check var's info.
     responder_.Finish(reply_, grpc::Status::OK, this);
   }
@@ -95,6 +99,7 @@ class RequestGet final : public RequestBase {
   sendrecv::VariableMessage reply_;
   ServerAsyncResponseWriter<sendrecv::VariableMessage> responder_;
   framework::Scope* scope_;
+  const platform::DeviceContext* dev_ctx_;
 };
 
 void AsyncGRPCServer::RunSyncUpdate() {
@@ -155,7 +160,7 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
   if (is_shut_down_) {
     return;
   }
-  RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_);
+  RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_, dev_ctx_);
   VLOG(4) << "create Requestget status:" << get->Status();
 }
 

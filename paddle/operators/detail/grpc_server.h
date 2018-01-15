@@ -37,7 +37,7 @@ class RequestBase;
 
 class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
  public:
-  explicit AsyncGRPCServer(std::string address) { address_ = address; }
+  explicit AsyncGRPCServer(const std::string &address) : address_(address) {}
 
   void RunSyncUpdate();
 
@@ -46,6 +46,8 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   void Done();
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
+
+  void SetDevCtx(const platform::DeviceContext *dev_ctx) { dev_ctx_ = dev_ctx; }
 
   const MessageWithName Get() { return this->var_recv_queue_.Pop(); }
 
@@ -74,6 +76,7 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
   std::string address_;
   framework::Scope *scope_;
+  const platform::DeviceContext *dev_ctx_;
   // received variable from RPC, operators fetch variable from this queue.
   SimpleBlockQueue<MessageWithName> var_recv_queue_;
 

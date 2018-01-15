@@ -87,7 +87,11 @@ class RecvOp : public framework::OperatorBase {
            const platform::Place &dev_place) const override {
     // FIXME(typhoonzero): no new scopes for every run.
     framework::Scope &recv_scope = scope.NewScope();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+
     rpc_service_->SetScope(&recv_scope);
+    rpc_service_->SetDevCtx(&dev_ctx);
     auto param_list = Attr<std::vector<std::string>>("ParamList");
     auto grad_list = Attr<std::vector<std::string>>("GradList");
     auto trainer_count = Attr<int>("Trainers");
@@ -134,9 +138,6 @@ class RecvOp : public framework::OperatorBase {
         }
 
         auto *var = recv_scope.Var(grad_var_name);
-        platform::DeviceContextPool &pool =
-            platform::DeviceContextPool::Instance();
-        auto &dev_ctx = *pool.Get(dev_place);
         detail::DeserializeFromMessage(v.second, dev_ctx, var);
       }
 
