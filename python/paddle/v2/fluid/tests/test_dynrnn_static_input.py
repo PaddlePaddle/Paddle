@@ -8,8 +8,7 @@ from paddle.v2.fluid.framework import Program, switch_main_program
 import bisect
 import numpy as np
 
-fluid.default_startup_program().random_seed = 0
-np.random.seed(0)
+fluid.default_startup_program().random_seed = 1
 
 
 class TestDyRnnStaticInput(unittest.TestCase):
@@ -166,8 +165,6 @@ class TestDyRnnStaticInput(unittest.TestCase):
             self.assertTrue(np.allclose(lod, expected_lods[i]))
 
     def test_network_gradient(self):
-        pass  #still have bug (seed doesn't work)
-        '''
         static_input_grad, loss = self.build_graph()
         self.exe.run(framework.default_startup_program())
 
@@ -175,7 +172,6 @@ class TestDyRnnStaticInput(unittest.TestCase):
 
         static_input_shape = self.static_input_tensor.get_dims()
         numeric_gradients = np.zeros(shape=static_input_shape).astype('float32')
-        print(actual_gradients)
         # calculate numeric gradients
         tensor_size = np.product(static_input_shape)
         for i in xrange(tensor_size):
@@ -188,8 +184,8 @@ class TestDyRnnStaticInput(unittest.TestCase):
             y_neg = self.fetch_value(loss)[0][0]
             self.static_input_tensor.set_float_element(i, origin)
             numeric_gradients.ravel()[i] = (y_pos - y_neg) / self._delta / 2
-        print(numeric_gradients)
-        '''
+        self.assertTrue(np.allclose(actual_gradients, numeric_gradients, 0.001))
+        self.assertTrue(np.allclose(actual_lod, self.static_input_tensor.lod()))
 
 
 if __name__ == '__main__':
