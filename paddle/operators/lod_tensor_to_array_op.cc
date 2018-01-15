@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
@@ -88,12 +88,13 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         auto slice = out[i].Slice(static_cast<int>(offset),
                                   static_cast<int>(offset + len));
 
-        platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-        auto &dev_ctx = *pool.Borrow(place);
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
+        auto &dev_ctx = *pool.Get(place);
 
-        framework::CopyFrom(x.Slice(static_cast<int>(each_range.begin),
-                                    static_cast<int>(each_range.end)),
-                            x.place(), dev_ctx, &slice);
+        framework::Copy(x.Slice(static_cast<int>(each_range.begin),
+                                static_cast<int>(each_range.end)),
+                        x.place(), dev_ctx, &slice);
         offset += len;
       }
     }

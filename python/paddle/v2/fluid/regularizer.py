@@ -13,7 +13,11 @@
 #limitations under the License.
 import framework
 
-__all__ = ['append_regularization_ops', 'L1Decay', 'L2Decay']
+__all__ = [
+    'append_regularization_ops',
+    'L1Decay',
+    'L2Decay',
+]
 
 
 def append_regularization_ops(parameters_and_grads, regularization=None):

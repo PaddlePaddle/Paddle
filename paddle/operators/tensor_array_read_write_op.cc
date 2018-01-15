@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 #include "paddle/operators/array_operator.h"
 #include "paddle/operators/detail/safe_ref.h"
 namespace paddle {
@@ -40,10 +40,11 @@ class WriteToArrayOp : public ArrayOp {
     if (x_tensor.memory_size() > 0) {
       auto *out_tensor = &out->at(offset);
 
-      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-      auto &dev_ctx = *pool.Borrow(place);
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
 
-      CopyFrom(x_tensor, place, dev_ctx, out_tensor);
+      Copy(x_tensor, place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_tensor.lod());
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
@@ -105,8 +106,7 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
     auto x_name = op_desc.Input("X")[0];
     auto out_name = op_desc.Output("Out")[0];
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
-    auto &out = detail::Ref(block->FindRecursiveOrCreateVar(out_name),
-                            "Cannot found %s", out_name);
+    auto &out = block->FindRecursiveOrCreateVar(out_name);
     out.SetType(framework::proto::VarDesc::LOD_TENSOR_ARRAY);
     auto *x = block->FindVarRecursive(x_name);
     if (x != nullptr) {
@@ -129,12 +129,13 @@ class ReadFromArrayOp : public ArrayOp {
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE(out != nullptr, "Out must be set");
-    auto *out_tensor = out->GetMutable<framework::LoDTensor>();
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
-      platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-      auto &dev_ctx = *pool.Borrow(place);
-      framework::CopyFrom(x_array[offset], place, dev_ctx, out_tensor);
+      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
+      framework::Copy(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());
     } else {
       VLOG(10) << "offset " << offset << " >= " << x_array.size();

@@ -78,6 +78,10 @@ PYBIND11_PLUGIN(core) {
            [](Tensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
            })
+      .def("set_layout",
+           [](Tensor &self, const std::string &layout) {
+             self.set_layout(StringToDataLayout(layout));
+           })
       .def("alloc_float",
            [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
@@ -265,23 +269,22 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
-  m.def("get_grad_op_descs",
-        [](const OpDesc &op_desc,
-           const std::unordered_set<std::string> &no_grad_set,
-           std::unordered_map<std::string, std::string> &grad_to_var,
-           const std::vector<BlockDesc *> &grad_sub_block) {
-          std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
-              framework::OpInfoMap::Instance()
-                  .Get(op_desc.Type())
-                  .GradOpMaker()(op_desc, no_grad_set, &grad_to_var,
-                                 grad_sub_block);
-          std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
-          std::transform(
-              grad_op_descs.begin(), grad_op_descs.end(),
-              grad_op_desc_ptrs.begin(),
-              [](std::unique_ptr<OpDesc> &p) { return p.release(); });
-          return grad_op_desc_ptrs;
-        });
+  m.def(
+      "get_grad_op_desc", [](const OpDesc &op_desc,
+                             const std::unordered_set<std::string> &no_grad_set,
+                             const std::vector<BlockDesc *> &grad_sub_block) {
+        std::unordered_map<std::string, std::string> grad_to_var;
+        std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
+            framework::OpInfoMap::Instance()
+                .Get(op_desc.Type())
+                .GradOpMaker()(op_desc, no_grad_set, &grad_to_var,
+                               grad_sub_block);
+        std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
+        std::transform(grad_op_descs.begin(), grad_op_descs.end(),
+                       grad_op_desc_ptrs.begin(),
+                       [](std::unique_ptr<OpDesc> &p) { return p.release(); });
+        return std::make_pair(grad_op_desc_ptrs, grad_to_var);
+      });
   m.def("prune", [](const ProgramDesc &origin,
                     const std::vector<std::array<size_t, 2>> &targets) {
     ProgramDesc prog_with_targets(origin);
@@ -297,6 +300,8 @@ All parameter, weight, gradient are variables in Paddle.
     InferenceOptimize(*(origin.Proto()), &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
+  m.def("empty_var_name", []() { return framework::kEmptyVarName; });
+  m.def("grad_var_suffix", []() { return framework::kGradVarSuffix; });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
@@ -422,9 +427,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("unique_integer", UniqueIntegerGenerator);
   m.def("init_gflags", framework::InitGflags);
+  m.def("init_glog", framework::InitGLOG);
   m.def("init_devices", &framework::InitDevices);
 
   m.def("is_compile_gpu", IsCompileGPU);
+
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 

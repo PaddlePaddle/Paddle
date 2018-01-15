@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/op_registry.h"
@@ -45,7 +45,7 @@ class AssignFunctor {
     out_rows.set_height(rows.height());
     auto &t = rows.value();
     auto *m = out_rows.mutable_value();
-    framework::CopyFrom(t, t.place(), dev_ctx_, m);
+    framework::Copy(t, t.place(), dev_ctx_, m);
   }
 
   template <typename T>
@@ -57,7 +57,7 @@ class AssignFunctor {
   void copy_tensor(const framework::LoDTensor &lod_tensor,
                    framework::LoDTensor *out) const {
     auto &out_tensor = *out;
-    CopyFrom(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
+    Copy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 
@@ -82,8 +82,8 @@ class AssignOp : public framework::OperatorBase {
         out != nullptr,
         "The Output(Out) should not be null if the Input(X) is set.");
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Get();
-    auto &dev_ctx = *pool.Borrow(place);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
     framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
   }

@@ -13,8 +13,49 @@
 #limitations under the License.
 import functools
 import layers
+from . import core
 
-__all__ = ['GradientClipByValue', 'append_gradient_clip_ops']
+__all__ = [
+    'GradientClipByValue',
+    'append_gradient_clip_ops',
+    'error_clip_callback',
+]
+
+
+class BaseErrorClipAttr(object):
+    def append_clip_op(self, block, grad_name):
+        raise NotImplementedError()
+
+
+class ErrorClipByValue(BaseErrorClipAttr):
+    def __init__(self, max, min=None):
+        max = float(max)
+        if min is None:
+            min = -max
+        else:
+            min = float(min)
+        self.max = max
+        self.min = min
+
+    def append_clip_op(self, block, grad_name):
+        block.append_op(
+            type="clip",
+            inputs={"X": grad_name},
+            outputs={"Out": grad_name},
+            attrs={"min": self.min,
+                   "max": self.max})
+
+
+def error_clip_callback(block, context):
+    # the context is a grad_to_var map
+    grad_to_var = context
+    op_desc = block.desc.op(block.desc.op_size() - 1)
+    for grad_n in filter(lambda n: grad_to_var.has_key(n),
+                         op_desc.output_arg_names()):
+        fwd_var = block.var_recursive(grad_to_var[grad_n])
+        error_clip = getattr(fwd_var, "error_clip", None)
+        if error_clip is not None:
+            error_clip.append_clip_op(block, grad_n)
 
 
 class BaseGradientClipAttr(object):

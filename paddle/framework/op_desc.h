@@ -35,6 +35,8 @@ class OpDesc {
 
   OpDesc(const proto::OpDesc &desc, ProgramDesc *prog);
 
+  void CopyFrom(const OpDesc &op_desc);
+
   proto::OpDesc *Proto();
 
   std::string Type() const { return desc_.type(); }
@@ -127,7 +129,7 @@ class OpDesc {
   }
 
   proto::OpDesc desc_;
-  // input arg name => output variable names
+  // input arg name => input variable names
   VariableNameMap inputs_;
   // output arg name => output variable names
   VariableNameMap outputs_;

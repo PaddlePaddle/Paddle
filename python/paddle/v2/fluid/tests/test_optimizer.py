@@ -15,7 +15,7 @@ import unittest
 
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.optimizer as optimizer
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 
 
 class TestOptimizer(unittest.TestCase):
@@ -115,7 +115,7 @@ class TestMomentumOptimizer(unittest.TestCase):
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(
@@ -164,7 +164,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         learning_rate = 0.01
         momentum_optimizer = self.MockMomentum(
             learning_rate=learning_rate, momentum=0.2, use_nesterov=True)
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(
@@ -222,7 +222,7 @@ class TestAdagradOptimizer(unittest.TestCase):
         learning_rate = 0.01
         adagrad_optimizer = self.MockAdagrad(
             learning_rate=learning_rate, epsilon=1.0e-6)
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adagrad_optimizer.get_accumulators()), 0)
         opts = adagrad_optimizer.create_optimization_pass(params_grads, mul_out,
@@ -282,7 +282,7 @@ class TestAdamOptimizer(unittest.TestCase):
         learning_rate = 0.01
         adam_optimizer = self.MockAdam(
             learning_rate=learning_rate, beta1=0.9, beta2=0.999)
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
         opts = adam_optimizer.create_optimization_pass(params_grads, mul_out,
@@ -344,7 +344,7 @@ class TestAdamaxOptimizer(unittest.TestCase):
         learning_rate = 0.01
         adamax_optimizer = self.MockAdamax(
             learning_rate=learning_rate, beta1=0.9, beta2=0.999)
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adamax_optimizer.get_accumulators()), 0)
         opts = adamax_optimizer.create_optimization_pass(params_grads, mul_out,
@@ -403,7 +403,7 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
         learning_rate = 0.01
         decayed_adagrad_optimizer = self.MockDecayedAdagrad(
             learning_rate=learning_rate, decay=0.95, epsilon=1.0e-6)
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(decayed_adagrad_optimizer.get_accumulators()), 0)
         opts = decayed_adagrad_optimizer.create_optimization_pass(

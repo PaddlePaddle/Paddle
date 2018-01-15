@@ -27,6 +27,7 @@ hidden1 = fluid.layers.fc(input=image,
                           param_attr=fluid.ParamAttr(
                               regularizer=regularizer,
                               clip=fluid.clip.ClipByValue(10)))
+
 hidden2 = fluid.layers.fc(input=hidden1,
                           size=64,
                           act='relu',
@@ -86,5 +87,9 @@ for pass_id in range(PASS_NUM):
               + " test_acc=" + str(test_pass_acc))
 
         if test_pass_acc > 0.7:
+            fluid.io.save_inference_model(
+                "./recognize_digits_mlp.inference.model/", ["x"], [predict],
+                exe)
             exit(0)
+
 exit(1)

@@ -14,7 +14,12 @@
 import framework
 import numpy as np
 
-__all__ = ['Constant', 'Uniform', 'Normal', 'Xavier']
+__all__ = [
+    'Constant',
+    'Uniform',
+    'Normal',
+    'Xavier',
+]
 
 
 class Initializer(object):

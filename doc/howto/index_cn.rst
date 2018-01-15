@@ -9,6 +9,7 @@
 
   usage/cmd_parameter/index_cn.rst
   usage/cluster/cluster_train_cn.md
+  usage/capi/index_cn.rst
 
 开发标准
 --------

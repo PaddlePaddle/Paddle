@@ -133,11 +133,12 @@ class LayerHelper(object):
             raise ValueError("no Parameter name %s found" % name)
         return param
 
-    def create_tmp_variable(self, dtype):
+    def create_tmp_variable(self, dtype, stop_gradient=False):
         return self.main_program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])),
             dtype=dtype,
-            persistable=False)
+            persistable=False,
+            stop_gradient=stop_gradient)
 
     def create_variable(self, *args, **kwargs):
         return self.main_program.current_block().create_var(*args, **kwargs)
@@ -197,7 +198,7 @@ class LayerHelper(object):
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
-            outputs={"Y": [tmp]},
+            outputs={"Out": [tmp]},
             attrs=act)
         return tmp
 
