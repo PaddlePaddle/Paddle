@@ -64,6 +64,7 @@ class RequestSend final : public RequestBase {
     queue_->Push(std::move(msg_with_name));
     // TODO(gongwb): check var's info.
     responder_.Finish(reply_, grpc::Status::OK, this);
+    status_ = FINISH;
   }
 
  protected:
@@ -90,6 +91,7 @@ class RequestGet final : public RequestBase {
     SerializeToMessage(var_name, var, platform::CPUDeviceContext(), &reply_);
     // TODO(gongwb): check var's info.
     responder_.Finish(reply_, grpc::Status::OK, this);
+    status_ = FINISH;
   }
 
  protected:
@@ -207,7 +209,7 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
         VLOG(4) << cq_name << " status:" << base->Status();
         TryToRegisterNewOne();
         base->Process();
-        SetFinishOrDelete(base);
+        // SetFinishOrDelete(base);
         break;
       }
       case FINISH: {

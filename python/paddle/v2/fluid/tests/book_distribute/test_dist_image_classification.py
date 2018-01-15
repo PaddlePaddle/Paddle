@@ -21,9 +21,9 @@ import paddle.v2.fluid as fluid
 import os
 import sys
 
-TRAINERS = 1
+TRAINERS = 2
 BATCH_SIZE = 128
-PASS_NUM = 1
+PASS_NUM = 30
 
 
 def resnet_cifar10(input, depth=32):
