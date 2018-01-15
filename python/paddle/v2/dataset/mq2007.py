@@ -24,7 +24,6 @@ http://research.microsoft.com/en-us/um/beijing/projects/letor/LETOR4.0/Data/MQ20
 """
 
 import os
-import random
 import functools
 import rarfile
 from common import download
@@ -265,7 +264,7 @@ def query_filter(querylists):
     return filter_query
 
 
-def load_from_text(filepath, shuffle=True, fill_missing=-1):
+def load_from_text(filepath, shuffle=False, fill_missing=-1):
     """
   parse data file into querys
   """
@@ -287,17 +286,14 @@ def load_from_text(filepath, shuffle=True, fill_missing=-1):
             querylist._add_query(query)
     if querylist is not None:
         querylists.append(querylist)
-    if shuffle == True:
-        random.shuffle(querylists)
     return querylists
 
 
-def __reader__(filepath, format="pairwise", shuffle=True, fill_missing=-1):
+def __reader__(filepath, format="pairwise", shuffle=False, fill_missing=-1):
     """
   Parameters
   --------
   filename : string
-  shuffle : shuffle query-doc pair under the same query
   fill_missing : fill the missing value. default in MQ2007 is -1
   
   Returns
