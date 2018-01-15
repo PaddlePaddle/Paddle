@@ -57,6 +57,10 @@ void EnforceCUDNNLoaded(const char* fn_name) {
 bool HasCUDNN() { return true; }
 #endif
 
+#ifndef PADDLE_WITH_CUDA
+bool HasCUDNN() { return false; }
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

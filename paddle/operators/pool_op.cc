@@ -64,6 +64,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  use_cudnn &= platform::dynload::HasCUDNN();
   framework::LibraryType library_;
   if (use_cudnn) {
     library_ = framework::LibraryType::kCUDNN;
@@ -88,6 +89,7 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  use_cudnn &= platform::dynload::HasCUDNN();
   framework::LibraryType library_;
   if (use_cudnn) {
     library_ = framework::LibraryType::kCUDNN;
