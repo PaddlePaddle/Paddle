@@ -54,32 +54,8 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
 // define some kernel priority
+/* Define multiple kernel type fallback order*/
 extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
-
-/**
- * @brief Use cpu kernel only
- */
-void UseCPU();
-
-/**
- * @brief Perfer MKLDNN kernel than Plain CPU kernel
- */
-void UseMKLDNN();
-
-/**
- * @brief Perfer CUDA kernel than Plain CPU kernel
- */
-void UseCUDA();
-
-/**
- * @brief Perfer cudnn kernel than Plain CUDA kernel
- */
-void UseCUDNN();
-
-/**
- * @brief Use all available kernels
- */
-void UseALL();
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
