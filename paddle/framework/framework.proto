@@ -144,3 +144,9 @@ message BlockDesc {
 // https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
 // for more details.
 message ProgramDesc { repeated BlockDesc blocks = 1; }
+
+message InferenceDesc {
+  required ProgramDesc program = 1;
+  repeated string feed_var_names = 2;
+  repeated string fetch_var_names = 3;
+}
