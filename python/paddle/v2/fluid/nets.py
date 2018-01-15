@@ -1,6 +1,10 @@
 import layers
 
-__all__ = ["simple_img_conv_pool", "sequence_conv_pool", "glu"]
+__all__ = [
+    "simple_img_conv_pool",
+    "sequence_conv_pool",
+    "glu",
+]
 
 
 def simple_img_conv_pool(input,
@@ -125,7 +129,7 @@ def glu(input, dim=-1):
         .. code-block:: python
 
             # x is a Tensor variable with shape [3, 6, 9]
-            fluid.nets.glu(input=x, dim=-1)  # shape of output: [3, 3, 9]
+            fluid.nets.glu(input=x, dim=1)  # shape of output: [3, 3, 9]
     """
 
     a, b = layers.split(input, num_or_sections=2, dim=dim)
