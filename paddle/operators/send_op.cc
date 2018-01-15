@@ -48,7 +48,10 @@ class SendOp : public framework::OperatorBase {
       client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
 
-    client_.wait();
+    if (!client_.wait()) {
+      LOG(ERROR) << "send op exit";
+      exit(1);
+    }
   }
 
  private:

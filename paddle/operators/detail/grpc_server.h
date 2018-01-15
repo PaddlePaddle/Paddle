@@ -60,7 +60,6 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
-  void SetFinishOrDelete(RequestBase *&last);
   void ShutdownQueue();
 
  private:

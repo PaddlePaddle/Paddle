@@ -36,6 +36,7 @@ class RequestBase {
 
   CallStatus Status() { return status_; }
   void SetStatus(CallStatus status) { status_ = status; }
+  virtual std::string GetReqName() { assert(false); }
 
  protected:
   grpc::ServerContext ctx_;
@@ -57,6 +58,8 @@ class RequestSend final : public RequestBase {
   }
 
   virtual ~RequestSend() {}
+
+  virtual std::string GetReqName() { return request_.varname(); }
 
   virtual void Process() {
     MessageWithName msg_with_name =
@@ -83,6 +86,8 @@ class RequestGet final : public RequestBase {
   }
 
   virtual ~RequestGet() {}
+
+  virtual std::string GetReqName() { return request_.varname(); }
 
   virtual void Process() {
     // proc request.
@@ -165,19 +170,6 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
   VLOG(4) << "create Requestget status:" << get->Status();
 }
 
-void AsyncGRPCServer::SetFinishOrDelete(RequestBase*& last) {
-  std::unique_lock<std::mutex> lock(cq_mutex_);
-  if (is_shut_down_) {
-    VLOG(4) << "delete Requestget status:" << last->Status();
-    delete last;
-    last = NULL;
-    return;
-  }
-
-  last->SetStatus(FINISH);
-  return;
-}
-
 void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
                                     std::string cq_name,
                                     std::function<void()> TryToRegisterNewOne) {
@@ -197,10 +189,12 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
     }
 
     RequestBase* base = (RequestBase*)tag;
+    // reference:
+    // https://github.com/tensorflow/tensorflow/issues/5596
     if (!ok) {
-      LOG(WARNING) << cq_name << " recv no regular event";
-      TryToRegisterNewOne();
-      delete base;
+      LOG(WARNING) << cq_name << " recv no regular event:argument name"
+                   << base->GetReqName();
+      // FIXME(gongwb): delete this one? register new one?
       continue;
     }
 
@@ -209,7 +203,6 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
         VLOG(4) << cq_name << " status:" << base->Status();
         TryToRegisterNewOne();
         base->Process();
-        // SetFinishOrDelete(base);
         break;
       }
       case FINISH: {
