@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/math/sequence2batch.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {

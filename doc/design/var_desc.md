@@ -1,12 +1,12 @@
 ## Background
-PaddlePaddle divides the description of neural network computation graph into two stages: compile time and runtime.
+PaddlePaddle divides the description of neural network computation into two stages: compile time and runtime. At compile time, the neural network computation is described as a `ProgramDesc` whereas at runtime an `Executor` interprets the `ProgramDesc` to compute the operations.
 
-PaddlePaddle use proto message to describe compile time graph because
+PaddlePaddle use proto message to describe compile time program because
 
-1. Computation graph should be able to be saved to a file.
-1. In distributed training, the graph will be serialized and send to multiple workers.
+1. The computation program description must be serializable and saved in a file.
+1. During distributed training, the sreialized program will be sent to multiple workers. It should also be possible to break the program into different components, each of which can be executed on different workers.
 
-The computation graph is constructed by Data Node and Operation Node. The concept to represent them is in the table below.
+The computation `Program` consists of nested `Blocks`. Each `Block` will consist of data(i.e. `Variable`)  and  `Operations`. The concept to represent them is in the table below.
 
 | |compile time|runtime|
 |---|---|---|
