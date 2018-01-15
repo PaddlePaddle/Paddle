@@ -1584,3 +1584,85 @@ def split(input, num_or_sections, dim=-1):
             'axis': dim
         })
     return outs
+
+
+def matmul(x, y):
+    """
+    Applies matrix multipication to two tensors.
+
+    This operator is used to perform (batched) matrix multiplication
+    over the last two dimensions of the input tensors `X` and `Y`.
+
+    If a transpose flag is specified, the last two dimensions of the
+    tensor are transposed. If the tensor is rank-1 of shape [D], then
+    for `X` it is treated as [1, D] in nontransposed form and as [D, 1]
+    in transposed form, whereas for `Y` it is the opposite: It is treated
+    as [D, 1] in nontransposed form and as [1, D] in transposed form.
+
+    Examples without transpose:
+    - X: [K], Y: [K] => Out: [1]
+    - X: [K], Y: [K, N] => Out: [N]
+    - X: [B, M, K], Y: [K] => Out: [B, M]
+    - X: [M, K], Y: [B, K, N] => Out: [B, M, N]
+    - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
+
+    The behavior is designed to be similar to the `numpy.matmul` function.
+    The differences are:
+    - Currently only rank 1 to rank 3 input tensors are supported.
+    - We add `transpose_X` and `transpose_Y` flags.
+
+    Both the input `X` and `Y` can carry the LoD (Level of Details) information,
+    or not. But the output only shares the LoD information with input `X`.
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): If :attr:`num_or_sections` is an integer, 
+            then the integer indicates the number of equal sized sub-tensors 
+            that the tensor will be divided into. If :attr:`num_or_sections` 
+            is a list of integers, the length of list indicates the number of 
+            sub-tensors and the integers indicate the sizes of sub-tensors' 
+            :attr:`dim` dimension orderly.
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the 
+            dimension to split along is :math:`rank(input) + dim`.
+
+    Returns:
+        List: The list of segmented tensor variables.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with shape [3, 9, 5]:
+            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=1)
+            x0.shape  # [3, 3, 5]
+            x1.shape  # [3, 3, 5]
+            x2.shape  # [3, 3, 5]
+            x0, x1, x2 = fluid.layers.split(x, num_or_sections=[2, 3, 4], dim=1)
+            x0.shape  # [3, 2, 5]
+            x1.shape  # [3, 3, 5]
+            x2.shape  # [3, 4, 5]
+    """
+    helper = LayerHelper('split', **locals())
+    input_shape = input.shape
+    dim = (len(input_shape) + dim) if dim < 0 else dim
+    if isinstance(num_or_sections, int):
+        assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+        num = num_or_sections
+    else:
+        assert len(num_or_sections) < input_shape[
+            dim], 'len(num_or_sections) must not be more than input.shape[dim].'
+        num = len(num_or_sections)
+    outs = [
+        helper.create_tmp_variable(dtype=helper.input_dtype())
+        for i in range(num)
+    ]
+    helper.append_op(
+        type='split',
+        inputs={'X': input},
+        outputs={'Out': outs},
+        attrs={
+            'num': num_or_sections if isinstance(num_or_sections, int) else 0,
+            'sections': num_or_sections
+            if isinstance(num_or_sections, list) else [],
+            'axis': dim
+        })
+    return outs
