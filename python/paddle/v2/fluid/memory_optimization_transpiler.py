@@ -34,22 +34,30 @@ class ControlFlowGraph(object):
         self._succesors[node1].add(node2)
         self._presucessors[node2].add(node1)
 
-    def _build_graph(self):
+    def _build_graph(self, block_idx):
         program_desc = self._program.get_desc()
-        block_size = program_desc.num_blocks()
 
         # TODO(qijun) handle Program with if/while operators
-        self.global_block_desc = program_desc.block(0)
-        self.op_size = self.global_block_desc.op_size()
+        self.block_desc = program_desc.block(block_idx)
+        self.op_size = self.block_desc.op_size()
 
         op_node_connections = [(i, i + 1) for i in range(self.op_size - 1)]
         self._add_connections(op_node_connections)
 
-        self.ops = [self.global_block_desc.op(i) for i in range(self.op_size)]
+        self.ops = [self.block_desc.op(i) for i in range(self.op_size)]
 
         for i in range(self.op_size):
             self._uses[i].update(self.ops[i].input_arg_names())
             self._defs[i].update(self.ops[i].output_arg_names())
+
+    def clear_graph(self):
+        self._succesors.clear()
+        self._presucessors.clear()
+        self._uses.clear()
+        self._defs.clear()
+        self._live_in.clear()
+        self._live_out.clear()
+        del self.pool[:]
 
     def _update_graph(self, old_name, new_name, begin_idx=0):
         for i in range(begin_idx, self.op_size):
@@ -80,7 +88,6 @@ class ControlFlowGraph(object):
         return True
 
     def _dataflow_analyze(self):
-        self._build_graph()
         live_in = defaultdict(set)
         live_out = defaultdict(set)
         while True:
@@ -99,26 +106,29 @@ class ControlFlowGraph(object):
         u = a & b
         return a - u, b - u
 
-    def memory_optimize(self):
-        self._build_graph()
+    def memory_optimize(self, block_idx):
+        self._build_graph(block_idx)
         self._dataflow_analyze()
         self.pool = []
         for i in range(self.op_size):
             if self.pool:
+                # print self._defs[i]
+                # for j in self._defs[i]:
+                #     print j
+                #     print self.block_desc.find_var_recursive(str(j)).type()
                 defs_can_optimize = filter(
-                    lambda x: self.global_block_desc.var(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
+                    lambda x: str(x) != "@EMPTY@" and self.block_desc.has_var(str(x)) and self.block_desc.var(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
                     self._defs[i])
-                out_pair = [(x, self.global_block_desc.var(str(x)).shape())
+                out_pair = [(x, self.block_desc.var(str(x)).shape())
                             for x in defs_can_optimize]
                 for x, x_shape in out_pair:
-                    if not self.global_block_desc.var(str(x)).persistable():
+                    if not self.block_desc.var(str(x)).persistable():
                         for index, cache_pair in enumerate(self.pool):
                             cache_var = cache_pair[0]
                             cache_shape = cache_pair[1]
                             if x_shape == cache_shape:
-                                x_dtype = self.global_block_desc.var(str(
-                                    x)).dtype()
-                                cache_dtype = self.global_block_desc.var(
+                                x_dtype = self.block_desc.var(str(x)).dtype()
+                                cache_dtype = self.block_desc.var(
                                     str(cache_var)).dtype()
                                 # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
                                 # and dtype_to_size[cache_dtype]
@@ -132,8 +142,8 @@ class ControlFlowGraph(object):
                                     self.pool.pop(index)
                                     _rename_arg_(
                                         self.ops, x, cache_var, begin_idx=i)
-                                    self._program.current_block().var(str(
-                                        x)).desc = self.global_block_desc.var(
+                                    self._program.block(block_idx).var(str(
+                                        x)).desc = self.block_desc.var(
                                             str(cache_var))
                                     self._update_graph(
                                         x, cache_var, begin_idx=i)
@@ -142,23 +152,38 @@ class ControlFlowGraph(object):
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
             can_optimize = filter(
-                lambda x: not self.global_block_desc.var(str(x)).persistable(),
+                lambda x: str(x) != "@EMPTY@" and not self.block_desc.var(str(x)).persistable(),
                 in_diff)
             can_optimize = filter(
-                lambda x: self.global_block_desc.var(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
+                lambda x: self.block_desc.var(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
                 can_optimize)
             if can_optimize:
+                # print can_optimize
+                # print self.pool
                 for var_name in can_optimize:
-                    self.pool.append(
-                        (var_name,
-                         self.global_block_desc.var(str(var_name)).shape()))
+                    # print var_name
+                    # print self.block_desc.find_var_recursive(str(var_name)).type()
+                    self.pool.append((var_name,
+                                      self.block_desc.find_var_recursive(
+                                          str(var_name)).shape()))
 
     def get_program(self):
         return self._program
 
 
+# def memory_optimize_block(input_program, block_idx):
+#     graph = ControlFlowGraph(input_program)
+#     graph.memory_optimize(block_idx)
+#     result_program = graph.get_program()
+#     return result_program
+
+
 def memory_optimize(input_program):
     graph = ControlFlowGraph(input_program)
-    graph.memory_optimize()
+    block_num = input_program.get_desc().num_blocks()
+    for i in range(block_num):
+        print i
+        graph.memory_optimize(i)
+        graph.clear_graph()
     result_program = graph.get_program()
     return result_program
