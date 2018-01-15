@@ -23,7 +23,6 @@ import paddle.v2.dataset
 import cPickle
 import glob
 import cPickle as pickle
-import random
 
 __all__ = [
     'DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader',
@@ -206,7 +205,6 @@ def convert(output_path, reader, line_count, name_prefix):
     indx_f = 0
 
     def write_data(indx_f, lines):
-        random.shuffle(lines)
         filename = "%s/%s-%05d" % (output_path, name_prefix, indx_f)
         writer = recordio.writer(filename)
         for l in lines:
