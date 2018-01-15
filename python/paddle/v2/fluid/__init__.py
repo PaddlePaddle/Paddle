@@ -72,11 +72,26 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
     read_env_flags = ['use_pinned_memory', 'check_nan_inf']
+
     if core.is_compile_gpu():
         read_env_flags += ['fraction_of_gpu_memory_to_use', 'op_sync']
+
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
+
+    gpu_devices = os.getenv("CUDA_VISIBLE_DEVICES", '')
+    if core.is_compile_gpu():
+        if len(gpu_devices.split(",")) >= 1:
+            print(
+                'WARNING: CUDA_VISIBLE_DEVICES set to {0}, not empty . The computation '
+                'speed will not be optimized if you use multi-gpu. It will '
+                'fail if this PaddlePaddle binary is compiled without GPU option'
+                .format(gpu_devices),
+                file=sys.stderr)
+        else:
+            gpu_devices = "0"
+    os.environ['CUDA_VISIBLE_DEVICES'] = gpu_devices
     core.init_devices()
 
 

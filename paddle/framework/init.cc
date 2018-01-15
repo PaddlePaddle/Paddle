@@ -47,20 +47,22 @@ void InitDevices() {
 
   std::vector<platform::Place> places;
   places.emplace_back(platform::CPUPlace());
+  int count = 0;
 
 #ifdef PADDLE_WITH_CUDA
   try {
-    int count = platform::GetCUDADeviceCount();
-    for (int i = 0; i < count; ++i) {
-      places.emplace_back(platform::CUDAPlace(i));
-    }
+    count = platform::GetCUDADeviceCount();
   } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_CUDA, but no CUDA found in runtime.";
+    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
 #else
   LOG(WARNING)
-      << "'CUDA' is not supported, Please re-compile with WITH_CUDA option";
+      << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
 #endif
+
+  for (int i = 0; i < count; ++i) {
+    places.emplace_back(platform::CUDAPlace(i));
+  }
 
   platform::DeviceContextPool::Init(places);
 }
