@@ -20,3 +20,8 @@ sequence_conv_pool
     :noindex:
 
 
+glu
+---
+..  autofunction:: paddle.v2.fluid.nets.glu
+    :noindex:
+
