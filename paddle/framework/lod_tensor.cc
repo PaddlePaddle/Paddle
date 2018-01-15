@@ -249,7 +249,7 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     auto src = Slice(begin, end);
     auto &dst_place = places[i];
     LoDTensor dst;
-    if (dst_place != place()) {
+    if (!(dst_place == place())) {
       framework::Copy(src, dst_place, &dst);
     } else {  // It is no need to copy if src_place and dst_place are same.
       dst.ShareDataWith(src);
