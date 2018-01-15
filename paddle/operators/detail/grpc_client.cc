@@ -87,7 +87,7 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   return true;
 }
 
-bool RPCClient::wait() {
+bool RPCClient::Wait() {
   bool ok = true;
 
   while (true) {
@@ -119,8 +119,8 @@ bool RPCClient::Proceed() {
   // TODO(gongwb): add more retries.
   ClientBase* c = static_cast<ClientBase*>(tag);
   if (!c->status_.ok()) {
-    LOG(ERROR) << "proc param error:" << c->var_h_.String();
-    LOG(ERROR) << "grpc error:" << c->status_.error_message();
+    LOG(ERROR) << "proc param error:" << c->var_h_.String()
+               << " grpc error:" << c->status_.error_message();
     delete c;
     return false;
   }

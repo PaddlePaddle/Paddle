@@ -29,7 +29,7 @@ class RequestBase {
   explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
                        grpc::ServerCompletionQueue* cq)
       : service_(service), cq_(cq), status_(PROCESS) {
-    assert(cq_);
+    PADDLE_ENFORCE(cq_);
   }
   virtual ~RequestBase() {}
   virtual void Process() { assert(false); }
@@ -65,7 +65,6 @@ class RequestSend final : public RequestBase {
     MessageWithName msg_with_name =
         std::make_pair(request_.varname(), std::move(request_));
     queue_->Push(std::move(msg_with_name));
-    // TODO(gongwb): check var's info.
     responder_.Finish(reply_, grpc::Status::OK, this);
     status_ = FINISH;
   }
@@ -183,7 +182,7 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
       break;
     }
 
-    assert(tag);
+    PADDLE_ENFORCE(tag);
     if (wait && !done_) {
       Wait();
     }
@@ -192,11 +191,12 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
+    // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
     if (!ok) {
       LOG(WARNING) << cq_name << " recv no regular event:argument name"
                    << base->GetReqName();
-      // FIXME(gongwb): delete the old one?
       TryToRegisterNewOne();
+      delete base;
       continue;
     }
 
