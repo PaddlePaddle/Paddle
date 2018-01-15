@@ -195,8 +195,8 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
     if (!ok) {
       LOG(WARNING) << cq_name << " recv no regular event:argument name"
                    << base->GetReqName();
-      // FIXME(gongwb): delete this one? register new one?
-      continue;
+      // FIXME(gongwb): delete the old one?
+      TryToRegisterNewOne() continue;
     }
 
     switch (base->Status()) {
