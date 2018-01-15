@@ -191,6 +191,7 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
     RequestBase* base = (RequestBase*)tag;
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
+    // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
     if (!ok) {
       LOG(WARNING) << cq_name << " recv no regular event:argument name"
                    << base->GetReqName();
