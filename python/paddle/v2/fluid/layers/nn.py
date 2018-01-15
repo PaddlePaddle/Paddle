@@ -9,12 +9,34 @@ from ..param_attr import ParamAttr
 from tensor import concat
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
-    'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
-    'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
-    'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
-    'sequence_first_step', 'sequence_last_step', 'dropout'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'accuracy',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'sequence_pool',
+    'pool2d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'sequence_expand',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
 ]
 
 
@@ -248,13 +270,13 @@ def gru_unit(input,
             h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
 
     The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
-    of the equation above, the :math:`z_t` is split into 3 parts - 
-    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to 
-    implement a full GRU unit operator for an input, a fully 
+    of the equation above, the :math:`z_t` is split into 3 parts -
+    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to
+    implement a full GRU unit operator for an input, a fully
     connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
 
-    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates 
-    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is 
+    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates
+    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is
     an intermediate candidate hidden output, which is denoted by :math:`m_t`.
     This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
     and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
@@ -276,7 +298,7 @@ def gru_unit(input,
         .. code-block:: python
 
              # assuming we have x_t_data and prev_hidden of size=10
-             x_t = fluid.layers.fc(input=x_t_data, size=30) 
+             x_t = fluid.layers.fc(input=x_t_data, size=30)
              hidden_val, r_h_val, gate_val = fluid.layers.gru_unit(input=x_t,
                                                     hidden = prev_hidden)
 
@@ -754,7 +776,7 @@ def conv2d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d_cudnn',
+        type='conv2d',
         inputs={
             'Input': input,
             'Filter': filter_param,
@@ -983,7 +1005,7 @@ def batch_norm(input,
         default_initializer=Constant(1.0))
 
     bias = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=True)
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
         dtype=input.dtype,
@@ -1504,3 +1526,61 @@ def reduce_min(input, dim=None, keep_dim=False):
             'reduce_all': True if dim == None else False
         })
     return out
+
+
+def split(input, num_or_sections, dim=-1):
+    """
+    Splits the tensor into multiple sub-tensors.
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        num_or_sections (int|list): If :attr:`num_or_sections` is an integer, 
+            then the integer indicates the number of equal sized sub-tensors 
+            that the tensor will be divided into. If :attr:`num_or_sections` 
+            is a list of integers, the length of list indicates the number of 
+            sub-tensors and the integers indicate the sizes of sub-tensors' 
+            :attr:`dim` dimension orderly.
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the 
+            dimension to split along is :math:`rank(input) + dim`.
+
+    Returns:
+        List: The list of segmented tensor variables.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with shape [3, 9, 5]:
+            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=1)
+            x0.shape  # [3, 3, 5]
+            x1.shape  # [3, 3, 5]
+            x2.shape  # [3, 3, 5]
+            x0, x1, x2 = fluid.layers.split(x, num_or_sections=[2, 3, 4], dim=1)
+            x0.shape  # [3, 2, 5]
+            x1.shape  # [3, 3, 5]
+            x2.shape  # [3, 4, 5]
+    """
+    helper = LayerHelper('split', **locals())
+    input_shape = input.shape
+    dim = (len(input_shape) + dim) if dim < 0 else dim
+    if isinstance(num_or_sections, int):
+        assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+        num = num_or_sections
+    else:
+        assert len(num_or_sections) < input_shape[
+            dim], 'len(num_or_sections) must not be more than input.shape[dim].'
+        num = len(num_or_sections)
+    outs = [
+        helper.create_tmp_variable(dtype=helper.input_dtype())
+        for i in range(num)
+    ]
+    helper.append_op(
+        type='split',
+        inputs={'X': input},
+        outputs={'Out': outs},
+        attrs={
+            'num': num_or_sections if isinstance(num_or_sections, int) else 0,
+            'sections': num_or_sections
+            if isinstance(num_or_sections, list) else [],
+            'axis': dim
+        })
+    return outs

@@ -8,7 +8,11 @@ import proto.framework_pb2 as framework_pb2
 from framework import OpProtoHolder, Variable, Program, Operator
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 
-__all__ = ['deprecated', 'register_layer', 'autodoc']
+__all__ = [
+    'deprecated',
+    'register_layer',
+    'autodoc',
+]
 
 
 def _convert_(name):
@@ -80,11 +84,10 @@ def _generate_doc_string_(op_proto):
 
 
 def register_layer(op_type):
-    """
-    Register an Python layer for an Operator
+    """Register the Python layer for an Operator.
 
     Args:
-       op_type: The name of the operator to be created
+       op_type: The name of the operator to be created.
 
     This function takes in the operator type (sigmoid, mean , average etc) and
     creates the operator functionality.
@@ -98,16 +101,16 @@ def register_layer(op_type):
 
     if len(not_intermediate_outputs) != 1:
         raise ValueError("Only one non intermediate output operator can be",
-                         "automatically generated")
+                         "automatically generated.")
 
     if not_intermediate_outputs[0].duplicable:
         raise ValueError(
-            "Only non duplicable op can be automatically generated")
+            "Only non duplicable op can be automatically generated.")
 
     for output in intermediate_outputs:
         if output.duplicable:
             raise ValueError("The op can be automatically generated only when ",
-                             "all intermediate ops are not duplicable")
+                             "all intermediate ops are not duplicable.")
 
     o_name = not_intermediate_outputs[0].name
     intermediate_output_names = [output.name for output in intermediate_outputs]

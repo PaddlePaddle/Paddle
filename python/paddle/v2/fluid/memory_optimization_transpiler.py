@@ -121,8 +121,10 @@ class ControlFlowGraph(object):
                                 # and dtype_to_size[cache_dtype]
                                 if x_dtype == cache_dtype:
                                     print(
-                                        "Hit Cache !!!! cache pool index is %d, var name is %s, cached var name is %s, var shape is %s "
-                                        %
+                                        ("Hit Cache !!!! cache pool index "
+                                         "is %d, var name is %s, "
+                                         "cached var name is %s, "
+                                         "var shape is %s ") %
                                         (index, x, cache_var, str(cache_shape)))
                                     self.pool.pop(index)
                                     _rename_arg_(

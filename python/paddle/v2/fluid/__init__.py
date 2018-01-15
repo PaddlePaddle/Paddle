@@ -18,14 +18,29 @@ from param_attr import ParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace
 from distribute_transpiler import DistributeTranspiler
+from distribute_transpiler_simple import SimpleDistributeTranspiler
 import clip
 from memory_optimization_transpiler import memory_optimize
 
 Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + [
-    'io', 'initializer', 'layers', 'nets', 'optimizer', 'backward',
-    'regularizer', 'LoDTensor', 'CPUPlace', 'CUDAPlace', 'Tensor', 'ParamAttr'
-    'DataFeeder', 'clip', 'DistributeTranspiler', 'memory_optimize'
+    'io',
+    'initializer',
+    'layers',
+    'nets',
+    'optimizer',
+    'backward',
+    'regularizer',
+    'LoDTensor',
+    'CPUPlace',
+    'CUDAPlace',
+    'Tensor',
+    'ParamAttr'
+    'DataFeeder',
+    'clip',
+    'SimpleDistributeTranspiler',
+    'DistributeTranspiler',
+    'memory_optimize',
 ]
 
 
@@ -60,7 +75,7 @@ def __bootstrap__():
         'use_pinned_memory', 'check_nan_inf', 'do_memory_benchmark'
     ]
     if core.is_compile_gpu():
-        read_env_flags.append('fraction_of_gpu_memory_to_use')
+        read_env_flags += ['fraction_of_gpu_memory_to_use', 'op_sync']
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
