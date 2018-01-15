@@ -106,9 +106,10 @@ def sequence_conv_pool(input,
 
 def glu(input, dim=-1):
     """
-    The gated linear unit composed by split and elementwise multiplication. 
-    Specifically, Split the input into two equal sized parts :math:`a` and 
-    :math:`b` along the given dimension and then compute as following:
+    The gated linear unit composed by split, sigmoid activation and elementwise 
+    multiplication. Specifically, Split the input into two equal sized parts 
+    :math:`a` and :math:`b` along the given dimension and then compute as 
+    following:
 
         .. math::
 
@@ -133,5 +134,6 @@ def glu(input, dim=-1):
     """
 
     a, b = layers.split(input, num_or_sections=2, dim=dim)
-    out = layers.elementwise_mul(x=a, y=b)
+    act_b = layers.sigmoid(x=b)
+    out = layers.elementwise_mul(x=a, y=act_b)
     return out
