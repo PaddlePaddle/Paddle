@@ -109,8 +109,9 @@ TEST(LoD, CheckLoD) {
 
   // check compatible
   ASSERT_TRUE(CheckLoD(relative_lod));
-  relative_lod.back().back() += 1;
+  relative_lod[1].back()++;
   ASSERT_FALSE(CheckLoD(relative_lod));
+  relative_lod[1].back()--;  // recover it
 
   // check empty
   LoD empty_lod;

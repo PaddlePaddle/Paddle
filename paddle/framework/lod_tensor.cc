@@ -157,11 +157,12 @@ bool CheckLoD(const LoD &in, int tensor_height) {
   if (tensor_height > 0 && (size_t)tensor_height != in.back().back())
     return false;
 
-  // check: the higher level's last offset should equals the lower level's size.
+  // check: the higher level's last offset should equals the lower level's
+  // size-1.
   // NOTE LoD store the levels from top to bottom, so the higher level goes
   // first.
   for (size_t level = 0; level < in.size() - 1; level++) {
-    if (in[level].back() != in[level + 1].size()) return false;
+    if (in[level].back() != in[level + 1].size() - 1) return false;
   }
   return true;
 }

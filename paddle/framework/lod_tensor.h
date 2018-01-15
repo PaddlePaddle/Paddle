@@ -81,7 +81,7 @@ bool operator==(const LoD& a, const LoD& b);
  *
  *  1. all the offsets in a level should be ascending(no same items allows).
  *  2. there should be more than 2 offsets existing in each level.
- *  3. the higher level's last offset should equals the lower level's size.
+ *  3. the higher level's last offset should equals the lower level's size-1.
  *  4. the first offset(the begin offset) of each level should be 0.
  *  5. the lowest level's last offset should equals `tensor_height` if
  * tensor_height>0.
