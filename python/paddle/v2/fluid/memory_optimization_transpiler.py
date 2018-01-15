@@ -112,10 +112,6 @@ class ControlFlowGraph(object):
         self.pool = []
         for i in range(self.op_size):
             if self.pool:
-                # print self._defs[i]
-                # for j in self._defs[i]:
-                #     print j
-                #     print self.block_desc.find_var_recursive(str(j)).type()
                 defs_can_optimize = filter(
                     lambda x: str(x) != "@EMPTY@" and self.block_desc.has_var(str(x)) and self.block_desc.var(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
                     self._defs[i])
@@ -152,17 +148,13 @@ class ControlFlowGraph(object):
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
             can_optimize = filter(
-                lambda x: str(x) != "@EMPTY@" and not self.block_desc.var(str(x)).persistable(),
+                lambda x: str(x) != "@EMPTY@" and self.block_desc.has_var(str(x)) and not self.block_desc.var(str(x)).persistable(),
                 in_diff)
             can_optimize = filter(
                 lambda x: self.block_desc.var(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
                 can_optimize)
             if can_optimize:
-                # print can_optimize
-                # print self.pool
                 for var_name in can_optimize:
-                    # print var_name
-                    # print self.block_desc.find_var_recursive(str(var_name)).type()
                     self.pool.append((var_name,
                                       self.block_desc.find_var_recursive(
                                           str(var_name)).shape()))
@@ -182,7 +174,6 @@ def memory_optimize(input_program):
     graph = ControlFlowGraph(input_program)
     block_num = input_program.get_desc().num_blocks()
     for i in range(block_num):
-        print i
         graph.memory_optimize(i)
         graph.clear_graph()
     result_program = graph.get_program()

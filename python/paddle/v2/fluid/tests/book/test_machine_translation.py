@@ -96,12 +96,12 @@ def main():
     #     batch_size=batch_size)
 
     # train_data = paddle.batch(paddle.dataset.wmt14.train(dict_size), batch_size=batch_size)
-
+    #
     # place = core.CPUPlace()
     # exe = Executor(place)
-
+    #
     # exe.run(framework.default_startup_program())
-
+    #
     # batch_id = 0
     # for pass_id in xrange(2):
     #     for data in train_data():

@@ -1,22 +1,18 @@
 Hit Cache !!!! cache pool index is 0, var name is sequence_pool_0.tmp_0@GRAD, cached var name is sequence_pool_0.tmp_0, var shape is [-1L, 32L] 
 Hit Cache !!!! cache pool index is 14, var name is fc_0.tmp_1@GRAD, cached var name is lstm_0.tmp_2, var shape is [-1L, 128L] 
-Hit Cache !!!! cache pool index is 20, var name is fc_0.tmp_0@GRAD, cached var name is fc_0.tmp_2, var shape is [-1L, 128L] 
+Hit Cache !!!! cache pool index is 17, var name is fc_0.tmp_0@GRAD, cached var name is fc_0.tmp_2, var shape is [-1L, 128L] 
 Hit Cache !!!! cache pool index is 11, var name is embedding_0.tmp_0@GRAD, cached var name is embedding_1.tmp_0, var shape is [-1L, 16L] 
+Hit Cache !!!! cache pool index is 0, var name is fc_1.tmp_0, cached var name is array_read_1.tmp_0, var shape is [-1L, 32L] 
+Hit Cache !!!! cache pool index is 1, var name is fc_1.tmp_2, cached var name is shrink_memory_0.tmp_0, var shape is [-1L, 32L] 
+Hit Cache !!!! cache pool index is 1, var name is fc_1.tmp_3, cached var name is fc_1.tmp_1, var shape is [-1L, 32L] 
+Hit Cache !!!! cache pool index is 1, var name is fc_2.tmp_2, cached var name is fc_2.tmp_0, var shape is [-1L, 30000L] 
+Hit Cache !!!! cache pool index is 0, var name is fc_2.tmp_0@GRAD, cached var name is fc_2.tmp_2@GRAD, var shape is [-1L, 30000L] 
+Hit Cache !!!! cache pool index is 1, var name is fc_1.tmp_3@GRAD, cached var name is fc_1.tmp_4@GRAD@RENAME@1, var shape is [-1L, 32L] 
+Hit Cache !!!! cache pool index is 2, var name is fc_1.tmp_2@GRAD, cached var name is fc_1.tmp_4@GRAD, var shape is [-1L, 32L] 
+Hit Cache !!!! cache pool index is 2, var name is array_read_1.tmp_0@GRAD, cached var name is fc_1.tmp_1@GRAD, var shape is [-1L, 32L] 
 blocks {
   idx: 0
   parent_idx: -1
-  vars {
-    name: "lstm_0.tmp_2@GRAD"
-    type: LOD_TENSOR
-  }
-  vars {
-    name: "lstm_0.tmp_1@GRAD"
-    type: LOD_TENSOR
-  }
-  vars {
-    name: "@EMPTY@"
-    type: LOD_TENSOR
-  }
   vars {
     name: "learning_rate_6"
     type: LOD_TENSOR
@@ -518,10 +514,6 @@ blocks {
       }
     }
     persistable: true
-  }
-  vars {
-    name: "lstm_0.tmp_3@GRAD"
-    type: LOD_TENSOR
   }
   vars {
     name: "fc_1.w_0"
@@ -2297,7 +2289,7 @@ blocks {
     }
     outputs {
       parameter: "Out"
-      arguments: "fc_1.tmp_0"
+      arguments: "array_read_1.tmp_0"
     }
     type: "mul"
     attrs {
@@ -2339,19 +2331,19 @@ blocks {
   ops {
     inputs {
       parameter: "X"
-      arguments: "fc_1.tmp_0"
+      arguments: "array_read_1.tmp_0"
       arguments: "fc_1.tmp_1"
     }
     outputs {
       parameter: "Out"
-      arguments: "fc_1.tmp_2"
+      arguments: "shrink_memory_0.tmp_0"
     }
     type: "sum"
   }
   ops {
     inputs {
       parameter: "X"
-      arguments: "fc_1.tmp_2"
+      arguments: "shrink_memory_0.tmp_0"
     }
     inputs {
       parameter: "Y"
@@ -2359,7 +2351,7 @@ blocks {
     }
     outputs {
       parameter: "Out"
-      arguments: "fc_1.tmp_3"
+      arguments: "fc_1.tmp_1"
     }
     type: "elementwise_add"
     attrs {
@@ -2371,7 +2363,7 @@ blocks {
   ops {
     inputs {
       parameter: "X"
-      arguments: "fc_1.tmp_3"
+      arguments: "fc_1.tmp_1"
     }
     outputs {
       parameter: "Out"
@@ -2431,7 +2423,7 @@ blocks {
     }
     outputs {
       parameter: "Out"
-      arguments: "fc_2.tmp_2"
+      arguments: "fc_2.tmp_0"
     }
     type: "softmax"
   }
@@ -2442,7 +2434,7 @@ blocks {
     }
     inputs {
       parameter: "X"
-      arguments: "fc_2.tmp_2"
+      arguments: "fc_2.tmp_0"
     }
     outputs {
       parameter: "Out"
@@ -2804,7 +2796,7 @@ blocks {
     }
     outputs {
       parameter: "X@GRAD"
-      arguments: "fc_2.tmp_0@GRAD"
+      arguments: "fc_2.tmp_2@GRAD"
     }
     outputs {
       parameter: "Y@GRAD"
@@ -2824,7 +2816,7 @@ blocks {
     }
     inputs {
       parameter: "Out@GRAD"
-      arguments: "fc_2.tmp_0@GRAD"
+      arguments: "fc_2.tmp_2@GRAD"
     }
     inputs {
       parameter: "X"
@@ -2881,7 +2873,7 @@ blocks {
     }
     outputs {
       parameter: "X@GRAD"
-      arguments: "fc_1.tmp_3@GRAD"
+      arguments: "fc_1.tmp_4@GRAD@RENAME@1"
     }
     type: "tanh_grad"
   }
@@ -2892,7 +2884,7 @@ blocks {
     }
     inputs {
       parameter: "Out@GRAD"
-      arguments: "fc_1.tmp_3@GRAD"
+      arguments: "fc_1.tmp_4@GRAD@RENAME@1"
     }
     inputs {
       parameter: "X"
@@ -2904,7 +2896,7 @@ blocks {
     }
     outputs {
       parameter: "X@GRAD"
-      arguments: "fc_1.tmp_2@GRAD"
+      arguments: "fc_1.tmp_4@GRAD"
     }
     outputs {
       parameter: "Y@GRAD"
@@ -2920,7 +2912,7 @@ blocks {
   ops {
     inputs {
       parameter: "X"
-      arguments: "fc_1.tmp_2@GRAD"
+      arguments: "fc_1.tmp_4@GRAD"
     }
     outputs {
       parameter: "Out"
@@ -2936,7 +2928,7 @@ blocks {
   ops {
     inputs {
       parameter: "X"
-      arguments: "fc_1.tmp_2@GRAD"
+      arguments: "fc_1.tmp_4@GRAD"
     }
     outputs {
       parameter: "Out"
@@ -3034,7 +3026,7 @@ blocks {
     }
     outputs {
       parameter: "X@GRAD"
-      arguments: "array_read_1.tmp_0@GRAD"
+      arguments: "fc_1.tmp_1@GRAD"
     }
     type: "shrink_rnn_memory_grad"
   }
@@ -3045,7 +3037,7 @@ blocks {
     }
     inputs {
       parameter: "X"
-      arguments: "array_read_1.tmp_0@GRAD"
+      arguments: "fc_1.tmp_1@GRAD"
     }
     outputs {
       parameter: "Out"
