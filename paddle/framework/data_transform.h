@@ -30,9 +30,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-Tensor* DataTransform(const OpKernelType& expected_kernel_type,
-                      const OpKernelType& kernel_type_for_var,
-                      const Tensor& input_tensor);
+void DataTransform(const OpKernelType& expected_kernel_type,
+                   const OpKernelType& kernel_type_for_var,
+                   const Tensor& input_tensor, Tensor* out);
 
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
                             Variable& out_var);
