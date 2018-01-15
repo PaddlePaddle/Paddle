@@ -14,7 +14,7 @@ def simple_img_conv_pool(input,
                          act,
                          param_attr=None,
                          pool_type='max',
-                         use_cudnn=False):
+                         use_cudnn=True):
     conv_out = layers.conv2d(
         input=input,
         num_filters=num_filters,
@@ -41,10 +41,10 @@ def img_conv_group(input,
                    param_attr=None,
                    conv_with_batchnorm=False,
                    conv_batchnorm_drop_rate=None,
-                   conv_use_cudnn=False,
+                   conv_use_cudnn=True,
                    pool_stride=1,
                    pool_type=None,
-                   pool_use_cudnn=False):
+                   pool_use_cudnn=True):
     """
     Image Convolution Group, Used for vgg net.
     """

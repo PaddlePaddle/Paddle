@@ -660,7 +660,7 @@ def conv2d(input,
            groups=None,
            param_attr=None,
            bias_attr=None,
-           use_cudnn=False,
+           use_cudnn=True,
            act=None):
     """
     **Convlution2D Layer**
@@ -938,7 +938,7 @@ def pool2d(input,
            pool_stride=None,
            pool_padding=None,
            global_pooling=False,
-           use_cudnn=False):
+           use_cudnn=True):
     """
     This function adds the operator for pooling in 2 dimensions, using the
     pooling configurations mentioned in input parameters.
@@ -1088,7 +1088,7 @@ def conv2d_transpose(input,
                      stride=None,
                      dilation=None,
                      param_attr=None,
-                     use_cudnn=False):
+                     use_cudnn=True):
     """
     The transpose of conv2d layer.
 
