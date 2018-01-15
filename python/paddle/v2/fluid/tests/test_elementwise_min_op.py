@@ -6,7 +6,7 @@ from op_test import OpTest
 class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_min"
-        # If x and y have the same value, the max() is not differentiable.
+        # If x and y have the same value, the min() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float32")
