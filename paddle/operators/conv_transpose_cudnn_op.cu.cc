@@ -28,10 +28,10 @@ using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
 
-static constexpr size_t kConvCudnnWorkspaceLimitBytes = 1024 * 1024 * 1024;
+static constexpr size_t kConvCUDNNWorkspaceLimitBytes = 1024 * 1024 * 1024;
 
 template <typename T>
-class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
+class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -77,7 +77,7 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv workspace ---------------------
     void* cudnn_workspace = nullptr;
     size_t workspace_size_in_bytes;  // final workspace to allocate.
-    size_t workspace_size_limit = kConvCudnnWorkspaceLimitBytes;
+    size_t workspace_size_limit = kConvCUDNNWorkspaceLimitBytes;
     if (user_workspace_size > 0) {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
@@ -116,7 +116,7 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
+class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -161,7 +161,7 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdFilterAlgo_t filter_algo;
     size_t bwd_filter_ws_size, fwd_ws_size;
     size_t workspace_size_in_bytes = 0;
-    size_t workspace_size_limit = kConvCudnnWorkspaceLimitBytes;
+    size_t workspace_size_limit = kConvCUDNNWorkspaceLimitBytes;
     if (user_workspace_size > 0) {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
@@ -236,16 +236,16 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(conv2d_transpose_cudnn,
-                        ops::CudnnConvTransposeOpKernel<float>,
-                        ops::CudnnConvTransposeOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(conv2d_transpose_cudnn_grad,
-                        ops::CudnnConvTransposeGradOpKernel<float>,
-                        ops::CudnnConvTransposeGradOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeOpKernel<float>,
+                   ops::CUDNNConvTransposeOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeGradOpKernel<float>,
+                   ops::CUDNNConvTransposeGradOpKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(conv3d_transpose_cudnn,
-                        ops::CudnnConvTransposeOpKernel<float>,
-                        ops::CudnnConvTransposeOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(conv3d_transpose_cudnn_grad,
-                        ops::CudnnConvTransposeGradOpKernel<float>,
-                        ops::CudnnConvTransposeGradOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeOpKernel<float>,
+                   ops::CUDNNConvTransposeOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeGradOpKernel<float>,
+                   ops::CUDNNConvTransposeGradOpKernel<double>);

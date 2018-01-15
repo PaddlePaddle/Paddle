@@ -36,7 +36,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
     auto operator()(Args... args) -> decltype(__name(args...)) {   \
       using cudnn_func = decltype(__name(args...)) (*)(Args...);   \
       std::call_once(cudnn_dso_flag,                               \
-                     paddle::platform::dynload::GetCudnnDsoHandle, \
+                     paddle::platform::dynload::GetCUDNNDsoHandle, \
                      &cudnn_dso_handle);                           \
       EnforceCUDNNLoaded(#__name);                                 \
       void* p_##__name = dlsym(cudnn_dso_handle, #__name);         \
