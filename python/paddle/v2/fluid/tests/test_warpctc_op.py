@@ -17,6 +17,8 @@ import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
 
+CUDA_BLOCK_SIZE = 512
+
 
 class CTCForward(object):
     def __init__(self, softmax, softmax_lod, labels, labels_lod, blank,
@@ -167,47 +169,63 @@ class CTCForward(object):
 
 
 class TestWarpCTCOp(OpTest):
+    def config(self):
+        self.batch_size = 4
+        self.num_classes = 8
+        self.logits_lod = [[0, 4, 5, 8, 11]]
+        self.labels_lod = [[0, 3, 4, 8, 12]]
+        self.blank = self.num_classes - 1
+        self.norm_by_times = False
+
     def setUp(self):
         self.op_type = "warpctc"
+        self.config()
 
-        batch_size = 4
-        num_classes = 8
-        logits_lod = [[0, 4, 5, 8, 11]]
-        logits = np.random.uniform(0.1, 1.0,
-                                   [11, num_classes]).astype("float32")
+        logits = np.random.uniform(
+            0.1, 1.0,
+            [self.logits_lod[0][-1], self.num_classes]).astype("float32")
         softmax = np.apply_along_axis(stable_softmax, 1, logits)
-        labels_lod = [[0, 3, 4, 8, 12]]
         # labels should not be blank
-        labels = np.random.randint(0, num_classes - 1, [12, 1], dtype="int32")
+        labels = np.random.randint(
+            0, self.num_classes - 1, [self.labels_lod[0][-1], 1], dtype="int32")
 
-        blank = num_classes - 1
-        norm_by_times = False
-
-        ctc = CTCForward(softmax, logits_lod, labels, labels_lod, blank,
-                         norm_by_times)
+        ctc = CTCForward(softmax, self.logits_lod, labels, self.labels_lod,
+                         self.blank, self.norm_by_times)
         loss = ctc.forward()
 
         max_sequence_length = 0
-        for i in range(batch_size):
-            max_sequence_length = max(max_sequence_length,
-                                      logits_lod[0][i + 1] - logits_lod[0][i])
-        gradient = np.zeros(
-            [max_sequence_length, batch_size, num_classes], dtype="float32")
+        for i in range(self.batch_size):
+            max_sequence_length = max(
+                max_sequence_length,
+                self.logits_lod[0][i + 1] - self.logits_lod[0][i])
+        self.gradient = np.zeros(
+            [max_sequence_length, self.batch_size, self.num_classes],
+            dtype="float32")
 
         self.inputs = {
-            "Logits": (logits, logits_lod),
-            "Label": (labels, labels_lod)
+            "Logits": (logits, self.logits_lod),
+            "Label": (labels, self.labels_lod)
         }
         self.outputs = {"Loss": loss}
-        self.attrs = {"blank": blank, "norm_by_times": norm_by_times}
+        self.attrs = {"blank": self.blank, "norm_by_times": self.norm_by_times}
 
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.outputs['WarpCTCGrad'] = self.gradient
+        self.check_grad(["Logits"], "Loss", max_relative_error=0.007)
 
-#    def test_check_grad(self):
-#        self.outputs["WarpCTCGrad"] = None
-#        self.check_grad(["Logits"], "Loss", max_relative_error=0.01)
+
+class TestWarpCTCOpCase1(TestWarpCTCOp):
+    def config(self):
+        self.batch_size = 4
+        self.num_classes = CUDA_BLOCK_SIZE + 2
+        self.logits_lod = [[0, 4, 5, 8, 11]]
+        self.labels_lod = [[0, 3, 4, 8, 12]]
+        self.blank = 0
+        self.norm_by_times = False
+
 
 if __name__ == "__main__":
     unittest.main()
