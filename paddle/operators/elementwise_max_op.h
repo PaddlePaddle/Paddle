@@ -65,41 +65,86 @@ class ElementwiseMaxKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-struct ElementwiseSubGradFunctor {
+struct ElementwiseMaxGradFunctor {
   template <typename Device, typename X, typename Y, typename Z, typename dX,
             typename dY, typename dZ>
   void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
     auto x_e = framework::EigenVector<T>::Flatten(*x);
     auto y_e = framework::EigenVector<T>::Flatten(*y);
+    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
 
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = (x_e > y_e) * dz_e;
+      dx_e.device(d) = (x_e > y_e).template cast<T>() * dz_e;
     }
     if (dy) {
       auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = (y_e >= x_e) * dz_e;
+      dy_e.device(d) = (y_e >= x_e).template cast<T>() * dz_e;
     }
   }
 };
 
 template <typename T>
-struct ElementwiseSubOneGradFunctor {
+struct ElementwiseMaxBroadCastGradFunctor {
   template <typename Device, typename X, typename Y, typename Z, typename dX,
-            typename dY, typename dZ>
-  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
+            typename dY, typename dZ, typename Pre, typename N>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n) {
     auto x_e = framework::EigenVector<T>::Flatten(*x);
     auto y_e = framework::EigenVector<T>::Flatten(*y);
+    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
+
+    auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))
+                         .broadcast(Eigen::DSizes<int, 2>(pre, 1))
+                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
+
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e;
+      dx_e.device(d) = (x_e > y_e_bcast).template cast<T>() * dz_e;
     }
+
     if (dy) {
       auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = (-1.0) * dz_e.sum();
+      dy_e.device(d) = ((y_e_bcast >= x_e).template cast<T>() * dz_e)
+                           .reshape(Eigen::DSizes<int, 2>(pre, n))
+                           .sum(Eigen::array<int, 1>{{0}});
     }
+  }
+};
+
+template <typename T>
+struct ElementwiseMaxBroadCast2GradFunctor {
+  template <typename Device, typename X, typename Y, typename Z, typename dX,
+            typename dY, typename dZ, typename Pre, typename N, typename Post>
+  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n,
+                  Post post) {
+    auto x_e = framework::EigenVector<T>::Flatten(*x);
+    auto y_e = framework::EigenVector<T>::Flatten(*y);
+    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
+
+    auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))
+                         .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))
+                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
+    if (dx) {
+      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
+      dx_e.device(d) = (x_e > y_e_bcast).template cast<T>() * dz_e;
+    }
+
+    if (dy) {
+      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
+      dy_e.device(d) = ((y_e_bcast >= x_e).template cast<T>() * dz_e)
+                           .reshape(Eigen::DSizes<int, 3>(pre, n, post))
+                           .sum(Eigen::array<int, 2>{{0, 2}});
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ElementwiseMaxGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    ElementwiseGradCompute<DeviceContext, T, ElementwiseMaxGradFunctor<T>,
+                           ElementwiseMaxBroadCastGradFunctor<T>,
+                           ElementwiseMaxBroadCast2GradFunctor<T>>(ctx);
   }
 };
 
