@@ -15,4 +15,4 @@ Fluid
     fluid/param_attr.rst
     fluid/profiler.rst
     fluid/regularizer.rst
-
+    fluid/io.rst

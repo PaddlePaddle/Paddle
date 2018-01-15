@@ -3,8 +3,10 @@ import layers
 from . import core
 
 __all__ = [
-    'GradientClipByValue', 'ErrorClipByValue', 'append_gradient_clip_ops',
-    'error_clip_callback'
+    'GradientClipByValue',
+    'ErrorClipByValue',
+    'append_gradient_clip_ops',
+    'error_clip_callback',
 ]
 
 

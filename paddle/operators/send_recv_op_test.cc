@@ -140,7 +140,7 @@ void StartServerNet(bool is_sparse) {
 
 TEST(SendRecvOp, CPUDense) {
   std::thread server_thread(StartServerNet, false);
-  sleep(3);  // wait server to start
+  sleep(10);  // wait server to start
   // local net
   f::Scope scope;
   p::CPUPlace place;

@@ -4,13 +4,29 @@ import cPickle as pickle
 from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable
 
 __all__ = [
-    'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', "save_inference_model", "load_inference_model",
-    "get_inference_program"
+    'save_vars',
+    'save_params',
+    'save_persistables',
+    'load_vars',
+    'load_params',
+    'load_persistables',
+    'save_inference_model',
+    'load_inference_model',
+    'get_inference_program',
 ]
 
 
 def is_parameter(var):
+    """Check whether the variable is a Parameter.
+
+    This function checks whether the input variable is a Parameter.
+
+    Args:
+        var : The input variable.
+
+    Returns:
+        boolean result whether the variable is a Parameter.
+    """
     return isinstance(var, Parameter)
 
 
