@@ -1,5 +1,7 @@
 import unittest
 import numpy as np
+
+import paddle.v2.fluid.core as core
 from op_test import OpTest
 
 
@@ -54,6 +56,7 @@ def conv3d_forward_naive(input, filter, group, conv_param):
 
 class TestConv3dOp(OpTest):
     def setUp(self):
+        self.use_cudnn = False
         self.init_group()
         self.init_op_type()
         self.init_dilation()
@@ -62,7 +65,9 @@ class TestConv3dOp(OpTest):
         conv3d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilations': self.dilations
+            'dilations': self.dilations,
+            'use_cudnn': self.use_cudnn,
+            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
         input = np.random.random(self.input_size).astype("float32")
         filter = np.random.random(self.filter_size).astype("float32")
@@ -79,25 +84,53 @@ class TestConv3dOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output()
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            set(['Input', 'Filter']), 'Output', max_relative_error=0.03)
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                set(['Input', 'Filter']),
+                'Output',
+                max_relative_error=0.03)
+        else:
+            self.check_grad(
+                set(['Input', 'Filter']), 'Output', max_relative_error=0.03)
 
     def test_check_grad_no_filter(self):
-        self.check_grad(
-            ['Input'],
-            'Output',
-            max_relative_error=0.03,
-            no_grad_set=set(['Filter']))
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']))
+        else:
+            self.check_grad(
+                ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
-        self.check_grad(
-            ['Filter'],
-            'Output',
-            max_relative_error=0.03,
-            no_grad_set=set(['Input']))
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']))
+        else:
+            self.check_grad(
+                ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0, 0]
@@ -169,31 +202,35 @@ class TestWithDilation(TestConv3dOp):
         self.groups = 3
 
 
-class TestCudnn(TestConv3dOp):
+class TestCUDNN(TestConv3dOp):
     def init_op_type(self):
-        self.op_type = "conv3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv3d"
 
 
-class TestWithGroup1Cudnn(TestWithGroup1):
+class TestWithGroup1CUDNN(TestWithGroup1):
     def init_op_type(self):
-        self.op_type = "conv3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv3d"
 
 
-class TestWithGroup2Cudnn(TestWithGroup2):
+class TestWithGroup2CUDNN(TestWithGroup2):
     def init_op_type(self):
-        self.op_type = "conv3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv3d"
 
 
-class TestWith1x1Cudnn(TestWith1x1):
+class TestWith1x1CUDNN(TestWith1x1):
     def init_op_type(self):
-        self.op_type = "conv3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv3d"
 
 
 # FIXME(typhoonzero): find a way to determine if
 # using cudnn > 6 in python
-# class TestWithDilationCudnn(TestWithDilation):
+# class TestWithDilationCUDNN(TestWithDilation):
 #     def init_op_type(self):
-#         self.op_type = "conv3d_cudnn"
+#         self.op_type = "conv3d"
 
 if __name__ == '__main__':
     unittest.main()

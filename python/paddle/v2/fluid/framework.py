@@ -7,9 +7,15 @@ import proto.framework_pb2 as framework_pb2
 from . import core
 
 __all__ = [
-    'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program', 'program_guard', 'switch_startup_program',
-    'switch_main_program'
+    'Block',
+    'Variable',
+    'Program',
+    'Operator',
+    'default_startup_program',
+    'default_main_program',
+    'program_guard',
+    'switch_startup_program',
+    'switch_main_program',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()

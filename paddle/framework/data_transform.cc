@@ -23,14 +23,29 @@ namespace framework {
 void DataTransform(const OpKernelType& expected_kernel_type,
                    const OpKernelType& kernel_type_for_var,
                    const Tensor& input_tensor, Tensor* out) {
+  std::shared_ptr<const Tensor> input_ptr(&input_tensor);
+  std::shared_ptr<Tensor> output_ptr(new Tensor());
+
+  // do layout transform
+  std::shared_ptr<Tensor> layout_transform_out(new Tensor());
   if (expected_kernel_type.data_layout_ != kernel_type_for_var.data_layout_) {
-    TransDataLayout(kernel_type_for_var, expected_kernel_type, input_tensor,
-                    out);
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, *input_ptr,
+                    layout_transform_out.get());
+    input_ptr = layout_transform_out;
+    output_ptr = layout_transform_out;
   }
+
+  // do device transform
+  std::shared_ptr<Tensor> device_transform_out(new Tensor());
   if (!platform::is_same_place(kernel_type_for_var.place_,
                                expected_kernel_type.place_)) {
-    out = DeviceTransform(input_tensor, expected_kernel_type.place_);
+    DeviceTransform(*input_ptr, expected_kernel_type.place_,
+                    device_transform_out.get());
+    input_ptr = layout_transform_out;
+    output_ptr = layout_transform_out;
   }
+
+  out->ShareDataWith(*output_ptr);
 }
 
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,

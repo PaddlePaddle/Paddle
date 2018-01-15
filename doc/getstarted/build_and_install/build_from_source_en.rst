@@ -36,6 +36,16 @@ machine or copy it to the target machine.
 
    pip install build/python/dist/*.whl
 
+If the machine has installed PaddlePaddle before, there are two methods:
+
+.. code-block:: bash
+
+   1. uninstall and reinstall
+   pip uninstall paddlepaddle
+   pip install build/python/dist/*.whl
+
+   2. upgrade directly
+   pip install build/python/dist/*.whl -U
 
 .. _run_test:
 

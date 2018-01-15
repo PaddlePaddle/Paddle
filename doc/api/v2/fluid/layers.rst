@@ -358,3 +358,132 @@ reduce_min
 ..  autofunction:: paddle.v2.fluid.layers.reduce_min
     :noindex:
 
+logsigmoid
+----------
+..  autofunction:: paddle.v2.fluid.layers.logsigmoid
+    :noindex:
+
+exp
+---
+..  autofunction:: paddle.v2.fluid.layers.exp
+    :noindex:
+
+relu
+----
+..  autofunction:: paddle.v2.fluid.layers.relu
+    :noindex:
+
+tanh
+----
+..  autofunction:: paddle.v2.fluid.layers.tanh
+    :noindex:
+
+tanh_shrink
+-----------
+..  autofunction:: paddle.v2.fluid.layers.tanh_shrink
+    :noindex:
+
+softshrink
+----------
+..  autofunction:: paddle.v2.fluid.layers.softshrink
+    :noindex:
+
+sqrt
+----
+..  autofunction:: paddle.v2.fluid.layers.sqrt
+    :noindex:
+
+abs
+----
+..  autofunction:: paddle.v2.fluid.layers.abs
+    :noindex:
+
+ceil
+----
+..  autofunction:: paddle.v2.fluid.layers.ceil
+    :noindex:
+
+floor
+-----
+..  autofunction:: paddle.v2.fluid.layers.floor
+    :noindex:
+
+round
+-----
+..  autofunction:: paddle.v2.fluid.layers.round
+    :noindex:
+
+reciprocal
+----------
+..  autofunction:: paddle.v2.fluid.layers.reciprocal
+    :noindex:
+
+log
+---
+..  autofunction:: paddle.v2.fluid.layers.log
+    :noindex:
+
+square
+------
+..  autofunction:: paddle.v2.fluid.layers.square
+    :noindex:
+
+softplus
+--------
+..  autofunction:: paddle.v2.fluid.layers.softplus
+    :noindex:
+
+softsign
+---------
+..  autofunction:: paddle.v2.fluid.layers.softsign
+    :noindex:
+
+brelu
+-----
+..  autofunction:: paddle.v2.fluid.layers.brelu
+    :noindex:
+
+leaky_relu
+----------
+..  autofunction:: paddle.v2.fluid.layers.leaky_relu
+    :noindex:
+
+soft_relu
+---------
+..  autofunction:: paddle.v2.fluid.layers.soft_relu
+    :noindex:
+
+elu
+----
+..  autofunction:: paddle.v2.fluid.layers.elu
+    :noindex:
+
+relu6
+-----
+..  autofunction:: paddle.v2.fluid.layers.relu6
+    :noindex:
+
+pow
+----
+..  autofunction:: paddle.v2.fluid.layers.pow
+    :noindex:
+
+hard_shrink
+-----------
+..  autofunction:: paddle.v2.fluid.layers.hard_shrink
+    :noindex:
+
+thresholded_relu
+----------------
+..  autofunction:: paddle.v2.fluid.layers.thresholded_relu
+    :noindex:
+
+hard_sigmoid
+-------------
+..  autofunction:: paddle.v2.fluid.layers.hard_sigmoid
+    :noindex:
+
+swish
+------
+..  autofunction:: paddle.v2.fluid.layers.swish
+    :noindex:
