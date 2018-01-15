@@ -38,8 +38,6 @@ class SendOp : public framework::OperatorBase {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
 
-    // FIXME(gongwb): DeviceContext?
-    // auto ctx = platform::CPUDeviceContext();
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
     for (size_t i = 0; i < ins.size(); i++) {

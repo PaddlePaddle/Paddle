@@ -90,6 +90,7 @@ class RecvOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
+    // FIXME(Yancey1989): initialize rpc server with laze mode.
     rpc_service_->SetScope(&recv_scope);
     rpc_service_->SetDevCtx(&dev_ctx);
     auto param_list = Attr<std::vector<std::string>>("ParamList");
