@@ -31,9 +31,11 @@
     -   id: go-fmt
         types:
         - go
--   repo: https://github.com/dzhwinter/pre-commit-hooks
-    sha: 0c7cd23b9a1fbf5b0c789b4d7ae887539d89d73c
+-   repo: local
     hooks:
     -   id: copyright_checker
+        name: copyright_checker
+        entry: python ./.copyright.hook
+        language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py)$
         exclude: (?!.*third_party)^.*$ | (?!.*book)^.*$
