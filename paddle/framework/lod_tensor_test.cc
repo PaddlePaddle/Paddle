@@ -54,78 +54,6 @@ class LoDTensorTester : public ::testing::Test {
   LoDTensor lod_tensor_;
 };
 
-TEST_F(LoDTensorTester, NumLevels) { ASSERT_EQ(lod_tensor_.NumLevels(), 3UL); }
-
-TEST_F(LoDTensorTester, NumElements) {
-  ASSERT_EQ(lod_tensor_.NumElements(0), 2UL);
-  ASSERT_EQ(lod_tensor_.NumElements(1), 3UL);
-  ASSERT_EQ(lod_tensor_.NumElements(2), 8UL);
-}
-
-TEST_F(LoDTensorTester, NumElements2) {
-  ASSERT_EQ(lod_tensor_.NumElements(0, 0), 2UL);
-  ASSERT_EQ(lod_tensor_.NumElements(0, 1), 1UL);
-  ASSERT_EQ(lod_tensor_.NumElements(1, 1), 3UL);
-}
-
-TEST_F(LoDTensorTester, ShrinkLevels) {
-  // slice 1 level
-  for (size_t level = 0; level < 3UL; ++level) {
-    LoDTensor new_lod_tensor = lod_tensor_;
-    new_lod_tensor.ShrinkLevels(level, level + 1);
-    ASSERT_EQ(new_lod_tensor.NumLevels(), 1UL);
-    ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
-  }
-  // shrink 2 level
-  for (size_t level = 0; level < 2UL; ++level) {
-    LoDTensor new_lod_tensor = lod_tensor_;
-    new_lod_tensor.ShrinkLevels(level, level + 2);
-    // the lowest level's last element should be the tensor's batch_size.
-    ASSERT_EQ(new_lod_tensor.lod().back().back(),
-              lod_tensor_.lod().back().back());
-    ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
-    ASSERT_EQ(new_lod_tensor.data<float>(), lod_tensor_.data<float>());
-  }
-}
-
-TEST_F(LoDTensorTester, ShrinkInLevel) {
-  size_t level = 0;
-  LoDTensor new_lod_tensor = lod_tensor_;
-  new_lod_tensor.ShrinkInLevel(level, 0, 1);
-  ASSERT_EQ(new_lod_tensor.NumLevels(), 3UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(0), 1UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(1), 2UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(2), 5UL);
-  ASSERT_EQ(new_lod_tensor.dims()[0], 12);
-  for (int i = 0; i < 12 * 128; i++) {
-    ASSERT_EQ(new_lod_tensor.data<float>()[i], i);
-  }
-
-  level = 1;
-  new_lod_tensor = lod_tensor_;
-  new_lod_tensor.ShrinkInLevel(level, 1, 2);
-  ASSERT_EQ(new_lod_tensor.NumLevels(), 2UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(0), 1UL);
-  ASSERT_EQ(new_lod_tensor.NumElements(1), 3UL);
-  ASSERT_EQ(new_lod_tensor.dims()[0], 7);
-  for (int i = 5 * 128; i < 12 * 128; i++) {
-    ASSERT_EQ(new_lod_tensor.data<float>()[i - 5 * 128], i);
-  }
-
-  LoDTensor t1;
-  t1.set_lod(lod_tensor_.lod());
-  t1.ShareDataWith(lod_tensor_);
-
-  LoDTensor t2;
-  t2.set_lod(lod_tensor_.lod());
-  t2.ShareDataWith(lod_tensor_);
-
-  t1.ShrinkInLevel(0, 1, 2);
-  t2.ShrinkInLevel(0, 0, 1);
-  EXPECT_NE(t1.data<float>(), t2.data<float>());
-  EXPECT_NE(t1.data<float>(), lod_tensor_.data<float>());
-}
-
 TEST(LodExpand, test) {
   LoD lod{{0, 2}};
   LoDTensor tensor;
@@ -185,6 +113,22 @@ TEST(LoD, AppendLoD) {
   expected.push_back(
       std::vector<size_t>({0, 2, 5, 7, 10, 12, 15, 17, 20, 24, 26}));
   EXPECT_EQ(origin, expected);
+}
+
+TEST(LoD, ToAbsOffset) {
+  LoD relative_lod;
+  relative_lod.push_back(std::vector<size_t>({0, 2}));
+  relative_lod.push_back(std::vector<size_t>({0, 1, 3}));
+  relative_lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
+
+  LoD abs_lod = paddle::framework::ToAbsOffset(relative_lod);
+
+  LoD expected;
+  expected.push_back(std::vector<size_t>({0, 5}));
+  expected.push_back(std::vector<size_t>({0, 2, 5}));
+  expected.push_back(std::vector<size_t>({0, 2, 4, 5}));
+
+  EXPECT_EQ(abs_lod, expected);
 }
 
 }  // namespace framework

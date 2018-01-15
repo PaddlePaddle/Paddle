@@ -3,7 +3,7 @@ import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.framework import default_startup_program, default_main_program
 from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 import numpy
 
 
@@ -26,7 +26,7 @@ class ConditionalBlock(unittest.TestCase):
         outs = exe.run(feed={'X': x}, fetch_list=[out])[0]
         print outs
         loss = layers.mean(x=out)
-        append_backward_ops(loss=loss)
+        append_backward(loss=loss)
         outs = exe.run(
             feed={'X': x},
             fetch_list=[

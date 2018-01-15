@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/beam_search_op.h"
 
@@ -39,7 +39,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
 
   std::map<size_t /*offset*/, std::vector<Item>> hash;
   framework::LoD new_lod;
-  auto *ids_data = selected_ids->mutable_data<int>(platform::CPUPlace());
+  auto *ids_data = selected_ids->mutable_data<int64_t>(platform::CPUPlace());
   auto *scores_data =
       selected_scores->mutable_data<float>(platform::CPUPlace());
 
@@ -66,7 +66,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
 
 void BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
                                       std::vector<std::vector<Item>> *items) {
-  auto *pre_ids_data = pre_ids.data<int>();
+  auto *pre_ids_data = pre_ids.data<int64_t>();
 
   for (size_t offset = 0; offset < items->size(); offset++) {
     auto prefix_id = pre_ids_data[offset];
@@ -127,7 +127,7 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   auto abs_lod = framework::ToAbsOffset(ids.lod());
   PADDLE_ENFORCE_GE(source_abs_two_level_lod.size(), 2UL);
 
-  auto *ids_data = ids.data<int>();
+  auto *ids_data = ids.data<int64_t>();
   auto *scores_data = scores.data<float>();
 
   size_t instance_dim = 1;
@@ -153,8 +153,7 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
 class BeamSearchProtoAndCheckerMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchProtoAndCheckerMaker(framework::OpProto *proto,
-                                 framework::OpAttrChecker *op_checker)
+  BeamSearchProtoAndCheckerMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // inputs and outputs stored in proto
     AddInput("pre_ids", "ids in previous step");

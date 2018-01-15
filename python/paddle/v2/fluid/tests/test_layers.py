@@ -29,7 +29,10 @@ class TestBook(unittest.TestCase):
             label = layers.data(name='label', shape=[1], dtype='int32')
             hidden1 = layers.fc(input=images, size=128, act='relu')
             hidden2 = layers.fc(input=hidden1, size=64, act='relu')
-            predict = layers.fc(input=hidden2, size=10, act='softmax')
+            predict = layers.fc(input=[hidden2, hidden1],
+                                size=10,
+                                act='softmax',
+                                param_attr=["sftmax.w1", "sftmax.w2"])
             cost = layers.cross_entropy(input=predict, label=label)
             avg_cost = layers.mean(x=cost)
             self.assertIsNotNone(avg_cost)
@@ -156,6 +159,48 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
                     x=dat, label=lbl))
+        print(str(program))
+
+    def test_sequence_expand(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10], dtype='float32')
+            y = layers.data(
+                name='y', shape=[10, 20], dtype='float32', lod_level=1)
+            self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
+        print(str(program))
+
+    def test_lstm_unit(self):
+        program = Program()
+        with program_guard(program):
+            x_t_data = layers.data(
+                name='x_t_data', shape=[10, 10], dtype='float32')
+            x_t = layers.fc(input=x_t_data, size=10)
+            prev_hidden_data = layers.data(
+                name='prev_hidden_data', shape=[10, 30], dtype='float32')
+            prev_hidden = layers.fc(input=prev_hidden_data, size=30)
+            prev_cell_data = layers.data(
+                name='prev_cell', shape=[10, 30], dtype='float32')
+            prev_cell = layers.fc(input=prev_cell_data, size=30)
+            self.assertIsNotNone(
+                layers.lstm_unit(
+                    x_t=x_t, hidden_t_prev=prev_hidden, cell_t_prev=prev_cell))
+        print(str(program))
+
+    def test_sequence_softmax(self):
+        program = Program()
+        with program_guard(program):
+            seq_data = layers.data(
+                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
+            seq = layers.fc(input=seq_data, size=20)
+            self.assertIsNotNone(layers.sequence_softmax(x=seq))
+        print(str(program))
+
+    def test_get_places(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.get_places(device_count=4)
+            self.assertIsNotNone(x)
         print(str(program))
 
 

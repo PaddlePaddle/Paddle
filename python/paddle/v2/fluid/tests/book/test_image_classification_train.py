@@ -1,9 +1,9 @@
 from __future__ import print_function
 
-import numpy as np
+import sys
+
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
-import sys
 
 
 def resnet_cifar10(input, depth=32):

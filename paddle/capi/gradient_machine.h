@@ -113,6 +113,14 @@ paddle_gradient_machine_get_layer_output(paddle_gradient_machine machine,
                                          const char* layerName,
                                          paddle_arguments args);
 
+/**
+ * @brief Release the middle layer's output memory of the gradient machine.
+ * @param [in] gradient machine that have run a inference
+ * @return paddle_error
+ */
+PD_API paddle_error
+paddle_gradient_machine_release_layer_output(paddle_gradient_machine machine);
+
 #ifdef __cplusplus
 }
 #endif

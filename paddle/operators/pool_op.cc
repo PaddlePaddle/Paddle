@@ -58,6 +58,24 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
         OutputSizePool(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+  ctx->ShareLoD("X", "Out");
+}
+
+framework::OpKernelType PoolOp::GetExpectedKernelType(
+    const framework::ExecutionContext &ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+      layout_, library_);
 }
 
 void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
@@ -67,8 +85,24 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
   ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
 }
 
-Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
+    const framework::ExecutionContext &ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+      layout_, library_);
+}
+
+Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput(
       "X",
@@ -101,15 +135,27 @@ Pool2dOpMaker::Pool2dOpMaker(framework::OpProto *proto,
   AddAttr<std::vector<int>>("strides",
                             "(vector<int>, default {1, 1}), strides(height, "
                             "width) of pooling operator.")
-      .SetDefault({1, 1});  // TODO(Chengduo): Add checker. (Currently,
+      .SetDefault({1, 1});
+  // TODO(Chengduo): Add checker. (Currently,
   // TypedAttrChecker don't support vector type.)
   AddAttr<std::vector<int>>(
       "paddings",
       "(vector<int>, default {0,0}), paddings(height, width) of pooling "
       "operator."
       "If global_pooling = true, paddings and ksize will be ignored.")
-      .SetDefault({0, 0});  // TODO(Chengduo): Add checker. (Currently,
-  // TypedAttrChecker don't support vector type.)
+      .SetDefault({0, 0});
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
 
   AddComment(R"DOC(
 Pool2d Operator.
@@ -136,8 +182,7 @@ Example:
 )DOC");
 }
 
-Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
-                             framework::OpAttrChecker *op_checker)
+Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
   AddInput("X",
            "(Tensor) The input tensor of pooling operator. "
@@ -183,6 +228,19 @@ Pool3dOpMaker::Pool3dOpMaker(framework::OpProto *proto,
       .SetDefault({0, 0, 0});  // TODO(Chengduo): Add checker. (Currently,
                                // TypedAttrChecker don't support vector type.)
 
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
+
   AddComment(R"DOC(
 Pool3d Operator.
 
@@ -216,19 +274,19 @@ namespace ops = paddle::operators;
 REGISTER_OP(pool2d, ops::PoolOp, ops::Pool2dOpMaker, pool2d_grad,
             ops::PoolOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pool2d,
-                       ops::PoolKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(pool2d_grad,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, double>)
+REGISTER_OP_CPU_KERNEL(
+    pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>)
 
 REGISTER_OP(pool3d, ops::PoolOp, ops::Pool3dOpMaker, pool3d_grad,
             ops::PoolOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pool3d,
-                       ops::PoolKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(pool3d_grad,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, float>,
-                       ops::PoolGradKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool3d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool3d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);

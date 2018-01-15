@@ -56,8 +56,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
 class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SquaredL2DistanceOpMaker(framework::OpProto* proto,
-                           framework::OpAttrChecker* op_checker)
+  SquaredL2DistanceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input of SquaredL2DistanceOp.");
     AddInput("Y", "(Tensor) Target of SquaredL2DistanceOp.");
@@ -115,7 +114,7 @@ REGISTER_OP(squared_l2_distance, ops::SquaredL2DistanceOp,
             ops::SquaredL2DistanceGradOp);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_distance,
-    ops::SquaredL2DistanceKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    squared_l2_distance_grad,
-    ops::SquaredL2DistanceGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(squared_l2_distance_grad,
+                       ops::SquaredL2DistanceGradKernel<
+                           paddle::platform::CPUDeviceContext, float>);

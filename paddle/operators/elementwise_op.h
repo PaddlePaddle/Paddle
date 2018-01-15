@@ -43,8 +43,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
 class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ElementwiseOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  ElementwiseOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) The first input tensor of elementwise op");
     AddInput("Y", "(Tensor) The second input tensor of elementwise op");
@@ -59,7 +58,8 @@ Limited Elementwise {name} Operator.
 
 The equation is:
 
-{equation}
+.. math::
+  {equation}
 
 X is a tensor of any dimension and the dimensions of tensor Y must be smaller than
 or equal to the dimensions of X. 
@@ -72,15 +72,16 @@ For case 2:
 Y will be broadcasted to match the shape of X and axis should be 
 the starting dimension index for broadcasting Y onto X.
 
-example:
-  shape(X) = (2, 3, 4, 5), shape(Y) = (,)
-  shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
-  shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
-  shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
-  shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+For example
+  .. code-block:: python
 
-Both the input X and Y can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD information with input X.
+    shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+    shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+    shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5)
+    shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+    shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+
+Either of the inputs X and Y or none can carry the LoD (Level of Details) information. However, the output only shares the LoD information with input X.
 
 )DOC";
     AddComment(comment_);

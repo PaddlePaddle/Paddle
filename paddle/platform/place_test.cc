@@ -4,7 +4,7 @@
 
 TEST(Place, Equality) {
   paddle::platform::CPUPlace cpu;
-  paddle::platform::GPUPlace g0(0), g1(1), gg0(0);
+  paddle::platform::CUDAPlace g0(0), g1(1), gg0(0);
 
   EXPECT_EQ(cpu, cpu);
   EXPECT_EQ(g0, g0);
@@ -22,6 +22,7 @@ TEST(Place, Default) {
   EXPECT_TRUE(paddle::platform::is_gpu_place(paddle::platform::default_gpu()));
   EXPECT_TRUE(paddle::platform::is_cpu_place(paddle::platform::default_cpu()));
 
+  EXPECT_FALSE(paddle::platform::is_cpu_place(paddle::platform::get_place()));
   paddle::platform::set_place(paddle::platform::CPUPlace());
   EXPECT_TRUE(paddle::platform::is_cpu_place(paddle::platform::get_place()));
 }
@@ -29,8 +30,8 @@ TEST(Place, Default) {
 TEST(Place, Print) {
   {
     std::stringstream ss;
-    ss << paddle::platform::GPUPlace(1);
-    EXPECT_EQ("GPUPlace(1)", ss.str());
+    ss << paddle::platform::CUDAPlace(1);
+    EXPECT_EQ("CUDAPlace(1)", ss.str());
   }
   {
     std::stringstream ss;

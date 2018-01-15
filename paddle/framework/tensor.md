@@ -71,7 +71,7 @@ private:
 ```
 
 ```c++
-typedef boost::variant<GpuPlace, CpuPlace> Place;
+typedef boost::variant<CUDAPlace, CpuPlace> Place;
 typedef boost::variant<Dim<1>, Dim<2>, Dim<3>, Dim<4>, Dim<5>,
                        Dim<6>, Dim<7>, Dim<8>, Dim<9>> DDimVar;
 typedef boost::variant<

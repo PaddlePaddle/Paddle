@@ -32,6 +32,13 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
                    "Output(Recall) of ChunkEvalOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("F1-Score"),
                    "Output(F1-Score) of ChunkEvalOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("NumInferChunks"),
+                   "Output(NumInferChunks) of ChunkEvalOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("NumLabelChunks"),
+                   "Output(NumLabelChunks) of ChunkEvalOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("NumCorrectChunks"),
+        "Output(NumCorrectChunks) of ChunkEvalOp should not be null.");
 
     auto inference_dim = ctx->GetInputDim("Inference");
     auto label_dim = ctx->GetInputDim("Label");
@@ -42,20 +49,22 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Precision", {1});
     ctx->SetOutputDim("Recall", {1});
     ctx->SetOutputDim("F1-Score", {1});
+    ctx->SetOutputDim("NumInferChunks", {1});
+    ctx->SetOutputDim("NumLabelChunks", {1});
+    ctx->SetOutputDim("NumCorrectChunks", {1});
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(framework::DataType::FP32,
-                                   ctx.device_context());
+    return framework::OpKernelType(framework::proto::DataType::FP32,
+                                   platform::CPUPlace());
   }
 };
 
 class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ChunkEvalOpMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  ChunkEvalOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Inference",
              "(Tensor, default: Tensor<int64_t>). "
@@ -70,6 +79,16 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
               "sensitivity) of chunks on the given mini-batch.");
     AddOutput("F1-Score",
               "(float). The evaluated F1-Score on the given mini-batch.");
+    AddOutput("NumInferChunks",
+              "(int64_t). The number of chunks in Inference on the given "
+              "mini-batch.");
+    AddOutput(
+        "NumLabelChunks",
+        "(int64_t). The number of chunks in Label on the given mini-batch.");
+    AddOutput(
+        "NumCorrectChunks",
+        "(int64_t). The number of chunks both in Inference and Label on the "
+        "given mini-batch.");
     AddAttr<int>("num_chunk_types",
                  "(int). The number of chunk type. See below for details.");
     AddAttr<std::string>(

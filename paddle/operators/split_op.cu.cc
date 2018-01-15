@@ -14,5 +14,5 @@ limitations under the License. */
 
 #include "paddle/operators/split_op.h"
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(split,
-                       ops::SplitOpKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    split, ops::SplitOpKernel<paddle::platform::CUDADeviceContext, float>);

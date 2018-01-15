@@ -18,8 +18,7 @@ namespace paddle {
 namespace operators {
 class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CRFDecodingOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  CRFDecodingOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Emission",
              "(LoDTensor, default: LoDTensor<float>). A LoDTensor with shape "
@@ -121,11 +120,11 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<LoDTensor>("Emission")->type()),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 }  // namespace operators
@@ -135,5 +134,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(crf_decoding, ops::CRFDecodingOp,
                              ops::CRFDecodingOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    crf_decoding, ops::CRFDecodingOpKernel<paddle::platform::CPUPlace, float>,
-    ops::CRFDecodingOpKernel<paddle::platform::CPUPlace, double>);
+    crf_decoding,
+    ops::CRFDecodingOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CRFDecodingOpKernel<paddle::platform::CPUDeviceContext, double>);

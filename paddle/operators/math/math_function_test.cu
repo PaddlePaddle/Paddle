@@ -13,18 +13,18 @@ TEST(math_function, notrans_mul_trans) {
   float arr[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr, 6 * sizeof(float));
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  paddle::framework::CopyFrom(input1, *gpu_place, context, &input1_gpu);
-  paddle::framework::CopyFrom(input1, *gpu_place, context, &input2_gpu);
+  paddle::framework::Copy(input1, *gpu_place, context, &input1_gpu);
+  paddle::framework::Copy(input1, *gpu_place, context, &input2_gpu);
 
   out_gpu.mutable_data<float>({2, 2}, *gpu_place);
 
-  paddle::operators::math::matmul<paddle::platform::GPUPlace, float>(
+  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext, float>(
       context, input1_gpu, false, input2_gpu, true, 1, &out_gpu, 0);
 
-  paddle::framework::CopyFrom(out_gpu, *cpu_place, context, &out);
+  paddle::framework::Copy(out_gpu, *cpu_place, context, &out);
 
   float* out_ptr = out.data<float>();
   context.Wait();
@@ -47,18 +47,18 @@ TEST(math_function, trans_mul_notrans) {
   float arr[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr, 6 * sizeof(float));
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  paddle::framework::CopyFrom(input1, *gpu_place, context, &input1_gpu);
-  paddle::framework::CopyFrom(input1, *gpu_place, context, &input2_gpu);
+  paddle::framework::Copy(input1, *gpu_place, context, &input1_gpu);
+  paddle::framework::Copy(input1, *gpu_place, context, &input2_gpu);
 
   out_gpu.mutable_data<float>({3, 3}, *gpu_place);
 
-  paddle::operators::math::matmul<paddle::platform::GPUPlace, float>(
+  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext, float>(
       context, input1_gpu, true, input2_gpu, false, 1, &out_gpu, 0);
 
-  paddle::framework::CopyFrom(out_gpu, *cpu_place, context, &out);
+  paddle::framework::Copy(out_gpu, *cpu_place, context, &out);
 
   float* out_ptr = out.data<float>();
   context.Wait();
@@ -96,20 +96,20 @@ TEST(math_function, gemm_notrans_cublas) {
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  paddle::framework::CopyFrom(input1, *gpu_place, context, &input1_gpu);
-  paddle::framework::CopyFrom(input2, *gpu_place, context, &input2_gpu);
-  paddle::framework::CopyFrom(input3, *gpu_place, context, &input3_gpu);
+  paddle::framework::Copy(input1, *gpu_place, context, &input1_gpu);
+  paddle::framework::Copy(input2, *gpu_place, context, &input2_gpu);
+  paddle::framework::Copy(input3, *gpu_place, context, &input3_gpu);
   float* a = input1_gpu.data<float>();
   float* b = input2_gpu.data<float>();
   float* c = input3_gpu.mutable_data<float>(*gpu_place);
 
-  paddle::operators::math::gemm<paddle::platform::GPUPlace, float>(
+  paddle::operators::math::gemm<paddle::platform::CUDADeviceContext, float>(
       context, false, false, m, n, k, 1, a, 3, b + 1, 4, 1, c + 1, 4);
 
-  paddle::framework::CopyFrom(input3_gpu, *cpu_place, context, &input3);
+  paddle::framework::Copy(input3_gpu, *cpu_place, context, &input3);
 
   // numpy code:
   // a = np.arange(6).reshape(2, 3)
@@ -151,20 +151,20 @@ TEST(math_function, gemm_trans_cublas) {
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceContext context(*gpu_place);
 
-  paddle::framework::CopyFrom(input1, *gpu_place, context, &input1_gpu);
-  paddle::framework::CopyFrom(input2, *gpu_place, context, &input2_gpu);
-  paddle::framework::CopyFrom(input3, *gpu_place, context, &input3_gpu);
+  paddle::framework::Copy(input1, *gpu_place, context, &input1_gpu);
+  paddle::framework::Copy(input2, *gpu_place, context, &input2_gpu);
+  paddle::framework::Copy(input3, *gpu_place, context, &input3_gpu);
   float* a = input1_gpu.data<float>();
   float* b = input2_gpu.data<float>();
   float* c = input3_gpu.mutable_data<float>(*gpu_place);
 
-  paddle::operators::math::gemm<paddle::platform::GPUPlace, float>(
+  paddle::operators::math::gemm<paddle::platform::CUDADeviceContext, float>(
       context, false, true, m, n, k, 1, a, 3, b + 3, 3, 1, c + 1, 4);
 
-  paddle::framework::CopyFrom(input3_gpu, *cpu_place, context, &input3);
+  paddle::framework::Copy(input3_gpu, *cpu_place, context, &input3);
   context.Wait();
 
   EXPECT_EQ(input3_ptr[0], 0);
@@ -189,7 +189,7 @@ void GemvTest(int m, int n, bool trans) {
   T* data_b = vec_b.mutable_data<T>({trans ? m : n}, *cpu_place);
   T* data_c = vec_c.mutable_data<T>({trans ? n : m}, *cpu_place);
 
-  auto* gpu_place = new paddle::platform::GPUPlace(0);
+  auto* gpu_place = new paddle::platform::CUDAPlace(0);
   paddle::framework::Tensor g_mat_a;
   paddle::framework::Tensor g_vec_b;
   paddle::framework::Tensor g_vec_c;
@@ -205,15 +205,15 @@ void GemvTest(int m, int n, bool trans) {
   }
 
   paddle::platform::CUDADeviceContext context(*gpu_place);
-  paddle::framework::CopyFrom(mat_a, *gpu_place, context, &g_mat_a);
-  paddle::framework::CopyFrom(vec_b, *gpu_place, context, &g_vec_b);
+  paddle::framework::Copy(mat_a, *gpu_place, context, &g_mat_a);
+  paddle::framework::Copy(vec_b, *gpu_place, context, &g_vec_b);
 
-  paddle::operators::math::gemv<paddle::platform::GPUPlace, T>(
+  paddle::operators::math::gemv<paddle::platform::CUDADeviceContext, T>(
       context, trans, static_cast<int>(m), static_cast<int>(n), 1., g_data_a,
       g_data_b, 0., g_data_c);
 
-  paddle::framework::CopyFrom(g_vec_c, paddle::platform::CPUPlace(), context,
-                              &vec_c);
+  paddle::framework::Copy(g_vec_c, paddle::platform::CPUPlace(), context,
+                          &vec_c);
 
   if (!trans) {
     for (int i = 0; i < m; ++i) {

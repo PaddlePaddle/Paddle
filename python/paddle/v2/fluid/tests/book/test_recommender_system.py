@@ -125,10 +125,11 @@ def model():
 
     # need cos sim
     inference = layers.cos_sim(X=usr_combined_features, Y=mov_combined_features)
+    scale_infer = layers.scale(x=inference, scale=5.0)
 
     label = layers.data(name='score', shape=[1], dtype='float32')
 
-    square_cost = layers.square_error_cost(input=inference, label=label)
+    square_cost = layers.square_error_cost(input=scale_infer, label=label)
 
     avg_cost = layers.mean(x=square_cost)
 
@@ -141,7 +142,7 @@ def main():
     opts = sgd_optimizer.minimize(cost)
 
     if USE_GPU:
-        place = core.GPUPlace(0)
+        place = core.CUDAPlace(0)
     else:
         place = core.CPUPlace()
 

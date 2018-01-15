@@ -1,6 +1,6 @@
 import unittest
+
 import paddle.v2.fluid.op as op
-import paddle.v2.fluid.core as core
 import paddle.v2.fluid.proto.framework_pb2 as framework_pb2
 
 

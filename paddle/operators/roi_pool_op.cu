@@ -177,7 +177,7 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());
       math::SetConstant<Place, T> set_zero;
-      set_zero(ctx.device_context(), x_grad, static_cast<T>(0));
+      set_zero(ctx.cuda_device_context(), x_grad, static_cast<T>(0));
 
       int output_grad_size = out_grad->numel();
       int blocks = NumBlocks(output_grad_size);
@@ -199,10 +199,11 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    roi_pool, ops::GPUROIPoolOpKernel<paddle::platform::GPUPlace, float>,
-    ops::GPUROIPoolOpKernel<paddle::platform::GPUPlace, double>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    roi_pool,
+    ops::GPUROIPoolOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::GPUROIPoolOpKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
     roi_pool_grad,
-    ops::GPUROIPoolGradOpKernel<paddle::platform::GPUPlace, float>,
-    ops::GPUROIPoolOpKernel<paddle::platform::GPUPlace, double>);
+    ops::GPUROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::GPUROIPoolOpKernel<paddle::platform::CUDADeviceContext, double>);

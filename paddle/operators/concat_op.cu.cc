@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include "paddle/operators/concat_op.h"
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(concat,
-                       ops::ConcatKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
-    concat_grad, ops::ConcatGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    concat, ops::ConcatKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    concat_grad,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, float>);

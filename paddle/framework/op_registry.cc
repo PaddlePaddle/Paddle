@@ -31,7 +31,8 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
 }
 
 static VariableNameMap ConvertOpDescVarsToVarNameMap(
-    const google::protobuf::RepeatedPtrField<OpDesc::Var>& op_desc_vars) {
+    const google::protobuf::RepeatedPtrField<proto::OpDesc::Var>&
+        op_desc_vars) {
   VariableNameMap ret_val;
   for (auto& var : op_desc_vars) {
     auto& var_names = ret_val[var.parameter()];
@@ -43,9 +44,10 @@ static VariableNameMap ConvertOpDescVarsToVarNameMap(
   return ret_val;
 }
 
-std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
+    const proto::OpDesc& op_desc) {
   VLOG(1) << "CreateOp directly from OpDesc is deprecated. It should only be"
-             "used in unit tests. Use CreateOp(const OpDescBind& op_desc) "
+             "used in unit tests. Use CreateOp(const OpDesc& op_desc) "
              "instead.";
   VariableNameMap inputs = ConvertOpDescVarsToVarNameMap(op_desc.inputs());
   VariableNameMap outputs = ConvertOpDescVarsToVarNameMap(op_desc.outputs());
@@ -57,7 +59,7 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   return CreateOp(op_desc.type(), inputs, outputs, attrs);
 }
 
-std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDescBind& op_desc) {
+std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   return CreateOp(op_desc.Type(), op_desc.Inputs(), op_desc.Outputs(),
                   op_desc.GetAttrMap());
 }

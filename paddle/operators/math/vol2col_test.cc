@@ -16,7 +16,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <iostream>
 
-template <typename Place>
+template <typename DeviceContext, typename Place>
 void testVol2col() {
   paddle::framework::Tensor input;
   paddle::framework::Tensor input_tmp;
@@ -24,18 +24,7 @@ void testVol2col() {
   paddle::framework::Tensor output_tmp;
 
   auto* place = new Place();
-  paddle::platform::DeviceContext* context;
-  if (paddle::platform::is_cpu_place(*place)) {
-    context =
-        new paddle::platform::CPUDeviceContext(paddle::platform::CPUPlace());
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    context =
-        new paddle::platform::CUDADeviceContext(paddle::platform::GPUPlace());
-#else
-    PADDLE_THROW("no GPU support");
-#endif  // PADDLE_WITH_CUDA
-  }
+  DeviceContext* context = new DeviceContext(*place);
 
   /**
    * input = [[0, 1, 2,
@@ -82,13 +71,13 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    CopyFrom(input_tmp, *place, *context, &input);
+    Copy(input_tmp, *place, *context, &input);
   }
   output.mutable_data<float>({1, filter_size, filter_size, filter_size,
                               output_depth, output_height, output_width},
                              *place);
 
-  paddle::operators::math::Vol2ColFunctor<Place, float> vol2col;
+  paddle::operators::math::Vol2ColFunctor<DeviceContext, float> vol2col;
   vol2col(*context, input, dilations, strides, paddings, &output);
 
   float vol_2_col[] = {0, 1, 1, 2, 3, 4, 4, 5, 6, 7, 7, 8, 9, 10, 10, 11};
@@ -96,7 +85,7 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output.data<float>();
   } else {
-    CopyFrom(output, paddle::platform::CPUPlace(), *context, &output_tmp);
+    Copy(output, paddle::platform::CPUPlace(), *context, &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();
   }
 
@@ -110,17 +99,17 @@ void testVol2col() {
   if (paddle::platform::is_cpu_place(*place)) {
     input = input_tmp;
   } else {
-    CopyFrom(input_tmp, *place, *context, &input);
+    Copy(input_tmp, *place, *context, &input);
   }
 
-  paddle::operators::math::Col2VolFunctor<Place, float> col2vol;
+  paddle::operators::math::Col2VolFunctor<DeviceContext, float> col2vol;
   col2vol(*context, output, dilations, strides, paddings, &input);
 
   float* in_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
-    CopyFrom(input, paddle::platform::CPUPlace(), *context, &input_tmp);
+    Copy(input, paddle::platform::CPUPlace(), *context, &input_tmp);
     in_ptr = input_tmp.data<float>();
   }
 
@@ -130,8 +119,9 @@ void testVol2col() {
 }
 
 TEST(math, vol2col) {
-  testVol2col<paddle::platform::CPUPlace>();
+  testVol2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
 #ifdef PADDLE_WITH_CUDA
-  testVol2col<paddle::platform::GPUPlace>();
+  testVol2col<paddle::platform::CUDADeviceContext,
+              paddle::platform::CUDAPlace>();
 #endif  // PADDLE_WITH_CUDA
 }

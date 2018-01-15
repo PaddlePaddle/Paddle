@@ -18,30 +18,32 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-VarDesc::VarType VarDescBind::GetType() const { return desc_.type(); }
+proto::VarDesc::VarType VarDesc::GetType() const { return desc_.type(); }
 
-void VarDescBind::SetType(VarDesc::VarType type) { desc_.set_type(type); }
+void VarDesc::SetType(proto::VarDesc::VarType type) { desc_.set_type(type); }
 
-void VarDescBind::SetShape(const std::vector<int64_t> &dims) {
+void VarDesc::SetShape(const std::vector<int64_t> &dims) {
   VectorToRepeated(dims, mutable_tensor_desc()->mutable_dims());
 }
 
-void VarDescBind::SetDataType(DataType data_type) {
+void VarDesc::SetDataType(proto::DataType data_type) {
   mutable_tensor_desc()->set_data_type(data_type);
 }
 
-std::vector<int64_t> VarDescBind::Shape() const {
+std::vector<int64_t> VarDesc::Shape() const {
   return RepeatedToVector(tensor_desc().dims());
 }
 
-DataType VarDescBind::GetDataType() const { return tensor_desc().data_type(); }
+proto::DataType VarDesc::GetDataType() const {
+  return tensor_desc().data_type();
+}
 
-void VarDescBind::SetLoDLevel(int32_t lod_level) {
+void VarDesc::SetLoDLevel(int32_t lod_level) {
   switch (desc_.type()) {
-    case VarDesc::LOD_TENSOR:
+    case proto::VarDesc::LOD_TENSOR:
       desc_.mutable_lod_tensor()->set_lod_level(lod_level);
       break;
-    case VarDesc::LOD_TENSOR_ARRAY:
+    case proto::VarDesc::LOD_TENSOR_ARRAY:
       desc_.mutable_tensor_array()->set_lod_level(lod_level);
       break;
     default:
@@ -50,11 +52,11 @@ void VarDescBind::SetLoDLevel(int32_t lod_level) {
   }
 }
 
-int32_t VarDescBind::GetLodLevel() const {
+int32_t VarDesc::GetLoDLevel() const {
   switch (desc_.type()) {
-    case VarDesc::LOD_TENSOR:
+    case proto::VarDesc::LOD_TENSOR:
       return desc_.lod_tensor().lod_level();
-    case VarDesc::LOD_TENSOR_ARRAY:
+    case proto::VarDesc::LOD_TENSOR_ARRAY:
       return desc_.tensor_array().lod_level();
     default:
       PADDLE_THROW("Tensor type=%d does not support LoDLevel",
@@ -62,29 +64,29 @@ int32_t VarDescBind::GetLodLevel() const {
   }
 }
 
-const TensorDesc &VarDescBind::tensor_desc() const {
+const proto::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE(desc_.has_type(), "invoke TensorDesc must after set type");
   switch (desc_.type()) {
-    case VarDesc::SELECTED_ROWS:
+    case proto::VarDesc::SELECTED_ROWS:
       return desc_.selected_rows();
-    case VarDesc::LOD_TENSOR:
+    case proto::VarDesc::LOD_TENSOR:
       return desc_.lod_tensor().tensor();
-    case VarDesc::LOD_TENSOR_ARRAY:
+    case proto::VarDesc::LOD_TENSOR_ARRAY:
       return desc_.tensor_array().tensor();
     default:
-      PADDLE_THROW("Unexpected branch.");
+      PADDLE_THROW("The type of var %s is unsupported.", this->Name());
   }
 }
 
-TensorDesc *VarDescBind::mutable_tensor_desc() {
+proto::TensorDesc *VarDesc::mutable_tensor_desc() {
   PADDLE_ENFORCE(desc_.has_type(),
                  "invoke MutableTensorDesc must after set type");
   switch (desc_.type()) {
-    case VarDesc::SELECTED_ROWS:
+    case proto::VarDesc::SELECTED_ROWS:
       return desc_.mutable_selected_rows();
-    case VarDesc::LOD_TENSOR:
+    case proto::VarDesc::LOD_TENSOR:
       return desc_.mutable_lod_tensor()->mutable_tensor();
-    case VarDesc::LOD_TENSOR_ARRAY:
+    case proto::VarDesc::LOD_TENSOR_ARRAY:
       return desc_.mutable_tensor_array()->mutable_tensor();
     default:
       PADDLE_THROW("Unexpected branch.");

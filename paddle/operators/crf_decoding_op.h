@@ -24,13 +24,10 @@ using framework::LoDTensor;
 using framework::LoD;
 using framework::Tensor;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class CRFDecodingOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
-                   "The crf_decoding operator can only run on CPU.");
-
     auto* emission_weights = ctx.Input<LoDTensor>("Emission");
     auto* transition_weights = ctx.Input<Tensor>("Transition");
     auto* label = ctx.Input<LoDTensor>("Label");
@@ -44,8 +41,8 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     const size_t seq_num = lod[level].size() - 1;
 
     int64_t* path = decoded_path->mutable_data<int64_t>(platform::CPUPlace());
-    math::SetConstant<platform::CPUPlace, int64_t>()(ctx.device_context(),
-                                                     decoded_path, 0);
+    math::SetConstant<DeviceContext, int64_t>()(
+        ctx.template device_context<DeviceContext>(), decoded_path, 0);
     for (size_t i = 0; i < seq_num; ++i) {
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);

@@ -1,16 +1,34 @@
 import collections
-
-import numpy as np
-from . import core
-import proto.framework_pb2 as framework_pb2
-import google.protobuf.message
 import contextlib
 
+import numpy as np
+
+import proto.framework_pb2 as framework_pb2
+from . import core
+
 __all__ = [
-    'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program', 'program_guard', 'switch_startup_program',
-    'switch_main_program'
+    'Block',
+    'Variable',
+    'Program',
+    'Operator',
+    'default_startup_program',
+    'default_main_program',
+    'program_guard',
+    'switch_startup_program',
+    'switch_main_program',
 ]
+
+EMPTY_VAR_NAME = core.kEmptyVarName()
+TEMP_VAR_NAME = core.kTempVarName()
+GRAD_VAR_SUFFIX = core.kGradVarSuffix()
+ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+
+
+def grad_var_name(var_name):
+    """
+    return gradient name for a certain var name
+    """
+    return var_name + GRAD_VAR_SUFFIX
 
 
 def unique_name(prefix):
@@ -131,9 +149,11 @@ class Variable(object):
                  dtype=None,
                  lod_level=None,
                  persistable=None,
+                 error_clip=None,
                  stop_gradient=False,
                  **kwargs):
         self.block = block
+        self.error_clip = error_clip
 
         if name is None:
             name = Variable._unique_var_name_()
@@ -222,6 +242,9 @@ class Variable(object):
 
     __repr__ = __str__
 
+    def set_desc(self, input):
+        self.desc = input
+
     @property
     def persistable(self):
         return self.desc.persistable()
@@ -256,6 +279,9 @@ class Variable(object):
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
+
+    def set_error_clip(self, error_clip):
+        self.error_clip = error_clip
 
 
 def get_all_op_protos():
@@ -347,6 +373,10 @@ class Operator(object):
         """
         self.block = block
         self.desc = desc
+        # for clone a new operator
+        self.inputs = inputs
+        self.outputs = outputs
+        self.attrs = attrs
         if len(self.desc.type()) != 0:
             return
         if type is None:
@@ -377,7 +407,10 @@ class Operator(object):
                             % (in_proto.name, len(in_args)))
                     in_arg_names = []
                     for arg in in_args:
-                        in_arg_names.append(arg.name)
+                        if isinstance(arg, basestring):
+                            in_arg_names.append(arg)
+                        else:
+                            in_arg_names.append(arg.name)
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -418,13 +451,18 @@ class Operator(object):
                     continue
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
+                elif isinstance(attrs[attr_name], core.BlockDesc) or \
+                   isinstance(attrs[attr_name], core.ProgramDesc):
+                    self.desc.set_serialized_attr(
+                        attr_name, attrs[attr_name].serialize_to_string())
                 else:
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent',
-            'rnn_memory_helper_grad', 'conditional_block', 'while'
+            'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
+            'recv', 'parallel_do'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -570,6 +608,7 @@ class Block(object):
         self.vars = dict()  # var_name --> var
         self.ops = collections.deque()  # operator list
         self.program = program
+        self.removed_vars = dict()
 
     def __str__(self):
         return self.to_string(True)
@@ -596,6 +635,17 @@ class Block(object):
         if v is None:
             raise ValueError("var %s not in this block" % name)
         return v
+
+    def var_recursive(self, name):
+        if self.has_var(name):
+            return self.var(name)
+        else:
+            if self.idx == 0:
+                raise ValueError("var %s is not in block(%d) nor its parents." %
+                                 name, self.idx)
+            else:
+                parent_block = self.program.block(self.parent_idx)
+                return parent_block.var_recursive(name)
 
     def all_parameters(self):
         return list(self.iter_parameters())
@@ -625,6 +675,16 @@ class Block(object):
         op = Operator(self, op_desc, *args, **kwargs)
         self.ops.append(op)
         return op
+
+    def delete_ops(self, ops):
+        # remove from cpp
+        # FIXME(typhoonzero): remove only the first occuracy.
+        try:
+            start = list(self.ops).index(ops[0])
+            end = list(self.ops).index(ops[-1])
+        except Exception, e:
+            raise e
+        self.desc.remove_op(start, end + 1)
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
@@ -704,6 +764,8 @@ class Block(object):
                 trainable=p.trainable,
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
+                clip_attr=p.clip_attr,
+                error_clip=p.error_clip,
                 name=v.name)
             self.vars[new_p.name] = new_p
 
@@ -722,6 +784,9 @@ class Program(object):
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
         return _debug_string_(proto, throw_on_error)
+
+    def get_desc(self):
+        return self.desc
 
     def clone(self):
         p = Program()
@@ -806,9 +871,11 @@ class Program(object):
         self.sync_with_cpp()
         return param_to_grad_info
 
-    def create_block(self):
+    def create_block(self, parent_idx=None):
         new_block_idx = len(self.blocks)
-        self.desc.append_block(self.current_block().desc)
+        parent = self.current_block() if parent_idx is None else self.block(
+            parent_idx)
+        self.desc.append_block(parent.desc)
         self.current_block_idx = new_block_idx
         self.blocks.append(Block(self, self.current_block_idx))
         return self.current_block()
@@ -865,6 +932,8 @@ class Parameter(Variable):
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
         self.regularizer = kwargs.get('regularizer', None)
+
+        self.clip_attr = kwargs.get('clip_attr', None)
 
 
 # program is a global instance.

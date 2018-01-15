@@ -21,19 +21,11 @@ class LayerHelper(object):
 
     @property
     def main_program(self):
-        prog = self.kwargs.get('main_program', None)
-        if prog is None:
-            return default_main_program()
-        else:
-            return prog
+        return default_main_program()
 
     @property
     def startup_program(self):
-        prog = self.kwargs.get('startup_program', None)
-        if prog is None:
-            return default_startup_program()
-        else:
-            return prog
+        return default_startup_program()
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
@@ -128,11 +120,12 @@ class LayerHelper(object):
             raise ValueError("no Parameter name %s found" % name)
         return param
 
-    def create_tmp_variable(self, dtype):
+    def create_tmp_variable(self, dtype, stop_gradient=False):
         return self.main_program.current_block().create_var(
             name=unique_name(".".join([self.name, 'tmp'])),
             dtype=dtype,
-            persistable=False)
+            persistable=False,
+            stop_gradient=stop_gradient)
 
     def create_variable(self, *args, **kwargs):
         return self.main_program.current_block().create_var(*args, **kwargs)
@@ -150,13 +143,6 @@ class LayerHelper(object):
             shape=var.shape,
             persistable=True,
             initializer=initializer)
-
-    @property
-    def to_kwargs(self):
-        return {
-            'main_program': self.main_program,
-            'startup_program': self.startup_program
-        }
 
     def append_bias_op(self, input_var, dim_start=1, dim_end=None):
         """
@@ -199,7 +185,7 @@ class LayerHelper(object):
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
-            outputs={"Y": [tmp]},
+            outputs={"Out": [tmp]},
             attrs=act)
         return tmp
 
@@ -209,3 +195,9 @@ class LayerHelper(object):
         else:
             # For integer and boolean types, initialize with all zeros
             return Constant()
+
+    def is_instance(self, param_name, cls):
+        param = self.kwargs.get(param_name, None)
+        if not isinstance(param, cls):
+            raise TypeError("The input {0} parameter of method {1} must be {2}",
+                            param_name, self.layer_type, cls.__name__)

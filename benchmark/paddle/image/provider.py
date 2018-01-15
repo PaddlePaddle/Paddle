@@ -14,6 +14,7 @@ def initHook(settings, height, width, color, num_class, **kwargs):
     else:
         settings.data_size = settings.height * settings.width
     settings.is_infer = kwargs.get('is_infer', False)
+    settings.num_samples = kwargs.get('num_samples', 2560)
     if settings.is_infer:
         settings.slots = [dense_vector(settings.data_size)]
     else:
@@ -23,7 +24,7 @@ def initHook(settings, height, width, color, num_class, **kwargs):
 @provider(
     init_hook=initHook, min_pool_size=-1, cache=CacheType.CACHE_PASS_IN_MEM)
 def process(settings, file_list):
-    for i in xrange(2560 if settings.is_infer else 1024):
+    for i in xrange(settings.num_samples):
         img = np.random.rand(1, settings.data_size).reshape(-1, 1).flatten()
         if settings.is_infer:
             yield img.astype('float32')
