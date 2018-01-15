@@ -293,6 +293,9 @@ class Variable(object):
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
 
+    def set_error_clip(self, error_clip):
+        self.error_clip = error_clip
+
 
 def get_all_op_protos():
     """

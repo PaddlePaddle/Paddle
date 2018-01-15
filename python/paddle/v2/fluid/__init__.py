@@ -31,6 +31,7 @@ from param_attr import ParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace
 from distribute_transpiler import DistributeTranspiler
+from distribute_transpiler_simple import SimpleDistributeTranspiler
 import clip
 from memory_optimization_transpiler import memory_optimize
 
@@ -50,6 +51,7 @@ __all__ = framework.__all__ + executor.__all__ + [
     'ParamAttr'
     'DataFeeder',
     'clip',
+    'SimpleDistributeTranspiler',
     'DistributeTranspiler',
     'memory_optimize',
 ]
