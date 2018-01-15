@@ -138,6 +138,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
         math::set_constant(dev_ctx, &rest_tensor, 0.0f);
       }
     }
+    dx_tensor.set_lod(x_tensor.lod());
   }
 };
 
