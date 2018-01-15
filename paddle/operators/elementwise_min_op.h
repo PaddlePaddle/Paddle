@@ -20,12 +20,12 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct MaxFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a > b ? a : b; }
+struct MinFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const { return a < b ? a : b; }
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseMaxKernel : public framework::OpKernel<T> {
+class ElementwiseMinKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     using Tensor = framework::Tensor;
@@ -34,8 +34,8 @@ class ElementwiseMaxKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
-    TransformFunctor<MaxFunctor<T>, T, DeviceContext> functor(
-        x, y, z, ctx.template device_context<DeviceContext>(), MaxFunctor<T>());
+    TransformFunctor<MinFunctor<T>, T, DeviceContext> functor(
+        x, y, z, ctx.template device_context<DeviceContext>(), MinFunctor<T>());
 
     auto x_dims = x->dims();
     auto y_dims = y->dims();
@@ -65,7 +65,7 @@ class ElementwiseMaxKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-struct ElementwiseMaxGradFunctor {
+struct ElementwiseMinGradFunctor {
   template <typename Device, typename X, typename Y, typename Z, typename dX,
             typename dY, typename dZ>
   void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
@@ -75,17 +75,17 @@ struct ElementwiseMaxGradFunctor {
 
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = (x_e > y_e).template cast<T>() * dz_e;
+      dx_e.device(d) = (x_e < y_e).template cast<T>() * dz_e;
     }
     if (dy) {
       auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = (x_e <= y_e).template cast<T>() * dz_e;
+      dy_e.device(d) = (x_e >= y_e).template cast<T>() * dz_e;
     }
   }
 };
 
 template <typename T>
-struct ElementwiseMaxBroadCastGradFunctor {
+struct ElementwiseMinBroadCastGradFunctor {
   template <typename Device, typename X, typename Y, typename Z, typename dX,
             typename dY, typename dZ, typename Pre, typename N>
   void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n) {
@@ -99,12 +99,12 @@ struct ElementwiseMaxBroadCastGradFunctor {
 
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = (x_e > y_e_bcast).template cast<T>() * dz_e;
+      dx_e.device(d) = (x_e < y_e_bcast).template cast<T>() * dz_e;
     }
 
     if (dy) {
       auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = ((x_e <= y_e_bcast).template cast<T>() * dz_e)
+      dy_e.device(d) = ((x_e >= y_e_bcast).template cast<T>() * dz_e)
                            .reshape(Eigen::DSizes<int, 2>(pre, n))
                            .sum(Eigen::array<int, 1>{{0}});
     }
@@ -112,7 +112,7 @@ struct ElementwiseMaxBroadCastGradFunctor {
 };
 
 template <typename T>
-struct ElementwiseMaxBroadCast2GradFunctor {
+struct ElementwiseMinBroadCast2GradFunctor {
   template <typename Device, typename X, typename Y, typename Z, typename dX,
             typename dY, typename dZ, typename Pre, typename N, typename Post>
   void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n,
@@ -126,12 +126,12 @@ struct ElementwiseMaxBroadCast2GradFunctor {
                          .reshape(Eigen::DSizes<int, 1>(x_e.size()));
     if (dx) {
       auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = (x_e > y_e_bcast).template cast<T>() * dz_e;
+      dx_e.device(d) = (x_e < y_e_bcast).template cast<T>() * dz_e;
     }
 
     if (dy) {
       auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = ((x_e <= y_e_bcast).template cast<T>() * dz_e)
+      dy_e.device(d) = ((x_e >= y_e_bcast).template cast<T>() * dz_e)
                            .reshape(Eigen::DSizes<int, 3>(pre, n, post))
                            .sum(Eigen::array<int, 2>{{0, 2}});
     }
@@ -139,12 +139,12 @@ struct ElementwiseMaxBroadCast2GradFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseMaxGradKernel : public framework::OpKernel<T> {
+class ElementwiseMinGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseGradCompute<DeviceContext, T, ElementwiseMaxGradFunctor<T>,
-                           ElementwiseMaxBroadCastGradFunctor<T>,
-                           ElementwiseMaxBroadCast2GradFunctor<T>>(ctx);
+    ElementwiseGradCompute<DeviceContext, T, ElementwiseMinGradFunctor<T>,
+                           ElementwiseMinBroadCastGradFunctor<T>,
+                           ElementwiseMinBroadCast2GradFunctor<T>>(ctx);
   }
 };
 
