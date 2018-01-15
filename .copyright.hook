@@ -38,7 +38,7 @@ else:
     p = re.search('(\d{4})', COPYRIGHT_HEADER).group(0)
     process = subprocess.Popen(["date", "+%Y"], stdout=subprocess.PIPE)
     date, err = process.communicate()
-    date = str(date).rstrip("\n")
+    date = date.decode("utf-8").rstrip("\n")
     COPYRIGHT_HEADER = COPYRIGHT_HEADER.replace(p, date)
 
 
@@ -46,7 +46,7 @@ def generate_copyright(template, lang='C'):
     if lang == 'Python':
         LANG_COMMENT_MARK = '#'
     else:
-        LANG_COMMENT_MARK = "\\\\"
+        LANG_COMMENT_MARK = "//"
 
     lines = template.split(NEW_LINE_MARK)
     ans = LANG_COMMENT_MARK + COPYRIGHT_HEADER + NEW_LINE_MARK
