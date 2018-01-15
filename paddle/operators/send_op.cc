@@ -48,7 +48,7 @@ class SendOp : public framework::OperatorBase {
       client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
 
-    client_.wait();
+    PADDLE_ENFORCE(client_.Wait());
   }
 
  private:
