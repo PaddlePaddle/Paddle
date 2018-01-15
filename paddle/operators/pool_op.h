@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/pooling.h"
-#include "paddle/platform/dynload/cudnn.h"
 
 namespace paddle {
 namespace operators {

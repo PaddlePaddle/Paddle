@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/operators/math/im2col.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/vol2col.h"
-#include "paddle/platform/dynload/cudnn.h"
 
 namespace paddle {
 namespace operators {
