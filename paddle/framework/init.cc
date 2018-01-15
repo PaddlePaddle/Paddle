@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string.h>  // for strdup
 #include <algorithm>
+#include <stdexcept>
 #include <string>
 
 #include "paddle/framework/init.h"
@@ -48,13 +49,17 @@ void InitDevices() {
   places.emplace_back(platform::CPUPlace());
 
 #ifdef PADDLE_WITH_CUDA
-  int count = platform::GetCUDADeviceCount();
-  for (int i = 0; i < count; ++i) {
-    places.emplace_back(platform::CUDAPlace(i));
+  try {
+    int count = platform::GetCUDADeviceCount();
+    for (int i = 0; i < count; ++i) {
+      places.emplace_back(platform::CUDAPlace(i));
+    }
+  } catch (const std::exception &exp) {
+    LOG(WARNING) << "Compiled with WITH_CUDA, but no CUDA found in runtime.";
   }
 #else
   LOG(WARNING)
-      << "'GPU' is not supported, Please re-compile with WITH_GPU option";
+      << "'CUDA' is not supported, Please re-compile with WITH_CUDA option";
 #endif
 
   platform::DeviceContextPool::Init(places);
