@@ -1,5 +1,7 @@
 import unittest
 import numpy as np
+
+import paddle.v2.fluid.core as core
 from op_test import OpTest
 
 
@@ -52,6 +54,7 @@ def avg_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=0):
 
 class TestPool3d_Op(OpTest):
     def setUp(self):
+        self.use_cudnn = False
         self.init_test_case()
         self.init_global_pool()
         self.init_op_type()
@@ -71,15 +74,25 @@ class TestPool3d_Op(OpTest):
             'ksize': self.ksize,
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
+            'use_cudnn': self.use_cudnn,
+            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
 
         self.outputs = {'Out': output.astype('float32')}
 
     def test_check_output(self):
-        self.check_output()
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
 
     def test_check_grad(self):
-        if self.pool_type != "max":
+        if self.use_cudnn and self.pool_type != "max":
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, set(['X']), 'Out', max_relative_error=0.07)
+        elif self.pool_type != "max":
             self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
     def init_test_case(self):
@@ -163,35 +176,41 @@ class TestCase5(TestCase2):
         self.pool3D_forward_naive = max_pool3D_forward_naive
 
 
-#--------------------test pool3d_cudnn--------------------
-class TestCudnnCase1(TestPool3d_Op):
+#--------------------test pool3d--------------------
+class TestCUDNNCase1(TestPool3d_Op):
     def init_op_type(self):
-        self.op_type = "pool3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool3d"
 
 
-class TestCudnnCase2(TestCase1):
+class TestCUDNNCase2(TestCase1):
     def init_op_type(self):
-        self.op_type = "pool3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool3d"
 
 
-class TestCudnnCase3(TestCase2):
+class TestCUDNNCase3(TestCase2):
     def init_op_type(self):
-        self.op_type = "pool3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool3d"
 
 
-class TestCudnnCase4(TestCase3):
+class TestCUDNNCase4(TestCase3):
     def init_op_type(self):
-        self.op_type = "pool3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool3d"
 
 
-class TestCudnnCase5(TestCase4):
+class TestCUDNNCase5(TestCase4):
     def init_op_type(self):
-        self.op_type = "pool3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool3d"
 
 
-class TestCudnnCase6(TestCase5):
+class TestCUDNNCase6(TestCase5):
     def init_op_type(self):
-        self.op_type = "pool3d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool3d"
 
 
 if __name__ == '__main__':
