@@ -212,7 +212,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
       for (size_t i = 1; i < sub_scopes.size(); ++i) {
         auto &tensor_to_merge = sub_scopes[i]->FindVar(s)->Get<LoDTensor>();
-        if (places[i] != places[0]) {
+        if (!(places[i] == places[0])) {
           framework::Copy(tensor_to_merge, places[0], tmp);
         } else {
           tmp->ShareDataWith(tensor_to_merge);
