@@ -1508,10 +1508,11 @@ def reduce_min(input, dim=None, keep_dim=False):
 
 def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
     """
-    An operator integrating the open source warp-ctc  library
+    An operator integrating the open source Warp-CTC library
+    (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
-    It can be aliased as softmax with ctc, since a native softmax activation is
-    interated to the warp-ctc library, to to normlize values for each row of the
+    It can be aliased as softmax with CTC, since a native softmax activation is
+    interated to the Warp-CTC library, to to normlize values for each row of the
     input tensor.
 
     Args:
@@ -1525,12 +1526,12 @@ def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
          of variable-length sequence, which is a 2-D Tensor with LoD
          information. It is of the shape [Lg, 1], where Lg is th sum of
          all labels' length.
-       blank: (int, default: 0), the blank label of Connectionist
+       blank: (int, default: 0), the blank label index of Connectionist
          Temporal Classification (CTC) loss, which is in the
          half-opened interval [0, num_classes + 1).
-       norm_by_times: (bool, default: false), whether to
-         normalize the gradients by the number of time-step,
-         which is also the sequence's length.
+       norm_by_times: (bool, default: false), whether to normalize the gradients 
+         by the number of time-step,which is also the sequence's length.
+         There is no need to normalize the gradients if warpctc layer was follewed by a mean_op.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss, which is a 2-D Tensor of the shape [batch_size, 1].
