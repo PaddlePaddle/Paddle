@@ -97,7 +97,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   need_update_ = true;
 }
 
-OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog)
+OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
     : desc_(desc), need_update_(false) {
   // restore inputs_
   int input_size = desc_.inputs_size();
@@ -131,6 +131,7 @@ OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog)
       attrs_[attr_name] = prog->MutableBlock(bid);
     }
   }
+  this->block_ = block;
 }
 
 proto::OpDesc *OpDesc::Proto() {

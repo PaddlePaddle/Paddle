@@ -23,7 +23,7 @@ class TestControlFlowGraph(unittest.TestCase):
 
     def test_control_flow_graph(self):
         print("before optimization")
-        print(str(self.program))
+        # print(str(self.program))
         result_program = memory_optimize(self.program)
         print("after optimization")
         print(str(result_program))

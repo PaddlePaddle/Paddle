@@ -280,7 +280,8 @@ void BindOpDesc(py::module &m) {
       .def("check_attrs", &OpDesc::CheckAttrs)
       .def("infer_shape", &OpDesc::InferShape)
       .def("infer_var_type", &OpDesc::InferVarType)
-      .def("serialize_to_string", SerializeMessage<OpDesc>);
+      .def("serialize_to_string", SerializeMessage<OpDesc>)
+      .def("block", &OpDesc::Block, py::return_value_policy::reference);
 }
 
 }  // namespace pybind

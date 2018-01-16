@@ -25,7 +25,6 @@ namespace framework {
 
 class BlockDesc;
 class ProgramDesc;
-
 class OpDesc {
  public:
   OpDesc() {}
@@ -33,7 +32,7 @@ class OpDesc {
   OpDesc(const std::string &type, const VariableNameMap &inputs,
          const VariableNameMap &outputs, const AttributeMap &attrs);
 
-  OpDesc(const proto::OpDesc &desc, ProgramDesc *prog);
+  OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block);
 
   void CopyFrom(const OpDesc &op_desc);
 
@@ -117,6 +116,8 @@ class OpDesc {
 
   void Flush();
 
+  BlockDesc *Block() { return this->block_; }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
@@ -129,6 +130,7 @@ class OpDesc {
   }
 
   proto::OpDesc desc_;
+  BlockDesc *block_;  // not_own
   // input arg name => input variable names
   VariableNameMap inputs_;
   // output arg name => output variable names
