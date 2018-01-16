@@ -23,7 +23,7 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
-class CTCGreedyDecodeKernel : public framework::OpKernel<T> {
+class CTCDecodeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("Input");

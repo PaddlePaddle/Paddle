@@ -12,20 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/ctc_greedy_decode_op.h"
+#include "paddle/operators/ctc_decode_op.h"
 
 namespace paddle {
 namespace operators {
 
-class CTCGreedyDecodeOp : public framework::OperatorWithKernel {
+class CTCDecodeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input of CTCGreedyDecodeOp should not be null.");
+                   "Input of CTCDecodeOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output of CTCGreedyDecodeOp should not be null.");
+                   "Output of CTCDecodeOp should not be null.");
 
     auto input_dims = ctx->GetInputDim("Input");
 
@@ -42,9 +42,9 @@ class CTCGreedyDecodeOp : public framework::OperatorWithKernel {
   }
 };
 
-class CTCGreedyDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
+class CTCDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CTCGreedyDecodeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
+  CTCDecodeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
              "(LodTensor, default: LoDTensor<int>), Its shape is "
@@ -86,9 +86,7 @@ Then:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(ctc_greedy_decode, ops::CTCGreedyDecodeOp,
-                  ops::CTCGreedyDecodeOpMaker,
+REGISTER_OPERATOR(ctc_decode, ops::CTCDecodeOp, ops::CTCDecodeOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    ctc_greedy_decode,
-    ops::CTCGreedyDecodeKernel<paddle::platform::CPUDeviceContext, int>);
+    ctc_decode, ops::CTCDecodeKernel<paddle::platform::CPUDeviceContext, int>);
