@@ -89,9 +89,9 @@ def main(argv=None):
 
     retv = 0
     for filename in args.filenames:
-        first_line = io.open(filename).readline()
+        first_line = io.open(filename, encoding='utf-8').readline()
         if "Copyright" in first_line: continue
-        original_contents = io.open(filename).read()
+        original_contents = io.open(filename, encoding='utf-8').read()
         new_contents = generate_copyright(
             COPYRIGHT, lang_type(filename)) + original_contents
         print('Auto Insert Copyright Header {}'.format(filename))
