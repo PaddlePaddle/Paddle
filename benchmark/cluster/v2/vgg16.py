@@ -81,7 +81,7 @@ def main():
         name="label", type=paddle.data_type.integer_value(CLASS_DIM))
 
     extra_layers = None
-    learning_rate = 1e-3
+    learning_rate = 1e-3 / 20
     out = vgg16(image, class_dim=CLASS_DIM)
     cost = paddle.layer.classification_cost(input=out, label=lbl)
 
