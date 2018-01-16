@@ -1007,13 +1007,13 @@ def conv2d_transpose(input,
     """
     **Convlution2D transpose layer**
 
-    The convolution2D transpose layer calculates the output based on the input, filter
-    and dilations, strides, paddings, groups parameters. Input(Input) and output(Output)
-    are in NCHW format. Where N is batchsize, C is the number of channels, H is the height
-    of the feature, and W is the width of the feature. Parameters(dilations, strides, paddings)
-    are two elements. These two elements represent height and width, respectively.
-    The details of convolution transpose layer, please refer to the following explanation
-    and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    The convolution2D transpose layer calculates the output based on the input,
+    filter, and dilations, strides, paddings. Input(Input) and output(Output)
+    are in NCHW format. Where N is batch size, C is the number of channels,
+    H is the height of the feature, and W is the width of the feature.
+    Parameters(dilations, strides, paddings) are two elements. These two elements
+    represent height and width, respectively. The details of convolution transpose
+    layer, please refer to the following explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
 
     For each input :math:`X`, the equation is:
 
@@ -1049,7 +1049,7 @@ def conv2d_transpose(input,
 
     Args:
        input(Variable): The input image with [N, C, H, W] format.
-       num_filters(int): The number of filter. It is as same as the output
+       num_filters(int): The number of the filter. It is as same as the output
            image channel.
        output_size(int|tuple|None): The output image size. If output size is a
            tuple, it must contain two integers, (image_H, image_W). This
