@@ -74,14 +74,14 @@ def vgg19(input, class_dim):
 
 
 def main():
-    paddle.init(use_gpu=False, trainer_count=1)
+    paddle.init(use_gpu=False)
     image = paddle.layer.data(
         name="image", type=paddle.data_type.dense_vector(DATA_DIM))
     lbl = paddle.layer.data(
         name="label", type=paddle.data_type.integer_value(CLASS_DIM))
 
     extra_layers = None
-    learning_rate = 0.01
+    learning_rate = 1e-3
     out = vgg16(image, class_dim=CLASS_DIM)
     cost = paddle.layer.classification_cost(input=out, label=lbl)
 
