@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 from ..layer_helper import LayerHelper, unique_name
 from ..framework import Program, Variable, Operator
 from .. import core
@@ -1277,6 +1290,26 @@ class DynamicRNN(object):
                     'RankTable': self.lod_rank_table},
             outputs={'Out': input_array})
         return array_read(array=input_array, i=self.step_idx)
+
+    def static_input(self, x):
+        self._assert_in_rnn_block_("static_input")
+        if not isinstance(x, Variable):
+            raise TypeError(
+                "static_input() can only take a Variable as its input")
+        if self.lod_rank_table is None:
+            raise RuntimeError(
+                "static_input() must be called after step_input().")
+        parent_block = self._parent_block_()
+        x_reordered = parent_block.create_var(
+            name=unique_name("dynamic_rnn_static_input_reordered"),
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            dtype=x.dtype)
+        parent_block.append_op(
+            type='reorder_lod_tensor_by_rank',
+            inputs={'X': [x],
+                    'RankTable': [self.lod_rank_table]},
+            outputs={'Out': [x_reordered]})
+        return shrink_memory(x_reordered, self.step_idx, self.lod_rank_table)
 
     @contextlib.contextmanager
     def block(self):

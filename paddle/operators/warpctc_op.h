@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/sequence_padding.h"
+#include "paddle/operators/math/sequence_scale.h"
 #include "paddle/platform/dynload/warpctc.h"
 
 namespace paddle {
@@ -178,11 +179,14 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     T* warpctc_grad_data =
         warpctc_grad->mutable_data<T>(warpctc_logits.dims(), ctx.GetPlace());
 
+    math::SetConstant<DeviceContext, T>()(
+        ctx.template device_context<DeviceContext>(), warpctc_grad,
+        static_cast<T>(0));
+
     // warpctc accesses labels in CPU memory
     Tensor warpctc_label;
     Copy(*label, platform::CPUPlace(), ctx.device_context(), &warpctc_label);
     const int* warpctc_label_data = warpctc_label.data<int>();
-
     // warpctc stores loss in CPU memory
     Tensor warpctc_loss;
     T* warpctc_loss_data =
@@ -206,11 +210,18 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* warpctc_grad = ctx.Input<Tensor>("WarpCTCGrad");
     auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
+    const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
 
+    logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
     math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), *logits_grad,
         *warpctc_grad, norm_by_times);
+
+    const T* loss_grad_data = loss_grad->data<T>();
+    math::ScaleLoDTensorFunctor<DeviceContext, T>()(
+        ctx.template device_context<DeviceContext>(), *logits_grad,
+        loss_grad_data);
   }
 };
 
