@@ -48,32 +48,27 @@ class Channel {
 
 ```
 ...
-concurrent_program = Program()
-with program(concurrent_program):
+chan_list_name = "chan_list"
+with fluid.go(concurrent_program, chan_list_name):
     image = fluid.layers.data_layer(...)
     label = fluid.layers.data_layer(...)
-    places = get_places()
-    channel_list = create_channel_list(name="data_buffer")
+    chan_list = fluid.channel_list.make(type=var.CHANNEL_LIST, name=chan_list_name)
+    places = get_places() 
     with parallel.for(places) as for_loop:
-        cur_channel = fluid.layers.create_channel(channel_list, for_loop.i, channel_size=2)  
-        # if channel_list has the specific channel, 
-        # this function will return it directly.
-        fluid.layers.send_to_channel(input=[for_loop.input(image), 
-                                for_loop.input(label)], out=cur_channel)
+        chan = fluid.channel_list.get_channel(chan_list, type=var.CHANNELTYPE,name="chan_{}".format(for_loop.i))
+        fluid.channle.send(chan, data=[for_loop.input(image), for_loop.input(label)])
 
-main_program = Program()
-with program(main_program):
-    places = get_places()
-    channel_list = create_channel_list(name="data_buffer")
+with fluid.go(main_program, chan_list_name):
+    chan_list = fluid.channel_list.make(type=var.CHANNEL_LIST, name=chan_list_name)
+    places = get_places() 
     with parallel.for(places) as for_loop:
-        cur_channel = fluid.layers.get_channel(channel_list, for_loop.i)
-        image, label = fluid.layers.receive_from_channel(input=cur_channel)
-        
+        chan = fluid.channel_list.get_channel(chan_list, type=var.CHANNELTYPE,name="chan_{}".format(for_loop.i))
+        image, label = fluid.channel.recv(chan)
         y_predict = fluid.layers.fc(input=image, size=1, act=None)
         cost = fluid.layers.square_error_cost(input=y_predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
-        ....
-
+        avg_cost = fluid.layers.mean(x=cost) 
+        ...
+        
 for i in range(buffer_size):
     data = next(train_reader())
     executor.run(concurrent_program, feed=feeder.feed(data))
@@ -89,6 +84,9 @@ for i in range(buffer_size):
 ```
 In Python code, we define two `program`, `concurrent_program` used to send data into `Channel` and `main_program` used to get data from the `Channel` and execute training. If you're familiar with [`Goroutine`](https://www.golang-book.com/books/intro/10#section1) in the go language, you'll find that `main_program` and `concurrent_program` just like two `Goroutine`.
 
+In `concurrent_program`, `fluid.channel_list.make` gets a `chan_list` according to the `chan_list_name`. `fluid.channel_list.make` creates a `global_variable` and puts it into `concurrent_program.global_block`. And then `places = fluid.get_places()` gets all available device on the current machine. The `places` is used in `parallel.for`. In `parallel.for`, according to `name="chan_{}".format(for_loop.i)`, `fluid.channel_list.get_channel` gets a `chan` from `chan_list`. After that, `fluid.channle.send` sends `image` and `label` to this `channel`.
+
+In `main_program`, roughly similar to the `concurrent_program`, the difference is that `main_program` gets `image` and `label` from `chan` by `fluid.channle.recv`. The names of `chan_list` in `concurrent_program` and `main_program` are the same, so the two `chan_list` are the same variable at the c++ side.
 
 
 ## Reference
