@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <string.h>  // for strdup
 #include <algorithm>
 #include <string>
 
@@ -60,7 +61,9 @@ void InitDevices() {
 }
 
 void InitGLOG(const std::string &prog_name) {
-  google::InitGoogleLogging(prog_name.c_str());
+  // glog will not hold the ARGV[0] inside.
+  // Use strdup to alloc a new string.
+  google::InitGoogleLogging(strdup(prog_name.c_str()));
   google::InstallFailureSignalHandler();
 }
 

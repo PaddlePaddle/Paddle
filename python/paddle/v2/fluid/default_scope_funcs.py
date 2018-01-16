@@ -1,16 +1,29 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 """
 Default scope function.
 
-`Paddle` manages Scope as programming language's scope.  It just a 
-thread-local stack of Scope. Top of that stack is current scope, the bottom 
-of that stack is all scopes' parent. 
+`Paddle` manages Scope as programming language's scope.  It just a
+thread-local stack of Scope. Top of that stack is current scope, the bottom
+of that stack is all scopes' parent.
 
-Invoking `var/find_var`  can `new/find` variable in current scope. 
-Invoking `enter_local_scope/leave_local_scope` can create or destroy local 
-scope. 
+Invoking `var/find_var`  can `new/find` variable in current scope.
+Invoking `enter_local_scope/leave_local_scope` can create or destroy local
+scope.
 
-A `scoped_function` will take a `function` as input. That function will be 
-invoked in a new local scope. 
+A `scoped_function` will take a `function` as input. That function will be
+invoked in a new local scope.
 """
 
 import paddle.v2.fluid.core
@@ -19,8 +32,12 @@ import threading
 __tl_scope__ = threading.local()
 
 __all__ = [
-    'get_cur_scope', 'enter_local_scope', 'leave_local_scope', 'var',
-    'find_var', 'scoped_function'
+    'get_cur_scope',
+    'enter_local_scope',
+    'leave_local_scope',
+    'var',
+    'find_var',
+    'scoped_function',
 ]
 
 
@@ -71,7 +88,7 @@ def find_var(name):
 def scoped_function(func):
     """
     invoke `func` in new scope.
-    
+
     :param func: a callable function that will be run in new scope.
     :type func: callable
     """

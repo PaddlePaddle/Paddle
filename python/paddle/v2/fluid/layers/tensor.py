@@ -1,9 +1,34 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
+from ..framework import convert_np_dtype_to_dtype_
+from ..framework import Variable
+from ..core import DataType
+import numpy
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'cast', 'concat', 'sums', 'assign',
-    'fill_constant_batch_size_like', 'fill_constant', 'ones', 'zeros'
+    'create_tensor',
+    'create_parameter',
+    'cast',
+    'concat',
+    'sums',
+    'assign',
+    'fill_constant_batch_size_like',
+    'fill_constant',
+    'ones',
+    'zeros',
 ]
 
 
@@ -121,7 +146,7 @@ def assign(input, output):
     This function copies the *input* Variable to the *output* Variable.
 
     Args:
-        input(Variable): The source variable
+        input(Variable|numpy.ndarray): The source variable
         output(Variable): The destination variable
 
     Returns:
@@ -134,37 +159,64 @@ def assign(input, output):
           fluid.layers.assign(hidden, out)
     """
     helper = LayerHelper('assign', **locals())
-    helper.append_op(
-        type='scale',
-        inputs={'X': [input]},
-        outputs={'Out': [output]},
-        attrs={'scale': 1.0})
+    if isinstance(input, Variable):
+        helper.append_op(
+            type='scale',
+            inputs={'X': [input]},
+            outputs={'Out': [output]},
+            attrs={'scale': 1.0})
+    elif isinstance(input, numpy.ndarray):
+        dtype = convert_np_dtype_to_dtype_(input.dtype)
+        if dtype == DataType.FP32:
+            value_name = "fp32_values"
+            values = [float(v) for v in input.flat]
+        elif dtype == DataType.INT32:
+            value_name = "int32_values"
+            values = [int(v) for v in input.flat]
+        else:
+            raise ValueError("Unsupported dtype %s", input.dtype)
+        if input.size > 1024 * 1024:
+            raise ValueError("The size of input is too big. Please consider "
+                             "saving it to file and 'load_op' to load it")
+
+        helper.append_op(
+            type='assign_value',
+            outputs={'Out': [output]},
+            attrs={
+                'dtype': dtype,
+                'shape': list(input.shape),
+                value_name: values
+            })
+    else:
+        raise ValueError("Wrong type for assign input: %s" % type(input))
+
     return output
 
 
-def fill_constant(shape, dtype, value, out=None):
+def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
     **fill_constant**
 
-    This function creates a tensor of specified *shape* and
-    *dtype*, and initializes this with a constant supplied in *value*.
+    This function creates a tensor with specified `shape` and `dtype`, and
+    initializes it with a constant specifed by `value`.
 
-    It also sets *stop_gradient* to True.
+    The attribute `stop_gradient` of the created tensor is set to True.
 
     Args:
-        shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.DataType|str): Data type of output tensor
-        value(float): Constant value to initialize the output tensor
-        out(Variable): Output Variable to initialize
+        shape(tuple|list|None): Shape of the output tensor.
+        dtype(np.dtype|core.DataType|str): Data type of the output tensor.
+        value(float): The constant value used to initialize the output tensor.
+        out(Variable): The output tensor.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: The tensor variable storing the output.
 
     Examples:
         .. code-block:: python
 
           data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
     """
+
     helper = LayerHelper("fill_constant", **locals())
     if out is None:
         out = helper.create_tmp_variable(dtype=dtype)
@@ -172,9 +224,12 @@ def fill_constant(shape, dtype, value, out=None):
         type='fill_constant',
         inputs={},
         outputs={'Out': [out]},
-        attrs={'shape': shape,
-               'dtype': out.dtype,
-               'value': float(value)})
+        attrs={
+            'shape': shape,
+            'dtype': out.dtype,
+            'value': float(value),
+            'force_cpu': force_cpu
+        })
     out.stop_gradient = True
     return out
 

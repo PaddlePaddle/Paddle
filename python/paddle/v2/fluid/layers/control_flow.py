@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 from ..layer_helper import LayerHelper, unique_name
 from ..framework import Program, Variable, Operator
 from .. import core
@@ -12,7 +25,7 @@ __all__ = [
     'array_to_lod_tensor', 'increment', 'array_write', 'create_array',
     'less_than', 'array_read', 'shrink_memory', 'array_length', 'IfElse',
     'DynamicRNN', 'ConditionalBlock', 'StaticRNN', 'reorder_lod_tensor_by_rank',
-    'ParallelDo'
+    'ParallelDo', 'Print'
 ]
 
 
@@ -107,6 +120,67 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
                 'InFalse': in_false},
         outputs={'Out': out},
         attrs={'level': level})
+    return out
+
+
+def Print(input,
+          first_n=-1,
+          message=None,
+          summarize=-1,
+          print_tensor_name=True,
+          print_tensor_type=True,
+          print_tensor_shape=True,
+          print_tensor_lod=True,
+          print_phase='both'):
+    '''
+    **Print operator**
+
+    This creates a print op that will print when a tensor is accessed.
+
+    Wraps the tensor passed in so that whenever that a tensor is accessed,
+    the message `message` is printed, along with the current value of the
+    tensor `t`.
+
+    Args:
+        input (Variable): A Tensor to print.
+        summarize (int): Print this number of elements in the tensor, will print
+                all if left is negative.
+        message (str): A string message to print as a prefix.
+        first_n (int): Only log `first_n` number of times.
+        print_tensor_name (bool): Print the tensor name.
+        print_tensor_type (bool): Print the tensor type.
+        print_tensor_shape (bool): Print the tensor shape.
+        print_tensor_lod (bool): Print the tensor lod.
+        print_phase (bool): Which phase to displace, including 'forward',
+                'backward' and 'both'. If set to 'backward' or 'both', will
+                print the gradients of input tensor.
+
+    Returns:
+        Variable: Output tensor, same data with input tensor.
+
+    Examples:
+        .. code-block:: python
+
+        value = some_layer(...)
+        Print(value, summarize=10,
+              message="The content of some_layer: ")
+    '''
+    helper = LayerHelper('print', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='print',
+        inputs={'In': input},
+        attrs={
+            'first_n': first_n,
+            'summarize': summarize,
+            'message': message or "",
+            'print_tensor_name': print_tensor_name,
+            'print_tensor_type': print_tensor_type,
+            'print_tensor_shape': print_tensor_shape,
+            'print_tensor_lod': print_tensor_lod,
+            'print_phase': print_phase.upper()
+        },
+        outputs={'Out': out})
     return out
 
 
@@ -687,11 +761,10 @@ def topk(input, k):
 
 
 def lod_tensor_to_array(x, table):
-    """This function performs the operation that converts an LOD_Tensor to
-       an array.
+    """ Convert a LOD_TENSOR to an LOD_TENSOR_ARRAY.
 
     Args:
-        x (Variable|list): The tensor that needs to be converted to an array.
+        x (Variable|list): The LOD tensor to be converted to a LOD tensor array.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
                                 descending order.
@@ -721,11 +794,10 @@ def lod_tensor_to_array(x, table):
 
 
 def array_to_lod_tensor(x, table):
-    """This function performs the operations that converts an array to
-       an LOD_Tensor.
+    """Convert a LoD_Tensor_Aarry to an LoDTensor.
 
     Args:
-        x (Variable|list): The array that needs to be converted to a tensor.
+        x (Variable|list): The lod tensor array to be converted to a tensor.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
                                 descending order.
@@ -753,7 +825,8 @@ def array_to_lod_tensor(x, table):
 
 
 def increment(x, value=1.0, in_place=True):
-    """This function performs an operation that increments each value in the
+    """
+    This function performs an operation that increments each value in the
     input :math:`x` by an amount: :math:`value` as mentioned in the input
     parameter. This operation is performed in-place by default.
 
@@ -786,17 +859,24 @@ def increment(x, value=1.0, in_place=True):
 
 
 def array_write(x, i, array=None):
-    """This function performs the operation to write the data out as an
-    LOD_TENSOR_ARRAY.
+    """
+    This function writes the given input variable to the specified position
+    indicating by the arrary index to an output LOD_TENSOR_ARRAY. If the
+    output LOD_TENSOR_ARRAY is not given(None), a new one will be created and
+    returned.
 
     Args:
         x (Variable|list): The input tensor from which the data will be read.
-        i (Variable|list): The subscript index in tensor array, that points the
-                           place from which data will be read.
-        array (Variable|list): The data can be read into this variable if
-                               this is assigned.
+        i (Variable|list): The index of the output LOD_TENSOR_ARRAY, pointing to
+                           the position to which the input tensor will be
+                           written.
+        array (Variable|list): The output LOD_TENSOR_ARRAY to which the input
+                               tensor will be written. If this parameter is
+                               NONE, a new LOD_TENSOR_ARRAY will be created and
+                               returned.
+
     Returns:
-        Variable: The tensor type variable that has the data written to it.
+        Variable: The output LOD_TENSOR_ARRAY where the input tensor is written.
 
     Examples:
         .. code-block::python
@@ -1159,7 +1239,8 @@ class DynamicRNN(object):
         self.lod_rank_table = None
         self.max_seq_len = None
         self.step_idx = None
-        self.zero_idx = fill_constant(shape=[1], value=0, dtype='int64')
+        self.zero_idx = fill_constant(
+            shape=[1], value=0, dtype='int64', force_cpu=True)
         self.mem_dict = dict()
         self.output_array = []
         self.outputs = []
@@ -1173,7 +1254,7 @@ class DynamicRNN(object):
         self._assert_in_rnn_block_("step_input")
         if not isinstance(x, Variable):
             raise TypeError(
-                "step_input() can only take a Variable as its input")
+                "step_input() can only take a Variable as its input.")
         parent_block = self._parent_block_()
         if self.lod_rank_table is None:
             self.lod_rank_table = parent_block.create_var(
@@ -1210,11 +1291,32 @@ class DynamicRNN(object):
             outputs={'Out': input_array})
         return array_read(array=input_array, i=self.step_idx)
 
+    def static_input(self, x):
+        self._assert_in_rnn_block_("static_input")
+        if not isinstance(x, Variable):
+            raise TypeError(
+                "static_input() can only take a Variable as its input")
+        if self.lod_rank_table is None:
+            raise RuntimeError(
+                "static_input() must be called after step_input().")
+        parent_block = self._parent_block_()
+        x_reordered = parent_block.create_var(
+            name=unique_name("dynamic_rnn_static_input_reordered"),
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            dtype=x.dtype)
+        parent_block.append_op(
+            type='reorder_lod_tensor_by_rank',
+            inputs={'X': [x],
+                    'RankTable': [self.lod_rank_table]},
+            outputs={'Out': [x_reordered]})
+        return shrink_memory(x_reordered, self.step_idx, self.lod_rank_table)
+
     @contextlib.contextmanager
     def block(self):
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
-        self.step_idx = fill_constant(shape=[1], dtype='int64', value=0)
+        self.step_idx = fill_constant(
+            shape=[1], dtype='int64', value=0, force_cpu=True)
         self.step_idx.stop_gradient = False
         self.status = DynamicRNN.IN_RNN
         with self.while_op.block():
@@ -1234,8 +1336,8 @@ class DynamicRNN(object):
 
     def __call__(self, *args, **kwargs):
         if self.status != DynamicRNN.AFTER_RNN:
-            raise ValueError(
-                "Dynamic RNN outputs can only be retrieved after rnn block")
+            raise ValueError(("Output of the dynamic RNN can only be visited "
+                              "outside the rnn block."))
         if len(self.outputs) == 1:
             return self.outputs[0]
         else:
