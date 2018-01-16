@@ -149,7 +149,7 @@ op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(recurrent_op DEPS executor)
-op_library(warpctc_op DEPS dynload_warpctc sequence_padding math_function)
+op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale math_function)
 op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
 
