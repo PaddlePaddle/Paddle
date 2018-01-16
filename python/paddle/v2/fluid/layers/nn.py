@@ -553,8 +553,79 @@ def square_error_cost(input, label, **kwargs):
 
 def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
     """
-    This function computes the accuracy using the input and label.
-    The output is the top_k inputs and their indices.
+    This function computes the top-k accuracy using the input and label.
+    Commonly, it is used for multiclass classification.
+    Lets say we had only "cat", "dog", "house", "mouse" as classes.
+    The input gives you a probability for each class. Such as:
+
+    .. code-block:: text
+
+        0.1; 0.2; 0.0; 0.7
+
+    The Top-1 class is "mouse". The top-2 classes are {mouse, dog}.
+    If the correct class was "dog", it would be counted as "correct"
+    for the Top-2 accuracy, but as wrong for the Top-1 accuracy.
+
+    And the following examples will explain how accuracy function works:
+
+    .. code-block:: text
+
+        * Case 1
+            input is a tensor as below:
+                input.data = [[0.4, 0.5],
+                              [0.7, 0.3],
+                              [0.1, 0.9]]
+                input.dims = [3, 2]
+
+            label is a tensor as below:
+                label.data = [[0],
+                              [1],
+                              [1]]
+                label.dims = [3, 1]
+
+            then accuracy=(1.0 / 3.0) with k=1
+            and accuracy=(1.0 / 1.0) with k=2
+
+        * Case 2
+            input is a tensor as below:
+                input.data = [[0.3, 0.2, 0.5],
+                              [0.7, 0.2, 0.1],
+                              [0.1, 0.6, 0.3],
+                              [0.3, 0.1, 0.6]]
+                input.dims = [4, 3]
+
+            label is a tensor as below:
+                label.data = [[0],
+                              [1],
+                              [0],
+                              [2]]
+                label.dims = [4, 1]
+
+            then accuracy=(2.0 / 4.0) with k=1
+            and accuracy=(3.0 / 4.0) with k=2
+
+    Args:
+        input (Variable): The input variable which is a Tensor
+                          with dims.size > 1. Usually, it is the output
+                          of softmax operator.
+        label (Variable): The label variable which is a Tensor.
+                          The last dim of label tensor must be 1.
+        correct (Variable): It is a Tensor used for collecting number
+                            of correct samples in a batch.
+        total (Variable): It is a Tensor used for collecting total number
+                          of samples in a batch.
+
+
+    Returns:
+        accuracy: The Top-k accuracy for input and label.
+
+    Examples:
+        .. code-block:: python
+
+            label = fluid.layers.data(name="label", shape=[batch_size, 1],
+                    dtype="int64")
+            prediction = fluid.layers.fc(input=layer_1, size=20, act="softmax")
+            acc = fluid.layers.accuracy(input=prediction, label=label, k=3)
     """
     helper = LayerHelper("accuracy", **kwargs)
     topk_out = helper.create_tmp_variable(dtype=input.dtype)
