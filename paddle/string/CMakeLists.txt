@@ -1,5 +1,10 @@
 cc_library(stringpiece SRCS piece.cc)
 cc_test(stringpiece_test SRCS piece_test.cc DEPS stringpiece glog gflags)
-
 cc_test(stringprintf_test SRCS printf_test.cc DEPS glog gflags)
 cc_test(to_string_test SRCS to_string_test.cc)
+
+if(NOT WITH_C_API AND WITH_FLUID)
+  file(GLOB STRING_HEADERS *.h)
+  install(FILES ${STRING_HEADERS} DESTINATION include/paddle/memory)
+  install(FILES tinyformat/tinyformat.h DESTINATION include/paddle/memory/tinyformat)
+endif()

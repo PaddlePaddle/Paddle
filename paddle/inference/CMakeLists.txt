@@ -16,6 +16,12 @@ target_circle_link_libraries(paddle_fluid_shared
   ARCHIVE_END
   ${FLUID_CORE_MODULES})
 
+# install library & headers
+if(NOT WITH_C_API AND WITH_FLUID)
+  install(FILES inference.h DESTINATION include/paddle/inference)
+  install(TARGETS paddle_fluid_shared DESTINATION lib)
+endif()
+
 # ptools
 # just for testing, we may need to change the storing format for inference_model
 # and move the dependent of pickle.

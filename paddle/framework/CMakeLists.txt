@@ -84,3 +84,9 @@ cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_contex
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 nv_test(data_device_transform_test SRCS data_device_transform_test.cu
         DEPS operator op_registry init math_function)
+      
+if(NOT WITH_C_API AND WITH_FLUID)
+  file(GLOB FRAMEWORK_HEADERS *.h)
+  install(FILES ${FRAMEWORK_HEADERS} DESTINATION include/paddle/framework)
+  install(FILES details/cow_ptr.h details/op_registry.h DESTINATION include/paddle/framework/details)
+endif()
