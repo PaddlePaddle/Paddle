@@ -87,7 +87,12 @@ class RecvOp : public framework::OperatorBase {
            const platform::Place &dev_place) const override {
     // FIXME(typhoonzero): no new scopes for every run.
     framework::Scope &recv_scope = scope.NewScope();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+
+    // FIXME(Yancey1989): initialize rpc server with laze mode.
     rpc_service_->SetScope(&recv_scope);
+    rpc_service_->SetDevCtx(&dev_ctx);
     auto param_list = Attr<std::vector<std::string>>("ParamList");
     auto grad_list = Attr<std::vector<std::string>>("GradList");
     auto trainer_count = Attr<int>("Trainers");
@@ -96,6 +101,8 @@ class RecvOp : public framework::OperatorBase {
     rpc_service_->Reset();
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
+    VLOG(4) << "param_count:" << param_count
+            << " trainer_count:" << trainer_count;
     while (!exit_flag) {
       // TODO(gognwb): simply this loop.
       // Get from multiple trainers, we don't care about order in which
@@ -134,9 +141,6 @@ class RecvOp : public framework::OperatorBase {
         }
 
         auto *var = recv_scope.Var(grad_var_name);
-        platform::DeviceContextPool &pool =
-            platform::DeviceContextPool::Instance();
-        auto &dev_ctx = *pool.Get(dev_place);
         detail::DeserializeFromMessage(v.second, dev_ctx, var);
       }
 
