@@ -47,26 +47,27 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   LayerNormOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) Input parameter");
-    AddInput("Grad", "(Tensor) Input gradient");
-    AddInput("AvgSquaredGrad", "(Tensor) Input average of squared gradient");
-    AddInput("AvgSquaredUpdate",
-             "(Tensor) Input average of squared parameter updates");
+    AddInput("X",
+             "(Tensor), the input(X) is a Tensor of shape (B x D), "
+             "where B is the size of the current mini-batch and D is the "
+             "input data dimension.");
+    AddInput("Scale",
+             "(Tensor), the input(Scale) is a Tensor of "
+             "shape (D x 1).");
+    AddInput("Bias",
+             "(Tensor), the input(Bias) is a Tensor of "
+             "shape (D x 1).");
 
-    AddOutput("ParamOut", "(Tensor) Output parameter");
-    AddOutput("AvgSquaredGradOut",
-              "(Tensor) Output average of squared gradient");
-    AddOutput("AvgSquaredUpdateOut",
-              "(Tensor) Output average of squared parameter updates");
+    AddOutput("Out",
+              "(Tensor), the output(Out) is a Tensor of shape (B x D), "
+              ", which is same as the shape of the input tensor, "
+              "where B is the size of the current mini-batch and D is the "
+              "input data dimension.");
 
-    AddAttr<float>("rho",
-                   "(float, default 0.95) Exponential decay rate "
-                   "for squared gradients.")
-        .SetDefault(0.95f);
     AddAttr<float>("epsilon",
-                   "(float, default 1.0e-6) Constant for "
+                   "(float, default 1e-5) Constant for "
                    "numerical stability")
-        .SetDefault(1.0e-6f);
+        .SetDefault(1.0e-5);
     AddComment(R"DOC(
 LayerNorm Operator.
 

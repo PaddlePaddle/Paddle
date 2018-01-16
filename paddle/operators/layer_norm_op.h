@@ -20,49 +20,42 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class AdadeltaOpKernel : public framework::OpKernel<T> {
+class LayerNormOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
-    auto avg_squared_grad_out_tensor =
-        ctx.Output<framework::Tensor>("AvgSquaredGradOut");
-    auto avg_squared_update_out_tensor =
-        ctx.Output<framework::Tensor>("AvgSquaredUpdateOut");
-
-    param_out_tensor->mutable_data<T>(ctx.GetPlace());
-    avg_squared_grad_out_tensor->mutable_data<T>(ctx.GetPlace());
-    avg_squared_update_out_tensor->mutable_data<T>(ctx.GetPlace());
-
-    T rho = static_cast<T>(ctx.Attr<float>("rho"));
+    auto out_tensor = ctx.Output<framework::Tensor>("Out");
+    out_tensor->mutable_data<T>(ctx.GetPlace());
+    auto out = framework::EigenVector<T>::Flatten(*out_tensor);
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
-    auto param = framework::EigenVector<T>::Flatten(
-        *ctx.Input<framework::Tensor>("Param"));
-    auto grad = framework::EigenVector<T>::Flatten(
-        *ctx.Input<framework::Tensor>("Grad"));
-    // Squared gradient accumulator
-    auto avg_squared_grad = framework::EigenVector<T>::Flatten(
-        *ctx.Input<framework::Tensor>("AvgSquaredGrad"));
-    // Squared updates accumulator
-    auto avg_squared_update = framework::EigenVector<T>::Flatten(
-        *ctx.Input<framework::Tensor>("AvgSquaredUpdate"));
-    auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
-    auto avg_squared_grad_out =
-        framework::EigenVector<T>::Flatten(*avg_squared_grad_out_tensor);
-    auto avg_squared_update_out =
-        framework::EigenVector<T>::Flatten(*avg_squared_update_out_tensor);
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+    auto* input_tensor = ctx.Input<framework::Tensor>("X");
+    auto batch_size = input_tensor->dims()[0];
+    auto input_dim = input_tensor->dims()[1];
 
-    avg_squared_grad_out.device(place) =
-        rho * avg_squared_grad + (1 - rho) * grad.square();
-    auto update =
-        -((avg_squared_update + epsilon) / (avg_squared_grad_out + epsilon))
-             .sqrt() *
-        grad;
-    avg_squared_update_out.device(place) =
-        rho * avg_squared_update + (1 - rho) * update.square();
-    param_out.device(place) = param + update;
+    auto input = framework::EigenVector<T>::Flatten(*input_tensor);
+    auto scale = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Scale"));
+    auto bias = framework::EigenVector<T>::Flatten(
+        *ctx.Input<framework::Tensor>("Bias"));
+
+    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
+
+    auto mean = input.rowwise().mean();
+    auto inv_std =
+        ((((input.square()).rowwise()).mean() - mean.square()) + epsilon)
+            .sqrt()
+            .inverse();
+    out.device(place) = scale.transpose().replicate(batch_size, 1) *
+                            (input - mean.replicate(1, input_dim)) *
+                            inv_std.replicate(1, input_dim) +
+                        bias.transpose().replicate(batch_size, 1);
   }
+};
+
+template <typename T>
+class LayerNormGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {}
 };
 
 }  // namespace operators
