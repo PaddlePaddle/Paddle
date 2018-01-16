@@ -36,7 +36,10 @@ class RequestBase {
 
   CallStatus Status() { return status_; }
   void SetStatus(CallStatus status) { status_ = status; }
-  virtual std::string GetReqName() { assert(false); }
+  virtual std::string GetReqName() {
+    assert(false);
+    return "";
+  }
 
  protected:
   grpc::ServerContext ctx_;
