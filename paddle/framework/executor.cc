@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/platform/place.h"
+#include "paddle/platform/profiler.h"
 
 DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
@@ -116,6 +117,11 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
     VLOG(3) << op->DebugStringEx(local_scope);
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto dev_ctx = const_cast<platform::DeviceContext*>(pool.Get(place_));
+    platform::RecordEvent record_event(op->Type(), dev_ctx);
+
     op->Run(*local_scope, place_);
     if (FLAGS_check_nan_inf) {
       for (auto& vname : op->OutputVars(true)) {

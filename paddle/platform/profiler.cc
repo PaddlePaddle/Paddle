@@ -163,19 +163,34 @@ void EnableProfiler(ProfilerState state) {
   Mark("_start_profiler_", nullptr);
 }
 
-std::vector<std::vector<Event>> DisableProfiler() {
-  PADDLE_ENFORCE(g_state != ProfilerState::kDisabled,
-                 "Can't disable profiling, since it's not starting.");
-  // Mark the profiling stop.
-  Mark("_stop_profiler_", nullptr);
-  g_state = ProfilerState::kDisabled;
-  std::vector<std::vector<Event>> result;
+void ResetProfiler() {
   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
+  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
+       ++it) {
+    (*it)->Clear();
+  }
+}
+
+std::vector<std::vector<Event>> GetAllEvents() {
+  std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
+  std::vector<std::vector<Event>> result;
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
        ++it) {
     result.emplace_back((*it)->Reduce());
   }
   return result;
+}
+
+void DisableProfiler(EventSortingKey sorted_key) {
+  PADDLE_ENFORCE(g_state != ProfilerState::kDisabled,
+                 "Can't disable profiling, since it's not starting.");
+  // Mark the profiling stop.
+  Mark("_stop_profiler_", nullptr);
+  g_state = ProfilerState::kDisabled;
+
+  std::vector<std::vector<Event>> all_events = GetAllEvents();
+  ParseEvents(all_events, sorted_key);
+  ResetProfiler();
 }
 
 void ParseEvents(std::vector<std::vector<Event>>& events,
@@ -291,12 +306,12 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
   }
 
   // Print report
-  PrintProfilingReport(events_table, sorted_domain, max_name_width + 4, 12);
+  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12);
 }
 
-void PrintProfilingReport(std::vector<std::vector<EventItem>>& events_table,
-                          std::string& sorted_domain, const size_t name_width,
-                          const size_t data_width) {
+void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
+                   std::string& sorted_domain, const size_t name_width,
+                   const size_t data_width) {
   // Output header information
   std::cout << "\n------------------------->"
             << "     Profiling Report     "
