@@ -22,7 +22,7 @@ def CTCDecode(input, lod, blank, merge_repeated):
 
 class TestCTCDecodeOp(OpTest):
     def config(self):
-        self.op_type = "ctc_greedy_decode"
+        self.op_type = "ctc_decode"
         self.input_lod = [[0, 11, 18]]
         self.blank = 0
         self.merge_repeated = False
@@ -49,7 +49,7 @@ class TestCTCDecodeOp(OpTest):
 
 class TestCTCDecodeOpCase1(TestCTCDecodeOp):
     def config(self):
-        self.op_type = "ctc_greedy_decode"
+        self.op_type = "ctc_decode"
         self.input_lod = [[0, 11, 18]]
         self.blank = 0
         self.merge_repeated = True
