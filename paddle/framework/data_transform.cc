@@ -20,32 +20,40 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+static void free_tmp_tensor(const Tensor* in_ptr, const Tensor* tmp_ptr) {
+  if (in_ptr != tmp_ptr) {
+    delete tmp_ptr;
+  }
+}
+
 void DataTransform(const OpKernelType& expected_kernel_type,
                    const OpKernelType& kernel_type_for_var,
                    const Tensor& input_tensor, Tensor* out) {
-  std::shared_ptr<const Tensor> input_ptr(&input_tensor);
-  std::shared_ptr<Tensor> output_ptr(new Tensor());
-
   // do layout transform
-  std::shared_ptr<Tensor> layout_transform_out(new Tensor());
+  const Tensor* in_ptr = &input_tensor;
+  Tensor* out_ptr = new Tensor();
+
   if (expected_kernel_type.data_layout_ != kernel_type_for_var.data_layout_) {
-    TransDataLayout(kernel_type_for_var, expected_kernel_type, *input_ptr,
-                    layout_transform_out.get());
-    input_ptr = layout_transform_out;
-    output_ptr = layout_transform_out;
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, *in_ptr,
+                    out_ptr);
+    free_tmp_tensor(&input_tensor, in_ptr);
+    in_ptr = out_ptr;
+    out_ptr = new Tensor();
   }
 
   // do device transform
-  std::shared_ptr<Tensor> device_transform_out(new Tensor());
   if (!platform::is_same_place(kernel_type_for_var.place_,
                                expected_kernel_type.place_)) {
-    DeviceTransform(*input_ptr, expected_kernel_type.place_,
-                    device_transform_out.get());
-    input_ptr = layout_transform_out;
-    output_ptr = layout_transform_out;
+    DeviceTransform(*in_ptr, expected_kernel_type.place_, out_ptr);
+
+    free_tmp_tensor(&input_tensor, in_ptr);
+    in_ptr = out_ptr;
+    out_ptr = new Tensor();
   }
 
-  out->ShareDataWith(*output_ptr);
+  if (in_ptr != &input_tensor) {
+    out->ShareDataWith(*in_ptr);
+  }
 }
 
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
