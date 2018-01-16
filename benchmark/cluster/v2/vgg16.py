@@ -74,7 +74,7 @@ def vgg19(input, class_dim):
 
 
 def main():
-    paddle.init(use_gpu=True, trainer_count=1)
+    paddle.init(use_gpu=False, trainer_count=1)
     image = paddle.layer.data(
         name="image", type=paddle.data_type.dense_vector(DATA_DIM))
     lbl = paddle.layer.data(
