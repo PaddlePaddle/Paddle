@@ -69,6 +69,12 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   return os;
 }
 
+std::string LoDToString(const LoD &lod) {
+  std::ostringstream stream;
+  stream << lod;
+  return stream.str();
+}
+
 LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
                  size_t elem_end) {
   PADDLE_ENFORCE_LT(level, in.size());

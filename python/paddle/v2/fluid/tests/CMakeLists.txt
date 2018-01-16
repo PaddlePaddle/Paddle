@@ -5,3 +5,4 @@ foreach(src ${TEST_OPS})
 endforeach()
 
 add_subdirectory(book)
+add_subdirectory(book_distribute)
