@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <string.h>
 #include "paddle/framework/op_registry.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 namespace paddle {
 namespace operators {
 
@@ -30,8 +29,9 @@ class CTCGreedyDecodeKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* output = ctx.Output<LoDTensor>("Output");
     const size_t level = 0;
-
     auto input_lod = framework::ToAbsOffset(input->lod());
+
+    // check input dims and lod
     auto input_dims = input->dims();
     PADDLE_ENFORCE_EQ(input_dims[0],
                       static_cast<int64_t>(input_lod[level].back()),
@@ -39,38 +39,36 @@ class CTCGreedyDecodeKernel : public framework::OpKernel<T> {
                       "the sum of all sequences' lengths.");
 
     const size_t num_sequences = input_lod[level].size() - 1;
-    const size_t sequence_width = input->numel() / input_dims[0];
     size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
     bool merge_repeated = ctx.Attr<bool>("merge_repeated");
+
+    // merge repeated tokens and delete blank
     std::vector<std::vector<int>> pathes(num_sequences);
     std::vector<size_t> output_lod0(1, 0);
-
     const T* input_data = input->data<T>();
-    Eigen::Map<
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-    input_mat(const_cast<T*>(input_data), input->numel() / sequence_width,
-              sequence_width);
-
-    size_t max_class_idx;
-    size_t prev_class_idx = -1;
     for (size_t seq_idx = 0; seq_idx < num_sequences; ++seq_idx) {
+      T prev_token = -1;
       for (size_t i = input_lod[level][seq_idx];
            i < input_lod[level][seq_idx + 1]; ++i) {
-        input_mat.row(i).maxCoeff(&max_class_idx);
-        if (max_class_idx != blank &&
-            !(merge_repeated && max_class_idx == prev_class_idx)) {
-          pathes[seq_idx].push_back(max_class_idx);
+        if (input_data[i] != blank &&
+            !(merge_repeated && input_data[i] == prev_token)) {
+          pathes[seq_idx].push_back(input_data[i]);
         }
-        prev_class_idx = max_class_idx;
+        prev_token = input_data[i];
       }
       output_lod0.push_back(output_lod0.back() + pathes[seq_idx].size());
     }
+
+    // set output lod
     framework::LoD output_lod;
     output_lod.push_back(output_lod0);
     output->set_lod(output_lod);
-    int64_t num_step = static_cast<int64_t>(output_lod0.back());
-    int* output_data = output->mutable_data<int>({num_step, 1}, ctx.GetPlace());
 
+    // resize output dims
+    T* output_data = output->mutable_data<T>(
+        {static_cast<int64_t>(output_lod0.back()), 1}, ctx.GetPlace());
+
+    // copy result to output
     for (int i = 0; i < num_sequences; ++i) {
       memcpy(output_data + output_lod0[i], pathes[i].data(),
              sizeof(int) * pathes[i].size());

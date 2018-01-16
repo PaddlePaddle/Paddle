@@ -29,14 +29,8 @@ class CTCGreedyDecodeOp : public framework::OperatorWithKernel {
 
     auto input_dims = ctx->GetInputDim("Input");
 
-    int sequence_width =
-        static_cast<int>(framework::product(input_dims) / input_dims[0]);
-    int blank = ctx->Attrs().Get<int>("blank");
-    PADDLE_ENFORCE((blank >= 0) && (blank < sequence_width),
-                   "The value of Attr(blank) should be in interval [0, %d).",
-                   sequence_width);
     // TODO(wanghaoshuang): it is tricky to set the wrong dimension here.
-    ctx->SetOutputDim("Output", {input_dims[0], 1});
+    ctx->SetOutputDim("Output", input_dims);
   }
 
  protected:
@@ -53,25 +47,37 @@ class CTCGreedyDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
   CTCGreedyDecodeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
-             "(LodTensor, default: LoDTensor<float>), the unscaled "
-             "probabilities of variable-length sequences, which is a 2-D "
-             "Tensor with LoD information. It's shape is "
-             "[Lp, num_classes + 1], where Lp is the sum of all input "
-             "sequences' length and num_classes is the true number of classes "
-             "(not including the blank label).");
-    AddOutput("Output", "(Tensor, default: Tensor<int>), the decode result ");
+             "(LodTensor, default: LoDTensor<int>), Its shape is "
+             "[Lp, 1], where Lp is the sum of all input sequences' length.");
+    AddOutput("Output", "(Tensor, default: Tensor<int>), The decode result.");
     AddAttr<int>("blank",
                  "(int, default: 0), the blank label setted in Connectionist "
-                 "Temporal Classification (CTC) op, and it is in the "
-                 "half-opened interval [0, num_classes + 1).")
+                 "Temporal Classification (CTC) op.")
         .SetDefault(0);
     AddAttr<bool>("merge_repeated",
                   "(bool, default: true), whether to "
                   "merge repeated elements between two blanks. ")
         .SetDefault(true);
     AddComment(R"DOC(
-CTCGreedyDecoder is an implementation of the simple best path decoding
-algorithm, selecting at each timestep the most likely class at each timestep.
+CTCDecoder is used to merge repeated elements between two blanks
+and then delete all blanks in sequence.
+
+Given:
+    Input.data = [0, 1, 2, 2, 0, 4, 0, 4, 5, 0, 6,
+                  6, 0, 0, 7, 7, 7, 0]
+    Input.dims = {18, 1}
+    Input.LoD = [[0, 11, 18]]
+
+And:
+    blank = 0
+    merge_repeated = True
+
+Then:
+    Output.data = [1, 2, 4, 4, 5, 6,
+                   6, 7]
+    Output.dims = {8, 1}
+    Output.LoD = [[0, 6, 8]]
+
 )DOC");
   }
 };
@@ -85,4 +91,4 @@ REGISTER_OPERATOR(ctc_greedy_decode, ops::CTCGreedyDecodeOp,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
     ctc_greedy_decode,
-    ops::CTCGreedyDecodeKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::CTCGreedyDecodeKernel<paddle::platform::CPUDeviceContext, int>);
