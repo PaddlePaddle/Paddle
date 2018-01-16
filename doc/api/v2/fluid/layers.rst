@@ -493,3 +493,8 @@ swish
 ------
 ..  autofunction:: paddle.v2.fluid.layers.swish
     :noindex:
+
+row_conv
+--------
+..  autofunction:: paddle.v2.fluid.layers.row_conv
+    :noindex:

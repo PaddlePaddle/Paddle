@@ -50,6 +50,7 @@ __all__ = [
     'sequence_last_step',
     'dropout',
     'split',
+    'row_conv',
 ]
 
 
@@ -1547,13 +1548,13 @@ def split(input, num_or_sections, dim=-1):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        num_or_sections (int|list): If :attr:`num_or_sections` is an integer, 
-            then the integer indicates the number of equal sized sub-tensors 
-            that the tensor will be divided into. If :attr:`num_or_sections` 
-            is a list of integers, the length of list indicates the number of 
-            sub-tensors and the integers indicate the sizes of sub-tensors' 
+        num_or_sections (int|list): If :attr:`num_or_sections` is an integer,
+            then the integer indicates the number of equal sized sub-tensors
+            that the tensor will be divided into. If :attr:`num_or_sections`
+            is a list of integers, the length of list indicates the number of
+            sub-tensors and the integers indicate the sizes of sub-tensors'
             :attr:`dim` dimension orderly.
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the 
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`.
 
     Returns:
@@ -1597,3 +1598,55 @@ def split(input, num_or_sections, dim=-1):
             'axis': dim
         })
     return outs
+
+
+def row_conv(input, future_context_size, param_attr=None, act=None):
+    """Row Conv Operator. This layer will apply lookahead convolution to
+    **input**. The input variable should be a 2D LoDTensor with shape [T, D].
+    Parameters with shape [future_context_size + 1, D] will be created. The math
+    equation of row convolution is as following:
+
+    .. math::
+        Out_{i} = \sum_{j = i} ^ {i + \\tau} X_{j} \odot W_{i - j}
+
+    In the above equation:
+
+    * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
+    * :math:`\\tau`: Future context size.
+    * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
+    * :math:`W_{i-j}`: The (i-j)-th row of parameters with shape [1, D].
+
+    More details about row_conv please refer to the paper \
+    (http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf) and
+    the design document \
+    (https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645).
+
+    Args:
+        input (Variable): Input variable, a 2D LoDTensor with shape [T, D].
+        future_context_size (int): Future context size.
+        param_attr (ParamAttr): Attributes of parameters, including
+            name, initializer etc.
+        act (str): Non-linear activation to be applied to output variable.
+
+    Returns:
+        Variable: The output tensor with same shape as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[16],
+                            dtype='float32', lod_level=1)
+            out = fluid.layers.row_conv(input=x, future_context_size=2)
+    """
+    helper = LayerHelper('row_conv', **locals())
+    dtype = helper.input_dtype()
+    filter_shape = [future_context_size + 1, input.shape[1]]
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='row_conv',
+        inputs={'X': [input],
+                'Filter': [filter_param]},
+        outputs={'Out': [out]})
+    return out
