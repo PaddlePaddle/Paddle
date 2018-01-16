@@ -4,20 +4,20 @@ from op_test import OpTest
 
 
 def get_output_shape(attrs, x):
-    img_height = x.shape[1]
-    img_width = x.shape[2]
+    img_height = x.shape[2]
+    img_width = x.shape[3]
 
-    padding_height = attrs['paddingHeight']
-    padding_width = attrs['paddingWidth']
-    block_height = attrs['blockHeight']
-    block_width = attrs['blockWidth']
-    stride_height = attrs['strideHeight']
-    stride_width = attrs['strideWidth']
+    padding_height = attrs['padding_height']
+    padding_width = attrs['padding_width']
+    block_height = attrs['block_height']
+    block_width = attrs['block_width']
+    stride_height = attrs['stride_height']
+    stride_width = attrs['stride_width']
 
     output_height = \
       1 +  \
       (img_height + 2 * padding_height - block_height + stride_height - 1) / \
-          strideHeight
+          stride_height
 
     output_width = \
       1 + \
@@ -42,10 +42,10 @@ def im2col(attrs, im, col):
     filter_height = col.shape[3]
     filter_width = col.shape[4]
 
-    stride_height = attrs['strideHeight']
-    stride_width = attrs['strideWidth']
-    padding_height = attrs['paddingHeight']
-    padding_width = attrs['paddingWidth']
+    stride_height = attrs['stride_height']
+    stride_width = attrs['stride_width']
+    padding_height = attrs['padding_height']
+    padding_width = attrs['padding_width']
 
     for col_row_idx in range(0, output_height):
         for col_col_idx in range(0, output_width):
@@ -73,83 +73,51 @@ def im2col(attrs, im, col):
                                     im_row_offset][im_col_offset]
 
 
-def col2img(attrs, col, img):
-    """
-    img: {CHW}
-    col:
-        {output_height, outputWidth, inputChannels, filterHeight, filterWidth}
-    """
-    input_channels = im.shape[0]
-    input_height = im.shape[1]
-    input_width = im.shape[2]
+def block_expand(inputs, attrs):
+    output_height, output_width = get_output_shape(attrs, inputs)
+    img_channels = inputs.shape[1]
+    batch_size = inputs.shape[0]
+    out = np.zeros([
+        batch_size, output_height, output_width, img_channels,
+        attrs['block_height'], attrs['block_width']
+    ]).astype("float32")
 
-    output_height = col.shape[0]
-    output_width = col.shape[1]
-    filter_height = col.shape[3]
-    filter_width = col.shape[4]
+    for i in range(len(inputs)):
+        im2col(attrs, inputs[i], out[i])
 
-    stride_height = attrs['strideHeight']
-    stride_width = attrs['strideWidth']
-    padding_height = attrs['paddingHeight']
-    padding_width = attrs['paddingWidth']
-
-    for col_row_idx in range(0, output_height):
-        for col_col_idx in range(0, output_width):
-            for channel in range(0, input_channels):
-                for filter_row_idx in range(0, filter_height):
-                    for filter_col_idx in range(0, filter_width):
-                        im_row_offset = \
-                            col_row_idx * stride_height + filter_row_idx - padding_height
-                        im_col_offset = \
-                            col_col_idx * stride_width + filter_col_idx - padding_width
-                        if (im_row_offset >= 0 and
-                                im_row_offset < input_height and
-                                im_col_offset >= 0 and
-                                im_col_offset < input_width):
-                            im[channel][im_row_offset][im_col_offset] = \
-                                col[col_row_idx][col_col_idx][channel][filter_row_idx][filter_col_idx]
-
-
-def get_input_data(C, H, W):
-    x = np.random.uniform(0.1, 1, [C, H, W]).astype("float32")
-    for c in range(0, C):
-        for h in range(0, H):
-            for w in range(0, W):
-                #x[c][h][w] = c * H * W + h *W + w
-                x[c][h][w] = 0.2 + 0.01 * (c * H * W + h * W + w)
-        return x
+    out = out.reshape([
+        batch_size * output_height * output_width,
+        img_channels * attrs['block_height'] * attrs['block_width']
+    ])
+    return out
 
 
 class TestBlockExpandOp(OpTest):
-    def setUp(self):
-        C = 3
-        H = 4
-        W = 4
-        x = get_input_data(C, H, W)
-
-        attrs = {
-            'blockHeight': 2,
-            'blockWidth': 2,
-            'strideHeight': 1,
-            'strideWidth': 1,
-            'paddingHeight': 1,
-            'paddingWidth': 1,
+    def config(self):
+        self.batch_size = 1
+        self.img_channels = 3
+        self.img_height = 4
+        self.img_width = 4
+        self.attrs = {
+            'block_height': 2,
+            'block_width': 2,
+            'stride_height': 1,
+            'stride_width': 1,
+            'padding_height': 1,
+            'padding_width': 1,
         }
 
-        output_height, output_width = get_output_shape(attrs, x)
-        out = np.random.uniform(0.1, 1,\
-                    [output_height, output_width, x.shape[0], \
-                     attrs['blockHeight'], attrs['blockWidth']]).astype("float32")
-
+    def setUp(self):
+        self.config()
         self.op_type = "block_expand"
-        self.inputs = {'X': x.reshape(1, C, H, W)}
-        self.attrs = attrs
+        #x = np.random.uniform(0.1, 1,
+        x = np.random.randint(0, 10, [
+            self.batch_size, self.img_channels, self.img_height, self.img_width
+        ]).astype("float32")
 
-        im2col(attrs, x, out)
-        self.outputs = {
-            'Out':out.reshape(1, output_height, output_width, x.shape[0], \
-                     attrs['blockHeight'], attrs['blockWidth'])
-            }
+        out = block_expand(x, self.attrs)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
@@ -158,42 +126,52 @@ class TestBlockExpandOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestBlockExpandOp2(OpTest):
-    def setUp(self):
-        C = 3
-        H = 4
-        W = 5
-        x = get_input_data(C, H, W)
-
-        attrs = {
-            'blockHeight': 2,
-            'blockWidth': 1,
-            'strideHeight': 2,
-            'strideWidth': 1,
-            'paddingHeight': 2,
-            'paddingWidth': 1,
+class TestBlockExpandOpCase2(TestBlockExpandOp):
+    def config(self):
+        self.batch_size = 2
+        self.img_channels = 3
+        self.img_height = 4
+        self.img_width = 5
+        self.attrs = {
+            'block_height': 2,
+            'block_width': 1,
+            'stride_height': 2,
+            'stride_width': 1,
+            'padding_height': 2,
+            'padding_width': 1,
         }
 
-        output_height, output_width = get_output_shape(attrs, x)
-        out = np.random.uniform(0.1, 1,\
-                    [output_height, output_width, x.shape[0], \
-                     attrs['blockHeight'], attrs['blockWidth']]).astype("float32")
 
-        self.op_type = "block_expand"
-        self.inputs = {'X': x.reshape(1, C, H, W)}
-        self.attrs = attrs
+class TestBlockExpandOpCase3(TestBlockExpandOp):
+    def config(self):
+        self.batch_size = 3
+        self.img_channels = 1
+        self.img_height = 4
+        self.img_width = 5
+        self.attrs = {
+            'block_height': 2,
+            'block_width': 1,
+            'stride_height': 2,
+            'stride_width': 1,
+            'padding_height': 2,
+            'padding_width': 0,
+        }
 
-        im2col(attrs, x, out)
-        self.outputs = {
-            'Out':out.reshape(1, output_height, output_width, x.shape[0], \
-                     attrs['blockHeight'], attrs['blockWidth'])
-            }
 
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+class TestBlockExpandOpCase4(TestBlockExpandOp):
+    def config(self):
+        self.batch_size = 2
+        self.img_channels = 2
+        self.img_height = 3
+        self.img_width = 3
+        self.attrs = {
+            'block_height': 2,
+            'block_width': 2,
+            'stride_height': 1,
+            'stride_width': 1,
+            'padding_height': 0,
+            'padding_width': 0,
+        }
 
 
 if __name__ == '__main__':

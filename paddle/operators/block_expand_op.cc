@@ -32,37 +32,27 @@ class BlockExpandOp : public framework::OperatorWithKernel {
     auto in_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(in_dim.size(), 4,
                       "Input(X) format  must be 4D tensor, eg., NCHW.");
-    PADDLE_ENFORCE_GE(in_dim[0], 1, "Input batchsize must >= 1.");
 
-    int block_height = ctx->Attrs().Get<int>("blockHeight");
-    int block_width = ctx->Attrs().Get<int>("blockWidth");
-    int stride_height = ctx->Attrs().Get<int>("strideHeight");
-    int stride_width = ctx->Attrs().Get<int>("strideWidth");
-    int padding_height = ctx->Attrs().Get<int>("paddingHeight");
-    int padding_width = ctx->Attrs().Get<int>("paddingWidth");
+    int block_height = ctx->Attrs().Get<int>("block_height");
+    int block_width = ctx->Attrs().Get<int>("block_width");
+    int stride_height = ctx->Attrs().Get<int>("stride_height");
+    int stride_width = ctx->Attrs().Get<int>("stride_width");
+    int padding_height = ctx->Attrs().Get<int>("padding_height");
+    int padding_width = ctx->Attrs().Get<int>("padding_width");
 
-    int N = in_dim[0];
-    int C = in_dim[1];
+    int batch_size = in_dim[0];
+    int img_channels = in_dim[1];
     int img_height = in_dim[2];
     int img_width = in_dim[3];
 
-    int output_height = 0;
-    int output_width = 0;
+    int output_height = get_output_size(img_height, block_height, stride_height,
+                                        padding_height);
+    int output_width =
+        get_output_size(img_width, block_width, stride_width, padding_width);
 
-    get_blockexpand_output_shape(img_height, img_width, block_height,
-                                 block_width, stride_height, stride_width,
-                                 padding_height, padding_width, output_height,
-                                 output_width);
-
-    // The result of im2col is [output_height, output_width,
-    // inputChannels, filterHeight, filterWidth], and it is easy to
-    // reshape into [seqLength, stepSize], where seqLength is equal
-    // output_height * output_width, stepSize is equal
-    // input_channels * blockHeight * blockWidth
-    ctx->SetOutputDim(
-        "Out", {N, output_height, output_width, C, block_height, block_width});
-
-    // ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("Out", {batch_size * output_height * output_width,
+                              img_channels * block_height * block_width});
+    // TODO(wanghaoshuang): cal lod in complie time
   }
 };
 
@@ -79,28 +69,69 @@ class BlockExpandOpMaker : public framework::OpProtoAndCheckerMaker {
     W: width
 )DOC");
     AddOutput("Out", "(LodTensor)The output data of block_expand op,");
-    AddAttr<int>("blockHeight", "(int)height of block.");
-    AddAttr<int>("blockWidth", "(int)width of block.");
-    AddAttr<int>("strideHeight", "(int)height of stride.");
-    AddAttr<int>("strideWidth", "(int)width of stride.");
-    AddAttr<int>("paddingHeight", "(int)height of padding.");
-    AddAttr<int>("paddingWidth", "(int)width of padding.");
+    AddAttr<int>("block_height", "(int)height of block.");
+    AddAttr<int>("block_width", "(int)width of block.");
+    AddAttr<int>("stride_height", "(int)height of stride.");
+    AddAttr<int>("stride_width", "(int)width of stride.");
+    AddAttr<int>("padding_height", "(int)height of padding.");
+    AddAttr<int>("padding_width", "(int)width of padding.");
     AddComment(R"DOC(
 Expand feature map to minibatch matrix.
 - matirx height is: output_height * output_width
-- matrix width is: blockHeight * blockWidth * channels
+- matrix width is: block_height * block_width * channels
 
-output_height = 
-    1 + (2 * paddingHeight + img_height - blockHeight + strideHeight - 1) /
-            strideHeight;
-output_width = 
-    1 + (2 * paddingWidth + img_width - blockWidth + strideWidth - 1) /
-            strideWidth;
+output_height =
+    1 + (2 * padding_height + img_height - block_height + stride_height - 1) /
+            stride_height;
+output_width =
+    1 + (2 * padding_width + img_width - block_width + stride_width - 1) /
+            stride_width;
 
-The expand method is the same with ExpandConvLayer, but saved the transposed
-value. After expanding, The number of time steps are output_height * output_width
-and the dimension of each time step is blockHeight * blockWidth * channels.
-This layer can be used after convolution neural network, and before recurrent neural network.
+After expanding, The number of time steps are output_height * output_width
+and the dimension of each time step is block_height * block_width * channels.
+This op can be used after convolution neural network, and before recurrent neural network.
+
+Given:
+
+x = [[[[ 6.  2.  1.]
+       [ 8.  3.  5.]
+       [ 0.  2.  6.]]
+
+      [[ 2.  4.  4.]
+       [ 6.  3.  0.]
+       [ 6.  4.  7.]]]
+
+     [[[ 6.  7.  1.]
+       [ 5.  7.  9.]
+       [ 2.  4.  8.]]
+
+      [[ 1.  2.  1.]
+       [ 1.  3.  5.]
+       [ 9.  0.  8.]]]]
+x.dims = {2, 2, 3, 3}
+
+And:
+
+block_height = 2
+block_width = 2
+stride_height = 1
+stride_width = 1
+padding_height = 0
+padding_width = 0
+
+Then:
+
+output.data = [[ 6.  2.  8.  3.  2.  4.  6.  3.]
+               [ 2.  1.  3.  5.  4.  4.  3.  0.]
+               [ 8.  3.  0.  2.  6.  3.  6.  4.]
+               [ 3.  5.  2.  6.  3.  0.  4.  7.]
+               [ 6.  7.  5.  7.  1.  2.  1.  3.]
+               [ 7.  1.  7.  9.  2.  1.  3.  5.]
+               [ 5.  7.  2.  4.  1.  3.  9.  0.]
+               [ 7.  9.  4.  8.  3.  5.  0.  8.]]
+output.dims = {8, 9}
+output.lod = [[0, 4, 8]]
+
 )DOC");
   }
 };
