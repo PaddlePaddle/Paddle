@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pybind/protobuf.h"
+#include "pybind11/iostream.h"
 
 #include <mutex>  // for call_once
 #include <unordered_map>
@@ -30,6 +31,7 @@ limitations under the License. */
 #include "paddle/operators/net_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/platform/profiler.h"
 #include "paddle/pybind/const_value.h"
 #include "paddle/pybind/exception.h"
 #include "paddle/pybind/pybind.h"
@@ -60,8 +62,8 @@ bool IsCompileGPU() {
 #endif
 }
 
-PYBIND11_PLUGIN(core) {
-  py::module m("core", "C++ core of PaddlePaddle");
+PYBIND11_MODULE(core, m) {
+  m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
@@ -481,7 +483,26 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_stop", platform::CudaProfilerStop);
 #endif
 
-  return m.ptr();
+  py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
+      .value("kDisabled", platform::ProfilerState::kDisabled)
+      .value("kCPU", platform::ProfilerState::kCPU)
+      .value("kCUDA", platform::ProfilerState::kCUDA)
+      .export_values();
+
+  py::enum_<platform::EventSortingKey>(m, "EventSortingKey", py::arithmetic())
+      .value("kDefault", platform::EventSortingKey::kDefault)
+      .value("kCalls", platform::EventSortingKey::kCalls)
+      .value("kTotal", platform::EventSortingKey::kTotal)
+      .value("kMin", platform::EventSortingKey::kMin)
+      .value("kMax", platform::EventSortingKey::kMax)
+      .value("kAve", platform::EventSortingKey::kAve)
+      .export_values();
+
+  m.def("enable_profiler", platform::EnableProfiler);
+  m.def("disable_profiler", platform::DisableProfiler);
+  m.def("reset_profiler", platform::ResetProfiler);
+
+  py::add_ostream_redirect(m, "ostream_redirect");
 }
 }  // namespace pybind
 }  // namespace paddle

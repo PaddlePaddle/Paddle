@@ -21,73 +21,23 @@ limitations under the License. */
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/var_desc.h"
 
-// Cast boost::variant for PyBind.
-// Copy from
-// https://github.com/pybind/pybind11/issues/576#issuecomment-269563199
+using boost::variant;
+
 namespace pybind11 {
 namespace detail {
-
-// Can be replaced by a generic lambda in C++14
-struct variant_caster_visitor : public boost::static_visitor<handle> {
-  return_value_policy policy;
-  handle parent;
-
-  variant_caster_visitor(return_value_policy policy, handle parent)
-      : policy(policy), parent(parent) {}
-
-  template <class T>
-  handle operator()(T const &src) const {
-    return make_caster<T>::cast(src, policy, parent);
-  }
-};
-
-template <class Variant>
-struct variant_caster;
-
-template <template <class...> class V, class... Ts>
-struct variant_caster<V<Ts...>> {
-  using Type = V<Ts...>;
-
-  template <typename T>
-  typename std::enable_if<
-      !std::is_same<T, boost::detail::variant::void_>::value, bool>::type
-  try_load(handle src, bool convert) {
-    auto caster = make_caster<T>();
-    if (!load_success_ && caster.load(src, convert)) {
-      load_success_ = true;
-      value = cast_op<T>(caster);
-      return true;
-    }
-    return false;
-  }
-
-  template <typename T>
-  typename std::enable_if<std::is_same<T, boost::detail::variant::void_>::value,
-                          bool>::type
-  try_load(handle src, bool convert) {
-    return false;
-  }
-
-  bool load(handle src, bool convert) {
-    auto unused = {false, try_load<Ts>(src, convert)...};
-    (void)(unused);
-    return load_success_;
-  }
-
-  static handle cast(Type const &src, return_value_policy policy,
-                     handle parent) {
-    variant_caster_visitor visitor(policy, parent);
-    return boost::apply_visitor(visitor, src);
-  }
-
-  PYBIND11_TYPE_CASTER(Type, _("Variant"));
-  bool load_success_{false};
-};
 
 // Add specialization for concrete variant type
 template <class... Args>
 struct type_caster<boost::variant<Args...>>
     : variant_caster<boost::variant<Args...>> {};
+
+template <>
+struct visit_helper<boost::variant> {
+  template <typename... Args>
+  static auto call(Args &&... args) -> decltype(boost::apply_visitor(args...)) {
+    return boost::apply_visitor(args...);
+  }
+};
 
 }  // namespace detail
 }  // namespace pybind11
