@@ -60,6 +60,8 @@ using LoD = std::vector<Vector<size_t>>;
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
 
+std::string LoDToString(const LoD& lod);
+
 LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
                  size_t elem_end);
 /*

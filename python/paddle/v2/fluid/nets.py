@@ -1,6 +1,9 @@
 import layers
 
-__all__ = ["simple_img_conv_pool", "sequence_conv_pool"]
+__all__ = [
+    "simple_img_conv_pool",
+    "sequence_conv_pool",
+]
 
 
 def simple_img_conv_pool(input,

@@ -1,7 +1,34 @@
 from ..registry import register_layer
 
 __activations__ = [
-    'abs', 'tanh', 'sigmoid', 'relu', 'sqrt', 'ceil', 'floor', 'log', 'round'
+    'sigmoid',
+    'logsigmoid',
+    'exp',
+    'relu',
+    'tanh',
+    'tanh_shrink',
+    'softshrink',
+    'sqrt',
+    'abs',
+    'ceil',
+    'floor',
+    'round',
+    'reciprocal',
+    'log',
+    'square',
+    'softplus',
+    'softsign',
+    'brelu',
+    'leaky_relu',
+    'soft_relu',
+    'elu',
+    'relu6',
+    'pow',
+    'stanh',
+    'hard_shrink',
+    'thresholded_relu',
+    'hard_sigmoid',
+    'swish',
 ]
 
 __all__ = [

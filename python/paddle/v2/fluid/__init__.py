@@ -23,9 +23,22 @@ from memory_optimization_transpiler import memory_optimize
 
 Tensor = LoDTensor
 __all__ = framework.__all__ + executor.__all__ + [
-    'io', 'initializer', 'layers', 'nets', 'optimizer', 'backward',
-    'regularizer', 'LoDTensor', 'CPUPlace', 'CUDAPlace', 'Tensor', 'ParamAttr'
-    'DataFeeder', 'clip', 'DistributeTranspiler', 'memory_optimize'
+    'io',
+    'initializer',
+    'layers',
+    'nets',
+    'optimizer',
+    'backward',
+    'regularizer',
+    'LoDTensor',
+    'CPUPlace',
+    'CUDAPlace',
+    'Tensor',
+    'ParamAttr'
+    'DataFeeder',
+    'clip',
+    'DistributeTranspiler',
+    'memory_optimize',
 ]
 
 
