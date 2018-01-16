@@ -1,8 +1,22 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import layers
 
 __all__ = [
     "simple_img_conv_pool",
     "sequence_conv_pool",
+    "glu",
 ]
 
 
@@ -101,3 +115,38 @@ def sequence_conv_pool(input,
 
     pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)
     return pool_out
+
+
+def glu(input, dim=-1):
+    """
+    The gated linear unit composed by split, sigmoid activation and elementwise 
+    multiplication. Specifically, Split the input into two equal sized parts 
+    :math:`a` and :math:`b` along the given dimension and then compute as 
+    following:
+
+        .. math::
+
+            {GLU}(a, b)= a \otimes \sigma(b)
+
+    Refer to `Language Modeling with Gated Convolutional Networks 
+    <https://arxiv.org/pdf/1612.08083.pdf>`_.
+    
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the 
+            dimension to split along is :math:`rank(input) + dim`.
+
+    Returns:
+        Variable: The Tensor variable with half the size of input.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with shape [3, 6, 9]
+            fluid.nets.glu(input=x, dim=1)  # shape of output: [3, 3, 9]
+    """
+
+    a, b = layers.split(input, num_or_sections=2, dim=dim)
+    act_b = layers.sigmoid(x=b)
+    out = layers.elementwise_mul(x=a, y=act_b)
+    return out

@@ -28,12 +28,15 @@ class RequestBase {
  public:
   explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
                        grpc::ServerCompletionQueue* cq)
-      : service_(service), cq_(cq), status_(PROCESS) {}
+      : service_(service), cq_(cq), status_(PROCESS) {
+    PADDLE_ENFORCE(cq_);
+  }
   virtual ~RequestBase() {}
   virtual void Process() { assert(false); }
 
   CallStatus Status() { return status_; }
   void SetStatus(CallStatus status) { status_ = status; }
+  virtual std::string GetReqName() { assert(false); }
 
  protected:
   grpc::ServerContext ctx_;
@@ -56,12 +59,14 @@ class RequestSend final : public RequestBase {
 
   virtual ~RequestSend() {}
 
+  virtual std::string GetReqName() { return request_.varname(); }
+
   virtual void Process() {
     MessageWithName msg_with_name =
         std::make_pair(request_.varname(), std::move(request_));
     queue_->Push(std::move(msg_with_name));
-    // TODO(gongwb): check var's info.
     responder_.Finish(reply_, grpc::Status::OK, this);
+    status_ = FINISH;
   }
 
  protected:
@@ -74,20 +79,27 @@ class RequestSend final : public RequestBase {
 class RequestGet final : public RequestBase {
  public:
   explicit RequestGet(sendrecv::SendRecvService::AsyncService* service,
-                      grpc::ServerCompletionQueue* cq, framework::Scope* scope)
-      : RequestBase(service, cq), responder_(&ctx_), scope_(scope) {
+                      grpc::ServerCompletionQueue* cq, framework::Scope* scope,
+                      const platform::DeviceContext* dev_ctx)
+      : RequestBase(service, cq),
+        responder_(&ctx_),
+        scope_(scope),
+        dev_ctx_(dev_ctx) {
     service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_, this);
   }
 
   virtual ~RequestGet() {}
 
+  virtual std::string GetReqName() { return request_.varname(); }
+
   virtual void Process() {
     // proc request.
     std::string var_name = request_.varname();
     auto* var = scope_->FindVar(var_name);
-    SerializeToMessage(var_name, var, platform::CPUDeviceContext(), &reply_);
+    SerializeToMessage(var_name, var, *dev_ctx_, &reply_);
     // TODO(gongwb): check var's info.
     responder_.Finish(reply_, grpc::Status::OK, this);
+    status_ = FINISH;
   }
 
  protected:
@@ -95,11 +107,14 @@ class RequestGet final : public RequestBase {
   sendrecv::VariableMessage reply_;
   ServerAsyncResponseWriter<sendrecv::VariableMessage> responder_;
   framework::Scope* scope_;
+  const platform::DeviceContext* dev_ctx_;
 };
 
 void AsyncGRPCServer::RunSyncUpdate() {
   grpc::ServerBuilder builder;
   builder.AddListeningPort(address_, grpc::InsecureServerCredentials());
+  builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
+  builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
   builder.RegisterService(&service_);
 
   cq_send_ = builder.AddCompletionQueue();
@@ -155,20 +170,8 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
   if (is_shut_down_) {
     return;
   }
-  RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_);
+  RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_, dev_ctx_);
   VLOG(4) << "create Requestget status:" << get->Status();
-}
-
-void AsyncGRPCServer::SetFinishOrDelete(RequestBase*& last) {
-  std::unique_lock<std::mutex> lock(cq_mutex_);
-  if (is_shut_down_) {
-    delete last;
-    last = NULL;
-    return;
-  }
-
-  last->SetStatus(FINISH);
-  return;
 }
 
 void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
@@ -184,13 +187,19 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
       break;
     }
 
+    PADDLE_ENFORCE(tag);
     if (wait && !done_) {
       Wait();
     }
 
     RequestBase* base = (RequestBase*)tag;
+    // reference:
+    // https://github.com/tensorflow/tensorflow/issues/5596
+    // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
+    // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
     if (!ok) {
-      VLOG(4) << cq_name << " recv no regular event";
+      LOG(WARNING) << cq_name << " recv no regular event:argument name"
+                   << base->GetReqName();
       TryToRegisterNewOne();
       delete base;
       continue;
@@ -201,7 +210,6 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
         VLOG(4) << cq_name << " status:" << base->Status();
         TryToRegisterNewOne();
         base->Process();
-        SetFinishOrDelete(base);
         break;
       }
       case FINISH: {
