@@ -108,6 +108,10 @@ if (WITH_C_API AND WITH_PYTHON)
     "different Python interpreter from compiling.")
 endif()
 
+if (WITH_C_API)
+  set(WITH_FLUID OFF CACHE STRING "Disable install fluid when compile the C_API" FORCE)
+endif()
+
 if(MOBILE_INFERENCE)
     set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
 else()
