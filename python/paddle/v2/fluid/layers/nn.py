@@ -1649,4 +1649,4 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         inputs={'X': [input],
                 'Filter': [filter_param]},
         outputs={'Out': [out]})
-    return out
+    return helper.append_activation(out)
