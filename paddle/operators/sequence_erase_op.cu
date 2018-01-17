@@ -55,7 +55,7 @@ __global__ void SetOutput(const T* in_dat, const int in_len,
                           const int* num_erased, T* out_dat) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < in_len) {
-    if (in_dat[index] != in_dat[index + 1]) {
+    if (num_erased[index] == num_erased[index + 1]) {
       out_dat[index - num_erased[index]] = in_dat[index];
     }
   }
