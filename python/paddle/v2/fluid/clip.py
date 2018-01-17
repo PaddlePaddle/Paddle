@@ -134,8 +134,8 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
                 "Class 'GradientClipByGlobalNorm' has not been properly initialized. \
                  Please call GradientClipByGlobalNorm.init() first.")
 
-    @classmethod
-    def process_context(cls, context, param, grad):
+    def process_context(self, context, param, grad):
+        cls = self.__class__
         cls.check_init()
 
         local_norm_var = layers.reduce_sum(
@@ -144,8 +144,8 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
             input=[local_norm_var, cls.global_norm_var],
             out=[cls.global_norm_var])
 
-    @classmethod
-    def create_operators(cls, param, grad):
+    def create_operators(self, param, grad):
+        cls = self.__class__
         cls.check_init()
 
         if cls.scale_var is None:
