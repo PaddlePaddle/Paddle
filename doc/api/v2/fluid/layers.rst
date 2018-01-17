@@ -364,6 +364,12 @@ split
 ..  autofunction:: paddle.v2.fluid.layers.split
     :noindex:
 
+
+matmul
+------
+..  autofunction:: paddle.v2.fluid.layers.matmul
+    :noindex:
+
 logsigmoid
 ----------
 ..  autofunction:: paddle.v2.fluid.layers.logsigmoid
