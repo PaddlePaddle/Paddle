@@ -212,6 +212,7 @@ void BindVarDsec(py::module &m) {
              return name;
            },
            py::return_value_policy::reference)
+      .def("set_name", &VarDesc::SetName)
       .def("set_shape", &VarDesc::SetShape)
       .def("set_dtype", &VarDesc::SetDataType)
       .def("shape", &VarDesc::Shape, py::return_value_policy::reference)

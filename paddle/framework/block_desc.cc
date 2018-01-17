@@ -75,7 +75,7 @@ std::vector<VarDesc *> BlockDesc::AllVars() const {
 
 OpDesc *BlockDesc::AppendOp() {
   need_update_ = true;
-  ops_.emplace_back(new OpDesc());
+  ops_.emplace_back(new OpDesc(this));
   return ops_.back().get();
 }
 
@@ -86,7 +86,7 @@ void BlockDesc::AppendAllocatedOp(std::unique_ptr<OpDesc> &&op_desc) {
 
 OpDesc *BlockDesc::PrependOp() {
   need_update_ = true;
-  ops_.emplace_front(new OpDesc());
+  ops_.emplace_front(new OpDesc(this));
   return ops_.front().get();
 }
 
@@ -162,7 +162,7 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
     : prog_(prog), desc_(desc) {
   need_update_ = true;
   for (auto &op : other.ops_) {
-    ops_.emplace_back(new OpDesc(*op));
+    ops_.emplace_back(new OpDesc(*op, this));
   }
 
   for (auto &it : other.vars_) {

@@ -40,7 +40,7 @@ class ControlFlowGraph(object):
         op_size = block_desc.op_size()
         for i in range(op_size):
             op = block_desc.op(i)
-            if i != op_size:
+            if i != op_size - 1:
                 self._add_connection(op_idx, op_idx + 1)
             self._ops.append(op)
             if op.type() != "while" and op.type() != "while_grad":
@@ -53,17 +53,17 @@ class ControlFlowGraph(object):
                     self._defs[op_idx].update(op.output(kStepScopes))
                 elif op.type() == "while_grad":
                     self._uses[op_idx].update(op.input(kStepScopes))
-                sub_block_id = op.attr("sub_block")
+                sub_block_id = op.attr("sub_block").id
                 op_idx += 1
                 new_op_idx = self._build_graph_imp(sub_block_id, op_idx)
-                self._add_connection(new_op_idx, op_idx - 1)
-                self._add_connection(op_idx - 1, new_op_idx + 1)
+                self._add_connection(new_op_idx - 1, op_idx - 1)
+                self._add_connection(op_idx - 1, new_op_idx)
+                op_idx = new_op_idx
         return op_idx
 
     def _build_graph(self):
         self._build_graph_imp(0, 0)
         self.op_size = len(self._ops)
-        print "build graph done ", self.op_size
 
     def clear_graph(self):
         self._succesors.clear()
@@ -142,29 +142,40 @@ class ControlFlowGraph(object):
                             cache_var = cache_pair[0]
                             cache_shape = cache_pair[1]
                             if x_shape == cache_shape:
-                                x_dtype = block_desc.find_var_recursive(
-                                    str(x)).dtype()
-                                cache_dtype = block_desc.find_var_recursive(
-                                    str(cache_var)).dtype()
-                                # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
-                                # and dtype_to_size[cache_dtype]
-                                if x_dtype == cache_dtype:
-                                    print(
-                                        ("Hit Cache !!!! cache pool index "
-                                         "is %d, var name is %s, "
-                                         "cached var name is %s, "
-                                         "var shape is %s ") %
-                                        (index, x, cache_var, str(cache_shape)))
-                                    self.pool.pop(index)
-                                    _rename_arg_(
-                                        self._ops, x, cache_var, begin_idx=i)
-                                    block_id = block_desc.id()
-                                    self._program.block(block_id).var(str(
-                                        x)).desc = block_desc.find_var_recursive(
-                                            str(cache_var))
-                                    self._update_graph(
-                                        x, cache_var, begin_idx=i)
-                                    break
+                                if block_desc.find_var_recursive(
+                                        str(cache_var)):
+                                    x_dtype = block_desc.find_var_recursive(
+                                        str(x)).dtype()
+                                    cache_dtype = block_desc.find_var_recursive(
+                                        str(cache_var)).dtype()
+                                    # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
+                                    # and dtype_to_size[cache_dtype]
+                                    if x_dtype == cache_dtype:
+                                        print(
+                                            ("Hit Cache !!!! cache pool index "
+                                             "is %d, var name is %s, "
+                                             "cached var name is %s, "
+                                             "var shape is %s ") %
+                                            (index, x, cache_var,
+                                             str(cache_shape)))
+                                        self.pool.pop(index)
+                                        if x == cache_var:
+                                            break
+                                        _rename_arg_(
+                                            self._ops,
+                                            x,
+                                            cache_var,
+                                            begin_idx=i)
+                                        block_desc.find_var_recursive(str(
+                                            x)).set_name(
+                                                block_desc.find_var_recursive(
+                                                    str(cache_var)).name())
+                                        # self._program.block(block_desc.id).var(str(
+                                        #     x)).desc = block_desc.find_var_recursive(
+                                        #         str(cache_var))
+                                        self._update_graph(
+                                            x, cache_var, begin_idx=i)
+                                        break
 
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
@@ -191,13 +202,3 @@ def memory_optimize(input_program):
     graph.memory_optimize()
     result_program = graph.get_program()
     return result_program
-
-
-# def memory_optimize(input_program):
-#     graph = ControlFlowGraph(input_program)
-#     block_num = input_program.get_desc().num_blocks()
-#     for i in range(block_num):
-#         graph.memory_optimize(i)
-#         graph.clear_graph()
-#     result_program = graph.get_program()
-#     return result_program

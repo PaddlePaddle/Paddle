@@ -34,6 +34,13 @@ class OpDesc {
 
   OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block);
 
+  explicit OpDesc(BlockDesc *block) : block_(block) {}
+
+  OpDesc(const OpDesc &other, BlockDesc *block) {
+    *this = other;
+    block_ = block;
+  }
+
   void CopyFrom(const OpDesc &op_desc);
 
   proto::OpDesc *Proto();
@@ -117,6 +124,8 @@ class OpDesc {
   void Flush();
 
   BlockDesc *Block() { return this->block_; }
+
+  void SetBlock(BlockDesc *block) { this->block_ = block; }
 
  private:
   template <typename MapType>
