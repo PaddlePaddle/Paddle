@@ -8,11 +8,11 @@ In this article, we'll explain how to config and run distributed training job wi
 
 ### Get your cluster ready
 
-Prepare your computer in cluster. Nodes in this cluster can be any spec which runs PaddlePaddle, and with a unique IP address assigned to it. Make sure they can talk to each other.
+Prepare your computer in the cluster. Nodes in this cluster can be any spec which runs PaddlePaddle, and with a unique IP address assigned to it. Make sure they can talk to each other.
 
 ### Have PaddlePaddle installed
 
-PaddlePaddle must be installed into all nodes. It would be great if you have GPU cards in your nodes, be sure to properly install drivers and CUDA libraries.
+PaddlePaddle must be installed on all nodes. It would be great if you have GPU cards on your nodes, be sure to properly install drivers and CUDA libraries.
 
 PaddlePaddle build and installation guide can be found from [here](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/index_en.html).
 
@@ -65,29 +65,29 @@ for pass_id in range(PASS_NUM):
 exit(1)
 ```
 
-We created a simple fully connected net program, and handled it to fluid executor to run for 100 passes.
+We created a simple fully connected net program and handled it to the fluid executor to run for 100 passes.
 
 Now let's try to convert it to a distributed version to run in a cluster.
 
 #### Introducing parameter server
 
-As you see from the non-cluster version of training script, there is only one role in it, the trainer do the computing as well as holding parameters. In cluster training, since multi-trainers are working on the same task, they need one centralized the place to hold and distribute parameters. This centralized place is called Parameter Server in PaddlePaddle.
+As you see from the non-cluster version of training script, there is only one role in it, the trainer does the computing as well as holding parameters. In cluster training, since multi-trainers are working on the same task, they need one centralized the place to hold and distribute parameters. This centralized place is called Parameter Server in PaddlePaddle.
 
-![route53 create recordset](src/trainer.png)
+![parameter server architect](src/trainer.png)
 
-Parameter Server in fluid dose not only hold parameters, but also assigned with partially of the program. Trainers communicate with parameter servers via send/receive OPs. For more tech detail, please refer to this document.
+Parameter Server in fluid does not only hold parameters but also assigned with part of the program. Trainers communicate with parameter servers via send/receive OPs. For more tech detail, please refer to this [document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/dist_refactor/distributed_architecture.md).
 
 So, the question is how are we going to slice the main program into training program and parameter server program?
 
 #### Slice the program
 
-Fluid provides a tool called "Distribute Transpiler" to automatically convert non-cluster program into cluster program.
+Fluid provides a tool called "Distribute Transpiler" to automatically convert the non-cluster program into cluster program.
 
 The idea behind this tool is to find optimize OPs and gradient parameters, slice the program into 2 pieces and connect then with send/receive OP.
 
 And optimize OPs and gradient parameters is the return values of optimizer's minimize function. 
 
-To put then together:
+To put them together:
 
 ``` python
 ... #define the program, cost, and create sgd optimizer
@@ -96,7 +96,7 @@ optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost) #get optimize OPs 
 
 t = fluid.DistributeTranspiler() # create transpiler instance
 
-t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2) #slice the program into 2 pieces with optimizer_ops and gradient parameters list, as well as pserver_endpoints, which is a comma seperated list of [IP:PORT] and number of trainers
+t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2) #slice the program into 2 pieces with optimizer_ops and gradient parameters list, as well as pserver_endpoints, which is a comma separated list of [IP:PORT] and number of trainers
 
 ... #create executor
 
@@ -116,7 +116,7 @@ for pass_id in range(100):
 
 ### E2E demo
 
-Please find the complete testing script from [here](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book_distribute/notest_dist_fit_a_line.py). In parameter node run this in command line:
+Please find the complete testing script from [here](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book_distribute/notest_dist_fit_a_line.py). In parameter node run this in the command line:
 
 ``` bash
 PSERVERS=192.168.1.2:6174 SERVER_ENDPOINT=192.168.1.2:6174 TRAINING_ROLE=PSERVER python notest_dist_fit_a_line.py
@@ -132,4 +132,4 @@ Then in 2 of your trainer node run this:
 PSERVERS=192.168.1.2:6174 SERVER_ENDPOINT=192.168.1.2:6174 TRAINING_ROLE=TRAINER python notest_dist_fit_a_line.py
 ```
 
-*the reason you need to run this command twice in 2 nodes is in the script, we set the trainer count to be 2. You can change this setting in line 50*
+*the reason you need to run this command twice in 2 nodes is in the script, we set the trainer count to be 2. You can change this setting on line 50*
