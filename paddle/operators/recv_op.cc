@@ -33,6 +33,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+constexpr char kOptimizeBlock[] = "OptimizeBlock";
+
 void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
   service->RunSyncUpdate();
   VLOG(4) << "RunServer thread end";
@@ -150,14 +152,12 @@ class RecvOp : public framework::OperatorBase {
 
       rpc_service_->Reset();
 
-      std::string program_str = Attr<std::string>("OptimizeProgram");
-      framework::proto::ProgramDesc program_desc;
-      program_desc.ParseFromString(program_str);
-      framework::ProgramDesc program(program_desc);
+      auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
+      auto *program = block->Program();
       framework::Executor executor(dev_place);
       // Run sub graph to get optimized tensor
       try {
-        executor.Run(program, &recv_scope, 0, /*global_block*/
+        executor.Run(*program, &recv_scope, block->ID(), /*global_block*/
                      false /*create_local_scope*/, false /*create_vars*/);
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
@@ -189,8 +189,8 @@ This operator will recv tensor from send_op
                          "IP address to listen on.")
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
-    AddAttr<std::string>("OptimizeProgram", "type string",
-                         "Serialized ProgramDesc string for recv to run.");
+    AddAttr<framework::BlockDesc *>(
+        kOptimizeBlock, "Serialized ProgramDesc string for recv to run.");
     AddAttr<std::vector<std::string>>(
         "ParamList", "type list of string",
         "grad->param name mapping to find which param to optimize.")
