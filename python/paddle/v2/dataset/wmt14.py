@@ -25,12 +25,20 @@ import gzip
 import paddle.v2.dataset.common
 from paddle.v2.parameters import Parameters
 
-__all__ = ['train', 'test', 'build_dict', 'convert']
+__all__ = [
+    'train',
+    'test',
+    'get_dict',
+    'convert',
+]
 
-URL_DEV_TEST = 'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
+URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
+                'cslm_joint_paper/data/dev+test.tgz')
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
-# this is a small set of data for test. The original data is too large and will be add later.
-URL_TRAIN = 'http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz'
+# this is a small set of data for test. The original data is too large and
+# will be add later.
+URL_TRAIN = ('http://paddlepaddle.cdn.bcebos.com/demo/'
+             'wmt_shrinked_data/wmt14.tgz')
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
 # BLEU of this trained model is 26.92
 URL_MODEL = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_14/wmt14_model.tar.gz'
