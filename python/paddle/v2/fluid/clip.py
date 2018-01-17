@@ -1,9 +1,25 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import functools
 import layers
 from . import core
 
 __all__ = [
-    'GradientClipByValue', 'append_gradient_clip_ops', 'error_clip_callback'
+    'GradientClipByValue',
+    'ErrorClipByValue',
+    'append_gradient_clip_ops',
+    'error_clip_callback',
 ]
 
 
@@ -23,12 +39,12 @@ class ErrorClipByValue(BaseErrorClipAttr):
         self.min = min
 
     def append_clip_op(self, block, grad_name):
-        block.append_op(
-            type="clip",
-            inputs={"X": grad_name},
-            outputs={"Out": grad_name},
-            attrs={"min": self.min,
-                   "max": self.max})
+        clip_op_desc = block.desc.append_op()
+        clip_op_desc.set_type("clip")
+        clip_op_desc.set_input("X", [grad_name])
+        clip_op_desc.set_output("Out", [grad_name])
+        clip_op_desc.set_attr("min", self.min)
+        clip_op_desc.set_attr("max", self.max)
 
 
 def error_clip_callback(block, context):
@@ -39,6 +55,11 @@ def error_clip_callback(block, context):
                          op_desc.output_arg_names()):
         fwd_var = block.var_recursive(grad_to_var[grad_n])
         error_clip = getattr(fwd_var, "error_clip", None)
+        if not (error_clip is None or isinstance(error_clip,
+                                                 BaseErrorClipAttr)):
+            raise TypeError(
+                "Variable's error_clip should be an instance of BaseErrorClipAttr or None."
+            )
         if error_clip is not None:
             error_clip.append_clip_op(block, grad_n)
 

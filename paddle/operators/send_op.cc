@@ -19,59 +19,45 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 
-#include "paddle/operators/detail/send_recv_impl.h"
-#include "paddle/operators/detail/simple_block_queue.h"
+#include <future>
+#include "paddle/operators/detail/grpc_client.h"
 
 namespace paddle {
 namespace operators {
 
-// TODO(typhoonzero): this is a simple implementation which only send
-// one tensor
 class SendOp : public framework::OperatorBase {
  public:
-  SendOp(const std::string &type, const framework::VariableNameMap &inputs,
-         const framework::VariableNameMap &outputs,
-         const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {
-    // init client when the operator is created at runtime.
-    std::vector<std::string> endpoints =
-        Attr<std::vector<std::string>>("endpoints");
-    for (auto ep : endpoints) {
-      client_map_[ep].reset(new detail::RPCClient(
-          grpc::CreateChannel(ep, grpc::InsecureChannelCredentials())));
-    }
-  }
+  SendOp(const std::string& type, const framework::VariableNameMap& inputs,
+         const framework::VariableNameMap& outputs,
+         const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void Run(const framework::Scope& scope,
+           const platform::Place& place) const override {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    // TODO(typhoonzero): use async calls to send multiple variable asyncly.
-    for (size_t i = 0; i < ins.size(); ++i) {
-      bool ret = client_map_[epmap[i]]->SendVariable(scope, ins[i]);
-      if (!ret) {
-        LOG(ERROR) << "send variable error: " << ins[i];
-      }
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(place);
+    for (size_t i = 0; i < ins.size(); i++) {
+      client_.AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
     }
-    // TODO(typhoonzero): support async optimization
-    client_map_[epmap[0]]->Wait();
-    for (size_t i = 0; i < outs.size(); ++i) {
-      bool ret = client_map_[epmap[i]]->GetVariable(scope, outs[i]);
-      if (!ret) {
-        LOG(ERROR) << "GetVariable error: " << outs[i];
-      }
+
+    for (size_t i = 0; i < outs.size(); i++) {
+      client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
+
+    PADDLE_ENFORCE(client_.Wait());
   }
 
- protected:
-  mutable std::unordered_map<std::string, std::shared_ptr<detail::RPCClient>>
-      client_map_;
+ private:
+  mutable detail::RPCClient client_;
 };
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  SendOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor to be send").AsDuplicable();
     AddOutput("Out", "(Tensor) Output tensor to get from server")
