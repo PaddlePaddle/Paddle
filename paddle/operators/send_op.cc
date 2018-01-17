@@ -33,13 +33,13 @@ class SendOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void Run(const framework::Scope& scope,
-           const platform::Place& dev_place) const override {
+           const platform::Place& place) const override {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
 
-    // FIXME(gongwb): DeviceContext?
-    auto ctx = platform::CPUDeviceContext();
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(place);
     for (size_t i = 0; i < ins.size(); i++) {
       client_.AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
     }
@@ -48,7 +48,7 @@ class SendOp : public framework::OperatorBase {
       client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
 
-    client_.wait();
+    PADDLE_ENFORCE(client_.Wait());
   }
 
  private:
