@@ -2,17 +2,17 @@
 
 ## Introduction
 
-In this article, we'll explain how to config and run distributed training job with PaddlePaddle Fluid in a bare metal cluster.
+In this article, we'll explain how to config and run distributed training jobs with PaddlePaddle Fluid in a bare metal cluster.
 
 ## Preparations
 
 ### Get your cluster ready
 
-Prepare your computer node in the cluster. Nodes in this cluster can be any spec that runs PaddlePaddle, and with a unique IP address assigned to it. Make sure they can talk to each other.
+Prepare your computer nodes in the cluster. Nodes in this cluster can be of any specification that runs PaddlePaddle, and with a unique IP address assigned to it. Make sure they can communicate with each other.
 
 ### Have PaddlePaddle installed
 
-PaddlePaddle must be installed on all nodes. It would be great if you have GPU cards on your nodes, be sure to properly install drivers and CUDA libraries.
+PaddlePaddle must be installed on all nodes. If you have GPU cards on your nodes, be sure to properly install drivers and CUDA libraries.
 
 PaddlePaddle build and installation guide can be found from [here](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/index_en.html).
 
@@ -65,17 +65,17 @@ for pass_id in range(PASS_NUM):
 exit(1)
 ```
 
-We created a simple fully connected net program and handled it to the fluid executor to run for 100 passes.
+We created a simple fully connected neural networks training program and handed it to the fluid executor to run for 100 passes.
 
 Now let's try to convert it to a distributed version to run in a cluster.
 
 #### Introducing parameter server
 
-As you see from the non-cluster version of training script, there is only one role in it: the trainer, who does the computing as well as holding parameters. In cluster training, since multi-trainers are working on the same task, they need one centralized the place to hold and distribute parameters. This centralized place is called Parameter Server in PaddlePaddle.
+As you see from the non-cluster version of training script, there is only one role in it: the trainer, who does the computing as well as holding parameters. In cluster training, since multi-trainers are working on the same task, they need one centralized place to hold and distribute parameters. This centralized place is called the Parameter Server in PaddlePaddle.
 
 ![parameter server architect](src/trainer.png)
 
-Parameter Server in fluid does not only hold parameters but also assigned with part of the program. Trainers communicate with parameter servers via send/receive OPs. For more tech detail, please refer to this [document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/dist_refactor/distributed_architecture.md).
+Parameter Server in fluid does not only hold parameters but is also assigned with a part of the program. Trainers communicate with parameter servers via send/receive OPs. For more tech detail, please refer to this [document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/dist_refactor/distributed_architecture.md).
 
 Now we need to create program for both trainers and parameter servers, the question is how?
 
@@ -83,9 +83,9 @@ Now we need to create program for both trainers and parameter servers, the quest
 
 Fluid provides a tool called "Distribute Transpiler" to automatically convert the non-cluster program into cluster program.
 
-The idea behind this tool is to find optimize OPs and gradient parameters, slice the program into 2 pieces and connect then with send/receive OP.
+The idea behind this tool is to find optimize OPs and gradient parameters, slice the program into 2 pieces and connect them with send/receive OP.
 
-And optimize OPs and gradient parameters can be found from the return values of optimizer's minimize function.
+Optimize OPs and gradient parameters can be found from the return values of optimizer's minimize function.
 
 To put them together:
 
@@ -105,7 +105,7 @@ exe.run(fluid.default_startup_program())
 #current_endpoint here means current pserver IP:PORT you wish to run on
 exe.run(t.get_pserver_program(current_endpoint, optimize_ops)) 
 
-# in trianer, run this
+# in trainer, run this
 ... # define data reader
 exe.run(fluid.default_startup_program())
 for pass_id in range(100):
