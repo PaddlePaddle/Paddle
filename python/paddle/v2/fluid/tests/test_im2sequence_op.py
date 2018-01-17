@@ -1,11 +1,24 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import unittest
 import numpy as np
 from op_test import OpTest
 
 
-def get_output_shape(attrs, x):
-    img_height = x.shape[2]
-    img_width = x.shape[3]
+def get_output_shape(attrs, in_shape):
+    img_height = in_shape[2]
+    img_width = in_shape[3]
 
     padding_height = attrs['padding_height']
     padding_width = attrs['padding_width']
@@ -73,8 +86,8 @@ def im2col(attrs, im, col):
                                     im_row_offset][im_col_offset]
 
 
-def block_expand(inputs, attrs):
-    output_height, output_width = get_output_shape(attrs, inputs)
+def Im2Sequence(inputs, attrs):
+    output_height, output_width = get_output_shape(attrs, inputs.shape)
     img_channels = inputs.shape[1]
     batch_size = inputs.shape[0]
     out = np.zeros([
@@ -109,13 +122,12 @@ class TestBlockExpandOp(OpTest):
 
     def setUp(self):
         self.config()
-        self.op_type = "block_expand"
-        #x = np.random.uniform(0.1, 1,
-        x = np.random.randint(0, 10, [
+        self.op_type = "im2sequence"
+        x = np.random.uniform(0.1, 1, [
             self.batch_size, self.img_channels, self.img_height, self.img_width
         ]).astype("float32")
 
-        out = block_expand(x, self.attrs)
+        out = Im2Sequence(x, self.attrs)
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
 
