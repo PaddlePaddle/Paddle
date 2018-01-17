@@ -72,7 +72,7 @@ class FillOp : public framework::OperatorBase {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
-      framework::CopyFrom(tensor, place, dev_ctx, &out);
+      framework::Copy(tensor, place, dev_ctx, &out);
     }
   }
 };

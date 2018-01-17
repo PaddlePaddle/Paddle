@@ -59,7 +59,9 @@ using LoD = std::vector<Vector<size_t>>;
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
-std::string lod_to_string(const LoD& lod);
+std::string LoDToString(const LoD& lod);
+
+std::string LoDToString(const LoD& lod);
 
 LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
                  size_t elem_end);
@@ -69,6 +71,38 @@ LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
 LoD ToAbsOffset(const LoD& in);
 
 bool operator==(const LoD& a, const LoD& b);
+
+/*
+ * Check whether this lod's format is valid.
+ *
+ * ATTENTION:
+ *   - Empty lod is treated as valid.
+ *
+ * It will check two things:
+ *
+ *  1. all the offsets in a level should be ascending(no same items allows).
+ *  2. there should be more than 2 offsets existing in each level.
+ *  3. the higher level's last offset should equals the lower level's size-1.
+ *  4. the first offset(the begin offset) of each level should be 0.
+ *  5. the lowest level's last offset should equals `tensor_height` if
+ * tensor_height>0.
+ */
+
+bool CheckLoD(const LoD& in, int tensor_height = -1);
+/*
+ * Check whether this absolute lod's format is valid.
+ *
+ * ATTENTION:
+ *   - Empty lod is treated as valid.
+ *
+ * It will check two things:
+ *  1. all the offsets in a level should be ascending(no same items allows)
+ *  2. there should be more than 2 offsets existing in each level.
+ *  3. the first offset of each level should be 0, and the last should be the
+ *     same(the height of underlying tensor) or `tensor_height` if
+ *     tensor_height>0.
+ */
+bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
 
 /*
  * LoDTensor (Level of details Tensor)
@@ -148,8 +182,8 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   for (size_t ins = 0; ins < num_instances; ins++) {
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
       auto slice = tensor.Slice(elem, elem + 1);
-      CopyFrom(source.Slice(ins, ins + 1), platform::CPUPlace(),
-               platform::CPUDeviceContext(), &slice);
+      Copy(source.Slice(ins, ins + 1), platform::CPUPlace(),
+           platform::CPUDeviceContext(), &slice);
     }
   }
   return tensor;

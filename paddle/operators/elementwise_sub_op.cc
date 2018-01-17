@@ -21,7 +21,7 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
  public:
   ElementwiseSubOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Sub", "$Out = X - Y$");
+    SetComment("Sub", "Out = X - Y");
     AddComment(comment_);
   }
 };

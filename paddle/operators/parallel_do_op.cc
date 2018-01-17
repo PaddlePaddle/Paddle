@@ -39,6 +39,7 @@ void SplitTensorAndMoveTensorToScopes(
     const std::vector<framework::Scope *> &sub_scopes,
     const std::vector<platform::Place> &places,
     const std::vector<std::string> &names) {
+  PADDLE_ENFORCE_EQ(sub_scopes.size(), places.size());
   for (auto &argu : names) {
     auto *var = scope.FindVar(argu);
     const auto &tensor = var->Get<LoDTensor>();
@@ -51,6 +52,15 @@ void SplitTensorAndMoveTensorToScopes(
     for (size_t i = 0; i < sub_scopes.size(); ++i) {
       *sub_scopes[i]->Var(argu)->GetMutable<LoDTensor>() = lod_tensors[i];
     }
+  }
+}
+
+void WaitOnPlaces(const std::vector<platform::Place> places) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+
+  for (auto &place : places) {
+    auto &dev_ctx = *pool.Get(place);
+    dev_ctx.Wait();
   }
 }
 
@@ -71,10 +81,7 @@ class ParallelDoOp : public framework::OperatorBase {
     auto *block = Attr<framework::BlockDesc *>(kParallelBlock);
     auto *program = block->Program();
 
-    // TODO(tonyyang-svail): get places from input
-    std::vector<platform::Place> places;
-    places.emplace_back(platform::CPUPlace());
-    places.emplace_back(platform::CPUPlace());
+    auto &places = scope.FindVar(Input(kPlaces))->Get<platform::PlaceList>();
 
     auto &sub_scopes = *scope.FindVar(Output(kParallelScopes))
                             ->GetMutable<std::vector<framework::Scope *>>();
@@ -82,8 +89,22 @@ class ParallelDoOp : public framework::OperatorBase {
       sub_scopes.push_back(&scope.NewScope());
     }
 
+    // split input
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
                                      Inputs(kInputs));
+    // copy parameter
+    for (auto &param : Inputs(kParameters)) {
+      PADDLE_ENFORCE(scope.FindVar(param)->IsType<LoDTensor>(),
+                     "Only support parameter type as LoDTensor");
+      auto &src = scope.FindVar(param)->Get<LoDTensor>();
+      for (size_t i = 0; i < places.size(); ++i) {
+        auto &place = places[i];
+        auto *sub_scope = sub_scopes[i];
+        auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
+        framework::Copy(src, place, dst);
+      }
+    }
+    WaitOnPlaces(places);
 
     std::vector<std::future<void>> workers;
     workers.reserve(places.size());
@@ -92,12 +113,6 @@ class ParallelDoOp : public framework::OperatorBase {
 
       auto &place = places[place_idx];
       auto *cur_scope = sub_scopes[place_idx];
-
-      // copy parameter
-      // some version of boost lacks != for boost::variant
-      if (!(dev_ctx.GetPlace() == place)) {
-        PADDLE_THROW("Not Implemented");
-      }
 
       workers.emplace_back(framework::Async([program, cur_scope, place, block] {
         framework::Executor executor(place);
@@ -108,6 +123,7 @@ class ParallelDoOp : public framework::OperatorBase {
     for (auto &worker : workers) {
       worker.wait();
     }
+    WaitOnPlaces(places);
 
     // merge output
     for (auto &o_name : Outputs(kOutputs)) {
@@ -121,6 +137,7 @@ class ParallelDoOp : public framework::OperatorBase {
           scope.FindVar(o_name)->GetMutable<LoDTensor>();
       lod_tensor_to_be_merged->MergeLoDTensor(lod_tensors, dev_ctx.GetPlace());
     }
+    WaitOnPlaces(places);
   }
 };
 
@@ -161,15 +178,14 @@ class ParallelDoGradOp : public OperatorBase {
     auto &sub_scopes = scope.FindVar(Input(kParallelScopes))
                            ->Get<std::vector<framework::Scope *>>();
 
-    // TODO(tonyyang-svail): get places from input
-    std::vector<platform::Place> places;
-    places.emplace_back(platform::CPUPlace());
-    places.emplace_back(platform::CPUPlace());
+    auto &places = scope.FindVar(Input(kPlaces))->Get<platform::PlaceList>();
 
     // feed output@grad
     SplitTensorAndMoveTensorToScopes(scope, sub_scopes, places,
                                      Inputs(framework::GradVarName(kOutputs)));
+    WaitOnPlaces(places);
 
+    // for debugging
     for (auto &s : Inputs(framework::GradVarName(kOutputs))) {
       VLOG(3) << s;
       VLOG(3) << scope.FindVar(s)->Get<LoDTensor>();
@@ -196,10 +212,11 @@ class ParallelDoGradOp : public OperatorBase {
     for (auto &worker : workers) {
       worker.wait();
     }
+    WaitOnPlaces(places);
 
     // merge grad
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
-      VLOG(3) << s;
+      VLOG(3) << "merge grad " << s;
 
       auto &t = sub_scopes[0]->FindVar(s)->Get<LoDTensor>();
       VLOG(3) << t;
@@ -211,16 +228,17 @@ class ParallelDoGradOp : public OperatorBase {
         auto &tt = sub_scopes[place_idx]->FindVar(s)->Get<LoDTensor>();
         VLOG(3) << place_idx;
         VLOG(3) << tt;
-        framework::CopyFrom(tt, places[0], t_buf);
+        framework::Copy(tt, places[0], t_buf);
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, s_buf}}}, {{"Out", {s}}},
             framework::AttributeMap{});
-        sum_op->Run(*sub_scopes[0], place);
+        sum_op->Run(*sub_scopes[0], places[0]);
+        WaitOnPlaces(places);
       }
 
       VLOG(3) << t;
-      framework::CopyFrom(t, place, scope.FindVar(s)->GetMutable<LoDTensor>());
+      framework::Copy(t, place, scope.FindVar(s)->GetMutable<LoDTensor>());
     }
   }
 };
@@ -236,8 +254,10 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
     for (auto &input_param : this->InputNames()) {
       VLOG(3) << input_param;
       grad->SetInput(input_param, this->Input(input_param));
-      grad->SetOutput(framework::GradVarName(input_param),
-                      this->InputGrad(input_param, false));
+      if (input_param != kPlaces) {
+        grad->SetOutput(framework::GradVarName(input_param),
+                        this->InputGrad(input_param, false));
+      }
     }
 
     for (auto &output_param : this->OutputNames()) {

@@ -98,16 +98,16 @@ class DetectionOutputKernel : public framework::OpKernel<T> {
     T* conf_data = conf_tensor.data<T>();
     if (platform::is_gpu_place(context.GetPlace())) {
       loc_cpu.mutable_data<T>(loc_tensor.dims(), platform::CPUPlace());
-      framework::CopyFrom(loc_tensor, platform::CPUPlace(),
-                          context.device_context(), &loc_cpu);
+      framework::Copy(loc_tensor, platform::CPUPlace(),
+                      context.device_context(), &loc_cpu);
       loc_data = loc_cpu.data<T>();
       conf_cpu.mutable_data<T>(conf_tensor.dims(), platform::CPUPlace());
-      framework::CopyFrom(conf_tensor, platform::CPUPlace(),
-                          context.device_context(), &conf_cpu);
+      framework::Copy(conf_tensor, platform::CPUPlace(),
+                      context.device_context(), &conf_cpu);
       conf_data = conf_cpu.data<T>();
       priorbox_cpu.mutable_data<T>(in_priorbox->dims(), platform::CPUPlace());
-      framework::CopyFrom(*in_priorbox, platform::CPUPlace(),
-                          context.device_context(), &priorbox_cpu);
+      framework::Copy(*in_priorbox, platform::CPUPlace(),
+                      context.device_context(), &priorbox_cpu);
       priorbox_data = priorbox_cpu.data<T>();
     }
     // get decode bboxes
@@ -158,8 +158,8 @@ class DetectionOutputKernel : public framework::OpKernel<T> {
                                 batch_size, all_indices, all_decoded_bboxes,
                                 out_data);
     if (platform::is_gpu_place(context.GetPlace())) {
-      framework::CopyFrom(out_cpu, platform::CUDAPlace(),
-                          context.device_context(), out);
+      framework::Copy(out_cpu, platform::CUDAPlace(), context.device_context(),
+                      out);
     }
   }
 };

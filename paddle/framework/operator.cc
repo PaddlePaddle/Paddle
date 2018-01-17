@@ -11,72 +11,38 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <algorithm>
 
 #include "paddle/framework/data_transform.h"
-#include "paddle/framework/device_data_transform.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/operator.h"
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
 
+DEFINE_bool(op_sync, false,
+            "Default cuda is asynchronous device, set to True will"
+            "force op run in synchronous mode.");
+
 namespace paddle {
 namespace framework {
 
-std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
-
-void UseCPU() {
-  kKernelPriority.clear();
-  /*Plain CPU*/
-  auto pair0 = std::make_tuple(platform::CPUPlace(), LibraryType::kPlain);
-  kKernelPriority.insert(kKernelPriority.begin(), pair0);
-}
-
-void UseMKLDNN() {
-  UseCPU();
-#if PADDLE_WITH_MKLML
-  {
-    /*MKLDNN Kernel*/
-    auto pair0 = std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN);
-    kKernelPriority.insert(kKernelPriority.begin(), pair0);
-  }
-#endif
-}
-
-void UseCUDA() {
-  UseMKLDNN();
-#if PADDLE_WITH_CUDA
-  /*Plain GPU*/
-  auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain);
-  kKernelPriority.insert(kKernelPriority.begin(), pair0);
-#endif
-}
-
-void UseCUDNN() {
-  UseCUDA();
-#if PADDLE_WITH_CUDA
-  if (platform::dynload::HasCUDNN()) {
-    /*CUDNN Kernel*/
-    auto pair0 = std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN);
-    kKernelPriority.insert(kKernelPriority.begin(), pair0);
-  }
-#endif
-}
-
-void UseALL() {
-  UseCPU();
-  UseMKLDNN();
-  UseCUDA();
-  UseCUDNN();
-}
+std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
+    std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
+    std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
+    std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN),
+    std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
+};
 
 static DDim GetDims(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return DDim({-1});
-  } else if (var->IsType<LoDTensor>()) {
+  }
+
+  if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
   } else if (var->IsType<SelectedRows>()) {
     return var->Get<SelectedRows>().GetCompleteDims();
@@ -88,9 +54,12 @@ static DDim GetDims(const Scope& scope, const std::string& name) {
 static LoD GetLoD(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
+
   if (var == nullptr) {
     return default_lod;
-  } else if (var->IsType<LoDTensor>()) {
+  }
+
+  if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().lod();
   } else {
     return default_lod;
@@ -262,36 +231,33 @@ static bool VarIsTensor(const Variable* var) {
   return var->IsType<LoDTensor>() || var->IsType<SelectedRows>();
 }
 
-static const Tensor* GetTensorFromVar(const Variable* var) {
-  const Tensor* t = nullptr;
+static const Tensor* GetTensorFromVar(Variable* var) {
   if (var->IsType<LoDTensor>()) {
-    t = &(var->Get<LoDTensor>());
+    return var->GetMutable<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
-    t = &(var->Get<SelectedRows>().value());
+    return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
   }
-  return t;
 }
 
 static Tensor* GetMutableTensorFromVar(Variable* var) {
-  Tensor* t = nullptr;
   if (var->IsType<LoDTensor>()) {
-    t = var->GetMutable<LoDTensor>();
+    return var->GetMutable<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
-    t = var->GetMutable<SelectedRows>()->mutable_value();
+    return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
   }
-  return t;
 }
 
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
-  return var == nullptr ? nullptr : GetTensorFromVar(var);
+  return var == nullptr ? nullptr
+                        : GetTensorFromVar(const_cast<Variable*>(var));
 }
 
 template <>
@@ -334,6 +300,7 @@ bool OpSupportGPU(const std::string& op_type) {
   auto it = all_kernels.find(op_type);
   if (it == all_kernels.end()) {
     // All control operator must support GPU
+
     return true;
   }
   for (auto& kern_pair : it->second) {
@@ -507,21 +474,17 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 
   ExecutionContext ctx(*this, scope, *dev_ctx);
-  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
 
   OpKernelMap& kernels = kernels_iter->second;
 
-  for (auto& candidate : kKernelPriority) {
-    auto candidate_key =
-        OpKernelType(expected_kernel_key.data_type_, std::get<0>(candidate),
-                     expected_kernel_key.data_layout_, std::get<1>(candidate));
+  // TODO(dzhwinter) : kernel fallback mechanism will be added when all the
+  // transform functions are ready.
 
-    if ((candidate_key == expected_kernel_key) ||
-        (kernels.count(candidate_key))) {
-      expected_kernel_key = candidate_key;
-      break;
-    }
-  }
+  // for (auto& candidate : kKernelPriority) {
+  //   Do selection
+  // }
+
+  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
 
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
@@ -535,7 +498,7 @@ void OperatorWithKernel::Run(const Scope& scope,
         if (tensor_in->IsInitialized()) {
           auto kernel_type_for_var = this->GetKernelTypeForVar(
               var_name_item.first, *tensor_in, expected_kernel_key);
-          if (kernel_type_for_var != expected_kernel_key) {
+          if (TransFromNeeded(kernel_type_for_var, expected_kernel_key)) {
             auto out_var_names = OutputVars(true);
             if (std::find(out_var_names.begin(), out_var_names.end(),
                           var_name) != out_var_names.end()) {
@@ -544,11 +507,13 @@ void OperatorWithKernel::Run(const Scope& scope,
                   "does not support transform",
                   var_name);
             }
-            VLOG(3) << "need to do transform for var " << var_name;
+            VLOG(3) << "Transform Variable " << var_name << " from "
+                    << kernel_type_for_var << " to " << expected_kernel_key;
             auto* trans_var = new_scope.Var(var_name);
-            auto* out = DataTransform(expected_kernel_key, kernel_type_for_var,
-                                      *tensor_in);
-            CopyVariableWithTensor(*var, *out, *trans_var);
+            std::shared_ptr<Tensor> out(new Tensor);
+            DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
+                          out.get());
+            CopyVariableWithTensor(*var, *(out.get()), *trans_var);
           }
         }
       }
@@ -557,8 +522,14 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-  kernel_iter->second->Compute(ExecutionContext(
-      *this, new_scope, *pool.Get(expected_kernel_key.place_)));
+  auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
+  kernel_iter->second->Compute(
+      ExecutionContext(*this, new_scope, *new_dev_ctx));
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_op_sync) {
+    new_dev_ctx->Wait();
+  }
 }
 
 proto::DataType OperatorWithKernel::IndicateDataType(

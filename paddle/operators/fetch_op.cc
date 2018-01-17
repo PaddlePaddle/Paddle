@@ -55,7 +55,7 @@ class FetchOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(src_item.place());
 
-    CopyFrom(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
+    Copy(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
     dev_ctx.Wait();
     dst_item.set_lod(src_item.lod());
 

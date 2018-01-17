@@ -69,7 +69,7 @@ REGISTER_OP_WITHOUT_GRADIENT(test_operator,
                              paddle::framework::OpWithoutKernelCheckerMaker);
 
 TEST(OperatorBase, all) {
-  paddle::framework::InitDevices({"CPU"});
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("test_operator");
   BuildVar("input", {"IN1"}, op_desc.add_inputs());
@@ -195,7 +195,7 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 
 // test with single input
 TEST(OpKernel, all) {
-  paddle::framework::InitDevices({"CPU"});
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("op_with_kernel");
   BuildVar("x", {"IN1"}, op_desc.add_inputs());
@@ -225,7 +225,7 @@ REGISTER_OP_CPU_KERNEL(op_multi_inputs_with_kernel,
 TEST(OpKernel, multi_inputs) {
   using namespace paddle::framework;
 
-  paddle::framework::InitDevices({"CPU"});
+  paddle::framework::InitDevices();
   proto::OpDesc op_desc;
 
   op_desc.set_type("op_multi_inputs_with_kernel");
@@ -264,7 +264,7 @@ class OperatorClone : public paddle::framework::OperatorBase {
 };
 
 TEST(Operator, Clone) {
-  paddle::framework::InitDevices({"CPU"});
+  paddle::framework::InitDevices();
   OperatorClone a("ABC", paddle::framework::VariableNameMap{},
                   paddle::framework::VariableNameMap{},
                   paddle::framework::AttributeMap{});

@@ -133,13 +133,6 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   source_abs_two_level_lod = framework::ToAbsOffset(source_abs_two_level_lod);
   PADDLE_ENFORCE_GE(source_abs_two_level_lod.size(), 2UL);
 
-  VLOG(3) << "source_abs_two_level_lod"
-          << framework::lod_to_string(source_abs_two_level_lod);
-
-  VLOG(3) << "origin lod" << framework::lod_to_string(ids.lod());
-  auto abs_lod = framework::ToAbsOffset(ids.lod());
-  VLOG(3) << "abs_lod" << framework::lod_to_string(abs_lod);
-
   auto *ids_data = ids.data<int64_t>();
   auto *scores_data = scores.data<float>();
 

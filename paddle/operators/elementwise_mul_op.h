@@ -106,7 +106,6 @@ class ElementwiseMulGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseGradCompute<DeviceContext, T, ElementwiseMulGradFunctor<T>,
-                           ElementwiseMulGradFunctor<T>,
                            ElementwiseMulBroadCastGradFunctor<T>,
                            ElementwiseMulBroadCast2GradFunctor<T>>(ctx);
   }

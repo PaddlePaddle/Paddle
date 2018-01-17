@@ -196,7 +196,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     auto copyLoDTensor = [](const platform::DeviceContext& ctx,
                             const LoDTensor& src, LoDTensor* dst) {
       dst->mutable_data<T>(src.dims(), platform::CPUPlace());
-      framework::CopyFrom(src, platform::CPUPlace(), ctx, dst);
+      framework::Copy(src, platform::CPUPlace(), ctx, dst);
     };
 
     copyLoDTensor(ctx, emission_weights_src, emission_weights_dst);
@@ -204,8 +204,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
 
     transition_weights_dst->mutable_data<T>(transition_weights_src.dims(),
                                             platform::CPUPlace());
-    framework::CopyFrom(transition_weights_src, platform::CPUPlace(), ctx,
-                        transition_weights_dst);
+    framework::Copy(transition_weights_src, platform::CPUPlace(), ctx,
+                    transition_weights_dst);
   }
 
   void CopyOutputsToGpuMemory(const platform::DeviceContext& ctx,
@@ -220,7 +220,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     auto copyTensor = [](const platform::DeviceContext& ctx, const Tensor& src,
                          Tensor* dst) {
       dst->mutable_data<T>(platform::CUDAPlace());
-      framework::CopyFrom(src, platform::CUDAPlace(), ctx, dst);
+      framework::Copy(src, platform::CUDAPlace(), ctx, dst);
     };
     copyTensor(ctx, emission_exps_src, emission_exps_dst);
     copyTensor(ctx, transition_exps_src, transition_exps_dst);
@@ -410,12 +410,12 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // Copy the inputs from GPU memory to CPU memory when this operators runs on
     // GPU device.
     label_dst->mutable_data<T>(label_src.dims(), platform::CPUPlace());
-    framework::CopyFrom(label_src, platform::CPUPlace(), ctx, label_dst);
+    framework::Copy(label_src, platform::CPUPlace(), ctx, label_dst);
 
     auto copyTensor = [](const platform::DeviceContext& ctx, const Tensor& src,
                          Tensor* dst) {
       dst->mutable_data<T>(src.dims(), platform::CPUPlace());
-      framework::CopyFrom(src, platform::CPUPlace(), ctx, dst);
+      framework::Copy(src, platform::CPUPlace(), ctx, dst);
     };
     copyTensor(ctx, emission_exps_src, emission_exps_dst);
     copyTensor(ctx, transition_exps_src, transition_exps_dst);
@@ -434,7 +434,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
                          Tensor* dst) {
       if (src && dst) {
         dst->mutable_data<T>(platform::CUDAPlace());
-        framework::CopyFrom(*src, platform::CUDAPlace(), ctx, dst);
+        framework::Copy(*src, platform::CUDAPlace(), ctx, dst);
       }
     };
     copyTensor(ctx, emission_grad_src, emission_grad_dst);
