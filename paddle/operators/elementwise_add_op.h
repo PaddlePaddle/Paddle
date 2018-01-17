@@ -82,23 +82,6 @@ struct ElementwiseAddGradFunctor {
 };
 
 template <typename T>
-struct ElementwiseAddOneGradFunctor {
-  template <typename Device, typename X, typename Y, typename Z, typename dX,
-            typename dY, typename dZ>
-  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e;
-    }
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = dz_e.sum();
-    }
-  }
-};
-
-template <typename T>
 struct ElementwiseAddBroadCastGradFunctor {
   template <typename Device, typename X, typename Y, typename Z, typename dX,
             typename dY, typename dZ, typename Pre, typename N>
@@ -142,7 +125,6 @@ class ElementwiseAddGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseGradCompute<DeviceContext, T, ElementwiseAddGradFunctor<T>,
-                           ElementwiseAddOneGradFunctor<T>,
                            ElementwiseAddBroadCastGradFunctor<T>,
                            ElementwiseAddBroadCast2GradFunctor<T>>(ctx);
   }

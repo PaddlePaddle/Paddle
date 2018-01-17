@@ -86,7 +86,10 @@ class RecvOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     framework::Scope &recv_scope = scope.NewScope();
+
+    // FIXME(Yancey1989): initialize rpc server with laze mode.
     rpc_service_->SetScope(&recv_scope);
+    rpc_service_->SetDevCtx(&dev_ctx);
     auto param_list = Attr<std::vector<std::string>>("ParamList");
     auto grad_list = Attr<std::vector<std::string>>("GradList");
     auto fan_in = Attr<int>("Fanin");
@@ -124,12 +127,11 @@ class RecvOp : public framework::OperatorBase {
         // Assume grad_var_name must appear in global scope.
         std::string grad_var_name_trainer;
         if (fan_in > 1) {
-          grad_var_name_trainer = this->GetGradVarNameForTrainer(grad_var_name);
+          grad_var_name = this->GetGradVarNameForTrainer(grad_var_name);
         }
-        auto *var = recv_scope.FindVar(grad_var_name_trainer);
+        auto *var = recv_scope.FindVar(grad_var_name);
         if (var == nullptr) {
-          LOG(ERROR) << "can not find server side var: "
-                     << grad_var_name_trainer;
+          LOG(ERROR) << "can not find server side var: " << grad_var_name;
           PADDLE_THROW("can not find server side var");
         }
         detail::DeserializeFromMessage(v.second, dev_ctx, var);
