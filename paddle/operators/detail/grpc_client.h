@@ -130,7 +130,7 @@ class RPCClient {
                         const framework::Scope& scope,
                         const std::string& var_name,
                         int64_t time_out = 600 * 1000);
-  bool wait();
+  bool Wait();
 
  private:
   bool Proceed();

@@ -358,6 +358,12 @@ reduce_min
 ..  autofunction:: paddle.v2.fluid.layers.reduce_min
     :noindex:
 
+
+split
+-----
+..  autofunction:: paddle.v2.fluid.layers.split
+    :noindex:
+
 logsigmoid
 ----------
 ..  autofunction:: paddle.v2.fluid.layers.logsigmoid
