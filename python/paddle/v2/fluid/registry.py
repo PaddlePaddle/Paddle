@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import re
 import cStringIO
 import warnings
@@ -8,7 +21,11 @@ import proto.framework_pb2 as framework_pb2
 from framework import OpProtoHolder, Variable, Program, Operator
 from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
 
-__all__ = ['deprecated', 'register_layer', 'autodoc']
+__all__ = [
+    'deprecated',
+    'register_layer',
+    'autodoc',
+]
 
 
 def _convert_(name):
@@ -80,11 +97,10 @@ def _generate_doc_string_(op_proto):
 
 
 def register_layer(op_type):
-    """
-    Register an Python layer for an Operator
+    """Register the Python layer for an Operator.
 
     Args:
-       op_type: The name of the operator to be created
+       op_type: The name of the operator to be created.
 
     This function takes in the operator type (sigmoid, mean , average etc) and
     creates the operator functionality.
@@ -98,16 +114,16 @@ def register_layer(op_type):
 
     if len(not_intermediate_outputs) != 1:
         raise ValueError("Only one non intermediate output operator can be",
-                         "automatically generated")
+                         "automatically generated.")
 
     if not_intermediate_outputs[0].duplicable:
         raise ValueError(
-            "Only non duplicable op can be automatically generated")
+            "Only non duplicable op can be automatically generated.")
 
     for output in intermediate_outputs:
         if output.duplicable:
             raise ValueError("The op can be automatically generated only when ",
-                             "all intermediate ops are not duplicable")
+                             "all intermediate ops are not duplicable.")
 
     o_name = not_intermediate_outputs[0].name
     intermediate_output_names = [output.name for output in intermediate_outputs]

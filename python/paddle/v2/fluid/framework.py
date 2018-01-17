@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import collections
 import contextlib
 
@@ -7,9 +20,15 @@ import proto.framework_pb2 as framework_pb2
 from . import core
 
 __all__ = [
-    'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program', 'program_guard', 'switch_startup_program',
-    'switch_main_program'
+    'Block',
+    'Variable',
+    'Program',
+    'Operator',
+    'default_startup_program',
+    'default_main_program',
+    'program_guard',
+    'switch_startup_program',
+    'switch_main_program',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -273,6 +292,9 @@ class Variable(object):
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
+
+    def set_error_clip(self, error_clip):
+        self.error_clip = error_clip
 
 
 def get_all_op_protos():
