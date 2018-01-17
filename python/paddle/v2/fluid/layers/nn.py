@@ -50,6 +50,7 @@ __all__ = [
     'sequence_last_step',
     'dropout',
     'split',
+    'block_expand',
 ]
 
 
@@ -1547,13 +1548,13 @@ def split(input, num_or_sections, dim=-1):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        num_or_sections (int|list): If :attr:`num_or_sections` is an integer, 
-            then the integer indicates the number of equal sized sub-tensors 
-            that the tensor will be divided into. If :attr:`num_or_sections` 
-            is a list of integers, the length of list indicates the number of 
-            sub-tensors and the integers indicate the sizes of sub-tensors' 
+        num_or_sections (int|list): If :attr:`num_or_sections` is an integer,
+            then the integer indicates the number of equal sized sub-tensors
+            that the tensor will be divided into. If :attr:`num_or_sections`
+            is a list of integers, the length of list indicates the number of
+            sub-tensors and the integers indicate the sizes of sub-tensors'
             :attr:`dim` dimension orderly.
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the 
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`.
 
     Returns:
@@ -1597,3 +1598,119 @@ def split(input, num_or_sections, dim=-1):
             'axis': dim
         })
     return outs
+
+
+def block_expand(input,
+                 block_x=1,
+                 block_y=1,
+                 stride_x=1,
+                 stride_y=1,
+                 padding_x=0,
+                 padding_y=0,
+                 name=None,
+                 layer_attr=None):
+    """
+    This op use block to scan images and convert these images to sequences.
+    After expanding, the number of time step are output_height * output_width
+    for an image, in which output_height and output_width are calculated
+    by below equation:
+
+    .. math::
+
+        output\_size = 1 + \
+            (2 * padding + img\_size - block\_size + stride - 1) / stride
+
+    And the dimension of each time step is block_y * block_x * input.channels.
+
+
+
+    Args:
+        input (Variable): The input should be a tensor in NCHW format.
+        block_x (int): The width of sub block.
+        block_y (int): The width of sub block.
+        stride_x (int): The stride size in horizontal direction.
+        stride_y (int): The stride size in vertical direction.
+        padding_x (int): The padding size in horizontal direction.
+        padding_y (int): The padding size in vertical direction.
+        name (int): The name of this layer. It is optional.
+
+    Returns:
+        output: The output is a LoDTensor woth shape
+        {input.batch_size * output_y * x,
+        block_y * block_x * input.channels}.
+        If we regard output as matrix, each row of this matrix is a step of sequence.
+
+    Examples:
+
+    As an example:
+
+        .. code-block:: text
+
+            Given:
+
+            x = [[[[ 6.  2.  1.]
+                   [ 8.  3.  5.]
+                   [ 0.  2.  6.]]
+
+                  [[ 2.  4.  4.]
+                   [ 6.  3.  0.]
+                   [ 6.  4.  7.]]]
+
+                 [[[ 6.  7.  1.]
+                   [ 5.  7.  9.]
+                   [ 2.  4.  8.]]
+
+                  [[ 1.  2.  1.]
+                   [ 1.  3.  5.]
+                   [ 9.  0.  8.]]]]
+
+            x.dims = {2, 2, 3, 3}
+
+            And:
+
+            block_height = 2
+            block_width = 2
+            stride_height = 1
+            stride_width = 1
+            padding_height = 0
+            padding_width = 0
+
+            Then:
+
+            output.data = [[ 6.  2.  8.  3.  2.  4.  6.  3.]
+                           [ 2.  1.  3.  5.  4.  4.  3.  0.]
+                           [ 8.  3.  0.  2.  6.  3.  6.  4.]
+                           [ 3.  5.  2.  6.  3.  0.  4.  7.]
+                           [ 6.  7.  5.  7.  1.  2.  1.  3.]
+                           [ 7.  1.  7.  9.  2.  1.  3.  5.]
+                           [ 5.  7.  2.  4.  1.  3.  9.  0.]
+                           [ 7.  9.  4.  8.  3.  5.  0.  8.]]
+
+            output.dims = {8, 9}
+
+            output.lod = [[0, 4, 8]]
+
+
+
+        The simple usage is:
+
+        .. code-block:: python
+
+            output = fluid.layers.block_expand(input=layer, stride_x=1, stride_y=1, block_x=2, block_y=2)
+
+    """
+    helper = LayerHelper('block_expand', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='block_expand',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'block_height': block_y,
+            'block_width': block_x,
+            'stride_height': stride_y,
+            'stride_width': stride_x,
+            'padding_height': padding_y,
+            'padding_width': padding_x
+        })
+    return out
