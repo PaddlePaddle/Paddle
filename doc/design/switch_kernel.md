@@ -12,7 +12,7 @@ struct OpKernelType {
 };
 ```
 
-- The `place_` is a descriptor of the device, such as CPUPlace, CUDAPlace.
+- The `place_` is a descriptor of the device, e.g., CPUPlace, CUDAPlace.
 
 - The `data_type_` is the data type that this kernel performs on, e.g., `FP32`, `INT64`. Note that one kernel may have inputs with different data types. However, it will be a major `data_type`. For example, the `cross_entropy` takes `int64` as it label, and `double`/`float` as its input logit and output cost. The major `data_type` of `cross_entropy` is `float` or `double`.
 
