@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/operators/math/math_function.h"
-
+#include "paddle/framework/data_layout.h"
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/im2col.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -32,13 +32,16 @@ inline int get_output_size(int img_size, int block_size, int stride,
 }
 
 template <typename DeviceContext, typename T>
-class BlockExpandKernel : public framework::OpKernel<T> {
+class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* in = ctx.Input<Tensor>("X");
     LoDTensor* out = ctx.Output<LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
-
+    // TODO(wanghaoshuang): Add layout checker after 'set_layout'
+    // being available for python API
+    // PADDLE_ENFORCE_EQ(in->layout(), framework::DataLayout::kNCHW,
+    //                  "Input(X) layout must be NCHW");
     auto in_dim = in->dims();
     int batch_size = in_dim[0];
     int img_channels = in_dim[1];
@@ -80,8 +83,9 @@ class BlockExpandKernel : public framework::OpKernel<T> {
     // set lod information
     // TODO(wanghaoshuang): Move this to InferShape
     framework::LoD lod(1);
+    lod[0].reserve(batch_size + 1);
     for (int i = 0, offset = 0; i < batch_size + 1; ++i) {
-      lod[0].push_back(offset);
+      lod[0][i] = offset;
       offset += output_height * output_width;
     }
     out->set_lod(lod);
@@ -89,7 +93,7 @@ class BlockExpandKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class BlockExpandGradKernel : public framework::OpKernel<T> {
+class Im2SequenceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<Tensor>("X");
