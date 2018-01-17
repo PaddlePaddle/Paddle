@@ -31,6 +31,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
  public:
   CompileTimeInferShapeContext(const OpDesc &op, const BlockDesc &block);
 
+  bool IsCompileTime() const override { return true; }
+
   bool HasInput(const std::string &name) const override;
 
   bool HasOutput(const std::string &name) const override;
@@ -50,6 +52,14 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   const std::vector<std::string> &Outputs(
       const std::string &name) const override;
+
+  LoD GetLoD(const std::string &name) const override {
+    PADDLE_THROW("does not support GetLoD in Compile stage");
+  }
+
+  void SetLoD(const std::string &name, const framework::LoD &lod) override {
+    PADDLE_THROW("does not support SetLoD in Compile stage");
+  }
 
   void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) const override {

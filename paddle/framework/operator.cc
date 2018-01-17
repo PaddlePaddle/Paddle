@@ -316,6 +316,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
       : op_(op), scope_(scope) {}
 
+  bool IsCompileTime() const override { return false; }
+
   bool HasInput(const std::string& name) const override {
     auto& ins = Inputs(name);
     size_t length = ins.size();
@@ -386,6 +388,39 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const std::vector<std::string>& Outputs(
       const std::string& name) const override {
     return op_.Outputs(name);
+  }
+
+  LoD GetLoD(const std::string& name) const override {
+    auto names = Inputs(name);
+    PADDLE_ENFORCE_EQ(names.size(), 1,
+                      "%s not found, "
+                      "GetLoD only support get input lod",
+                      name);
+    Variable* var = scope_.FindVar(names[0]);
+    PADDLE_ENFORCE_NOT_NULL(var, "%s not found", name);
+    if (var->IsType<LoDTensor>()) {
+      return var->GetMutable<LoDTensor>()->lod();
+    } else {
+      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor.", name,
+                   var->Type().name());
+    }
+  }
+
+  void SetLoD(const std::string& name, const framework::LoD& lod) override {
+    auto names = Outputs(name);
+    PADDLE_ENFORCE_EQ(names.size(), 1,
+                      "%s not found, "
+                      "SetLoD only support set output lod",
+                      name);
+
+    Variable* var = scope_.FindVar(names[0]);
+    PADDLE_ENFORCE_NOT_NULL(var, "%s not found", name);
+    if (var->IsType<LoDTensor>()) {
+      var->GetMutable<LoDTensor>()->set_lod(lod);
+    } else {
+      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor.", name,
+                   var->Type().name());
+    }
   }
 
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
