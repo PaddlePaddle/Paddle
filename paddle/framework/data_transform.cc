@@ -53,6 +53,8 @@ void DataTransform(const OpKernelType& expected_kernel_type,
 
   if (in_ptr != &input_tensor) {
     out->ShareDataWith(*in_ptr);
+  } else {
+    PADDLE_THROW("no transform is done, please check!");
   }
 }
 
