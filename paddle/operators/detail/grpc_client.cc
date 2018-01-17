@@ -63,9 +63,6 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   sendrecv::VariableMessage req;
   req.set_varname(var_name);
 
-  auto* var = scope.FindVar(var_name);
-  SerializeToMessage(var_name, var, ctx, &req);
-
   // varhandle
   VarHandle var_h;
   var_h.ep = ep;
@@ -87,7 +84,7 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   return true;
 }
 
-bool RPCClient::wait() {
+bool RPCClient::Wait() {
   bool ok = true;
 
   while (true) {
