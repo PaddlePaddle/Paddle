@@ -15,10 +15,14 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/operators/detail/simple_block_queue.h"
 
 namespace paddle {
 namespace framework {
 using FeedFetchType = LoDTensor;
 using FeedFetchList = std::vector<FeedFetchType>;
+
+// TODO(dzhwinter): SimpleBlockQueue -> Channel
+using FetchList = operators::detail::SimpleBlockQueue<framework::FeedFetchType>;
 }  // namespace framework
 }  // namespace paddle

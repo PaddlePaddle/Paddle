@@ -169,14 +169,13 @@ class Executor(object):
             persistable=True)
         for i, var in enumerate(fetch_list):
             global_block.append_op(
-                type='fetch',
-                inputs={'X': [var]},
-                outputs={'Out': [fetch_var]},
-                attrs={'col': i})
+                type='fetch', inputs={'X': [var]},
+                outputs={'Out': [fetch_var]})
 
+        print(global_block)
         self.executor.run(program.desc, scope, 0, True, True)
         outs = [
-            core.get_fetch_variable(scope, fetch_var_name, i)
+            core.get_fetch_variable(scope, fetch_var_name)
             for i in xrange(len(fetch_list))
         ]
 

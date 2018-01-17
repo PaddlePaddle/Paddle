@@ -40,15 +40,18 @@ class FetchOp : public framework::OperatorBase {
                    "Cannot find out_var in scope, out_var_name is %s",
                    out_name);
 
-    auto col = static_cast<size_t>(Attr<int>("col"));
+    // auto col = static_cast<size_t>(Attr<int>("col"));
 
-    auto *fetch_list = out_var->GetMutable<framework::FeedFetchList>();
+    // auto *fetch_list = out_var->GetMutable<framework::FeedFetchList>();
     auto &src_item = fetch_var->Get<framework::FeedFetchType>();
 
-    if (col >= fetch_list->size()) {
-      fetch_list->resize(col + 1);
-    }
-    auto &dst_item = fetch_list->at(col);
+    auto *fetch_list = out_var->GetMutable<framework::FetchList>();
+
+    // if (col >= fetch_list->size()) {
+    //   fetch_list->resize(col + 1);
+    // }
+    // auto &dst_item = fetch_list->at(col);
+    auto dst_item = framework::FeedFetchType();
 
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
@@ -56,8 +59,9 @@ class FetchOp : public framework::OperatorBase {
     auto &dev_ctx = *pool.Get(src_item.place());
 
     Copy(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
-    dev_ctx.Wait();
+    // dev_ctx.Wait();
     dst_item.set_lod(src_item.lod());
+    fetch_list->Push(dst_item);
 
     VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;
   }
@@ -69,7 +73,7 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of fetch op");
     AddOutput("Out", "The output of fetch op");
-    AddAttr<int>("col", "(int) The column of fetch");
+    // AddAttr<int>("col", "(int) The column of fetch");
     AddComment(R"DOC(
 Fetch Operator.
 
