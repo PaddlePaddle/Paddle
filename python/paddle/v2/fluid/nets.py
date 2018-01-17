@@ -17,7 +17,7 @@ __all__ = [
     "simple_img_conv_pool",
     "sequence_conv_pool",
     "glu",
-    "",
+    "dot_product_attention",
 ]
 
 
