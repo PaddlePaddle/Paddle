@@ -50,12 +50,12 @@ class TestCTCDecodeOp(OpTest):
 class TestCTCDecodeOpCase1(TestCTCDecodeOp):
     def config(self):
         self.op_type = "ctc_decode"
-        self.input_lod = [[0, 11, 18]]
+        self.input_lod = [[0, 11, 19]]
         self.blank = 0
         self.merge_repeated = True
         self.input = np.array(
-            [0, 1, 2, 2, 0, 4, 0, 4, 5, 0, 6, 6, 0, 0, 7, 7, 7, 0]).reshape(
-                [18, 1]).astype("int32")
+            [0, 1, 2, 2, 0, 4, 0, 4, 5, 0, 6, 6, 0, 0, 7, 7, 7, 0, 0]).reshape(
+                [19, 1]).astype("int32")
 
 
 if __name__ == "__main__":
