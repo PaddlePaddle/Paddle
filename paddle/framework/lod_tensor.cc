@@ -262,24 +262,38 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
   return lods;
 }
 
-// TODO(tonyyang-svail): make this function support LoD
 void LoDTensor::MergeLoDTensor(
     const std::vector<const LoDTensor *> &lod_tensors,
     platform::Place dst_place) {
   PADDLE_ENFORCE(!lod_tensors.empty());
+
   framework::DDim new_dim = lod_tensors[0]->dims();
   std::type_index new_type = lod_tensors[0]->type();
-  auto new_layout = lod_tensors[0]->layout();
-  for (auto *lod : lod_tensors) {
-    PADDLE_ENFORCE(new_dim == lod->dims());
-    PADDLE_ENFORCE(new_type == lod->type());
-    PADDLE_ENFORCE(new_layout == lod->layout());
+  framework::DataLayout new_layout = lod_tensors[0]->layout();
+  LoD new_lod = lod_tensors[0]->lod();
+  for (size_t i = 1; i < lod_tensors.size(); ++i) {
+    auto *t = lod_tensors[i];
+    PADDLE_ENFORCE_EQ(new_type.hash_code(), t->type().hash_code());
+    PADDLE_ENFORCE_EQ(new_layout, t->layout());
+
+    PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
+                      framework::product(t->dims()) / t->dims()[0]);
+    new_dim[0] += t->dims()[0];
+
+    auto &lod = t->lod();
+    for (size_t j = 0; j < lod.size(); ++j) {
+      auto &sub_lod = new_lod[j];
+      auto &offset = sub_lod.back();
+      for (size_t k = 1; k < lod[j].size(); ++k) {
+        sub_lod.push_back(lod[j][k] + offset);
+      }
+    }
   }
-  new_dim[0] *= lod_tensors.size();
   Resize(new_dim);
   set_layout(new_layout);
-
+  set_lod(new_lod);
   mutable_data(dst_place, new_type);
+
   int begin = 0;
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
