@@ -493,3 +493,8 @@ swish
 ------
 ..  autofunction:: paddle.v2.fluid.layers.swish
     :noindex:
+
+block_expand
+------
+..  autofunction:: paddle.v2.fluid.layers.block_expand
+    :noindex:
