@@ -159,5 +159,42 @@ TEST(LoD, SplitLoDTensor) {
   EXPECT_EQ(lods[1].lod(), lod1);
 }
 
+TEST(LoD, MergeLoDTensor) {
+  LoD lod;
+  lod.push_back(std::vector<size_t>({0, 2, 4, 5, 6}));
+  lod.push_back(std::vector<size_t>({0, 1, 6, 8, 13, 15, 20}));
+
+  platform::CPUPlace place;
+
+  LoDTensor lod_tensor0;
+  LoD lod0;
+  lod0.push_back(std::vector<size_t>({0, 2, 4}));
+  lod0.push_back(std::vector<size_t>({0, 1, 6, 8, 13}));
+  lod_tensor0.set_lod(lod0);
+
+  lod_tensor0.Resize({13, 1});
+  float* dst_ptr = lod_tensor0.mutable_data<float>(place);
+  for (int i = 0; i < lod_tensor0.numel(); ++i) {
+    dst_ptr[i] = i;
+  }
+
+  LoDTensor lod_tensor1;
+  LoD lod1;
+  lod1.push_back(std::vector<size_t>({0, 1, 2}));
+  lod1.push_back(std::vector<size_t>({0, 2, 7}));
+  lod_tensor1.set_lod(lod1);
+  lod_tensor1.Resize({7, 1});
+  dst_ptr = lod_tensor1.mutable_data<float>(place);
+  for (int i = 0; i < lod_tensor1.numel(); ++i) {
+    dst_ptr[i] = i;
+  }
+
+  std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1};
+
+  LoDTensor lod_tensor;
+  lod_tensor.MergeLoDTensor(lods, place);
+  EXPECT_EQ(lod_tensor.lod(), lod);
+}
+
 }  // namespace framework
 }  // namespace paddle
