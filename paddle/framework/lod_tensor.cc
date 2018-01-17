@@ -135,6 +135,65 @@ bool operator==(const LoD &a, const LoD &b) {
   return true;
 }
 
+bool CheckLoD(const LoD &in, int tensor_height) {
+  if (in.empty()) return true;
+  for (const auto &level : in) {
+    // check: there should be more than 2 offsets existing in each level.
+    if (level.size() < 2) return false;
+    // check: the first offset(the begin offset) of each level should be 0.
+    if (level.front() != 0) return false;
+    // check: all the offsets in a level should be ascending(no same items
+    // allows).
+    if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
+          if (a < b) return true;
+          return false;
+        })) {
+      LOG(INFO) << "ascending error";
+      return false;
+    }
+  }
+  // check: the lowest level's last offset should equals `tensor_height` if
+  //        tensor_height>0.
+  if (tensor_height > 0 && (size_t)tensor_height != in.back().back())
+    return false;
+
+  // check: the higher level's last offset should equals the lower level's
+  // size-1.
+  // NOTE LoD store the levels from top to bottom, so the higher level goes
+  // first.
+  for (size_t level = 0; level < in.size() - 1; level++) {
+    if (in[level].back() != in[level + 1].size() - 1) return false;
+  }
+  return true;
+}
+
+bool CheckAbsLoD(const LoD &in, int tensor_height) {
+  if (in.empty()) return true;
+  for (const auto &level : in) {
+    // check: all the offsets in a level should be ascending(no same items
+    // allows).
+    if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
+          if (a < b) return true;
+          return false;
+        })) {
+      return false;
+    }
+
+    // check: there should be more than 2 offsets existing in each level.
+    if (level.size() < 2) return false;
+
+    // check: the first offset of each level should be 0, and the last should be
+    // the same(the height of underlying tensor).
+    if (level.front() != 0) return false;
+    if (tensor_height < 0) {
+      tensor_height = level.back();
+    } else if ((size_t)tensor_height != level.back()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
                                         size_t end_idx, size_t start_level) {
