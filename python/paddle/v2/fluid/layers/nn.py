@@ -1679,7 +1679,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     # TODO(caoying) the current elementwise_mul operator does not support a
     # general broadcast rule which broadcasts input(Y) to have the same
     # dimension with Input(X) starting from a specified dimension. So this
-    # exanpsion is requred. Once a general broadcast relu is spported, this
+    # exanpsion is requred. Once a general broadcast rule is spported, this
     # expanding canbe removed.
     rsquare_expanded = helper.create_tmp_variable(dtype=x.dtype)
     expand_times = [1] * len(x.shape)
