@@ -57,16 +57,14 @@ class BlockExpandOp : public framework::OperatorWithKernel {
 
 class BlockExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BlockExpandOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  BlockExpandOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", R"DOC(
-(Tensor)The input tensor has NCHW format.
-    N: batch size
-    C: channels
-    H: height
-    W: width
-)DOC");
+    AddInput("X",
+             "(Tensor)The input tensor has NCHW format."
+             "N: batch size"
+             "C: channels"
+             "H: height"
+             "W: width");
     AddOutput("Out", "(LodTensor)The output data of block_expand op,");
     AddAttr<int>("block_height", "(int)height of block.");
     AddAttr<int>("block_width", "(int)width of block.");
@@ -155,7 +153,8 @@ namespace ops = paddle::operators;
 REGISTER_OP(block_expand, ops::BlockExpandOp, ops::BlockExpandOpMaker,
             block_expand_grad, ops::BlockExpandGradOp);
 REGISTER_OP_CPU_KERNEL(
-    block_expand, ops::BlockExpandKernel<paddle::platform::CPUPlace, float>);
+    block_expand,
+    ops::BlockExpandKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     block_expand_grad,
-    ops::BlockExpandGradKernel<paddle::platform::CPUPlace, float>);
+    ops::BlockExpandGradKernel<paddle::platform::CPUDeviceContext, float>);
