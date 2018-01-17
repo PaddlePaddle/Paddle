@@ -49,10 +49,10 @@ def generate_copyright(template, lang='C'):
         LANG_COMMENT_MARK = "//"
 
     lines = template.split(NEW_LINE_MARK)
-    ans = LANG_COMMENT_MARK + COPYRIGHT_HEADER + NEW_LINE_MARK
+    ans = LANG_COMMENT_MARK + " " + COPYRIGHT_HEADER + NEW_LINE_MARK
     for lino, line in enumerate(lines):
         if lino == 0 or lino == 1 or lino == len(lines) - 1: continue
-        ans += LANG_COMMENT_MARK + line + NEW_LINE_MARK
+        ans += LANG_COMMENT_MARK + " " + line + NEW_LINE_MARK
 
     return ans
 
