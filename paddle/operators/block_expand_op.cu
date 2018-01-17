@@ -17,8 +17,9 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
-    block_expand, ops::BlockExpandKernel<paddle::platform::GPUPlace, float>);
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
+    block_expand,
+    ops::BlockExpandKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
     block_expand_grad,
-    ops::BlockExpandGradKernel<paddle::platform::GPUPlace, float>);
+    ops::BlockExpandGradKernel<paddle::platform::CUDADeviceContext, float>);
