@@ -90,7 +90,7 @@ def main(argv=None):
     retv = 0
     for filename in args.filenames:
         first_line = io.open(filename).readline()
-        if "Copyright" in first_line: continue
+        if "COPYRIGHT" in first_line.upper() : continue
         original_contents = io.open(filename).read()
         new_contents = generate_copyright(
             COPYRIGHT, lang_type(filename)) + original_contents
