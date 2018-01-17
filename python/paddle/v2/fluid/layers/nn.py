@@ -37,6 +37,7 @@ __all__ = [
     'sequence_last_step',
     'dropout',
     'split',
+    'matmul',
 ]
 
 
@@ -1586,83 +1587,71 @@ def split(input, num_or_sections, dim=-1):
     return outs
 
 
-def matmul(x, y):
+def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
-    Applies matrix multipication to two tensors.
+    Applies matrix multipication to two tensors. Currently only rank 1 to rank 
+    3 input tensors are supported.
 
-    This operator is used to perform (batched) matrix multiplication
-    over the last two dimensions of the input tensors `X` and `Y`.
+    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the 
+    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
 
-    If a transpose flag is specified, the last two dimensions of the
-    tensor are transposed. If the tensor is rank-1 of shape [D], then
-    for `X` it is treated as [1, D] in nontransposed form and as [D, 1]
-    in transposed form, whereas for `Y` it is the opposite: It is treated
-    as [D, 1] in nontransposed form and as [1, D] in transposed form.
+    - If a transpose flag is specified, the last two dimensions of the tensor 
+      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for 
+      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as 
+      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the 
+      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as 
+      :math:`[1, D]` in transposed form.
 
-    Examples without transpose:
-    - X: [K], Y: [K] => Out: [1]
-    - X: [K], Y: [K, N] => Out: [N]
-    - X: [B, M, K], Y: [K] => Out: [B, M]
-    - X: [M, K], Y: [B, K, N] => Out: [B, M, N]
-    - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
+    - After transpose, the two tensors are 2-D or 3-D and matrix multipication 
+      performs in the following way.
 
-    The behavior is designed to be similar to the `numpy.matmul` function.
-    The differences are:
-    - Currently only rank 1 to rank 3 input tensors are supported.
-    - We add `transpose_X` and `transpose_Y` flags.
+      - If both are 2-D, they are multiplied like conventional matrices.
+      - If either is 3-D, it is treated as a stack of matrices residing in the 
+        last two dimensions and a batched matrix multiply supporting broadcast 
+        applies on the two tensors.
 
-    Both the input `X` and `Y` can carry the LoD (Level of Details) information,
-    or not. But the output only shares the LoD information with input `X`.
+    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and 
+    nontransposed, the prepended or appended dimension :math:`1` will be 
+    removed after matrix multipication.
 
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
-        y (Variable): If :attr:`num_or_sections` is an integer, 
-            then the integer indicates the number of equal sized sub-tensors 
-            that the tensor will be divided into. If :attr:`num_or_sections` 
-            is a list of integers, the length of list indicates the number of 
-            sub-tensors and the integers indicate the sizes of sub-tensors' 
-            :attr:`dim` dimension orderly.
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the 
-            dimension to split along is :math:`rank(input) + dim`.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        name(str|None): A name for this layer(optional). If set None, the layer 
+            will be named automatically.
 
     Returns:
-        List: The list of segmented tensor variables.
+        Variable: The product Tensor variable.
 
     Examples:
         .. code-block:: python
 
-            # x is a Tensor variable with shape [3, 9, 5]:
-            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=1)
-            x0.shape  # [3, 3, 5]
-            x1.shape  # [3, 3, 5]
-            x2.shape  # [3, 3, 5]
-            x0, x1, x2 = fluid.layers.split(x, num_or_sections=[2, 3, 4], dim=1)
-            x0.shape  # [3, 2, 5]
-            x1.shape  # [3, 3, 5]
-            x2.shape  # [3, 4, 5]
+            # Examples to clarify shapes of the inputs and output
+            # x: [B, M, K], y: [B, K, N]
+            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # x: [B, M, K], y: [K, N]
+            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # x: [B, M, K], y: [K]
+            fluid.layers.matmul(x, y)  # out: [B, M]
+            # x: [M, K], y: [K, N]
+            fluid.layers.matmul(x, y)  # out: [M, N]
+            # x: [K], y: [K]
+            fluid.layers.matmul(x, y)  # out: [1]
+            # x: [M], y: [N]
+            fluid.layers.matmul(x, y, True, True)  # out: [M, N]
     """
-    helper = LayerHelper('split', **locals())
-    input_shape = input.shape
-    dim = (len(input_shape) + dim) if dim < 0 else dim
-    if isinstance(num_or_sections, int):
-        assert num_or_sections > 1, 'num_or_sections must be more than 1.'
-        num = num_or_sections
-    else:
-        assert len(num_or_sections) < input_shape[
-            dim], 'len(num_or_sections) must not be more than input.shape[dim].'
-        num = len(num_or_sections)
-    outs = [
-        helper.create_tmp_variable(dtype=helper.input_dtype())
-        for i in range(num)
-    ]
+    helper = LayerHelper('matmul', **locals())
+    assert max(
+        len(x.shape), len(y.shape)
+    ) <= 3, 'Currently only rank 1 to rank 3 input tensors are supported.'
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
-        type='split',
-        inputs={'X': input},
-        outputs={'Out': outs},
-        attrs={
-            'num': num_or_sections if isinstance(num_or_sections, int) else 0,
-            'sections': num_or_sections
-            if isinstance(num_or_sections, list) else [],
-            'axis': dim
-        })
-    return outs
+        type='matmul',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'transpose_X': transpose_x,
+               'transpose_Y': transpose_y})
+    return out
