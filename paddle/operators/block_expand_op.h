@@ -23,6 +23,9 @@
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
 inline int get_output_size(int img_size, int block_size, int stride,
                            int padding) {
   return (1 + (img_size + 2 * padding - block_size + stride - 1) / stride);
@@ -32,7 +35,6 @@ template <typename Place, typename T>
 class BlockExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using namespace framework;
     const Tensor* in = ctx.Input<Tensor>("X");
     LoDTensor* out = ctx.Output<LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
@@ -89,11 +91,10 @@ template <typename Place, typename T>
 class BlockExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using namespace framework;
     auto* in = ctx.Input<Tensor>("X");
     Tensor* d_out =
         const_cast<Tensor*>(ctx.Input<Tensor>(framework::GradVarName("Out")));
-    auto* d_x = ctx.Output<Tensor>(GradVarName("X"));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     d_x->mutable_data<T>(ctx.GetPlace());
 
     auto x_v = framework::EigenVector<T>::Flatten(*d_x);
