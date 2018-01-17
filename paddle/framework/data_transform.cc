@@ -29,10 +29,10 @@ static void free_tmp_tensor(const Tensor* in_ptr, const Tensor* tmp_ptr) {
 void DataTransform(const OpKernelType& expected_kernel_type,
                    const OpKernelType& kernel_type_for_var,
                    const Tensor& input_tensor, Tensor* out) {
-  // do layout transform
   const Tensor* in_ptr = &input_tensor;
   Tensor* out_ptr = new Tensor();
 
+  // do layout transform
   if (expected_kernel_type.data_layout_ != kernel_type_for_var.data_layout_) {
     TransDataLayout(kernel_type_for_var, expected_kernel_type, *in_ptr,
                     out_ptr);
@@ -51,11 +51,16 @@ void DataTransform(const OpKernelType& expected_kernel_type,
     out_ptr = new Tensor();
   }
 
+  // get output data
   if (in_ptr != &input_tensor) {
     out->ShareDataWith(*in_ptr);
   } else {
     PADDLE_THROW("no transform is done, please check!");
   }
+
+  // clean up
+  delete in_ptr;
+  delete out_ptr;
 }
 
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
