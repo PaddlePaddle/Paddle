@@ -15,7 +15,7 @@ limitations under the License. */
 #include <stdio.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
-#include "paddle/operators/ctc_decode_op.h"
+#include "paddle/operators/ctc_align_op.h"
 
 namespace paddle {
 namespace operators {
@@ -42,7 +42,7 @@ __global__ void MergeAndDelCudaKernel(const int64_t num_token, const T* tokens,
 }
 
 template <typename T>
-class CTCDecodeOpCUDAKernel : public framework::OpKernel<T> {
+class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -87,5 +87,5 @@ class CTCDecodeOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(ctc_decode,
-                        paddle::operators::CTCDecodeOpCUDAKernel<int>);
+REGISTER_OP_CUDA_KERNEL(ctc_align,
+                        paddle::operators::CTCAlignOpCUDAKernel<int>);
