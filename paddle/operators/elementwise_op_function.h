@@ -311,8 +311,7 @@ EIGEN_FUNCTOR(Mul, EIGEN_MUL);
 EIGEN_FUNCTOR(Div, EIGEN_DIV);
 
 template <typename DeviceContext, typename T, typename functor,
-          typename functor1, typename broadcastfunctor,
-          typename broadcast2functor>
+          typename broadcastfunctor, typename broadcast2functor>
 void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
   using Tensor = framework::Tensor;
 

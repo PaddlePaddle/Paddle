@@ -26,10 +26,9 @@
 
 ### 准备预测模型
 
-在准备预测模型部分的介绍，我们以手写数字识别任务为例。手写数字识别任务定义了一个含有[两个隐层的简单全连接网络](https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/README.cn.md#softmax回归softmax-regression)，网络接受一幅图片作为输入，将图片分类到 0 ~ 9 类别标签之一。完整代码可以查看[此目录](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense) 中的相关脚本。
+准备预测模型部分，我们以手写数字识别任务为例进行介绍。手写数字识别任务定义了一个含有[两个隐层的简单全连接网络](https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/README.cn.md#softmax回归softmax-regression)，网络接受一幅图片作为输入，将图片分类到 0 ~ 9 类别标签之一。完整代码可以查看[此目录](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense) 中的相关脚本。
 
-调用C-API开发预测程序需要一个训练好的模型，在终端执行`python mnist_v2.py`
-运行[目录](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense) 会使用 PaddlePaddle 内置的 [MNIST 数据集](http://yann.lecun.com/exdb/mnist/)进行训练。训练好的模型默认保存在当前运行目录下的`models`目录中。
+调用C-API开发预测程序需要一个训练好的模型，运行[MNIST手写数字识别目录](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense)下的[mnist_v2.py](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/examples/model_inference/dense/mnist_v2.py)脚本，在终端执行`python mnist_v2.py`，会使用 PaddlePaddle 内置的 [MNIST 数据集](http://yann.lecun.com/exdb/mnist/)进行训练。训练好的模型默认保存在当前运行目录下的`models`目录中。
 
 下面，我们将训练结束后存储下来的模型转换成预测模型。
 
@@ -113,7 +112,7 @@ C-API支持的所有输入数据类型和他们的组织方式，请参考“输
 
 #### step 4. 前向计算
 
-完成上述准备之后，通过调用 `[paddle_gradient_machine_forward](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/gradient_machine.h#L73)` 接口完成神经网络的前向计算。
+完成上述准备之后，通过调用 [`paddle_gradient_machine_forward`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/gradient_machine.h#L73) 接口完成神经网络的前向计算。
 
 #### step 5. 清理
 
