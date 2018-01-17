@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import layers
 
 __all__ = [
@@ -107,9 +120,10 @@ def sequence_conv_pool(input,
 
 def glu(input, dim=-1):
     """
-    The gated linear unit composed by split and elementwise multiplication. 
-    Specifically, Split the input into two equal sized parts :math:`a` and 
-    :math:`b` along the given dimension and then compute as following:
+    The gated linear unit composed by split, sigmoid activation and elementwise 
+    multiplication. Specifically, Split the input into two equal sized parts 
+    :math:`a` and :math:`b` along the given dimension and then compute as 
+    following:
 
         .. math::
 
@@ -134,7 +148,8 @@ def glu(input, dim=-1):
     """
 
     a, b = layers.split(input, num_or_sections=2, dim=dim)
-    out = layers.elementwise_mul(x=a, y=b)
+    act_b = layers.sigmoid(x=b)
+    out = layers.elementwise_mul(x=a, y=act_b)
     return out
 
 
