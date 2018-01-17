@@ -1,16 +1,16 @@
 #  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from initializer import Initializer, Xavier, Constant
 from regularizer import WeightDecayRegularizer
 
@@ -24,13 +24,13 @@ class ParamAttr(object):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 clip=None):
+                 gradient_clip=None):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
-        self.clip = clip
+        self.gradient_clip = gradient_clip
 
     def set_default_initializer(self, initializer):
         if initializer is None:
@@ -76,7 +76,7 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'clip_attr': self.clip
+            'gradient_clip_attr': self.gradient_clip
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
