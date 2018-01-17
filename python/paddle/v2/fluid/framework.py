@@ -946,7 +946,7 @@ class Parameter(Variable):
 
         self.regularizer = kwargs.get('regularizer', None)
 
-        self.clip_attr = kwargs.get('clip_attr', None)
+        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
 
 
 # program is a global instance.
