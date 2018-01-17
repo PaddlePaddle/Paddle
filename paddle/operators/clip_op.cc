@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/clip_op.h"
 
@@ -38,7 +38,7 @@ class ClipOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ClipOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  ClipOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor)The input of clip op."
@@ -52,7 +52,11 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
 Clip Operator.
 
 The clip operator limits the value of given input within an interval. The interval is
-specified with arguments 'min' and 'max'.
+specified with arguments 'min' and 'max':
+
+$$
+Out = \min(\max(X, min), max)
+$$
 
 )DOC");
   }
@@ -79,7 +83,7 @@ class ClipOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(clip, ops::ClipOp, ops::ClipOpMaker<float>, clip_grad,
             ops::ClipOpGrad);
-REGISTER_OP_CPU_KERNEL(clip,
-                       ops::ClipKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(clip_grad,
-                       ops::ClipGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>);

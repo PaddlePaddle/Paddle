@@ -1,76 +1,95 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+from __future__ import print_function
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.evaluator as evaluator
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.initializer import UniformInitializer
-from paddle.v2.fluid.optimizer import MomentumOptimizer
-from paddle.v2.fluid.regularizer import L2DecayRegularizer
+import paddle.v2.fluid as fluid
 
 BATCH_SIZE = 128
-image = layers.data(name='x', shape=[784], data_type='float32')
+image = fluid.layers.data(name='x', shape=[784], dtype='float32')
 
-param_attr = {
-    'name': None,
-    'initializer': UniformInitializer(
-        low=-1.0, high=1.0),
-    'regularization': L2DecayRegularizer(0.0005 * BATCH_SIZE)
-}
+regularizer = fluid.regularizer.L2Decay(0.0005 * BATCH_SIZE)
 
-hidden1 = layers.fc(input=image, size=128, act='relu', param_attr=param_attr)
-hidden2 = layers.fc(input=hidden1, size=64, act='relu', param_attr=param_attr)
+hidden1 = fluid.layers.fc(input=image,
+                          size=128,
+                          act='relu',
+                          param_attr=fluid.ParamAttr(
+                              regularizer=regularizer,
+                              clip=fluid.clip.ClipByValue(10)))
 
-predict = layers.fc(input=hidden2,
-                    size=10,
-                    act='softmax',
-                    param_attr=param_attr)
+hidden2 = fluid.layers.fc(input=hidden1,
+                          size=64,
+                          act='relu',
+                          param_attr=regularizer)
 
-label = layers.data(name='y', shape=[1], data_type='int64')
+predict = fluid.layers.fc(input=hidden2,
+                          size=10,
+                          act='softmax',
+                          param_attr=regularizer)
 
-cost = layers.cross_entropy(input=predict, label=label)
-avg_cost = layers.mean(x=cost)
+label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
-optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+cost = fluid.layers.cross_entropy(input=predict, label=label)
+avg_cost = fluid.layers.mean(x=cost)
+
+optimizer = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
 opts = optimizer.minimize(avg_cost)
 
-accuracy, acc_out = evaluator.accuracy(input=predict, label=label)
+accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+
+inference_program = fluid.default_main_program().clone()
+with fluid.program_guard(inference_program):
+    test_accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+    test_target = [avg_cost] + test_accuracy.metrics + test_accuracy.states
+    inference_program = fluid.io.get_inference_program(test_target)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
         paddle.dataset.mnist.train(), buf_size=8192),
     batch_size=BATCH_SIZE)
 
-place = core.CPUPlace()
-exe = Executor(place)
+test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=128)
 
-exe.run(framework.default_startup_program())
+place = fluid.CPUPlace()
+exe = fluid.Executor(place)
+feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
+exe.run(fluid.default_startup_program())
 
 PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     accuracy.reset(exe)
     for data in train_reader():
-        x_data = np.array(map(lambda x: x[0], data)).astype("float32")
-        y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-        y_data = np.expand_dims(y_data, axis=1)
-
-        tensor_x = core.LoDTensor()
-        tensor_x.set(x_data, place)
-
-        tensor_y = core.LoDTensor()
-        tensor_y.set(y_data, place)
-
-        outs = exe.run(framework.default_main_program(),
-                       feed={'x': tensor_x,
-                             'y': tensor_y},
-                       fetch_list=[avg_cost, acc_out])
-        out = np.array(outs[0])
-        acc = np.array(outs[1])
+        out, acc = exe.run(fluid.default_main_program(),
+                           feed=feeder.feed(data),
+                           fetch_list=[avg_cost] + accuracy.metrics)
         pass_acc = accuracy.eval(exe)
 
-        if pass_acc > 0.7:
+        test_accuracy.reset(exe)
+        for data in test_reader():
+            out, acc = exe.run(inference_program,
+                               feed=feeder.feed(data),
+                               fetch_list=[avg_cost] + test_accuracy.metrics)
+
+        test_pass_acc = test_accuracy.eval(exe)
+        print("pass_id=" + str(pass_id) + " train_cost=" + str(
+            out) + " train_acc=" + str(acc) + " train_pass_acc=" + str(pass_acc)
+              + " test_acc=" + str(test_pass_acc))
+
+        if test_pass_acc > 0.7:
+            fluid.io.save_inference_model(
+                "./recognize_digits_mlp.inference.model/", ["x"], [predict],
+                exe)
             exit(0)
-            # print("pass_id=" + str(pass_id) + " auc=" +
-            #      str(acc) + " pass_acc=" + str(pass_acc))
+
 exit(1)

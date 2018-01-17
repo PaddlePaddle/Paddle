@@ -168,17 +168,3 @@ function(create_resources res_file output_file)
     COMMAND python ARGS ${PADDLE_SOURCE_DIR}/cmake/make_resource.py ${res_file} ${output_file}
     DEPENDS ${res_file} ${PADDLE_SOURCE_DIR}/cmake/make_resource.py)
 endfunction()
-
-
-# Create a python unittest using run_python_tests.sh,
-# which takes care of making correct running environment
-function(add_python_test TEST_NAME)
-    foreach(arg ${ARGN})
-        get_filename_component(py_fn ${arg} NAME_WE)
-        set(TRG_NAME ${TEST_NAME}_${py_fn})
-        add_test(NAME ${TRG_NAME}
-                COMMAND env PYTHONPATH=${PADDLE_PYTHON_PACKAGE_DIR}
-                python2 ${arg}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    endforeach()
-endfunction()

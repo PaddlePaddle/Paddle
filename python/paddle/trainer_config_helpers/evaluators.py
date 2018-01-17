@@ -297,7 +297,7 @@ def auc_evaluator(
 def pnpair_evaluator(
         input,
         label,
-        info,
+        query_id,
         weight=None,
         name=None, ):
     """
@@ -308,16 +308,20 @@ def pnpair_evaluator(
 
     .. code-block:: python
 
-       eval = pnpair_evaluator(input, label, info)
+       eval = pnpair_evaluator(input, label, query_id)
 
     :param input: Input Layer name. The output prediction of network.
     :type input: LayerOutput
     :param label: Label layer name.
     :type label: LayerOutput
-    :param info: Info layer name. (TODO, explaination)
-    :type info: LayerOutput
+    :param query_id: Query_id layer name. Query_id indicates that which query
+     each sample belongs to. Its shape should be
+     the same as output of Label layer.
+    :type query_id: LayerOutput
     :param weight: Weight Layer name. It should be a matrix with size
-                  [sample_num, 1]. (TODO, explaination)
+                  [sample_num, 1] which indicates the weight of each sample.
+                  The default weight of sample is 1 if the weight layer is None.
+                  And the pair weight is the mean of the two samples' weight.
     :type weight: LayerOutput
     :param name: Evaluator name.
     :type name: None|basestring
@@ -326,8 +330,8 @@ def pnpair_evaluator(
         input = [input]
     if label:
         input.append(label)
-    if info:
-        input.append(info)
+    if query_id:
+        input.append(query_id)
     evaluator_base(
         input=input,
         type="pnpair",

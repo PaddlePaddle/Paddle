@@ -21,7 +21,7 @@ from .activations import LinearActivation, SigmoidActivation, TanhActivation, \
     ReluActivation, IdentityActivation, SoftmaxActivation, BaseActivation
 from .evaluators import *
 from .poolings import MaxPooling, AvgPooling, MaxWithMaskPooling, BasePoolingType, \
-    CudnnAvgPooling, CudnnMaxPooling
+    CudnnAvgPooling, CudnnAvgInclPadPooling, CudnnMaxPooling
 from .attrs import *
 from .default_decorators import *
 
@@ -148,6 +148,7 @@ __all__ = [
     'resize_layer',
     'sub_seq_layer',
     'scale_sub_region_layer',
+    'factorization_machine',
 ]
 
 
@@ -264,10 +265,12 @@ class LayerType(object):
 
     SCALE_SUB_REGION_LAYER = 'scale_sub_region'
 
+    FACTORIZATION_MACHINE = 'factorization_machine'
+
     @staticmethod
     def is_layer_type(type_name):
         """
-        If type_name is a layer type.
+        Whether type_name is a layer type.
 
         :param type_name: layer type name. Because layer type enumerations are
                           strings.
@@ -438,7 +441,7 @@ def full_matrix_projection(input, size=0, param_attr=None):
        with mixed_layer(size=100) as m:
            m += full_matrix_projection(input=layer)
 
-    2. When used as an independant object like this, you must set the size:
+    2. When used as an independent object like this, you must set the size:
 
     .. code-block:: python
 
@@ -448,11 +451,11 @@ def full_matrix_projection(input, size=0, param_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param size: The parameter size. Means the width of parameter.
+    :param size: The dimension of this layer.
     :type size: int
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A FullMatrixProjection Object.
+    :return: FullMatrixProjection Object.
     :rtype: FullMatrixProjection
     """
     proj = FullMatrixProjection(
@@ -465,12 +468,12 @@ def full_matrix_projection(input, size=0, param_attr=None):
 def trans_full_matrix_projection(input, size=0, param_attr=None):
     """
     Different from full_matrix_projection, this projection performs matrix
-    multiplication, using transpose of weight.
+    multiplication, using the transpose of weight.
 
     ..  math::
         out.row[i] += in.row[i] * w^\mathrm{T}
 
-    :math:`w^\mathrm{T}` means transpose of weight.
+    :math:`w^\mathrm{T}` means the transpose of weight.
     The simply usage is:
 
     .. code-block:: python
@@ -486,9 +489,9 @@ def trans_full_matrix_projection(input, size=0, param_attr=None):
     :type input: LayerOutput
     :param size: The parameter size. Means the width of parameter.
     :type size: int
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A TransposedFullMatrixProjection Object.
+    :return: TransposedFullMatrixProjection Object.
     :rtype: TransposedFullMatrixProjection
     """
     proj = TransposedFullMatrixProjection(
@@ -518,7 +521,7 @@ def table_projection(input, size=0, param_attr=None):
        with mixed_layer(size=100) as m:
            m += table_projection(input=layer)
 
-    2. When used as an independant object like this, you must set the size:
+    2. When used as an independent object like this, you must set the size:
 
     .. code-block:: python
 
@@ -529,11 +532,11 @@ def table_projection(input, size=0, param_attr=None):
 
     :param input: The input of this layer, which must contains id fields.
     :type input: LayerOutput
-    :param size: The parameter size. Means the width of parameter.
+    :param size: The dimension of the output.
     :type size: int
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A TableProjection Object.
+    :return: TableProjection Object.
     :rtype: TableProjection
     """
     proj = TableProjection(
@@ -544,7 +547,7 @@ def table_projection(input, size=0, param_attr=None):
 
 def identity_projection(input, offset=None, size=None):
     """
-    1. IdentityProjection if offset=None. It performs:
+    1. If offset=None, it performs IdentityProjection as follows:
 
     .. math::
        out.row[i] += in.row[i]
@@ -556,9 +559,8 @@ def identity_projection(input, offset=None, size=None):
        proj = identity_projection(input=layer)
 
 
-    2. IdentityOffsetProjection if offset!=None. It likes IdentityProjection,
-    but layer size may be smaller than input size.
-    It select dimesions [offset, offset+layer_size) from input:
+    2. If offset!=None, It executes IdentityOffsetProjection and takes the
+       elements of the input in the range [offset, offset+size) as output.
 
     .. math::
        out.row[i] += in.row[i + \\textrm{offset}]
@@ -570,14 +572,20 @@ def identity_projection(input, offset=None, size=None):
        proj = identity_projection(input=layer,
                                   offset=10)
 
-    Note that both of two projections should not have any parameter.
+    Note that neither of the projections have trainable parameter.
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param offset: Offset, None if use default.
+    :param offset: The offset from the start of the input. The input's
+                   elements in the range [offset, offset+size) will be
+                   taken as output. If this parameter is not set or set
+                   to None, the output will be the same as the input.
     :type offset: int
-    :return: A IdentityProjection or IdentityOffsetProjection object
-    :rtype: IdentityProjection or IdentityOffsetProjection
+    :param size: The dimension of this layer. It will be neglected
+                 when offset is None or not set.
+    :type size: int
+    :return: IdentityProjection or IdentityOffsetProjection object
+    :rtype: IdentityProjection | IdentityOffsetProjection
     """
     if offset is None:
         proj = IdentityProjection(input_layer_name=input.name)
@@ -593,8 +601,8 @@ def identity_projection(input, offset=None, size=None):
 
 def slice_projection(input, slices):
     """
-    slice_projection can slice the input value into multiple parts,
-    and then select some of them to merge into a new output.
+    slice_projection slices the input value into multiple parts,
+    then selects and merges some of them into a new output.
 
     .. math::
        output = [input.slices()]
@@ -605,15 +613,13 @@ def slice_projection(input, slices):
 
        proj = slice_projection(input=layer, slices=[(0, 10), (20, 30)])
 
-    Note that slice_projection should not have any parameter.
+    Note that slice_projection has no trainable parameter.
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param slices: An array of slice parameters.
-                   Each slice contains the start and end offsets based
-                   on the input.
-    :type slices: pair of int
-    :return: A SliceProjection object
+    :param slices: A list of start and end offsets of each slice.
+    :type slices: list of tuple
+    :return: SliceProjection object.
     :rtype: SliceProjection
     """
     assert len(slices) >= 1
@@ -633,8 +639,7 @@ def slice_projection(input, slices):
 @wrap_param_attr_default()
 def scaling_projection(input, param_attr=None):
     """
-    scaling_projection multiplies the input with a scalar parameter and add to
-    the output.
+    scaling_projection multiplies the input with a scalar parameter.
 
     .. math::
        out += w * in
@@ -647,9 +652,9 @@ def scaling_projection(input, param_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A ScalingProjection object
+    :return: ScalingProjection object.
     :rtype: ScalingProjection
     """
     proj = ScalingProjection(input_layer_name=input.name, **param_attr.attr)
@@ -660,8 +665,8 @@ def scaling_projection(input, param_attr=None):
 @wrap_param_attr_default()
 def dotmul_projection(input, param_attr=None):
     """
-    DotMulProjection with a layer as input.
-    It performs element-wise multiplication with weight.
+    DotMulProjection takes a layer as input and performs
+    element-wise multiplication with weight.
 
     ..  math::
         out.row[i] += in.row[i] .* weight
@@ -676,9 +681,9 @@ def dotmul_projection(input, param_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param param_attr: Parameter config, None if use default.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: A DotMulProjection Object.
+    :return: DotMulProjection object.
     :rtype: DotMulProjection
     """
     proj = DotMulProjection(
@@ -695,7 +700,7 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
        out.row[i] += scale * (a.row[i] .* b.row[i])
 
     where :math:`.*` means element-wise multiplication, and
-    scale is a config scalar, its default value is one.
+    scale is a config scalar, its default value is 1.
 
     The example usage is:
 
@@ -703,13 +708,13 @@ def dotmul_operator(a=None, b=None, scale=1, **kwargs):
 
        op = dotmul_operator(a=layer1, b=layer2, scale=0.5)
 
-    :param a: Input layer1
+    :param a: The first input of this layer.
     :type a: LayerOutput
-    :param b: Input layer2
+    :param b: The second input of this layer.
     :type b: LayerOutput
-    :param scale: config scalar, default value is one.
+    :param scale: A scalar to scale the product. Its default value is 1.
     :type scale: float
-    :return: A DotMulOperator Object.
+    :return: DotMulOperator object.
     :rtype: DotMulOperator
     """
     if 'x' in kwargs or 'y' in kwargs:
@@ -735,28 +740,29 @@ def context_projection(input,
     """
     Context Projection.
 
-    It just simply reorganizes input sequence, combines "context_len" sequence
-    to one context from context_start. "context_start" will be set to
-    -(context_len - 1) / 2 by default. If context position out of sequence
+    It just reorganizes input sequence, combines "context_len" elements of the
+    sequence to one context from context_start. "context_start" will be set to
+    -(context_len - 1) / 2 by default. When context position is out of sequence
     length, padding will be filled as zero if padding_attr = False, otherwise
     it is trainable.
 
-    For example, origin sequence is [A B C D E F G], context len is 3, then
-    after context projection and not set padding_attr, sequence will
+    For example, origin sequence is [A B C D E F G], context len is 3, padding_attr
+    is not set, then after context projection, sequence will
     be [ 0AB ABC BCD CDE DEF EFG FG0 ].
 
     :param input: The input of this layer, which should be a sequence.
     :type input: LayerOutput
-    :param context_len: context length.
+    :param context_len: The length of the context.
     :type context_len: int
-    :param context_start: context start position. Default is
+    :param context_start: The start position of the context. The default value is
                           -(context_len - 1)/2
     :type context_start: int
-    :param padding_attr: Padding Parameter Attribute. If false, it means padding
-                         always be zero. Otherwise Padding is learnable, and
-                         parameter attribute is set by this parameter.
+    :param padding_attr: Parameter attribute of the padding. If the parameter is
+                         set to False, padding will be zero. In other cases, the
+                         padding is trainable, and its parameter attribute is set
+                         by this parameter.
     :type padding_attr: bool | ParameterAttribute
-    :return: Projection
+    :return: Projection object.
     :rtype: Projection
     """
     context_start = -(
@@ -788,10 +794,9 @@ class MixedLayerType(LayerOutput):
 
     def __init__(self, name, size, act, bias_attr, layer_attr, parents=None):
         """
-        Ctor.
-        :param name: layer name.
+        :param name: The name of this layer.
         :type name: basestring
-        :param size: layer size.
+        :param size: The dimension of this layer.
         :type size: int
         :param act: Activation type.
         :type act: BaseActivation
@@ -799,8 +804,9 @@ class MixedLayerType(LayerOutput):
                           whose type is not ParameterAttribute, no bias is defined. If the
                           parameter is set to True, the bias is initialized to zero.
         :type bias_attr: ParameterAttribute | None | bool | Any
-        :param layer_attr: Extra Layer Attribute.
-        :type layer_attr: ExtraLayerAttribute or None
+        :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                           details.
+        :type layer_attr: ExtraLayerAttribute | None
         """
         LayerOutput.__init__(
             self,
@@ -865,12 +871,12 @@ def mixed_layer(size=0,
                 bias_attr=False,
                 layer_attr=None):
     """
-    Mixed Layer. A mixed layer will add all inputs together, then activate.
-    Each inputs is a projection or operator.
+    Mixed Layer. A mixed layer will add all inputs together, then activate the sum.
+    Each input is a projection or operator.
 
     There are two styles of usages.
 
-    1. When not set inputs parameter, use mixed_layer like this:
+    1. When the parameter input is not set, use mixed_layer like this:
 
     .. code-block:: python
 
@@ -886,21 +892,21 @@ def mixed_layer(size=0,
                        input=[full_matrix_projection(input=layer1),
                               full_matrix_projection(input=layer2)])
 
-    :param name: mixed layer name. Can be referenced by other layer.
+    :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param size: layer size.
+    :param size: The dimension of this layer.
     :type size: int
-    :param input: The input of this layer. It is an optional parameter. If set,
-                  then this function will just return layer's name.
+    :param input: The input of this layer. It is an optional parameter.
     :param act: Activation Type. LinearActivation is the default activation.
     :type act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: The extra layer config. Default is None.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute
-    :return: MixedLayerType object can add inputs or layer name.
+    :return: MixedLayerType object.
     :rtype: MixedLayerType
     """
 
@@ -935,14 +941,15 @@ def data_layer(name, size, depth=None, height=None, width=None,
 
     :param name: The name of this layer.
     :type name: basestring
-    :param size: Size of this data layer.
+    :param size: The dimension of this data layer.
     :type size: int
-    :param height: Height of this data layer, used for image
+    :param height: The height of the input image data.
     :type height: int | None
-    :param width: Width of this data layer, used for image
+    :param width: The width of the input image data.
     :type width: int | None
-    :param layer_attr: Extra Layer Attribute.
-    :type layer_attr: ExtraLayerAttribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -975,14 +982,15 @@ def embedding_layer(input, size, name=None, param_attr=None, layer_attr=None):
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input: The input of this layer, which must be Index Data.
+    :param input: The input of this layer, whose type must be Index Data.
     :type input: LayerOutput
-    :param size: The embedding dimension.
+    :param size: The dimension of the embedding vector.
     :type size: int
     :param param_attr: The embedding parameter attribute. See ParameterAttribute
                       for details.
-    :type param_attr: ParameterAttribute | None
-    :param layer_attr: Extra layer Config. Default is None.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1010,7 +1018,7 @@ def fc_layer(input,
              bias_attr=None,
              layer_attr=None):
     """
-    Helper for declare fully connected layer.
+    The fully connected layer.
 
     The example usage is:
 
@@ -1032,17 +1040,18 @@ def fc_layer(input,
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput | list | tuple
-    :param size: The layer dimension.
+    :param size: The dimension of this layer.
     :type size: int
     :param act: Activation Type. TanhActivation is the default activation.
     :type act: BaseActivation
-    :param param_attr: The Parameter Attribute|list.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: Extra Layer config.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1083,13 +1092,15 @@ def fc_layer(input,
 @wrap_name_default("print")
 def printer_layer(input, format=None, name=None):
     """
-    Print the output value of input layers. This layer is useful for debugging.
+    Print the output value of the layers specified by the parameter input.
+    This layer is useful for debugging.
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput | list | tuple
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     if isinstance(input, LayerOutput):
         input = [input]
@@ -1132,11 +1143,12 @@ def priorbox_layer(input,
     :param aspect_ratio: The aspect ratio.
     :type aspect_ratio: list
     :param variance: The bounding box variance.
-    :type min_size: The min size of the priorbox width/height.
+    :type min_size: The minimum size of the priorbox width/height.
     :param min_size: list
-    :type max_size: The max size of the priorbox width/height. Could be NULL.
+    :type max_size: The maximum size of the priorbox width/height. It could be NULL.
     :param max_size: list
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     # plus one for ratio 1.
     num_filters = (len(aspect_ratio) * 2 + 1 + len(max_size)) * 4
@@ -1174,7 +1186,7 @@ def multibox_loss_layer(input_loc,
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param input_loc: The input predict locations.
+    :param input_loc: The input predicted locations.
     :type input_loc: LayerOutput | List of LayerOutput
     :param input_conf: The input priorbox confidence.
     :type input_conf: LayerOutput | List of LayerOutput
@@ -1186,13 +1198,15 @@ def multibox_loss_layer(input_loc,
     :type num_classes: int
     :param overlap_threshold: The threshold of the overlap.
     :type overlap_threshold: float
-    :param neg_pos_ratio: The ratio of the negative bbox to the positive bbox.
+    :param neg_pos_ratio: The ratio of the negative bounding box to
+                          the positive bounding box.
     :type neg_pos_ratio: float
-    :param neg_overlap: The negative bbox overlap threshold.
+    :param neg_overlap: The negative bounding box overlap threshold.
     :type neg_overlap: float
     :param background_id: The background class index.
     :type background_id: int
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     if isinstance(input_loc, LayerOutput):
         input_loc = [input_loc]
@@ -1255,19 +1269,20 @@ def detection_output_layer(input_loc,
     :type input_conf: LayerOutput | List of LayerOutput.
     :param priorbox: The input priorbox location and the variance.
     :type priorbox: LayerOutput
-    :param num_classes: The number of the classification.
+    :param num_classes: The number of the classes.
     :type num_classes: int
     :param nms_threshold: The Non-maximum suppression threshold.
     :type nms_threshold: float
-    :param nms_top_k: The bbox number kept of the NMS's output
+    :param nms_top_k: The bounding boxes number kept of the NMS's output.
     :type nms_top_k: int
-    :param keep_top_k: The bbox number kept of the layer's output
+    :param keep_top_k: The bounding boxes number kept of the layer's output.
     :type keep_top_k: int
-    :param confidence_threshold: The classification confidence threshold
+    :param confidence_threshold: The classification confidence threshold.
     :type confidence_threshold: float
     :param background_id: The background class index.
     :type background_id: int
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     if isinstance(input_loc, LayerOutput):
         input_loc = [input_loc]
@@ -1323,7 +1338,7 @@ def roi_pool_layer(input,
     A layer used by Fast R-CNN to extract feature maps of ROIs from the last
     feature map.
 
-    :param name: The Layer Name.
+    :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input layer.
     :type input: LayerOutput.
@@ -1335,9 +1350,10 @@ def roi_pool_layer(input,
     :type pooled_height: int
     :param spatial_scale: The spatial scale between the image and feature map.
     :type spatial_scale: float
-    :param num_channels: number of input channel.
+    :param num_channels: The number of the input channels.
     :type num_channels: int
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     if num_channels is None:
         assert input.num_filters is not None
@@ -1358,18 +1374,19 @@ def roi_pool_layer(input,
 @wrap_name_default("cross_channel_norm")
 def cross_channel_norm_layer(input, name=None, param_attr=None):
     """
-    Normalize a layer's output. This layer is necessary for ssd.
-    This layer applys normalize across the channels of each sample to
-    a conv layer's output and scale the output by a group of trainable
-    factors which dimensions equal to the channel's number.
+    Normalize a layer's output. This layer is necessary for ssd. This
+    layer applys normalization across the channels of each sample to
+    a convolutional layer's output and scales the output by a group of
+    trainable factors whose dimensions equal to the channel's number.
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param param_attr: The Parameter Attribute|list.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
-    :return: LayerOutput
+    :return: LayerOutput object.
+    :rtype: LayerOutput
     """
     assert input.num_filters is not None
     Layer(
@@ -1410,12 +1427,9 @@ def pooling_layer(input,
     Pooling layer for sequence inputs, not used for Image.
 
     If stride > 0, this layer slides a window whose size is determined by stride,
-    and return the pooling value of the window as the output. Thus, a long sequence
-    will be shorten.
-
-    The parameter stride specifies the intervals at which to apply the pooling
-    operation. Note that for sequence with sub-sequence, the default value
-    of stride is -1.
+    and returns the pooling value of the sequence in the window as the output. Thus,
+    a long sequence will be shortened. Note that for sequence with sub-sequence, the
+    default value of stride is -1.
 
     The example usage is:
 
@@ -1432,16 +1446,16 @@ def pooling_layer(input,
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param pooling_type: Type of pooling, MaxPooling(default), AvgPooling,
-                         SumPooling, SquareRootNPooling.
+    :param pooling_type: Type of pooling. MaxPooling is the default pooling.
     :type pooling_type: BasePoolingType | None
     :param stride: The step size between successive pooling regions.
-    :type stride: Int
+    :type stride: int
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param layer_attr: The Extra Attributes for layer, such as dropout.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1516,34 +1530,33 @@ def lstmemory(input,
     NOTE: This is a low level user interface. You can use network.simple_lstm
     to config a simple plain lstm layer.
 
-    Please refer to **Generating Sequences With Recurrent Neural Networks** for
-    more details about LSTM.
+    Reference:
+        `Generating Sequences With Recurrent Neural Networks
+        <https://arxiv.org/pdf/1308.0850.pdf>`_
 
-    Link_ goes as below.
-
-    .. _Link: http://arxiv.org/abs/1308.0850
-
-    :param name: The lstmemory layer name.
+    :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param size: DEPRECATED. size of the lstm cell
+    :param size: DEPRECATED. The dimension of the lstm cell.
     :type size: int
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param reverse: is sequence process reversed or not.
+    :param reverse: Whether the input sequence is processed in a reverse order.
     :type reverse: bool
     :param act: Activation type. TanhActivation is the default activation.
     :type act: BaseActivation
-    :param gate_act: gate activation type, SigmoidActivation by default.
+    :param gate_act: Activation type of this layer's gates. SigmoidActivation is the
+                     default activation.
     :type gate_act: BaseActivation
-    :param state_act: state activation type, TanhActivation by default.
+    :param state_act: Activation type of the state. TanhActivation is the default activation.
     :type state_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr: Parameter Attribute.
-    :type param_attr: ParameterAttribute | None | False
-    :param layer_attr: Extra Layer attribute
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1632,14 +1645,14 @@ def grumemory(input,
         h_t = (1 - z_t) h_{t-1} + z_t {\\tilde{h_t}}
 
     NOTE: In PaddlePaddle's implementation, the multiplication operations
-    :math:`W_{r}x_{t}`, :math:`W_{z}x_{t}` and :math:`W x_t` are not computed in
-    gate_recurrent layer. Consequently, an additional mixed_layer with
+    :math:`W_{r}x_{t}`, :math:`W_{z}x_{t}` and :math:`W x_t` are not performed
+    in gate_recurrent layer. Consequently, an additional mixed_layer with
     full_matrix_projection or a fc_layer must be included before grumemory
     is called.
 
-    More details can be found by referring to `Empirical Evaluation of Gated
-    Recurrent Neural Networks on Sequence Modeling.
-    <https://arxiv.org/abs/1412.3555>`_
+    Reference:
+        `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence Modeling
+        <https://arxiv.org/abs/1412.3555>`_
 
     The simple usage is:
 
@@ -1647,28 +1660,29 @@ def grumemory(input,
 
        gru = grumemory(input)
 
-    :param name: The gru layer name.
-    :type name: None | basestring
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput.
-    :param size: DEPRECATED. size of the gru cell
+    :param size: DEPRECATED. The dimension of the gru cell.
     :type size: int
-    :param reverse: Whether sequence process is reversed or not.
+    :param reverse: Whether the input sequence is processed in a reverse order.
     :type reverse: bool
     :param act: Activation type, TanhActivation is the default. This activation
                 affects the :math:`{\\tilde{h_t}}`.
     :type act: BaseActivation
-    :param gate_act: gate activation type, SigmoidActivation by default.
-                     This activation affects the :math:`z_t` and :math:`r_t`. It is the
-                     :math:`\\sigma` in the above formula.
+    :param gate_act: Activation type of this layer's two gates. SigmoidActivation is
+                     the default activation. This activation affects the :math:`z_t`
+                     and :math:`r_t`. It is the :math:`\\sigma` in the above formula.
     :type gate_act: BaseActivation
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr: Parameter Attribute.
-    :type param_attr: ParameterAttribute | None | False
-    :param layer_attr: Extra Layer attribute
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute | None
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1712,10 +1726,10 @@ def last_seq(input,
     """
     Get Last Timestamp Activation of a sequence.
 
-    If stride > 0, this layer slides a window whose size is determined by stride,
-    and return the last value of the window as the output. Thus, a long sequence
-    will be shorten. Note that for sequence with sub-sequence, the default value
-    of stride is -1.
+    If stride > 0, this layer will slide a window whose size is determined by stride,
+    and return the last value of the sequence in the window as the output. Thus, a
+    long sequence will be shortened. Note that for sequence with sub-sequence, the
+    default value of stride is -1.
 
     The simple usage is:
 
@@ -1724,14 +1738,16 @@ def last_seq(input,
        seq = last_seq(input=layer)
 
     :param agg_level: Aggregated level
+    :type agg_level: AggregateLevel
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
     :param stride: The step size between successive pooling regions.
-    :type stride: Int
-    :param layer_attr: extra layer attributes.
-    :type layer_attr: ExtraLayerAttribute.
+    :type stride: int
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -1768,10 +1784,10 @@ def first_seq(input,
     """
     Get First Timestamp Activation of a sequence.
 
-    If stride > 0, this layer slides a window whose size is determined by stride,
-    and return the first value of the window as the output. Thus, a long sequence
-    will be shorten. Note that for sequence with sub-sequence, the default value
-    of stride is -1.
+    If stride > 0, this layer will slide a window whose size is determined by stride,
+    and return the first value of the sequence in the window as the output. Thus, a
+    long sequence will be shortened. Note that for sequence with sub-sequence, the
+    default value of stride is -1.
 
     The simple usage is:
 
@@ -1780,13 +1796,15 @@ def first_seq(input,
        seq = first_seq(input=layer)
 
     :param agg_level: aggregation level
+    :type agg_level: AggregateLevel
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input: The input of this layer.
     :type input: LayerOutput
     :param stride: The step size between successive pooling regions.
-    :type stride: Int
-    :param layer_attr: extra layer attributes.
+    :type stride: int
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1844,8 +1862,8 @@ def expand_layer(input,
                  expand_level=ExpandLevel.FROM_NO_SEQUENCE,
                  layer_attr=None):
     """
-    A layer for "Expand Dense data or (sequence data where the length of each
-    sequence is one) to sequence data."
+    A layer for expanding dense data or (sequence data where the length of each
+    sequence is one) to sequence data.
 
     The example usage is:
 
@@ -1857,7 +1875,9 @@ def expand_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param expand_as: Expand as this layer's sequence info.
+    :param expand_as: Expand the input according to this layer's sequence infomation. And
+                      after the operation, the input expanded will have the same number of
+                      elememts as this layer.
     :type expand_as: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
@@ -1865,9 +1885,10 @@ def expand_layer(input,
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param expand_level: whether input layer is timestep(default) or sequence.
+    :param expand_level: Whether the input layer is a sequence or the element of a sequence.
     :type expand_level: ExpandLevel
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1900,9 +1921,12 @@ def repeat_layer(input,
     A layer for repeating the input for num_repeats times.
 
     If as_row_vector:
+
     .. math::
        y  = [x_1,\cdots, x_n, \cdots, x_1, \cdots, x_n]
+
     If not as_row_vector:
+
     .. math::
        y  = [x_1,\cdots, x_1, \cdots, x_n, \cdots, x_n]
 
@@ -1915,19 +1939,19 @@ def repeat_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param num_repeats: Repeat the input so many times
+    :param num_repeats: The times of repeating the input.
     :type num_repeats: int
     :param name: The name of this layer. It is optional.
-    :param as_row_vector: True for treating input as row vector and repeating
-                          in the column direction.  This is equivalent to apply
-                          concat_layer() with num_repeats same input.
-                          False for treating input as column vector and repeating
-                          in the row direction.
+    :type name: basestring
+    :param as_row_vector: Whether to treat the input as row vectors or not. If
+                          the parameter is set to True, the repeating operation
+                          will be performed in the column direction. Otherwise,
+                          it will be performed in the row direction.
     :type as_row_vector: bool
     :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
-    :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -1974,13 +1998,14 @@ def seq_reshape_layer(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param reshape_size: the size of reshaped sequence.
+    :param reshape_size: The dimension of the reshaped sequence.
     :type reshape_size: int
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param act: Activation type. IdentityActivation is the default activation.
     :type act: BaseActivation
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
@@ -2008,7 +2033,7 @@ def seq_reshape_layer(input,
 @layer_support()
 def interpolation_layer(input, weight, name=None, layer_attr=None):
     """
-    This layer is for linear interpolation with two inputs,
+    This layer performs linear interpolation on two inputs,
     which is used in NEURAL TURING MACHINE.
 
     .. math::
@@ -2030,7 +2055,8 @@ def interpolation_layer(input, weight, name=None, layer_attr=None):
     :type weight: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2064,7 +2090,7 @@ def bilinear_interp_layer(input,
                           name=None,
                           layer_attr=None):
     """
-    This layer is to implement bilinear interpolation on conv layer output.
+    This layer implements bilinear interpolation on convolutional layer's output.
 
     Please refer to Wikipedia: https://en.wikipedia.org/wiki/Bilinear_interpolation
 
@@ -2074,18 +2100,19 @@ def bilinear_interp_layer(input,
 
        bilinear = bilinear_interp_layer(input=layer1, out_size_x=64, out_size_y=64)
 
-    :param   input:        A input layer.
-    :type    input:        LayerOutput.
-    :param   out_size_x:   bilinear interpolation output width.
-    :type    out_size_x:   int | None
-    :param   out_size_y:   bilinear interpolation output height.
-    :type    out_size_y:   int | None
-    :param   name:         The layer's name, which cna not be specified.
-    :type    name:         None | basestring
-    :param   layer_attr:   Extra Layer attribute.
-    :type    layer_attr:   ExtraLayerAttribute
+    :param input: The input of this layer.
+    :type input: LayerOutput.
+    :param out_size_x: The width of the output.
+    :type out_size_x: int
+    :param out_size_y: The height of the output.
+    :type out_size_y: int
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
+    :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
-    :rtype:  LayerOutput
+    :rtype: LayerOutput
     """
     assert input.layer_type == LayerType.CONV_LAYER
     assert isinstance(input.activation, LinearActivation)
@@ -2120,8 +2147,8 @@ def power_layer(input, weight, name=None, layer_attr=None):
     .. math::
        y = x^w
 
-    where :math:`x` is a input vector, :math:`w` is scalar weight,
-    and :math:`y` is a output vector.
+    where :math:`x` is an input vector, :math:`w` is a scalar exponent,
+    and :math:`y` is an output vector.
 
     The example usage is:
 
@@ -2131,11 +2158,12 @@ def power_layer(input, weight, name=None, layer_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param weight: Weight layer.
+    :param weight: The exponent of the power.
     :type weight: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2175,11 +2203,12 @@ def scaling_layer(input, weight, name=None, layer_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param weight: Weight layer.
+    :param weight: The weight of each sample.
     :type weight: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2217,7 +2246,8 @@ def trans_layer(input, name=None, layer_attr=None):
     :type input: LayerOutput
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2253,11 +2283,14 @@ def rotate_layer(input, height, width, name=None, layer_attr=None):
 
     :param input: The input of this layer.
     :type input: LayerOutput
-    :param height: The height of the sample matrix
+    :param height: The height of the sample matrix.
     :type height: int
+    :param width: The width of the sample matrix.
+    :type width: int
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param layer_attr: extra layer attributes.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
+                       details.
     :type layer_attr: ExtraLayerAttribute.
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2302,15 +2335,15 @@ def cos_sim(a, b, scale=1, size=1, name=None, layer_attr=None):
 
     :param name: The name of this layer. It is optional.
     :type name: basestring
-    :param a: input layer a
+    :param a: The first input of this layer.
     :type a: LayerOutput
-    :param b: input layer b
+    :param b: The second input of this layer.
     :type b: LayerOutput
-    :param scale: scale for cosine value. default is 5.
+    :param scale: The scale of the cosine similarity. 1 is the default value.
     :type scale: float
-    :param size: layer size. NOTE size_a * size should equal size_b.
+    :param size: The dimension of this layer. NOTE size_a * size should equal size_b.
     :type size: int
-    :param layer_attr: Extra Layer Attribute.
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2395,8 +2428,10 @@ def hsigmoid(input,
     """
     Organize the classes into a binary tree. At each node, a sigmoid function
     is used to calculate the probability of belonging to the right branch.
-    This idea is from "F. Morin, Y. Bengio (AISTATS 05):
-    Hierarchical Probabilistic Neural Network Language Model."
+
+    Reference:
+        `Hierarchical Probabilistic Neural Network Language Model
+        <http://www.gatsby.ucl.ac.uk/aistats/fullpapers/208.pdf>`_
 
     The example usage is:
 
@@ -2407,19 +2442,21 @@ def hsigmoid(input,
 
     :param input: The input of this layer.
     :type input: LayerOutput | list | tuple
-    :param label: Label layer.
+    :param label: The input label.
     :type label: LayerOutput
-    :param num_classes: number of classes.
-    :type num_classes: int | None
+    :param num_classes: The number of classes. And it should be larger than 2. If the parameter
+                        is not set or set to None, its actual value will be automatically set to
+                        the number of labels.
+    :type num_classes: int
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param bias_attr: The bias attribute. If the parameter is set to False or an object
                       whose type is not ParameterAttribute, no bias is defined. If the
                       parameter is set to True, the bias is initialized to zero.
     :type bias_attr: ParameterAttribute | None | bool | Any
-    :param param_attr: Parameter Attribute. None means default parameter.
-    :type param_attr: ParameterAttribute | None
-    :param layer_attr: Extra Layer Attribute.
+    :param param_attr: The parameter attribute. See ParameterAttribute for details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for details.
     :type layer_attr: ExtraLayerAttribute
     :return: LayerOutput object.
     :rtype: LayerOutput
@@ -2505,15 +2542,21 @@ def img_conv_layer(input,
     what-are-deconvolutional-layers/>`_ .
     The num_channel means input image's channel number. It may be 1 or 3 when
     input is raw pixels of image(mono or RGB), or it may be the previous layer's
-    num_filters * num_group.
+    num_filters.
 
     There are several groups of filters in PaddlePaddle implementation.
-    Each group will process some channels of the input. For example, if
-    num_channel = 256, group = 4, num_filter=32, the PaddlePaddle will create
-    32*4 = 128 filters to process the input. The channels will be split into 4
-    pieces. First 256/4 = 64 channels will be processed by first 32 filters. The
-    rest channels will be processed by the rest groups of filters.
+    If the groups attribute is greater than 1, for example groups=2,
+    the input will be splitted into 2 parts along the channel axis, and
+    the filters will also be splitted into 2 parts. The first half of the filters 
+    is only connected to the first half of the input channels, while the second 
+    half of the filters is only connected to the second half of the input. After
+    the computation of convolution for each part of input,
+    the output will be obtained by concatenating the two results.
 
+    The details of grouped convolution, please refer to:
+    `ImageNet Classification with Deep Convolutional Neural Networks
+    <http://www.cs.toronto.edu/~kriz/imagenet_classification_with_deep_convolutional.pdf>`_
+    
     The example usage is:
 
     ..  code-block:: python
@@ -2538,7 +2581,8 @@ def img_conv_layer(input,
     :param filter_size_y: The dimension of the filter kernel on the y axis. If the parameter
                           is not set, it will be set automatically according to filter_size.
     :type filter_size_y: int
-    :param num_filters: Each filter group's number of filter
+    :param num_filters: The number of filters. It is as same as the output image channel.
+    :type num_filters: int
     :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation
     :param groups: The group number. 1 is the default group number.
@@ -2690,7 +2734,8 @@ def img_pool_layer(input,
                    pool_size_y=None,
                    stride_y=None,
                    padding_y=None,
-                   ceil_mode=True):
+                   ceil_mode=True,
+                   exclude_mode=None):
     """
     Image pooling Layer.
 
@@ -2702,15 +2747,17 @@ def img_pool_layer(input,
 
     ..  math::
 
-        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        w & = 1 + \\frac{ceil(input\_width + 2 * padding - pool\_size)}{stride}
+
+        h & = 1 + \\frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
+        w & = 1 + \\frac{floor(input\_width + 2 * padding - pool\_size)}{stride}
+
+        h & = 1 + \\frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
 
     The example usage is:
 
@@ -2754,10 +2801,15 @@ def img_pool_layer(input,
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
                        details.
     :type layer_attr: ExtraLayerAttribute
-    :param ceil_mode: Wether to use the ceil function to calculate output height and width.
+    :param ceil_mode: Whether to use the ceil function to calculate output height and width.
                       True is the default. If it is set to False, the floor function will
                       be used.
     :type ceil_mode: bool
+    :param exclude_mode: Whether to exclude the padding cells when calculating, but only 
+                         work when pool_type is AvgPooling. If None, also exclude the padding 
+                         cells. If use cudnn, use CudnnAvgPooling or CudnnAvgInclPadPooling 
+                         as pool_type to identify the mode.
+    :type exclude_mode: bool
     :return: LayerOutput object.
     :rtype: LayerOutput
     """
@@ -2771,7 +2823,7 @@ def img_pool_layer(input,
         pool_type.name = 'avg'
 
     assert type(pool_type) in [AvgPooling, MaxPooling, MaxWithMaskPooling, CudnnAvgPooling,
-                               CudnnMaxPooling], \
+                               CudnnMaxPooling, CudnnAvgInclPadPooling], \
         "only (Cudnn)AvgPooling, (Cudnn)MaxPooling, MaxWithMaskPooling are supported"
 
     type_name = pool_type.name + '-projection' \
@@ -2800,6 +2852,7 @@ def img_pool_layer(input,
                     padding_y=padding_y))
         ],
         ceil_mode=ceil_mode,
+        exclude_mode=exclude_mode,
         **ExtraLayerAttribute.to_kwargs(layer_attr))
     return LayerOutput(
         name,
@@ -2837,17 +2890,21 @@ def img_pool3d_layer(input,
 
     ..  math::
 
-        w = 1 + int(ceil(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(ceil(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
-        d = 1 + int(ceil(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+        w & = 1 + \\frac{ceil(input\_width + 2 * padding - pool\_size)}{stride}
+
+        h & = 1 + \\frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+
+        d & = 1 + \\frac{ceil(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z}
 
     - ceil_mode=False:
 
     ..  math::
 
-        w = 1 + int(floor(input\_width + 2 * padding - pool\_size) / float(stride))
-        h = 1 + int(floor(input\_height + 2 * padding\_y - pool\_size\_y) / float(stride\_y))
-        d = 1 + int(floor(input\_depth + 2 * padding\_z - pool\_size\_z) / float(stride\_z))
+        w & = 1 + \\frac{floor(input\_width + 2 * padding - pool\_size)}{stride}
+
+        h & = 1 + \\frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+
+        d & = 1 + \\frac{floor(input\_depth + 2 * padding\_z - pool\_size\_z)}{stride\_z}
 
     The example usage is:
 
@@ -2969,8 +3026,8 @@ def spp_layer(input,
     A layer performs spatial pyramid pooling.
 
     Reference:
-        Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition
-        https://arxiv.org/abs/1406.4729
+        `Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition
+        <https://arxiv.org/abs/1406.4729>`_
 
     The example usage is:
 
@@ -3071,8 +3128,8 @@ def img_cmrnorm_layer(input,
     Response normalization across feature maps.
 
     Reference:
-        ImageNet Classification with Deep Convolutional Neural Networks
-        http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf
+        `ImageNet Classification with Deep Convolutional Neural Networks
+        <http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf>`_
 
     The example usage is:
 
@@ -3118,6 +3175,7 @@ def batch_norm_layer(input,
                      param_attr=None,
                      layer_attr=None,
                      batch_norm_type=None,
+                     epsilon=1e-5,
                      moving_average_fraction=0.9,
                      use_global_stats=None,
                      mean_var_names=None):
@@ -3137,9 +3195,9 @@ def batch_norm_layer(input,
         y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
 
     Reference:
-        Batch Normalization: Accelerating Deep Network Training by Reducing
+        `Batch Normalization: Accelerating Deep Network Training by Reducing
         Internal Covariate Shift
-        http://arxiv.org/abs/1502.03167
+        <http://arxiv.org/abs/1502.03167>`_
 
     The example usage is:
 
@@ -3188,6 +3246,8 @@ def batch_norm_layer(input,
                              will use the mean and variance of the current batch
                              of test data.
     :type use_global_stats: bool | None.
+    :param epsilon: The small constant added to the variance to improve numeric stability.
+    :type epsilon: float.
     :param moving_average_fraction: Factor used in the moving average computation.
                                    :math:`runningMean = newMean*(1-factor) + runningMean*factor`
     :type moving_average_fraction: float.
@@ -3205,6 +3265,7 @@ def batch_norm_layer(input,
     assert (batch_norm_type is None) or (batch_norm_type == "batch_norm") or \
            (batch_norm_type == "mkldnn_batch_norm") or \
            (batch_norm_type == "cudnn_batch_norm")
+
     l = Layer(
         name=name,
         img3D=img3D,
@@ -3214,6 +3275,7 @@ def batch_norm_layer(input,
         type=LayerType.BATCH_NORM_LAYER,
         batch_norm_type=batch_norm_type,
         bias=ParamAttr.to_bias(bias_attr),
+        epsilon=epsilon,
         moving_average_fraction=moving_average_fraction,
         use_global_stats=use_global_stats,
         mean_var_names=mean_var_names,
@@ -3273,7 +3335,7 @@ def row_l2_norm_layer(input, name=None, layer_attr=None):
     A layer for L2-normalization in each row.
 
     .. math::
-       out[i] = \frac{in[i]}{\sqrt{\sum_{k=1}^N in[k]^{2}}}
+       out[i] = \\frac{in[i]} {\\sqrt{\\sum_{k=1}^N in[k]^{2}}}
 
     where the size of :math:`in` is (batchSize x dataDim) ,
     and the size of :math:`out` is a (batchSize x dataDim) .
@@ -4236,7 +4298,7 @@ def dot_prod_layer(input1, input2, name=None, layer_attr=None):
     :param name: The name of this layer. It is optional.
     :type name: basestring
     :param input1: The first input layer.
-    :type input: LayerOutput
+    :type input1: LayerOutput
     :param input2: The second input layer.
     :type input2: LayerOutput
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
@@ -5392,18 +5454,28 @@ def maxout_layer(input, groups, num_channels=None, name=None, layer_attr=None):
     to be devided by groups.
 
     Reference:
-        Maxout Networks
-        http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
-        Multi-digit Number Recognition from Street View Imagery using Deep Convolutional Neural Networks
-        https://arxiv.org/pdf/1312.6082v4.pdf
+        `Maxout Networks
+        <http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf>`_
+        `Multi-digit Number Recognition from Street View Imagery using Deep Convolutional Neural Networks
+        <https://arxiv.org/pdf/1312.6082v4.pdf>`_
+
 
     .. math::
-       y_{si+j} = \max_k x_{gsi + sk + j}
-       g = groups
-       s = input.size / num_channels
-       0 \le i < num_channels / groups
-       0 \le j < s
-       0 \le k < groups
+
+       & out = \max_k (in[n, k, o_c , s])
+
+       & out_{i * s + j} = \max_k in_{  k * o_{c} * s + i * s + j}
+
+       & s = \\frac{input.size}{ num\_channels}
+
+       & o_{c} = \\frac{num\_channels}{groups}
+
+       & 0 \le i < o_{c}
+
+       & 0 \le j < s
+
+       & 0 \le k < groups
+
 
     The simple usage is:
 
@@ -5460,9 +5532,9 @@ def ctc_layer(input,
     alignment between the inputs and the target labels is unknown.
 
     Reference:
-        Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
+        `Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
         with Recurrent Neural Networks
-        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf
+        <http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf>`_
 
     Note:
         Considering the 'blank' label needed by CTC, you need to use (num_classes + 1)
@@ -5534,9 +5606,9 @@ def warp_ctc_layer(input,
     install it to :code:`third_party/install/warpctc` directory.
 
     Reference:
-        Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
+        `Connectionist Temporal Classification: Labelling Unsegmented Sequence Data
         with Recurrent Neural Networks
-        http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf
+        <http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf>`_
 
     Note:
         - Let num_classes represents the category number. Considering the 'blank'
@@ -5756,8 +5828,8 @@ def nce_layer(input,
     Noise-contrastive estimation.
 
     Reference:
-        A fast and simple algorithm for training neural probabilistic language
-        models. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf
+        `A fast and simple algorithm for training neural probabilistic language
+        models. <https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf>`_
 
     The example usage is:
 
@@ -5872,8 +5944,8 @@ def rank_cost(left,
     A cost Layer for learning to rank using gradient descent.
 
     Reference:
-        Learning to Rank using Gradient Descent
-        http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf
+        `Learning to Rank using Gradient Descent
+        <http://research.microsoft.com/en-us/um/people/cburges/papers/ICML_ranking.pdf>`_
 
     .. math::
 
@@ -6140,9 +6212,11 @@ def huber_regression_cost(input,
     Given a prediction f(x), a label y and :math:`\delta`, the loss function
     is defined as:
 
-    .. math:
-       loss = 0.5*\left ( y-f(x) \right )^2, \left | y-f(x) \right |\leq \delta
-       loss = \delta \left | y-f(x) \right |-0.5\delta ^2, otherwise
+    .. math::
+
+       loss = 0.5*(y-f(x))^{2}, | y-f(x) | < \delta
+
+       loss = \delta | y-f(x) | - 0.5 \delta ^2, otherwise
 
     The example usage is:
 
@@ -6189,12 +6263,14 @@ def huber_classification_cost(input,
     """
     For classification purposes, a variant of the Huber loss called modified Huber
     is sometimes used. Given a prediction f(x) (a real-valued classifier score) and
-    a true binary class label :math:`y\in \left \{-1, 1 \right \}`, the modified Huber
+    a true binary class label :math:`y\in \{-1, 1 \}`, the modified Huber
     loss is defined as:
 
     .. math:
-       loss = \max \left ( 0, 1-yf(x) \right )^2, yf(x)\geq 1
-       loss = -4yf(x), \text{otherwise}
+
+       loss = \max ( 0, 1-yf(x) )^2, yf(x) \geq -1
+
+       loss = -4yf(x), otherwise
 
     The example usage is:
 
@@ -6408,8 +6484,8 @@ def smooth_l1_cost(input, label, name=None, coeff=1.0, layer_attr=None):
         smooth_{L1}(x) = \\begin{cases} 0.5x^2& \\text{if}  \\ |x| < 1 \\\\ |x|-0.5& \\text{otherwise} \end{cases}
 
     Reference:
-        Fast R-CNN
-        https://arxiv.org/pdf/1504.08083v2.pdf
+        `Fast R-CNN
+        <https://arxiv.org/pdf/1504.08083v2.pdf>`_
 
     The example usage is:
 
@@ -6560,7 +6636,7 @@ def row_conv_layer(input,
     .. math::
 
         r_{t,r} = \sum_{j=1}^{k + 1} {w_{i,j}h_{t+j-1, i}}
-                  \quad \text{for} \quad  (1 \leq i \leq d)
+                  \quad \\text{for} \quad  (1 \leq i \leq d)
 
     Note:
         The `context_len` is `k + 1`. That is to say, the lookahead step
@@ -6604,18 +6680,19 @@ def row_conv_layer(input,
 
 @layer_support()
 @wrap_name_default()
-@wrap_param_attr_default()
 def prelu_layer(input,
                 name=None,
                 partial_sum=1,
+                channel_shared=None,
+                num_channels=None,
                 param_attr=None,
                 layer_attr=None):
     """
     The Parametric Relu activation that actives outputs with a learnable weight.
 
     Reference:
-        Delving Deep into Rectifiers: Surpassing Human-Level Performance on
-        ImageNet Classification http://arxiv.org/pdf/1502.01852v1.pdf
+        `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
+        ImageNet Classification <http://arxiv.org/pdf/1502.01852v1.pdf>`_
 
     .. math::
        z_i &\\quad if \\quad z_i > 0 \\\\
@@ -6638,6 +6715,14 @@ def prelu_layer(input,
         - partial_sum = number of outputs, indicates all elements share the same weight.
 
     :type partial_sum: int
+    :param channel_shared: whether or not the parameter are shared across channels.
+
+        - channel_shared = True, we set the partial_sum to the number of outputs.
+        - channel_shared = False, we set the partial_sum to the number of elements in one channel.
+
+    :type channel_shared: bool
+    :param num_channels: number of input channel.
+    :type num_channels: int
     :param param_attr: The parameter attribute. See ParameterAttribute for details.
     :type param_attr: ParameterAttribute
     :param layer_attr: The extra layer attribute. See ExtraLayerAttribute for
@@ -6648,7 +6733,25 @@ def prelu_layer(input,
     """
 
     assert isinstance(input, LayerOutput), 'prelu_layer accepts only one input.'
-    assert isinstance(param_attr, ParameterAttribute)
+
+    if not param_attr:
+        param_attr = ParamAttr(initial_mean=0.25, initial_std=0.0)
+    else:
+        assert isinstance(param_attr, ParameterAttribute)
+
+    if num_channels is None:
+        assert input.num_filters is not None, \
+                'the input channel cannot be detected, please specify the num_channels parameter'
+        num_channels = input.num_filters
+
+    if channel_shared is not None:
+        assert isinstance(channel_shared, bool)
+        assert (input.height != 0 and input.width != 0), \
+            'input height and widht must be setted'
+        if channel_shared:
+            partial_sum = input.height * input.width * num_channels
+        else:
+            partial_sum = input.height * input.width
 
     l = Layer(
         name=name,
@@ -6660,6 +6763,7 @@ def prelu_layer(input,
         name=name,
         layer_type=LayerType.PRELU,
         parents=input,
+        num_filters=num_channels,
         size=l.config.size)
 
 
@@ -6681,11 +6785,11 @@ def gated_unit_layer(input,
     The gated unit layer implements a simple gating mechanism over the input.
     The input :math:`X` is first projected into a new space :math:`X'`, and
     it is also used to produce a gate weight :math:`\sigma`. Element-wise
-    product between :match:`X'` and :math:`\sigma` is finally returned.
+    product between :math:`X'` and :math:`\sigma` is finally returned.
 
     Reference:
-        Language Modeling with Gated Convolutional Networks
-        https://arxiv.org/abs/1612.08083
+        `Language Modeling with Gated Convolutional Networks
+        <https://arxiv.org/abs/1612.08083>`_
 
     .. math::
        y=\\text{act}(X \cdot W + b)\otimes \sigma(X \cdot V + c)
@@ -6821,6 +6925,7 @@ def crop_layer(input, offset, axis=2, shape=None, name=None, layer_attr=None):
 
     :param input: The input of this layer. If two inputs are given, the second one
                   will be regarded as the reference.
+                  And the input must be 4-dims and in NCHW order.
     :type input: LayerOutput | Sequence
     :param offset: The crop offset.
     :type offset: Sequence
@@ -6910,7 +7015,7 @@ def clip_layer(input, min, max, name=None):
 
     .. math::
 
-        out[i] = \min\left(\max\left(in[i],p_{1}\right),p_{2}\right)
+        out[i] = \min (\max (in[i],p_{1} ),p_{2} )
 
     .. code-block:: python
 
@@ -7079,7 +7184,7 @@ def img_conv3d_layer(input,
     :param filter_size: The dimensions of the filter kernel along three axises. If the parameter
                         is set to one integer, the three dimensions will be same.
     :type filter_size: int | tuple | list
-    :param num_filters: The number of filters in each group.
+    :param num_filters: The number of filters. It is as same as the output image channel.
     :type num_filters: int
     :param act: Activation type. ReluActivation is the default activation.
     :type act: BaseActivation
@@ -7354,3 +7459,73 @@ def scale_sub_region_layer(input, indices, value, name=None):
         parents=[input, indices],
         num_filters=input.num_filters,
         size=input.size)
+
+
+@wrap_name_default()
+@wrap_act_default(act=LinearActivation())
+@wrap_param_attr_default()
+@layer_support()
+def factorization_machine(input,
+                          factor_size,
+                          act=None,
+                          name=None,
+                          param_attr=None,
+                          layer_attr=None):
+    """
+    The Factorization Machine models pairwise feature interactions as inner
+    product of the learned latent vectors corresponding to each input feature.
+    The Factorization Machine can effectively capture feature interactions
+    especially when the input is sparse.
+
+    This implementation only consider the 2-order feature interactions using
+    Factorization Machine with the formula:
+
+    .. math::
+        y = \sum_{i=1}^{n-1}\sum_{j=i+1}^n\langle v_i, v_j \\rangle x_i x_j
+
+    Note:
+        X is the input vector with size n. V is the factor matrix. Each row of V
+        is the latent vector corresponding to each input dimesion. The size of
+        each latent vector is k.
+
+    For details of Factorization Machine, please refer to the paper:
+    Factorization machines.
+
+    .. code-block:: python
+        first_order = paddle.layer.fc(input=input,
+                                      size=1,
+                                      act=paddle.activation.Linear())
+        second_order = paddle.layer.factorization_machine(input=input,
+                                                          factor_size=10)
+        fm = paddle.layer.addto(input=[first_order, second_order],
+                                act=paddle.activation.Linear(),
+                                bias_attr=False)
+
+    :param input: The input layer. Supported input types: all input data types
+                  on CPU, and only dense input types on GPU.
+    :type input: LayerOutput
+    :param factor_size: The hyperparameter that defines the dimensionality of
+                        the latent vector size.
+    :type context_len: int
+    :param act: Activation Type. Default is linear activation.
+    :type act: BaseActivation
+    :param param_attr: The parameter attribute. See ParameterAttribute for
+                       details.
+    :type param_attr: ParameterAttribute
+    :param layer_attr: Extra Layer config.
+    :type layer_attr: ExtraLayerAttribute|None
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+    assert isinstance(input, LayerOutput)
+    assert factor_size > 0, "the factor_size must be greater than 0."
+
+    Layer(
+        inputs=[Input(input.name, **param_attr.attr)],
+        name=name,
+        factor_size=factor_size,
+        type=LayerType.FACTORIZATION_MACHINE,
+        active_type=act.name,
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+    return LayerOutput(
+        name, LayerType.FACTORIZATION_MACHINE, input, activation=act, size=1)

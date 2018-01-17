@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -19,11 +19,11 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ElementwiseDivKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseCompute<EigenDivFunctor, Place, T>(ctx);
+    ElementwiseCompute<EigenDivFunctor, DeviceContext, T>(ctx);
   }
 };
 
@@ -102,12 +102,11 @@ struct ElementwiseDivBroadCast2GradFunctor {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ElementwiseDivGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseGradCompute<Place, T, ElementwiseDivGradFunctor<T>,
-                           ElementwiseDivGradFunctor<T>,
+    ElementwiseGradCompute<DeviceContext, T, ElementwiseDivGradFunctor<T>,
                            ElementwiseDivBroadCastGradFunctor<T>,
                            ElementwiseDivBroadCast2GradFunctor<T>>(ctx);
   }

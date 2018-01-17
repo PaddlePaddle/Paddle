@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cudnn.h>
 #include "BatchNormBaseLayer.h"
 #include "Layer.h"
 #include "paddle/utils/Stat.h"
@@ -46,12 +47,9 @@ public:
   void backward(const UpdateCallback& callback = nullptr) override;
 
 protected:
-  /**
-   * Epsilon value used in the batch normalization formula.
-   * Minimum allowed value is CUDNN_BN_MIN_EPSILON defined in cudnn.h.
-   * Same epsilon value should be used in forward and backward functions.
-   */
-  static const double EPS;
+  /// Epsilon value used in the batch normalization formula.
+  /// Same epsilon value should be used in forward and backward functions.
+  double eps_;
 
   /// Input/output tensor descriptor desc
   hl_tensor_descriptor ioDesc_;

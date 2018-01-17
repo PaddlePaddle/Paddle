@@ -13,9 +13,40 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/beam_search_decode_op.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
+
+struct BeamSearchDecodeFunctor {
+  BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
+                          const LoDTensorArray& step_scores,
+                          LoDTensor* id_tensor, LoDTensor* score_tensor)
+      : step_ids_(step_ids),
+        step_scores_(step_scores),
+        id_tensor_(id_tensor),
+        score_tensor_(score_tensor) {}
+
+  template <typename T>
+  void operator()() const;
+
+  const LoDTensorArray& step_ids_;
+  const LoDTensorArray& step_scores_;
+  LoDTensor* id_tensor_;
+  LoDTensor* score_tensor_;
+};
+
+template <typename T>
+void BeamSearchDecodeFunctor::operator()() const {
+  BeamSearchDecoder<T> beam_search_decoder;
+  beam_search_decoder.PackAllSteps(step_ids_, step_scores_, id_tensor_,
+                                   score_tensor_);
+}
+
+template <>
+void BeamSearchDecodeFunctor::operator()<bool>() const {
+  PADDLE_THROW("beam search decode op does not support bool!");
+}
 
 class BeamSearchDecodeOp : public framework::OperatorBase {
  public:
@@ -25,7 +56,10 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
                      const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           const platform::Place& dev_place) const override {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(dev_place);
+
     framework::ExecutionContext ctx(*this, scope, dev_ctx);
 
     const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
@@ -45,17 +79,16 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     LoDTensor* sentenceIds = ctx.Output<LoDTensor>("SentenceIds");
     LoDTensor* sentenceScores = ctx.Output<LoDTensor>("SentenceScores");
 
-    BeamSearchDecoder<float> beam_search_decoder;
-    beam_search_decoder.PackAllSteps(*ids, *scores, sentenceIds,
-                                     sentenceScores);
+    framework::VisitDataType(
+        framework::ToDataType(scores->at(0).type()),
+        BeamSearchDecodeFunctor(*ids, *scores, sentenceIds, sentenceScores));
   }
 };
 
 class BeamSearchDecodeOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchDecodeOpProtoMaker(framework::OpProto* proto,
-                               framework::OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  BeamSearchDecodeOpProtoMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids",
              "(LodTensorArray)"
              "score of the candidate words in each step");
@@ -90,13 +123,13 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
 
 class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind& op_desc,
-                  framework::BlockDescBind* block) const override {
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
     for (auto& o : op_desc.Output("SentenceIds")) {
-      block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
+      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
     }
     for (auto& o : op_desc.Output("SentenceScores")) {
-      block->Var(o)->SetType(framework::VarDesc::LOD_TENSOR);
+      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
     }
   }
 };

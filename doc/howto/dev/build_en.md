@@ -1,4 +1,4 @@
-# Build PaddlePaddle from Source Code and Run Unit Test
+# Build using Docker
 
 ## What Developers Need
 

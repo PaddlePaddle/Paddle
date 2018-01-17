@@ -1,21 +1,23 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 #include <numeric>
+
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/memory/memcpy.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -30,7 +32,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
                      const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &dev_place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
@@ -102,8 +104,14 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         if (len == 0) {
           continue;
         }
-        out->Slice(out_offset, out_offset + len)
-            .CopyFrom(x[x_idx].Slice(start_offset, end_offset), place, dev_ctx);
+        auto slice = out->Slice(out_offset, out_offset + len);
+
+        platform::DeviceContextPool &pool =
+            platform::DeviceContextPool::Instance();
+        auto &dev_ctx = *pool.Get(place);
+
+        framework::Copy(x[x_idx].Slice(start_offset, end_offset), place,
+                        dev_ctx, &slice);
         out_offset += len;
       }
     }
@@ -113,8 +121,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
 
 class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ArrayToLoDTensorOpProtoMaker(framework::OpProto *proto,
-                               framework::OpAttrChecker *op_checker)
+  ArrayToLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(std::vector<LodTensor>) A vector of tensors that is going to "
@@ -149,14 +156,14 @@ class ArrayToLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("lod_tensor_to_array");
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetInput("RankTable", Input("RankTable"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

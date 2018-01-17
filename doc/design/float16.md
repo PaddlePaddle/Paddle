@@ -28,6 +28,51 @@ The goal of float16 is to serve as a key for the executor to find and run the co
 - [Eigen](https://github.com/RLovelett/eigen) >= 3.3 supports float16 calculation on both GPU and CPU using the `Eigen::half` class. It is mostly useful for Nvidia GPUs because of the overloaded arithmetic operators using cuda intrinsics. It falls back to using software emulation on CPU for calculation and there is no special treatment to ARM processors.
 - [ARM compute library](https://github.com/ARM-software/ComputeLibrary) >= 17.02.01 supports NEON FP16 kernels (requires ARMv8.2-A CPU).
 
+### CUDA version issue
+There are currently three versions of CUDA that supports `__half` data type, namely, CUDA 7.5, 8.0, and 9.0. 
+CUDA 7.5 and 8.0 define `__half` as a simple struct that has a `uint16_t` data (see [`cuda_fp16.h`](https://github.com/ptillet/isaac/blob/9212ab5a3ddbe48f30ef373f9c1fb546804c7a8c/include/isaac/external/CUDA/cuda_fp16.h)) as follows:
+```
+typedef struct __align__(2) {
+   unsigned short x;
+} __half;
+
+typedef __half half;
+```
+This struct does not define any overloaded arithmetic operators. So you have to directly use `__hadd` instead of `+` to correctly add two half types:
+```
+__global__ void Add() {
+  half a, b, c;
+  c = __hadd(a, b); // correct
+  c = a + b; // compiler error: no operator "+" matches these operands
+}
+```
+CUDA 9.0 provides a major update to the half data type. The related code can be found in the updated [`cuda_fp16.h`](https://github.com/ptillet/isaac/blob/master/include/isaac/external/CUDA/cuda_fp16.h) and the newly added [`cuda_fp16.hpp`](https://github.com/ptillet/isaac/blob/master/include/isaac/external/CUDA/cuda_fp16.hpp).
+
+Essentially, CUDA 9.0 renames the original `__half` type in 7.5 and 8.0 as `__half_raw`, and defines a new `__half` class type that has constructors, conversion operators, and also provides overloaded arithmetic operators such as follows:
+```
+typedef struct __CUDA_ALIGN__(2) {
+    unsigned short x;
+} __half_raw;
+
+
+struct __CUDA_ALIGN__(2) __half {
+protected:
+    unsigned short __x;
+public:
+    // constructors and conversion operators from/to 
+    // __half_raw and other built-in data types
+}
+
+typedef __half half;
+
+__device__ __forceinline__ 
+__half operator+(const __half &lh, const __half &rh) { 
+    return __hadd(lh, rh); 
+}
+
+// Other overloaded operators
+``` 
+This new design makes `c = a + b` work correctly for CUDA half data type. 
 
 ## Implementation
 The float16 class holds a 16-bit `uint16_t` data internally.

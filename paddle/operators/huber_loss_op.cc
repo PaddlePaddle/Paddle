@@ -45,8 +45,7 @@ class HuberLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class HuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HuberLossOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  HuberLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input value of huber loss op."
@@ -70,11 +69,18 @@ input value and Y as the target value. Huber loss can evaluate the fitness of
 X to Y. Different from MSE loss, Huber loss is more robust for outliers. The
 shape of X and Y are [batch_size, 1]. The equation is:
 
-L_{\delta}(y, f(x)) =
+$$
+Out_{\delta}(X, Y)_i =
 \begin{cases}
-0.5 * (y - f(x))^2, \quad |y - f(x)| \leq \delta \\
-\delta * (|y - f(x)| - 0.5 * \delta),   \quad otherwise
+0.5 * (Y_i - X_i)^2,
+\quad |Y_i - X_i| \leq \delta \\
+\delta * (|Y_i - X_i| - 0.5 * \delta),
+\quad otherwise
 \end{cases}
+$$
+
+In the above equation, $Out_\delta(X, Y)_i$, $X_i$ and $Y_i$ represent the ith
+element of Out, X and Y.
 
 )DOC");
   }
@@ -117,8 +123,9 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
             huber_loss_grad, ops::HuberLossGradOp);
-REGISTER_OP_CPU_KERNEL(huber_loss,
-                       ops::HuberLossKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    huber_loss,
+    ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     huber_loss_grad,
-    ops::HuberLossGradKernel<paddle::platform::CPUPlace, float>);
+    ops::HuberLossGradKernel<paddle::platform::CPUDeviceContext, float>);

@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/logical_op.h"
 #include "paddle/framework/op_registry.h"
@@ -20,8 +20,7 @@ namespace operators {
 template <typename OpComment>
 class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BinaryLogicalOpProtoMaker(framework::OpProto *proto,
-                            framework::OpAttrChecker *op_checker)
+  BinaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     OpComment comment;
     AddInput("X",
@@ -45,8 +44,7 @@ Each element of Out is calculated by %s
 template <typename OpComment>
 class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  UnaryLogicalOpProtoMaker(framework::OpProto *proto,
-                           framework::OpAttrChecker *op_checker)
+  UnaryLogicalOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     OpComment comment;
     AddInput("X", string::Sprintf("(LoDTensor) Operand of %s operator",
@@ -101,9 +99,9 @@ class LogicalOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetKernelType(ctx);
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // LogicalOp kernel's device type is decided by input tensor place
     kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
     return kt;
@@ -139,15 +137,16 @@ class LogicalOp : public framework::OperatorWithKernel {
       ::paddle::operators::UnaryLogicalOpInferShape<_##op_type##Comment>, \
       ::paddle::framework::EmptyGradOpMaker);
 
-REGISTER_BINARY_LOGICAL_OP(logical_and, "Out = X && Y");
+REGISTER_BINARY_LOGICAL_OP(logical_and, "$$Out = X \\&\\& Y$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_and, CPU,
                                paddle::operators::LogicalAndFunctor);
-REGISTER_BINARY_LOGICAL_OP(logical_or, "Out = X && Y");
+REGISTER_BINARY_LOGICAL_OP(logical_or, "$$Out = X || Y$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_or, CPU,
                                paddle::operators::LogicalOrFunctor);
-REGISTER_UNARY_LOGICAL_OP(logical_not, "Out = !X");
+REGISTER_UNARY_LOGICAL_OP(logical_not, "$$Out = !X$$");
 REGISTER_UNARY_LOGICAL_KERNEL(logical_not, CPU,
                               paddle::operators::LogicalNotFunctor);
-REGISTER_BINARY_LOGICAL_OP(logical_xor, "Out = (X || Y) && !(X && Y)");
+REGISTER_BINARY_LOGICAL_OP(logical_xor,
+                           "$$Out = (X || Y) \\, \\&\\& \\, !(X \\&\\& Y)$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_xor, CPU,
                                paddle::operators::LogicalXorFunctor);

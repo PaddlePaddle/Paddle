@@ -29,7 +29,7 @@ RUN apt-get update && \
     automake locales clang-format swig doxygen cmake  \
     liblapack-dev liblapacke-dev libboost-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
-    net-tools && \
+    net-tools libtool && \
     apt-get clean -y
 
 # Install Go and glide

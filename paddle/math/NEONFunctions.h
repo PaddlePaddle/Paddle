@@ -18,6 +18,7 @@ namespace paddle {
 namespace neon {
 
 void relu(const float* a, float* b, int len);
+void prelu(const float* a, float w, float* b, int len);
 
 }  // namespace neon
 }  // namespace paddle

@@ -60,12 +60,18 @@ class SplitOp : public framework::OperatorWithKernel {
       }
     }
     ctx->SetOutputsDim("Out", outs_dims);
+    if (axis != 0) {
+      // Only pass LoD when not spliting along the first dim.
+      for (size_t i = 0; i < outs_number; ++i) {
+        ctx->ShareLoD("X", "Out", 0, i);
+      }
+    }
   }
 };
 
 class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  SplitOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor of the split operator.");
     AddOutput("Out", "(Tensor) Output tensors of the split operator.")
@@ -108,13 +114,13 @@ class SplitGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto op = new framework::OpDesc();
     op->SetType("concat");
     op->SetInput("X", OutputGrad("Out"));
     op->SetOutput("Out", InputGrad("X"));
     op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(op);
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 

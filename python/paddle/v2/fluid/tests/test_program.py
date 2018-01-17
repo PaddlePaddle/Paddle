@@ -1,35 +1,51 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+from __future__ import print_function
 import unittest
 
-from paddle.v2.fluid.framework import Program
-from paddle.v2.fluid.framework import g_main_program
+from paddle.v2.fluid.framework import Program, default_main_program, program_guard, grad_var_name
+import paddle.v2.fluid.layers as layers
+
+main_program = default_main_program()
 
 
 class TestProgram(unittest.TestCase):
     def test_program(self):
-        b = g_main_program.current_block()
+        b = main_program.current_block()
         self.assertEqual(-1, b.parent_idx)
         self.assertEqual(0, b.idx)
 
-        b = g_main_program.create_block()
+        b = main_program.create_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = g_main_program.create_block()
+        b = main_program.create_block()
         self.assertEqual(2, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        g_main_program.rollback()
+        main_program.rollback()
 
-        b = g_main_program.current_block()
+        b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = g_main_program.create_block()
+        b = main_program.create_block()
         self.assertEqual(3, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        g_main_program.rollback()
-        b = g_main_program.current_block()
+        main_program.rollback()
+        b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
@@ -48,8 +64,8 @@ class TestProgram(unittest.TestCase):
 
         # FIXME(yuyang18): We manual compare the output string, since the order
         # of variable could be changed.
-        print prog
-        print prog.clone()
+        print(prog)
+        print(prog.clone())
 
     def test_parse_program_from_string(self):
         prog = Program()
@@ -67,8 +83,8 @@ class TestProgram(unittest.TestCase):
         binary_str = prog.desc.serialize_to_string()
         prog_restored = Program.parse_from_string(binary_str)
 
-        print prog
-        print prog_restored
+        print(prog)
+        print(prog_restored)
 
     def test_append_backward(self):
         prog = Program()
@@ -106,12 +122,10 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(add_op.idx, 1)
         param_to_grad = prog.append_backward(mean_out, set())
 
-        def grad_name(name):
-            return name + "@GRAD"
-
         for var_name in ("mul.x", "mul.y", "mul.out", "add.y", "add.out",
                          "mean.out"):
-            self.assertEqual(param_to_grad[var_name][0], grad_name(var_name))
+            self.assertEqual(param_to_grad[var_name][0],
+                             grad_var_name(var_name))
             self.assertEqual(param_to_grad[var_name][1], 0)
 
         expect_ops = [
@@ -122,6 +136,17 @@ class TestProgram(unittest.TestCase):
         for op in block.ops:
             actual_ops.append(op.type)
         self.assertEqual(actual_ops, expect_ops)
+
+    def test_program_clone_with_parameter(self):
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            d = layers.data(name='x', shape=[784], dtype='float32')
+            hidden = layers.fc(input=d, size=100)
+            layers.fc(input=hidden, size=100)
+
+        new_program = main_program.clone()
+        self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
 
 
 if __name__ == '__main__':

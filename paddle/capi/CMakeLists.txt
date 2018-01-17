@@ -4,6 +4,16 @@ else ()
   set(PADDLE_FLOAT_TYPE float)
 endif()
 
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} log --pretty=format:%H -1
+  WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+  OUTPUT_VARIABLE PADDLE_GIT_COMMIT
+  RESULT_VARIABLE PADDLE_GIT_COMMIT_RESULT
+  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(NOT PADDLE_GIT_COMMIT)
+  set(PADDLE_GIT_COMMIT "no commit information")
+endif()
+
 # config.h used for C-API. It will store Paddle building configuration as a
 # header. Make user just include PaddleCAPI.h then can get building
 # configuration without explicitly set -DPADDLE_WITH_DOUBLE when building their

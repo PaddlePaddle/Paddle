@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/lrn_op.h"
 
@@ -18,6 +18,103 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+
+template <typename T>
+struct LRNFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor& input, framework::Tensor* out,
+                  framework::Tensor* mid, int N, int C, int H, int W, int n,
+                  T k, T alpha, T beta) {
+    auto x_v = framework::EigenVector<T>::Flatten(input);
+
+    const int start = -(n - 1) / 2;
+    const int end = start + n;
+
+    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
+    e_mid = e_mid.constant(k);
+
+    auto e_x = framework::EigenTensor<T, 4>::From(input);
+    for (int m = 0; m < N; m++) {
+      for (int i = 0; i < C; i++) {
+        for (int c = start; c <= end; c++) {
+          int ch = i + c;
+          if (ch >= 0 && ch < C) {
+            auto s = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                 Eigen::array<int, 4>({{1, 1, H, W}}));
+
+            auto r = e_x.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                               Eigen::array<int, 4>({{1, 1, H, W}}));
+
+            s += alpha * r.square();
+          }
+        }
+      }
+    }
+
+    auto out_e = framework::EigenVector<T>::Flatten(*out);
+    out_e = x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
+  }
+};
+template struct LRNFunctor<platform::CPUDeviceContext, float>;
+template struct LRNFunctor<platform::CPUDeviceContext, double>;
+
+template <typename T>
+struct LRNGradFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor& x, const framework::Tensor& out,
+                  const framework::Tensor& mid, framework::Tensor* x_g,
+                  const framework::Tensor& out_g, int N, int C, int H, int W,
+                  int n, T alpha, T beta) {
+    T ratio = -2 * alpha * beta;
+    auto x_g_e = framework::EigenVector<T>::Flatten(*x_g);
+    x_g_e = x_g_e.constant(0.0);
+
+    auto e_x = framework::EigenTensor<T, 4>::From(x);
+    auto e_x_g = framework::EigenTensor<T, 4>::From(*x_g);
+    auto e_out = framework::EigenTensor<T, 4>::From(out);
+    auto e_out_g = framework::EigenTensor<T, 4>::From(out_g);
+    auto e_mid = framework::EigenTensor<T, 4>::From(mid);
+
+    const int start = -(n - 1) / 2;
+    const int end = start + n;
+    for (int m = 0; m < N; m++) {
+      for (int i = 0; i < C; i++) {
+        auto i_x = e_x.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                             Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        auto i_x_g = e_x_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                 Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        auto i_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                     Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        auto i_mid = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
+                                 Eigen::array<int, 4>({{1, 1, H, W}}));
+
+        i_x_g = i_mid.pow(-beta) * i_out_g;
+        for (int c = start; c <= end; c++) {
+          int ch = i + c;
+          if (ch < 0 || ch >= C) {
+            continue;
+          }
+
+          auto c_out = e_out.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                                   Eigen::array<int, 4>({{1, 1, H, W}}));
+
+          auto c_mid = e_mid.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                                   Eigen::array<int, 4>({{1, 1, H, W}}));
+
+          auto c_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
+                                       Eigen::array<int, 4>({{1, 1, H, W}}));
+
+          i_x_g += ratio * c_out_g * c_out * i_x / c_mid;
+        }
+      }
+    }
+  }
+};
+template struct LRNGradFunctor<platform::CPUDeviceContext, float>;
+template struct LRNGradFunctor<platform::CPUDeviceContext, double>;
 
 class LRNOp : public framework::OperatorWithKernel {
  public:
@@ -43,7 +140,7 @@ class LRNOp : public framework::OperatorWithKernel {
 template <typename T>
 class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LRNOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  LRNOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor) The input of LRN operator. "
@@ -83,8 +180,8 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Local Response Normalization Operator.
 
-This operator comes from the paper
-"ImageNet Classification with Deep Convolutional Neural Networks".
+This operator comes from the paper:
+<<ImageNet Classification with Deep Convolutional Neural Networks>>.
 
 The original formula is:
 
@@ -107,7 +204,7 @@ Input(i, x, y), Output(i, x, y) represents an element in an image.
 C is the number of feature maps of one image. n is a hyper-parameter
 configured when operator is initialized. The sum in the denominator
 is the sum of the same positions in the neighboring maps.
-    
+
 )DOC");
   }
 };
@@ -119,8 +216,7 @@ class LRNOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("MidOut")),
-                   "Input(MidOut@GRAD) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("MidOut"), "Input(MidOut) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
 
@@ -134,6 +230,7 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OP(lrn, ops::LRNOp, ops::LRNOpMaker<float>, lrn_grad, ops::LRNOpGrad);
-REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(lrn_grad,
-                       ops::LRNGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    lrn, ops::LRNKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    lrn_grad, ops::LRNGradKernel<paddle::platform::CPUDeviceContext, float>);

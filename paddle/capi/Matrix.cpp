@@ -40,7 +40,7 @@ paddle_error paddle_matrix_destroy(paddle_matrix mat) {
 paddle_error paddle_matrix_set_row(paddle_matrix mat,
                                    uint64_t rowID,
                                    paddle_real* rowArray) {
-  if (mat == nullptr) return kPD_NULLPTR;
+  if (mat == nullptr || rowArray == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;
   if (rowID >= ptr->mat->getHeight()) return kPD_OUT_OF_RANGE;
@@ -55,7 +55,7 @@ paddle_error paddle_matrix_set_row(paddle_matrix mat,
 }
 
 PD_API paddle_error paddle_matrix_set_value(paddle_matrix mat,
-                                          paddle_real* value) {
+                                            paddle_real* value) {
   if (mat == nullptr || value == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;
@@ -75,7 +75,7 @@ PD_API paddle_error paddle_matrix_set_value(paddle_matrix mat,
 }
 
 PD_API paddle_error paddle_matrix_get_value(paddle_matrix mat,
-                                          paddle_real* result) {
+                                            paddle_real* result) {
   if (mat == nullptr || result == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;

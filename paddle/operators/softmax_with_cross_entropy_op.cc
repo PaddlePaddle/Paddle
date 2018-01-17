@@ -1,10 +1,10 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/softmax_with_cross_entropy_op.h"
-#include <paddle/function/TensorType.h>
 
 namespace paddle {
 namespace operators {
@@ -21,8 +20,7 @@ namespace operators {
 class SoftmaxWithCrossEntropyOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftmaxWithCrossEntropyOpMaker(framework::OpProto* proto,
-                                 framework::OpAttrChecker* op_checker)
+  SoftmaxWithCrossEntropyOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The unscaled log probabilities "
@@ -67,15 +65,15 @@ The equation is as follows:
 
 1) Hard label (one-hot label, so every sample has exactly one class)
 
-$$Loss_j = \f$ -\text{Logit}_{Label_j} +
+$$Loss_j =  -\text{Logit}_{Label_j} +
 \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right),
-j = 1, ..., K $\f$$
+j = 1,..., K$$
 
 2) Soft label (each sample can have a distribution over all classes)
 
-$$Loss_j = \f$ -\sum_{i=0}^{K}\text{Label}_i\left(\text{Logit}_i -
+$$Loss_j =  -\sum_{i=0}^{K}\text{Label}_i \left(\text{Logit}_i -
 \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right)\right),
-j = 1,...,K $\f$$
+j = 1,...,K$$
 
 )DOC");
   }
@@ -120,7 +118,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Logits")->type()),
@@ -161,7 +159,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(
@@ -175,8 +173,8 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto* grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad_op = new framework::OpDesc();
     grad_op->SetType("softmax_with_cross_entropy_grad");
     grad_op->SetInput("Label", Input("Label"));
     grad_op->SetInput("Softmax", Output("Softmax"));
@@ -185,7 +183,7 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
     grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
     grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

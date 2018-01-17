@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 # edit-mode: -*- python -*-
 # Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
 #
@@ -41,7 +54,7 @@ nonseq = embedding_layer(input=label, size=word_dim)
 
 
 # This hierarchical RNN is designed to be equivalent to the simple RNN in
-# sequence_rnn_multi_unequalength_inputs.conf
+# sequence_rnn_mixed_inputs.conf
 def outer_step(subseq, seq, nonseq, encoding):
     outer_mem = memory(name="outer_rnn_state", size=hidden_dim)
 

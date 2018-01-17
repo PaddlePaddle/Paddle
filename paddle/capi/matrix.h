@@ -79,7 +79,7 @@ PD_API paddle_error paddle_matrix_set_row(paddle_matrix mat,
  * @note  value should contain enough element of data to init the mat
  */
 PD_API paddle_error paddle_matrix_set_value(paddle_matrix mat,
-                                          paddle_real* value);
+                                            paddle_real* value);
 
 /**
  * @brief PDMatGetRow Get raw row buffer from matrix
@@ -93,14 +93,14 @@ PD_API paddle_error paddle_matrix_get_row(paddle_matrix mat,
                                           paddle_real** rawRowBuffer);
 
 /**
- * @brief copy data from the matrix 
+ * @brief copy data from the matrix
  * @param [in] mat Target matrix
- * @param [out] result pointer to store the matrix data 
+ * @param [out] result pointer to store the matrix data
  * @return paddle_error
  * @note the space of the result should allocated before invoke this API
  */
 PD_API paddle_error paddle_matrix_get_value(paddle_matrix mat,
-                                          paddle_real* result);
+                                            paddle_real* result);
 /**
  * @brief PDMatCreateNone Create None Matrix
  * @return

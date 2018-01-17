@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/clip_by_norm_op.h"
 
@@ -37,8 +37,7 @@ class ClipByNormOp : public framework::OperatorWithKernel {
 
 class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ClipByNormOpMaker(framework::OpProto* proto,
-                    framework::OpAttrChecker* op_checker)
+  ClipByNormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor) The input of clip_by_norm op."
@@ -47,15 +46,19 @@ class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) The output of clip_by_norm op with shape as input(X)");
     AddAttr<float>("max_norm", "(float) The maximum norm value.");
     AddComment(R"DOC(
-ClipByNorm operator limits the L2 norm of the input 'X' within 'max_norm'. 
-If the L2 norm of 'X' is less than or equal to 'max_norm', 'Out' will be 
-the same as 'X'. If the L2 norm of 'X' is greater than 'max_norm', 'X' will 
-be linearly scaled to make the L2 norm of 'Out' equal to 'max_norm', as 
-shown in the following formula：
+ClipByNorm Operator.
 
-'Out' = 'max_norm' * 'X' / norm('X'),
+This operator limits the L2 norm of the input $X$ within $max\_norm$.
+If the L2 norm of $X$ is less than or equal to $max\_norm$, $Out$ will be
+the same as $X$. If the L2 norm of $X$ is greater than $max\_norm$, $X$ will
+be linearly scaled to make the L2 norm of $Out$ equal to $max\_norm$, as
+shown in the following formula:
 
-where norm('X') represents the L2 norm of 'X'.
+$$
+Out = \frac{max\_norm * X}{norm(X)},
+$$
+
+where $norm(X)$ represents the L2 norm of $X$.
 )DOC");
   }
 };
@@ -67,4 +70,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(clip_by_norm, ops::ClipByNormOp,
                              ops::ClipByNormOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    clip_by_norm, ops::ClipByNormKernel<paddle::platform::CPUPlace, float>);
+    clip_by_norm,
+    ops::ClipByNormKernel<paddle::platform::CPUDeviceContext, float>);

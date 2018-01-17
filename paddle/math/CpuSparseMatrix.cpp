@@ -260,6 +260,35 @@ void CpuSparseMatrix::printOneRow(std::ostream& os, size_t idx) const {
   os << ";";
 }
 
+void CpuSparseMatrix::rowScale(size_t cCol, CpuSparseMatrix& b, Matrix& c) {
+  CHECK(getFormat() != SPARSE_CSC) << "Not supported";
+  CHECK_EQ(height_, b.getHeight());
+  CHECK_EQ(width_, b.getWidth());
+  real* A = getValue();
+  real* B = b.getValue();
+  if (b.getValueType() == FLOAT_VALUE) {
+    for (size_t i = 0; i < height_; i++) {
+      size_t start = getRowStartIdx(i);
+      size_t end = getRowStartIdx(i + 1);
+      CHECK_EQ(start, b.getRowStartIdx(i));
+      CHECK_EQ(end, b.getRowStartIdx(i + 1));
+      for (size_t j = start; j < end; j++) {
+        A[j] = B[j] * c.getElement(i, cCol);
+      }
+    }
+  } else if (b.getValueType() == NO_VALUE) {
+    for (size_t i = 0; i < height_; i++) {
+      size_t start = getRowStartIdx(i);
+      size_t end = getRowStartIdx(i + 1);
+      CHECK_EQ(start, b.getRowStartIdx(i));
+      CHECK_EQ(end, b.getRowStartIdx(i + 1));
+      for (size_t j = start; j < end; j++) {
+        A[j] = c.getElement(i, cCol);
+      }
+    }
+  }
+}
+
 void CpuSparseMatrix::randomizeUniform() {
   CHECK_LE(elementCnt_, height_ * width_);
   if (valueType_ == FLOAT_VALUE) {

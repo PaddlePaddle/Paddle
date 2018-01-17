@@ -26,8 +26,10 @@ namespace framework {
 
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
+const std::string kDropOutOpType = "dropout";
+const std::string kBatchNormOpType = "batch_norm";
 
-bool HasDependentVar(const OpDesc& op_desc,
+bool HasDependentVar(const proto::OpDesc& op_desc,
                      const std::set<std::string>& dependent_vars) {
   for (auto& var : op_desc.outputs()) {
     for (auto& argu : var.arguments()) {
@@ -39,14 +41,15 @@ bool HasDependentVar(const OpDesc& op_desc,
   return false;
 }
 
-bool IsTarget(const OpDesc& op_desc) {
+bool IsTarget(const proto::OpDesc& op_desc) {
   if (op_desc.has_is_target()) {
     return op_desc.is_target();
   }
   return false;
 }
 
-void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
+void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
+                int block_id) {
   // TODO(tonyyang-svail):
   //    - will change to use multiple blocks for RNN op and Cond Op
 
@@ -102,8 +105,30 @@ void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
 }
 
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
-void Prune(const ProgramDesc& input, ProgramDesc* output) {
+void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output) {
   prune_impl(input, output, 0);
+}
+
+void inference_optimize_impl(const proto::ProgramDesc& input,
+                             proto::ProgramDesc* output, int block_id) {
+  *output = input;
+  auto* op_field = output->mutable_blocks(block_id)->mutable_ops();
+  for (auto& op_desc : *op_field) {
+    if (op_desc.type() == kDropOutOpType ||
+        op_desc.type() == kBatchNormOpType) {
+      for (auto& attr : *op_desc.mutable_attrs()) {
+        if (attr.name() == "is_test") {
+          attr.set_b(true);
+          break;
+        }
+      }
+    }
+  }
+}
+
+void InferenceOptimize(const proto::ProgramDesc& input,
+                       proto::ProgramDesc* output) {
+  inference_optimize_impl(input, output, 0);
 }
 
 }  // namespace framework

@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <stdint.h>
 #include <sys/stat.h>
@@ -21,6 +21,7 @@
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -62,7 +63,7 @@ class SaveOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto overwrite = Attr<bool>("overwrite");
 
@@ -89,79 +90,17 @@ class SaveOp : public framework::OperatorBase {
 
     auto &tensor = var->Get<framework::LoDTensor>();
 
-    {  // the 1st field, uint32_t version
-      constexpr uint32_t version = 0;
-      fout.write(reinterpret_cast<const char *>(&version), sizeof(version));
-    }
-    {  // the 2nd field, tensor description
-       // int32_t  size
-       // void*    protobuf message
-      framework::TensorDesc desc;
-      desc.set_data_type(framework::ToDataType(tensor.type()));
-      auto dims = framework::vectorize(tensor.dims());
-      auto *pb_dims = desc.mutable_dims();
-      pb_dims->Resize(static_cast<int>(dims.size()), 0);
-      std::copy(dims.begin(), dims.end(), pb_dims->begin());
-      int32_t size = desc.ByteSize();
-      fout.write(reinterpret_cast<const char *>(&size), sizeof(size));
-      auto out = desc.SerializeAsString();
-      fout.write(out.data(), size);
-    }
-    {  // the 3rd field, tensor data
-      uint64_t size = tensor.memory_size();
-      auto *data_ptr = tensor.data<void>();
-      PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
-                     "Index overflow when writing tensor");
-      if (platform::is_gpu_place(tensor.place())) {
-#ifdef PADDLE_WITH_CUDA
-        constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
-        std::unique_ptr<char[]> buf(new char[kBufSize]);
-        auto &gpu_dev_ctx =
-            static_cast<const platform::CUDADeviceContext &>(dev_ctx);
-        platform::CPUPlace cpu;
-        uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
-        while (size != 0) {
-          size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-          memory::Copy(cpu, buf.get(),
-                       boost::get<platform::GPUPlace>(tensor.place()),
-                       reinterpret_cast<const void *>(data), size_to_write,
-                       gpu_dev_ctx.stream());
-          gpu_dev_ctx.Wait();
-          fout.write(buf.get(), size_to_write);
-          data += size_to_write;
-          size -= size_to_write;
-        }
-#else
-        PADDLE_THROW("Unexpected branch");
-#endif
-      } else {
-        fout.write(static_cast<const char *>(data_ptr),
-                   static_cast<std::streamsize>(size));
-      }
-    }
-    {  // the 4th field, lod information
-       // uint64_t lod_level
-       // uint64_t lod_level_1 size in byte.
-       // int*     lod_level_1 data
-       // ...
-      auto lod = tensor.lod();
-      uint64_t size = lod.size();
-      fout.write(reinterpret_cast<const char *>(&size), sizeof(size));
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
 
-      for (auto &each : lod) {
-        size = each.size() * sizeof(framework::LoD::value_type::value_type);
-        fout.write(reinterpret_cast<const char *>(&size), sizeof(size));
-        fout.write(reinterpret_cast<const char *>(each.data()),
-                   static_cast<std::streamsize>(size));
-      }
-    }
+    framework::SerializeToStream(fout, tensor, dev_ctx);
   }
 };
 
 class SaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SaveOpProtoMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  SaveOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor ) Input tensor to be saved");
     AddComment(R"DOC(

@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/lookup_table_op.h"
 #include "paddle/framework/var_type_inference.h"
@@ -41,7 +41,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
@@ -51,8 +51,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
 
 class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LookupTableOpMaker(framework::OpProto* proto,
-                     framework::OpAttrChecker* op_checker)
+  LookupTableOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("W",
              "An input represents embedding tensors, "
@@ -99,7 +98,7 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
@@ -109,19 +108,20 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
 
 class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDescBind& op_desc,
-                  framework::BlockDescBind* block) const override {
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
     auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
     auto attr = op_desc.GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
-      block->Var(out_var_name)->SetType(framework::VarDesc::SELECTED_ROWS);
+      block->Var(out_var_name)
+          ->SetType(framework::proto::VarDesc::SELECTED_ROWS);
     } else {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to LoDTensor";
-      block->Var(out_var_name)->SetType(framework::VarDesc::LOD_TENSOR);
+      block->Var(out_var_name)->SetType(framework::proto::VarDesc::LOD_TENSOR);
     }
   }
 };

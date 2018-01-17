@@ -1,12 +1,22 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.op import Operator
-
-
-def grad_var_name(var_name):
-    return var_name + "@GRAD"
+from paddle.v2.fluid.framework import grad_var_name
 
 
 def get_backward_op(scope, op, no_grad_set):
@@ -21,6 +31,13 @@ def get_backward_op(scope, op, no_grad_set):
 
 
 def _reference_training(x, scale, offset, epsilon, data_format):
+    x_shape = x.shape
+    if len(x_shape) == 2:
+        if data_format == "NCHW":
+            x = np.reshape(x, (x.shape[0], x.shape[1], 1, 1))
+        else:
+            x = np.reshape(x, (x.shape[0], 1, 1, x.shape[1]))
+
     if data_format == "NCHW":
         n, c, h, w = x.shape
         x_square = x * x
@@ -39,6 +56,8 @@ def _reference_training(x, scale, offset, epsilon, data_format):
         offset_tile = np.reshape(offset, (1, c, 1, 1))
         offset_tile = np.reshape(offset_tile, (1, c, 1, 1))
         y = normalized * scale_tile + offset_tile
+        if len(x_shape) == 2:
+            y = np.reshape(y, (y.shape[0], y.shape[1]))
         return y, mean, var
     elif data_format == "NHWC":
         x_square = x * x
@@ -48,7 +67,10 @@ def _reference_training(x, scale, offset, epsilon, data_format):
         mean = x_sum / element_count
         var = x_square_sum / element_count - mean * mean
         normalized = (x - mean) / np.sqrt(var + epsilon)
-        return (normalized * scale + offset), mean, var
+        y = normalized * scale + offset
+        if len(x_shape) == 2:
+            y = np.reshape(y, x_shape)
+        return y, mean, var
     else:
         raise ValueError("Unknown data order.")
 
@@ -65,6 +87,18 @@ def _reference_grad(x, grad_y, scale, mean, var, epsilon, data_format):
     #   (x - mean) * sum(grad_y * (x - mean)) / (var + epsilon))
 
     # transfer from (N, C, H, W) to (N, H, W, C) to simplify computation
+    x_shape = x.shape
+
+    if len(x_shape) == 2:
+        if data_format == "NCHW":
+            x = np.reshape(x, (x.shape[0], x.shape[1], 1, 1))
+            grad_y = np.reshape(grad_y,
+                                (grad_y.shape[0], grad_y.shape[1], 1, 1))
+        else:
+            x = np.reshape(x, (x.shape[0], 1, 1, x.shape[1]))
+            grad_y = np.reshape(grad_y,
+                                (grad_y.shape[0], 1, 1, grad_y.shape[1]))
+
     if data_format == "NCHW":
         x = np.transpose(x, (0, 2, 3, 1))
         grad_y = np.transpose(grad_y, (0, 2, 3, 1))
@@ -83,6 +117,9 @@ def _reference_grad(x, grad_y, scale, mean, var, epsilon, data_format):
         grad_x = np.transpose(grad_x, (0, 3, 1, 2))
         x = np.transpose(x, (0, 3, 1, 2))
         grad_y = np.transpose(grad_y, (0, 3, 1, 2))
+
+    if len(x_shape) == 2:
+        grad_x = np.reshape(grad_x, x_shape)
     return grad_x, grad_scale, grad_offset
 
 
@@ -127,7 +164,7 @@ class TestBatchNormOp(OpTest):
         momentum = 0.9
 
         # N, H, W, C: 2, 3, 4, 2
-        n, h, w, c = 2, 3, 4, 2
+        n, h, w, c = 2, 3, 4, 5
         x_shape = [n, h, w, c]
         scale_shape = [c]
 
@@ -184,20 +221,23 @@ class TestBatchNormOp(OpTest):
         print 'python: NHWC, NCHW, backward checking passed'
 
     def test_forward_backward(self):
-        def test_with_place(place, tensor_format):
+        def test_with_place(place, data_layout, shape):
             # attr
             epsilon = 0.00001
             momentum = 0.9
 
-            # N, H, W, C: 12, 3, 4, 2
-            n, h, w, c = 2, 3, 4, 2
-
-            if data_format == "NHWC":
-                x_shape = [n, h, w, c]
-            elif data_format == "NCHW":
-                x_shape = [n, c, h, w]
+            if len(shape) == 2:
+                x_shape = shape
+                c = shape[1]
             else:
-                raise ValueError("Unknown data type.")
+                # n, h, w, c = 2, 3, 4, 2
+                n, h, w, c = shape[0], shape[1], shape[2], shape[3]
+                if data_format == "NHWC":
+                    x_shape = [n, h, w, c]
+                elif data_format == "NCHW":
+                    x_shape = [n, c, h, w]
+                else:
+                    raise ValueError("Unknown data type.")
             scale_shape = [c]
 
             x_val = np.random.random_sample(x_shape).astype(np.float32)
@@ -219,7 +259,10 @@ class TestBatchNormOp(OpTest):
             #  for gradient test
             # y_grad = np.ones(x_shape).astype(np.float32)
             y_grad = np.zeros(x_shape).astype(np.float32)
-            y_grad[0, 0, 0, 0] = 1.
+            if len(y_grad.shape) == 2:
+                y_grad[0, 0] = 1.
+            else:
+                y_grad[0, 0, 0, 0] = 1.
             # y_grad = np.random.random_sample(x_shape).astype(np.float32)
             x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_grad(
                 x_val, y_grad, scale_val, saved_mean, var_ref, epsilon,
@@ -262,12 +305,11 @@ class TestBatchNormOp(OpTest):
                 SavedVariance="saved_variance",
                 # attrs
                 is_test=False,
-                tensor_format=tensor_format,
+                data_layout=data_layout,
                 momentum=momentum,
                 epsilon=epsilon)
 
-            ctx = core.DeviceContext.create(place)
-            batch_norm_op.run(scope, ctx)
+            batch_norm_op.run(scope, place)
 
             # check forward result
             self.__assert_close(y_tensor, y_out, "y_out")
@@ -275,13 +317,13 @@ class TestBatchNormOp(OpTest):
             self.__assert_close(saved_variance_tensor, saved_variance,
                                 "saved_variance")
             self.__assert_close(mean_out_tensor, mean_out, "mean_out")
-            if isinstance(place, core.GPUPlace):
+            if isinstance(place, core.CUDAPlace):
                 atol = 5e-2
             else:
                 atol = 1e-4
             self.__assert_close(variance_out_tensor, variance_out,
                                 "variance_out", atol)
-            print "op test forward passed: ", str(place), tensor_format
+            print "op test forward passed: ", str(place), data_layout
 
             # run backward
             batch_norm_op_grad = get_backward_op(scope, batch_norm_op, set())
@@ -290,7 +332,7 @@ class TestBatchNormOp(OpTest):
                 ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
                 place,
                 feed_dict={"y_out": y_grad})
-            batch_norm_op_grad.run(scope, ctx)
+            batch_norm_op_grad.run(scope, place)
 
             x_grad_tensor = create_or_get_tensor(scope,
                                                  grad_var_name("x_val"), None,
@@ -306,14 +348,16 @@ class TestBatchNormOp(OpTest):
             self.__assert_close(x_grad_tensor, x_grad_ref, "x_grad")
             self.__assert_close(scale_grad_tensor, scale_grad_ref, "scale_grad")
             self.__assert_close(bias_grad_tensor, bias_grad_ref, "bias_grad")
-            print "op test backward passed: ", str(place), tensor_format
+            print "op test backward passed: ", str(place), data_layout
 
         places = [core.CPUPlace()]
         if core.is_compile_gpu() and core.op_support_gpu("batch_norm"):
-            places.append(core.GPUPlace(0))
+            places.append(core.CUDAPlace(0))
+
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                test_with_place(place, data_format)
+                test_with_place(place, data_format, [2, 3, 4, 5])
+                test_with_place(place, data_format, [2, 3])
 
 
 if __name__ == '__main__':

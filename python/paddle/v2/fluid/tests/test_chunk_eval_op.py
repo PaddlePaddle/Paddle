@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -120,7 +133,7 @@ class TestChunkEvalOp(OpTest):
         self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = 4, 5, 9
 
     def set_data(self):
-        infer = np.zeros((self.batch_size, )).astype('int32')
+        infer = np.zeros((self.batch_size, )).astype('int64')
         infer.fill(self.num_chunk_types * self.num_tag_types)
         label = np.copy(infer)
         starts = np.random.choice(
@@ -147,7 +160,13 @@ class TestChunkEvalOp(OpTest):
             'Recall': np.asarray(
                 [recall], dtype='float32'),
             'F1-Score': np.asarray(
-                [f1], dtype='float32')
+                [f1], dtype='float32'),
+            'NumInferChunks': np.asarray(
+                [self.num_infer_chunks], dtype='int64'),
+            'NumLabelChunks': np.asarray(
+                [self.num_label_chunks], dtype='int64'),
+            'NumCorrectChunks': np.asarray(
+                [self.num_correct_chunks], dtype='int64')
         }
 
     def setUp(self):

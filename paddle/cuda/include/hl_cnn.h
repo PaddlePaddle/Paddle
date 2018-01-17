@@ -116,6 +116,7 @@ extern void hl_maxpool_backward(const int frameCnt,
  * @param[in]   paddingW    padding width.
  * @param[out]  tgtData     output data.
  * @param[in]   tgtStride   stride between output data samples.
+ * @param[in]   excludeMode whether to consider paddings for size.
  *
  */
 extern void hl_avgpool_forward(const int frameCnt,
@@ -132,7 +133,8 @@ extern void hl_avgpool_forward(const int frameCnt,
                                const int paddingH,
                                const int paddingW,
                                real* tgtData,
-                               const int tgtStride);
+                               const int tgtStride,
+                               bool excludeMode);
 
 /**
  * @brief   Maximum pool backward.
@@ -154,6 +156,7 @@ extern void hl_avgpool_forward(const int frameCnt,
  * @param[in]   scaleB      scale.
  * @param[out]  backGrad    output grad.
  * @param[in]   outStride   stride between output data samples.
+ * @param[in]   excludeMode whether to consider paddings for size.
  *
  */
 extern void hl_avgpool_backward(const int frameCnt,
@@ -172,7 +175,8 @@ extern void hl_avgpool_backward(const int frameCnt,
                                 real scaleA,
                                 real scaleB,
                                 real* backGrad,
-                                const int outStride);
+                                const int outStride,
+                                bool excludeMode);
 
 extern void hl_maxpool3D_forward(const int frameCnt,
                                  const real* inputData,

@@ -36,7 +36,7 @@ class MKLDNNLayer : public Layer {
 protected:
   // batch size
   int bs_;
-  // they sizes are always from the first input layer
+  // their sizes are always from the first input layer
   // input image channel, height and width
   int ic_, ih_, iw_;
   // output image channel, height and width
@@ -94,15 +94,12 @@ protected:
   std::vector<mkldnn::primitive> pipelineMergeGrad_;
   // tmp input argument to save input grad, only used to merge grad
   Argument tmpInArg_;
-  // since mkldnn sum do not support different formats:
-  // can refer to https://github.com/01org/mkl-dnn/issues/134
-  // so need create reorder manually and save tmp MKLDNNMatrix
-  MKLDNNMatrixPtr tmpOutGrad_;
-  std::shared_ptr<mkldnn::primitive> tmpCvt_;
 
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
+        ih_(0),
+        iw_(0),
         condition_(0),
         needResetBwd_(true),
         outputOnlyMKLDNN_(false),
