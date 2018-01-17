@@ -53,7 +53,7 @@ class InferShapeContext {
       const std::string &name) const = 0;
 
   virtual LoD GetLoD(const std::string &name) const = 0;
-  virtual void SetLoD(const std::string &name, const framework::LoD &lod) = 0;
+  virtual void SetLoD(const std::string &name, const LoD &lod) = 0;
   virtual void ShareLoD(const std::string &in, const std::string &out,
                         size_t i = 0, size_t j = 0) const = 0;
 
