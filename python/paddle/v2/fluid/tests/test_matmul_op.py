@@ -83,18 +83,18 @@ class Generator(object):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output(atol=1e-3)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X"))
+            ['Y'], 'Out', max_relative_error=1e-3, no_grad_set=set("X"))
 
     def test_check_grad_ignore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+            ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y'))
 
 
 # Generate test cases for all possibilities
