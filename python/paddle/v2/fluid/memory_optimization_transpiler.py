@@ -128,6 +128,8 @@ class ControlFlowGraph(object):
         for i in range(self.op_size):
             op = self._ops[i]
             block_desc = op.block()
+            if op.type() == "read_from_array":
+                continue
             if self.pool:
                 defs_can_optimize = filter(
                     lambda x: str(x) != "@EMPTY@" and
@@ -166,13 +168,14 @@ class ControlFlowGraph(object):
                                             x,
                                             cache_var,
                                             begin_idx=i)
-                                        block_desc.find_var_recursive(str(
-                                            x)).set_name(
-                                                block_desc.find_var_recursive(
-                                                    str(cache_var)).name())
-                                        # self._program.block(block_desc.id).var(str(
-                                        #     x)).desc = block_desc.find_var_recursive(
-                                        #         str(cache_var))
+                                        # block_desc.find_var_recursive(str(
+                                        #     x)).set_name(
+                                        #         block_desc.find_var_recursive(
+                                        #             str(cache_var)).name())
+                                        self._program.block(block_desc.id).var(
+                                            str(x)
+                                        ).desc = block_desc.find_var_recursive(
+                                            str(cache_var))
                                         self._update_graph(
                                             x, cache_var, begin_idx=i)
                                         break
