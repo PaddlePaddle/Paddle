@@ -69,6 +69,12 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   return os;
 }
 
+std::string LoDToString(const LoD &lod) {
+  std::ostringstream stream;
+  stream << lod;
+  return stream.str();
+}
+
 LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
                  size_t elem_end) {
   PADDLE_ENFORCE_LT(level, in.size());
@@ -124,6 +130,65 @@ bool operator==(const LoD &a, const LoD &b) {
       if (a_level[j] != b_level[j]) {
         return false;
       }
+    }
+  }
+  return true;
+}
+
+bool CheckLoD(const LoD &in, int tensor_height) {
+  if (in.empty()) return true;
+  for (const auto &level : in) {
+    // check: there should be more than 2 offsets existing in each level.
+    if (level.size() < 2) return false;
+    // check: the first offset(the begin offset) of each level should be 0.
+    if (level.front() != 0) return false;
+    // check: all the offsets in a level should be ascending(no same items
+    // allows).
+    if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
+          if (a < b) return true;
+          return false;
+        })) {
+      LOG(INFO) << "ascending error";
+      return false;
+    }
+  }
+  // check: the lowest level's last offset should equals `tensor_height` if
+  //        tensor_height>0.
+  if (tensor_height > 0 && (size_t)tensor_height != in.back().back())
+    return false;
+
+  // check: the higher level's last offset should equals the lower level's
+  // size-1.
+  // NOTE LoD store the levels from top to bottom, so the higher level goes
+  // first.
+  for (size_t level = 0; level < in.size() - 1; level++) {
+    if (in[level].back() != in[level + 1].size() - 1) return false;
+  }
+  return true;
+}
+
+bool CheckAbsLoD(const LoD &in, int tensor_height) {
+  if (in.empty()) return true;
+  for (const auto &level : in) {
+    // check: all the offsets in a level should be ascending(no same items
+    // allows).
+    if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
+          if (a < b) return true;
+          return false;
+        })) {
+      return false;
+    }
+
+    // check: there should be more than 2 offsets existing in each level.
+    if (level.size() < 2) return false;
+
+    // check: the first offset of each level should be 0, and the last should be
+    // the same(the height of underlying tensor).
+    if (level.front() != 0) return false;
+    if (tensor_height < 0) {
+      tensor_height = level.back();
+    } else if ((size_t)tensor_height != level.back()) {
+      return false;
     }
   }
   return true;
@@ -224,14 +289,20 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
-  PADDLE_ENFORCE(dims()[0] % places.size() == 0,
-                 "Batch size should be divided by places size");
+  PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
+  size_t result_size = std::min(static_cast<size_t>(dims()[0]), places.size());
+  size_t remainder = dims()[0] % places.size();
 
-  std::vector<LoDTensor> lods;
-  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
-    size_t batch_size = lod().empty() ? dims()[0] : NumElements(0);
-    size_t begin = place_idx * batch_size / places.size();
-    size_t end = (place_idx + 1) * batch_size / places.size();
+  std::vector<LoDTensor> results;
+  results.reserve(result_size);
+
+  int step_width = static_cast<int>(dims()[0] / result_size);
+  for (size_t i = 0; i < result_size; ++i) {
+    int begin = static_cast<int>(i * step_width);
+    int end = static_cast<int>((i + 1) * step_width);
+    if (i + 1 == places.size()) {  // last
+      end += remainder;
+    }
 
     LoDTensor dst;
     if (lod().empty()) {
@@ -259,7 +330,7 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     lods.emplace_back(dst);
   }
 
-  return lods;
+  return results;
 }
 
 void LoDTensor::MergeLoDTensor(

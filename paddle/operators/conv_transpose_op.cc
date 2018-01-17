@@ -58,6 +58,23 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
 
+framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
+}
+
 Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
                                                OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(proto, op_checker) {
@@ -94,6 +111,25 @@ Conv2DTransposeOpMaker::Conv2DTransposeOpMaker(OpProto* proto,
       "(vector<int> default:{0, 0}), the paddings(h_pad, w_pad) of convolution "
       "transpose operator.")
       .SetDefault({0, 0});
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
+  AddAttr<int>("workspace_size_MB",
+               "Used in cudnn kernel only. workspace size for cudnn, in MB, "
+               "workspace is a section of GPU memory which will be "
+               "allocated/freed each time the operator runs, larger "
+               "workspace size can increase performance but also requires "
+               "better hardward. This size should be carefully setted.")
+      .SetDefault(4096);
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
 
@@ -163,6 +199,25 @@ Conv3DTransposeOpMaker::Conv3DTransposeOpMaker(OpProto* proto,
                             "(vector<int> default:{0, 0, 0}), paddings(d_pad, "
                             "h_pad, w_pad) of convolution transpose operator.")
       .SetDefault({0, 0, 0});
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
+  AddAttr<int>("workspace_size_MB",
+               "Used in cudnn kernel only. workspace size for cudnn, in MB, "
+               "workspace is a section of GPU memory which will be "
+               "allocated/freed each time the operator runs, larger "
+               "workspace size can increase performance but also requires "
+               "better hardward. This size should be carefully setted.")
+      .SetDefault(4096);
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 
@@ -203,6 +258,23 @@ void ConvTransposeOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   if (ctx->HasOutput(framework::GradVarName("Filter"))) {
     ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
   }
+}
+
+framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
 }
 
 }  // namespace operators

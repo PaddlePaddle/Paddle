@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <iostream>
+#include <cctype>
+#include <ostream>
+
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
@@ -27,12 +29,19 @@ enum class DataLayout {
 };
 
 inline DataLayout StringToDataLayout(const std::string& str) {
-  if (str == "NHWC" || str == "nhwc") {
+  std::string s(str);
+  for (size_t i = 0; i < s.size(); ++i) {
+    s[i] = toupper(s[i]);
+  }
+
+  if (s == "NHWC") {
     return DataLayout::kNHWC;
-  } else if (str == "NCHW" || str == "nchw") {
+  } else if (s == "NCHW") {
     return DataLayout::kNCHW;
+  } else if (s == "ANYLAYOUT") {
+    return DataLayout::kAnyLayout;
   } else {
-    PADDLE_THROW("Unknown storage order string: %s", str);
+    PADDLE_THROW("Unknown storage order string: %s", s);
   }
 }
 
@@ -49,7 +58,7 @@ inline std::string DataLayoutToString(const DataLayout& data_layout) {
   }
 }
 
-inline std::ostream& operator<<(std::ostream& out, DataLayout l) {
+inline std::ostream& operator<<(std::ostream& out, const DataLayout& l) {
   out << DataLayoutToString(l);
   return out;
 }
