@@ -70,6 +70,16 @@ TEST(beam_search_op, run) {
   beamsearch(pre_ids, &sids, &sscores);
 
   LOG(INFO) << "score: " << sscores << endl;
+
+  ASSERT_EQ(sids.lod(), sscores.lod());
+
+  vector<int> tids({2, 4, 3, 8});
+  vector<float> tscores({0.3, 0.5, 0.9, 0.7});
+
+  for (int i = 0; i < 4; i++) {
+    ASSERT_EQ(tids[i], sids.data<int64_t>()[i]);
+    ASSERT_EQ(tscores[i], sscores.data<float>()[i]);
+  }
 }
 
 }  // namespace test
