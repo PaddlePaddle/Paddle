@@ -50,6 +50,7 @@ __all__ = [
     'sequence_last_step',
     'dropout',
     'split',
+    'matmul',
 ]
 
 
@@ -1597,3 +1598,73 @@ def split(input, num_or_sections, dim=-1):
             'axis': dim
         })
     return outs
+
+
+def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
+    """
+    Applies matrix multipication to two tensors. Currently only rank 1 to rank 
+    3 input tensors are supported.
+
+    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the 
+    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
+
+    - If a transpose flag is specified, the last two dimensions of the tensor 
+      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for 
+      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as 
+      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the 
+      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as 
+      :math:`[1, D]` in transposed form.
+
+    - After transpose, the two tensors are 2-D or 3-D and matrix multipication 
+      performs in the following way.
+
+      - If both are 2-D, they are multiplied like conventional matrices.
+      - If either is 3-D, it is treated as a stack of matrices residing in the 
+        last two dimensions and a batched matrix multiply supporting broadcast 
+        applies on the two tensors.
+
+    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and 
+    nontransposed, the prepended or appended dimension :math:`1` will be 
+    removed after matrix multipication.
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        name(str|None): A name for this layer(optional). If set None, the layer 
+            will be named automatically.
+
+    Returns:
+        Variable: The product Tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # Examples to clarify shapes of the inputs and output
+            # x: [B, M, K], y: [B, K, N]
+            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # x: [B, M, K], y: [K, N]
+            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # x: [B, M, K], y: [K]
+            fluid.layers.matmul(x, y)  # out: [B, M]
+            # x: [M, K], y: [K, N]
+            fluid.layers.matmul(x, y)  # out: [M, N]
+            # x: [K], y: [K]
+            fluid.layers.matmul(x, y)  # out: [1]
+            # x: [M], y: [N]
+            fluid.layers.matmul(x, y, True, True)  # out: [M, N]
+    """
+    helper = LayerHelper('matmul', **locals())
+    assert max(
+        len(x.shape), len(y.shape)
+    ) <= 3, 'Currently only rank 1 to rank 3 input tensors are supported.'
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='matmul',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'transpose_X': transpose_x,
+               'transpose_Y': transpose_y})
+    return out
