@@ -291,23 +291,32 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
   PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
-  PADDLE_ENFORCE(dims()[0] % places.size() == 0,
-                 "Batch size should be divided by places size");
+  size_t result_size = std::min(static_cast<size_t>(dims()[0]), places.size());
+  size_t remainder = dims()[0] % places.size();
 
-  std::vector<LoDTensor> lods;
-  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
-    int begin = place_idx * dims()[0] / places.size();
-    int end = (place_idx + 1) * dims()[0] / places.size();
+  std::vector<LoDTensor> results;
+  results.reserve(result_size);
+
+  int step_width = static_cast<int>(dims()[0] / result_size);
+  for (size_t i = 0; i < result_size; ++i) {
+    int begin = static_cast<int>(i * step_width);
+    int end = static_cast<int>((i + 1) * step_width);
+    if (i + 1 == places.size()) {  // last
+      end += remainder;
+    }
 
     auto src = Slice(begin, end);
-    auto &dst_place = places[place_idx];
+    auto &dst_place = places[i];
     LoDTensor dst;
-    framework::Copy(src, dst_place, &dst);
-
-    lods.emplace_back(dst);
+    if (!(dst_place == place())) {
+      framework::Copy(src, dst_place, &dst);
+    } else {  // It is no need to copy if src_place and dst_place are same.
+      dst.ShareDataWith(src);
+    }
+    results.emplace_back(dst);
   }
 
-  return lods;
+  return results;
 }
 
 // TODO(tonyyang-svail): make this function support LoD
@@ -318,12 +327,17 @@ void LoDTensor::MergeLoDTensor(
   framework::DDim new_dim = lod_tensors[0]->dims();
   std::type_index new_type = lod_tensors[0]->type();
   auto new_layout = lod_tensors[0]->layout();
+  int64_t new_height = 0;
   for (auto *lod : lod_tensors) {
-    PADDLE_ENFORCE(new_dim == lod->dims());
-    PADDLE_ENFORCE(new_type == lod->type());
-    PADDLE_ENFORCE(new_layout == lod->layout());
+    new_height += lod->dims()[0];
+    for (int i = 1; i < new_dim.size(); ++i) {
+      PADDLE_ENFORCE_EQ(new_dim[i], lod->dims()[i]);
+    }
+
+    PADDLE_ENFORCE_EQ(new_type, lod->type());
+    PADDLE_ENFORCE_EQ(new_layout, lod->layout());
   }
-  new_dim[0] *= lod_tensors.size();
+  new_dim[0] = new_height;
   Resize(new_dim);
   set_layout(new_layout);
 
