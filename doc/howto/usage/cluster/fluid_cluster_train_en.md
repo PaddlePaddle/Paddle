@@ -8,7 +8,7 @@ In this article, we'll explain how to config and run distributed training job wi
 
 ### Get your cluster ready
 
-Prepare your computer in the cluster. Nodes in this cluster can be any spec which runs PaddlePaddle, and with a unique IP address assigned to it. Make sure they can talk to each other.
+Prepare your computer node in the cluster. Nodes in this cluster can be any spec that runs PaddlePaddle, and with a unique IP address assigned to it. Make sure they can talk to each other.
 
 ### Have PaddlePaddle installed
 
@@ -71,13 +71,13 @@ Now let's try to convert it to a distributed version to run in a cluster.
 
 #### Introducing parameter server
 
-As you see from the non-cluster version of training script, there is only one role in it, the trainer does the computing as well as holding parameters. In cluster training, since multi-trainers are working on the same task, they need one centralized the place to hold and distribute parameters. This centralized place is called Parameter Server in PaddlePaddle.
+As you see from the non-cluster version of training script, there is only one role in it: the trainer, who does the computing as well as holding parameters. In cluster training, since multi-trainers are working on the same task, they need one centralized the place to hold and distribute parameters. This centralized place is called Parameter Server in PaddlePaddle.
 
 ![parameter server architect](src/trainer.png)
 
 Parameter Server in fluid does not only hold parameters but also assigned with part of the program. Trainers communicate with parameter servers via send/receive OPs. For more tech detail, please refer to this [document](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/dist_refactor/distributed_architecture.md).
 
-So, the question is how are we going to slice the main program into training program and parameter server program?
+Now we need to create program for both trainers and parameter servers, the question is how?
 
 #### Slice the program
 
@@ -85,7 +85,7 @@ Fluid provides a tool called "Distribute Transpiler" to automatically convert th
 
 The idea behind this tool is to find optimize OPs and gradient parameters, slice the program into 2 pieces and connect then with send/receive OP.
 
-And optimize OPs and gradient parameters is the return values of optimizer's minimize function. 
+And optimize OPs and gradient parameters can be found from the return values of optimizer's minimize function.
 
 To put them together:
 
@@ -95,14 +95,15 @@ To put them together:
 optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost) #get optimize OPs and gradient parameters
 
 t = fluid.DistributeTranspiler() # create transpiler instance
-
-t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2) #slice the program into 2 pieces with optimizer_ops and gradient parameters list, as well as pserver_endpoints, which is a comma separated list of [IP:PORT] and number of trainers
+# slice the program into 2 pieces with optimizer_ops and gradient parameters list, as well as pserver_endpoints, which is a comma separated list of [IP:PORT] and number of trainers
+t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2) 
 
 ... #create executor
 
 # in pserver, run this
 exe.run(fluid.default_startup_program())
-exe.run(t.get_pserver_program(current_endpoint, optimize_ops)) #current_endpoint here means current pserver IP:PORT you wish to run on
+#current_endpoint here means current pserver IP:PORT you wish to run on
+exe.run(t.get_pserver_program(current_endpoint, optimize_ops)) 
 
 # in trianer, run this
 ... # define data reader
@@ -116,7 +117,7 @@ for pass_id in range(100):
 
 ### E2E demo
 
-Please find the complete testing script from [here](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book_distribute/notest_dist_fit_a_line.py). In parameter node run this in the command line:
+Please find the complete demo from [here](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book_distribute/notest_dist_fit_a_line.py). In parameter server node run this in the command line:
 
 ``` bash
 PSERVERS=192.168.1.2:6174 SERVER_ENDPOINT=192.168.1.2:6174 TRAINING_ROLE=PSERVER python notest_dist_fit_a_line.py
@@ -132,4 +133,6 @@ Then in 2 of your trainer node run this:
 PSERVERS=192.168.1.2:6174 SERVER_ENDPOINT=192.168.1.2:6174 TRAINING_ROLE=TRAINER python notest_dist_fit_a_line.py
 ```
 
-*the reason you need to run this command twice in 2 nodes is in the script, we set the trainer count to be 2. You can change this setting on line 50*
+*the reason you need to run this command twice in 2 nodes is: in the script we set the trainer count to be 2. You can change this setting on line 50*
+
+Now you have 2 trainers and 1 parameter server up and running.
