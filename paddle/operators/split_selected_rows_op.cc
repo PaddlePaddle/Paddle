@@ -37,6 +37,7 @@ Example:
   Input:
     X.rows = {0, 7, 5}
     X.height = 12
+  Attr:
     rows_section = {1, 2}
     height_section = {}
   Out:
