@@ -33,7 +33,8 @@ void DataTransform(const OpKernelType& expected_kernel_type,
   Tensor* out_ptr = new Tensor();
 
   // do layout transform
-  if (expected_kernel_type.data_layout_ != kernel_type_for_var.data_layout_) {
+  if (NeedTransformLayout(expected_kernel_type.data_layout_,
+                          kernel_type_for_var.data_layout_)) {
     TransDataLayout(kernel_type_for_var, expected_kernel_type, *in_ptr,
                     out_ptr);
     free_tmp_tensor(&input_tensor, in_ptr);
