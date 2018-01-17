@@ -5,7 +5,7 @@ from op_test import OpTest
 from test_softmax_op import stable_softmax
 
 
-def CTCDecode(input, lod, blank, merge_repeated):
+def CTCAlign(input, lod, blank, merge_repeated):
     lod0 = lod[0]
     result = []
     for i in range(len(lod0) - 1):
@@ -20,9 +20,9 @@ def CTCDecode(input, lod, blank, merge_repeated):
     return result
 
 
-class TestCTCDecodeOp(OpTest):
+class TestCTCAlignOp(OpTest):
     def config(self):
-        self.op_type = "ctc_decode"
+        self.op_type = "ctc_align"
         self.input_lod = [[0, 11, 18]]
         self.blank = 0
         self.merge_repeated = False
@@ -32,8 +32,8 @@ class TestCTCDecodeOp(OpTest):
 
     def setUp(self):
         self.config()
-        output = CTCDecode(self.input, self.input_lod, self.blank,
-                           self.merge_repeated)
+        output = CTCAlign(self.input, self.input_lod, self.blank,
+                          self.merge_repeated)
 
         self.inputs = {"Input": (self.input, self.input_lod), }
         self.outputs = {"Output": output}
@@ -47,9 +47,9 @@ class TestCTCDecodeOp(OpTest):
         pass
 
 
-class TestCTCDecodeOpCase1(TestCTCDecodeOp):
+class TestCTCAlignOpCase1(TestCTCAlignOp):
     def config(self):
-        self.op_type = "ctc_decode"
+        self.op_type = "ctc_align"
         self.input_lod = [[0, 11, 19]]
         self.blank = 0
         self.merge_repeated = True

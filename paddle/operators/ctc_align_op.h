@@ -23,7 +23,7 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
-class CTCDecodeKernel : public framework::OpKernel<T> {
+class CTCAlignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("Input");
@@ -43,7 +43,8 @@ class CTCDecodeKernel : public framework::OpKernel<T> {
     bool merge_repeated = ctx.Attr<bool>("merge_repeated");
 
     // merge repeated tokens and delete blank
-    std::vector<std::vector<int>> pathes(num_sequences);
+    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    size_t output_idx = 0;
     std::vector<size_t> output_lod0(1, 0);
     const T* input_data = input->data<T>();
     for (size_t seq_idx = 0; seq_idx < num_sequences; ++seq_idx) {
@@ -52,11 +53,12 @@ class CTCDecodeKernel : public framework::OpKernel<T> {
            i < input_lod[level][seq_idx + 1]; ++i) {
         if (input_data[i] != blank &&
             !(merge_repeated && input_data[i] == prev_token)) {
-          pathes[seq_idx].push_back(input_data[i]);
+          output_data[output_idx] = input_data[i];
+          ++output_idx;
         }
         prev_token = input_data[i];
       }
-      output_lod0.push_back(output_lod0.back() + pathes[seq_idx].size());
+      output_lod0.push_back(output_idx);
     }
 
     // set output lod
@@ -65,14 +67,7 @@ class CTCDecodeKernel : public framework::OpKernel<T> {
     output->set_lod(output_lod);
 
     // resize output dims
-    T* output_data = output->mutable_data<T>(
-        {static_cast<int64_t>(output_lod0.back()), 1}, ctx.GetPlace());
-
-    // copy result to output
-    for (int i = 0; i < num_sequences; ++i) {
-      memcpy(output_data + output_lod0[i], pathes[i].data(),
-             sizeof(int) * pathes[i].size());
-    }
+    output->Resize({static_cast<int64_t>(output_lod0.back()), 1});
   }
 };
 
