@@ -17,6 +17,7 @@ __all__ = [
     "simple_img_conv_pool",
     "sequence_conv_pool",
     "glu",
+    "dot_product_attention",
 ]
 
 
@@ -150,3 +151,55 @@ def glu(input, dim=-1):
     act_b = layers.sigmoid(x=b)
     out = layers.elementwise_mul(x=a, y=act_b)
     return out
+
+
+def dot_product_attention(querys, keys, values):
+    """
+    The dot-product attention.
+
+    Attention mechanism can be seen as mapping a query and a set of key-value 
+    pairs to an output. The output is computed as a weighted sum of the values, 
+    where the weight assigned to each value is computed by a compatibility 
+    function (dot-product here) of the query with the corresponding key.
+    
+    The dot-product attention can be implemented through (batch) matrix 
+    multipication as follows:
+
+        .. math::
+
+            Attention(Q, K, V)= softmax(QK^\mathrm{T})V
+
+    Refer to `Attention Is All You Need 
+    <https://arxiv.org/pdf/1706.03762.pdf>`_.
+
+    Note that batch data containing sequences with different lengths is not 
+    supported by this because of the (batch) matrix multipication.
+    
+    Args:
+        query (Variable): The input variable which is a Tensor or LoDTensor.
+        key (Variable): The input variable which is a Tensor or LoDTensor.
+        value (Variable): The input variable which is a Tensor or LoDTensor.
+
+    Returns:
+        tuple: The Tensor variables representing the output and attention scores.
+
+    Examples:
+        .. code-block:: python
+
+            # Suppose q, k, v are tensor variables with the following shape:
+            # q: [3, 5, 9], k: [3, 6, 9], v: [3, 6, 10]
+            out, attn_scores = fluid.nets.dot_product_attention(q, k, v)
+            out.shape  # [3, 5, 10]
+            attn_scores.shape  # [3, 5, 6]
+    """
+    assert keys.shape[-2] == values.shape[
+        -2], 'The shapes of keys and values mismatch.'
+    assert querys.shape[-1] == keys.shape[
+        -1], 'The shapes of querys and keys mismatch.'
+    product = layers.matmul(x=querys, y=keys, transpose_y=True)
+    attn_scores = layers.reshape(
+        x=layers.reshape(
+            x=product, shape=[-1, product.shape[-1]], act='softmax'),
+        shape=product.shape)
+    out = layers.matmul(attn_scores, values)
+    return out, attn_scores
