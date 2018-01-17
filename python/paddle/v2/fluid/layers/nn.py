@@ -724,6 +724,8 @@ def conv2d(input,
             connected to the second half of the input channels. Default: groups=1
         param_attr(ParamAttr): The parameters to the Conv2d Layer. Default: None
         bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
+        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
         act(str): Activation type. Default: None
 
     Returns:
@@ -1115,8 +1117,8 @@ def conv2d_transpose(input,
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation.
         param_attr: Parameter Attribute.
-        main_program(Program): the main program
-        startup_program(Program): the startup program
+        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
 
     Returns:
         Variable: Output image.
