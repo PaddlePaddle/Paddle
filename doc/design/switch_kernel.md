@@ -1,21 +1,24 @@
 ## Background
-Every operator has many kernels because there are multiple data types, places, data layout that Fluid supports. We use the `KernelType` to describe kernel types that operators can hold. 
+Every operator has many kernels because there are multiple data types, places, data layout, library type that Fluid supports. We use the `OpKernelType ` to describe kernel types that operators can hold.
 
-The `KernelType` is as follows.
+The `OpKernelType ` is as follows:
 
-```
-struct KernelType {
+```cpp
+struct OpKernelType {
   Place place_;
   DataType data_type_;
-  LayoutType layout_;
+  DataLayout data_layout_;
+  LibraryType library_type_;
 };
 ```
 
-The `place_` is a descriptor of the device and the computational library, e.g., `MKLDNNPlace`, `CUDAPlace`.
+- The `place_` is a descriptor of the device, such as CPUPlace, CUDAPlace.
 
-The `data_type_` is the data type that this kernel performs on, e.g., `FP32`, `INT64`. Note that one kernel may have inputs with different data types. However, it will be a major `data_type`. For example, the `cross_entropy` takes `int64` as it label, and `double`/`float` as its input logit and output cost. The major `data_type` of `cross_entropy` is `float`/`double`.
+- The `data_type_` is the data type that this kernel performs on, e.g., `FP32`, `INT64`. Note that one kernel may have inputs with different data types. However, it will be a major `data_type`. For example, the `cross_entropy` takes `int64` as it label, and `double`/`float` as its input logit and output cost. The major `data_type` of `cross_entropy` is `float` or `double`.
 
-The `layout` is useful for some computational library. One example is that MKLDNN uses many kinds of layout, such as `nChw8c`. Each kind of layout will invoke the different kernel.
+- The `data_layout_ ` is useful for some computational library. One example is that MKLDNN uses many kinds of layout, such as `nChw8c`. Each kind of layout will invoke the different kernel.
+
+- The `library_type_` describes computational library, e.g., `MKLDNN`, `CUDNN`.
 
 ## Problem
 
@@ -29,15 +32,15 @@ Problems under these situations are similar. We can formalise this problem as fo
 
 We register kernels with types $KT = \{kt_1, kt_2, kt_3, ...\}$ for one operator. The inputs of this operator should be run on kernel type $kt_{?}$, which the $kt_{?} \notin KT$. How to cast the input of this operator from $kt_{?}$ to any of kernel type in $KT$.
 
-## Solution
+## Solution: data transform
 
-It is clearly that transforming inputs of an operator toadapt another kernel type is not related to the particular operator. So we should register these transformation methods as global methods.
+It is clearly that transforming inputs of an operator to adapt another kernel type is not related to the particular operator. So we should register these transformation methods as global methods.
 
-We can infer a kernel type from the inputs of an operators. We let this kernel type as `actual kernel type`, which means this kernel type is the actually kernel type that operator should be performed.
+We can infer kernel type for each inputs of an operators. We let this kernel type as `actual kernel type for var`, which means this kernel type is the kernel type that can process this input variable.
 
 We can get a kernel type by 1) The configuration of operator description. (Users may want to force use `MKL` for `conv` operator). 2) The place of the current executor. (Executor is running on GPU). This kernel type is what we expect the operator will be performed on. We let this kernel type as `expect kernel type`.
 
-We transform the input data from `actual` to `expect` if the expect kernel type is not as same as actual kernel type.
+We transform the input data from `actual` to `expect` if the actual kernel type is not as same as expect kernel type.
 
 The algorithm is described as follow
 
