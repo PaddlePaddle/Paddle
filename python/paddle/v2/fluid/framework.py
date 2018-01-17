@@ -777,7 +777,7 @@ class Block(object):
                 trainable=p.trainable,
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
-                clip_attr=p.clip_attr,
+                gradient_clip_attr=p.gradient_clip_attr,
                 error_clip=p.error_clip,
                 name=v.name)
             self.vars[new_p.name] = new_p
