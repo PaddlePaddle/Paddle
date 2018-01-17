@@ -88,5 +88,6 @@ nv_test(data_device_transform_test SRCS data_device_transform_test.cu
 if(NOT WITH_C_API AND WITH_FLUID)
   file(GLOB FRAMEWORK_HEADERS *.h)
   install(FILES ${FRAMEWORK_HEADERS} DESTINATION include/paddle/framework)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/framework.pb.h DESTINATION include/paddle/framework)
   install(FILES details/cow_ptr.h details/op_registry.h DESTINATION include/paddle/framework/details)
 endif()
