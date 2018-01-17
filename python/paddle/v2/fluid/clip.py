@@ -93,41 +93,48 @@ class GradientClipByNorm(BaseGradientClipAttr):
 class GradientClipByGlobalNorm(BaseGradientClipAttr):
     global_norm_var = None
     clip_norm_var = None
-    ratio_var = None
+    scale_var = None
 
     @classmethod
     def init(cls, clip_norm):
+        if not (isinstance(clip_norm, int) or isinstance(clip_norm, float)):
+            raise TypeError("The 'clip_norm' must be a value of int or float")
+
         cls.global_norm_var = layers.fill_constant(
             shape=[1], dtype="float32", value=0.0)
         cls.clip_norm_var = layers.fill_constant(
             shape=[1], dtype="float32", value=clip_norm)
 
-    def __init__(self):
-        if not (isinstance(self.__class__.global_norm_var, Variable) and
-                isinstance(self.__class__.clip_norm_var, Variable)):
+    @classmethod
+    def check_init(cls):
+        if not (isinstance(cls.global_norm_var, Variable) and
+                isinstance(cls.clip_norm_var, Variable)):
             raise ValueError(
-                "Class 'GradientClipByGlobalNorm' has not been properly initialized. Please call GradientClipByGlobalNorm.init() first."
-            )
+                "Class 'GradientClipByGlobalNorm' has not been properly initialized. \
+                 Please call GradientClipByGlobalNorm.init() first.")
 
-    def process_context(self, context, param, grad):
+    @classmethod
+    def process_context(cls, context, param, grad):
+        cls.check_init()
+
         local_norm_var = layers.reduce_sum(
             x=layers.pow(x=grad, factor=2), reduce_all=True)
         layers.sums(
-            input=[local_norm_var, self.__class__.global_norm_var],
-            out=[self.__class__.global_norm_var])
+            input=[local_norm_var, cls.global_norm_var],
+            out=[cls.global_norm_var])
 
-    def create_operators(self, param, grad):
-        if self.__class__.ratio_var is None:
-            self.__class__.global_norm_var = layers.sqrt(
-                x=self.__class__.global_norm_var)
-            self.__class__.ratio_var = layers.elementwise_div(
-                x=self.__class__.clip_norm_var,
+    @classmethod
+    def create_operators(cls, param, grad):
+        cls.check_init()
+
+        if cls.scale_var is None:
+            cls.global_norm_var = layers.sqrt(x=cls.global_norm_var)
+            cls.scale_var = layers.elementwise_div(
+                x=cls.clip_norm_var,
                 y=layers.elementwise_max(
-                    x=self.__class__.clip_norm_var,
-                    y=self.__class__.global_norm_var))
-        # 缺乏elementwise_max
-        # 没法将ratio_var送给scale_op。
-        # new_grad = layers.
+                    x=cls.clip_norm_var, y=cls.global_norm_var))
+        new_grad = layers.elementwise_mul(x=grad, y=cls.scale_var)
+        return param, new_grad
 
 
 def append_gradient_clip_ops(param_grad):
