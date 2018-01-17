@@ -31,6 +31,16 @@ constexpr int PADDLE_CUDA_NUM_THREADS = 512;
 
 // For atomicAdd.
 USE_CUDA_ATOMIC(Add, float);
+USE_CUDA_ATOMIC(Add, int);
+USE_CUDA_ATOMIC(Add, unsigned int);
+USE_CUDA_ATOMIC(Add, unsigned long long int);
+
+CUDA_ATOMIC_WRAPPER(Add, int64_t) {
+  static_assert(sizeof(int64_t) == sizeof(long long int),
+                "long long should be int64");
+  return CudaAtomicAdd(reinterpret_cast<unsigned long long int*>(address),
+                       static_cast<unsigned long long int>(val));
+}
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
 USE_CUDA_ATOMIC(Add, double);

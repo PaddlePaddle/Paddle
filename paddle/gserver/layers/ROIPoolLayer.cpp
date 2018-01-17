@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "ROIPoolLayer.h"
+#include <cfloat>
 
 namespace paddle {
 
@@ -83,12 +84,15 @@ void ROIPoolLayer::forward(PassType passType) {
   size_t poolChannelOffset = pooledHeight_ * pooledWidth_;
 
   real* outputData = outputValue->getData();
-  Matrix::resizeOrCreate(maxIdxs_,
-                         numROIs,
-                         channels_ * pooledHeight_ * pooledWidth_,
-                         false,
-                         false);
-  real* argmaxData = maxIdxs_->getData();
+  real* argmaxData = nullptr;
+  if (passType != PASS_TEST) {
+    Matrix::resizeOrCreate(maxIdxs_,
+                           numROIs,
+                           channels_ * pooledHeight_ * pooledWidth_,
+                           false,
+                           false);
+    argmaxData = maxIdxs_->getData();
+  }
 
   for (size_t n = 0; n < numROIs; ++n) {
     // the first five elememts of each RoI should be:
@@ -126,8 +130,8 @@ void ROIPoolLayer::forward(PassType passType) {
 
           bool isEmpty = (hend <= hstart) || (wend <= wstart);
           size_t poolIndex = ph * pooledWidth_ + pw;
-          if (isEmpty) {
-            outputData[poolIndex] = 0;
+          outputData[poolIndex] = isEmpty ? 0 : -FLT_MAX;
+          if (argmaxData) {
             argmaxData[poolIndex] = -1;
           }
 
@@ -136,7 +140,9 @@ void ROIPoolLayer::forward(PassType passType) {
               size_t index = h * width_ + w;
               if (batchData[index] > outputData[poolIndex]) {
                 outputData[poolIndex] = batchData[index];
-                argmaxData[poolIndex] = index;
+                if (argmaxData) {
+                  argmaxData[poolIndex] = index;
+                }
               }
             }
           }
@@ -144,7 +150,9 @@ void ROIPoolLayer::forward(PassType passType) {
       }
       batchData += channelOffset;
       outputData += poolChannelOffset;
-      argmaxData += poolChannelOffset;
+      if (argmaxData) {
+        argmaxData += poolChannelOffset;
+      }
     }
     bottomROIs += roiOffset;
   }

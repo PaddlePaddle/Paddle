@@ -1,12 +1,26 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import numpy as np
 from op_test import OpTest
 from scipy.special import logit
 from scipy.special import expit
+import unittest
 
 
 class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
-    '''Test sigmoid_cross_entropy_with_logit_op with binary labels
-    '''
+    """Test sigmoid_cross_entropy_with_logit_op with binary label
+    """
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -16,16 +30,16 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
                 .astype("float32")),
-            'Labels': np.random.randint(0, 2, (batch_size, num_classes))
+            'Label': np.random.randint(0, 2, (batch_size, num_classes))
             .astype("float32")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
         # elementwise logistic loss
-        # Labels * -log(sigmoid(X)) + (1 - labels) * -log(1 - sigmoid(X))
+        # Label * -log(sigmoid(X)) + (1 - label) * -log(1 - sigmoid(X))
         sigmoid_X = expit(self.inputs['X'])
-        term1 = self.inputs['Labels'] * np.log(sigmoid_X)
-        term2 = (1 - self.inputs['Labels']) * np.log(1 - sigmoid_X)
+        term1 = self.inputs['Label'] * np.log(sigmoid_X)
+        term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
@@ -36,8 +50,8 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
 
 
 class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
-    '''Test sigmoid_cross_entropy_with_logit_op with probabalistic labels
-    '''
+    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
+    """
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -47,16 +61,16 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
                 .astype("float32")),
-            'Labels': np.random.uniform(0, 1, (batch_size, num_classes))
+            'Label': np.random.uniform(0, 1, (batch_size, num_classes))
             .astype("float32")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
         # elementwise logistic loss
-        # Labels * -log(sigmoid(X)) + (1 - labels) * -log(1 - sigmoid(X))
+        # Label * -log(sigmoid(X)) + (1 - label) * -log(1 - sigmoid(X))
         sigmoid_X = expit(self.inputs['X'])
-        term1 = self.inputs['Labels'] * np.log(sigmoid_X)
-        term2 = (1 - self.inputs['Labels']) * np.log(1 - sigmoid_X)
+        term1 = self.inputs['Label'] * np.log(sigmoid_X)
+        term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
@@ -64,3 +78,7 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+if __name__ == '__main__':
+    unittest.main()

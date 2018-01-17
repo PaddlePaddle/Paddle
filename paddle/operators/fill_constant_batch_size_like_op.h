@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -27,8 +27,9 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     auto value = ctx.Attr<float>("value");
 
-    math::SetConstant<Place, T> setter;
-    setter(ctx.device_context(), out, static_cast<T>(value));
+    math::SetConstant<DeviceContext, T> setter;
+    setter(ctx.template device_context<DeviceContext>(), out,
+           static_cast<T>(value));
   }
 };
 

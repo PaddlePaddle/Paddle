@@ -39,9 +39,9 @@ __global__ void CopyMatrixRowsKernel(const T* src, T* dst, const size_t* index,
 }
 
 template <typename T>
-class CopyMatrixRowsFunctor<platform::GPUPlace, T> {
+class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& src, const size_t* index,
                   framework::Tensor& dst, bool is_src_index) {
     auto src_dims = src.dims();
@@ -59,20 +59,19 @@ class CopyMatrixRowsFunctor<platform::GPUPlace, T> {
 
     dim3 threads(128, 8);
     dim3 grid(8, 1);
-    auto stream =
-        reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
+    auto stream = context.stream();
     CopyMatrixRowsKernel<T, 128, 8, 8><<<grid, threads, 0, stream>>>(
         src_data, dst_data, index, height, width, is_src_index);
   }
 };
 
-template class CopyMatrixRowsFunctor<platform::GPUPlace, float>;
-template class CopyMatrixRowsFunctor<platform::GPUPlace, double>;
+template class CopyMatrixRowsFunctor<platform::CUDADeviceContext, float>;
+template class CopyMatrixRowsFunctor<platform::CUDADeviceContext, double>;
 
-template class LoDTensor2BatchFunctor<platform::GPUPlace, float>;
-template class LoDTensor2BatchFunctor<platform::GPUPlace, double>;
-template class Batch2LoDTensorFunctor<platform::GPUPlace, float>;
-template class Batch2LoDTensorFunctor<platform::GPUPlace, double>;
+template class LoDTensor2BatchFunctor<platform::CUDADeviceContext, float>;
+template class LoDTensor2BatchFunctor<platform::CUDADeviceContext, double>;
+template class Batch2LoDTensorFunctor<platform::CUDADeviceContext, float>;
+template class Batch2LoDTensorFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

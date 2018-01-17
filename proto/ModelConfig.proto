@@ -139,6 +139,8 @@ message PoolConfig {
   optional uint32 output_z = 16 [ default = 1 ];
   optional uint32 img_size_z = 17 [ default = 1 ];
   optional uint32 padding_z = 18 [ default = 1 ];
+
+  optional bool exclude_mode = 19;
 }
 
 message SppConfig {
@@ -540,6 +542,13 @@ message LayerConfig {
 
   // for switch order layer
   optional ReshapeConfig reshape_conf = 59;
+
+  // for batch normalization layer
+  // The small constant added to the variance to improve numeric stability.
+  optional double epsilon = 60 [ default = 0.00001 ];
+
+  // for factorization machine layer
+  optional uint32 factor_size = 61;
 }
 
 message EvaluatorConfig {

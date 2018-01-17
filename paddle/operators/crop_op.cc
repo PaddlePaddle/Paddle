@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/crop_op.h"
 #include <boost/lexical_cast.hpp>
@@ -52,7 +52,7 @@ class CropOp : public framework::OperatorWithKernel {
 
 class CropOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CropOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  CropOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input of pad op. "
@@ -88,7 +88,8 @@ There are two ways to set shape:
 
 The input should be a k-D tensor(k > 0 and k < 7). As an example:
 
-Given:
+Case 1:
+Given
 
     X = [[0, 1, 2, 0, 0]
          [0, 3, 4, 0, 0]
@@ -107,6 +108,27 @@ we get:
     Out = [[1, 2],
            [3, 4]].
 
+
+Case 2:
+Given
+
+    X = [[0, 1, 2, 5, 0]
+         [0, 3, 4, 6, 0]
+         [0, 0, 0, 0, 0]],
+
+and
+
+    offsets = [0, 1],
+
+and
+
+    Y = [[0, 0, 0]
+         [0, 0, 0]],
+
+we get:
+
+    Out = [[1, 2, 5],
+           [3, 4, 6]].
 )DOC");
   }
 };
@@ -133,5 +155,5 @@ class CropOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(crop, ops::CropOp, ops::CropOpMaker, crop_grad, ops::CropOpGrad);
 REGISTER_OP_CPU_KERNEL(crop, ops::CropKernel<float>);
-REGISTER_OP_CPU_KERNEL(crop_grad,
-                       ops::CropGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>);

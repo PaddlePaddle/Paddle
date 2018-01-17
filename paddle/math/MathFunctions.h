@@ -15,7 +15,7 @@ limitations under the License. */
 #ifndef MATHFUNCTIONS_H_
 #define MATHFUNCTIONS_H_
 
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 #include <mkl_cblas.h>
 #include <mkl_lapacke.h>
 #include <mkl_vml_functions.h>

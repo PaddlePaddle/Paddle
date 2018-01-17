@@ -16,22 +16,21 @@ limitations under the License. */
 
 #include <mutex>  // for call_once
 #include <unordered_map>
-#include "gflags/gflags.h"
 #include "paddle/framework/backward.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/init.h"
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/prune.h"
 #include "paddle/framework/selected_rows.h"
-#include "paddle/framework/tensor_array.h"
 #include "paddle/operators/cond_op.h"
-#include "paddle/operators/dynamic_recurrent_op.h"
 #include "paddle/operators/net_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/pybind/const_value.h"
 #include "paddle/pybind/exception.h"
 #include "paddle/pybind/pybind.h"
 #include "paddle/pybind/tensor_py.h"
@@ -39,6 +38,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/operators/nccl/nccl_gpu_common.h"
+#include "paddle/platform/cuda_profiler.h"
 #include "paddle/platform/gpu_info.h"
 #endif
 
@@ -50,24 +50,6 @@ namespace pybind {
 static size_t UniqueIntegerGenerator(const std::string &prefix) {
   static std::unordered_map<std::string, std::atomic<size_t>> generators;
   return generators[prefix].fetch_add(1);
-}
-
-std::once_flag gflags_init_flag;
-
-// TODO(qijun) move init gflags to init.cc
-void InitGflags(std::vector<std::string> &argv) {
-  std::call_once(gflags_init_flag, [&]() {
-    int argc = argv.size();
-    char **arr = new char *[argv.size()];
-    std::string line;
-    for (size_t i = 0; i < argv.size(); i++) {
-      arr[i] = &argv[i][0];
-      line += argv[i];
-      line += ' ';
-    }
-    google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(1) << "Init commandline: " << line;
-  });
 }
 
 bool IsCompileGPU() {
@@ -96,8 +78,12 @@ PYBIND11_PLUGIN(core) {
            [](Tensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
            })
+      .def("set_layout",
+           [](Tensor &self, const std::string &layout) {
+             self.set_layout(StringToDataLayout(layout));
+           })
       .def("alloc_float",
-           [](Tensor &self, paddle::platform::GPUPlace &place) {
+           [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
            })
       .def("alloc_float",
@@ -109,7 +95,7 @@ PYBIND11_PLUGIN(core) {
              self.mutable_data<int>(place);
            })
       .def("alloc_int",
-           [](Tensor &self, paddle::platform::GPUPlace &place) {
+           [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<int>(place);
            })
       .def("set", PyCPUTensorSetFromArray<float>)
@@ -283,16 +269,39 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
-  m.def("prune", [](const ProgramDescBind &origin,
+  m.def(
+      "get_grad_op_desc", [](const OpDesc &op_desc,
+                             const std::unordered_set<std::string> &no_grad_set,
+                             const std::vector<BlockDesc *> &grad_sub_block) {
+        std::unordered_map<std::string, std::string> grad_to_var;
+        std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
+            framework::OpInfoMap::Instance()
+                .Get(op_desc.Type())
+                .GradOpMaker()(op_desc, no_grad_set, &grad_to_var,
+                               grad_sub_block);
+        std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
+        std::transform(grad_op_descs.begin(), grad_op_descs.end(),
+                       grad_op_desc_ptrs.begin(),
+                       [](std::unique_ptr<OpDesc> &p) { return p.release(); });
+        return std::make_pair(grad_op_desc_ptrs, grad_to_var);
+      });
+  m.def("prune", [](const ProgramDesc &origin,
                     const std::vector<std::array<size_t, 2>> &targets) {
-    ProgramDescBind prog_with_targets(origin);
+    ProgramDesc prog_with_targets(origin);
     for (const auto &t : targets) {
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->MarkAsTarget();
     }
-    ProgramDesc pruned_desc;
+    proto::ProgramDesc pruned_desc;
     Prune(*prog_with_targets.Proto(), &pruned_desc);
-    return new ProgramDescBind(pruned_desc);
+    return new ProgramDesc(pruned_desc);
   });
+  m.def("inference_optimize", [](ProgramDesc &origin) {
+    proto::ProgramDesc pruned_desc;
+    InferenceOptimize(*(origin.Proto()), &pruned_desc);
+    return new ProgramDesc(pruned_desc);
+  });
+  m.def("empty_var_name", []() { return framework::kEmptyVarName; });
+  m.def("grad_var_suffix", []() { return framework::kGradVarSuffix; });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
@@ -306,10 +315,10 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CPUDeviceContext();
                   })
       .def_static("create",
-                  [](paddle::platform::GPUPlace& place)
+                  [](paddle::platform::CUDAPlace& place)
                       -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
-                    PADDLE_THROW("GPUPlace is not supported in CPU device.");
+                    PADDLE_THROW("CUDAPlace is not supported in CPU device.");
 #else
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
@@ -319,9 +328,9 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
-  py::class_<platform::GPUPlace>(m, "GPUPlace")
+  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
       .def(py::init<int>())
-      .def("__str__", string::to_string<const platform::GPUPlace &>);
+      .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
       .def(py::init<>())
@@ -334,14 +343,14 @@ All parameter, weight, gradient are variables in Paddle.
              self = cpu_place;
            })
       .def("set_place",
-           [](platform::Place &self, const platform::GPUPlace &gpu_place) {
+           [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
              self = gpu_place;
            });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
                   [](py::bytes protobin) {
-                    OpDesc desc;
+                    proto::OpDesc desc;
                     PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
                     PADDLE_ENFORCE(desc.IsInitialized(),
@@ -356,10 +365,10 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::DeviceContext &dev_ctx) {
-             self.Run(scope, dev_ctx);
-             dev_ctx.Wait();
-           })
+              const platform::CPUPlace &place) { self.Run(scope, place); })
+      .def("run",
+           [](OperatorBase &self, const Scope &scope,
+              const platform::CUDAPlace &place) { self.Run(scope, place); })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -390,88 +399,11 @@ All parameter, weight, gradient are variables in Paddle.
         self->CompleteAddOp();
       });
 
-  py::class_<framework::TensorArray>(m, "TensorArray")
-      .def("__init__",
-           [](TensorArray &instance) { new (&instance) TensorArray(); })
-      .def("read",
-           [](TensorArray &self, size_t index) { return self.Read(index); })
-      .def("write", [](TensorArray &self, size_t index,
-                       LoDTensor &value) { self.Write(index, value); })
-      .def("write_shared",
-           [](TensorArray &self, size_t index, const LoDTensor &value) {
-             self.WriteShared(index, value);
-           })
-      .def("size", [](TensorArray &self) { return self.size(); })
-      .def("pack",
-           [](TensorArray &self, size_t level,
-              const std::vector<std::vector<size_t>> &meta_info,
-              const std::vector<std::vector<size_t>> &lod) {
-             std::vector<DySeqMeta> meta;
-             for (auto &info : meta_info) {
-               PADDLE_ENFORCE_EQ(info.size(), 3UL);
-               meta.emplace_back(info[0], info[1], info[2]);
-             }
-#ifndef PADDLE_WITH_CUDA
-             return self.Pack(level, meta, lod);
-#else
-             LoD new_lod;
-             new_lod.reserve(lod.size());
-             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             return self.Pack(level, meta, new_lod);
-#endif
-           })
-      .def("unpack",
-           [](TensorArray &self, const LoDTensor &source, int level,
-              bool length_descend) {
-             auto metas = self.Unpack(source, level, length_descend);
-             std::vector<std::vector<size_t>> meta_info;
-             for (auto meta : metas) {
-               meta_info.emplace_back(
-                   std::vector<size_t>({meta.begin, meta.end, meta.ori_idx}));
-             }
-             return meta_info;
-           })
-      .def("stack", [](TensorArray &self) { return self.Stack(); })
-      .def("unstack",
-           [](TensorArray &self, const LoDTensor &source) {
-             return self.Unstack(source);
-           })
-      .def("unstack_shared", [](TensorArray &self, const LoDTensor &source) {
-        return self.UnstackShared(source);
-      });
-
-  py::class_<operators::DynamicRecurrentOp, OperatorBase>(m,
-                                                          "DynamicRecurrentOp")
-      .def_static("create",
-                  [](py::bytes protobin) -> operators::DynamicRecurrentOp * {
-                    OpDesc desc;
-                    PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
-                                   "Cannot parse user input to OpDesc");
-                    PADDLE_ENFORCE(desc.IsInitialized(),
-                                   "User OpDesc is not initialized, reason %s",
-                                   desc.InitializationErrorString());
-                    auto rnn_op = OpRegistry::CreateOp(desc);
-                    return static_cast<operators::DynamicRecurrentOp *>(
-                        rnn_op.release());
-                  })
-      .def("set_step_unit",
-           [](operators::DynamicRecurrentOp &self, const operators::NetOp &net)
-               -> void { self.rnn.SetStepUnit(net.Clone()); })
-      .def("get_state",
-           [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.rnn.state(name); })
-      .def("get_step_input",
-           [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.rnn.step_input(name); })
-      .def("get_step_output",
-           [](operators::DynamicRecurrentOp &self, const std::string &name)
-               -> const TensorArray & { return self.rnn.step_output(name); });
-
   // cond_op
   py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
       .def_static("create",
                   [](py::bytes protobin) -> operators::CondOp * {
-                    OpDesc desc;
+                    proto::OpDesc desc;
                     PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
                                    "Cannot parse user input to OpDesc");
                     PADDLE_ENFORCE(desc.IsInitialized(),
@@ -490,13 +422,16 @@ All parameter, weight, gradient are variables in Paddle.
            });
 
   py::class_<framework::Executor>(m, "Executor")
-      .def(py::init<std::vector<platform::Place> &>())
+      .def(py::init<const platform::Place &>())
       .def("run", &Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);
-  m.def("init_gflags", InitGflags);
+  m.def("init_gflags", framework::InitGflags);
+  m.def("init_glog", framework::InitGLOG);
+  m.def("init_devices", &framework::InitDevices);
 
   m.def("is_compile_gpu", IsCompileGPU);
+
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 
@@ -504,6 +439,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(m);
   BindVarDsec(m);
   BindOpDesc(m);
+  BindConstValue(m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -534,6 +470,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+
+  m.def("nvprof_init", platform::CudaProfilerInit);
+  m.def("nvprof_start", platform::CudaProfilerStart);
+  m.def("nvprof_stop", platform::CudaProfilerStop);
 #endif
 
   return m.ptr();

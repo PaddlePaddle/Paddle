@@ -1,13 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-   http://www.apache.org/licenses/LICENSE-2.0
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <random>
 #include "paddle/framework/op_registry.h"
@@ -57,18 +60,17 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        static_cast<framework::DataType>(ctx.Attr<int>("data_type")),
+        static_cast<framework::proto::DataType>(ctx.Attr<int>("dtype")),
         ctx.device_context());
   }
 };
 
 class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GaussianRandomOpMaker(framework::OpProto* proto,
-                        framework::OpAttrChecker* op_checker)
+  GaussianRandomOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "Output matrix of gaussian random op");
 
@@ -88,10 +90,10 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Random seed of generator."
                  "0 means use system wide seed.")
         .SetDefault(0);
-    AddAttr<int>("data_type",
+    AddAttr<int>("dtype",
                  "(int, default 5(FP32)) "
                  "Output data type.")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
 
     AddComment(R"DOC(
 GaussianRandom Operator.

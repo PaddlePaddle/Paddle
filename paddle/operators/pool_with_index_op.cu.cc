@@ -16,20 +16,28 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     max_pool2d_with_index,
-    ops::MaxPoolWithIndexKernel<paddle::platform::GPUPlace, float, int>,
-    ops::MaxPoolWithIndexKernel<paddle::platform::GPUPlace, double, int>);
-REGISTER_OP_GPU_KERNEL(
+    ops::MaxPoolWithIndexKernel<paddle::platform::CUDADeviceContext, float,
+                                int>,
+    ops::MaxPoolWithIndexKernel<paddle::platform::CUDADeviceContext, double,
+                                int>);
+REGISTER_OP_CUDA_KERNEL(
     max_pool2d_with_index_grad,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::GPUPlace, float, int>,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::GPUPlace, double, int>)
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, float,
+                                    int>,
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, double,
+                                    int>)
 
-REGISTER_OP_GPU_KERNEL(
+REGISTER_OP_CUDA_KERNEL(
     max_pool3d_with_index,
-    ops::MaxPoolWithIndexKernel<paddle::platform::GPUPlace, float, int>,
-    ops::MaxPoolWithIndexKernel<paddle::platform::GPUPlace, double, int>);
-REGISTER_OP_GPU_KERNEL(
+    ops::MaxPoolWithIndexKernel<paddle::platform::CUDADeviceContext, float,
+                                int>,
+    ops::MaxPoolWithIndexKernel<paddle::platform::CUDADeviceContext, double,
+                                int>);
+REGISTER_OP_CUDA_KERNEL(
     max_pool3d_with_index_grad,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::GPUPlace, float, int>,
-    ops::MaxPoolWithIndexGradKernel<paddle::platform::GPUPlace, double, int>)
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, float,
+                                    int>,
+    ops::MaxPoolWithIndexGradKernel<paddle::platform::CUDADeviceContext, double,
+                                    int>)

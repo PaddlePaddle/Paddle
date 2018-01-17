@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import unittest
 import random
 import numpy as np
@@ -20,14 +33,14 @@ class CRFDecoding(object):
         self.w = transition_weights[2:, :]
 
         self.track = np.zeros(
-            (seq_start_positions[-1], self.tag_num), dtype="int32")
+            (seq_start_positions[-1], self.tag_num), dtype="int64")
         self.decoded_path = np.zeros(
-            (seq_start_positions[-1], 1), dtype="int32")
+            (seq_start_positions[-1], 1), dtype="int64")
 
     def _decode_one_sequence(self, decoded_path, x):
         seq_len, tag_num = x.shape
         alpha = np.zeros((seq_len, tag_num), dtype="float64")
-        track = np.zeros((seq_len, tag_num), dtype="int32")
+        track = np.zeros((seq_len, tag_num), dtype="int64")
 
         for i in range(tag_num):
             alpha[0, i] = self.a[i] + x[0, i]
@@ -125,10 +138,10 @@ class TestCRFDecodingOp2(OpTest):
             axis=0)
 
         labels = np.random.randint(
-            low=0, high=TAG_NUM, size=(lod[-1][-1], 1), dtype="int32")
+            low=0, high=TAG_NUM, size=(lod[-1][-1], 1), dtype="int64")
         predicted_labels = np.ones(
-            (lod[-1][-1], 1), dtype="int32") * (TAG_NUM - 1)
-        expected_output = (labels == predicted_labels).astype("int32")
+            (lod[-1][-1], 1), dtype="int64") * (TAG_NUM - 1)
+        expected_output = (labels == predicted_labels).astype("int64")
 
         self.inputs = {
             "Emission": (emission, lod),

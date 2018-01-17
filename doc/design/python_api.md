@@ -279,6 +279,26 @@ class LayerHelper(object):
     return tmp
 ```
 
+### Return value of layer functions
+
+The layer will return a Variable, which is also the output of an operator.  However, outputs of a layer function have more attributes than an operator. There are parameter variables, and their gradient variables need to return. To return them is useful. For example,
+
+1. Users can debug the network by printing parameter gradients.
+2. Users can append attributes to a parameter, such as, `param.stop_gradient=True` will make a parameter stop generate the gradient. We can fix the parameter value during training by using this attribute.
+
+However, it is good to return a Variable for layers, since all layers and operators use Variables as their parameters. We can just append a `param` field and a `grad` field for layer function since the Python is dynamic typing.
+
+The sample usage is
+
+```python
+data = fluid.layers.data(...)
+hidden = fluid.layers.fc(data, ...)
+...
+
+executor.run(fetch_list=[hidden.param, hidden.param.grad], ...)
+```
+
+
 ## Optimizer
 
 [Optimizer Design Doc](./optimizer.md)

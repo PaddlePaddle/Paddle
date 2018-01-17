@@ -1,18 +1,20 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/data_type.h"
+#include "paddle/framework/framework.pb.h"
 
 #include "paddle/memory/memcpy.h"
 #include "paddle/memory/memory.h"
@@ -27,11 +29,11 @@
 namespace paddle {
 namespace framework {
 
-std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+std::ostream &operator<<(std::ostream &os, const LoD &lod) {
   os << "{";
-  for (auto& v : lod) {
+  for (auto &v : lod) {
     os << "{";
-    for (auto& i : v) {
+    for (auto &i : v) {
       os << i << ",";
     }
     os << "}";
@@ -41,19 +43,39 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
   return os;
 }
 
-LoD SliceLevels(const LoD& in, size_t level_begin, size_t level_end) {
-  LoD new_lod;
-  new_lod.reserve(level_end - level_begin);
-  for (size_t i = level_begin; i < level_end; i++) {
-    new_lod.emplace_back(in.at(i));
+std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
+  PADDLE_ENFORCE(t.type().hash_code() == typeid(float).hash_code());
+
+  if (!platform::is_cpu_place(t.place())) {
+    LoDTensor tt;
+    framework::Copy(t, platform::CPUPlace(), &tt);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(t.place());
+    dev_ctx.Wait();
+
+    os << tt;
+    return os;
   }
-  // transform the lowest level to absolute offset.
-  LoD abs_offset_lod = ToAbsOffset(in);
-  new_lod.back() = abs_offset_lod[level_end - 1];
-  return new_lod;
+
+  os << "dim: " << t.dims() << "\n";
+  os << "lod: " << t.lod() << "\n";
+
+  // only print first ten elements
+  int64_t size = t.numel() < 10 ? t.numel() : 10;
+  for (int64_t i = 0; i < size; ++i) {
+    os << t.data<float>()[i] << " ";
+  }
+
+  return os;
 }
 
-LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
+std::string LoDToString(const LoD &lod) {
+  std::ostringstream stream;
+  stream << lod;
+  return stream.str();
+}
+
+LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
                  size_t elem_end) {
   PADDLE_ENFORCE_LT(level, in.size());
   PADDLE_ENFORCE_LT(elem_end, in[level].size());
@@ -64,9 +86,9 @@ LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
   res[0].assign(in[level].begin() + elem_begin,
                 in[level].begin() + elem_end + 1);
   for (size_t lvl = 1; lvl < res.size(); lvl++) {
-    const auto& in_level = in[level + lvl];
-    const auto& above_level = res[lvl - 1];
-    auto& out_level = res[lvl];
+    const auto &in_level = in[level + lvl];
+    const auto &above_level = res[lvl - 1];
+    auto &out_level = res[lvl];
     out_level.assign(in_level.begin() + above_level.front(),
                      in_level.begin() + above_level.back() + 1);
   }
@@ -74,33 +96,33 @@ LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
     // to make the first offset equals 0, all the elements minus the first
     // element
     size_t front = res[lvl].front();
-    for (auto& ele : res[lvl]) {
+    for (auto &ele : res[lvl]) {
       ele -= front;
     }
   }
   return res;
 }
 
-LoD ToAbsOffset(const LoD& in) {
+LoD ToAbsOffset(const LoD &in) {
   // the lowest level stores relative offsets
   if (in.empty() || in.size() == 1) return in;
   LoD result = in;
   for (int level = result.size() - 2; level >= 0; level--) {
-    for (auto& ele : result[level]) {
+    for (auto &ele : result[level]) {
       ele = result[level + 1][ele];
     }
   }
   return result;
 }
 
-bool operator==(const LoD& a, const LoD& b) {
+bool operator==(const LoD &a, const LoD &b) {
   if (a.size() != b.size()) {
     return false;
   }
 
   for (size_t i = 0; i < a.size(); i++) {
-    const auto& a_level = a[i];
-    const auto& b_level = b[i];
+    const auto &a_level = a[i];
+    const auto &b_level = b[i];
     if (a_level.size() != b_level.size()) {
       return false;
     }
@@ -113,45 +135,8 @@ bool operator==(const LoD& a, const LoD& b) {
   return true;
 }
 
-size_t LoDTensor::NumElements(size_t level, size_t idx) const {
-  PADDLE_ENFORCE_LT(level, NumLevels());
-  PADDLE_ENFORCE_LT(idx, NumElements(level));
-  return lod_[level][idx + 1] - lod_[level][idx];
-}
-
-size_t LoDTensor::NumInstancesInElement(size_t level, size_t idx) const {
-  PADDLE_ENFORCE_LT(level, NumLevels());
-  PADDLE_ENFORCE_LT(idx, NumElements(level));
-  auto abs_lod = ToAbsOffset(lod());
-  size_t begin = abs_lod[level][idx];
-  size_t end = abs_lod[level][idx + 1];
-  return end - begin;
-}
-
-void LoDTensor::ShrinkLevels(size_t level_begin, size_t level_end) {
-  auto new_lod = framework::SliceLevels(lod_, level_begin, level_end);
-  lod_ = new_lod;
-}
-
-void LoDTensor::ShrinkInLevel(size_t level, size_t elem_begin,
-                              size_t elem_end) {
-  PADDLE_ENFORCE_LT(level, NumLevels());
-  PADDLE_ENFORCE_LT(elem_begin, NumElements(level));
-  PADDLE_ENFORCE_LT(elem_end, NumElements(level) + 1);
-
-  auto abs_lod = framework::ToAbsOffset(lod());
-  auto new_lod = framework::SliceInLevel(lod_, level, elem_begin, elem_end);
-  lod_ = new_lod;
-
-  // slice the underlying tensor
-  size_t begin = abs_lod[level][elem_begin];
-  size_t end = abs_lod[level][elem_end];
-  PADDLE_ENFORCE_LT(begin, end, "Cannot shrink, the result tensor is empty.");
-  ShareDataWith(Slice(begin, end));
-}
-
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
-LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD& lod, size_t start_idx,
+LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
                                         size_t end_idx, size_t start_level) {
   LoD sub_lod;
 
@@ -170,18 +155,126 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD& lod, size_t start_idx,
   return LoDAndOffset{sub_lod, {start_idx, end_idx}};
 }
 
-void AppendLoD(LoD* lod, const LoD& lod_length) {
+void AppendLoD(LoD *lod, const LoD &lod_length) {
   PADDLE_ENFORCE(
       lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
   if (lod->empty()) {
+    for (size_t i = 0; i < lod_length.size(); ++i) {
+      lod->emplace_back(1, 0);  // size = 1, value = 0;
+    }
     *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
   }
   for (size_t i = 0; i < lod->size(); ++i) {
-    auto& level = (*lod)[i];
+    auto &level = (*lod)[i];
     for (size_t len : lod_length[i]) {
       level.push_back(level.back() + len);
     }
+  }
+}
+
+void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
+                       const platform::DeviceContext &dev_ctx) {
+  {  // the 1st field, uint32_t version for LoDTensor
+    constexpr uint32_t version = 0;
+    os.write(reinterpret_cast<const char *>(&version), sizeof(version));
+  }
+  {
+    // the 2st field, LoD information
+    // uint64_t lod_level
+    // uint64_t lod_level_1 size in byte.
+    // int*     lod_level_1 data
+    // ...
+    auto lod = tensor.lod();
+    uint64_t size = lod.size();
+    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+
+    for (auto &each : lod) {
+      size = each.size() * sizeof(framework::LoD::value_type::value_type);
+      os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+      os.write(reinterpret_cast<const char *>(each.data()),
+               static_cast<std::streamsize>(size));
+    }
+  }
+  // the 3st field, Tensor
+  SerializeToStream(os, static_cast<Tensor>(tensor), dev_ctx);
+}
+
+void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
+                           const platform::DeviceContext &dev_ctx) {
+  {
+    // the 1st field, unit32_t version for LoDTensor
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+  }
+  {
+    // the 2st field, LoD information
+    uint64_t lod_level;
+    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    auto &lod = *tensor->mutable_lod();
+    lod.resize(lod_level);
+    for (uint64_t i = 0; i < lod_level; ++i) {
+      uint64_t size;
+      is.read(reinterpret_cast<char *>(&size), sizeof(size));
+      std::vector<size_t> tmp(size / sizeof(size_t));
+      is.read(reinterpret_cast<char *>(tmp.data()),
+              static_cast<std::streamsize>(size));
+      lod[i] = tmp;
+    }
+  }
+  // the 3st filed, Tensor
+  DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
+}
+
+// TODO(tonyyang-svail): make this function support LoD
+std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
+    const std::vector<platform::Place> places) const {
+  check_memory_size();
+  PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
+  PADDLE_ENFORCE(dims()[0] % places.size() == 0,
+                 "Batch size should be divided by places size");
+
+  std::vector<LoDTensor> lods;
+  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
+    int begin = place_idx * dims()[0] / places.size();
+    int end = (place_idx + 1) * dims()[0] / places.size();
+
+    auto src = Slice(begin, end);
+    auto &dst_place = places[place_idx];
+    LoDTensor dst;
+    framework::Copy(src, dst_place, &dst);
+
+    lods.emplace_back(dst);
+  }
+
+  return lods;
+}
+
+// TODO(tonyyang-svail): make this function support LoD
+void LoDTensor::MergeLoDTensor(
+    const std::vector<const LoDTensor *> &lod_tensors,
+    platform::Place dst_place) {
+  PADDLE_ENFORCE(!lod_tensors.empty());
+  framework::DDim new_dim = lod_tensors[0]->dims();
+  std::type_index new_type = lod_tensors[0]->type();
+  auto new_layout = lod_tensors[0]->layout();
+  for (auto *lod : lod_tensors) {
+    PADDLE_ENFORCE(new_dim == lod->dims());
+    PADDLE_ENFORCE(new_type == lod->type());
+    PADDLE_ENFORCE(new_layout == lod->layout());
+  }
+  new_dim[0] *= lod_tensors.size();
+  Resize(new_dim);
+  set_layout(new_layout);
+
+  mutable_data(dst_place, new_type);
+  int begin = 0;
+  for (auto *src : lod_tensors) {
+    int end = begin + src->dims()[0];
+    auto dst = Slice(begin, end);
+    framework::Copy(*src, dst_place, &dst);
+    begin = end;
   }
 }
 

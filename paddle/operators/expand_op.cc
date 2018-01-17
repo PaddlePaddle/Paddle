@@ -55,7 +55,7 @@ class ExpandOp : public framework::OperatorWithKernel {
 
 class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ExpandOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  ExpandOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "(Tensor, default Tensor<float>) A tensor with rank in [1, 6]."
@@ -130,7 +130,8 @@ class ExpandGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(expand, ops::ExpandOp, ops::ExpandOpMaker, expand_grad,
             ops::ExpandGradOp);
-REGISTER_OP_CPU_KERNEL(expand,
-                       ops::ExpandKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    expand_grad, ops::ExpandGradKernel<paddle::platform::CPUPlace, float>);
+    expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    expand_grad,
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>);

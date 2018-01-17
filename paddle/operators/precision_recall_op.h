@@ -26,7 +26,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 enum StateVariable { TP = 0, FP, TN, FN };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class PrecisionRecallKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

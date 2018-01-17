@@ -100,8 +100,7 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
 
 class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceConvOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  SequenceConvOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
@@ -179,7 +178,10 @@ REGISTER_OP(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
             sequence_conv_grad, ops::SequenceConvGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    sequence_conv, ops::SequenceConvKernel<paddle::platform::CPUPlace, float>);
+    sequence_conv,
+    ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     sequence_conv_grad,
-    ops::SequenceConvGradKernel<paddle::platform::CPUPlace, float>);
+    ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, double>);

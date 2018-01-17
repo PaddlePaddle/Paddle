@@ -59,8 +59,7 @@ class AdadeltaOp : public framework::OperatorWithKernel {
 
 class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdadeltaOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  AdadeltaOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
@@ -92,12 +91,12 @@ for gradient descent.
 
 Adadelta updates are as follows:
 
-$$avgSquaredGradOut = \rho * avgSquaredGrad + (1 - \rho) * grad * grad \break
-paramUpdate =  - $\sqrt{((avgSquaredUpdate + \epsilon) /
-                       (avgSquaredGrad_out + \epsilon))}$ * grad \break
-avgSquaredUpdateOut = \rho * avgSquaredUpdate + (1 - \rho) *
-                                  {(paramUpdate)}^2 \break
-paramOut = param + paramUpdate$$
+$$
+avg\_squared\_grad\_out = \rho * avg\_squared\_grad + (1 - \rho) * grad * grad \\
+param\_update =  - \sqrt{\frac{avg\_squared\_update + \epsilon}{avg\_squared\_grad\_out + \epsilon}} * grad \\
+avg\_squared\_update\_out = \rho * avg\_squared\_update + (1 - \rho) * {param\_update}^2 \\
+param\_out = param + param\_update
+$$
 
 )DOC");
   }
@@ -109,4 +108,5 @@ paramOut = param + paramUpdate$$
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adadelta, ops::AdadeltaOp, ops::AdadeltaOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    adadelta, ops::AdadeltaOpKernel<paddle::platform::CPUPlace, float>);
+    adadelta, ops::AdadeltaOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::AdadeltaOpKernel<paddle::platform::CPUDeviceContext, double>);

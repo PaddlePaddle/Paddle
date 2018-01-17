@@ -45,6 +45,8 @@ bool PoolLayer::init(const LayerMap& layerMap,
   strideY_ = conf.has_stride_y() ? conf.stride_y() : conf.stride();
   confPaddingY_ = conf.has_padding_y() ? conf.padding_y() : conf.padding();
   outputY_ = conf.has_output_y() ? conf.output_y() : conf.output_x();
+
+  excludeMode_ = conf.has_exclude_mode() ? conf.exclude_mode() : true;
   return true;
 }
 

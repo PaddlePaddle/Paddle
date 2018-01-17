@@ -26,12 +26,21 @@ ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${GLOG_INCLUDE_DIR})
 
+IF(ANDROID AND ${CMAKE_SYSTEM_VERSION} VERSION_LESS "21")
+  # Using the unofficial glog for Android API < 21
+  SET(GLOG_REPOSITORY "https://github.com/Xreki/glog.git")
+  SET(GLOG_TAG "8a547150548b284382ccb6582408e9140ff2bea8")
+ELSE()
+  SET(GLOG_REPOSITORY "https://github.com/google/glog.git")
+  SET(GLOG_TAG "v0.3.5")
+ENDIF()
+
 ExternalProject_Add(
     extern_glog
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS gflags
-    GIT_REPOSITORY  "https://github.com/google/glog.git"
-    GIT_TAG         v0.3.5
+    GIT_REPOSITORY  ${GLOG_REPOSITORY}
+    GIT_TAG         ${GLOG_TAG}
     PREFIX          ${GLOG_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

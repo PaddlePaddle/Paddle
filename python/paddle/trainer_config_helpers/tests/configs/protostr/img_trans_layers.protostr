@@ -65,6 +65,7 @@ layers {
   height: 256
   width: 256
   depth: 1
+  epsilon: 1e-05
 }
 layers {
   name: "__crmnorm_0__"

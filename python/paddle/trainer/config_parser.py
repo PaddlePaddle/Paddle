@@ -1233,7 +1233,7 @@ def parse_bilinear(bilinear, input_layer_name, bilinear_conf):
     bilinear_conf.out_size_y = bilinear.out_size_y
 
 
-def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
+def parse_pool(pool, input_layer_name, pool_conf, ceil_mode, exclude_mode):
     pool_conf.pool_type = pool.pool_type
     config_assert(pool.pool_type in [
         'max-projection', 'avg-projection', 'max-pool-with-mask', 'cudnn-max-pool', 'cudnn-avg-pool'
@@ -1262,6 +1262,8 @@ def parse_pool(pool, input_layer_name, pool_conf, ceil_mode):
     pool_conf.output_y = cnn_output_size(pool_conf.img_size_y, pool_conf.size_y,
                                          pool_conf.padding_y,
                                          pool_conf.stride_y, not ceil_mode)
+    if exclude_mode != None:
+        pool_conf.exclude_mode = exclude_mode
 
 
 def parse_pool3d(pool, input_layer_name, pool_conf, ceil_mode):
@@ -2037,13 +2039,20 @@ class ParameterReluLayer(LayerBase):
     def __init__(self, name, inputs, partial_sum=1, **args):
         super(ParameterReluLayer, self).__init__(
             name, self.layer_type, 0, inputs=inputs, **args)
+
         input_layer = self.get_input_layer(0)
         config_assert(len(self.inputs) == 1, "prelu layer has only one input.")
         config_assert(input_layer.size % partial_sum == 0,
                       "a wrong setting for partial_sum")
+
+        dims = [1, input_layer.size / partial_sum]
         self.set_layer_size(input_layer.size)
         self.config.partial_sum = partial_sum
-        self.create_input_parameter(0, input_layer.size / partial_sum)
+        self.create_input_parameter(0, input_layer.size / partial_sum, dims)
+
+        self.set_layer_height_width(self.get_input_layer(0).height, \
+                                        self.get_input_layer(0).width)
+        self.set_layer_depth(self.get_input_layer(0).depth)
 
 
 @config_layer('conv')
@@ -2280,11 +2289,17 @@ class Conv3DLayer(Conv3DLayerBase):
 class NormLayer(LayerBase):
     def __init__(self, name, inputs, **xargs):
         super(NormLayer, self).__init__(name, 'norm', 0, inputs=inputs, **xargs)
+        use_mkldnn = bool(int(g_command_config_args.get("use_mkldnn", 0)))
+        use_mkldnn = True if use_mkldnn and self.inputs[
+            0].norm.norm_type == 'cmrnorm-projection' else False
+        self.config.type = 'mkldnn_lrn' if use_mkldnn else self.config.type
         for input_index in xrange(len(self.inputs)):
             input_layer = self.get_input_layer(input_index)
             norm_conf = self.config.inputs[input_index].norm_conf
             parse_norm(self.inputs[input_index].norm, input_layer.name,
                        norm_conf)
+            norm_conf.scale = self.inputs[
+                input_index].norm.scale if use_mkldnn else norm_conf.scale
             self.set_cnn_layer(name, norm_conf.output_y, norm_conf.output_x,
                                norm_conf.channels, False)
             if norm_conf.norm_type == "cross-channel-norm":
@@ -2296,7 +2311,8 @@ class NormLayer(LayerBase):
 class PoolLayer(LayerBase):
     layer_type = 'pool'
 
-    def __init__(self, name, inputs, ceil_mode=True, **xargs):
+    def __init__(self, name, inputs, ceil_mode=True, exclude_mode=None,
+                 **xargs):
         use_mkldnn = int(g_command_config_args.get("use_mkldnn", 0))
         if self.layer_type == "mkldnn_pool":
             config_assert(use_mkldnn, "mkldnn_pool only support MKLDNN")
@@ -2307,7 +2323,7 @@ class PoolLayer(LayerBase):
             input_layer = self.get_input_layer(input_index)
             pool_conf = self.config.inputs[input_index].pool_conf
             parse_pool(self.inputs[input_index].pool, input_layer.name,
-                       pool_conf, ceil_mode)
+                       pool_conf, ceil_mode, exclude_mode)
             self.set_cnn_layer(name, pool_conf.output_y, pool_conf.output_x,
                                pool_conf.channels)
 
@@ -2393,6 +2409,14 @@ class CropLayer(LayerBase):
         image_conf.img_size_y = input_layer.height
         image_conf.channels = input_layer.size / (input_layer.width *
                                                   input_layer.height)
+        # only support for 4-dims inputs and NCHW order
+        if (len(self.config.inputs) == 2):
+            self.set_layer_height_width(
+                self.get_input_layer(1).height, self.get_input_layer(1).width)
+            self.set_layer_size(self.get_input_layer(1).size)
+        else:
+            self.set_layer_height_width(shape[-2], shape[-1])
+            self.set_layer_size(reduce(lambda x, y: x * y, shape[1:]))
 
 
 @config_layer('batch_norm')
@@ -2405,6 +2429,7 @@ class BatchNormLayer(LayerBase):
                  bias=True,
                  img3D=False,
                  use_global_stats=True,
+                 epsilon=1e-5,
                  moving_average_fraction=0.9,
                  batch_norm_type=None,
                  mean_var_names=None,
@@ -2453,6 +2478,9 @@ class BatchNormLayer(LayerBase):
             self.config.use_global_stats = use_global_stats
         if moving_average_fraction is not None:
             self.config.moving_average_fraction = moving_average_fraction
+        if epsilon is not None:
+            assert epsilon >= 1e-5, "epsilon must be no less than 1e-5."
+            self.config.epsilon = epsilon
 
         input_layer = self.get_input_layer(0)
         image_conf = self.config.inputs[0].image_conf
@@ -2787,19 +2815,18 @@ class AddToLayer(LayerBase):
             name, self.layer_type, 0, inputs=inputs, **xargs)
         config_assert(len(inputs) > 0, 'inputs cannot be empty for AddToLayer')
 
-        if len(self.inputs) > 1:
-            for input_index in xrange(len(self.inputs)):
-                assert self.get_input_layer(0).height == self.get_input_layer(
-                    input_index).height
-                assert self.get_input_layer(0).width == self.get_input_layer(
-                    input_index).width
-                assert self.get_input_layer(0).depth == self.get_input_layer(
-                    input_index).depth
+        layer_size = self.get_input_layer(0).size
+        # To reserve heght, width, depth.
+        layer_with_hwc = self.get_input_layer(0)
+        for input_index in xrange(len(self.inputs)):
+            input_layer = self.get_input_layer(input_index)
+            assert layer_size == input_layer.size
+            if input_layer.height and input_layer.height and input_layer.height:
+                layer_with_hwc = input_layer
 
-        self.set_layer_size(self.get_input_layer(0).size)
-        self.set_layer_height_width(self.get_input_layer(0).height, \
-                                        self.get_input_layer(0).width)
-        self.set_layer_depth(self.get_input_layer(0).depth)
+        self.set_layer_size(layer_with_hwc.size)
+        self.set_layer_height_width(layer_with_hwc.height, layer_with_hwc.width)
+        self.set_layer_depth(layer_with_hwc.depth)
         self.create_bias_parameter(bias, self.config.size)
 
 
@@ -3595,8 +3622,13 @@ class ConcatenateLayer2(LayerBase):
 
 @config_layer('recurrent')
 class RecurrentLayer(LayerBase):
+    layer_type = 'recurrent'
+
     def __init__(self, name, inputs, reversed=False, bias=True, **xargs):
-        super(RecurrentLayer, self).__init__(name, 'recurrent', 0, inputs,
+        use_mkl_packed = bool(
+            int(g_command_config_args.get("use_mkl_packed", 0)))
+        self.layer_type = 'mkl_packed_recurrent' if use_mkl_packed else 'recurrent'
+        super(RecurrentLayer, self).__init__(name, self.layer_type, 0, inputs,
                                              **xargs)
         config_assert(len(self.inputs) == 1, 'RecurrentLayer must have 1 input')
         input_layer = self.get_input_layer(0)
@@ -3839,6 +3871,26 @@ class SwitchOrderLayer(LayerBase):
             name, 'switch_order', 0, inputs=inputs, **xargs)
         self.config.reshape_conf.height_axis.extend(reshape['height'])
         self.config.reshape_conf.width_axis.extend(reshape['width'])
+        input_layer = self.get_input_layer(0)
+        if reshape is None:
+            self.set_layer_size(input_layer.size)
+        else:
+            in_h = input_layer.height
+            in_w = input_layer.width
+            out_dims = None
+            if input_layer.has_depth():
+                in_d = input_layer.depth
+                in_c = input_layer.size / in_h / in_w / in_d
+                # batch_size, depth, height, width, channel
+                out_dims = [0, in_d, in_h, in_w, in_c]
+            else:
+                in_c = input_layer.size / in_h / in_w
+                # batch_size, height, width, channel
+                out_dims = [0, in_h, in_w, in_c]
+            # Because (reshape['width'][0] > 0) always be true.
+            # So out_dims[0] won't be used.
+            size = reduce(lambda x, y: x * y, out_dims[reshape['width'][0]:])
+            self.set_layer_size(size)
 
 
 @config_layer('scale_sub_region')
@@ -3858,6 +3910,21 @@ class ScaleSubRegionLayer(LayerBase):
                                                   input_layer.height)
         self.set_cnn_layer(name, image_conf.img_size_y, image_conf.img_size,
                            image_conf.channels)
+
+
+@config_layer('factorization_machine')
+class FactorizationMachineLayer(LayerBase):
+    def __init__(self, name, inputs, factor_size, **xargs):
+        super(FactorizationMachineLayer, self).__init__(
+            name, 'factorization_machine', size=1, inputs=inputs, **xargs)
+        config_assert(
+            len(self.inputs) == 1,
+            'factorization machine layer must have one and only one input.')
+        self.config.factor_size = factor_size
+        input_layer = self.get_input_layer(0)
+        psize = input_layer.size * factor_size
+        dims = [input_layer.size, factor_size]
+        self.create_input_parameter(0, psize, dims)
 
 
 # Deprecated, use a new layer specific class instead

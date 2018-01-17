@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/scale_op.h"
 #include "paddle/operators/net_op.h"
@@ -38,7 +38,7 @@ class ScaleOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ScaleOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  ScaleOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor of scale operator.");
     AddOutput("Out", "(Tensor) Output tensor of scale operator.");
@@ -58,13 +58,13 @@ class ScaleGradMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto *grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
     grad_op->SetType("scale");
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttr("scale", GetAttr("scale"));
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -75,6 +75,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker<float>,
                   ops::ScaleGradMaker);
-REGISTER_OP_CPU_KERNEL(scale,
-                       ops::ScaleKernel<paddle::platform::CPUPlace, float>,
-                       ops::ScaleKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(
+    scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);

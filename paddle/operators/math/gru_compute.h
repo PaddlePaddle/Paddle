@@ -11,7 +11,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/operators/math/lstm_compute.h"
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 
@@ -19,41 +19,40 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-// TODO(guosheng): refine code style in gru_compute
 template <typename T>
-struct hl_gru_value {
-  T *gateWeight;
-  T *stateWeight;
-  T *gateValue;
-  T *resetOutputValue;
-  T *outputValue;
-  T *prevOutValue;
+struct GRUMetaValue {
+  T *gate_weight;
+  T *state_weight;
+  T *gate_value;
+  T *reset_output_value;
+  T *output_value;
+  T *prev_out_value;
 };
 
 template <typename T>
-struct hl_gru_grad {
-  T *gateWeightGrad;
-  T *stateWeightGrad;
-  T *gateGrad;
-  T *resetOutputGrad;
-  T *outputGrad;
-  T *prevOutGrad;
+struct GRUMetaGrad {
+  T *gate_weight_grad;
+  T *state_weight_grad;
+  T *gate_grad;
+  T *reset_output_grad;
+  T *output_grad;
+  T *prev_out_grad;
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct GRUUnitFunctor {
-  static void compute(const platform::DeviceContext &context,
-                      hl_gru_value<T> value, int frameSize, int batchSize,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate);
+  static void compute(const DeviceContext &context, GRUMetaValue<T> value,
+                      int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate);
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 struct GRUUnitGradFunctor {
-  static void compute(const platform::DeviceContext &context,
-                      hl_gru_value<T> value, hl_gru_grad<T> grad, int frameSize,
-                      int batchSize, activation_mode_t active_node,
-                      activation_mode_t active_gate);
+  static void compute(const DeviceContext &context, GRUMetaValue<T> value,
+                      GRUMetaGrad<T> grad, int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate);
 };
 
 }  // namespace math

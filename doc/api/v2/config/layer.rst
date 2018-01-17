@@ -54,7 +54,7 @@ img_conv
 
 ..  _api_v2.layer_context_projection:
 
-context_projection 
+context_projection
 ------------------
 ..  autoclass:: paddle.v2.layer.context_projection
     :noindex:
@@ -70,7 +70,7 @@ Image Pooling Layer
 img_pool
 --------
 ..  autoclass:: paddle.v2.layer.img_pool
-    :noindex:   
+    :noindex:
 
 spp
 ---
@@ -104,7 +104,7 @@ sum_to_one_norm
 ---------------
 ..  autoclass:: paddle.v2.layer.sum_to_one_norm
     :noindex:
-    
+
 cross_channel_norm
 ------------------
 ..  autoclass:: paddle.v2.layer.cross_channel_norm
@@ -114,7 +114,7 @@ row_l2_norm
 -----------
 ..  autoclass:: paddle.v2.layer.row_l2_norm
     :noindex:
-    
+
 Recurrent Layers
 ================
 
@@ -250,6 +250,11 @@ last_seq
 first_seq
 ---------
 ..  autoclass:: paddle.v2.layer.first_seq
+    :noindex:
+
+sub_seq
+---------
+..  autoclass:: paddle.v2.layer.sub_seq
     :noindex:
 
 concat
@@ -415,6 +420,13 @@ multiplex
 ..  autoclass:: paddle.v2.layer.multiplex
     :noindex:
 
+Factorization Machine Layer
+============================
+
+factorization_machine
+---------------------
+..  autoclass:: paddle.v2.layer.factorization_machine
+    :noindex:
 
 Slicing and Joining Layers
 ==========================
@@ -460,7 +472,7 @@ lambda_cost
     :noindex:
 
 square_error_cost
---------
+-----------------
 ..  autoclass:: paddle.v2.layer.square_error_cost
     :noindex:
 
@@ -526,7 +538,7 @@ Miscs
 =====
 
 dropout
---------------
+--------
 ..  autoclass:: paddle.v2.layer.dropout
     :noindex:
 

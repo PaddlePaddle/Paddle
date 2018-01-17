@@ -108,21 +108,21 @@ static py::bytes SerializeMessage(T &self) {
 
 // Bind Methods
 void BindProgramDesc(py::module &m) {
-  py::class_<ProgramDescBind>(m, "ProgramDesc", "")
+  py::class_<ProgramDesc>(m, "ProgramDesc", "")
       .def(py::init<>())
       .def("__init__",
-           [](ProgramDescBind &self, const ProgramDescBind &other) {
-             new (&self) ProgramDescBind(other);
+           [](ProgramDesc &self, const ProgramDesc &other) {
+             new (&self) ProgramDesc(other);
            })
       .def("__init__",
-           [](ProgramDescBind &self, const py::bytes &binary_str) {
+           [](ProgramDesc &self, const py::bytes &binary_str) {
              std::string str(binary_str);
-             new (&self) ProgramDescBind(str);
+             new (&self) ProgramDesc(str);
            })
-      .def("append_block", &ProgramDescBind::AppendBlock,
+      .def("append_block", &ProgramDesc::AppendBlock,
            py::return_value_policy::reference)
       .def("append_backward",
-           [](ProgramDescBind &program_desc, const VarDescBind &target,
+           [](ProgramDesc &program_desc, const VarDesc &target,
               const std::unordered_set<std::string> &no_grad_vars) {
              ParamGradInfoMap param_grad_map =
                  AppendBackward(program_desc, target, no_grad_vars);
@@ -138,13 +138,13 @@ void BindProgramDesc(py::module &m) {
              }
              return retv;
            })
-      .def("block", &ProgramDescBind::MutableBlock,
+      .def("block", &ProgramDesc::MutableBlock,
            py::return_value_policy::reference)
-      .def("num_blocks", &ProgramDescBind::Size)
-      .def("serialize_to_string", SerializeMessage<ProgramDescBind>)
+      .def("num_blocks", &ProgramDesc::Size)
+      .def("serialize_to_string", SerializeMessage<ProgramDesc>)
       .def("parse_from_string",
-           [](ProgramDescBind &program_desc, const std::string &data) {
-             ProgramDesc *desc = program_desc.Proto();
+           [](ProgramDesc &program_desc, const std::string &data) {
+             proto::ProgramDesc *desc = program_desc.Proto();
              PADDLE_ENFORCE(desc->ParseFromString(data),
                             "Fail to parse ProgramDesc from string. This could "
                             "be a bug of Paddle.");
@@ -152,109 +152,135 @@ void BindProgramDesc(py::module &m) {
 }
 
 void BindBlockDesc(py::module &m) {
-  py::class_<BlockDescBind>(m, "BlockDesc", "")
-      .def_property_readonly("id", &BlockDescBind::ID)
-      .def_property_readonly("parent", &BlockDescBind::Parent)
-      .def("append_op", &BlockDescBind::AppendOp,
+  py::class_<BlockDesc>(m, "BlockDesc", "")
+      .def_property_readonly("id", &BlockDesc::ID)
+      .def_property_readonly("parent", &BlockDesc::Parent)
+      .def("append_op", &BlockDesc::AppendOp,
            py::return_value_policy::reference)
-      .def("prepend_op", &BlockDescBind::PrependOp,
+      .def("prepend_op", &BlockDesc::PrependOp,
            py::return_value_policy::reference)
+      .def("remove_op", &BlockDesc::RemoveOp)
       .def("var",
-           [](BlockDescBind &self, py::bytes byte_name) {
+           [](BlockDesc &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.Var(name);
            },
            py::return_value_policy::reference)
       .def("has_var",
-           [](BlockDescBind &self, py::bytes byte_name) {
+           [](BlockDesc &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.HasVar(name);
            })
+      .def("has_var_recursive",
+           [](BlockDesc &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.HasVarRecursive(name);
+           })
       .def("find_var",
-           [](BlockDescBind &self, py::bytes byte_name) {
+           [](BlockDesc &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.FindVar(name);
            },
            py::return_value_policy::reference)
-      .def("all_vars", &BlockDescBind::AllVars,
+      .def("find_var_recursive",
+           [](BlockDesc &self, py::bytes byte_name) {
+             std::string name = byte_name;
+             return self.FindVarRecursive(name);
+           },
            py::return_value_policy::reference)
-      .def("op_size", &BlockDescBind::OpSize)
-      .def("op", &BlockDescBind::Op, py::return_value_policy::reference)
-      .def("serialize_to_string", SerializeMessage<BlockDescBind>);
+      .def("all_vars", &BlockDesc::AllVars, py::return_value_policy::reference)
+      .def("op_size", &BlockDesc::OpSize)
+      .def("op", &BlockDesc::Op, py::return_value_policy::reference)
+      .def("serialize_to_string", SerializeMessage<BlockDesc>);
 }
 
 void BindVarDsec(py::module &m) {
-  py::enum_<DataType>(m, "DataType", "")
-      .value("BOOL", DataType::BOOL)
-      .value("INT16", DataType::INT16)
-      .value("INT32", DataType::INT32)
-      .value("INT64", DataType::INT64)
-      .value("FP16", DataType::FP16)
-      .value("FP32", DataType::FP32)
-      .value("FP64", DataType::FP64);
+  py::enum_<proto::DataType>(m, "DataType", "")
+      .value("BOOL", proto::DataType::BOOL)
+      .value("INT16", proto::DataType::INT16)
+      .value("INT32", proto::DataType::INT32)
+      .value("INT64", proto::DataType::INT64)
+      .value("FP16", proto::DataType::FP16)
+      .value("FP32", proto::DataType::FP32)
+      .value("FP64", proto::DataType::FP64);
 
-  py::class_<VarDescBind> var_desc(m, "VarDesc", "");
+  py::class_<VarDesc> var_desc(m, "VarDesc", "");
   var_desc
       .def("name",
-           [](const VarDescBind &self) {
+           [](const VarDesc &self) {
              py::bytes name = self.Name();
              return name;
            },
            py::return_value_policy::reference)
-      .def("set_shape", &VarDescBind::SetShape)
-      .def("set_data_type", &VarDescBind::SetDataType)
-      .def("shape", &VarDescBind::Shape, py::return_value_policy::reference)
-      .def("data_type", &VarDescBind::GetDataType)
-      .def("lod_level", &VarDescBind::GetLodLevel)
-      .def("set_lod_level", &VarDescBind::SetLoDLevel)
-      .def("type", &VarDescBind::GetType)
-      .def("set_type", &VarDescBind::SetType)
-      .def("serialize_to_string", SerializeMessage<VarDescBind>)
-      .def("persistable", &VarDescBind::Persistable)
-      .def("set_persistable", &VarDescBind::SetPersistable);
+      .def("set_shape", &VarDesc::SetShape)
+      .def("set_dtype", &VarDesc::SetDataType)
+      .def("shape", &VarDesc::Shape, py::return_value_policy::reference)
+      .def("dtype", &VarDesc::GetDataType, py::return_value_policy::reference)
+      .def("lod_level", &VarDesc::GetLoDLevel)
+      .def("set_lod_level", &VarDesc::SetLoDLevel)
+      .def("type", &VarDesc::GetType)
+      .def("set_type", &VarDesc::SetType)
+      .def("serialize_to_string", SerializeMessage<VarDesc>)
+      .def("persistable", &VarDesc::Persistable)
+      .def("set_persistable", &VarDesc::SetPersistable);
 
-  py::enum_<VarDesc::VarType>(var_desc, "VarType", "")
-      .value("LOD_TENSOR", VarDesc::LOD_TENSOR)
-      .value("SELECTED_ROWS", VarDesc::SELECTED_ROWS)
-      .value("FEED_MINIBATCH", VarDesc::FEED_MINIBATCH)
-      .value("FETCH_LIST", VarDesc::FETCH_LIST)
-      .value("STEP_SCOPES", VarDesc::STEP_SCOPES)
-      .value("LOD_RANK_TABLE", VarDesc::LOD_RANK_TABLE)
-      .value("LOD_TENSOR_ARRAY", VarDesc::LOD_TENSOR_ARRAY);
+  py::enum_<proto::VarDesc::VarType>(var_desc, "VarType", "")
+      .value("LOD_TENSOR", proto::VarDesc::LOD_TENSOR)
+      .value("SELECTED_ROWS", proto::VarDesc::SELECTED_ROWS)
+      .value("FEED_MINIBATCH", proto::VarDesc::FEED_MINIBATCH)
+      .value("FETCH_LIST", proto::VarDesc::FETCH_LIST)
+      .value("STEP_SCOPES", proto::VarDesc::STEP_SCOPES)
+      .value("LOD_RANK_TABLE", proto::VarDesc::LOD_RANK_TABLE)
+      .value("LOD_TENSOR_ARRAY", proto::VarDesc::LOD_TENSOR_ARRAY)
+      .value("PLACE_LIST", proto::VarDesc::PLACE_LIST);
 }
 
 void BindOpDesc(py::module &m) {
-  py::enum_<AttrType>(m, "AttrType", "")
-      .value("INT", AttrType::INT)
-      .value("INTS", AttrType::INTS)
-      .value("FLOAT", AttrType::FLOAT)
-      .value("FLOATS", AttrType::FLOATS)
-      .value("STRING", AttrType::STRING)
-      .value("STRINGS", AttrType::STRINGS)
-      .value("BOOL", AttrType::BOOLEAN)
-      .value("BOOLS", AttrType::BOOLEANS)
-      .value("BLOCK", AttrType::BLOCK);
+  py::enum_<proto::AttrType>(m, "AttrType", "")
+      .value("INT", proto::AttrType::INT)
+      .value("INTS", proto::AttrType::INTS)
+      .value("FLOAT", proto::AttrType::FLOAT)
+      .value("FLOATS", proto::AttrType::FLOATS)
+      .value("STRING", proto::AttrType::STRING)
+      .value("STRINGS", proto::AttrType::STRINGS)
+      .value("BOOL", proto::AttrType::BOOLEAN)
+      .value("BOOLS", proto::AttrType::BOOLEANS)
+      .value("BLOCK", proto::AttrType::BLOCK);
 
-  py::class_<OpDescBind> op_desc(m, "OpDesc", "");
-  op_desc.def("type", &OpDescBind::Type)
-      .def("set_type", &OpDescBind::SetType)
-      .def("input", &OpDescBind::Input)
-      .def("input_names", &OpDescBind::InputNames)
-      .def("set_input", &OpDescBind::SetInput)
-      .def("output", &OpDescBind::Output)
-      .def("output_names", &OpDescBind::OutputNames)
-      .def("set_output", &OpDescBind::SetOutput)
-      .def("has_attr", &OpDescBind::HasAttr)
-      .def("attr_type", &OpDescBind::GetAttrType)
-      .def("attr_names", &OpDescBind::AttrNames)
-      .def("set_attr", &OpDescBind::SetAttr)
-      .def("attr", &OpDescBind::GetAttr)
-      .def("set_block_attr", &OpDescBind::SetBlockAttr)
-      .def("block_attr", &OpDescBind::GetBlockAttr)
-      .def("check_attrs", &OpDescBind::CheckAttrs)
-      .def("infer_shape", &OpDescBind::InferShape)
-      .def("infer_var_type", &OpDescBind::InferVarType)
-      .def("serialize_to_string", SerializeMessage<OpDescBind>);
+  py::class_<OpDesc> op_desc(m, "OpDesc", "");
+  op_desc
+      .def("__init__", [](OpDesc &self) { new (&self) OpDesc(); },
+           py::return_value_policy::reference)
+      .def("copy_from", &OpDesc::CopyFrom)
+      .def("type", &OpDesc::Type)
+      .def("set_type", &OpDesc::SetType)
+      .def("input", &OpDesc::Input)
+      .def("input_names", &OpDesc::InputNames)
+      .def("output", &OpDesc::Output)
+      .def("output_names", &OpDesc::OutputNames)
+      .def("set_input", &OpDesc::SetInput)
+      .def("set_output", &OpDesc::SetOutput)
+      .def("input_arg_names", &OpDesc::InputArgumentNames)
+      .def("output_arg_names", &OpDesc::OutputArgumentNames)
+      .def("rename_input", &OpDesc::RenameInput)
+      .def("rename_output", &OpDesc::RenameOutput)
+      .def("has_attr", &OpDesc::HasAttr)
+      .def("attr_type", &OpDesc::GetAttrType)
+      .def("attr_names", &OpDesc::AttrNames)
+      .def("set_attr", &OpDesc::SetAttr)
+      .def("attr", &OpDesc::GetAttr)
+      .def("set_block_attr", &OpDesc::SetBlockAttr)
+      .def("set_serialized_attr",
+           [](OpDesc &self, const std::string &name,
+              const py::bytes &seriralized) {
+             std::string ser(seriralized);
+             self.SetAttr(name, ser);
+           })
+      .def("block_attr", &OpDesc::GetBlockAttr)
+      .def("check_attrs", &OpDesc::CheckAttrs)
+      .def("infer_shape", &OpDesc::InferShape)
+      .def("infer_var_type", &OpDesc::InferVarType)
+      .def("serialize_to_string", SerializeMessage<OpDesc>);
 }
 
 }  // namespace pybind

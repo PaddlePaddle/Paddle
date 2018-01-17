@@ -38,6 +38,7 @@ UCI_TEST_DATA = None
 URL_MODEL = 'https://github.com/PaddlePaddle/book/raw/develop/01.fit_a_line/fit_a_line.tar'
 MD5_MODEL = '52fc3da8ef3937822fcdd87ee05c0c9b'
 
+
 def feature_range(maximums, minimums):
     import matplotlib
     matplotlib.use('Agg')
@@ -114,7 +115,8 @@ def test():
 
 
 def model():
-    tar_file = paddle.v2.dataset.common.download(URL_MODEL, 'fit_a_line.tar', MD5_MODEL)
+    tar_file = paddle.v2.dataset.common.download(URL_MODEL, 'fit_a_line.tar',
+                                                 MD5_MODEL)
     with open(tar_file, 'r') as f:
         parameters = Parameters.from_tar(f)
     return parameters

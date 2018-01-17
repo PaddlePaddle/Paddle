@@ -130,7 +130,7 @@ class MatMulOp : public framework::OperatorWithKernel {
 
 class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MatMulOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  MatMulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The first input of MatMul op");
     AddInput("Y", "The second input of MatMul op");
@@ -206,7 +206,8 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(matmul, ops::MatMulOp, ops::MatMulOpMaker, matmul_grad,
             ops::MatMulOpGrad);
-REGISTER_OP_CPU_KERNEL(matmul,
-                       ops::MatMulKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    matmul_grad, ops::MatMulGradKernel<paddle::platform::CPUPlace, float>);
+    matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    matmul_grad,
+    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>);

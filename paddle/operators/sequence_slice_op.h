@@ -26,7 +26,7 @@ using LoD = framework::LoD;
 
 template <typename T>
 inline LoD SequenceSliceLoD(const T& in, const int64_t* offset_data,
-                           const int64_t* length_data) {
+                            const int64_t* length_data) {
   auto out_lod = in.lod();
   size_t lod_offset = 0;
 
@@ -34,12 +34,12 @@ inline LoD SequenceSliceLoD(const T& in, const int64_t* offset_data,
   out_lod[0][0] = 0;
   for (size_t i = 0; i < n; ++i) {
     lod_offset += length_data[i];
-    out_lod[0][i+1] = lod_offset;
+    out_lod[0][i + 1] = lod_offset;
   }
   return out_lod;
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceSliceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -51,14 +51,13 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     auto lod = in->lod();
     auto n = lod[0].size() - 1;
 
-    PADDLE_ENFORCE_EQ(lod.size(), 1UL,
-                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(
         n, static_cast<size_t>(length->dims()[0]),
-        "The size of input-sequence and length-array should be the same")
+        "The size of input-sequence and length-array should be the same");
     PADDLE_ENFORCE_EQ(
         n, static_cast<size_t>(offset->dims()[0]),
-        "The size of input-sequence and offset-array should be the same")
+        "The size of input-sequence and offset-array should be the same");
 
     const int64_t* offset_data = offset->data<int64_t>();
     const int64_t* length_data = length->data<int64_t>();
@@ -67,23 +66,23 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
-      offset_cpu.CopyFrom(*offset, platform::CPUPlace(), ctx.device_context());
+      framework::Copy(*offset, platform::CPUPlace(), ctx.device_context(),
+                      &offset_cpu);
       offset_data = offset_cpu.data<int64_t>();
 
       length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
-      length_cpu.CopyFrom(*length, platform::CPUPlace(), ctx.device_context());
+      framework::Copy(*length, platform::CPUPlace(), ctx.device_context(),
+                      &length_cpu);
       length_data = length_cpu.data<int64_t>();
     }
 
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_LT(0, offset_data[i],
-                "The offset[%d] must greater than zero.", i)
+                        "The offset[%d] must greater than zero.", i);
       PADDLE_ENFORCE_LT(0, length_data[i],
-                "The length[%d] must greater than zero.", i)
-      PADDLE_ENFORCE_LT(
-          lod[0][i] + offset_data[i] + length_data[i],
-          lod[0][i + 1],
-          "The target tensor's length overflow.")
+                        "The length[%d] must greater than zero.", i);
+      PADDLE_ENFORCE_LT(lod[0][i] + offset_data[i] + length_data[i],
+                        lod[0][i + 1], "The target tensor's length overflow.");
     }
 
     out->mutable_data<T>(ctx.GetPlace());
@@ -98,20 +97,18 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     size_t out_offset = 0;
     for (size_t i = 0; i < n; ++i) {
-      Tensor in_t =
-          in->Slice(static_cast<int>(lod[0][i] + offset_data[i]),
-                    static_cast<int>(lod[0][i] + offset_data[i] +
-                                     length_data[i]));
+      Tensor in_t = in->Slice(
+          static_cast<int>(lod[0][i] + offset_data[i]),
+          static_cast<int>(lod[0][i] + offset_data[i] + length_data[i]));
 
-      StridedMemcpy<T>(ctx.device_context(), in_t.data<T>(),
-                       in_stride, in_t.dims(), out_stride,
-                       out->data<T>() + out_offset);
+      StridedMemcpy<T>(ctx.device_context(), in_t.data<T>(), in_stride,
+                       in_t.dims(), out_stride, out->data<T>() + out_offset);
       out_offset += length_data[i] * in_stride[0];
     }
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -130,11 +127,13 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
-      offset_cpu.CopyFrom(*offset, platform::CPUPlace(), ctx.device_context());
+      framework::Copy(*offset, platform::CPUPlace(), ctx.device_context(),
+                      &offset_cpu);
       offset_data = offset_cpu.data<int64_t>();
 
       length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
-      length_cpu.CopyFrom(*length, platform::CPUPlace(), ctx.device_context());
+      framework::Copy(*length, platform::CPUPlace(), ctx.device_context(),
+                      &length_cpu);
       length_data = length_cpu.data<int64_t>();
     }
 
@@ -144,8 +143,9 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());
       x_grad->set_lod(in->lod());
-      math::SetConstant<Place, T> set_zero;
-      set_zero(ctx.device_context(), x_grad, static_cast<T>(0));
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(ctx.template device_context<DeviceContext>(), x_grad,
+               static_cast<T>(0));
 
       auto out_grad_stride = framework::stride(out_grad->dims());
 
@@ -162,8 +162,8 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
             static_cast<int>(lod[0][i] + offset_data[i] + length_data[i]));
 
         StridedMemcpy<T>(ctx.device_context(), out_grad_t.data<T>(),
-                        out_grad_stride, out_grad_t.dims(), x_grad_stride,
-                        x_grad_t.data<T>());
+                         out_grad_stride, out_grad_t.dims(), x_grad_stride,
+                         x_grad_t.data<T>());
       }
     }
   }

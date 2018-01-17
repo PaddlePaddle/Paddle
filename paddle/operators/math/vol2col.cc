@@ -25,9 +25,9 @@ namespace math {
  *                    output_depth, output_height, output_width]
  */
 template <class T>
-class Vol2ColFunctor<platform::CPUPlace, T> {
+class Vol2ColFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
@@ -111,9 +111,9 @@ class Vol2ColFunctor<platform::CPUPlace, T> {
  *                    output_depth, output_height, output_width]
  */
 template <class T>
-class Col2VolFunctor<platform::CPUPlace, T> {
+class Col2VolFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
@@ -190,10 +190,10 @@ class Col2VolFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class Vol2ColFunctor<platform::CPUPlace, float>;
-template class Vol2ColFunctor<platform::CPUPlace, double>;
-template class Col2VolFunctor<platform::CPUPlace, float>;
-template class Col2VolFunctor<platform::CPUPlace, double>;
+template class Vol2ColFunctor<platform::CPUDeviceContext, float>;
+template class Vol2ColFunctor<platform::CPUDeviceContext, double>;
+template class Col2VolFunctor<platform::CPUDeviceContext, float>;
+template class Col2VolFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

@@ -55,8 +55,7 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
 
 class DecayedAdagradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DecayedAdagradOpMaker(framework::OpProto *proto,
-                        framework::OpAttrChecker *op_checker)
+  DecayedAdagradOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
@@ -99,4 +98,4 @@ REGISTER_OP_WITHOUT_GRADIENT(decayed_adagrad, ops::DecayedAdagradOp,
                              ops::DecayedAdagradOpMaker);
 REGISTER_OP_CPU_KERNEL(
     decayed_adagrad,
-    ops::DecayedAdagradOpKernel<paddle::platform::CPUPlace, float>);
+    ops::DecayedAdagradOpKernel<paddle::platform::CPUDeviceContext, float>);

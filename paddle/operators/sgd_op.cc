@@ -43,7 +43,7 @@ class SGDOp : public framework::OperatorWithKernel {
 
 class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SGDOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  SGDOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
@@ -55,48 +55,15 @@ SGD operator
 
 This operator implements one step of the stochastic gradient descent algorithm.
 
-$$param_out = param - learning_rate * grad$$
+$$param\_out = param - learning\_rate * grad$$
 
 )DOC");
   }
 };
-
-template <typename T>
-struct SparseSGDFunctor<platform::CPUPlace, T> {
-  void operator()(const platform::DeviceContext& context,
-                  const framework::SelectedRows& input,
-                  const framework::Tensor& learning_rate,
-                  framework::Tensor* output) {
-    auto in_height = input.height();
-    auto out_dims = output->dims();
-    PADDLE_ENFORCE_EQ(in_height, out_dims[0]);
-
-    auto& in_value = input.value();
-    auto& in_rows = input.rows();
-
-    int64_t in_row_numel = in_value.numel() / in_rows.size();
-    PADDLE_ENFORCE_EQ(in_row_numel, output->numel() / in_height);
-
-    auto* in_data = in_value.data<T>();
-    auto* out_data = output->data<T>();
-    auto* lr = learning_rate.data<T>();
-
-    for (size_t i = 0; i < in_rows.size(); i++) {
-      for (int64_t j = 0; j < in_row_numel; j++) {
-        out_data[in_rows[i] * in_row_numel + j] -=
-            lr[0] * in_data[i * in_row_numel + j];
-      }
-    }
-  }
-};
-
-template struct SparseSGDFunctor<platform::CPUPlace, float>;
-template struct SparseSGDFunctor<platform::CPUPlace, double>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(sgd, ops::SGDOp, ops::SGDOpMaker);
-REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<paddle::platform::CPUPlace, float>,
-                       ops::SGDOpKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<float>, ops::SGDOpKernel<double>);

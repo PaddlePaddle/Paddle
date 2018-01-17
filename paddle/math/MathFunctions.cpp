@@ -206,7 +206,7 @@ double dotProduct<double>(const int n, const double* x, const double* y) {
 }
 #endif
 
-#if defined(PADDLE_USE_MKLML)
+#if defined(PADDLE_WITH_MKLML)
 
 template <>
 void vExp<float>(const int n, const float* a, float* r) {

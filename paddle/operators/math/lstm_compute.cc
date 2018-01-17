@@ -21,61 +21,61 @@ namespace operators {
 namespace math {
 
 template <class T>
-struct LstmUnitFunctor<platform::CPUPlace, T> {
-  static void compute(const platform::DeviceContext& context,
+struct LstmUnitFunctor<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext& context,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
-                      const std::string& gate_act, const std::string& cell_act,
-                      const std::string& cand_act) {
+                      const detail::ActivationType& gate_act,
+                      const detail::ActivationType& cell_act,
+                      const detail::ActivationType& cand_act) {
     for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_forward(detail::forward::lstm<T>(), value, frame_size,
-                               ActiveType(cand_act), ActiveType(gate_act),
-                               ActiveType(cell_act));
-      value.gateValue += frame_size * 4;
-      value.stateValue += frame_size;
-      value.stateActiveValue += frame_size;
-      value.outputValue += frame_size;
-      if (value.prevStateValue) {
-        value.prevStateValue += frame_size;
+                               cand_act, gate_act, cell_act);
+      value.gate_value += frame_size * 4;
+      value.state_value += frame_size;
+      value.state_active_value += frame_size;
+      value.output_value += frame_size;
+      if (value.prev_state_value) {
+        value.prev_state_value += frame_size;
       }
     }
   }
 };
 
 template <class T>
-struct LstmUnitGradFunctor<platform::CPUPlace, T> {
-  static void compute(const platform::DeviceContext& context,
+struct LstmUnitGradFunctor<platform::CPUDeviceContext, T> {
+  static void compute(const platform::CPUDeviceContext& context,
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
                       int frame_size, int batch_size,
-                      const std::string& gate_act, const std::string& cell_act,
-                      const std::string& cand_act) {
+                      const detail::ActivationType& gate_act,
+                      const detail::ActivationType& cell_act,
+                      const detail::ActivationType& cand_act) {
     for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_backward(detail::backward::lstm<T>(), value, grad,
-                                frame_size, ActiveType(cand_act),
-                                ActiveType(gate_act), ActiveType(cell_act));
+                                frame_size, cand_act, gate_act, cell_act);
 
-      value.gateValue += frame_size * 4;
-      value.stateValue += frame_size;
-      value.stateActiveValue += frame_size;
-      value.outputValue += frame_size;
-      if (value.prevStateValue) {
-        value.prevStateValue += frame_size;
+      value.gate_value += frame_size * 4;
+      value.state_value += frame_size;
+      value.state_active_value += frame_size;
+      value.output_value += frame_size;
+      if (value.prev_state_value) {
+        value.prev_state_value += frame_size;
       }
 
-      grad.gateGrad += frame_size * 4;
-      grad.stateGrad += frame_size;
-      grad.stateActiveGrad += frame_size;
-      grad.outputGrad += frame_size;
-      if (grad.prevStateGrad) {
-        grad.prevStateGrad += frame_size;
+      grad.gate_grad += frame_size * 4;
+      grad.state_grad += frame_size;
+      grad.state_active_grad += frame_size;
+      grad.output_grad += frame_size;
+      if (grad.prev_state_grad) {
+        grad.prev_state_grad += frame_size;
       }
     }
   }
 };
 
-template class LstmUnitFunctor<platform::CPUPlace, float>;
-template class LstmUnitFunctor<platform::CPUPlace, double>;
-template class LstmUnitGradFunctor<platform::CPUPlace, float>;
-template class LstmUnitGradFunctor<platform::CPUPlace, double>;
+template class LstmUnitFunctor<platform::CPUDeviceContext, float>;
+template class LstmUnitFunctor<platform::CPUDeviceContext, double>;
+template class LstmUnitGradFunctor<platform::CPUDeviceContext, float>;
+template class LstmUnitGradFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

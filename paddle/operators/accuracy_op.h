@@ -21,7 +21,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class AccuracyKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

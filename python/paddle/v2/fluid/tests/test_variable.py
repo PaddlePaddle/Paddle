@@ -1,5 +1,18 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import unittest
-from paddle.v2.fluid.framework import g_main_program, Program, convert_np_dtype_to_dtype_
+from paddle.v2.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_
 import paddle.v2.fluid.core as core
 import numpy as np
 
@@ -18,17 +31,17 @@ class TestVariable(unittest.TestCase):
         self.assertRaises(ValueError, lambda: convert("int8"))
 
     def test_var(self):
-        b = g_main_program.current_block()
+        b = default_main_program().current_block()
         w = b.create_var(
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w")
         self.assertNotEqual(str(w), "")
-        self.assertEqual(core.DataType.FP64, w.data_type)
+        self.assertEqual(core.DataType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
-        self.assertEqual(core.DataType.FP64, w.data_type)
+        self.assertEqual(core.DataType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual(0, w.lod_level)

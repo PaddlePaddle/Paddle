@@ -54,8 +54,7 @@ class MomentumOp : public framework::OperatorWithKernel {
 
 class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MomentumOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  MomentumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
@@ -71,8 +70,12 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor, default Tensor<float>) "
              "Input learning rate");
 
-    AddOutput("ParamOut", "(Tensor) Output updated parameter");
-    AddOutput("VelocityOut", "(Tensor) Output updated velocity");
+    AddOutput("ParamOut",
+              "(Tensor) This output is updated parameter. "
+              "It shared memory with Input(Param).");
+    AddOutput("VelocityOut",
+              "(Tensor) This output is updated velocity. "
+              "It shared memory with Input(Velocity).");
 
     AddAttr<float>("mu", "(float) Momentum coefficient");
     AddAttr<bool>("use_nesterov",
@@ -101,5 +104,5 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(momentum, ops::MomentumOp, ops::MomentumOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    momentum, ops::MomentumOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(momentum, ops::MomentumOpKernel<float>,
+                       ops::MomentumOpKernel<double>);

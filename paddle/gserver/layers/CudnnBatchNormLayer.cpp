@@ -21,8 +21,6 @@ namespace paddle {
 
 REGISTER_LAYER(cudnn_batch_norm, CudnnBatchNormLayer);
 
-const double CudnnBatchNormLayer::EPS = 1E-5;
-
 bool CudnnBatchNormLayer::init(const LayerMap& layerMap,
                                const ParameterMap& parameterMap) {
   /* Initialize the basic parent class */
@@ -61,6 +59,9 @@ void CudnnBatchNormLayer::forward(PassType passType) {
   real* movingMean = movingMean_->getW()->getData();
   real* movingVar = movingVar_->getW()->getData();
 
+  // cuDNN does not allow an epsilon value less than CUDNN_BN_MIN_EPSILON.
+  eps_ = std::max(CUDNN_BN_MIN_EPSILON, static_cast<double>(epsilon_));
+
   if (!useGlobalStats_) {
     REGISTER_TIMER_INFO("CudnnBatchFwTimer", getName().c_str());
     real* savedMean = savedMean_->getData();
@@ -75,7 +76,7 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                    1.0 - movingAvgFraction_,
                                    movingMean,
                                    movingVar,
-                                   EPS,
+                                   eps_,
                                    savedMean,
                                    savedInvVar);
   } else {
@@ -90,7 +91,7 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                       beta,
                                       movingMean,
                                       movingVar,
-                                      EPS);
+                                      eps_);
     } else {
       // There is a limitation in cudnn library.
       // When the batch size is larger than 1024 in cuDNN v5.1,
@@ -101,7 +102,7 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                    beta,
                                    movingMean,
                                    movingVar,
-                                   EPS,
+                                   eps_,
                                    batchSize,
                                    channels_,
                                    imageH_ * imageD_,
@@ -127,6 +128,9 @@ void CudnnBatchNormLayer::backward(const UpdateCallback& callback) {
   real* gamma = weight_->getW()->getData();
   real* savedMean = savedMean_->getData();
   real* savedInvVar = savedInvVar_->getData();
+
+  // cuDNN does not allow an epsilon value less than CUDNN_BN_MIN_EPSILON.
+  eps_ = std::max(CUDNN_BN_MIN_EPSILON, static_cast<double>(epsilon_));
 
   auto create = [](MatrixPtr& m, size_t h, size_t w, real** p) {
     Matrix::resizeOrCreate(m, h, w, false, true);
@@ -157,7 +161,7 @@ void CudnnBatchNormLayer::backward(const UpdateCallback& callback) {
                          gamma,
                          gammaGrad,
                          betaGrad,
-                         EPS,
+                         eps_,
                          savedMean,
                          savedInvVar);
 

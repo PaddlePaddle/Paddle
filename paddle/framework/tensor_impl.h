@@ -84,6 +84,8 @@ inline const T* Tensor::data() const {
       reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
 }
 
+inline bool Tensor::IsInitialized() const { return holder_ != nullptr; }
+
 template <typename T>
 inline T* Tensor::data() {
   check_memory_size();
@@ -125,11 +127,11 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
           boost::get<platform::CPUPlace>(place), size, type));
     } else if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+      PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
     }
 #else
-      holder_.reset(new PlaceholderImpl<platform::GPUPlace>(
-          boost::get<platform::GPUPlace>(place), size, type));
+      holder_.reset(new PlaceholderImpl<platform::CUDAPlace>(
+          boost::get<platform::CUDAPlace>(place), size, type));
     }
 #endif
     offset_ = 0;
@@ -150,84 +152,6 @@ inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
   return *this;
 }
 
-inline void Tensor::CopyFrom(const Tensor& src,
-                             const platform::Place& dst_place,
-                             const platform::DeviceContext& ctx) {
-  src.check_memory_size();
-  Resize(src.dims());
-
-  auto src_place = src.holder_->place();
-  auto src_ptr = src.data<void>();
-
-  auto dst_ptr = mutable_data(dst_place, src.type());
-
-  auto size = src.numel() * SizeOfType(src.type());
-
-  if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
-    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
-                 boost::get<platform::CPUPlace>(src_place), src_ptr, size);
-  }
-#ifdef PADDLE_WITH_CUDA
-  else if (platform::is_gpu_place(src_place) &&
-           platform::is_cpu_place(dst_place)) {
-    auto src_gpu_place = boost::get<platform::GPUPlace>(src_place);
-    auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
-    auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
-    auto ctx_gpu_place = boost::get<platform::GPUPlace>(ctx_place);
-    PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
-    memory::Copy(
-        dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
-  } else if (platform::is_cpu_place(src_place) &&
-             platform::is_gpu_place(dst_place)) {
-    auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
-    auto dst_gpu_place = boost::get<platform::GPUPlace>(dst_place);
-    auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
-    auto ctx_gpu_place = boost::get<platform::GPUPlace>(ctx_place);
-    PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place);
-    memory::Copy(
-        dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
-  } else if (platform::is_gpu_place(src_place) &&
-             platform::is_gpu_place(dst_place)) {
-    auto src_gpu_place = boost::get<platform::GPUPlace>(src_place);
-    auto dst_gpu_place = boost::get<platform::GPUPlace>(dst_place);
-    auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
-    auto ctx_gpu_place = boost::get<platform::GPUPlace>(ctx_place);
-    PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
-    memory::Copy(
-        dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
-  }
-#endif
-}
-
-template <typename T>
-inline void Tensor::CopyFromVector(const std::vector<T>& src,
-                                   const platform::DeviceContext& ctx) {
-  auto dst_place = ctx.GetPlace();
-  auto src_ptr = static_cast<const void*>(src.data());
-  platform::CPUPlace src_place;
-  auto dst_ptr = static_cast<void*>(mutable_data<T>(dst_place));
-  auto size = src.size() * sizeof(T);
-
-  if (platform::is_cpu_place(dst_place)) {
-    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
-                 src_ptr, size);
-  }
-#ifdef PADDLE_WITH_CUDA
-  else if (platform::is_gpu_place(dst_place)) {
-    memory::Copy(
-        boost::get<platform::GPUPlace>(dst_place), dst_ptr, src_place, src_ptr,
-        size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
-  }
-#endif
-}
-
 inline Tensor Tensor::Slice(int begin_idx, int end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,
@@ -243,6 +167,7 @@ inline Tensor Tensor::Slice(int begin_idx, int end_idx) const {
     size_t base = numel() / dims_[0];
     Tensor dst;
     dst.holder_ = holder_;
+    dst.set_layout(layout_);
     DDim dst_dims = dims_;
     dst_dims[0] = end_idx - begin_idx;
     dst.Resize(dst_dims);
