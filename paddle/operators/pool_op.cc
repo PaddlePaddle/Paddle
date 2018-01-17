@@ -89,9 +89,7 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
-    use_cudnn = false;
-  }
+  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
   framework::LibraryType library_;
   if (use_cudnn) {
     library_ = framework::LibraryType::kCUDNN;
