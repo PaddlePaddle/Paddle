@@ -49,6 +49,8 @@ class MatMulOp : public framework::OperatorWithKernel {
                      "The dimensions of X and Y must be the same, and both of "
                      "them should be %d-dimensional.",
                      dim_x.size());
+
+      // The previous Rank-2 dimensions are accumulated on the batch_count.
       for (int j = 0; j < dim_x.size() - 2; ++j) {
         PADDLE_ENFORCE(dim_y[j] == dim_x[j],
                        "The dimensions of X[%d] and Y[%d] must be the same.", j,
@@ -185,10 +187,14 @@ Examples without transpose:
 - X: [B, M, K], Y: [K] => Out: [B, M]
 - X: [M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
+- X: [B, ..., M, K], Y: [B, ..., K, N] => Out: [B, ..., M, N]
 
 The behavior is designed to be similar to the `numpy.matmul` function.
 The differences are:
-- Currently only rank 1 to rank 3 input tensors are supported.
+- When the rank of the input is greater than 3, the rank of X and
+  Y must be equal, and the former rank-2 dimensions are equal.
+- When the rank of the input data is less than or equal to 3, it
+  is similar to the `numpy.matmul` function.
 - We add `transpose_X` and `transpose_Y` flags.
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,

@@ -49,6 +49,7 @@ class MatMulFunctor {
                      "The dimensions of X and Y must be the same, and both of "
                      "them should be %d-dimensional.",
                      dim_b.size());
+      // The previous Rank-2 dimensions are accumulated on the batch_count.
       for (int j = 0; j < dim_a.size() - 2; ++j) {
         PADDLE_ENFORCE(dim_b[j] == dim_a[j],
                        "The dimensions of X[%d] and Y[%d] must be the same.", j,
