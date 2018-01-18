@@ -20,15 +20,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-static void free_tmp_tensor(const Tensor* in_ptr, const Tensor* tmp_ptr) {
-  if (in_ptr != tmp_ptr) {
-    delete tmp_ptr;
-  }
-}
-
 static void PassTensorData(Tensor& from, Tensor& to) {
   to.ShareDataWith(from);
-  from.ShareDataWith(Tensor());
+  from = Tensor();
 }
 
 void DataTransform(const OpKernelType& expected_kernel_type,
