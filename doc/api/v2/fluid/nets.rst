@@ -25,3 +25,9 @@ glu
 ..  autofunction:: paddle.v2.fluid.nets.glu
     :noindex:
 
+
+dot_product_attention
+---------------------
+..  autofunction:: paddle.v2.fluid.nets.dot_product_attention
+    :noindex:
+
