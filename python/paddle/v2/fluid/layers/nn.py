@@ -50,7 +50,7 @@ __all__ = [
     'sequence_last_step',
     'dropout',
     'split',
-    'greedy_ctc_evaluator',
+    'greedy_ctc_error',
 ]
 
 
@@ -1600,11 +1600,32 @@ def split(input, num_or_sections, dim=-1):
     return outs
 
 
-def greedy_ctc_evaluator(input, label, blank, normalized=False, name=None):
+def greedy_ctc_error(input, label, blank, normalized=False, name=None):
     """
-    """
+    This evaluator is to calculate sequence-to-sequence edit distance.
 
-    helper = LayerHelper("greedy_ctc_evalutor", **locals())
+    Args:
+
+        input(Variable): (LodTensor, default: LoDTensor<float>), the unscaled probabilities of variable-length sequences, which is a 2-D Tensor with LoD information. It's shape is [Lp, num_classes + 1], where Lp is the sum of all input sequences' length and num_classes is the true number of classes. (not including the blank label).
+
+        label(Variable): (LodTensor, default: LoDTensor<int>), the ground truth of variable-length sequence, which is a 2-D Tensor with LoD information. It is of the shape [Lg, 1], where Lg is th sum of all labels' length.
+
+        blank(int): the blank label index of Connectionist Temporal Classification (CTC) loss, which is in thehalf-opened interval [0, num_classes + 1).
+
+        normalized(bool): Indicated whether to normalize the edit distance by the length of reference string.
+
+    Returns:
+        Variable: sequence-to-sequence edit distance loss in shape [batch_size, 1].
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[8], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+
+            cost = fluid.layers.greedy_ctc_error(input=x,label=y, blank=0)
+    """
+    helper = LayerHelper("greedy_ctc_error", **locals())
     # top 1 op
     topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype="int64")
@@ -1620,7 +1641,7 @@ def greedy_ctc_evaluator(input, label, blank, normalized=False, name=None):
     helper.append_op(
         type="ctc_align",
         inputs={"Input": [topk_indices]},
-        outputs={"Out": [ctc_out]},
+        outputs={"Output": [ctc_out]},
         attrs={"merge_repeated": True,
                "blank": blank})
 
