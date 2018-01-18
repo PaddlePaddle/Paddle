@@ -98,7 +98,7 @@ def main():
         if not current_endpoint:
             print("need env SERVER_ENDPOINT")
             exit(1)
-        pserver_prog = t.get_pserver_program(current_endpoint, optimize_ops)
+        pserver_prog = t.get_pserver_program(current_endpoint)
         exe.run(pserver_prog)
     elif training_role == "TRAINER":
         trainer_prog = t.get_trainer_program()
