@@ -364,6 +364,12 @@ split
 ..  autofunction:: paddle.v2.fluid.layers.split
     :noindex:
 
+
+matmul
+------
+..  autofunction:: paddle.v2.fluid.layers.matmul
+    :noindex:
+
 logsigmoid
 ----------
 ..  autofunction:: paddle.v2.fluid.layers.logsigmoid
@@ -495,6 +501,11 @@ swish
     :noindex:
 
 greedy_ctc_error
-------
+---------------
 ..  autofunction:: paddle.v2.fluid.layers.greedy_ctc_error
+    :noindex:
+
+l2_normalize
+------------
+..  autofunction:: paddle.v2.fluid.layers.l2_normalize
     :noindex:
