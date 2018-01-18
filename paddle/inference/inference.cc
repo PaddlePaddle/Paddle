@@ -89,7 +89,7 @@ void InferenceEngine::LoadInferenceModel(
 }
 
 bool InferenceEngine::IsParameter(const framework::VarDesc* var) {
-  if (var->Persistable()) {
+  if (var->Persistable() && var->Name() != "feed" && var->Name() != "fetch") {
     // There are many unreachable variables in the program
     for (size_t i = 0; i < program_->Size(); ++i) {
       const framework::BlockDesc& block = program_->Block(i);

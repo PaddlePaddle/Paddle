@@ -15,6 +15,7 @@ import os
 import cPickle as pickle
 
 from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable
+from . import core
 
 __all__ = [
     'save_vars',
@@ -244,10 +245,10 @@ def save_inference_model(dirname,
     # Save only programDesc of inference_program in binary format
     # in another file: __model__.dat
     global_block = inference_program.global_block()
-    feed_var = global_blok.create_var(
+    feed_var = global_block.create_var(
         name='feed', type=core.VarDesc.VarType.FEED_MINIBATCH, persistable=True)
 
-    for i, name in enumerated(feeded_var_names):
+    for i, name in enumerate(feeded_var_names):
         out = global_block.var(name)
         global_block.prepend_op(
             type='feed',
@@ -258,10 +259,10 @@ def save_inference_model(dirname,
     fetch_var = global_block.create_var(
         name='fetch', type=core.VarDesc.VarType.FETCH_LIST, persistable=True)
 
-    for i, name in enumerated(fetch_var_names):
+    for i, name in enumerate(fetch_var_names):
         global_block.append_op(
             type='fetch',
-            inputs={'X': [var]},
+            inputs={'X': [name]},
             outputs={'Out': [fetch_var]},
             attrs={'col': i})
 
