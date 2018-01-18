@@ -198,10 +198,11 @@ def prepend_feed_ops(inference_program, feeded_var_names):
         name='feed', type=core.VarDesc.VarType.FEED_MINIBATCH, persistable=True)
 
     for i, name in enumerate(feeded_var_names):
+        out = global_block.var(name)
         global_block.prepend_op(
             type='feed',
             inputs={'X': [feed_var]},
-            outputs={'Out': [name]},
+            outputs={'Out': [out]},
             attrs={'col': i})
 
 
