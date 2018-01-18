@@ -43,6 +43,15 @@ class TestElementwiseOp(OpTest):
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
+class TestElementwiseMinOp_scalar(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_min"
+        x = np.random.random_integers(-5, 5, [2, 3, 4]).astype("float32")
+        y = np.array([0.5]).astype("float32")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestElementwiseMaxOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"

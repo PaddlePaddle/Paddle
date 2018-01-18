@@ -18,11 +18,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct SubFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const { return a - b; }
+};
+
 template <typename DeviceContext, typename T>
 class ElementwiseSubKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseCompute<EigenSubFunctor, DeviceContext, T>(ctx);
+    ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(ctx);
   }
 };
 
