@@ -177,16 +177,16 @@ class OpKernelRegistrar : public Registrar {
 /**
  * Macro to register OperatorKernel.
  */
-#define REGISTER_OP_KERNEL(op_type, DEVICE_TYPE, place_class, ...)        \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
-      __reg_op_kernel_##op_type##_##DEVICE_TYPE##__,                      \
-      "REGISTER_OP_KERNEL must be called in global namespace");           \
-  static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__> \
-      __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__(#op_type,       \
-                                                          #DEVICE_TYPE);  \
-  int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE() {                \
-    __op_kernel_registrar_##op_type##_##DEVICE_TYPE##__.Touch();          \
-    return 0;                                                             \
+#define REGISTER_OP_KERNEL(op_type, LIBRARY_TYPE, place_class, ...)        \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      __reg_op_kernel_##op_type##_##LIBRARY_TYPE##__,                      \
+      "REGISTER_OP_KERNEL must be called in global namespace");            \
+  static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__>  \
+      __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__(#op_type,       \
+                                                           #LIBRARY_TYPE); \
+  int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE() {                \
+    __op_kernel_registrar_##op_type##_##LIBRARY_TYPE##__.Touch();          \
+    return 0;                                                              \
   }
 
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
@@ -208,14 +208,14 @@ class OpKernelRegistrar : public Registrar {
   static int use_op_itself_##op_type##_ __attribute__((unused)) = \
       TouchOpRegistrar_##op_type()
 
-#define USE_OP_DEVICE_KERNEL(op_type, DEVICE_TYPE)               \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
-      __use_op_kernel_##op_type##_##DEVICE_TYPE##__,             \
-      "USE_OP_DEVICE_KERNEL must be in global namespace");       \
-  extern int TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE(); \
-  static int use_op_kernel_##op_type##_##DEVICE_TYPE##_          \
-      __attribute__((unused)) =                                  \
-          TouchOpKernelRegistrar_##op_type##_##DEVICE_TYPE()
+#define USE_OP_DEVICE_KERNEL(op_type, LIBRARY_TYPE)               \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                 \
+      __use_op_kernel_##op_type##_##LIBRARY_TYPE##__,             \
+      "USE_OP_DEVICE_KERNEL must be in global namespace");        \
+  extern int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE(); \
+  static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_          \
+      __attribute__((unused)) =                                   \
+          TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE()
 
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
