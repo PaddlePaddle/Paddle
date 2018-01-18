@@ -23,23 +23,23 @@ class SplitSelectedRowsOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input SelectedRows.");
     AddOutput("Out", "The outputs of input SelectedRows.").AsDuplicable();
-    AddAttr<std::vector<int>>("rows_section", "Rows section for output.")
+    AddAttr<std::vector<int>>("rows_sections", "Rows section for output.")
         .SetDefault(std::vector<int>({}));
-    AddAttr<std::vector<int>>("height_section",
+    AddAttr<std::vector<int>>("height_sections",
                               "Height for each output SelectedRows.")
         .SetDefault(std::vector<int>({}));
 
     AddComment(R"DOC(
 Split a SelectedRows with a specified rows section.
-You could set height_section for specified the height for each output.
+height_sections is only needed when need to split the dims of the original tensor.
 
 Example:
   Input:
     X.rows = {0, 7, 5}
     X.height = 12
   Attr:
-    rows_section = {1, 2}
-    height_section = {}
+    rows_sections = {1, 2}
+    height_sections = {}
   Out:
     out0.rows = {0}
     out0.height = 12
@@ -59,12 +59,12 @@ class SplitSelectedRowsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutputs("Out"),
                    "SplitSelectedRowsOp must has output Out.");
 
-    std::vector<int> height_section =
-        ctx->Attrs().Get<std::vector<int>>("height_section");
-    std::vector<int> rows_section =
-        ctx->Attrs().Get<std::vector<int>>("rows_section");
+    std::vector<int> height_sections =
+        ctx->Attrs().Get<std::vector<int>>("height_sections");
+    std::vector<int> rows_sections =
+        ctx->Attrs().Get<std::vector<int>>("rows_sections");
     PADDLE_ENFORCE_EQ(
-        rows_section.size(), ctx->Outputs("Out").size(),
+        rows_sections.size(), ctx->Outputs("Out").size(),
         "The size of rows section should be the same with Outputs size.");
     int64_t n = ctx->Outputs("Out").size();
 
@@ -74,12 +74,12 @@ class SplitSelectedRowsOp : public framework::OperatorWithKernel {
     // make output dims
     for (int64_t i = 0; i < n; ++i) {
       auto dims = ctx->GetInputDim("X");
-      if (height_section.size()) {
+      if (height_sections.size()) {
         PADDLE_ENFORCE_EQ(
-            height_section.size(), static_cast<size_t>(n),
+            height_sections.size(), static_cast<size_t>(n),
             "The size of height section should be the same with height"
             " section size.");
-        dims[0] = height_section[i];
+        dims[0] = height_sections[i];
       }
       outs_dims.push_back(dims);
     }

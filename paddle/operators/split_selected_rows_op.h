@@ -27,29 +27,29 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::SelectedRows>("X");
     auto outs = ctx.MultiOutput<framework::SelectedRows>("Out");
 
-    auto rows_section = ctx.Attr<std::vector<int>>("rows_section");
-    auto height_section = ctx.Attr<std::vector<int>>("height_section");
+    auto rows_sections = ctx.Attr<std::vector<int>>("rows_sections");
+    auto height_sections = ctx.Attr<std::vector<int>>("height_sections");
 
     int64_t n = outs.size();
     int offset = 0;
 
     for (int64_t i = 0; i < n; ++i) {
       framework::Vector<int64_t> out_rows;
-      for (int64_t j = 0; j < rows_section[i]; ++j) {
+      for (int64_t j = 0; j < rows_sections[i]; ++j) {
         out_rows.push_back(x->rows()[offset + j]);
       }
 
       auto& out = outs[i];
       auto x_dims = x->GetCompleteDims();
-      x_dims[0] = rows_section[i];
+      x_dims[0] = rows_sections[i];
       out->mutable_value()->mutable_data<T>(x_dims, ctx.GetPlace());
-      framework::Copy(x->value().Slice(offset, rows_section[i] + offset),
+      framework::Copy(x->value().Slice(offset, rows_sections[i] + offset),
                       x->place(), ctx.device_context(), out->mutable_value());
       outs[i]->set_rows(out_rows);
-      if (height_section.size()) {
-        outs[i]->set_height(height_section[i]);
+      if (height_sections.size()) {
+        outs[i]->set_height(height_sections[i]);
       }
-      offset += rows_section[i];
+      offset += rows_sections[i];
     }
   }
 };

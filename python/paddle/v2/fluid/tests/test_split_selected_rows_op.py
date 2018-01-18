@@ -17,13 +17,20 @@ import numpy as np
 from paddle.v2.fluid.op import Operator
 
 
-class TestSpliteAndMergeSelectedRows(unittest.TestCase):
-    def test_check_output(self):
+class TestSpliteSelectedRows(unittest.TestCase):
+    def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compile_gpu():
             places.append(core.CUDAPlace(0))
-        for place in places:
+        return places
+
+    def test_check_output(self):
+        for place in self.get_places():
             self.check_with_place(place)
+
+    def test_check_grad(self):
+        for place in self.get_places():
+            self.check_grad_with_place(place)
 
     def check_with_place(self, place):
         scope = core.Scope()
@@ -41,8 +48,8 @@ class TestSpliteAndMergeSelectedRows(unittest.TestCase):
         x_tensor = x.get_tensor()
         x_tensor.set(np_array, place)
 
-        rows_section = [2, 2]
-        height_section = []
+        rows_sections = [2, 2]
+        height_sections = []
 
         # initialize output variables [out0, out1]
         out0 = scope.var('out0').get_selected_rows()
@@ -53,14 +60,14 @@ class TestSpliteAndMergeSelectedRows(unittest.TestCase):
         expected_out1_rows = [7, 4]
         expected_height = height
 
-        split_selected_rows = Operator(
+        op = Operator(
             "split_selected_rows",
             X="X",
             Out=["out0", "out1"],
-            rows_section=rows_section,
-            height_section=height_section)
+            rows_sections=rows_sections,
+            height_sections=height_sections)
 
-        split_selected_rows.run(scope, place)
+        op.run(scope, place)
 
         self.assertEqual(out0.rows(), expected_out0_rows)
         self.assertEqual(out1.rows(), expected_out1_rows)
@@ -70,6 +77,51 @@ class TestSpliteAndMergeSelectedRows(unittest.TestCase):
 
         self.assertAlmostEqual(2.0, np.array(out0.get_tensor())[0, 0])
         self.assertAlmostEqual(4.0, np.array(out1.get_tensor())[0, 1])
+
+    def check_grad_with_place(self, place):
+        scope = core.Scope()
+        height = 10
+        row_numel = 2
+
+        # attr
+        rows_sections = [2, 2]
+        height_sections = []
+
+        # initialize input variable X
+        out0_grad = scope.var("out0@GRAD").get_selected_rows()
+        rows0 = [0, 5]
+        out0_grad.set_rows(rows0)
+        out0_grad.set_height(height)
+        out0_grad_tensor = out0_grad.get_tensor()
+        np_array = np.ones((len(rows0), row_numel)).astype("float32")
+        np_array[0, 0] = 2.0
+        out0_grad_tensor.set(np_array, place)
+
+        out1_grad = scope.var("out1@GRAD").get_selected_rows()
+        rows1 = [7, 5]
+        out1_grad.set_rows(rows1)
+        out1_grad.set_height(height)
+        out1_grad_tensor = out1_grad.get_tensor()
+        np_array = np.ones((len(rows1), row_numel)).astype("float32")
+        np_array[0, 1] = 4.0
+        out1_grad_tensor.set(np_array, place)
+
+        x_grad = scope.var("X@GRAD").get_selected_rows()
+
+        grad_op = Operator(
+            "sum",
+            X=["out0@GRAD", "out1@GRAD"],
+            Out="X@GRAD",
+            rows_sections=rows_sections,
+            height_sections=height_sections)
+
+        grad_op.run(scope, place)
+
+        self.assertEqual(x_grad.rows(), rows0 + rows1)
+        self.assertEqual(x_grad.height(), height)
+
+        self.assertAlmostEqual(2.0, np.array(x_grad.get_tensor())[0, 0])
+        self.assertAlmostEqual(4.0, np.array(x_grad.get_tensor())[2, 1])
 
 
 if __name__ == "__main__":
