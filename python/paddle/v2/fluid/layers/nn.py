@@ -233,99 +233,94 @@ def dynamic_lstm(input,
     The defalut implementation is diagonal/peephole connection
     (https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
 
-    .. math:   
- 
-	i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i) \\
+    .. math::
+     
+        i_t & = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i) 
 
-	f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f) \\
+        f_t & = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f) 
 
-	\tilde{c_t} = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c) \\
+        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c) 
 
-	o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o) \\
+        o_t & = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o) 
 
-	c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c_t} \\
+        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t} 
 
-	h_t = o_t \odot act_h(c_t)
+        h_t & = o_t \odot act_h(c_t)
 
-    where the W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
-    of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
+    where the :math:`W` terms denote weight matrices (e.g. :math:`W_{xi}` is the matrix
+    of weights from the input gate to the input), :math:`W_{ic}, W_{fc}, W_{oc}`
     are diagonal weight matrices for peephole connections. In our implementation,
-    we use vectors to reprenset these diagonal weight matrices. The b terms
-    denote bias vectors ($b_i$ is the input gate bias vector), $\sigma$
+    we use vectors to reprenset these diagonal weight matrices. The :math:`b` terms
+    denote bias vectors (:math:`b_i` is the input gate bias vector), :math:`\sigma`
     is the non-line activations, such as logistic sigmoid function, and
-    $i, f, o$ and $c$ are the input gate, forget gate, output gate,
+    :math:`i, f, o` and :math:`c` are the input gate, forget gate, output gate,
     and cell activation vectors, respectively, all of which have the same size as
-    the cell output activation vector $h$.
+    the cell output activation vector :math:`h`.
 
-    The $\odot$ is the element-wise product of the vectors. $act_g$ and $act_h$
+    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g` and :math:`act_h`
     are the cell input and cell output activation functions and `tanh` is usually
-    used for them. $\tilde{c_t}$ is also called candidate hidden state,
+    used for them. :math:`\\tilde{c_t}` is also called candidate hidden state,
     which is computed based on the current input and the previous hidden state.
 
     Set `use_peepholes` False to disable peephole connection. The formula
     is omitted here, please refer to the paper
     http://www.bioinf.jku.at/publications/older/2604.pdf for details.
 
-    Note that these $W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}$
-    operations on the input $x_{t}$ are NOT included in this operator.
-    Users can choose to use fully-connect operator before LSTM operator.
+    Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
+    operations on the input :math:`x_{t}` are NOT included in this operator.
+    Users can choose to use fully-connect layer before LSTM layer.
 
     Args:
-def dynamic_lstm(input,
-                 size,
-                 param_attr=None,
-                 bias_attr=None,
-                 use_peepholes=True,
-                 is_reverse=False,
-                 gate_activation='sigmoid',
-                 cell_activation='tanh',
-                 candidate_activation='tanh',
-                 dtype='float32'):
-        input(Variable): The input of dynamic_lstm layer, which support 
-             variable-time length input sequence. The underlying tensor in 
-             this Variable is a matrix with shape (T X 4D), where T is the 
-             total time steps in this mini-batch, D is the hidden size.
-        size(int): The size of input.
+        input(Variable): The input of dynamic_lstm layer, which supports 
+                         variable-time length input sequence. The underlying 
+                         tensor in this Variable is a matrix with shape 
+                         (T X 4D), where T is the total time steps in this 
+                         mini-batch, D is the hidden size.
+        size(int): 4 * hidden size.
         param_attr(ParamAttr): The parameter attribute for the learnable 
-             hidden-hidden weights.
-                 - The shape is (D x 4D), where D is the hidden size. 
-                 - param_attr = {W_ch, W_ih, W_fh, W_oh}
+                               hidden-hidden weights. 
+
+                               - The shape is (D x 4D), where D is the hidden 
+                                 size. 
+                               - Weights = {:math:`W_{ch}, W_{ih}, \
+                                                W_{fh}, W_{oh}`}
         bias_attr(ParamAttr): The bias attribute for the learnable bias
-            weights, which contains two parts: input-hidden bias weight
-            and peephole connections weight if setting `use_peepholes` to True.
-                1. `use_peepholes = False` 
-                  - The shape is (1 x 4D). 
-                  - Bias = {b_c, b_i, b_f, b_o}.
-                2. `use_peepholes = True` 
-                  - The shape is (1 x 7D). 
-                  - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.
-        use_peepholes(bool, defalut: True): whether to enable diagonal/peephole
-                                            connections.
-        is_reverse(bool, defalut: False): whether to compute reversed LSTM.
-        gate_activation(string, choices: "sigmoid", "tanh", "relu", "identity",
-            default: "sigmoid"): The activation for input gate, forget gate and
-                                 output gate.
-        cell_activation(string, choices: "sigmoid", "tanh", "relu", "identity",
-            default: "tanh"): The activation for cell output.
-        candidate_activation(string, choices: "sigmoid", "tanh", "relu", 
-            "identity", default: "tanh"): The activation for candidate hidden 
-            state.
-        dtype(string, )
+                              weights, which contains two parts, input-hidden 
+                              bias weights and peephole connections weights if 
+                              setting `use_peepholes` to `True`. 
+
+                              1. `use_peepholes = False` 
+                                - The shape is (1 x 4D). 
+                                - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                              2. `use_peepholes = True` 
+                                - The shape is (1 x 7D). 
+                                - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                                 W_{fc}, W_{oc}`}.
+        use_peepholes(bool): Whether to enable diagonal/peephole connections, 
+                             default `True`.
+        is_reverse(bool): Whether to compute reversed LSTM, default `False`.
+        gate_activation(str): The activation for input gate, forget gate and 
+                              output gate. Choices = ["sigmoid", "tanh", "relu", 
+                              "identity"], default "sigmoid".
+        cell_activation(str): The activation for cell output. Choices = ["sigmoid", 
+                              "tanh", "relu", "identity"], default "tanh".
+        candidate_activation(str): The activation for candidate hidden state.
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              default "tanh".
+        dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
 
     Returns:
-        hidden(Variable): the hidden state of LSTM layer. The shape is (T x D),
-            and lod is the same with the `input`.
-        cell(Variable): the cell state of LSTM layer. The shape is (T x D), and 
-            lod is the same with the `input`.
+        tuple: The hidden state, and cell state of LSTM. The shape of both \
+        is (T x D), and lod is the same with the `input`.
 
-    Example:
+    Examples:
         .. code-block:: python
 
-        hidden_dim = 512
-        forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
-                                       act='tanh', bias_attr=True)
-        forward, _ = fluid.layers.dynamic_lstm(
-            input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
+            hidden_dim = 512
+            forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+                                           act='tanh', bias_attr=True)
+            forward, _ = fluid.layers.dynamic_lstm(
+                input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
     helper = LayerHelper('lstm', **locals())
     size = size / 4
