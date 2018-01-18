@@ -12,10 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#define EIGEN_USE_GPU
-
-#include "paddle/operators/smooth_l1_loss_op.h"
-
+#include "paddle/operators/split_selected_rows_op.h"
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     split_selected_rows,
