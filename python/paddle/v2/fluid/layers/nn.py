@@ -676,6 +676,7 @@ def conv2d(input,
            groups=None,
            param_attr=None,
            bias_attr=None,
+           use_cudnn=True,
            act=None):
     """
     **Convlution2D Layer**
@@ -739,6 +740,8 @@ def conv2d(input,
             connected to the second half of the input channels. Default: groups=1
         param_attr(ParamAttr): The parameters to the Conv2d Layer. Default: None
         bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
+        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
         act(str): Activation type. Default: None
 
     Returns:
@@ -774,6 +777,8 @@ def conv2d(input,
         stride = [stride, stride]
     if isinstance(padding, int):
         padding = [padding, padding]
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("use_cudnn should be True or False")
 
     input_shape = input.shape
     filter_shape = [num_filters, num_filter_channels] + filter_size
@@ -797,9 +802,12 @@ def conv2d(input,
             'Filter': filter_param,
         },
         outputs={"Output": pre_bias},
-        attrs={'strides': stride,
-               'paddings': padding,
-               'groups': groups})
+        attrs={
+            'strides': stride,
+            'paddings': padding,
+            'groups': groups,
+            'use_cudnn': use_cudnn
+        })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
 
@@ -948,6 +956,7 @@ def pool2d(input,
            pool_stride=None,
            pool_padding=None,
            global_pooling=False,
+           use_cudnn=True,
            name=None):
     """
     This function adds the operator for pooling in 2 dimensions, using the
@@ -967,6 +976,8 @@ def pool2d(input,
         pool_stride = [pool_stride, pool_stride]
     if isinstance(pool_padding, int):
         pool_padding = [pool_padding, pool_padding]
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("use_cudnn should be True or False")
 
     helper = LayerHelper('pool2d', **locals())
     dtype = helper.input_dtype()
@@ -981,7 +992,8 @@ def pool2d(input,
             "ksize": pool_size,
             "global_pooling": global_pooling,
             "strides": pool_stride,
-            "paddings": pool_padding
+            "paddings": pool_padding,
+            "use_cudnn": use_cudnn
         })
 
     return pool_out
@@ -1096,6 +1108,7 @@ def conv2d_transpose(input,
                      stride=None,
                      dilation=None,
                      param_attr=None,
+                     use_cudnn=True,
                      name=None):
     """
     The transpose of conv2d layer.
@@ -1123,6 +1136,8 @@ def conv2d_transpose(input,
             contain two integers, (dilation_H, dilation_W). Otherwise, the
             dilation_H = dilation_W = dilation.
         param_attr: Parameter Attribute.
+        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. Default: True
         name(str|None): A name for this layer(optional). If set None, the layer
                        will be named automatically.
 
@@ -1150,6 +1165,10 @@ def conv2d_transpose(input,
         op_attr['dilations'] = [dilation, dilation]
     elif dilation is not None:
         op_attr['dilations'] = dilation
+
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("use_cudnn should be True or False")
+    op_attr['use_cudnn'] = use_cudnn
 
     if filter_size is None:
         if output_size is None:
