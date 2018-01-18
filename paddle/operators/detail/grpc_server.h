@@ -41,9 +41,12 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
   void RunSyncUpdate();
 
-  void Reset();
-
+  // functions to sync server barrier status.
+  void WaitStart();
+  void WaitDone();
+  void Start();
   void Done();
+  void WaitClientGet(int count);
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
 
@@ -56,7 +59,6 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   void ShutDown();
 
  protected:
-  void Wait();
   void HandleRequest(bool wait, grpc::ServerCompletionQueue *cq,
                      std::string cq_name,
                      std::function<void()> TryToRegisterNewOne);
@@ -78,11 +80,12 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   const platform::DeviceContext *dev_ctx_;
   // received variable from RPC, operators fetch variable from this queue.
   SimpleBlockQueue<MessageWithName> var_recv_queue_;
+  SimpleBlockQueue<char> var_get_queue_;
 
   // condition of the sub program
-  std::mutex mutex_;
-  volatile mutable bool done_;
-  std::condition_variable condition_;
+  std::mutex barrier_mutex_;
+  mutable int barrier_cond_step_;
+  std::condition_variable barrier_condition_;
 
   std::unique_ptr<std::thread> t_send_;
   std::unique_ptr<std::thread> t_get_;
