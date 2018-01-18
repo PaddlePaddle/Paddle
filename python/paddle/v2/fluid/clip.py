@@ -138,8 +138,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         cls = self.__class__
         cls.check_init()
 
-        local_norm_var = layers.reduce_sum(
-            x=layers.pow(x=grad, factor=2), reduce_all=True)
+        local_norm_var = layers.reduce_sum(input=layers.pow(x=grad, factor=2.0))
         layers.sums(
             input=[local_norm_var, cls.global_norm_var],
             out=[cls.global_norm_var])
@@ -154,6 +153,8 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
                 x=cls.clip_norm_var,
                 y=layers.elementwise_max(
                     x=cls.clip_norm_var, y=cls.global_norm_var))
+            assert cls.scale_var.shape == (1L, )
+
         new_grad = layers.elementwise_mul(x=grad, y=cls.scale_var)
         return param, new_grad
 
