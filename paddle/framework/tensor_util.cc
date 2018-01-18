@@ -69,7 +69,7 @@ struct AnyVisitor : public boost::static_visitor<bool> {
     tmp.mutable_data<bool>(cpu);
     auto gpuctx = platform::DeviceContextPool::Instance().Get(gpu);
     gpuctx->Wait();
-    CopyFrom(out, cpu, *gpuctx, &tmp);
+    Copy(out, cpu, *gpuctx, &tmp);
     gpuctx->Wait();
     return GetResult(tmp, cpu);
   }

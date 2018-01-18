@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <cctype>
 
 namespace paddle {
 namespace framework {
@@ -41,6 +42,9 @@ inline std::string LibraryTypeToString(const LibraryType& library_type) {
 
 inline LibraryType StringToLibraryType(const char* ctype) {
   std::string s(ctype);
+  for (size_t i = 0; i < s.size(); ++i) {
+    s[i] = toupper(s[i]);
+  }
   if (s == std::string("PLAIN")) {
     return LibraryType::kPlain;
   } else if (s == std::string("MKLDNN")) {

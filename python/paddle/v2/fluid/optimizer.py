@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 from collections import defaultdict
 
 import framework
@@ -6,7 +19,7 @@ from framework import unique_name, program_guard
 from initializer import Constant
 from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
-from clip import append_gradient_clip_ops
+from clip import append_gradient_clip_ops, error_clip_callback
 
 __all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
 
@@ -197,7 +210,8 @@ class Optimizer(object):
         This method combines interface `append_backward()` and
         `create_optimization_pass()` into one.
         """
-        params_grads = append_backward(loss, parameter_list, no_grad_set)
+        params_grads = append_backward(loss, parameter_list, no_grad_set,
+                                       error_clip_callback)
 
         params_grads = append_gradient_clip_ops(params_grads)
 

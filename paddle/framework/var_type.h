@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/lod_tensor_array.h"
+#include "paddle/framework/selected_rows.h"
+#include "paddle/framework/variable.h"
 
 namespace paddle {
 namespace framework {
@@ -35,7 +37,7 @@ inline proto::VarDesc::VarType ToVarType(std::type_index type) {
 }
 
 template <typename Visitor>
-inline void VisitVarType(const Variable& var, Visitor visitor) {
+inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (ToVarType(var.Type())) {
     case proto::VarDesc_VarType_LOD_TENSOR:
       visitor(var.Get<framework::LoDTensor>());

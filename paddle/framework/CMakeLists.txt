@@ -26,11 +26,18 @@ nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
 cc_test(variable_test SRCS variable_test.cc)
 
-cc_library(scope SRCS scope.cc DEPS glog)
+cc_library(threadpool SRCS threadpool.cc)
+cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
+
+cc_library(scope SRCS scope.cc DEPS glog threadpool)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
-cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor framework_proto)
-cc_test(data_transform_test SRCS data_transform_test.cc DEPS data_transform device_context)
+cc_library(data_device_transform SRCS data_device_transform.cc DEPS tensor)
+cc_library(data_type_transform SRCS data_type_transform.cc DEPS tensor)
+cc_library(data_layout_transform SRCS data_layout_transform.cc DEPS tensor math_function)
+
+cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
+        framework_proto selected_rows data_device_transform data_type_transform data_layout_transform)
 
 cc_library(attribute SRCS attribute.cc DEPS framework_proto)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
@@ -38,9 +45,9 @@ device_context)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
-cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute)
+cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform)
+    shape_inference data_transform lod_tensor)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry init)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 
@@ -70,9 +77,10 @@ cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
 cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
-cc_library(threadpool SRCS threadpool.cc)
-cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
-cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece)
+cc_library(init SRCS init.cc DEPS gflags device_context place stringpiece operator)
 cc_test(init_test SRCS init_test.cc DEPS init)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
+cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
+nv_test(data_device_transform_test SRCS data_device_transform_test.cu
+        DEPS operator op_registry init math_function)

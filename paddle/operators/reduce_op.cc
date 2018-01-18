@@ -77,6 +77,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
+      ctx->ShareLoD("X", /*->*/ x_grad_name);
     }
   }
 };
@@ -128,7 +129,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   }
 
   void SetComment(std::string name, std::string op) {
-    Replace(comment_, "{ReduceOP}", name);
+    Replace(comment_, "{ReduceOp}", name);
     Replace(comment_, "{reduce}", op);
   }
 };

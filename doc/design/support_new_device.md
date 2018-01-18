@@ -48,8 +48,8 @@ Fluid uses class [DeviceContext](https://github.com/PaddlePaddle/Paddle/blob/dev
 
 
 ```
-                /->  CPUDeviceContext   --> MKLDeviceContext
-DeviceContext ---->  CUDADeviceContext  --> CUDNNDeviceContext
+                /->  CPUDeviceContext   
+DeviceContext ---->  CUDADeviceContext  
                 \->  FPGADeviceContext
 ```
 
@@ -78,16 +78,6 @@ private:
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;  // binds with stream_
 };
 ```
-
-- CUDNNDeviceContext
-
-```
-class CUDNNDeviceContext : public CUDADeviceContext {
-  private:
-    cudnnHandle_t cudnn_handle_;
-};
-```
-
 
 ### Memory and Tensor
 

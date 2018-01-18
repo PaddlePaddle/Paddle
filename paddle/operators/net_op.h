@@ -106,7 +106,8 @@ class NetOp : public framework::OperatorBase {
 
   void CompleteAddOp(bool calculate = true);
 
-  std::string DebugString() const override;
+  std::string DebugStringEx(
+      const framework::Scope* scope = nullptr) const override;
 
   bool IsNetOp() const override;
   std::vector<std::string> OutputVars(bool has_intermediate) const override;

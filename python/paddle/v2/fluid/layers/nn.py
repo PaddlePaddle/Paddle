@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 """
 All layers just related to the neural network.
 """
@@ -9,12 +22,36 @@ from ..param_attr import ParamAttr
 from tensor import concat
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
-    'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
-    'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
-    'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
-    'sequence_first_step', 'sequence_last_step'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'accuracy',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'sequence_pool',
+    'pool2d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'sequence_expand',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'l2_normalize',
+    'matmul',
 ]
 
 
@@ -64,14 +101,14 @@ def fc(input,
                               is flattened: the first `num_flatten_dims`
                               dimensions will be flatten to form the first
                               dimension of the final matrix (height of the
-                              matrix), and the rest `rank(X) - num_col_dims`
+                              matrix), and the rest `rank(X) - num_flatten_dims`
                               dimensions are flattened to form the second
                               dimension of the final matrix (width of the matrix).
                               For example, suppose `X` is a 6-dimensional tensor
                               with a shape [2, 3, 4, 5, 6], and
-                              `x_num_col_dims` = 3. Then, the flattened matrix
+                              `num_flatten_dims` = 3. Then, the flattened matrix
                               will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-                              By default, `x_num_col_dims` is set to 1.
+                              By default, `num_flatten_dims` is set to 1.
        param_attr(ParamAttr|list): The parameter attribute for learnable
                                    parameters/weights of the fully connected
                                    layer.
@@ -151,7 +188,7 @@ def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
 
     Args:
        input(Variable): Input to the function
-       size(tuple|list|None): Shape of the look up table parameter 
+       size(tuple|list|None): Shape of the look up table parameter
        is_sparse(bool): Boolean flag that specifying whether the input is sparse
        param_attr(ParamAttr): Parameters for this layer
        dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
@@ -236,21 +273,50 @@ def gru_unit(input,
              activation='tanh',
              gate_activation='sigmoid'):
     """
-    GRUUnit Operator implements partial calculations of the GRU unit as following:
+    GRU unit layer. The equation of a gru step is:
 
-    $$
-    update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
-    reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
-    output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
-    output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
-    $$
+        .. math::
+            u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
 
-    which is same as one time step of GRU Operator.
+            r_t & = actGate(xr_{t} + W_r h_{t-1} + b_r)
 
-    @note To implement the complete GRU unit, fully-connected operator must be
-    used before to feed xu, xr and xc as the Input of GRUUnit operator.
+            m_t & = actNode(xm_t + W_c dot(r_t, h_{t-1}) + b_m)
 
-    TODO(ChunweiYan) add more document here
+            h_t & = dot((1-u_t), m_t) + dot(u_t, h_{t-1})
+
+    The inputs of gru unit includes :math:`z_t`, :math:`h_{t-1}`. In terms
+    of the equation above, the :math:`z_t` is split into 3 parts -
+    :math:`xu_t`, :math:`xr_t` and :math:`xm_t`. This means that in order to
+    implement a full GRU unit operator for an input, a fully
+    connected layer has to be applied, such that :math:`z_t = W_{fc}x_t`.
+
+    The terms :math:`u_t` and :math:`r_t` represent the update and reset gates
+    of the GRU cell. Unlike LSTM, GRU has one lesser gate. However, there is
+    an intermediate candidate hidden output, which is denoted by :math:`m_t`.
+    This layer has three outputs :math:`h_t`, :math:`dot(r_t, h_{t-1})`
+    and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
+
+    Args:
+        input (Variable): The fc transformed input value of current step.
+        hidden (Variable): The hidden value of lstm unit from previous step.
+        size (integer): The input dimension value.
+        weight (ParamAttr): The weight parameters for gru unit. Default: None
+        bias (ParamAttr): The bias parameters for gru unit. Default: None
+        activation (string): The activation type for cell (actNode). Default: 'tanh'
+        gate_activation (string): The activation type for gates (actGate). Default: 'sigmoid'
+
+    Returns:
+        tuple: The hidden value, reset-hidden value and gate values.
+
+    Examples:
+
+        .. code-block:: python
+
+             # assuming we have x_t_data and prev_hidden of size=10
+             x_t = fluid.layers.fc(input=x_t_data, size=30)
+             hidden_val, r_h_val, gate_val = fluid.layers.gru_unit(input=x_t,
+                                                    hidden = prev_hidden)
+
     """
     activation_dict = dict(
         identity=0,
@@ -357,6 +423,21 @@ def cos_sim(X, Y, **kwargs):
     return out
 
 
+def dropout(x, dropout_prob, is_test=False, seed=0, **kwargs):
+    helper = LayerHelper('dropout', **kwargs)
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+    helper.append_op(
+        type='dropout',
+        inputs={'X': [x]},
+        outputs={'Out': [out],
+                 'Mask': [mask]},
+        attrs={'dropout_prob': dropout_prob,
+               'is_test': is_test,
+               'seed': seed})
+    return out
+
+
 def cross_entropy(input, label, **kwargs):
     """
     **Cross Entropy Layer**
@@ -366,9 +447,9 @@ def cross_entropy(input, label, **kwargs):
 
     1) One-hot cross-entropy:
 	`soft_label = False`, `Label[i, 0]` indicates the class index for sample i:
-        
+
         .. math::
-          
+
             Y[i] = -\log(X[i, Label[i]])
 
     2) Soft-label cross-entropy:
@@ -386,15 +467,15 @@ def cross_entropy(input, label, **kwargs):
 	 As a special case of 2), when each row of 'label' has only one
 	 non-zero element which is equal to 1, soft-label cross-entropy degenerates
          to a one-hot cross-entropy with one-hot label representation.
-    
+
     Args:
-        input (Variable|list):  a 2-D tensor with shape [N x D], where N is the 
-            batch size and D is the number of classes. This input is a probability 
+        input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
+            batch size and D is the number of classes. This input is a probability
             computed by the previous operator, which is almost always the result
             of a softmax operator.
-        label (Variable|list): the ground truth which is a 2-D tensor. When 
-              `soft_label` is set to `False`, `label` is a tensor<int64> with shape 
-              [N x 1]. When `soft_label` is set to `True`, `label` is a 
+        label (Variable|list): the ground truth which is a 2-D tensor. When
+              `soft_label` is set to `False`, `label` is a tensor<int64> with shape
+              [N x 1]. When `soft_label` is set to `True`, `label` is a
               tensor<float/double> with shape [N x D].
         soft_label (bool, via `**kwargs`): a flag indicating whether to interpretate
               the given labels as soft labels, default `False`.
@@ -403,7 +484,7 @@ def cross_entropy(input, label, **kwargs):
          A 2-D tensor with shape [N x 1], the cross entropy loss.
 
     Raises:
-        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal; 2) when \ 
+        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal; 2) when \
               `soft_label == True`, and the 2nd dimension of `input` and `label` are not \
                equal; 3) when `soft_label == False`, and the 2nd dimension of `label` is not 1.
 
@@ -712,7 +793,7 @@ def conv2d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d_cudnn',
+        type='conv2d',
         inputs={
             'Input': input,
             'Filter': filter_param,
@@ -729,9 +810,9 @@ def conv2d(input,
 
 def sequence_pool(input, pool_type, **kwargs):
     """
-    This function add the operator for sequence pooling. 
-    It pools features of all time-steps of each instance, and is applied 
-    on top of the input using pool_type mentioned in the parameters. 
+    This function add the operator for sequence pooling.
+    It pools features of all time-steps of each instance, and is applied
+    on top of the input using pool_type mentioned in the parameters.
 
     It supports four pool_type:
 
@@ -760,7 +841,7 @@ def sequence_pool(input, pool_type, **kwargs):
 
     Args:
         input(variable): The input variable which is a LoDTensor.
-        pool_type (string): The pooling type of sequence_pool. 
+        pool_type (string): The pooling type of sequence_pool.
             It supports average, sum, sqrt and max.
 
     Returns:
@@ -770,7 +851,7 @@ def sequence_pool(input, pool_type, **kwargs):
 
         .. code-block:: python
 
-             x = fluid.layers.data(name='x', shape=[7, 1], 
+             x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
              sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
@@ -788,6 +869,11 @@ def sequence_pool(input, pool_type, **kwargs):
         outputs={"Out": pool_out,
                  "MaxIndex": max_index},
         attrs={"pooltype": pool_type.upper()})
+
+    # when pool_type is max, variable max_index is initialized,
+    # so we stop the gradient explicitly here
+    if pool_type == 'max':
+        max_index.stop_gradient = True
 
     return pool_out
 
@@ -818,7 +904,7 @@ def sequence_first_step(input, **kwargs):
 
         .. code-block:: python
 
-             x = fluid.layers.data(name='x', shape=[7, 1], 
+             x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
@@ -851,7 +937,7 @@ def sequence_last_step(input, **kwargs):
 
         .. code-block:: python
 
-             x = fluid.layers.data(name='x', shape=[7, 1], 
+             x = fluid.layers.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
     """
@@ -863,7 +949,8 @@ def pool2d(input,
            pool_type,
            pool_stride=None,
            pool_padding=None,
-           global_pooling=False):
+           global_pooling=False,
+           name=None):
     """
     This function adds the operator for pooling in 2 dimensions, using the
     pooling configurations mentioned in input parameters.
@@ -909,7 +996,8 @@ def batch_norm(input,
                epsilon=1e-05,
                param_attr=None,
                bias_attr=None,
-               data_layout='NCHW'):
+               data_layout='NCHW',
+               name=None):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -936,14 +1024,20 @@ def batch_norm(input,
         default_initializer=Constant(1.0))
 
     bias = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=True)
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
-        dtype=input.dtype, shape=param_shape, persistable=True)
+        dtype=input.dtype,
+        shape=param_shape,
+        persistable=True,
+        stop_gradient=True)
     helper.set_variable_initializer(var=mean, initializer=Constant(0.0))
 
     variance = helper.create_global_variable(
-        dtype=input.dtype, shape=param_shape, persistable=True)
+        dtype=input.dtype,
+        shape=param_shape,
+        persistable=True,
+        stop_gradient=True)
     helper.set_variable_initializer(var=variance, initializer=Constant(1.0))
 
     # create output
@@ -951,8 +1045,8 @@ def batch_norm(input,
     mean_out = mean
     # variance and variance out share the same memory
     variance_out = variance
-    saved_mean = helper.create_tmp_variable(dtype)
-    saved_variance = helper.create_tmp_variable(dtype)
+    saved_mean = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
 
     batch_norm_out = helper.create_tmp_variable(dtype)
 
@@ -979,7 +1073,7 @@ def batch_norm(input,
     return helper.append_activation(batch_norm_out)
 
 
-def beam_search_decode(ids, scores):
+def beam_search_decode(ids, scores, name=None):
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
     sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
@@ -1003,7 +1097,8 @@ def conv2d_transpose(input,
                      padding=None,
                      stride=None,
                      dilation=None,
-                     param_attr=None):
+                     param_attr=None,
+                     name=None):
     """
     **Convlution2D transpose layer**
 
@@ -1068,6 +1163,8 @@ def conv2d_transpose(input,
            contain two integers, (dilation_H, dilation_W). Otherwise, the
            dilation_H = dilation_W = dilation. Default: dilation = 1.
        param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer. Default: None
+       name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
        Variable: The tensor variable storing the convolution transpose result.
@@ -1140,7 +1237,7 @@ def conv2d_transpose(input,
     return out
 
 
-def sequence_expand(x, y):
+def sequence_expand(x, y, name=None):
     """Sequence Expand Layer. This layer will expand the input variable **x**
     according to LoD information of **y**. And the following examples will
     explain how sequence_expand works:
@@ -1184,6 +1281,8 @@ def sequence_expand(x, y):
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
         y (Variable): The input variable which is a LoDTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: The expanded variable which is a LoDTensor.
@@ -1210,30 +1309,32 @@ def lstm_unit(x_t,
               cell_t_prev,
               forget_bias=0.0,
               param_attr=None,
-              bias_attr=None):
+              bias_attr=None,
+              name=None):
     """Lstm unit layer. The equation of a lstm step is:
 
         .. math::
 
-            i_t & = \sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i)
+            i_t & = \sigma(W_{x_i}x_{t} + W_{h_i}h_{t-1} + b_i)
 
-            f_t & = \sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + W_{c_f}c_{t-1} + b_f)
+            f_t & = \sigma(W_{x_f}x_{t} + W_{h_f}h_{t-1} + b_f)
 
-            c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t+W_{h_c}h_{t-1} + b_c)
+            c_t & = f_tc_{t-1} + i_t tanh (W_{x_c}x_t + W_{h_c}h_{t-1} + b_c)
 
-            o_t & = \sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + W_{c_o}c_t + b_o)
+            o_t & = \sigma(W_{x_o}x_{t} + W_{h_o}h_{t-1} + b_o)
 
             h_t & = o_t tanh(c_t)
 
-    The inputs of lstm unit includes :math:`x_t`, :math:`h_{t-1}` and
-    :math:`c_{t-1}`. The implementation separates the linear transformation
-    and non-linear transformation apart. Here, we take :math:`i_t` as an
-    example. The linear transformation is applied by calling a `fc` layer and
-    the equation is:
+    The inputs of lstm unit include :math:`x_t`, :math:`h_{t-1}` and
+    :math:`c_{t-1}`. The 2nd dimensions of :math:`h_{t-1}` and :math:`c_{t-1}`
+    should be same. The implementation separates the linear transformation and
+    non-linear transformation apart. Here, we take :math:`i_t` as an example.
+    The linear transformation is applied by calling a `fc` layer and the
+    equation is:
 
         .. math::
 
-            L_{i_t} = W_{x_i}x_{t} + W_{h_i}h_{t-1} + W_{c_i}c_{t-1} + b_i
+            L_{i_t} = W_{x_i}x_{t} + W_{h_i}h_{t-1} + b_i
 
     The non-linear transformation is applied by calling `lstm_unit_op` and the
     equation is:
@@ -1245,14 +1346,19 @@ def lstm_unit(x_t,
     This layer has two outputs including :math:`h_t` and :math:`o_t`.
 
     Args:
-        x_t (Variable): The input value of current step.
-        hidden_t_prev (Variable): The hidden value of lstm unit.
-        cell_t_prev (Variable): The cell value of lstm unit.
+        x_t (Variable): The input value of current step, a 2-D tensor with shape
+            M x N, M for batch size and N for input size.
+        hidden_t_prev (Variable): The hidden value of lstm unit, a 2-D tensor
+            with shape M x S, M for batch size and S for size of lstm unit.
+        cell_t_prev (Variable): The cell value of lstm unit, a 2-D tensor with
+            shape M x S, M for batch size and S for size of lstm unit.
         forget_bias (float): The forget bias of lstm unit.
         param_attr (ParamAttr): The attributes of parameter weights, used to set
             initializer, name etc.
         bias_attr (ParamAttr): The attributes of bias weights, if not False,
             bias weights will be created and be set to default value.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         tuple: The hidden value and cell value of lstm unit.
@@ -1260,14 +1366,15 @@ def lstm_unit(x_t,
     Raises:
         ValueError: The ranks of **x_t**, **hidden_t_prev** and **cell_t_prev**\
                 not be 2 or the 1st dimensions of **x_t**, **hidden_t_prev** \
-                and **cell_t_prev** not be the same.
+                and **cell_t_prev** not be the same or the 2nd dimensions of \
+                **hidden_t_prev** and **cell_t_prev** not be the same.
 
     Examples:
 
         .. code-block:: python
 
              x_t = fluid.layers.fc(input=x_t_data, size=10)
-             prev_hidden = fluid.layers.fc(input=prev_hidden_data, size=20)
+             prev_hidden = fluid.layers.fc(input=prev_hidden_data, size=30)
              prev_cell = fluid.layers.fc(input=prev_cell_data, size=30)
              hidden_value, cell_value = fluid.layers.lstm_unit(x_t=x_t,
                                                     hidden_t_prev=prev_hidden,
@@ -1286,7 +1393,11 @@ def lstm_unit(x_t,
 
     if x_t.shape[0] != hidden_t_prev.shape[0] or x_t.shape[
             0] != cell_t_prev.shape[0]:
-        raise ValueError("The 1s dimension of x_t, hidden_t_prev and "
+        raise ValueError("The 1st dimensions of x_t, hidden_t_prev and "
+                         "cell_t_prev must be the same.")
+
+    if hidden_t_prev.shape[1] != cell_t_prev.shape[1]:
+        raise ValueError("The 2nd dimensions of hidden_t_prev and "
                          "cell_t_prev must be the same.")
 
     if bias_attr is None:
@@ -1313,20 +1424,22 @@ def lstm_unit(x_t,
     return h, c
 
 
-def reduce_sum(input, dim=None, keep_dim=False):
+def reduce_sum(input, dim=None, keep_dim=False, name=None):
     """
-    Computes the sum of tensor elements over the given dimension. 
+    Computes the sum of tensor elements over the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the sum is performed. If 
-            :attr:`None`, sum all elements of :attr:`input` and return a 
-            Tensor variable with a single element, otherwise must be in the 
-            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`, 
+        dim (int|None): The dimension along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`input` and return a
+            Tensor variable with a single element, otherwise must be in the
+            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
             the dimension to reduce is :math:`rank + dim`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the 
-            output Tensor. The result tensor will have one fewer dimension 
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: The reduced Tensor variable.
@@ -1357,20 +1470,22 @@ def reduce_sum(input, dim=None, keep_dim=False):
     return out
 
 
-def reduce_mean(input, dim=None, keep_dim=False):
+def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
-    Computes the mean of tensor elements over the given dimension. 
+    Computes the mean of tensor elements over the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the mean is computed. If 
-            :attr:`None`, compute the mean over all elements of :attr:`input` 
-            and return a Tensor variable with a single element, otherwise 
-            must be in the range :math:`[-rank(input), rank(input))`. If 
+        dim (int|None): The dimension along which the mean is computed. If
+            :attr:`None`, compute the mean over all elements of :attr:`input`
+            and return a Tensor variable with a single element, otherwise
+            must be in the range :math:`[-rank(input), rank(input))`. If
             :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the 
-            output Tensor. The result tensor will have one fewer dimension 
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: The reduced Tensor variable.
@@ -1401,24 +1516,26 @@ def reduce_mean(input, dim=None, keep_dim=False):
     return out
 
 
-def reduce_max(input, dim=None, keep_dim=False):
+def reduce_max(input, dim=None, keep_dim=False, name=None):
     """
-    Computes the maximum of tensor elements over the given dimension. 
+    Computes the maximum of tensor elements over the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the maximum is computed. 
-            If :attr:`None`, compute the maximum over all elements of 
-            :attr:`input` and return a Tensor variable with a single element, 
-            otherwise must be in the range :math:`[-rank(input), rank(input))`. 
+        dim (int|None): The dimension along which the maximum is computed.
+            If :attr:`None`, compute the maximum over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the 
-            output Tensor. The result tensor will have one fewer dimension 
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: The reduced Tensor variable.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1445,24 +1562,26 @@ def reduce_max(input, dim=None, keep_dim=False):
     return out
 
 
-def reduce_min(input, dim=None, keep_dim=False):
+def reduce_min(input, dim=None, keep_dim=False, name=None):
     """
-    Computes the minimum of tensor elements over the given dimension. 
+    Computes the minimum of tensor elements over the given dimension.
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the minimum is computed. 
-            If :attr:`None`, compute the minimum over all elements of 
-            :attr:`input` and return a Tensor variable with a single element, 
-            otherwise must be in the range :math:`[-rank(input), rank(input))`. 
+        dim (int|None): The dimension along which the minimum is computed.
+            If :attr:`None`, compute the minimum over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim < 0`, the dimension to reduce is :math:`rank + dim`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the 
-            output Tensor. The result tensor will have one fewer dimension 
+        keep_dim (bool): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Variable: The reduced Tensor variable.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1486,4 +1605,216 @@ def reduce_min(input, dim=None, keep_dim=False):
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
+    return out
+
+
+def split(input, num_or_sections, dim=-1, name=None):
+    """
+    Split the input tensor into multiple sub-tensors.
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        num_or_sections (int|list): If :attr:`num_or_sections` is an integer,
+            then the integer indicates the number of equal sized sub-tensors
+            that the tensor will be divided into. If :attr:`num_or_sections`
+            is a list of integers, the length of list indicates the number of
+            sub-tensors and the integers indicate the sizes of sub-tensors'
+            :attr:`dim` dimension orderly.
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the
+            dimension to split along is :math:`rank(input) + dim`.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        List: The list of segmented tensor variables.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with shape [3, 9, 5]:
+            x0, x1, x2 = fluid.layers.split(x, num_or_sections=3, dim=1)
+            x0.shape  # [3, 3, 5]
+            x1.shape  # [3, 3, 5]
+            x2.shape  # [3, 3, 5]
+            x0, x1, x2 = fluid.layers.split(x, num_or_sections=[2, 3, 4], dim=1)
+            x0.shape  # [3, 2, 5]
+            x1.shape  # [3, 3, 5]
+            x2.shape  # [3, 4, 5]
+    """
+    helper = LayerHelper('split', **locals())
+    input_shape = input.shape
+    dim = (len(input_shape) + dim) if dim < 0 else dim
+    if isinstance(num_or_sections, int):
+        assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+        num = num_or_sections
+    else:
+        assert len(num_or_sections) < input_shape[
+            dim], 'len(num_or_sections) must not be more than input.shape[dim].'
+        num = len(num_or_sections)
+    outs = [
+        helper.create_tmp_variable(dtype=helper.input_dtype())
+        for i in range(num)
+    ]
+    helper.append_op(
+        type='split',
+        inputs={'X': input},
+        outputs={'Out': outs},
+        attrs={
+            'num': num_or_sections if isinstance(num_or_sections, int) else 0,
+            'sections': num_or_sections
+            if isinstance(num_or_sections, list) else [],
+            'axis': dim
+        })
+    return outs
+
+
+def l2_normalize(x, axis, epsilon=1e-12, name=None):
+    """
+    **L2 normalize Layer**
+
+    The l2 normalize layer normalizes `x` along dimension `axis` using an L2
+    norm. For a 1-D tensor (`dim` is fixed to 0), this layer computes
+
+    output = x / sqrt(max(sum(x**2), epsilon))
+
+    For `x` with more dimensions, this layer independently normalizes each 1-D
+    slice along dimension `axis`.
+
+    Args:
+       x(Variable|list): The input tensor to l2_normalize layer.
+       axis(int): Dimension along which to normalize the input.
+       epsilon(float): A lower bound value for `x`'s l2 norm. sqrt(epsilon) will
+                       be used as the divisor if the l2 norm of `x` is less than
+                       sqrt(epsilon).
+       name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+
+    Returns:
+        Variable: The output tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name="data",
+                                   shape=(3, 17, 13),
+                                   dtype="float32")
+          fc = fluid.layers.l2_normalize(x=data, axis=1)
+    """
+
+    if len(x.shape) == 1: axis = 0
+
+    helper = LayerHelper("l2_normalize", **locals())
+
+    square = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(type="square", inputs={"X": x}, outputs={"Out": square})
+
+    reduced_sum = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type="reduce_sum",
+        inputs={"X": square},
+        outputs={"Out": reduced_sum},
+        attrs={
+            "dim": 1 if axis is None else axis,
+            "keep_dim": True,
+            "reduce_all": False
+        })
+
+    # TODO(caoying) A lower bound value epsilon for the norm is needed to
+    # imporve the numeric stability of reciprocal. This requires a maximum_op.
+    rsquare = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type="reciprocal", inputs={"X": reduced_sum}, outputs={"Out": rsquare})
+
+    # TODO(caoying) the current elementwise_mul operator does not support a
+    # general broadcast rule which broadcasts input(Y) to have the same
+    # dimension with Input(X) starting from a specified dimension. So this
+    # exanpsion is requred. Once a general broadcast rule is spported, this
+    # expanding canbe removed.
+    rsquare_expanded = helper.create_tmp_variable(dtype=x.dtype)
+    expand_times = [1] * len(x.shape)
+    expand_times[axis] = int(x.shape[axis])
+    helper.append_op(
+        type="expand",
+        inputs={"X": rsquare},
+        outputs={"Out": rsquare_expanded},
+        attrs={"expand_times": expand_times})
+
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type="elementwise_mul",
+        inputs={"X": x,
+                "Y": rsquare_expanded},
+        outputs={"Out": out})
+    return out
+
+
+def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
+    """
+    Applies matrix multipication to two tensors. Currently only rank 1 to rank 
+    3 input tensors are supported.
+
+    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the 
+    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
+
+    - If a transpose flag is specified, the last two dimensions of the tensor 
+      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for 
+      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as 
+      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the 
+      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as 
+      :math:`[1, D]` in transposed form.
+
+    - After transpose, the two tensors are 2-D or 3-D and matrix multipication 
+      performs in the following way.
+
+      - If both are 2-D, they are multiplied like conventional matrices.
+      - If either is 3-D, it is treated as a stack of matrices residing in the 
+        last two dimensions and a batched matrix multiply supporting broadcast 
+        applies on the two tensors.
+
+    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and 
+    nontransposed, the prepended or appended dimension :math:`1` will be 
+    removed after matrix multipication.
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        name(str|None): A name for this layer(optional). If set None, the layer 
+            will be named automatically.
+
+    Returns:
+        Variable: The product Tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # Examples to clarify shapes of the inputs and output
+            # x: [B, M, K], y: [B, K, N]
+            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # x: [B, M, K], y: [K, N]
+            fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # x: [B, M, K], y: [K]
+            fluid.layers.matmul(x, y)  # out: [B, M]
+            # x: [M, K], y: [K, N]
+            fluid.layers.matmul(x, y)  # out: [M, N]
+            # x: [K], y: [K]
+            fluid.layers.matmul(x, y)  # out: [1]
+            # x: [M], y: [N]
+
+            fluid.layers.matmul(x, y, True, True)  # out: [M, N]
+    """
+    helper = LayerHelper('matmul', **locals())
+    assert max(
+        len(x.shape), len(y.shape)
+    ) <= 3, 'Currently only rank 1 to rank 3 input tensors are supported.'
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='matmul',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'transpose_X': transpose_x,
+               'transpose_Y': transpose_y})
     return out

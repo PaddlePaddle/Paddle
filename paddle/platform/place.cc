@@ -51,6 +51,18 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
   return p1.which() == p2.which();
 }
 
+bool is_same_place(const Place &p1, const Place &p2) {
+  if (places_are_same_class(p1, p2)) {
+    if (is_cpu_place(p1)) {
+      return true;
+    } else {
+      return boost::get<CUDAPlace>(p1) == boost::get<CUDAPlace>(p2);
+    }
+  } else {
+    return false;
+  }
+}
+
 std::ostream &operator<<(std::ostream &os, const Place &p) {
   detail::PlacePrinter printer(os);
   boost::apply_visitor(printer, p);

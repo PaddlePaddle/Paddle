@@ -66,7 +66,8 @@ class SelectedRows {
  */
 void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows,
                        const platform::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows);
+void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
+                           const platform::DeviceContext& dev_ctx);
 
 }  // namespace framework
 }  // namespace paddle

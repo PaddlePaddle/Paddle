@@ -31,6 +31,7 @@ patch           = '%(patch)d'
 rc              = '%(rc)d'
 istaged         = %(istaged)s
 commit          = '%(commit)s'
+with_mkl        = '%(with_mkl)s'
 
 def show():
     if istaged:
@@ -41,6 +42,9 @@ def show():
         print 'rc:', rc
     else:
         print 'commit:', commit
+
+def mkl():
+    return with_mkl
 '''
     commit = git_commit()
     with open(filename, 'w') as f:
@@ -51,7 +55,8 @@ def show():
             'rc': RC,
             'version': '${PADDLE_VERSION}',
             'commit': commit,
-            'istaged': ISTAGED})
+            'istaged': ISTAGED,
+            'with_mkl': '@WITH_MKL@'})
 
 write_version_py(filename='@PADDLE_SOURCE_DIR@/python/paddle/version.py')
 

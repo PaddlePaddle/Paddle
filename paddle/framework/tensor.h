@@ -55,6 +55,10 @@ class Tensor {
   template <typename T>
   inline const T* data() const;
 
+  inline bool IsInitialized() const;
+
+  inline void switch_place(platform::Place new_place);
+
   /**
    * @brief   Return a pointer to mutable memory block.
    * @note    If not exist, then allocation.
@@ -199,6 +203,15 @@ class Tensor {
    */
   size_t offset_;
 };
+
+inline void Tensor::switch_place(platform::Place new_place) {
+  if (holder_->place() == new_place) {
+    return;
+  }
+
+  // TODO(tonyyang-svail): do memcpy here.
+  PADDLE_THROW("Not Implemented");
+}
 
 }  // namespace framework
 }  // namespace paddle

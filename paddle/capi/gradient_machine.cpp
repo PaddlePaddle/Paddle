@@ -168,3 +168,13 @@ paddle_error paddle_gradient_machine_get_layer_output(
   out->args.push_back(layerOutput);
   return kPD_NO_ERROR;
 }
+
+paddle_error paddle_gradient_machine_release_layer_output(
+    paddle_gradient_machine machine) {
+  auto m = cast(machine);
+  if (m == nullptr || m->machine == nullptr) {
+    return kPD_NULLPTR;
+  }
+  m->machine->releaseOutput();
+  return kPD_NO_ERROR;
+}

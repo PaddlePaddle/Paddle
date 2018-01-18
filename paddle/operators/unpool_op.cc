@@ -71,7 +71,7 @@ int OutputSize(int input_size, int ksize, int padding, int stride) {
 
 class UnpoolOp : public framework::OperatorWithKernel {
  protected:
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
@@ -110,7 +110,7 @@ class UnpoolOp : public framework::OperatorWithKernel {
 
 class UnpoolOpGrad : public framework::OperatorWithKernel {
  protected:
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),

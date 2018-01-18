@@ -44,14 +44,12 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
       paddings.size(), strides.size(),
       "Conv paddings dimension and Conv strides dimension should be the same.");
 
-  int input_channels = in_dims[1];
-  PADDLE_ENFORCE_EQ(input_channels, filter_dims[1] * groups,
+  PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
                     "The number of input channels should be equal to filter "
                     "channels * groups.");
 
-  int output_channels = filter_dims[0];
   PADDLE_ENFORCE_EQ(
-      output_channels % groups, 0,
+      filter_dims[0] % groups, 0,
       "The number of output channels should be divided by groups.");
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
@@ -66,6 +64,24 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                                       dilations[i], paddings[i], strides[i]));
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+  ctx->ShareLoD("Input", "Output");
+}
+
+framework::OpKernelType ConvOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
 }
 
 Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
@@ -109,6 +125,26 @@ Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
                             "dilations(h_dilation, w_dilation) of "
                             "convolution operator.")
       .SetDefault({1, 1});
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
+  AddAttr<int>("workspace_size_MB",
+               "Only used in cudnn kernel. Need set use_cudnn to true."
+               "workspace size for cudnn, in MB, "
+               "workspace is a section of GPU memory which will be "
+               "allocated/freed each time the operator runs, larger "
+               "workspace size can increase performance but also requires "
+               "better hardware. This size should be chosen carefully.")
+      .SetDefault(4096);
   AddComment(R"DOC(
 Convolution Operator.
 
@@ -182,6 +218,25 @@ Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
                             "dilations(d_dilation, h_dilation, w_dilation) of "
                             "convolution operator.")
       .SetDefault({1, 1, 1});
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<std::string>(
+      "data_format",
+      "(string, default NCHW) Only used in "
+      "An optional string from: \"NHWC\", \"NCHW\". "
+      "Defaults to \"NHWC\". Specify the data format of the output data, "
+      "the input will be transformed automatically. ")
+      .SetDefault("AnyLayout");
+  // TODO(dzhwinter): need to registered layout transform function
+  AddAttr<int>("workspace_size_MB",
+               "Only used in cudnn kernel. workspace size for cudnn, in MB, "
+               "workspace is a section of GPU memory which will be "
+               "allocated/freed each time the operator runs, larger "
+               "workspace size can increase performance but also requires "
+               "better hardware. This size should be chosen carefully.")
+      .SetDefault(4096);
 
   AddComment(R"DOC(
 Convolution3D Operator.
@@ -225,13 +280,29 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   }
 }
 
+framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  framework::LibraryType library_;
+  if (use_cudnn) {
+    library_ = framework::LibraryType::kCUDNN;
+  } else {
+    library_ = framework::LibraryType::kPlain;
+  }
+
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
+      layout_, library_);
+}
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP(conv2d, ops::ConvOp, ops::Conv2DOpMaker, conv2d_grad,
             ops::ConvOpGrad);
-namespace ops = paddle::operators;
 REGISTER_OP(conv3d, ops::ConvOp, ops::Conv3DOpMaker, conv3d_grad,
             ops::ConvOpGrad);
 

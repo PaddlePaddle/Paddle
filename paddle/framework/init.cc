@@ -11,10 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <string.h>  // for strdup
 #include <algorithm>
 #include <string>
 
 #include "paddle/framework/init.h"
+#include "paddle/framework/operator.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/piece.h"
@@ -24,7 +26,6 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 
-// TODO(qijun) move init gflags to init.cc
 void InitGflags(std::vector<std::string> &argv) {
   std::call_once(gflags_init_flag, [&]() {
     int argc = argv.size();
@@ -40,39 +41,30 @@ void InitGflags(std::vector<std::string> &argv) {
   });
 }
 
-bool InitDevices(const std::vector<std::string> &devices) {
-  // device format
-  // CPU
-  // GPU:1
-  // TODO(dzhwinter) : add device format annotation for users.
-  std::vector<platform::Place> places;
-  for (auto &device : devices) {
-    auto p = string::Piece(device);
-    if (string::HasPrefix(p, "CPU")) {
-      places.emplace_back(platform::CPUPlace());
-    } else if (string::HasPrefix(p, "GPU")) {
-#ifdef PADDLE_WITH_CUDA
-      auto pos = string::RFind(p, ':', string::Piece::npos);
-      auto number = device.substr(pos + 1);
-      places.emplace_back(platform::CUDAPlace(std::stoi(number)));
-#else
-      LOG(WARNING)
-          << "'GPU' is not supported, Please re-compile with WITH_GPU option";
-#endif
-    } else {
-      return false;
-    }
-  }
+void InitDevices() {
+  /*Init all avaiable devices by default */
 
-  if (std::find_if(places.begin(), places.end(),
-                   [&](const platform::Place &place) {
-                     return platform::is_cpu_place(place);
-                   }) == places.end()) {
-    places.emplace_back(platform::CPUPlace());
-    LOG(WARNING) << "Not specified CPU device, create CPU by Default.";
+  std::vector<platform::Place> places;
+  places.emplace_back(platform::CPUPlace());
+
+#ifdef PADDLE_WITH_CUDA
+  int count = platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; ++i) {
+    places.emplace_back(platform::CUDAPlace(i));
   }
+#else
+  LOG(WARNING)
+      << "'GPU' is not supported, Please re-compile with WITH_GPU option";
+#endif
+
   platform::DeviceContextPool::Init(places);
-  return true;
+}
+
+void InitGLOG(const std::string &prog_name) {
+  // glog will not hold the ARGV[0] inside.
+  // Use strdup to alloc a new string.
+  google::InitGoogleLogging(strdup(prog_name.c_str()));
+  google::InstallFailureSignalHandler();
 }
 
 }  // namespace framework

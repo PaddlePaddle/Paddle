@@ -24,7 +24,7 @@
 - `framework::OperatorWithKernel`：继承自OperatorBase，Op有计算函数，称作有Kernel。
 - `class OpProtoAndCheckerMaker`：描述该Op的输入、输出、属性、注释,主要用于Python API接口生成
 
-依据是否包含kernel，可以将Op分为两种：包含Kernel的Op和不包含kernel的Op，前者Op的定义继承自`OperatorBase`，后者继承自`OperatorWithKernel`。本教程主要介绍带Kernel的Op如何写，简单总结Op需要包含的内容如下：
+依据是否包含kernel，可以将Op分为两种：包含Kernel的Op和不包含kernel的Op，前者Op的定义继承自`OperatorWithKernel`，后者继承自`OperatorBase`。本教程主要介绍带Kernel的Op如何写，简单总结Op需要包含的内容如下：
 
 
  内容            | 定义位置

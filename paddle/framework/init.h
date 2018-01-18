@@ -22,7 +22,9 @@ namespace framework {
 
 void InitGflags(std::vector<std::string> &argv);
 
-bool InitDevices(const std::vector<std::string> &devices);
+void InitGLOG(const std::string &prog_name);
+
+void InitDevices();
 
 }  // namespace framework
 }  // namespace paddle

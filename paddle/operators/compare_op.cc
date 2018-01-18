@@ -66,9 +66,9 @@ class CompareOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetActualKernelType(ctx);
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
     kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
     return kt;

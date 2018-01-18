@@ -26,13 +26,12 @@ namespace framework {
 struct OpKernelType {
   struct Hash {
     size_t operator()(const OpKernelType& key) const {
-      int place = key.place_.which() + (1 << LEFT_SHIFT);
-      int data_type =
-          static_cast<int>(key.data_type_) + (1 << (LEFT_SHIFT + 1));
-      int data_layout =
-          static_cast<int>(key.data_layout_) + (1 << (LEFT_SHIFT + 2));
-      int library_type =
-          static_cast<int>(key.library_type_) + (1 << (LEFT_SHIFT + 3));
+      int place = key.place_.which();
+      int data_type = static_cast<int>(key.data_type_) << LEFT_SHIFT;
+      int data_layout = static_cast<int>(key.data_layout_) << (LEFT_SHIFT * 2);
+      int library_type = static_cast<int>(key.library_type_)
+                         << (LEFT_SHIFT * 3);
+
       std::hash<int> hasher;
       return hasher(place + data_type + data_layout + library_type);
     }
@@ -84,6 +83,11 @@ inline std::string KernelTypeToString(const OpKernelType& kernel_key) {
   std::ostringstream stream;
   stream << kernel_key;
   return stream.str();
+}
+
+inline bool TransFromNeeded(const OpKernelType& l, const OpKernelType& r) {
+  return (!platform::places_are_same_class(l.place_, r.place_)) ||
+         (l.data_type_ != r.data_type_) || (l.data_layout_ != r.data_layout_);
 }
 
 }  // namespace framework

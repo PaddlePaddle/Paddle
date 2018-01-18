@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import collections
 import contextlib
 
@@ -7,19 +20,21 @@ import proto.framework_pb2 as framework_pb2
 from . import core
 
 __all__ = [
-    'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program', 'program_guard', 'switch_startup_program',
-    'switch_main_program'
+    'Block',
+    'Variable',
+    'Program',
+    'Operator',
+    'default_startup_program',
+    'default_main_program',
+    'program_guard',
+    'switch_startup_program',
+    'switch_main_program',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
-
-USE_CPU = core.kUseCPU()
-USE_CUDNN = core.kUseMKLDNN()
-USE_MKLDNN = core.kUseMKLDNN()
 
 
 def grad_var_name(var_name):
@@ -101,8 +116,8 @@ def _debug_string_(proto, throw_on_error=True):
     """
     error_fields = list()
     if not proto.IsInitialized(error_fields) and throw_on_error:
-        raise ValueError("{0} are not initialized\nThe message is {1}".format(
-            error_fields, proto))
+        raise ValueError("{0} are not initialized.\nThe message is {1}:\n".
+                         format(error_fields, proto))
     return proto.__str__()
 
 
@@ -147,9 +162,11 @@ class Variable(object):
                  dtype=None,
                  lod_level=None,
                  persistable=None,
+                 error_clip=None,
                  stop_gradient=False,
                  **kwargs):
         self.block = block
+        self.error_clip = error_clip
 
         if name is None:
             name = Variable._unique_var_name_()
@@ -238,6 +255,9 @@ class Variable(object):
 
     __repr__ = __str__
 
+    def set_desc(self, input):
+        self.desc = input
+
     @property
     def persistable(self):
         return self.desc.persistable()
@@ -272,6 +292,9 @@ class Variable(object):
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
+
+    def set_error_clip(self, error_clip):
+        self.error_clip = error_clip
 
 
 def get_all_op_protos():
@@ -351,12 +374,13 @@ class Operator(object):
         >>>                     outputs={"Out": [var1]})
 
         Args:
-            block(Block): The block has the current operator
-            desc(core.OpDesc): The protobuf description
+            block(Block): The block has the current operator.
+            desc(core.OpDesc): The protobuf description.
             type(str): The type of operator.
             inputs(dict): The input dictionary. Key is the input parameter name.
                 Value is a list of variables.
-            outputs(dict): The output dictionary. Has same format with inputs
+            outputs(dict): The output dictionary which has the same format with
+                           inputs.
             attrs(dict): The attributes dictionary. Key is attribute name. Value
                 is the attribute value. The attribute type should be as same as
                 the type registered in C++
@@ -413,10 +437,11 @@ class Operator(object):
             for m in proto.outputs:
                 need.add(m.name)
             if not given == need:
-                raise ValueError(
-                    "Incorrect setting for output(s) of operator \"%s\". Need: [%s] Given: [%s]"
-                    % (type, ", ".join(str(e) for e in need), ", ".join(
-                        str(e) for e in given)))
+                raise ValueError(("Incorrect setting for output(s) of "
+                                  "operator \"%s\". Need: [%s] Given: [%s]") %
+                                 (type, ", ".join(str(e)
+                                                  for e in need), ", ".join(
+                                                      str(e) for e in given)))
 
             for out_proto in proto.outputs:
                 out_args = outputs[out_proto.name]
@@ -452,7 +477,7 @@ class Operator(object):
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
-            'recv'
+            'recv', 'parallel_do'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -626,6 +651,17 @@ class Block(object):
             raise ValueError("var %s not in this block" % name)
         return v
 
+    def var_recursive(self, name):
+        if self.has_var(name):
+            return self.var(name)
+        else:
+            if self.idx == 0:
+                raise ValueError("var %s is not in block(%d) nor its parents." %
+                                 name, self.idx)
+            else:
+                parent_block = self.program.block(self.parent_idx)
+                return parent_block.var_recursive(name)
+
     def all_parameters(self):
         return list(self.iter_parameters())
 
@@ -744,6 +780,7 @@ class Block(object):
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
                 clip_attr=p.clip_attr,
+                error_clip=p.error_clip,
                 name=v.name)
             self.vars[new_p.name] = new_p
 
@@ -763,6 +800,9 @@ class Program(object):
         proto = framework_pb2.ProgramDesc.FromString(str(protostr))
         return _debug_string_(proto, throw_on_error)
 
+    def get_desc(self):
+        return self.desc
+
     def clone(self):
         p = Program()
         p.desc = core.ProgramDesc(self.desc)
@@ -780,9 +820,8 @@ class Program(object):
                 if isinstance(t, Variable):
                     t = t.op
                 else:
-                    raise ValueError(
-                        "All targets of prune() can only be Variable or Operator."
-                    )
+                    raise ValueError(("All targets of prune() can only be "
+                                      "Variable or Operator."))
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()

@@ -31,6 +31,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(x_dims.size() == 2UL,
                    "The input of softmax op must be a matrix.");
     ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

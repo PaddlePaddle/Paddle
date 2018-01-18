@@ -114,5 +114,21 @@ void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p) {
 
 #endif
 
+size_t Usage::operator()(const platform::CPUPlace& cpu) const {
+  return Used(cpu);
+}
+
+size_t Usage::operator()(const platform::CUDAPlace& gpu) const {
+#ifdef PADDLE_WITH_CUDA
+  return Used(gpu);
+#else
+  PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+#endif
+}
+
+size_t memory_usage(const platform::Place& p) {
+  return boost::apply_visitor(Usage(), p);
+}
+
 }  // namespace memory
 }  // namespace paddle

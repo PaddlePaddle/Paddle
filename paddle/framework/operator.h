@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <atomic>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -52,10 +53,9 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
 
-// define some kernel hint
-const std::string kUseCPU = "use_cpu";
-const std::string kUseCUDNN = "use_cudnn";
-const std::string kUseMKLDNN = "use_mkldnn";
+// define some kernel priority
+/* Define multiple kernel type fallback order*/
+extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
@@ -84,7 +84,10 @@ class OperatorBase {
     return boost::get<T>(attrs_.at(name));
   }
 
-  virtual std::string DebugString() const;
+  /// if scope is not null, also show dimensions of arguments
+  virtual std::string DebugStringEx(const Scope* scope) const;
+
+  std::string DebugString() const { return DebugStringEx(nullptr); }
 
   /// Net will call this function to Run an op.
   virtual void Run(const Scope& scope, const platform::Place& place) const = 0;
@@ -381,9 +384,10 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual OpKernelType GetActualKernelType(const ExecutionContext& ctx) const;
-  virtual OpKernelType GetExpectedKernelType(
-      const OpKernelType& actual_kernel_type) const;
+  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+  virtual OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const OpKernelType& expected_kernel_type) const;
 
  private:
   // indicate kernel DataType by input data. Defaultly all input data must be

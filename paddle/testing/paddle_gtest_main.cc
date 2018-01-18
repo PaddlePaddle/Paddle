@@ -34,11 +34,11 @@ int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
   testing::InitGoogleTest(&argc, argv);
   paddle::memory::Used(paddle::platform::CPUPlace());
-  std::vector<std::string> devs = {"CPU"};
+
 #ifdef PADDLE_WITH_CUDA
   paddle::memory::Used(paddle::platform::CUDAPlace(0));
-  devs.push_back("GPU:0");
 #endif
-  paddle::framework::InitDevices(devs);
+
+  paddle::framework::InitDevices();
   return RUN_ALL_TESTS();
 }

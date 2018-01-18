@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
-#include "paddle/framework/tensor.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/memory/memcpy.h"
 #include "paddle/platform/device_context.h"
 #include "pybind11/numpy.h"
@@ -97,14 +97,27 @@ inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
 
 template <typename T>
 T TensorGetElement(framework::Tensor &self, size_t offset) {
-  PADDLE_ENFORCE(platform::is_cpu_place(self.place()));
-  return self.data<T>()[offset];
+  if (platform::is_cpu_place(self.place())) {
+    return self.data<T>()[offset];
+  } else {
+    std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
+    framework::Copy(self, platform::CPUPlace(), dst.get());
+    return dst->data<T>()[offset];
+  }
 }
 
+// TODO(dzhwinter) : fix the redundent Tensor allocate and free
 template <typename T>
 void TensorSetElement(framework::Tensor &self, size_t offset, T elem) {
-  PADDLE_ENFORCE(platform::is_cpu_place(self.place()));
-  self.data<T>()[offset] = elem;
+  if (platform::is_gpu_place(self.place())) {
+    std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
+    framework::Copy(self, platform::CPUPlace(), dst.get());
+    dst->data<T>()[offset] = elem;
+    framework::Copy(*dst.get(), self.place(), &self);
+
+  } else if (platform::is_cpu_place(self.place())) {
+    self.data<T>()[offset] = elem;
+  }
 }
 
 template <typename T>

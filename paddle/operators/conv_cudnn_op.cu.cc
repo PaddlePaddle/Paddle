@@ -32,7 +32,7 @@ static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES =
     static_cast<size_t>(1024) * 1024 * 1024;
 
 template <typename T>
-class CudnnConvOpKernel : public framework::OpKernel<T> {
+class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -147,7 +147,7 @@ class CudnnConvOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class CudnnConvGradOpKernel : public framework::OpKernel<T> {
+class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
@@ -315,20 +315,16 @@ class CudnnConvGradOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_KERNEL(conv2d, CUDNN, paddle::platform::CUDAPlace,
-                   paddle::operators::CudnnConvOpKernel<float>,
-                   paddle::operators::CudnnConvOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d, CUDNN, ::paddle::platform::CUDAPlace,
+                   paddle::operators::CUDNNConvOpKernel<float>,
+                   paddle::operators::CUDNNConvOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   paddle::operators::CUDNNConvGradOpKernel<float>,
+                   paddle::operators::CUDNNConvGradOpKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(conv2d_cudnn,
-                        paddle::operators::CudnnConvOpKernel<float>,
-                        paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(conv2d_cudnn_grad,
-                        paddle::operators::CudnnConvGradOpKernel<float>,
-                        paddle::operators::CudnnConvGradOpKernel<double>);
-
-REGISTER_OP_CUDA_KERNEL(conv3d_cudnn,
-                        paddle::operators::CudnnConvOpKernel<float>,
-                        paddle::operators::CudnnConvOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(conv3d_cudnn_grad,
-                        paddle::operators::CudnnConvGradOpKernel<float>,
-                        paddle::operators::CudnnConvGradOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d, CUDNN, ::paddle::platform::CUDAPlace,
+                   paddle::operators::CUDNNConvOpKernel<float>,
+                   paddle::operators::CUDNNConvOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   paddle::operators::CUDNNConvGradOpKernel<float>,
+                   paddle::operators::CUDNNConvGradOpKernel<double>);

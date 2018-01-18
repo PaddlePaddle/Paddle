@@ -61,106 +61,28 @@ function(op_library TARGET)
                 ${op_common_deps})
     endif()
 
-    # net_op doesn't need pybind
-    if ("${TARGET}" STREQUAL "net_op")
-        set(pybind_flag 1)
-    endif()
+    # Define operators that don't need pybind here.
+    foreach(manual_pybind_op "net_op" "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
+        if ("${TARGET}" STREQUAL "${manual_pybind_op}")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
 
-    if ("${TARGET}" STREQUAL "compare_op")
-        set(pybind_flag 1)
-        file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(equal);\n")
-    endif()
-
-    # conv_op contains several operators
-    if ("${TARGET}" STREQUAL "conv_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d);\n")
-    endif()
-
-    # conv_cudnn_op contains several operators
-    if ("${TARGET}" STREQUAL "conv_cudnn_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d_cudnn);\n")
-    endif()
-
-    # pool_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(pool2d);\n")
-    endif()
-
-    # pool_cudnn_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_cudnn_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(pool2d_cudnn);\n")
-    endif()
-
-    if ("${TARGET}" STREQUAL "logical_op")
-        set(pybind_flag 1)
-        file(APPEND ${pybind_file} "USE_OP(logical_and);\n")
-    endif()
-
-    # pool_with_index_op contains several operators
-    if ("${TARGET}" STREQUAL "pool_with_index_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(max_pool2d_with_index);\n")
-    endif()
-
-    # conv_transpose_op contains several operators
-    if ("${TARGET}" STREQUAL "conv_transpose_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose);\n")
-    endif()
-
-    # conv_transpose_cudnn_op contains two operators
-    if ("${TARGET}" STREQUAL "conv_transpose_cudnn_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(conv2d_transpose_cudnn);\n")
-    endif()
-
-    # save_restore_op contains several operators
-    if ("${TARGET}" STREQUAL "save_restore_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(save);\n")
-    endif()
-
-    # activation_op contains several operators
-    if ("${TARGET}" STREQUAL "activation_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(sigmoid);\n")
-    endif()
-
-    # nccl_op contains several operators
-    if ("${TARGET}" STREQUAL "nccl_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(ncclAllReduce);\n")
-    endif()
-
-    # reduce_op contains several operators
-    if ("${TARGET}" STREQUAL "reduce_op")
-        set(pybind_flag 1)
-        # It's enough to just adding one operator to pybind
-        file(APPEND ${pybind_file} "USE_OP(reduce_sum);\n")
-    endif()
-
-    if ("${TARGET}" STREQUAL "tensor_array_read_write_op")
-        set(pybind_flag 1)
-        file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(read_from_array);\nUSE_NO_KERNEL_OP(write_to_array);\n")
+    # The registration of USE_OP, please refer to paddle/framework/op_registry.h.
+    # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
+    # And for detail pybind information, please see generated paddle/pybind/pybind.h.
+    file(READ ${TARGET}.cc TARGET_CONTENT)
+    string(REGEX MATCH "REGISTER_OP\\(.*REGISTER_OP\\(" multi_register "${TARGET_CONTENT}")
+    string(REGEX MATCH "REGISTER_OP\\([a-z0-9_]*," one_register "${multi_register}")
+    if (one_register STREQUAL "")
+        string(REPLACE "_op" "" TARGET "${TARGET}")
+    else ()
+        string(REPLACE "REGISTER_OP(" "" TARGET "${one_register}")
+        string(REPLACE "," "" TARGET "${TARGET}")
     endif()
 
     # pybind USE_NO_KERNEL_OP
     # HACK: if REGISTER_OP_CPU_KERNEL presents the operator must have kernel
-    file(READ ${TARGET}.cc TARGET_CONTENT)
     string(REGEX MATCH "REGISTER_OP_CPU_KERNEL" regex_result "${TARGET_CONTENT}")
     string(REPLACE "_op" "" TARGET "${TARGET}")
     if (${pybind_flag} EQUAL 0 AND regex_result STREQUAL "")
@@ -171,7 +93,6 @@ function(op_library TARGET)
     # pybind USE_CPU_ONLY_OP
     list(LENGTH cu_srcs cu_srcs_len)
     list(LENGTH cu_cc_srcs cu_cc_srcs_len)
-
     if (${pybind_flag} EQUAL 0 AND ${cu_srcs_len} EQUAL 0 AND ${cu_cc_srcs_len} EQUAL 0)
         file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
         set(pybind_flag 1)
@@ -188,6 +109,7 @@ add_subdirectory(nccl)
 
 if(WITH_GPU)
     op_library(nccl_op DEPS nccl_common)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(ncclAllReduce);\n")
 else()
     set(DEPS_OPS ${DEPS_OPS} nccl_op)
 endif()
@@ -213,9 +135,8 @@ op_library(detection_output_op DEPS softmax)
 op_library(sequence_softmax_op DEPS softmax)
 op_library(sum_op DEPS selected_rows_functor)
 op_library(sgd_op DEPS selected_rows_functor)
+op_library(print_op DEPS lod_tensor)
 op_library(adagrad_op DEPS selected_rows_functor)
-op_library(conv_op DEPS vol2col)
-op_library(pool_op DEPS pooling)
 op_library(maxout_op DEPS maxouting)
 op_library(unpool_op DEPS unpooling)
 op_library(pool_with_index_op DEPS pooling)
@@ -226,10 +147,27 @@ op_library(max_sequence_len_op DEPS lod_rank_table)
 op_library(sequence_conv_op DEPS context_project)
 op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
-op_library(conv_transpose_op DEPS vol2col)
 op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(recurrent_op DEPS executor)
+op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale math_function)
 op_library(cos_sim_op DEPS cos_sim_functor)
+op_library(parallel_do_op DEPS executor)
+
+# Regist multiple Kernel to pybind
+if (WITH_GPU)
+op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS vol2col)
+op_library(pool_op SRCS pool_op.cc pool_op.cu.cc pool_cudnn_op.cu.cc DEPS pooling)
+op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
+  conv_transpose_cudnn_op.cu.cc DEPS vol2col)
+file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(conv2d, CUDNN);\n")
+file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(pool2d, CUDNN);\n")
+file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(conv2d_transpose, CUDNN);\n")
+else()
+op_library(conv_op SRCS conv_op.cc DEPS vol2col)
+op_library(pool_op SRCS pool_op.cc DEPS pooling)
+op_library(conv_transpose_op SRCS conv_transpose_op.cc DEPS vol2col)
+endif()
+
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
@@ -238,6 +176,8 @@ list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
     op_library(${src})
 endforeach()
+file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
+
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 

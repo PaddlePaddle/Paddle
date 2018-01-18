@@ -85,7 +85,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetActualKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Score")->type()),

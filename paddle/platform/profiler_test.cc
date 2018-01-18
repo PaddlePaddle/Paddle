@@ -26,7 +26,7 @@ TEST(Event, CpuElapsedTime) {
     counter++;
   }
   Event stop_event(EventKind::kPopRange, "test", 0, nullptr);
-  EXPECT_GT(start_event.CpuElapsedUs(stop_event), 0);
+  EXPECT_GT(start_event.CpuElapsedMs(stop_event), 0);
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -45,7 +45,7 @@ TEST(Event, CudaElapsedTime) {
     counter++;
   }
   Event stop_event(EventKind::kPopRange, "test", 0, dev_ctx);
-  EXPECT_GT(start_event.CudaElapsedUs(stop_event), 0);
+  EXPECT_GT(start_event.CudaElapsedMs(stop_event), 0);
 }
 #endif
 
@@ -55,6 +55,7 @@ TEST(RecordEvent, RecordEvent) {
   using paddle::platform::EventKind;
   using paddle::platform::RecordEvent;
   using paddle::platform::ProfilerState;
+  using paddle::platform::EventSortingKey;
 
   ProfilerState state = ProfilerState::kCPU;
   DeviceContext* dev_ctx = nullptr;
@@ -67,13 +68,45 @@ TEST(RecordEvent, RecordEvent) {
 #endif
   EnableProfiler(state);
 
+  /* Usage 1:
+  *  PushEvent(evt_name, dev_ctx);
+  *  ...
+  *  code to be analyzed
+  *  ...
+  * PopEvent(evt_name, dev_ctx);
+  */
+  for (int loop = 0; loop < 3; ++loop) {
+    for (int i = 1; i < 5; ++i) {
+      std::string name = "op_" + std::to_string(i);
+      PushEvent(name, dev_ctx);
+      int counter = 1;
+      while (counter != i * 1000) counter++;
+      PopEvent(name, dev_ctx);
+    }
+  }
+
+  /* Usage 2:
+   * {
+   *   RecordEvent record_event(name, dev_ctx);
+   *   ...
+   *   code to be analyzed
+   *   ...
+   * }
+   */
   for (int i = 1; i < 5; ++i) {
-    std::string name = "op_" + std::to_string(i);
+    std::string name = "evs_op_" + std::to_string(i);
     RecordEvent record_event(name, dev_ctx);
     int counter = 1;
     while (counter != i * 1000) counter++;
   }
+
+  // Bad Usage:
+  PushEvent("event_without_pop", dev_ctx);
+  PopEvent("event_without_push", dev_ctx);
   std::vector<std::vector<Event>> events = paddle::platform::DisableProfiler();
+  // Will remove parsing-related code from test later
+  ParseEvents(events, EventSortingKey::kTotal);
+
   int cuda_startup_count = 0;
   int start_profiler_count = 0;
   int stop_profiler_count = 0;
@@ -85,9 +118,9 @@ TEST(RecordEvent, RecordEvent) {
       if (events[i][j].name() == "push") {
         EXPECT_EQ(events[i][j + 1].name(), "pop");
 #ifdef PADDLE_WITH_CUDA
-        EXPECT_GT(events[i][j].CudaElapsedUs(events[i][j + 1]), 0);
+        EXPECT_GT(events[i][j].CudaElapsedMs(events[i][j + 1]), 0);
 #else
-        EXPECT_GT(events[i][j].CpuElapsedUs(events[i][j + 1]), 0);
+        EXPECT_GT(events[i][j].CpuElapsedMs(events[i][j + 1]), 0);
 #endif
       }
     }

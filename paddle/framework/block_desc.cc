@@ -53,12 +53,12 @@ VarDesc *BlockDesc::FindVarRecursive(const std::string &name) const {
   return it->second.get();
 }
 
-VarDesc *BlockDesc::FindRecursiveOrCreateVar(const std::string &name_bytes) {
+VarDesc &BlockDesc::FindRecursiveOrCreateVar(const std::string &name_bytes) {
   VarDesc *res = FindVarRecursive(name_bytes);
   if (res == nullptr) {
     res = Var(name_bytes);
   }
-  return res;
+  return *res;
 }
 
 bool BlockDesc::HasVarRecursive(const std::string &name) const {

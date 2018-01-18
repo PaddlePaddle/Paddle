@@ -87,7 +87,11 @@ class GradOpDescMakerBase {
     auto onames = this->Output(name);
     ret_val.reserve(onames.size());
     std::transform(onames.begin(), onames.end(), std::back_inserter(ret_val),
-                   GradVarName);
+                   [this](const std::string& fwd_var_name) -> std::string {
+                     auto g_name = GradVarName(fwd_var_name);
+                     (*this->grad_to_var_)[g_name] = fwd_var_name;
+                     return g_name;
+                   });
     return ret_val;
   }
 

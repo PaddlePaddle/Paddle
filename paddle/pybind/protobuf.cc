@@ -216,7 +216,7 @@ void BindVarDsec(py::module &m) {
       .def("set_dtype", &VarDesc::SetDataType)
       .def("shape", &VarDesc::Shape, py::return_value_policy::reference)
       .def("dtype", &VarDesc::GetDataType, py::return_value_policy::reference)
-      .def("lod_level", &VarDesc::GetLodLevel)
+      .def("lod_level", &VarDesc::GetLoDLevel)
       .def("set_lod_level", &VarDesc::SetLoDLevel)
       .def("type", &VarDesc::GetType)
       .def("set_type", &VarDesc::SetType)
@@ -231,7 +231,8 @@ void BindVarDsec(py::module &m) {
       .value("FETCH_LIST", proto::VarDesc::FETCH_LIST)
       .value("STEP_SCOPES", proto::VarDesc::STEP_SCOPES)
       .value("LOD_RANK_TABLE", proto::VarDesc::LOD_RANK_TABLE)
-      .value("LOD_TENSOR_ARRAY", proto::VarDesc::LOD_TENSOR_ARRAY);
+      .value("LOD_TENSOR_ARRAY", proto::VarDesc::LOD_TENSOR_ARRAY)
+      .value("PLACE_LIST", proto::VarDesc::PLACE_LIST);
 }
 
 void BindOpDesc(py::module &m) {

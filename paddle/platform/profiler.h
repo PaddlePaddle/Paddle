@@ -33,6 +33,7 @@ class Event {
 
   std::string kind() const;
   std::string name() const { return name_; }
+  uint32_t thread_id() const { return thread_id_; }
   bool has_cuda() const { return has_cuda_; }
 
 #ifdef PADDLE_WITH_CUDA
@@ -40,8 +41,8 @@ class Event {
   int device() const { return device_; }
 #endif
 
-  double CpuElapsedUs(const Event& e) const;
-  double CudaElapsedUs(const Event& e) const;
+  double CpuElapsedMs(const Event& e) const;
+  double CudaElapsedMs(const Event& e) const;
 
  private:
   EventKind kind_;
@@ -94,6 +95,10 @@ enum ProfilerState {
 
 void Mark(const std::string& name, DeviceContext* dev_ctx);
 
+void PushEvent(const std::string& name, DeviceContext* dev_ctx);
+
+void PopEvent(const std::string& name, DeviceContext* dev_ctx);
+
 struct RecordEvent {
   explicit RecordEvent(const std::string& name, DeviceContext* dev_ctx);
 
@@ -101,6 +106,8 @@ struct RecordEvent {
 
   // The device context is used by Event to get the current cuda stream.
   DeviceContext* dev_ctx_;
+  // Event name
+  std::string name_;
 };
 
 // Enable the profiling function.
@@ -110,5 +117,26 @@ void EnableProfiler(ProfilerState state);
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> DisableProfiler();
 
+// The information of each event given in the profiling report
+struct EventItem {
+  std::string name;
+  int calls;
+  double total_time;
+  double min_time;
+  double max_time;
+  double ave_time;
+};
+
+// Candidate keys to sort the profiling report
+enum EventSortingKey { kDefault, kCalls, kTotal, kMin, kMax, kAve };
+
+// Parse the event list and output the profiling report
+void ParseEvents(std::vector<std::vector<Event>>&,
+                 EventSortingKey sorted_by = EventSortingKey::kDefault);
+
+// Print results
+void PrintProfilingReport(std::vector<std::vector<EventItem>>& events_table,
+                          std::string& sorted_domain, const size_t name_width,
+                          const size_t data_width);
 }  // namespace platform
 }  // namespace paddle
