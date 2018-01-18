@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/matmul_op.h"
-#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -42,22 +41,18 @@ class MatMulOp : public framework::OperatorWithKernel {
                       "Input tensor X must be at least 1-dimensional.");
     PADDLE_ENFORCE_GE(dim_y.size(), 1,
                       "Input tensor Y must be at least 1-dimensional.");
-    PADDLE_ENFORCE_LE(dim_x.size(), 4,
-                      "Input tensor X must be at most 4-dimensional.");
-    PADDLE_ENFORCE_LE(dim_y.size(), 4,
-                      "Input tensor Y must be at most 4-dimensional.");
 
     std::vector<int64_t> out_dim;
     int64_t batch_count = 1;
     if (dim_x.size() > 3) {
       PADDLE_ENFORCE(dim_y.size() == dim_x.size(),
                      "The dimensions of X and Y must be the same, and both of "
-                     "them should be 4-dimensional.");
+                     "them should be %d-dimensional.",
+                     dim_x.size());
       for (int j = 0; j < dim_x.size() - 2; ++j) {
-        PADDLE_ENFORCE(
-            dim_y[j] == dim_x[j],
-            "The dimensions of X and Y must be the same, and both of "
-            "them should be 4-dimensional.");
+        PADDLE_ENFORCE(dim_y[j] == dim_x[j],
+                       "The dimensions of X[%d] and Y[%d] must be the same.", j,
+                       j);
         out_dim.push_back(dim_x[j]);
         batch_count *= dim_x[j];
       }
