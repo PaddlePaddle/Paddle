@@ -249,22 +249,23 @@ def dynamic_lstm(input,
 
         h_t & = o_t \odot act_h(c_t)
 
-    where the :math:`W` terms denote weight matrices (e.g. :math:`W_{xi}` is the matrix
-    of weights from the input gate to the input), :math:`W_{ic}, W_{fc}, W_{oc}`
-    are diagonal weight matrices for peephole connections. In our implementation,
-    we use vectors to reprenset these diagonal weight matrices. The :math:`b` terms
-    denote bias vectors (:math:`b_i` is the input gate bias vector), :math:`\sigma`
-    is the non-line activations, such as logistic sigmoid function, and
-    :math:`i, f, o` and :math:`c` are the input gate, forget gate, output gate,
-    and cell activation vectors, respectively, all of which have the same size as
-    the cell output activation vector :math:`h`.
+    where the :math:`W` terms denote weight matrices (e.g. :math:`W_{xi}` is 
+    the matrix of weights from the input gate to the input), :math:`W_{ic}, \
+    W_{fc}, W_{oc}` are diagonal weight matrices for peephole connections. In 
+    our implementation, we use vectors to reprenset these diagonal weight 
+    matrices. The :math:`b` terms denote bias vectors (:math:`b_i` is the input 
+    gate bias vector), :math:`\sigma` is the non-line activations, such as 
+    logistic sigmoid function, and :math:`i, f, o` and :math:`c` are the input 
+    gate, forget gate, output gate, and cell activation vectors, respectively, 
+    all of which have the same size as the cell output activation vector :math:`h`.
 
-    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g` and :math:`act_h`
-    are the cell input and cell output activation functions and `tanh` is usually
-    used for them. :math:`\\tilde{c_t}` is also called candidate hidden state,
-    which is computed based on the current input and the previous hidden state.
+    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g` 
+    and :math:`act_h` are the cell input and cell output activation functions 
+    and `tanh` is usually used for them. :math:`\\tilde{c_t}` is also called 
+    candidate hidden state, which is computed based on the current input and 
+    the previous hidden state.
 
-    Set `use_peepholes` False to disable peephole connection. The formula
+    Set `use_peepholes` to `False` to disable peephole connection. The formula
     is omitted here, please refer to the paper
     http://www.bioinf.jku.at/publications/older/2604.pdf for details.
 
