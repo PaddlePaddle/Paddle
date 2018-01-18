@@ -29,7 +29,14 @@ static void free_tmp_tensor(const Tensor* in_ptr, const Tensor* tmp_ptr) {
 void DataTransform(const OpKernelType& expected_kernel_type,
                    const OpKernelType& kernel_type_for_var,
                    const Tensor& input_tensor, Tensor* out) {
+  // in_ptr is used to store the input of data transform function.
+  // it need to be deleted by free_tmp_tensor because ip_ptr may be
+  // equal to &input_tensor and input_tensor should not be deleted here.
   const Tensor* in_ptr = &input_tensor;
+
+  // out_ptr is used to store the result of data transform function.
+  // when one transform is done, the in_ptr should be deleted and the out_ptr
+  // should be assigned to in_ptr for next data transformation.
   Tensor* out_ptr = new Tensor();
 
   // do layout transform
@@ -52,15 +59,13 @@ void DataTransform(const OpKernelType& expected_kernel_type,
     out_ptr = new Tensor();
   }
 
+  PADDLE_ENFORCE_NE(in_ptr, &input_tensor,
+                    "no transform is done, please check!");
   // get output data
-  if (in_ptr != &input_tensor) {
-    out->ShareDataWith(*in_ptr);
-  } else {
-    PADDLE_THROW("no transform is done, please check!");
-  }
+  out->ShareDataWith(*in_ptr);
 
   // clean up
-  delete in_ptr;
+  free_tmp_tensor(&input_tensor, in_ptr);
   delete out_ptr;
 }
 

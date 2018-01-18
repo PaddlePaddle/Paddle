@@ -17,7 +17,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/platform/device_context.h"
 
-TEST(DataTransform, DataLayout) {
+TEST(DataTransform, DataLayoutFunction) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
