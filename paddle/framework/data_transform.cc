@@ -20,9 +20,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-static void PassTensorData(Tensor& from, Tensor& to) {
-  to.ShareDataWith(from);
-  from = Tensor();
+static void PassTensorData(Tensor* from, Tensor* to) {
+  to->ShareDataWith(*from);
+  *from = Tensor();
 }
 
 void DataTransform(const OpKernelType& expected_kernel_type,
@@ -38,7 +38,7 @@ void DataTransform(const OpKernelType& expected_kernel_type,
                           kernel_type_for_var.data_layout_)) {
     TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
     transformed = true;
-    PassTensorData(out, in);
+    PassTensorData(&out, &in);
   }
 
   // do device transform
@@ -46,7 +46,7 @@ void DataTransform(const OpKernelType& expected_kernel_type,
                                expected_kernel_type.place_)) {
     DeviceTransform(in, expected_kernel_type.place_, &out);
     transformed = true;
-    PassTensorData(out, in);
+    PassTensorData(&out, &in);
   }
 
   PADDLE_ENFORCE(transformed, "no transform is done, please check!");
