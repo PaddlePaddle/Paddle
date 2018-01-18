@@ -22,36 +22,13 @@ from ..param_attr import ParamAttr
 from tensor import concat
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'accuracy',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'sequence_pool',
-    'pool2d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'l2_normalize',
-    'matmul',
+    'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
+    'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
+    'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
+    'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
+    'l2_normalize', 'matmul', 'warpctc'
 ]
 
 
@@ -1721,29 +1698,29 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
-    Applies matrix multipication to two tensors. Currently only rank 1 to rank 
+    Applies matrix multipication to two tensors. Currently only rank 1 to rank
     3 input tensors are supported.
 
-    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the 
+    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
     flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
 
-    - If a transpose flag is specified, the last two dimensions of the tensor 
-      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for 
-      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as 
-      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the 
-      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as 
+    - If a transpose flag is specified, the last two dimensions of the tensor
+      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for
+      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as
+      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the
+      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as
       :math:`[1, D]` in transposed form.
 
-    - After transpose, the two tensors are 2-D or 3-D and matrix multipication 
+    - After transpose, the two tensors are 2-D or 3-D and matrix multipication
       performs in the following way.
 
       - If both are 2-D, they are multiplied like conventional matrices.
-      - If either is 3-D, it is treated as a stack of matrices residing in the 
-        last two dimensions and a batched matrix multiply supporting broadcast 
+      - If either is 3-D, it is treated as a stack of matrices residing in the
+        last two dimensions and a batched matrix multiply supporting broadcast
         applies on the two tensors.
 
-    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and 
-    nontransposed, the prepended or appended dimension :math:`1` will be 
+    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and
+    nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multipication.
 
     Args:
@@ -1751,7 +1728,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         y (Variable): The input variable which is a Tensor or LoDTensor.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
-        name(str|None): A name for this layer(optional). If set None, the layer 
+        name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
     Returns:
@@ -1788,3 +1765,56 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         attrs={'transpose_X': transpose_x,
                'transpose_Y': transpose_y})
     return out
+
+
+def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
+    """
+    An operator integrating the open source Warp-CTC library
+    (https://github.com/baidu-research/warp-ctc)
+    to compute Connectionist Temporal Classification (CTC) loss.
+    It can be aliased as softmax with CTC, since a native softmax activation is
+    interated to the Warp-CTC library, to to normlize values for each row of the
+    input tensor.
+
+    Args:
+       input(Variable): (LodTensor, default: LoDTensor<float>),
+         the unscaled probabilities of variable-length sequences,
+         which is a 2-D Tensor with LoD information.
+         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+         sequences' length and num_classes is the true number of classes.
+         (not including the blank label).
+       label(Variable): (LodTensor, default: LoDTensor<int>), the ground truth
+         of variable-length sequence, which is a 2-D Tensor with LoD
+         information. It is of the shape [Lg, 1], where Lg is th sum of
+         all labels' length.
+       blank: (int, default: 0), the blank label index of Connectionist
+         Temporal Classification (CTC) loss, which is in the
+         half-opened interval [0, num_classes + 1).
+       norm_by_times: (bool, default: false), whether to normalize
+       the gradients by the number of time-step,which is also the
+       sequence's length. There is no need to normalize the gradients
+       if warpctc layer was follewed by a mean_op.
+
+    Returns:
+        Variable: The Connectionist Temporal Classification (CTC) loss,
+        which is a 2-D Tensor of the shape [batch_size, 1].
+
+    Examples:
+        .. code-block:: python
+            y = layers.data(name='y', shape=[11, 8], dtype='float32', lod_level=1)
+            y_predict = layers.data(name='y_predict', shape=[11, 1], dtype='float32')
+            cost = layers.warpctc(input=y_predict, label=y)
+
+    """
+    helper = LayerHelper('warpctc', **kwargs)
+    loss_out = helper.create_tmp_variable(dtype=input.dtype)
+    grad_out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type='warpctc',
+        inputs={'Logits': [input],
+                'Label': [label]},
+        outputs={'WarpCTCGrad': [grad_out],
+                 'Loss': [loss_out]},
+        attrs={'blank': blank,
+               'norm_by_times': norm_by_times})
+    return loss_out
