@@ -56,15 +56,6 @@ void InferenceEngine::LoadInferenceModel(
     const std::string& dirname,
     const std::vector<std::string>& feed_var_names,
     const std::vector<std::string>& fetch_var_names) {
-#ifdef PADDLE_USE_PTOOLS
-  std::string model_filename = dirname + "/__model__";
-  LOG(INFO) << "Using PicklingTools, loading model from " << model_filename;
-  Val v;
-  LoadValFromFile(model_filename.c_str(), v, SERIALIZE_P0);
-  std::string program_desc_str = v["program_desc_str"];
-  LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
-// PicklingTools cannot parse the vector of strings correctly.
-#else
   std::string model_filename = dirname + "/__model__.dat";
   LOG(INFO) << "loading model from " << model_filename;
   std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
@@ -75,7 +66,7 @@ void InferenceEngine::LoadInferenceModel(
   LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
   inputfs.read(&program_desc_str[0], program_desc_str.size());
   inputfs.close();
-#endif
+
   program_ = new framework::ProgramDesc(program_desc_str);
   GenerateLoadProgram(dirname);
 
