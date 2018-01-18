@@ -87,7 +87,7 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   return true;
 }
 
-bool RPCClient::wait() {
+bool RPCClient::Wait() {
   bool ok = true;
 
   while (true) {
@@ -96,7 +96,6 @@ bool RPCClient::wait() {
     }
 
     if (!Proceed()) {
-      LOG(ERROR) << "Get meets CompletionQueue error";
       return false;
     }
   }
@@ -110,9 +109,9 @@ bool RPCClient::Proceed() {
 
   // request counts.
   if (!cq_.Next(&tag, &ok)) {
+    LOG(ERROR) << "Get meets CompletionQueue error";
     return false;
   }
-  req_count_--;
 
   GPR_ASSERT(ok);
   PADDLE_ENFORCE(tag);
@@ -120,12 +119,15 @@ bool RPCClient::Proceed() {
   // TODO(gongwb): add more retries.
   ClientBase* c = static_cast<ClientBase*>(tag);
   if (!c->status_.ok()) {
+    LOG(ERROR) << "proc param error:" << c->var_h_.String()
+               << " grpc error:" << c->status_.error_message();
     delete c;
-    return true;
+    return false;
   }
 
   c->Process();
   delete c;
+  req_count_--;
   return true;
 }
 
@@ -135,8 +137,12 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
     return it->second;
   }
 
+  grpc::ChannelArguments args;
+  args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
+  args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
+
   auto ch = std::shared_ptr<grpc::Channel>(
-      grpc::CreateChannel(ep, grpc::InsecureChannelCredentials()));
+      grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args));
 
   channels_[ep] = ch;
   return ch;

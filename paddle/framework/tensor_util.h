@@ -315,9 +315,8 @@ inline void DeserializeFromStream(std::istream& is, Tensor* tensor,
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
       is.read(static_cast<char*>(buf), cpu_tensor.memory_size());
-      auto cpu_place = new platform::CPUPlace();
-      framework::Copy(cpu_tensor, *cpu_place, dev_ctx, tensor);
-      delete cpu_place;
+      auto dst_place = dev_ctx.GetPlace();
+      framework::Copy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
       PADDLE_THROW("Unexpected branch");
 #endif
