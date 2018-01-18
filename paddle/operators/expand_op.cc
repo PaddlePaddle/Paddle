@@ -58,21 +58,21 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
   ExpandOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "(Tensor, default Tensor<float>) A tensor with rank in [1, 6]."
-             "X is the input tensor to be expanded.");
+             "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
+             "X is the input to be expanded.");
     AddOutput("Out",
-              "(Tensor, default Tensor<float>) A tensor with rank in [1, 6]."
-              "The rank of Output(Out) is same as Input(X) except that each "
-              "dimension size of Output(Out) is equal to corresponding "
-              "dimension size of Input(X) multiplying corresponding value of "
-              "Attr(expand_times).");
+              "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
+              "The rank of Output(Out) have the same with Input(X). "
+              "After expanding, size of each dimension of Output(Out) is equal "
+              "to size of the corresponding dimension of Input(X) multiplying "
+              "the corresponding value given by Attr(expand_times).");
     AddAttr<std::vector<int>>("expand_times",
                               "Expand times number for each dimension.");
     AddComment(R"DOC(
 Expand operator tiles the input by given times number. You should set times
 number for each dimension by providing attribute 'expand_times'. The rank of X
-should be in [1, 6]. Please notice that size of 'expand_times' must be same with
-X's rank. Following is a using case:
+should be in [1, 6]. Please note that size of 'expand_times' must be the same
+with X's rank. Following is a using case:
 
 Input(X) is a 3-D tensor with shape [2, 3, 1]:
 
