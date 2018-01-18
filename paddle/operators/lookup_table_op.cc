@@ -66,6 +66,12 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(boolean, default false) "
                   "Sparse update")
         .SetDefault(false);
+    AddAttr<int64_t>(
+        "padding_idx",
+        "(int64_t, default -1) "
+        " If given, pads the output with zeros whenever it encounters "
+        "the index.")
+        .SetDefault(-1);
     AddComment(R"DOC(
 Lookup Table Operator.
 
