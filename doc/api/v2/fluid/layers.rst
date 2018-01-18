@@ -358,6 +358,18 @@ reduce_min
 ..  autofunction:: paddle.v2.fluid.layers.reduce_min
     :noindex:
 
+
+split
+-----
+..  autofunction:: paddle.v2.fluid.layers.split
+    :noindex:
+
+
+matmul
+------
+..  autofunction:: paddle.v2.fluid.layers.matmul
+    :noindex:
+
 logsigmoid
 ----------
 ..  autofunction:: paddle.v2.fluid.layers.logsigmoid
@@ -486,4 +498,9 @@ hard_sigmoid
 swish
 ------
 ..  autofunction:: paddle.v2.fluid.layers.swish
+    :noindex:
+
+l2_normalize
+------------
+..  autofunction:: paddle.v2.fluid.layers.l2_normalize
     :noindex:
