@@ -34,6 +34,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+constexpr int kCondStart = 0;
+constexpr int kCondRunning = 1;
+constexpr int kCondDone = 2;
+
 void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
   service->RunSyncUpdate();
   VLOG(4) << "RunServer thread end";
@@ -101,12 +105,14 @@ class RecvOp : public framework::OperatorBase {
     framework::ProgramDesc program(program_desc);
     framework::Executor executor(dev_place);
 
-    rpc_service_->Reset();
+    // rpc_service_->Reset();
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
     while (!exit_flag) {
       // Get from multiple trainers, we don't care about the order in which
       // the gradients arrives, just add suffix 0~n and merge the gradient.
+      rpc_service_->SetCond(kCondStart);
+      VLOG(3) << "================ start get from service ===========";
       for (size_t i = 0; i < param_count * fan_in; ++i) {
         const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
@@ -139,15 +145,16 @@ class RecvOp : public framework::OperatorBase {
       if (exit_flag) {
         break;
       }
-      rpc_service_->Reset();
+      // rpc_service_->Reset();
       try {
         executor.Run(program, &recv_scope, 0, /*global_block*/
                      false /*create_local_scope*/, false /*create_vars*/);
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
-
-      rpc_service_->Done();
+      VLOG(3) << "================ run sub program end ===========";
+      rpc_service_->SetCond(kCondDone);
+      rpc_service_->WaitClientGet(param_count * fan_in);
       grads_counter_.clear();
     }  // while(true)
   }
