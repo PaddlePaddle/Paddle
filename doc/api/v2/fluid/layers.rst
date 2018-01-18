@@ -500,9 +500,14 @@ swish
 ..  autofunction:: paddle.v2.fluid.layers.swish
     :noindex:
 
-greedy_ctc_error
+edit_distance_error
 ---------------
-..  autofunction:: paddle.v2.fluid.layers.greedy_ctc_error
+..  autofunction:: paddle.v2.fluid.layers.edit_distance_error
+    :noindex:
+
+ctc_greedy_decoder
+---------------
+..  autofunction:: paddle.v2.fluid.layers.ctc_greedy_decoder
     :noindex:
 
 l2_normalize
