@@ -148,7 +148,42 @@ void BindProgramDesc(py::module &m) {
              PADDLE_ENFORCE(desc->ParseFromString(data),
                             "Fail to parse ProgramDesc from string. This could "
                             "be a bug of Paddle.");
-           });
+           })
+      .def("assign_feed_var_names",
+           [](ProgramDesc &program_desc,
+              const std::vector<std::string> &var_names) {
+             proto::ProgramDesc *desc = program_desc.Proto();
+             desc->clear_feed_var_names();
+             for (auto var_name : var_names) {
+               desc->add_feed_var_names(var_name);
+             }
+           })
+      .def("assign_fetch_var_names",
+           [](ProgramDesc &program_desc,
+              const std::vector<std::string> &var_names) {
+             proto::ProgramDesc *desc = program_desc.Proto();
+             desc->clear_fetch_var_names();
+             for (auto var_name : var_names) {
+               desc->add_fetch_var_names(var_name);
+             }
+           })
+      .def("get_feed_var_names",
+           [](ProgramDesc &program_desc) {
+             proto::ProgramDesc *desc = program_desc.Proto();
+             std::vector<std::string> retv;
+             for (int i = 0; i < desc->feed_var_names_size(); ++i) {
+               retv.push_back(desc->feed_var_names(i));
+             }
+             return retv;
+           })
+      .def("get_fetch_var_names", [](ProgramDesc &program_desc) {
+        proto::ProgramDesc *desc = program_desc.Proto();
+        std::vector<std::string> retv;
+        for (int i = 0; i < desc->fetch_var_names_size(); ++i) {
+          retv.push_back(desc->fetch_var_names(i));
+        }
+        return retv;
+      });
 }
 
 void BindBlockDesc(py::module &m) {

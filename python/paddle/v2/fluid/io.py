@@ -233,18 +233,12 @@ def save_inference_model(dirname,
     inference_program = pruned_program.inference_optimize()
     fetch_var_names = [v.name for v in target_vars]
 
-    model_file_name = dirname + "/__model__"
-    with open(model_file_name, "w") as f:
-        pickle.dump({
-            "program_desc_str": inference_program.desc.serialize_to_string(),
-            "feed_var_names": feeded_var_names,
-            "fetch_var_names": fetch_var_names
-        }, f, -1)
+    inference_program.desc.assign_feed_var_names(feeded_var_names)
+    inference_program.desc.assign_fetch_var_names(fetch_var_names)
 
-    # Save only programDesc of inference_program in binary format
-    # in another file: __model__.dat
-    with open(model_file_name + ".dat", "wb") as fp:
-        fp.write(inference_program.desc.serialize_to_string())
+    model_file_name = dirname + "/__model__"
+    with open(model_file_name, "wb") as f:
+        f.write(inference_program.desc.serialize_to_string())
 
     save_params(executor, dirname, main_program)
 
@@ -283,11 +277,13 @@ def load_inference_model(dirname, executor):
         raise ValueError("There is no directory named '%s'", dirname)
 
     model_file_name = dirname + "/__model__"
-    model = pickle.load(open(model_file_name, "r"))
-    program_desc_str = model["program_desc_str"]
-    feed_var_names = model["feed_var_names"]
-    fetch_var_names = model["fetch_var_names"]
+    with open(model_file_name, "rb") as f:
+        program_desc_str = f.read()
+
     program = Program.parse_from_string(program_desc_str)
+    feed_var_names = program.desc.get_feed_var_names()
+    fetch_var_names = program.desc.get_fetch_var_names()
+
     load_persistables_if_exist(executor, dirname, program)
     fetch_vars = [program.global_block().var(name) for name in fetch_var_names]
 

@@ -28,9 +28,7 @@ public:
     delete load_program_;
   }
 
-  void LoadInferenceModel(const std::string& dirname,
-                          const std::vector<std::string>& feed_var_names,
-                          const std::vector<std::string>& fetch_var_names);
+  void LoadInferenceModel(const std::string& dirname);
   void Execute(const std::vector<framework::LoDTensor>& feeds,
                std::vector<framework::LoDTensor>& fetchs);
 
