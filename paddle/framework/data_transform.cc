@@ -26,47 +26,38 @@ static void free_tmp_tensor(const Tensor* in_ptr, const Tensor* tmp_ptr) {
   }
 }
 
+static void PassTensorData(Tensor& from, Tensor& to) {
+  to.ShareDataWith(from);
+  from.ShareDataWith(Tensor());
+}
+
 void DataTransform(const OpKernelType& expected_kernel_type,
                    const OpKernelType& kernel_type_for_var,
-                   const Tensor& input_tensor, Tensor* out) {
-  // in_ptr is used to store the input of data transform function.
-  // it need to be deleted by free_tmp_tensor because ip_ptr may be
-  // equal to &input_tensor and input_tensor should not be deleted here.
-  const Tensor* in_ptr = &input_tensor;
-
-  // out_ptr is used to store the result of data transform function.
-  // when one transform is done, the in_ptr should be deleted and the out_ptr
-  // should be assigned to in_ptr for next data transformation.
-  Tensor* out_ptr = new Tensor();
+                   const Tensor& input_tensor, Tensor* output_tensor) {
+  bool transformed = false;
+  Tensor in;
+  in.ShareDataWith(input_tensor);
+  Tensor out;
 
   // do layout transform
   if (NeedTransformLayout(expected_kernel_type.data_layout_,
                           kernel_type_for_var.data_layout_)) {
-    TransDataLayout(kernel_type_for_var, expected_kernel_type, *in_ptr,
-                    out_ptr);
-    free_tmp_tensor(&input_tensor, in_ptr);
-    in_ptr = out_ptr;
-    out_ptr = new Tensor();
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+    transformed = true;
+    PassTensorData(out, in);
   }
 
   // do device transform
   if (!platform::is_same_place(kernel_type_for_var.place_,
                                expected_kernel_type.place_)) {
-    DeviceTransform(*in_ptr, expected_kernel_type.place_, out_ptr);
-
-    free_tmp_tensor(&input_tensor, in_ptr);
-    in_ptr = out_ptr;
-    out_ptr = new Tensor();
+    DeviceTransform(in, expected_kernel_type.place_, &out);
+    transformed = true;
+    PassTensorData(out, in);
   }
 
-  PADDLE_ENFORCE_NE(in_ptr, &input_tensor,
-                    "no transform is done, please check!");
+  PADDLE_ENFORCE(transformed, "no transform is done, please check!");
   // get output data
-  out->ShareDataWith(*in_ptr);
-
-  // clean up
-  free_tmp_tensor(&input_tensor, in_ptr);
-  delete out_ptr;
+  output_tensor->ShareDataWith(in);
 }
 
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
