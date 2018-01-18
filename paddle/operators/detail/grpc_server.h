@@ -42,10 +42,8 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   void RunSyncUpdate();
 
   // functions to sync server barrier status.
-  void WaitStart();
-  void WaitDone();
-  void Start();
-  void Done();
+  void WaitCond(int cond);
+  void SetCond(int cond);
   void WaitClientGet(int count);
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
