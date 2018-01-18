@@ -16,6 +16,8 @@ target_circle_link_libraries(paddle_fluid_shared
   ARCHIVE_END
   ${FLUID_CORE_MODULES})
 
+SET_TARGET_PROPERTIES(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
+
 # install library & headers
 if(NOT WITH_C_API AND WITH_FLUID)
   install(FILES inference.h DESTINATION include/paddle/inference)
