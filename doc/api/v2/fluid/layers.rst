@@ -493,3 +493,8 @@ swish
 ------
 ..  autofunction:: paddle.v2.fluid.layers.swish
     :noindex:
+
+greedy_ctc_error
+------
+..  autofunction:: paddle.v2.fluid.layers.greedy_ctc_error
+    :noindex:
