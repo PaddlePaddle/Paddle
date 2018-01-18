@@ -41,22 +41,18 @@ class MatMulFunctor {
                       "Input tensor a must be at least 1-dimensional.");
     PADDLE_ENFORCE_GE(dim_b.size(), 1,
                       "Input tensor b must be at least 1-dimensional.");
-    PADDLE_ENFORCE_LE(dim_a.size(), 4,
-                      "Input tensor a must be at most 4-dimensional.");
-    PADDLE_ENFORCE_LE(dim_b.size(), 4,
-                      "Input tensor b must be at most 4-dimensional.");
 
     std::vector<int64_t> out_dim;
     int64_t batch_count = 1;
     if (dim_a.size() > 3) {
       PADDLE_ENFORCE(dim_b.size() > 3,
                      "The dimensions of X and Y must be the same, and both of "
-                     "them should be 4-dimensional.");
+                     "them should be %d-dimensional.",
+                     dim_b.size());
       for (int j = 0; j < dim_a.size() - 2; ++j) {
-        PADDLE_ENFORCE(
-            dim_b[j] == dim_a[j],
-            "The dimensions of X and Y must be the same, and both of "
-            "them should be 4-dimensional.");
+        PADDLE_ENFORCE(dim_b[j] == dim_a[j],
+                       "The dimensions of X[%d] and Y[%d] must be the same.", j,
+                       j);
         out_dim.push_back(dim_a[j]);
         batch_count *= dim_a[j];
       }
