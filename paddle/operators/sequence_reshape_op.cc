@@ -27,9 +27,8 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
                    "Output(Out) of SequenceReshapeOp should not be null.");
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2U, "Rank of Input(X) should be 2.");
-    int dimension = ctx->Attrs().Get<int>("dimension");
-    ctx->SetOutputDim("Out", {{x_dims[0], static_cast<int64_t>(dimension)}});
-    ctx->ShareLoD("X", /*->*/ "Out");
+    int dimension = ctx->Attrs().Get<int>("new_dim");
+    ctx->SetOutputDim("Out", {x_dims[0], static_cast<int64_t>(dimension)});
   }
 };
 
@@ -37,11 +36,41 @@ class SequenceReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SequenceReshapeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "");
-    AddOutput("Out", "");
-    AddAttr<int>("dimension", "");
-    AddAttr<bool>("is_padding", "Default padding zero.");
-    AddComment(R"DOC()DOC");
+    AddInput("X",
+             "(LoDTensor, default LoDTensor<float>) A 2-D LoDTensor with shape "
+             "being [N, M].");
+    AddOutput("Out",
+              "(LoDTensor, default LoDTensor<float>) A 2-D LoDTensor with "
+              "shape [T, new_dim] where T is calculated based on X.lod, M and "
+              "new_dim.");
+    AddAttr<int>("new_dim", "Sequence dimension of the output LoDTensor.");
+    AddComment(R"DOC(
+Sequence Reshape Operator.
+
+This operator will rearrange the input sequences. The new dimension is set by
+attribute and length of each sequence may change longer or shorter which is
+decided by original length, original dimension and new dimension. The following
+example will help to illustrate the function of this operator:
+
+x is a LoDTensor:
+    x.lod  = [[0, 2, 6]]
+    x.data = [[0.1, 0.2], [0.3, 0.4],
+              [0.5, 0.6], [0.7, 0.8], [0.9, 1.0], [1.1, 1.2]]
+    x.dims = [6, 2]
+
+set new_dim = 4
+
+then out is a LoDTensor:
+    out.lod  = [[0,    1,    3]]
+    out.data = [[0.1, 0.2, 0.3, 0.4],
+                [0.5, 0.6, 0.7, 0.8], [0.9, 1.0, 1.1, 1.2]]
+    out.dims = [3, 4]
+
+Currently, only 1-level LoDTensor is supported and please make sure (original
+length * original dimension) can be divided by new_dim with no remainder for
+each sequence.
+
+)DOC");
   }
 };
 
@@ -63,12 +92,29 @@ class SequenceReshapeGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class SequenceReshapeGradOpMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op_desc_ptr = new framework::OpDesc();
+    op_desc_ptr->SetType("sequence_reshape_grad");
+    op_desc_ptr->SetInput("X", Input("X"));
+    op_desc_ptr->SetInput("Out", Output("Out"));
+    op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op_desc_ptr->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_reshape, ops::SequenceReshapeOp,
-                  ops::SequenceReshapeOpMaker);
+                  ops::SequenceReshapeOpMaker, ops::SequenceReshapeGradOpMaker);
 REGISTER_OPERATOR(sequence_reshape_grad, ops::SequenceReshapeGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_reshape,
