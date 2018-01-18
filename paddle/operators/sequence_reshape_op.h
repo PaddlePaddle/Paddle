@@ -26,53 +26,63 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    int out_width = context.Attr<int>("dimension");
-    bool whether_padding = context.Attr<bool>("whether_padding");
+    int out_width = context.Attr<int>("new_dim");
 
     const T* p_in_data = in->data<T>();
-    T* p_out_data = out->mutable_data<T>(context.GetPlace());
 
-    // compute shape for output
     auto in_dims = in->dims();
     int64_t in_width = in_dims[1];
     auto& in_lod = in->lod();
 
     PADDLE_ENFORCE_EQ(in_lod.size(), 1UL,
                       "Only support one level sequence now.");
-    PADDLE_ENFORCE_GE(
-        in_dims[0],
-        /* batch size = */ static_cast<int64_t>(in_lod[0].size() - 1),
-        "The 1st dimension of Input(X) must be equal or larger than batch "
-        "size.");
+    PADDLE_ENFORCE_EQ(
+        in_dims[0], in_lod[0].back(),
+        "Inconsistent size between X.shape[0] and X.lod()[0].back().");
 
     auto in_lod_l0 = in_lod[0];
     int seq_num = in_lod_l0.size() - 1;
 
     auto& out_lod = *out->mutable_lod();
-    out_lod.push_back(std::vector<size_t>({0}));
-    size_t offset = 0;
+    out_lod.resize(1);
+    out_lod[0].clear();
+    out_lod[0].push_back(0);
     for (int i = 0; i < seq_num; ++i) {
       size_t seq_len = in_lod_l0[i + 1] - in_lod_l0[i];
-      if (whether_padding) {
-        offset += std::ceil((float)(seq_len * in_width) / out_width);
-      } else {
-        offset += (seq_len * in_width) / out_width;
-      }
-      out_lod[0].push_back(offset);
+      size_t offset = 0;
+      offset = (seq_len * in_width) / out_width;
+      PADDLE_ENFORCE_EQ(offset * out_width, seq_len * in_width,
+                        "Please make sure (sequence_length * dimension) can be "
+                        "divided by new_dim with no remainder for each "
+                        "sequence. The %dth sequence is invalid.",
+                        i + 1);
+      PADDLE_ENFORCE_GT(offset, 0,
+                        "Illegal operation, length of the %dth sequence become "
+                        "to 0 after reshaped.",
+                        i + 1);
+      out_lod[0].push_back(out_lod[0].back() + offset);
     }
 
-    out->Resize({{static_cast<int64_t>(out_lod[0].back()), out_width}});
+    out->mutable_data<T>(context.GetPlace());
+    out->Resize({static_cast<int64_t>(out_lod[0].back()), out_width});
+    T* p_out_data = out->mutable_data<T>(context.GetPlace());
     math::set_constant(context.device_context(), out, 0.0f);
 
     for (int i = 0; i < seq_num; ++i) {
       size_t in_offset = in_lod_l0[i] * in_width;
       size_t out_offset = out_lod[0][i] * out_width;
-      size_t bytes = sizeof(T) * (in_lod_l0[i + 1] - in_lod_l0[i]) * in_width;
+      size_t in_count = (in_lod_l0[i + 1] - in_lod_l0[i]) * in_width;
+      size_t out_count = (out_lod[0][i + 1] - out_lod[0][i]) * out_width;
+      size_t bytes = sizeof(T) * std::min(in_count, out_count);
       if (platform::is_cpu_place(context.GetPlace())) {
-        std::memcpy(p_out_data + out_offset, p_in_data + in_offset, bytes);
+        memory::Copy(boost::get<platform::CPUPlace>(context.GetPlace()),
+                     p_out_data + out_offset,
+                     boost::get<platform::CPUPlace>(context.GetPlace()),
+                     p_in_data + in_offset, bytes);
       } else {
 #ifdef PADDLE_WITH_CUDA
-        auto& dev_ctx = context.template device_context<DeviceContext>();
+        auto& dev_ctx =
+            context.template device_context<platform::CUDADeviceContext>();
         memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                      p_out_data + out_offset,
                      boost::get<platform::CUDAPlace>(context.GetPlace()),
@@ -103,16 +113,23 @@ class SequenceReshapeGradKernel : public framework::OpKernel<T> {
     auto& out_lod = out_tensor_ptr->lod();
     int out_width = out_tensor_ptr->dims()[1];
 
+    math::set_constant(context.device_context(), x_grad_tensor_ptr, 0.0f);
+
     for (int i = 0; i < seq_num; ++i) {
       size_t src_offset = out_lod[0][i] * out_width;
       size_t dst_offset = x_lod[0][i] * x_width;
-      size_t bytes = sizeof(T) * (x_lod[0][i + 1] - x_lod[0][i]) * x_width;
+      size_t src_count = (out_lod[0][i + 1] - out_lod[0][i]) * out_width;
+      size_t dst_count = (x_lod[0][i + 1] - x_lod[0][i]) * x_width;
+      size_t bytes = sizeof(T) * std::min(src_count, dst_count);
       if (platform::is_cpu_place(context.GetPlace())) {
-        std::memcpy(p_x_grad_data + dst_offset, p_out_grad_data + src_offset,
-                    bytes);
+        memory::Copy(boost::get<platform::CPUPlace>(context.GetPlace()),
+                     p_x_grad_data + dst_offset,
+                     boost::get<platform::CPUPlace>(context.GetPlace()),
+                     p_out_grad_data + src_offset, bytes);
       } else {
 #ifdef PADDLE_WITH_CUDA
-        auto& dev_ctx = context.template device_context<DeviceContext>();
+        auto& dev_ctx =
+            context.template device_context<platform::CUDADeviceContext>();
         memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                      p_x_grad_data + dst_offset,
                      boost::get<platform::CUDAPlace>(context.GetPlace()),
