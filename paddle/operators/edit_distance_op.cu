@@ -39,8 +39,8 @@ __global__ void FillFirstColumn(T* dist, const int M, const int N) {
 }
 
 template <typename T>
-__global__ void Levenshtein(T* dist, const int* x1, const int* x2, const int M,
-                            const int N, const int start) {
+__global__ void Levenshtein(T* dist, const int64_t* x1, const int64_t* x2,
+                            const int M, const int N, const int start) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   int offset = N;
   int index = start + idx * offset;
