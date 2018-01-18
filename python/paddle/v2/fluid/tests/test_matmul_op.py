@@ -128,5 +128,22 @@ for dim_X in [1, 2, 3]:
                 })
                 globals()[test_name] = test_class
 
+# Test case 4-dim
+dim_X = 4
+dim_Y = 4
+transpose_X = False
+transpose_Y = False
+test_name = ('TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
+    dim_X, dim_Y, transpose_X, transpose_Y))
+
+shape_X = [2, 2, 2, 3]
+shape_Y = [2, 2, 3, 4]
+test_class = type(test_name, (Generator, OpTest), {
+    'shape_X': shape_X,
+    'shape_Y': shape_Y,
+    'transpose_X': transpose_X,
+    'transpose_Y': transpose_Y,
+})
+
 if __name__ == "__main__":
     unittest.main()
