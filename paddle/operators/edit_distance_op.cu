@@ -113,8 +113,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
         dist_t.Resize({m + 1, n + 1});
         dist_t.mutable_data<T>(ctx.GetPlace());
         auto dist = dist_t.data<T>();
-        auto x1 = x1_t->data<int>() + hyp_lod[num];
-        auto x2 = x2_t->data<int>() + ref_lod[num];
+        auto x1 = x1_t->data<int64_t>() + hyp_lod[num];
+        auto x2 = x2_t->data<int64_t>() + ref_lod[num];
 
         FillFirstColumn<T><<<1 + m / PADDLE_CUDA_NUM_THREADS,
                              PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, m, n);
