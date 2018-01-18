@@ -48,7 +48,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   size_t low_offset = 0;
   for (auto &items : selected_items) {
     low_level.push_back(low_offset);
-    sort(items.begin(), items.end(), [](Item &a, Item &b) {
+    sort(items.begin(), items.end(), [](const Item &a, const Item &b) {
       if (a.offset < b.offset) {
         return true;
       }
