@@ -162,7 +162,6 @@ void AsyncGRPCServer::ShutdownQueue() {
 }
 
 // This URL explains why shutdown is complicate:
-// https://stackoverflow.com/questions/35708348/grpc-what-is-the-recommended-way-to-shut-down-an-asynchronous-server-in-c
 void AsyncGRPCServer::ShutDown() {
   server_->Shutdown();
   ShutdownQueue();
@@ -188,6 +187,7 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
   VLOG(4) << "create Requestget status:" << get->Status();
 }
 
+// FIXME(typhoonzero): remove wait argument and change cq_name to enum.
 void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
                                     std::string cq_name,
                                     std::function<void()> TryToRegisterNewOne) {
@@ -202,7 +202,8 @@ void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
     }
 
     PADDLE_ENFORCE(tag);
-    if (cq_name == "cq_get") WaitCond(2);
+    // FIXME(typhoonzero): de-couple the barriers with recv_op
+    if (cq_name == "cq_get") WaitCond(1);
     if (cq_name == "cq_send") WaitCond(0);
 
     RequestBase* base = (RequestBase*)tag;
