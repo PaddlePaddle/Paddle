@@ -522,7 +522,7 @@ void OperatorWithKernel::Run(const Scope& scope,
 
   auto kernel_iter = kernels.find(expected_kernel_key);
   if (kernel_iter == kernels.end()) {
-    PADDLE_THROW("op %s do not has kernel for %s", type_,
+    PADDLE_THROW("op %s does not have kernel for %s", type_,
                  KernelTypeToString(expected_kernel_key));
   }
 
