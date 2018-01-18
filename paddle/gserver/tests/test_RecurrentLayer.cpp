@@ -223,6 +223,11 @@ TEST(Layer, RecurrentLayer) {
 #include "paddle/gserver/layers/GatedRecurrentLayer.h"
 #include "paddle/gserver/layers/LstmLayer.h"
 #include "paddle/gserver/layers/RecurrentLayer.h"
+
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/gserver/layers/MKLPackedLstmLayer.h"
+#endif
+
 template <class T>
 class TestRecurrentLayer {
 public:
@@ -253,7 +258,12 @@ public:
                              useGpu_);
       bias_ = creatParameterBias(
           config_.bias_parameter_name(), 1, config_.size() * 3, useGpu_);
-    } else if (typeid(T) == typeid(LstmLayer)) {
+    } else if (typeid(T) == typeid(LstmLayer)
+#ifdef PADDLE_WITH_MKLML
+               ||
+               typeid(T) == typeid(MKLPackedLstmLayer)
+#endif
+                   ) {
       dataLayer_ = creatDataLayer(config_.mutable_inputs(0)->input_layer_name(),
                                   batchSize,
                                   config_.size() * 4,
@@ -553,6 +563,105 @@ TEST(MKLPackedLayer, RecurrentLayer) {
                                 batchSize,
                                 paddle_use_batch,
                                 MKLPacked_use_batch);
+          }
+        }
+      }
+    }
+  }
+}
+
+template <class T1, class T2>
+void checkRecurrentLayer(LayerConfig MKLPackedLayerConfig,
+                         LayerConfig layerConfig,
+                         size_t batchSize,
+                         bool MKLPackedBatch,
+                         bool cpuBatch) {
+  TestRecurrentLayer<T1> testMKLPackedCpu(
+      MKLPackedLayerConfig, false, MKLPackedBatch);
+  TestRecurrentLayer<T2> testCpu(layerConfig, false, cpuBatch);
+
+  testMKLPackedCpu.init(batchSize);
+  testCpu.init(batchSize);
+
+  T1* MKLPackedCpuLayer = dynamic_cast<T1*>(testMKLPackedCpu.testLayer_.get());
+  T2* cpuLayer = dynamic_cast<T2*>(testCpu.testLayer_.get());
+
+  Argument& MKLPackedCpuInput = testMKLPackedCpu.dataLayer_->getOutput();
+  Argument& cpuInput = testCpu.dataLayer_->getOutput();
+  cpuInput.resizeAndCopyFrom(MKLPackedCpuInput, false);
+
+  const VectorPtr& MKLPackedCpuVec =
+      testMKLPackedCpu.para_->getBuf(PARAMETER_VALUE);
+  const VectorPtr& cpuVec = testCpu.para_->getBuf(PARAMETER_VALUE);
+  cpuVec->copyFrom(*MKLPackedCpuVec);
+
+  const VectorPtr& MKLPackedCpuBiasVec =
+      testMKLPackedCpu.bias_->getBuf(PARAMETER_VALUE);
+  const VectorPtr& cpuBiasVec = testCpu.bias_->getBuf(PARAMETER_VALUE);
+  cpuBiasVec->copyFrom(*MKLPackedCpuBiasVec);
+
+  testMKLPackedCpu.forward();
+  testCpu.forward();
+
+  checkError(*MKLPackedCpuLayer->getOutputValue(), *cpuLayer->getOutputValue());
+
+  MKLPackedCpuLayer->getOutputGrad()->randomizeUniform();
+  cpuLayer->getOutputGrad()->copyFrom(*MKLPackedCpuLayer->getOutputGrad());
+
+  testMKLPackedCpu.backward();
+  testCpu.backward();
+
+  checkError(*MKLPackedCpuInput.grad, *cpuInput.grad);
+  checkError(*MKLPackedCpuLayer->weight_->getWGrad(),
+             *cpuLayer->weight_->getWGrad());
+  checkError(*MKLPackedCpuLayer->bias_->getWGrad(),
+             *cpuLayer->bias_->getWGrad());
+}
+
+TEST(MKLPackedLstmLayer, LstmLayer) {
+  LayerConfig layerConfig;
+  layerConfig.set_type("lstmemory");
+  layerConfig.set_active_type("relu");
+  layerConfig.set_active_state_type("tanh");
+  layerConfig.set_active_gate_type("sigmoid");
+  layerConfig.add_inputs();
+  LayerInputConfig& input = *(layerConfig.mutable_inputs(0));
+  input.set_input_layer_name("layer_0");
+  input.set_input_parameter_name("para_0");
+  layerConfig.set_bias_parameter_name("bias");
+
+  LayerConfig MKLPackedLayerConfig;
+  MKLPackedLayerConfig.set_type("mkl_packed_lstmemory");
+  MKLPackedLayerConfig.set_active_type("relu");
+  MKLPackedLayerConfig.set_active_state_type("tanh");
+  MKLPackedLayerConfig.set_active_gate_type("sigmoid");
+  MKLPackedLayerConfig.add_inputs();
+  LayerInputConfig& MKLPackedInput = *(MKLPackedLayerConfig.mutable_inputs(0));
+  MKLPackedInput.set_input_layer_name("layer_0");
+  MKLPackedInput.set_input_parameter_name("para_0");
+  MKLPackedLayerConfig.set_bias_parameter_name("bias");
+
+  for (auto frameSize : {32, 64, 128, 256, 512}) {
+    for (auto batchSize : {1, 5, 100, 500}) {
+      for (auto reversed : {false, true}) {
+        for (auto MKLPackedCpuBatch : {false, true}) {
+          for (auto cpuBatch : {false, true}) {
+            LOG(INFO) << " batchSize=" << batchSize
+                      << " frameSize=" << frameSize << " reversed=" << reversed
+                      << " MKLPackedCpuBatch=" << MKLPackedCpuBatch
+                      << " cpuBatch=" << cpuBatch;
+            layerConfig.set_size(frameSize);
+            layerConfig.set_reversed(reversed);
+
+            MKLPackedLayerConfig.set_size(frameSize);
+            MKLPackedLayerConfig.set_reversed(reversed);
+
+            checkRecurrentLayer<MKLPackedLstmLayer, LstmLayer>(
+                MKLPackedLayerConfig,
+                layerConfig,
+                batchSize,
+                MKLPackedCpuBatch,
+                cpuBatch);
           }
         }
       }
