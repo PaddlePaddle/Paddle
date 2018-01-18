@@ -499,3 +499,8 @@ swish
 ------
 ..  autofunction:: paddle.v2.fluid.layers.swish
     :noindex:
+
+l2_normalize
+------------
+..  autofunction:: paddle.v2.fluid.layers.l2_normalize
+    :noindex:
