@@ -149,7 +149,10 @@ class MatMulGradKernel : public framework::OpKernel<T> {
         M = transpose_x ? x_dims[2] : x_dims[1];
         break;
       default:
-        assert(false);
+        batchCountX = accumulate(x_dims.begin(), x_dims.end() - 2, 1,
+                                 std::multiplies<int>());
+        size_t mat_s = x_dims.size() - 2;
+        M = transpose_x ? x_dims[mat_s + 1] : x_dims[mat_s];
     }
 
     switch (y_dims.size()) {
@@ -161,7 +164,10 @@ class MatMulGradKernel : public framework::OpKernel<T> {
         N = transpose_y ? y_dims[1] : y_dims[2];
         break;
       default:
-        assert(false);
+        batchCountY = accumulate(y_dims.begin(), y_dims.end() - 2, 1,
+                                 std::multiplies<int>());
+        size_t mat_s = y_dims.size() - 2;
+        N = transpose_y ? y_dims[mat_s] : y_dims[mat_s + 1];
     }
     if (batchCountX && batchCountY) {
       PADDLE_ENFORCE_EQ(
@@ -172,7 +178,13 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     int batchCount = std::max(batchCountX, batchCountY);
     std::vector<int64_t> dout_dims = {M, N};
     if (batchCount) {
-      dout_dims.insert(dout_dims.begin(), batchCount);
+      if (x_dims.size() > 3) {
+        dout_dims.insert(dout_dims.begin(), x_dims.begin(), x_dims.end() - 2);
+      } else if (y_dims.size() > 3) {
+        dout_dims.insert(dout_dims.begin(), y_dims.begin(), y_dims.end() - 2);
+      } else {
+        dout_dims.insert(dout_dims.begin(), batchCount);
+      }
     }
     Tensor X = Reshape<T>(x, make_ddim(x_dims));
     Tensor Y = Reshape<T>(y, make_ddim(y_dims));
