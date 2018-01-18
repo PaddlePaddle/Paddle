@@ -138,7 +138,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     }
 
     int batch_count = 0;
-    //
+    // The previous Rank-2 dimensions are accumulated on the batch_count.
     if (x_dims.size() > 3) {
       batch_count = accumulate(x_dims.begin(), x_dims.end() - 2, 1,
                                std::multiplies<int>());
