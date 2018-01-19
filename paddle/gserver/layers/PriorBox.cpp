@@ -65,14 +65,15 @@ bool PriorBoxLayer::init(const LayerMap& layerMap,
   std::copy(pbConf.aspect_ratio().begin(),
             pbConf.aspect_ratio().end(),
             std::back_inserter(tmp));
-  // flip
-  int inputRatioLength = tmp.size();
-  for (int index = 0; index < inputRatioLength; index++) {
-    aspectRatio_.push_back(tmp[index]);
-    aspectRatio_.push_back(1 / tmp[index]);
+  // flip aspect ratios
+  for (int index = 0; index < tmp.size(); index++) {
+    real ar = tmp[index];
+    if (fabs(ar - 1.) < 1e-6) continue;
+    aspectRatio_.push_back(ar);
+    aspectRatio_.push_back(1. / ar);
   }
-  numPriors_ = aspectRatio_.size();
-  if (maxSize_.size() > 0) numPriors_++;
+  numPriors_ = aspectRatio_.size() * minSize_.size();
+  if (maxSize_.size() > 0) numPriors_ += maxSize_.size() * minSize_.size();
   return true;
 }
 
@@ -99,13 +100,12 @@ void PriorBoxLayer::forward(PassType passType) {
     for (int w = 0; w < layerWidth; ++w) {
       real centerX = (w + 0.5) * stepW;
       real centerY = (h + 0.5) * stepH;
-      real minSize = 0;
       for (size_t s = 0; s < minSize_.size(); s++) {
-        // first prior.
-        minSize = minSize_[s];
+        // square prior with size minSize
+        real minSize = minSize_[s];
         real boxWidth = minSize;
         real boxHeight = minSize;
-        // xmin, ymin, xmax, ymax.
+        // xmin, ymin, xmax, ymax
         tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
         tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
         tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
@@ -115,7 +115,7 @@ void PriorBoxLayer::forward(PassType passType) {
 
         if (maxSize_.size() > 0) {
           CHECK_EQ(minSize_.size(), maxSize_.size());
-          // second prior.
+          // square prior with size sqrt(minSize * maxSize)
           for (size_t s = 0; s < maxSize_.size(); s++) {
             real maxSize = maxSize_[s];
             boxWidth = boxHeight = sqrt(minSize * maxSize);
@@ -127,19 +127,19 @@ void PriorBoxLayer::forward(PassType passType) {
             for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
           }
         }
-      }
-      // rest of priors.
-      for (size_t r = 0; r < aspectRatio_.size(); r++) {
-        real ar = aspectRatio_[r];
-        if (fabs(ar - 1.) < 1e-6) continue;
-        real boxWidth = minSize * sqrt(ar);
-        real boxHeight = minSize / sqrt(ar);
-        tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
-        tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
-        tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
-        tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
-        // set the variance.
-        for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
+
+        // priors with different aspect ratios
+        for (size_t r = 0; r < aspectRatio_.size(); r++) {
+          real ar = aspectRatio_[r];
+          boxWidth = minSize * sqrt(ar);
+          boxHeight = minSize / sqrt(ar);
+          tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
+          tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
+          tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
+          tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
+          // set the variance.
+          for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
+        }
       }
     }
   }
