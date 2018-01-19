@@ -52,26 +52,27 @@ train_reader = paddle.batch(
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
 
-t = fluid.DistributeTranspiler()
-# all parameter server endpoints list for spliting parameters
-pserver_endpoints = os.getenv("PSERVERS")
-# server endpoint for current node
-current_endpoint = os.getenv("SERVER_ENDPOINT")
-# run as trainer or parameter server
+pserver_endpoints = os.getenv("PSERVERS")  # all pserver endpoints
+trainers = int(os.getenv("TRAINERS"))  # total trainer count
+current_endpoint = os.getenv("SERVER_ENDPOINT")  # current pserver endpoint
 training_role = os.getenv("TRAINING_ROLE",
                           "TRAINER")  # get the training role: trainer/pserver
-t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2)
+t = fluid.DistributeTranspiler()
+t.transpile(
+    optimize_ops, params_grads, pservers=pserver_endpoints, trainers=trainers)
 
 if training_role == "PSERVER":
     if not current_endpoint:
         print("need env SERVER_ENDPOINT")
         exit(1)
-    pserver_prog = t.get_pserver_program(current_endpoint, optimize_ops)
-    exe.run(fluid.default_startup_program())
+    pserver_prog = t.get_pserver_program(current_endpoint)
+    pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
+    exe.run(pserver_startup)
     exe.run(pserver_prog)
 elif training_role == "TRAINER":
     trainer_prog = t.get_trainer_program()
     feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
+    # TODO(typhoonzero): change trainer startup program to fetch parameters from pserver
     exe.run(fluid.default_startup_program())
 
     for pass_id in range(PASS_NUM):
