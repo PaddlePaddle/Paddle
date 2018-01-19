@@ -112,58 +112,52 @@ class GradientClipByNorm(BaseGradientClipAttr):
 
 
 class GradientClipByGlobalNorm(BaseGradientClipAttr):
-    global_norm_var = None
-    local_norm_var = None
-    clip_norm_var = None
-    scale_var = None
+    def __init__(self, clip_norm, group_name="default_group"):
+        if not isinstance(group_name, basestring):
+            raise TypeError("'group_name' must be a basestring.")
 
-    @classmethod
-    def init(cls, clip_norm):
-        if not (isinstance(clip_norm, int) or isinstance(clip_norm, float)):
-            raise TypeError("The 'clip_norm' must be a value of int or float")
-
-        cls.global_norm_var = layers.fill_constant(
-            shape=[1], dtype="float32", value=0.0)
-        cls.local_norm_var = layers.create_tensor(dtype="float32")
-        cls.clip_norm_var = layers.fill_constant(
-            shape=[1], dtype="float32", value=clip_norm)
-
-    @classmethod
-    def check_init(cls):
-        if not (isinstance(cls.global_norm_var, framework.Variable) and
-                isinstance(cls.local_norm_var, framework.Variable) and
-                isinstance(cls.clip_norm_var, framework.Variable)):
-            raise ValueError(
-                "Class 'GradientClipByGlobalNorm' has not been properly initialized. \
-                 Please call GradientClipByGlobalNorm.init() first.")
+        self.clip_norm = clip_norm
+        self.group_name = group_name
 
     def process_context(self, context, param, grad):
-        cls = self.__class__
-        cls.check_init()
+        if self.group_name not in context:
+            context[self.group_name] = []
+            context[self.group_name + "_clip_value"] = self.clip_norm
+            context[self.group_name + "_clip"] = layers.fill_constant(
+                shape=[1], dtype="float32", value=self.clip_norm)
+        else:
+            if not self.clip_norm == context[self.group_name + "_clip_value"]:
+                raise ValueError(
+                    "All parameters' 'clip_norm' of a same group should be the same"
+                )
 
-        cls.local_norm_var = layers.reduce_sum(
-            input=layers.pow(x=grad, factor=2.0))
-        layers.sums(
-            input=[cls.local_norm_var, cls.global_norm_var],
-            out=[cls.global_norm_var])
+        local_norm_var = layers.reduce_sum(input=layers.pow(x=grad, factor=2.0))
+        context[self.group_name].append(local_norm_var)
+
+        self.context = context
 
     def create_operators(self, param, grad):
-        cls = self.__class__
-        cls.check_init()
-
-        if cls.scale_var is None:
-            layers.sqrt(x=cls.global_norm_var, out=cls.global_norm_var)
-            cls.scale_var = layers.elementwise_div(
-                x=cls.clip_norm_var,
+        group_scale_name = self.group_name + "_scale"
+        if group_scale_name not in self.context:
+            group_norm_var = layers.sums(input=self.context[self.group_name])
+            layers.sqrt(x=group_norm_var, out=group_norm_var)
+            clip_var = self.context[self.group_name + "_clip"]
+            group_scale_var = layers.elementwise_div(
+                x=clip_var,
                 y=layers.elementwise_max(
-                    x=cls.clip_norm_var, y=cls.global_norm_var))
-            assert cls.scale_var.shape == (1L, )
+                    x=clip_var, y=group_norm_var))
+            assert group_scale_var.shape == (1L, )
+            self.context[group_scale_name] = group_scale_var
 
-        new_grad = layers.elementwise_mul(x=grad, y=cls.scale_var)
+        new_grad = layers.elementwise_mul(
+            x=grad, y=self.context[group_scale_name])
         return param, new_grad
 
 
-def gradient_clip_by_global_norm(clip_norm, param_list=None, program=None):
+def gradient_clip_by_global_norm(clip_norm,
+                                 param_list=None,
+                                 group_name="default_group",
+                                 program=None):
     if program is None:
         program = framework.default_main_program()
     if param_list is None:
@@ -175,9 +169,9 @@ def gradient_clip_by_global_norm(clip_norm, param_list=None, program=None):
             "'param_list' should be a list of Parameter or basestring(parameter's name)."
         )
 
-    GradientClipByGlobalNorm.init(clip_norm)
     for param in param_list:
-        param.gradient_clip_attr = GradientClipByGlobalNorm()
+        param.gradient_clip_attr = GradientClipByGlobalNorm(clip_norm,
+                                                            group_name)
 
 
 def append_gradient_clip_ops(param_grad):
