@@ -45,15 +45,16 @@ class MatMulFunctor {
     std::vector<int64_t> out_dim;
     int64_t batch_count = 1;
     if (dim_a.size() > 3) {
-      PADDLE_ENFORCE(dim_b.size() > 3,
+      PADDLE_ENFORCE(dim_b.size() == dim_a.size(),
                      "The dimensions of X and Y must be the same, and both of "
                      "them should be %d-dimensional.",
                      dim_b.size());
-      // The previous Rank-2 dimensions are accumulated on the batch_count.
+      // The front rank-2 dimensions are accumulated on the batch_count, and the
+      // last two dimensions are used for matrix multiplication.
       for (int j = 0; j < dim_a.size() - 2; ++j) {
-        PADDLE_ENFORCE(dim_b[j] == dim_a[j],
-                       "The dimensions of X[%d] and Y[%d] must be the same.", j,
-                       j);
+        PADDLE_ENFORCE_EQ(dim_b[j], dim_a[j],
+                          "The %d-th dimension of X and Y must be the same.",
+                          j);
         out_dim.push_back(dim_a[j]);
         batch_count *= dim_a[j];
       }
