@@ -65,6 +65,9 @@ bool PriorBoxLayer::init(const LayerMap& layerMap,
   std::copy(pbConf.aspect_ratio().begin(),
             pbConf.aspect_ratio().end(),
             std::back_inserter(tmp));
+
+  if (maxSize_.size() > 0) CHECK_EQ(minSize_.size(), maxSize_.size());
+
   // flip aspect ratios
   for (int index = 0; index < tmp.size(); index++) {
     real ar = tmp[index];
@@ -72,8 +75,9 @@ bool PriorBoxLayer::init(const LayerMap& layerMap,
     aspectRatio_.push_back(ar);
     aspectRatio_.push_back(1. / ar);
   }
-  numPriors_ = aspectRatio_.size() * minSize_.size();
-  if (maxSize_.size() > 0) numPriors_ += maxSize_.size() * minSize_.size();
+
+  numPriors_ = aspectRatio_.size() * minSize_.size() + maxSize_.size();
+
   return true;
 }
 
@@ -101,32 +105,9 @@ void PriorBoxLayer::forward(PassType passType) {
       real centerX = (w + 0.5) * stepW;
       real centerY = (h + 0.5) * stepH;
       for (size_t s = 0; s < minSize_.size(); s++) {
-        // square prior with size minSize
         real minSize = minSize_[s];
         real boxWidth = minSize;
         real boxHeight = minSize;
-        // xmin, ymin, xmax, ymax
-        tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
-        tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
-        tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
-        tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
-        // set the variance.
-        for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
-
-        if (maxSize_.size() > 0) {
-          CHECK_EQ(minSize_.size(), maxSize_.size());
-          // square prior with size sqrt(minSize * maxSize)
-          for (size_t s = 0; s < maxSize_.size(); s++) {
-            real maxSize = maxSize_[s];
-            boxWidth = boxHeight = sqrt(minSize * maxSize);
-            tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
-            tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
-            tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
-            tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
-            // set the variance.
-            for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
-          }
-        }
 
         // priors with different aspect ratios
         for (size_t r = 0; r < aspectRatio_.size(); r++) {
@@ -140,9 +121,22 @@ void PriorBoxLayer::forward(PassType passType) {
           // set the variance.
           for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
         }
+
+        if (maxSize_.size() > 0) {
+          // square prior with size sqrt(minSize * maxSize)
+          real maxSize = maxSize_[s];
+          boxWidth = boxHeight = sqrt(minSize * maxSize);
+          tmpPtr[idx++] = (centerX - boxWidth / 2.) / imageWidth;
+          tmpPtr[idx++] = (centerY - boxHeight / 2.) / imageHeight;
+          tmpPtr[idx++] = (centerX + boxWidth / 2.) / imageWidth;
+          tmpPtr[idx++] = (centerY + boxHeight / 2.) / imageHeight;
+          // set the variance.
+          for (int t = 0; t < 4; t++) tmpPtr[idx++] = variance_[t];
+        }
       }
     }
   }
+
   // clip the prior's coordidate such that it is within [0, 1]
   for (int d = 0; d < dim * 2; ++d)
     if ((d % 8) < 4)
