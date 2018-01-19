@@ -55,6 +55,8 @@ __all__ = [
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
+    'elementwise_max',
+    'elementwise_min',
     'clip',
     'sequence_softmax',
 ] + __activations__

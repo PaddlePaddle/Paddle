@@ -28,9 +28,9 @@ def data(name,
     **Data Layer**
 
     This function takes in the input and based on whether data has
-    to be returned back as a minibatch, it creates the global variable using
+    to be returned back as a minibatch, it creates the global variable by using
     the helper functions. The global variables can be accessed by all the
-    following operations and layers in the graph.
+    following operators in the graph.
 
     All the input variables of this function are passed in as local variables
     to the LayerHelper constructor.

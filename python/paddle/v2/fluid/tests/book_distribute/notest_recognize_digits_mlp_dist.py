@@ -11,32 +11,39 @@
 #WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #See the License for the specific language governing permissions and
 #limitations under the License.
+from __future__ import print_function
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import os
 
-x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+BATCH_SIZE = 128
+PASS_NUM = 100
 
-y_predict = fluid.layers.fc(input=x, size=1, act=None)
+images = fluid.layers.data(name='x', shape=[784], dtype='float32')
 
-y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+# TODO(aroraabhinav) Add regularization and error clipping after
+# Issue 7432(https://github.com/PaddlePaddle/Paddle/issues/7432) is resolved.
+hidden1 = fluid.layers.fc(input=images, size=128, act='relu')
+hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
+predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
 
-cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+
+cost = fluid.layers.cross_entropy(input=predict, label=label)
 avg_cost = fluid.layers.mean(x=cost)
 
-sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
+optimizer = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
+optimize_ops, params_grads = optimizer.minimize(avg_cost)
 
-BATCH_SIZE = 20
+accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
-        paddle.dataset.uci_housing.train(), buf_size=500),
+        paddle.dataset.mnist.train(), buf_size=8192),
     batch_size=BATCH_SIZE)
 
 place = fluid.CPUPlace()
-feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
 exe = fluid.Executor(place)
 
 t = fluid.DistributeTranspiler()
@@ -56,20 +63,25 @@ if training_role == "PSERVER":
     pserver_prog = t.get_pserver_program(current_endpoint)
     exe.run(fluid.default_startup_program())
     exe.run(pserver_prog)
-else:
+elif training_role == "TRAINER":
     trainer_prog = t.get_trainer_program()
-
+    feeder = fluid.DataFeeder(feed_list=[images, label], place=place)
     exe.run(fluid.default_startup_program())
 
-    PASS_NUM = 100
     for pass_id in range(PASS_NUM):
-        fluid.io.save_persistables(exe, "./fit_a_line.model/")
-        fluid.io.load_persistables(exe, "./fit_a_line.model/")
+        accuracy.reset(exe)
+        batch_id = 0
         for data in train_reader():
-            avg_loss_value, = exe.run(trainer_prog,
-                                      feed=feeder.feed(data),
-                                      fetch_list=[avg_cost])
+            loss, acc = exe.run(trainer_prog,
+                                feed=feeder.feed(data),
+                                fetch_list=[avg_cost] + accuracy.metrics)
+            pass_acc = accuracy.eval(exe)
+            if batch_id % 100 == 0:
+                print("batch_id %d, loss: %f, acc: %f" %
+                      (batch_id, loss, pass_acc))
+            batch_id += 1
 
-            if avg_loss_value[0] < 10.0:
-                exit(0)
-exit(1)
+        pass_acc = accuracy.eval(exe)
+        print("pass_id=" + str(pass_id) + " pass_acc=" + str(pass_acc))
+else:
+    print("environment var TRAINER_ROLE should be TRAINER os PSERVER")
