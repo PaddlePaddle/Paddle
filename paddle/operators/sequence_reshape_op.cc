@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/sequence_reshape_op.h"
+#include "paddle/framework/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -26,9 +27,11 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequenceReshapeOp should not be null.");
     auto x_dims = ctx->GetInputDim("X");
+    auto x_numel = product(x_dims);
     PADDLE_ENFORCE_EQ(x_dims.size(), 2U, "Rank of Input(X) should be 2.");
-    int dimension = ctx->Attrs().Get<int>("new_dim");
-    ctx->SetOutputDim("Out", {x_dims[0], static_cast<int64_t>(dimension)});
+    int new_dim = ctx->Attrs().Get<int>("new_dim");
+    ctx->SetOutputDim("Out",
+                      {x_numel / new_dim, static_cast<int64_t>(new_dim)});
   }
 };
 
@@ -54,16 +57,16 @@ example will help to illustrate the function of this operator:
 
 x is a LoDTensor:
     x.lod  = [[0, 2, 6]]
-    x.data = [[0.1, 0.2], [0.3, 0.4],
-              [0.5, 0.6], [0.7, 0.8], [0.9, 1.0], [1.1, 1.2]]
+    x.data = [[1, 2], [3, 4],
+              [5, 6], [7, 8], [9, 10], [11, 12]]
     x.dims = [6, 2]
 
 set new_dim = 4
 
 then out is a LoDTensor:
-    out.lod  = [[0,    1,    3]]
-    out.data = [[0.1, 0.2, 0.3, 0.4],
-                [0.5, 0.6, 0.7, 0.8], [0.9, 1.0, 1.1, 1.2]]
+    out.lod  = [[0, 1, 3]]
+    out.data = [[1, 2, 3, 4],
+                [5, 6, 7, 8], [9, 10, 11, 12]]
     out.dims = [3, 4]
 
 Currently, only 1-level LoDTensor is supported and please make sure (original
@@ -82,8 +85,6 @@ class SequenceReshapeGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->HasInput(framework::GradVarName("Out")),
         "Input(Out@GRAD) of SequenceReshapeGradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Out"),
-                   "Input(Out) of SequenceReshapeGradOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SequenceReshapeGradOp should  not be null.");
 
@@ -101,7 +102,6 @@ class SequenceReshapeGradOpMaker : public framework::SingleGradOpDescMaker {
     auto* op_desc_ptr = new framework::OpDesc();
     op_desc_ptr->SetType("sequence_reshape_grad");
     op_desc_ptr->SetInput("X", Input("X"));
-    op_desc_ptr->SetInput("Out", Output("Out"));
     op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op_desc_ptr->SetAttrMap(Attrs());
@@ -118,7 +118,13 @@ REGISTER_OPERATOR(sequence_reshape, ops::SequenceReshapeOp,
 REGISTER_OPERATOR(sequence_reshape_grad, ops::SequenceReshapeGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_reshape,
-    ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SequenceReshapeKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     sequence_reshape_grad,
-    ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SequenceReshapeGradKernel<paddle::platform::CPUDeviceContext, int>);

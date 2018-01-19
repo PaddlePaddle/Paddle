@@ -40,14 +40,7 @@ class TestSequenceReshape(OpTest):
             assert int(offset) * dimension == seq_len * x_width
             out_lod[0].append(out_lod[0][-1] + int(offset))
         out = np.zeros(shape=(out_lod[0][-1], dimension)).astype('float32')
-        for i in xrange(len(x_lod[0]) - 1):
-            x_offset = x_lod[0][i] * x_width
-            out_offset = out_lod[0][i] * dimension
-            out_count = (out_lod[0][i + 1] - out_lod[0][i]) * dimension
-            x_count = (x_lod[0][i + 1] - x_lod[0][i]) * x_width
-            count = min(out_count, x_count)
-            out.ravel()[out_offset:out_offset + count] = x.ravel()[
-                x_offset:x_offset + count]
+        out.ravel()[:] = x.ravel()[:]
         return out, out_lod
 
     def test_check_output(self):
@@ -61,6 +54,21 @@ class TestSequenceReshape_reduce(TestSequenceReshape):
     def setUp(self):
         self.op_type = 'sequence_reshape'
         dimension = 24
+        x_lod = [[0, 4, 6, 8, 12]]
+        x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
+
+        self.inputs = {'X': (x, x_lod)}
+        self.attrs = {'new_dim': dimension}
+
+        out, out_lod = self.compute_output(x, x_lod, dimension)
+
+        self.outputs = {'Out': (out, out_lod)}
+
+
+class TestSequenceReshape_same(TestSequenceReshape):
+    def setUp(self):
+        self.op_type = 'sequence_reshape'
+        dimension = 12
         x_lod = [[0, 4, 6, 8, 12]]
         x = np.random.uniform(0.1, 1, [12, 12]).astype('float32')
 
