@@ -87,5 +87,5 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(ctc_align,
-                        paddle::operators::CTCAlignOpCUDAKernel<int>);
+REGISTER_OP_CUDA_KERNEL(ctc_align, paddle::operators::CTCAlignOpCUDAKernel<int>,
+                        paddle::operators::CTCAlignOpCUDAKernel<int64_t>);
