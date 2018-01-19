@@ -2,9 +2,9 @@
 
 ### Background
 
-- A detailed documentation of how to add new operator and kernel is here: [`new_op_and_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_en.md)
-- we use `OpKernelType` to describe the attribute of each kernel. The design is [`op_kernel_type`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md)
-- The mechanism that an Operator choose a kernel is described in this document: [`switch_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md)
+- A detailed documentation of how to add new operators and kernels is here: [`new_op_and_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_en.md).
+- we use `OpKernelType` to describe the attributes of each kernel. The design is [`op_kernel_type`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md).
+- The mechanism that an Operator choose a kernel is described in this document: [`switch_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md).
 
 ### Write OpKernel for new Device or Library
 
@@ -42,7 +42,7 @@ typedef boost::variant<CUDAPlace, CPUPlace> Place;
 ```
 
 #### Add [device context]((https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/device_context.h#L37))
-After a new kind of Device is added, you should add a correspodding [DeviceContext](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/device_context.h#L37) for it.
+After a new kind of Device is added, you should add a corresponding [DeviceContext](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/device_context.h#L37) for it.
 
 ```cpp
 class DeviceContext {
@@ -89,23 +89,29 @@ We use `REGISTER_OP_KERNEL` to do the registration.
 
 ```cpp
 REGISTER_OP_KERNEL(
-	op_type, 
-	library_type, 
-	place_type, 
+	op_type,
+	library_type,
+	place_type,
 	kernel0, kernel1, ...)
 ```
+
+kernel0, kernel1 are kernels that with the same `op_type`, `library_type`, `place_type` and different `data_types`.
 
 take [`conv2d`]((https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/conv_cudnn_op.cu.cc#L318)) as an example:
 
 	```cpp
+	REGISTER_OP_KERNEL(conv2d, CPU, paddle::platform::CPUPlace,
+    		paddle::operators::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+    		paddle::operators::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+    
 	REGISTER_OP_KERNEL(conv2d, CUDNN, ::paddle::platform::CUDAPlace,
-	                   paddle::operators::CUDNNConvOpKernel<float>,
-	                   paddle::operators::CUDNNConvOpKernel<double>);
+	       paddle::operators::CUDNNConvOpKernel<float>,
+	       paddle::operators::CUDNNConvOpKernel<double>);
 	```
 
 In the code above:
 
  - `conv2d` is the type/name of the operator
- - `CUDNN` is `library`
- - `::paddle::platform::CUDAPlace` is `place`
+ - `CUDNN/CPU` is `library`
+ - `paddle::platform::CUDAPlace/CPUPlace` is `place`
  - template parameter `float/double` on `CUDNNConvOpKernel<T>` is `data_type`.
