@@ -45,16 +45,18 @@ class MatMulOp : public framework::OperatorWithKernel {
     std::vector<int64_t> out_dim;
     int64_t batch_count = 1;
     if (dim_x.size() > 3) {
-      PADDLE_ENFORCE(dim_y.size() == dim_x.size(),
-                     "The dimensions of X and Y must be the same, and both of "
-                     "them should be %d-dimensional.",
-                     dim_x.size());
+      PADDLE_ENFORCE_EQ(
+          dim_y.size(), dim_x.size(),
+          "The dimensions of X and Y must be the same, and both of "
+          "them should be %d-dimensional.",
+          dim_x.size());
 
-      // The previous Rank-2 dimensions are accumulated on the batch_count.
+      // The front rank-2 dimensions are accumulated on the batch_count, and the
+      // last two dimensions are used for matrix multiplication.
       for (int j = 0; j < dim_x.size() - 2; ++j) {
-        PADDLE_ENFORCE(dim_y[j] == dim_x[j],
-                       "The dimensions of X[%d] and Y[%d] must be the same.", j,
-                       j);
+        PADDLE_ENFORCE_EQ(dim_y[j], dim_x[j],
+                          "The %d-th dimension of X and Y must be the same.",
+                          j);
         out_dim.push_back(dim_x[j]);
         batch_count *= dim_x[j];
       }
@@ -191,10 +193,10 @@ Examples without transpose:
 
 The behavior is designed to be similar to the `numpy.matmul` function.
 The differences are:
-- When the rank of the input is greater than 3, the rank of X and
-  Y must be equal, and the former rank-2 dimensions are equal.
 - When the rank of the input data is less than or equal to 3, it
   is similar to the `numpy.matmul` function.
+- When the rank of the input is greater than 3, the rank of X and
+  Y must be equal, and the front `rank - 2` dimensions must be equal.
 - We add `transpose_X` and `transpose_Y` flags.
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
