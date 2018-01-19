@@ -243,7 +243,7 @@ class SimpleDistributeTranspiler:
                     self.param_grad_map[endpoint]["grads"]},  # grads to recv
             outputs={},
             attrs={
-                "OptimizeProgram": optimize_sub_program.desc,
+                "OptimizeBlock": optimize_sub_program.global_block(),
                 "endpoint": endpoint,
                 "ParamList":
                 [p.name for p in self.param_grad_map[endpoint]["params"]],
