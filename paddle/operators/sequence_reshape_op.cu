@@ -17,7 +17,14 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     sequence_reshape,
-    ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SequenceReshapeKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_reshape_grad,
-    ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext,
+                                   int64_t>,
+    ops::SequenceReshapeGradKernel<paddle::platform::CUDADeviceContext, int>);
