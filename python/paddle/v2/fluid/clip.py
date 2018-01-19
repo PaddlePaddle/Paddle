@@ -113,6 +113,7 @@ class GradientClipByNorm(BaseGradientClipAttr):
 
 class GradientClipByGlobalNorm(BaseGradientClipAttr):
     global_norm_var = None
+    local_norm_var = None
     clip_norm_var = None
     scale_var = None
 
@@ -123,12 +124,18 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
 
         cls.global_norm_var = layers.fill_constant(
             shape=[1], dtype="float32", value=0.0)
+        cls.local_norm_var = framework.default_main_program().current_block(
+        ).create_var(
+            name=framework.unique_name("local_norm"),
+            dtype="float32",
+            persistable=False)
         cls.clip_norm_var = layers.fill_constant(
             shape=[1], dtype="float32", value=clip_norm)
 
     @classmethod
     def check_init(cls):
         if not (isinstance(cls.global_norm_var, framework.Variable) and
+                isinstance(cls.local_norm_var, framework.Variable) and
                 isinstance(cls.clip_norm_var, framework.Variable)):
             raise ValueError(
                 "Class 'GradientClipByGlobalNorm' has not been properly initialized. \
@@ -138,9 +145,10 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         cls = self.__class__
         cls.check_init()
 
-        local_norm_var = layers.reduce_sum(input=layers.pow(x=grad, factor=2.0))
+        cls.local_norm_var = layers.reduce_sum(
+            input=layers.pow(x=grad, factor=2.0))
         layers.sums(
-            input=[local_norm_var, cls.global_norm_var],
+            input=[cls.local_norm_var, cls.global_norm_var],
             out=[cls.global_norm_var])
 
     def create_operators(self, param, grad):
@@ -148,7 +156,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         cls.check_init()
 
         if cls.scale_var is None:
-            cls.global_norm_var = layers.sqrt(x=cls.global_norm_var)
+            layers.sqrt(x=cls.global_norm_var, out=cls.global_norm_var)
             cls.scale_var = layers.elementwise_div(
                 x=cls.clip_norm_var,
                 y=layers.elementwise_max(
