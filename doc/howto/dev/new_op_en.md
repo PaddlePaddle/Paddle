@@ -23,7 +23,7 @@ Here are the base types needed. For details, please refer to the design docs.
 - `framework::OperatorWithKernel`: Inherited from OperatorBase, describing an operator with computation kernels.
 
 
-An operator can be differentiated by whether in has computation  kernels. An operator with kernel inherits from `OperatorWithKernel` while the ones without inherit from `OperatorBase`. This tutorial focuses on implementing operators with kernels. In short, an operator includes the following information:
+Operators can be categorized into two groups: operator with kernel(s) and operator without kernel(s). An operator with kernel(s) inherits from `OperatorWithKernel` while the one without kernel(s) inherits from `OperatorBase`. This tutorial focuses on implementing operators with kernels. In short, an operator includes the following information:
 
 
  Information           | Where is it defined
@@ -34,7 +34,7 @@ Kernel implementation       | The kernel methods shared between CPU and CUDA are
 Registering the Op           | Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation, while `.cu` files contain the CUDA implementation.
 
 
-New Operator implementations are added to the list [paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators), with file names in the format `*_op.h` (if applicable), `*_op.cc`, `*_op.cu` (if applicable).** The system will use the naming scheme to automatically build operators and their corresponding Python extensions. **
+New Operator implementations are added to the list [paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators), with file names in the format `*_op.h` (if applicable), `*_op.cc`, `*_op.cu` (if applicable).** The system will use the naming scheme to automatically build operators and their corresponding Python extensions.**
 
 
 Let's take matrix multiplication operator, [MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc), as an example to introduce the writing of an Operator with Kernel.
