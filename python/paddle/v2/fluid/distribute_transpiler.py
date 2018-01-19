@@ -452,7 +452,7 @@ class DistributeTranspiler:
                     },  # grads to recv
             outputs={},
             attrs={
-                "OptimizeProgram": optimize_sub_program.desc,
+                "OptimizeBlock": optimize_sub_program.global_block(),
                 "endpoint": endpoint,
                 "ParamList": [
                     p.name
