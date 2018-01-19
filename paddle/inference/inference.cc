@@ -16,14 +16,14 @@ limitations under the License. */
 #include <fstream>
 #include "paddle/framework/executor.h"
 #include "paddle/framework/feed_fetch_method.h"
-#include "paddle/framework/init.h"
 #include "paddle/framework/scope.h"
 
 namespace paddle {
 
 namespace infer {
 
-bool IsParameter(const framework::VarDesc* var, const framework::ProgramDesc* main_program) {
+bool IsParameter(const framework::VarDesc* var,
+                 const framework::ProgramDesc* main_program) {
   if (var->Persistable() && var->Name() != "feed" && var->Name() != "fetch") {
     // There are many unreachable variables in the program
     for (size_t i = 0; i < main_program->Size(); ++i) {
@@ -67,7 +67,7 @@ void LoadPersistables(framework::Executor& executor,
       op->CheckAttrs();
     }
   }
-  executor->Run(*load_program, scope, 0, true, true);
+  executor.Run(*load_program, &scope, 0, true, true);
 }
 
 framework::ProgramDesc* LoadModelAndParam(framework::Executor& executor,
@@ -93,10 +93,7 @@ framework::ProgramDesc* LoadModelAndParam(framework::Executor& executor,
   for (auto* op : global_block->AllOps()) {
     if (op->Type() == "feed") {
       main_program->InsertFeedVarName(op->Output("Out")[0]);
-      //(main_program->feed_var_names_).insert((main_program->feed_var_names_).begin(),
-      // op->Output("Out")[0]);
     } else if (op->Type() == "fetch") {
-      //(main_program->fetch_var_names_).push_back(op->Input("X")[0]);
       main_program->InsertFetchVarName(op->Input("X")[0]);
     }
   }

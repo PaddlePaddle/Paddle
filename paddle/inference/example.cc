@@ -15,6 +15,7 @@ limitations under the License. */
 #include <time.h>
 #include <iostream>
 #include "gflags/gflags.h"
+#include "paddle/framework/init.h"
 #include "paddle/inference/inference.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -28,16 +29,18 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  auto* place = new platform::CPUPlace();
-  framework::InitDevices();
-  framework::Executor* executor = new framework::Executor(*place);
-  framework::Scope* scope = new framework::Scope();
+  auto* place = new paddle::platform::CPUPlace();
+  paddle::framework::InitDevices();
+
+  paddle::framework::Executor* executor =
+      new paddle::framework::Executor(*place);
+  paddle::framework::Scope* scope = new paddle::framework::Scope();
 
   std::cout << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
   std::string dirname = FLAGS_dirname;
 
   paddle::InferenceEngine* engine = new paddle::InferenceEngine();
-  engine->LoadInferenceModel(executor, scope, dirname);
+  engine->LoadInferenceModel(*executor, *scope, dirname);
 
   paddle::framework::LoDTensor input;
   srand(time(0));

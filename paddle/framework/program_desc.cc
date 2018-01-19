@@ -72,11 +72,11 @@ const std::vector<std::string> &ProgramDesc::GetFetchVarNames() const {
   return fetch_var_names_;
 }
 
-void ProgramDesc::InsertFeedVarName(std::string &feed_var_name) {
+void ProgramDesc::InsertFeedVarName(std::string feed_var_name) {
   feed_var_names_.insert(feed_var_names_.begin(), feed_var_name);
 }
 
-void ProgramDesc::InsertFetchVarName(std::string &fetch_var_name) {
+void ProgramDesc::InsertFetchVarName(std::string fetch_var_name) {
   fetch_var_names_.push_back(fetch_var_name);
 }
 

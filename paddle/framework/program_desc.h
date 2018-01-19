@@ -48,8 +48,8 @@ class ProgramDesc {
   // 4 utility functions for inference (TODO: Better comment)
   const std::vector<std::string> &GetFeedVarNames() const;
   const std::vector<std::string> &GetFetchVarNames() const;
-  void InsertFeedVarName(std::string &feed_var_name);
-  void InsertFetchVarName(std::string &fetch_var_name);
+  void InsertFeedVarName(std::string feed_var_name);
+  void InsertFetchVarName(std::string fetch_var_name);
 
  private:
   proto::ProgramDesc desc_;
