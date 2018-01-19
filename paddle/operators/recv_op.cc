@@ -35,9 +35,6 @@ namespace paddle {
 namespace operators {
 
 constexpr char kOptimizeBlock[] = "OptimizeBlock";
-constexpr int kCondStart = 0;
-constexpr int kCondRunning = 1;
-constexpr int kCondDone = 2;
 
 void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
   service->RunSyncUpdate();
