@@ -23,11 +23,11 @@ namespace paddle {
 
 namespace infer {
 
-bool IsParameter(const framework::VarDesc* var) {
+bool IsParameter(const framework::VarDesc* var, const framework::ProgramDesc* main_program) {
   if (var->Persistable() && var->Name() != "feed" && var->Name() != "fetch") {
     // There are many unreachable variables in the program
-    for (size_t i = 0; i < program_->Size(); ++i) {
-      const framework::BlockDesc& block = program_->Block(i);
+    for (size_t i = 0; i < main_program->Size(); ++i) {
+      const framework::BlockDesc& block = main_program->Block(i);
       for (auto* op : block.AllOps()) {
         for (auto input_argument_name : op->InputArgumentNames()) {
           if (input_argument_name == var->Name()) {
@@ -49,7 +49,7 @@ void LoadPersistables(framework::Executor& executor,
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
   framework::BlockDesc* load_block = load_program->MutableBlock(0);
   for (auto* var : global_block->AllVars()) {
-    if (IsParameter(var)) {
+    if (IsParameter(var, main_program)) {
       LOG(INFO) << "parameter's name: " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());

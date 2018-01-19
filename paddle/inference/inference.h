@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/program_desc.h"
+#include "paddle/framework/executor.h"
+#include "paddle/framework/scope.h"
 
 namespace paddle {
 
