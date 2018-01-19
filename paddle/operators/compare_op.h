@@ -16,6 +16,7 @@ limitations under the License. */
 #include <math.h>
 #include <type_traits>
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/elementwise_op_function.h"
 #include "paddle/platform/transform.h"
 
 namespace paddle {
@@ -31,18 +32,6 @@ template <typename T>
 struct LessEqualFunctor {
   using ELEM_TYPE = T;
   HOSTDEVICE bool operator()(const T& a, const T& b) const { return a <= b; }
-};
-
-template <typename T>
-struct GreaterThanFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a > b; }
-};
-
-template <typename T>
-struct GreaterEqualFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a >= b; }
 };
 
 template <typename T>
@@ -65,14 +54,7 @@ class CompareOpKernel
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     using T = typename Functor::ELEM_TYPE;
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* y = context.Input<framework::Tensor>("Y");
-    auto* out = context.Output<framework::Tensor>("Out");
-    Functor binary_func;
-    platform::Transform<DeviceContext> trans;
-    trans(context.template device_context<DeviceContext>(), x->data<T>(),
-          x->data<T>() + x->numel(), y->data<T>(),
-          out->mutable_data<bool>(context.GetPlace()), binary_func);
+    ElementwiseComputeEx<Functor, DeviceContext, T>(context);
   }
 };
 
