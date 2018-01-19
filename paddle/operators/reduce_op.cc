@@ -129,7 +129,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
   }
 
   void SetComment(std::string name, std::string op) {
-    Replace(comment_, "{ReduceOP}", name);
+    Replace(comment_, "{ReduceOp}", name);
     Replace(comment_, "{reduce}", op);
   }
 };
