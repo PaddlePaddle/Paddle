@@ -95,7 +95,7 @@ REGISTER_OP_KERNEL(
 	kernel0, kernel1, ...)
 ```
 
-kernel0, kernel1 are kernels that with the same `op_type`, `library_type`, `place_type` and different `data_types`.
+kernel0, kernel1 are kernels that have the same `op_type`, `library_type`, `place_type` but different `data_types`.
 
 take [`conv2d`]((https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/conv_cudnn_op.cu.cc#L318)) as an example:
 
