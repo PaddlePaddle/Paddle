@@ -21,7 +21,7 @@ import paddle.v2.fluid as fluid
 import os
 import sys
 
-TRAINERS = 2
+TRAINERS = 5
 BATCH_SIZE = 128
 PASS_NUM = 100
 
@@ -153,12 +153,13 @@ if training_role == "PSERVER":
     print("exe run end")
 elif training_role == "TRAINER":
     print("start trainer")
+    trainer_prog = t.get_trainer_program()
     feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
     exe.run(fluid.default_startup_program())
     for pass_id in range(PASS_NUM):
         accuracy.reset(exe)
         for data in train_reader():
-            loss, acc = exe.run(fluid.default_main_program(),
+            loss, acc = exe.run(trainer_prog,
                                 feed=feeder.feed(data),
                                 fetch_list=[avg_cost] + accuracy.metrics)
             pass_acc = accuracy.eval(exe)
