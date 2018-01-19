@@ -15,18 +15,43 @@ limitations under the License. */
 #include "paddle/framework/data_transform.h"
 
 #include "paddle/framework/data_device_transform.h"
+#include "paddle/framework/data_layout_transform.h"
 
 namespace paddle {
 namespace framework {
 
+static void PassTensorData(Tensor* from, Tensor* to) {
+  to->ShareDataWith(*from);
+  *from = Tensor();
+}
+
 void DataTransform(const OpKernelType& expected_kernel_type,
                    const OpKernelType& kernel_type_for_var,
-                   const Tensor& input_tensor, Tensor* out) {
+                   const Tensor& input_tensor, Tensor* output_tensor) {
+  bool transformed = false;
+  Tensor in;
+  in.ShareDataWith(input_tensor);
+  Tensor out;
+
+  // do layout transform
+  if (NeedTransformLayout(expected_kernel_type.data_layout_,
+                          kernel_type_for_var.data_layout_)) {
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+    transformed = true;
+    PassTensorData(&out, &in);
+  }
+
+  // do device transform
   if (!platform::is_same_place(kernel_type_for_var.place_,
                                expected_kernel_type.place_)) {
-    DeviceTransform(input_tensor, expected_kernel_type.place_, out);
+    DeviceTransform(in, expected_kernel_type.place_, &out);
+    transformed = true;
+    PassTensorData(&out, &in);
   }
-  PADDLE_ENFORCE_NOT_NULL(out, "out should not be null");
+
+  PADDLE_ENFORCE(transformed, "no transform is done, please check!");
+  // get output data
+  output_tensor->ShareDataWith(in);
 }
 
 void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,

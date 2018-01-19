@@ -286,48 +286,86 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-// TODO(tonyyang-svail): make this function support LoD
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
-  PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
-  PADDLE_ENFORCE(dims()[0] % places.size() == 0,
-                 "Batch size should be divided by places size");
+  int batch_size =
+      lod().empty() ? dims()[0] : static_cast<int>(lod()[0].size()) - 1;
+  size_t result_size = std::min(static_cast<size_t>(batch_size), places.size());
+  size_t remainder = batch_size % places.size();
 
-  std::vector<LoDTensor> lods;
-  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
-    int begin = place_idx * dims()[0] / places.size();
-    int end = (place_idx + 1) * dims()[0] / places.size();
+  std::vector<LoDTensor> results;
+  results.reserve(result_size);
 
-    auto src = Slice(begin, end);
-    auto &dst_place = places[place_idx];
+  int step_width = static_cast<int>(batch_size / result_size);
+  for (size_t i = 0; i < result_size; ++i) {
+    int begin = static_cast<int>(i * step_width);
+    int end = static_cast<int>((i + 1) * step_width);
+    if (i + 1 == places.size()) {  // last
+      end += remainder;
+    }
+
     LoDTensor dst;
-    framework::Copy(src, dst_place, &dst);
+    if (lod().empty()) {
+      auto src = Slice(begin, end);
+      auto &dst_place = places[i];
+      framework::Copy(src, dst_place, &dst);
+    } else {
+      auto lod_and_offset = GetSubLoDAndAbsoluteOffset(lod(), begin, end, 0);
 
-    lods.emplace_back(dst);
+      auto &offset = lod_and_offset.second;
+      auto src = Slice(offset.first, offset.second);
+      auto &dst_place = places[i];
+      framework::Copy(src, dst_place, &dst);
+
+      LoD my_lod;
+      for (auto &l : lod_and_offset.first) {
+        std::vector<size_t> v{0};
+        for (auto &ll : l) {
+          v.push_back(ll + v.back());
+        }
+        my_lod.emplace_back(v);
+      }
+      dst.set_lod(my_lod);
+    }
+    results.emplace_back(dst);
   }
 
-  return lods;
+  return results;
 }
 
-// TODO(tonyyang-svail): make this function support LoD
 void LoDTensor::MergeLoDTensor(
     const std::vector<const LoDTensor *> &lod_tensors,
     platform::Place dst_place) {
   PADDLE_ENFORCE(!lod_tensors.empty());
+
   framework::DDim new_dim = lod_tensors[0]->dims();
   std::type_index new_type = lod_tensors[0]->type();
-  auto new_layout = lod_tensors[0]->layout();
-  for (auto *lod : lod_tensors) {
-    PADDLE_ENFORCE(new_dim == lod->dims());
-    PADDLE_ENFORCE(new_type == lod->type());
-    PADDLE_ENFORCE(new_layout == lod->layout());
+  framework::DataLayout new_layout = lod_tensors[0]->layout();
+  LoD new_lod = lod_tensors[0]->lod();
+  for (size_t i = 1; i < lod_tensors.size(); ++i) {
+    auto *t = lod_tensors[i];
+    PADDLE_ENFORCE_EQ(new_type.hash_code(), t->type().hash_code());
+    PADDLE_ENFORCE_EQ(new_layout, t->layout());
+
+    PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
+                      framework::product(t->dims()) / t->dims()[0]);
+    new_dim[0] += t->dims()[0];
+
+    auto &lod = t->lod();
+    for (size_t j = 0; j < lod.size(); ++j) {
+      auto &sub_lod = new_lod[j];
+      auto &offset = sub_lod.back();
+      for (size_t k = 1; k < lod[j].size(); ++k) {
+        sub_lod.push_back(lod[j][k] + offset);
+      }
+    }
   }
-  new_dim[0] *= lod_tensors.size();
   Resize(new_dim);
   set_layout(new_layout);
-
+  set_lod(new_lod);
   mutable_data(dst_place, new_type);
+
   int begin = 0;
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
