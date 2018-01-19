@@ -24,27 +24,6 @@ if(NOT WITH_C_API AND WITH_FLUID)
   install(TARGETS paddle_fluid_shared DESTINATION lib)
 endif()
 
-# ptools
-# just for testing, we may need to change the storing format for inference_model
-# and move the dependent of pickle.
-# download from http://www.picklingtools.com/
-# build in the C++ sub-directory, using command
-#     make -f Makefile.Linux libptools.so
-set(PTOOLS_LIB)
-set(PTOOLS_ROOT $ENV{PTOOLS_ROOT} CACHE PATH "Folder contains PicklingTools")
-find_path(PTOOLS_INC_DIR chooseser.h PATHS ${PTOOLS_ROOT}/C++)
-find_library(PTOOLS_SHARED_LIB NAMES ptools PATHS ${PTOOLS_ROOT}/C++)
-if(PTOOLS_INC_DIR AND PTOOLS_SHARED_LIB)
-  add_definitions(-DPADDLE_USE_PTOOLS)
-  set(PTOOLS_LIB ptools)
-  message(STATUS "Found PicklingTools: ${PTOOLS_SHARED_LIB}")
-  add_library(${PTOOLS_LIB} SHARED IMPORTED GLOBAL)
-  set_property(TARGET ${PTOOLS_LIB} PROPERTY IMPORTED_LOCATION ${PTOOLS_SHARED_LIB})
-  include_directories(${PTOOLS_ROOT}/C++)
-  include_directories(${PTOOLS_ROOT}/C++/opencontainers_1_8_5/include)
-  add_definitions(-DOC_NEW_STYLE_INCLUDES) # used in ptools
-endif()
-
 add_executable(example example.cc)
 if(APPLE)
   set(OPTIONAL_LINK_FLAGS)

@@ -77,8 +77,11 @@ def lang_type(filename):
     elif filename.endswith(".proto"):
         return "C"
     else:
-        print("Unsupported filetype")
+        print("Unsupported filetype %s", filename)
         exit(0)
+
+
+PYTHON_ENCODE = re.compile("^[ \t\v]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
 
 
 def main(argv=None):
@@ -89,8 +92,15 @@ def main(argv=None):
 
     retv = 0
     for filename in args.filenames:
-        first_line = io.open(filename).readline()
-        if "COPYRIGHT" in first_line.upper() : continue
+        fd = io.open(filename)
+        first_line = fd.readline()
+        if "COPYRIGHT" in first_line.upper(): continue
+        if filename.endswith(".py"):
+            second_line = fd.readline()
+            if first_line.startswith("#!") or PYTHON_ENCODE.match(
+                    second_line) != None or PYTHON_ENCODE.match(
+                        first_line) != None:
+                continue
         original_contents = io.open(filename).read()
         new_contents = generate_copyright(
             COPYRIGHT, lang_type(filename)) + original_contents
