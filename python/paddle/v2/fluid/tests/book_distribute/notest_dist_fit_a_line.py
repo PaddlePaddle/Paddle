@@ -54,7 +54,8 @@ if training_role == "PSERVER":
         print("need env SERVER_ENDPOINT")
         exit(1)
     pserver_prog = t.get_pserver_program(current_endpoint)
-    exe.run(fluid.default_startup_program())
+    pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
+    exe.run(pserver_startup)
     exe.run(pserver_prog)
 else:
     trainer_prog = t.get_trainer_program()
