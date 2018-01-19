@@ -87,8 +87,9 @@ if training_role == "PSERVER":
     if not current_endpoint:
         print("need env SERVER_ENDPOINT")
         exit(1)
-    pserver_prog = t.get_pserver_program(current_endpoint, optimize_ops)
-    exe.run(fluid.default_startup_program())
+    pserver_prog = t.get_pserver_program(current_endpoint)
+    pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
+    exe.run(pserver_startup)
     exe.run(pserver_prog)
 elif training_role == "TRAINER":
     feeder = fluid.DataFeeder(

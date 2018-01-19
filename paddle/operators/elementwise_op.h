@@ -26,9 +26,9 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   using Tensor = framework::Tensor;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of elementwise op should not be null");
+                   "Input(X) of elementwise op should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of elementwise op should not be null");
+                   "Input(Y) of elementwise op should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of elementwise op should not be null.");
 
@@ -45,12 +45,12 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ElementwiseOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) The first input tensor of elementwise op");
-    AddInput("Y", "(Tensor) The second input tensor of elementwise op");
-    AddOutput("Out", "The output of elementwise op");
+    AddInput("X", "(Tensor), The first input tensor of elementwise op.");
+    AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
+    AddOutput("Out", "The output of elementwise op.");
     AddAttr<int>("axis",
-                 "(int, default -1) The starting dimension index "
-                 "for broadcasting Y onto X")
+                 "(int, default -1). The start dimension index "
+                 "for broadcasting Y onto X.")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
     comment_ = R"DOC(
@@ -58,19 +58,18 @@ Limited Elementwise {name} Operator.
 
 The equation is:
 
-.. math::
-  {equation}
+$${equation}$$
 
-X is a tensor of any dimension and the dimensions of tensor Y must be smaller than
-or equal to the dimensions of X. 
+$X$ is a tensor of any dimension and the dimensions of tensor $Y$ must be
+smaller than or equal to the dimensions of $X$.
 
 There are two cases for this operator:
-1. The shape of Y is same with X;
-2. The shape of Y is a subset of X.
+1. The shape of $Y$ is same with $X$;
+2. The shape of $Y$ is a subset of $X$.
 
 For case 2:
-Y will be broadcasted to match the shape of X and axis should be 
-the starting dimension index for broadcasting Y onto X.
+$Y$ will be broadcasted to match the shape of $X$ and axis should be
+set to index of the start dimension to broadcast $Y$ onto $X$.
 
 For example
   .. code-block:: python
@@ -81,7 +80,8 @@ For example
     shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
     shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
 
-Either of the inputs X and Y or none can carry the LoD (Level of Details) information. However, the output only shares the LoD information with input X.
+Either of the inputs $X$ and $Y$ or none can carry the LoD (Level of Details)
+information. However, the output only shares the LoD information with input $X$.
 
 )DOC";
     AddComment(comment_);
