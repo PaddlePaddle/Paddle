@@ -67,4 +67,4 @@ if __name__ == '__main__':
     #    print len(im[0])
     #for im in train_reader('test.list'):
     #    print len(im[0])
-    paddle.dataset.flowers.train()
+    paddle.dataset.cifar.train10()
