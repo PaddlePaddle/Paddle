@@ -216,6 +216,14 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(x)
         print(str(program))
 
+    def test_sequence_reshape(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[8], dtype='float32', lod_level=1)
+            out = layers.sequence_reshape(input=x, new_dim=16)
+            self.assertIsNotNone(out)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
