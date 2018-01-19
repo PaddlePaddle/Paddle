@@ -36,6 +36,7 @@ import clip
 from memory_optimization_transpiler import memory_optimize
 
 Tensor = LoDTensor
+
 __all__ = framework.__all__ + executor.__all__ + [
     'io',
     'initializer',
@@ -93,4 +94,5 @@ def __bootstrap__():
     core.init_devices()
 
 
+layers.monkey_patch_variable()
 __bootstrap__()
