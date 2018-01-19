@@ -40,7 +40,7 @@ paddle_error paddle_matrix_destroy(paddle_matrix mat) {
 paddle_error paddle_matrix_set_row(paddle_matrix mat,
                                    uint64_t rowID,
                                    paddle_real* rowArray) {
-  if (mat == nullptr) return kPD_NULLPTR;
+  if (mat == nullptr || rowArray == nullptr) return kPD_NULLPTR;
   auto ptr = cast(mat);
   if (ptr->mat == nullptr) return kPD_NULLPTR;
   if (rowID >= ptr->mat->getHeight()) return kPD_OUT_OF_RANGE;

@@ -30,7 +30,7 @@ void sgdUpdateCpu(real learningRate,
                   const real* grad,
                   real* momentumVec) {
   decayRate *= learningRate;
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
   for (size_t i = 0; i < size; ++i) {

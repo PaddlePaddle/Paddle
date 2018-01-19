@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <ostream>
 
@@ -19,60 +19,66 @@
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 
-#include "paddle/operators/detail/send_recv_impl.h"
-#include "paddle/operators/detail/simple_block_queue.h"
+#include <future>
+#include "paddle/operators/detail/grpc_client.h"
 
 namespace paddle {
 namespace operators {
 
-// TODO(typhoonzero): this is a simple implementation which only send
-// one tensor
 class SendOp : public framework::OperatorBase {
  public:
-  SendOp(const std::string &type, const framework::VariableNameMap &inputs,
-         const framework::VariableNameMap &outputs,
-         const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {
-    // init client when the operator is created at runtime.
-    if (!client_) {
-      std::string endpoint = Attr<std::string>("endpoint");
-      client_.reset(new detail::RPCClient(
-          grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials())));
-      // TODO(typhoonzero): how to call InitVariables
+  SendOp(const std::string& type, const framework::VariableNameMap& inputs,
+         const framework::VariableNameMap& outputs,
+         const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+  void Run(const framework::Scope& scope,
+           const platform::Place& place) const override {
+    auto ins = Inputs("X");
+    auto outs = Outputs("Out");
+    std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(place);
+    for (size_t i = 0; i < ins.size(); i++) {
+      VLOG(3) << "sending " << ins[i];
+      client_.AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
     }
-  }
-  void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
-    auto iname = Input("X");
-    auto oname = Output("Out");
-    // TODO(typhoonzero): currently it's non-blocking,
-    // should block until server responds.
-    bool ret = client_->SendVariable(scope, iname, oname);
-    if (!ret) {
-      LOG(ERROR) << "send variable error";
+    PADDLE_ENFORCE(client_.Wait());
+
+    for (size_t i = 0; i < outs.size(); i++) {
+      VLOG(3) << "getting " << outs[i];
+      client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
+
+    PADDLE_ENFORCE(client_.Wait());
   }
 
- protected:
-  std::shared_ptr<detail::RPCClient> client_{nullptr};
+ private:
+  mutable detail::RPCClient client_;
 };
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  SendOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) Input tensor to be saved");
-    AddOutput("Out", "(Tensor) Output fetched from server");
+    AddInput("X", "(Tensor) Input tensor to be send").AsDuplicable();
+    AddOutput("Out", "(Tensor) Output tensor to get from server")
+        .AsDuplicable();
     AddComment(R"DOC(
 Recv operator
 
-This operator will recv tensor from send_op
+This operator will send tensor to recv_op.
 )DOC");
-    AddAttr<std::string>("endpoint",
-                         "(string, default 127.0.0.1:6164)"
-                         "IP address to listen on.")
-        .SetDefault("127.0.0.1:6164")
-        .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
+    AddAttr<std::vector<std::string>>("endpoints",
+                                      "(string vector, default 127.0.0.1:6164)"
+                                      "Server endpoints to send variables to.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>("epmap",
+                                      "(string vector, default 127.0.0.1:6164)"
+                                      "Server endpoints in the order of input "
+                                      "variables for mapping")
+        .SetDefault({});
   }
 };
 

@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
@@ -28,14 +28,14 @@ using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
 
-static constexpr size_t kConvCudnnWorkspaceLimitBytes = 1024 * 1024 * 1024;
+static constexpr size_t kConvCUDNNWorkspaceLimitBytes = 1024 * 1024 * 1024;
 
 template <typename T>
-class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
+class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -77,13 +77,14 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv workspace ---------------------
     void* cudnn_workspace = nullptr;
     size_t workspace_size_in_bytes;  // final workspace to allocate.
-    size_t workspace_size_limit = kConvCudnnWorkspaceLimitBytes;
+    size_t workspace_size_limit = kConvCUDNNWorkspaceLimitBytes;
     if (user_workspace_size > 0) {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionBwdDataAlgo_t algo;
-    auto handle = ctx.cuda_device_context().cudnn_handle();
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
     // Get the algorithm
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
         handle, cudnn_filter_desc, cudnn_input_desc, cudnn_conv_desc,
@@ -99,7 +100,7 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
             cudnn_output_desc, algo, &workspace_size_in_bytes));
 
     // Allocate on GPU memory
-    platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
 
     // ------------------- cudnn conv transpose forward ---------------------
@@ -115,11 +116,11 @@ class CudnnConvTransposeOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
+class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
     auto input = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
@@ -160,12 +161,13 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdFilterAlgo_t filter_algo;
     size_t bwd_filter_ws_size, fwd_ws_size;
     size_t workspace_size_in_bytes = 0;
-    size_t workspace_size_limit = kConvCudnnWorkspaceLimitBytes;
+    size_t workspace_size_limit = kConvCUDNNWorkspaceLimitBytes;
     if (user_workspace_size > 0) {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
 
-    auto handle = ctx.cuda_device_context().cudnn_handle();
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
     if (input_grad) {
       // choose backward algorithm for data
       PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
@@ -199,7 +201,7 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv workspace ---------------------
     // Already on GPU
     void* cudnn_workspace = nullptr;
-    platform::GPUPlace gpu = boost::get<platform::GPUPlace>(ctx.GetPlace());
+    platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv backward data ---------------------
     // FIXME(typhoonzero): template type T may not be the same as cudnn call.
@@ -234,16 +236,16 @@ class CudnnConvTransposeGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_GPU_KERNEL(conv2d_transpose_cudnn,
-                       ops::CudnnConvTransposeOpKernel<float>,
-                       ops::CudnnConvTransposeOpKernel<double>);
-REGISTER_OP_GPU_KERNEL(conv2d_transpose_cudnn_grad,
-                       ops::CudnnConvTransposeGradOpKernel<float>,
-                       ops::CudnnConvTransposeGradOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeOpKernel<float>,
+                   ops::CUDNNConvTransposeOpKernel<double>);
+REGISTER_OP_KERNEL(conv2d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeGradOpKernel<float>,
+                   ops::CUDNNConvTransposeGradOpKernel<double>);
 
-REGISTER_OP_GPU_KERNEL(conv3d_transpose_cudnn,
-                       ops::CudnnConvTransposeOpKernel<float>,
-                       ops::CudnnConvTransposeOpKernel<double>);
-REGISTER_OP_GPU_KERNEL(conv3d_transpose_cudnn_grad,
-                       ops::CudnnConvTransposeGradOpKernel<float>,
-                       ops::CudnnConvTransposeGradOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeOpKernel<float>,
+                   ops::CUDNNConvTransposeOpKernel<double>);
+REGISTER_OP_KERNEL(conv3d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeGradOpKernel<float>,
+                   ops::CUDNNConvTransposeGradOpKernel<double>);

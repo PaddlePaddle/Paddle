@@ -41,20 +41,24 @@ class ConcatOp : public framework::OperatorWithKernel {
       for (size_t j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
           out_dims[axis] += ins[i][j];
-          continue;
+        } else {
+          PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
+                            "Input tensors should have the same "
+                            "elements except the specify axis.");
         }
-        PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                          "Input tensors should have the same "
-                          "elements except the specify axis.");
       }
     }
+    if (out_dims[axis] < 0) {
+      out_dims[axis] = -1;
+    }
     ctx->SetOutputDim("Out", out_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
 class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConcatOpMaker(framework::OpProto *proto, framework::OpAttrChecker *op_checker)
+  ConcatOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of concat operator.");
@@ -94,8 +98,8 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(concat, ops::ConcatOp, ops::ConcatOpMaker, concat_grad,
-            ops::ConcatOpGrad)
+REGISTER_OP_EX(concat, ops::ConcatOp, ops::ConcatOpMaker, concat_grad,
+               ops::ConcatOpGrad, false)
 REGISTER_OP_CPU_KERNEL(concat,
                        ops::ConcatKernel<paddle::platform::CPUPlace, float>)
 REGISTER_OP_CPU_KERNEL(concat_grad,

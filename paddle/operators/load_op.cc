@@ -1,20 +1,20 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+#include <fstream>
 
 #include "paddle/framework/op_registry.h"
-
-#include <fstream>
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +26,7 @@ class LoadOp : public framework::OperatorBase {
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
+           const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     std::ifstream fin(filename);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
@@ -38,9 +38,11 @@ class LoadOp : public framework::OperatorBase {
                    out_var_name);
 
     auto *tensor = out_var->GetMutable<framework::LoDTensor>();
-    framework::DeserializeFromStream(fin, tensor);
 
-    auto place = dev_ctx.GetPlace();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
+    DeserializeFromStream(fin, tensor, dev_ctx);
+
     if (platform::is_gpu_place(place)) {
       // copy CPU to GPU
       framework::LoDTensor cpu_tensor;
@@ -51,15 +53,14 @@ class LoadOp : public framework::OperatorBase {
       out_var->Clear();
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->set_lod(cpu_tensor.lod());
-      CopyFrom(cpu_tensor, place, dev_ctx, tensor);
+      Copy(cpu_tensor, place, dev_ctx, tensor);
     }
   }
 };
 
 class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoadOpProtoMaker(framework::OpProto *proto,
-                   framework::OpAttrChecker *op_checker)
+  LoadOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "(Tensor) The tensor need to be loaded");
     AddAttr<std::string>("file_path",

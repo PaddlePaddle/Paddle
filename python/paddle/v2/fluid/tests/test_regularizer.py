@@ -1,9 +1,22 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import unittest
 
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.optimizer as optimizer
 import paddle.v2.fluid.regularizer as regularizer
-from paddle.v2.fluid.backward import append_backward_ops
+from paddle.v2.fluid.backward import append_backward
 
 
 class TestL2DecayRegularizer(unittest.TestCase):
@@ -33,7 +46,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         count_ops = len(block.ops)
         params_grads = optimizer.append_regularization_ops(params_grads)
@@ -70,7 +83,7 @@ class TestL1DecayRegularizer(unittest.TestCase):
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
-        params_grads = append_backward_ops(mean_out)
+        params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         count_ops = len(block.ops)
         params_grads = optimizer.append_regularization_ops(params_grads)

@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-       http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LoDResetKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
@@ -33,8 +33,8 @@ class LoDResetKernel : public framework::OpKernel<T> {
       auto* lod = lod_t->data<int>();
       if (platform::is_gpu_place(ctx.GetPlace())) {
         framework::Tensor lod_cpu;
-        framework::CopyFrom(*lod_t, platform::CPUPlace(), ctx.device_context(),
-                            &lod_cpu);
+        framework::Copy(*lod_t, platform::CPUPlace(), ctx.device_context(),
+                        &lod_cpu);
         lod = lod_cpu.data<int>();
       }
       level0 = std::vector<int>(lod, lod + lod_t->numel());
@@ -65,7 +65,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LoDResetGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {

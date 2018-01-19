@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class CPUROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -126,7 +126,7 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -145,8 +145,9 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       const T* out_grad_data = out_grad->data<T>();
       const int64_t* argmax_data = argmax->data<int64_t>();
       T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<Place, T> set_zero;
-      set_zero(ctx.device_context(), in_grad, static_cast<T>(0));
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(ctx.template device_context<DeviceContext>(), in_grad,
+               static_cast<T>(0));
 
       auto in_stride = framework::stride(in->dims());
       auto argmax_stride = framework::stride(argmax->dims());

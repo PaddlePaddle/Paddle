@@ -84,62 +84,58 @@ class AvgPoolGrad {
  * This is different from average pooling. So we rewrite the max_pool_grad:
  * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
  */
-template <typename Place, typename PoolProcess, typename T>
+template <typename DeviceContext, typename PoolProcess, typename T>
 class Pool2dFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_compute, framework::Tensor* output);
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  std::vector<int>& ksize, std::vector<int>& strides,
+                  std::vector<int>& paddings, PoolProcess pool_compute,
+                  framework::Tensor* output);
 };
 
-template <typename Place, typename PoolProcess, typename T>
+template <typename DeviceContext, typename PoolProcess, typename T>
 class Pool2dGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_compute, framework::Tensor* input_grad);
 };
 
-template <typename Place, class T>
+template <typename DeviceContext, class T>
 class MaxPool2dGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* input_grad);
 };
 
-template <typename Place, typename PoolProcess, typename T>
+template <typename DeviceContext, typename PoolProcess, typename T>
 class Pool3dFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  PoolProcess pool_compute, framework::Tensor* output);
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  std::vector<int>& ksize, std::vector<int>& strides,
+                  std::vector<int>& paddings, PoolProcess pool_compute,
+                  framework::Tensor* output);
 };
 
-template <typename Place, typename PoolProcess, typename T>
+template <typename DeviceContext, typename PoolProcess, typename T>
 class Pool3dGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   PoolProcess pool_compute, framework::Tensor* input_grad);
 };
 
-template <typename Place, class T>
+template <typename DeviceContext, class T>
 class MaxPool3dGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
@@ -153,38 +149,38 @@ class MaxPool3dGradFunctor {
  * In pool2d, all tensors are in NCHW format. In pool3d, all tensors are in
  * NCDHW format.
  */
-template <typename Place, typename T1, typename T2>
+template <typename DeviceContext, typename T1, typename T2>
 class MaxPool2dWithIndexFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  framework::Tensor* output, framework::Tensor* mask);
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  std::vector<int>& ksize, std::vector<int>& strides,
+                  std::vector<int>& paddings, framework::Tensor* output,
+                  framework::Tensor* mask);
 };
 
-template <typename Place, typename T1, typename T2>
+template <typename DeviceContext, typename T1, typename T2>
 class MaxPool2dWithIndexGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::Tensor& output_grad,
                   const framework::Tensor& mask, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* input_grad);
 };
 
-template <typename Place, typename T1, typename T2>
+template <typename DeviceContext, typename T1, typename T2>
 class MaxPool3dWithIndexFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  framework::Tensor* output, framework::Tensor* mask);
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  std::vector<int>& ksize, std::vector<int>& strides,
+                  std::vector<int>& paddings, framework::Tensor* output,
+                  framework::Tensor* mask);
 };
 
-template <typename Place, typename T1, typename T2>
+template <typename DeviceContext, typename T1, typename T2>
 class MaxPool3dWithIndexGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::Tensor& output_grad,
                   const framework::Tensor& mask, std::vector<int>& ksize,
                   std::vector<int>& strides, std::vector<int>& paddings,

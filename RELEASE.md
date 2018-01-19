@@ -1,3 +1,75 @@
+# Release v0.11.0
+
+## PaddlePaddle Fluid
+
+- Release 0.11.0 includes a new feature *PaddlePaddle Fluid*.  Fluid is
+  designed to allow users to program like PyTorch and TensorFlow Eager Execution.
+  In these systems, there is no longer the concept *model* and applications
+  do not include a symbolic description of a graph of operators nor a sequence
+  of layers. Instead, applications look exactly like a usual program that
+  describes a process of training or inference.  The difference between
+  Fluid and PyTorch or Eager Execution is that Fluid doesn't rely on Python's
+  control-flow, `if-then-else` nor `for`.  Instead, Fluid provides its
+  C++ implementations and their Python binding using the `with` statement.  For an example
+
+  https://github.com/PaddlePaddle/Paddle/blob/3df78ed2a98d37f7ae6725894cc7514effd5664b/python/paddle/v2/fluid/tests/test_while_op.py#L36-L44
+
+- In 0.11.0, we provides a C++ class `Executor` to run a Fluid program.
+Executor works like an interpreter. In future version, we will improve
+`Executor` into a debugger like GDB, and we might provide some compilers,
+which, for example, takes an application like the above one, and outputs
+an equivalent C++ source program, which can be compiled using
+[`nvcc`](http://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html)
+to generate binaries that use CUDA, or using
+[`icc`](https://software.intel.com/en-us/c-compilers) to generate binaries
+that make full use of Intel CPUs.
+
+## New Features
+
+* Release `PaddlePaddle Fluid`.
+* Add C-API for model inference
+* Use fluid API to create a simple GAN demo.
+* Add develop guide about performance tunning.
+* Add retry when download `paddle.v2.dataset`.
+* Linking protobuf-lite not protobuf in C++. Reduce the binary size.
+* Feature [Elastic Deep Learning (EDL)](https://github.com/PaddlePaddle/cloud/tree/develop/doc/autoscale/experiment) released.
+* A new style cmake functions for Paddle. It is based on Bazel API.
+* Automatically download and compile with Intel® [MKLML](https://github.com/01org/mkl-dnn/releases/download/v0.11/mklml_lnx_2018.0.1.20171007.tgz) library as CBLAS when build `WITH_MKL=ON`.
+* [Intel® MKL-DNN on PaddlePaddle](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/design/mkldnn):
+  - Complete 11 MKL-DNN layers: Convolution, Fully connectivity, Pooling, ReLU, Tanh, ELU, Softmax, BatchNorm, AddTo, Concat, LRN.
+  - Complete 3 MKL-DNN networks: VGG-19, ResNet-50, GoogleNet
+  - [Benchmark](https://github.com/PaddlePaddle/Paddle/blob/develop/benchmark/IntelOptimizedPaddle.md) on Intel Skylake 6148 CPU: 2~3x training speedup compared with MKLML.
+* Add the [`softsign` activation](http://www.paddlepaddle.org/docs/develop/documentation/zh/api/v2/config/activation.html#softsign).
+* Add the [dot product layer](http://www.paddlepaddle.org/docs/develop/documentation/zh/api/v2/config/layer.html#dot-prod).
+* Add the [L2 distance layer](http://www.paddlepaddle.org/docs/develop/documentation/zh/api/v2/config/layer.html#l2-distance).
+* Add the [sub-nested sequence layer](http://www.paddlepaddle.org/docs/develop/documentation/zh/api/v2/config/layer.html#sub-nested-seq).
+* Add the [kmax sequence score layer](http://www.paddlepaddle.org/docs/develop/documentation/zh/api/v2/config/layer.html#kmax-sequence-score).
+* Add the [sequence slice layer](http://www.paddlepaddle.org/docs/develop/documentation/zh/api/v2/config/layer.html#seq-slice).
+* Add the [row convolution layer](http://www.paddlepaddle.org/docs/develop/documentation/zh/api/v2/config/layer.html#row-conv)
+* Add mobile friendly webpages.
+
+## Improvements
+
+* Build and install using a single `whl` package.
+* [Custom evaluating in V2 API](https://github.com/PaddlePaddle/models/tree/develop/ltr#训练过程中输出自定义评估指标).
+* Change `PADDLE_ONLY_CPU` to `PADDLE_WITH_GPU`, since we will support many kinds of devices.
+* Remove buggy BarrierStat.
+* Clean and remove unused functions in paddle::Parameter.
+* Remove ProtoDataProvider.
+* Huber loss supports both regression and classification.
+* Add the `stride` parameter  for sequence pooling layers.
+* Enable v2 API use cudnn batch normalization automatically.
+* The BN layer's parameter can be shared by a fixed the parameter name.
+* Support variable-dimension input feature for 2D convolution operation.
+* Refine cmake about CUDA to automatically detect GPU architecture.
+* Improved website navigation.
+
+## Bug Fixes
+
+* Fix bug in ROI pooling. cc9a761
+* Fix AUC is zero when label is dense vector. #5274
+* Fix bug in WarpCTC layer.
+
 # Release v0.10.0
 
 We are glad to release version 0.10.0.  In this version, we are happy to release the new 

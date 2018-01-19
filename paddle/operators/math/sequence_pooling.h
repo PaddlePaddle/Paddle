@@ -23,18 +23,18 @@ namespace math {
 
 #define FLT_MAX __FLT_MAX__
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class MaxSeqPoolFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::LoDTensor& input, framework::Tensor* output,
                   framework::Tensor* index);
 };
 
-template <typename Place, class T>
+template <typename DeviceContext, class T>
 class MaxSeqPoolGradFunctor {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::Tensor& out_grad,
                   const framework::Tensor& index,
                   framework::LoDTensor* in_grad);

@@ -1,13 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-   http://www.apache.org/licenses/LICENSE-2.0
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
@@ -85,6 +88,8 @@ template <typename T>
 class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    auto& dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
     bool is_sparse = context.Attr<bool>("is_sparse");
     if (is_sparse) {
       auto* ids = context.Input<LoDTensor>("Ids");
@@ -95,11 +100,11 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto* ids_data = ids->data<int64_t>();
       auto ids_dim = ids->dims();
 
-      auto stream = context.cuda_device_context().stream();
+      auto stream = dev_ctx.stream();
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> new_rows;
       new_rows.resize(ids_dim[0]);
-      auto gpu_place = boost::get<platform::GPUPlace>(context.GetPlace());
+      auto gpu_place = boost::get<platform::CUDAPlace>(context.GetPlace());
 
       memory::Copy(platform::CPUPlace(), new_rows.data(), gpu_place, ids_data,
                    ids_dim[0] * sizeof(int64_t), stream);
@@ -129,14 +134,11 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       T* d_table = d_table_t->mutable_data<T>(context.GetPlace());
 
       auto t = framework::EigenVector<T>::Flatten(*d_table_t);
-      t.device(context.GetEigenDevice<platform::GPUPlace>()) =
-          t.constant(static_cast<T>(0));
+      t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
       dim3 threads(128, 8);
       dim3 grids(8, 1);
-      LookupTableGrad<
-          T, 128, 8,
-          8><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+      LookupTableGrad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
           d_table, d_output, ids, N, K, D);
     }
   }
@@ -146,7 +148,8 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
-                       ops::LookupTableCUDAKernel<double>);
-REGISTER_OP_GPU_KERNEL(lookup_table_grad, ops::LookupTableGradCUDAKernel<float>,
-                       ops::LookupTableGradCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
+                        ops::LookupTableCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
+                        ops::LookupTableGradCUDAKernel<float>,
+                        ops::LookupTableGradCUDAKernel<double>);

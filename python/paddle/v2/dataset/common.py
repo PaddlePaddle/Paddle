@@ -23,7 +23,6 @@ import paddle.v2.dataset
 import cPickle
 import glob
 import cPickle as pickle
-import random
 
 __all__ = [
     'DATA_HOME', 'download', 'md5file', 'split', 'cluster_files_reader',
@@ -71,7 +70,7 @@ def download(url, module_name, md5sum):
         if retry < retry_limit:
             retry += 1
         else:
-            raise RuntimeError("Cannot download {0} within retry limit {2}".
+            raise RuntimeError("Cannot download {0} within retry limit {1}".
                                format(url, retry_limit))
         print "Cache file %s not found, downloading %s" % (filename, url)
         r = requests.get(url, stream=True)
@@ -206,7 +205,6 @@ def convert(output_path, reader, line_count, name_prefix):
     indx_f = 0
 
     def write_data(indx_f, lines):
-        random.shuffle(lines)
         filename = "%s/%s-%05d" % (output_path, name_prefix, indx_f)
         writer = recordio.writer(filename)
         for l in lines:

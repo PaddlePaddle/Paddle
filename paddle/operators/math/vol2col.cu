@@ -68,9 +68,9 @@ __global__ void vol2col(int num_kernels, const T* data_vol, int depth,
  *                    output_depth, output_height, output_width]
  */
 template <class T>
-class Vol2ColFunctor<platform::GPUPlace, T> {
+class Vol2ColFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
@@ -117,9 +117,7 @@ class Vol2ColFunctor<platform::GPUPlace, T> {
 
     const int threads = 1024;
     const int blocks = (num_outputs + 1024 - 1) / 1024;
-    vol2col<T><<<blocks, threads, 0,
-                 reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                     .stream()>>>(
+    vol2col<T><<<blocks, threads, 0, context.stream()>>>(
         num_outputs, vol.data<T>(), input_depth, input_height, input_width,
         dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
         filter_width, strides[0], strides[1], strides[2], paddings[0],
@@ -196,9 +194,9 @@ __global__ void col2vol(int num_kernels, const T* data_col, int depth,
  *                    output_depth, output_height, output_width]
  */
 template <class T>
-class Col2VolFunctor<platform::GPUPlace, T> {
+class Col2VolFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
@@ -245,9 +243,7 @@ class Col2VolFunctor<platform::GPUPlace, T> {
     const int threads = 1024;
     const int blocks = (num_kernels + 1024 - 1) / 1024;
 
-    col2vol<T><<<blocks, threads, 0,
-                 reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                     .stream()>>>(
+    col2vol<T><<<blocks, threads, 0, context.stream()>>>(
         num_kernels, col.data<T>(), input_depth, input_height, input_width,
         dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
         filter_width, strides[0], strides[1], strides[2], paddings[0],
@@ -256,10 +252,10 @@ class Col2VolFunctor<platform::GPUPlace, T> {
   }
 };
 
-template class Vol2ColFunctor<platform::GPUPlace, float>;
-template class Vol2ColFunctor<platform::GPUPlace, double>;
-template class Col2VolFunctor<platform::GPUPlace, float>;
-template class Col2VolFunctor<platform::GPUPlace, double>;
+template class Vol2ColFunctor<platform::CUDADeviceContext, float>;
+template class Vol2ColFunctor<platform::CUDADeviceContext, double>;
+template class Col2VolFunctor<platform::CUDADeviceContext, float>;
+template class Col2VolFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

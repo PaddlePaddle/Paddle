@@ -39,7 +39,7 @@ inline LoD SequenceSliceLoD(const T& in, const int64_t* offset_data,
   return out_lod;
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceSliceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -66,13 +66,13 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
-      framework::CopyFrom(*offset, platform::CPUPlace(), ctx.device_context(),
-                          &offset_cpu);
+      framework::Copy(*offset, platform::CPUPlace(), ctx.device_context(),
+                      &offset_cpu);
       offset_data = offset_cpu.data<int64_t>();
 
       length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
-      framework::CopyFrom(*length, platform::CPUPlace(), ctx.device_context(),
-                          &length_cpu);
+      framework::Copy(*length, platform::CPUPlace(), ctx.device_context(),
+                      &length_cpu);
       length_data = length_cpu.data<int64_t>();
     }
 
@@ -108,7 +108,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -127,13 +127,13 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
-      framework::CopyFrom(*offset, platform::CPUPlace(), ctx.device_context(),
-                          &offset_cpu);
+      framework::Copy(*offset, platform::CPUPlace(), ctx.device_context(),
+                      &offset_cpu);
       offset_data = offset_cpu.data<int64_t>();
 
       length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
-      framework::CopyFrom(*length, platform::CPUPlace(), ctx.device_context(),
-                          &length_cpu);
+      framework::Copy(*length, platform::CPUPlace(), ctx.device_context(),
+                      &length_cpu);
       length_data = length_cpu.data<int64_t>();
     }
 
@@ -143,8 +143,9 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());
       x_grad->set_lod(in->lod());
-      math::SetConstant<Place, T> set_zero;
-      set_zero(ctx.device_context(), x_grad, static_cast<T>(0));
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(ctx.template device_context<DeviceContext>(), x_grad,
+               static_cast<T>(0));
 
       auto out_grad_stride = framework::stride(out_grad->dims());
 

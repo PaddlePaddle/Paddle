@@ -29,6 +29,7 @@ DECLARE_bool(with_gpu);
 DECLARE_bool(parallel_nn);
 DECLARE_string(config_args);
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(use_mkl_packed);
 
 const char *kConfigParserModuleName = "paddle.trainer.config_parser";
 const char *kConfigParserFuncName = "parse_config_and_serialize";
@@ -46,6 +47,7 @@ TrainerConfigHelper::TrainerConfigHelper(const std::string &configFilePath)
              << ",with_cost=" << FLAGS_with_cost << ",use_gpu=" << FLAGS_use_gpu
              << ",parallel_nn=" << FLAGS_parallel_nn
              << ",use_mkldnn=" << FLAGS_use_mkldnn
+             << ",use_mkl_packed=" << FLAGS_use_mkl_packed
              << ",cudnn_version=" << hl_get_cudnn_lib_version();
   if (!FLAGS_config_args.empty()) {
     configArgs << "," << FLAGS_config_args;

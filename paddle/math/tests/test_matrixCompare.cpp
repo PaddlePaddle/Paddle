@@ -244,7 +244,7 @@ TEST(Matrix, unary) {
     LOG(WARNING) << "This version of PaddlePaddle was not built with LAPACK"
                  << "support so we cannot test matrix inverse. To test "
                  << "matrix inverse, please install LAPACKE "
-                 << "and MKL/Openblas/ATLAS, and re-build PaddlePaddle.";
+                 << "and MKL/Openblas, and re-build PaddlePaddle.";
 #endif
   }
 }
