@@ -204,3 +204,35 @@ class ChunkEvaluator(Evaluator):
             [precision], dtype='float32'), np.array(
                 [recall], dtype='float32'), np.array(
                     [f1_score], dtype='float32')
+
+
+class EditDistance(Evaluator):
+    """
+    Average edit distance error for multiple mini-batches.
+    """
+
+    def __init__(self, input, label, k=1, **kwargs):
+        super(EditDistance, self).__init__("edit_distance", **kwargs)
+        main_program = self.helper.main_program
+        if main_program.current_block().idx != 0:
+            raise ValueError("You can only invoke Evaluator in root block")
+
+        self.total_error = self.create_state(
+            dtype='int64', shape=[1], suffix='total')
+        self.batch_num = 0
+        error = layers.edit_distance(input=input, label=label)
+        mean_error = layers.mean(input=error)
+        layers.sums(input=[self.total_error, mean_error], out=self.total_error)
+        self.metrics.append(mean_error)
+
+    def eval(self, executor, eval_program=None):
+        self.batch_num += 1
+        if eval_program is None:
+            eval_program = Program()
+        block = eval_program.current_block()
+        with program_guard(main_program=eval_program):
+            total_error = _clone_var_(block, self.total_error)
+            batch_num = layers.fill_constant(
+                shape=[1], value=self.batch_num, dtype="float32")
+            out = layers.elementwise_div(x=total_error, y=batch_num)
+        return np.array(executor.run(eval_program, fetch_list=[out])[0])

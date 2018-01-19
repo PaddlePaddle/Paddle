@@ -28,8 +28,7 @@ __all__ = [
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
     'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
     'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'ctc_greedy_decoder', 'edit_distance_error', 'l2_normalize', 'matmul',
-    'warpctc'
+    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'warpctc'
 ]
 
 
@@ -1768,7 +1767,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
-def edit_distance_error(input, label, normalized=False, name=None):
+def edit_distance(input, label, normalized=False, name=None):
     """
     EditDistance operator computes the edit distances between a batch of hypothesis strings and their references.Edit distance, also called Levenshtein distance, measures how dissimilar two strings are by counting the minimum number of operations to transform one string into anthor. Here the operations include insertion, deletion, and substitution. For example, given hypothesis string A = "kitten" and reference B = "sitting", the edit distance is 3 for A will be transformed into B at least after two substitutions and one insertion:
 
@@ -1795,9 +1794,9 @@ def edit_distance_error(input, label, normalized=False, name=None):
             x = fluid.layers.data(name='x', shape=[8], dtype='float32')
             y = fluid.layers.data(name='y', shape=[7], dtype='float32')
 
-            cost = fluid.layers.edit_distance_error(input=x,label=y)
+            cost = fluid.layers.edit_distance(input=x,label=y)
     """
-    helper = LayerHelper("edit_distance_error", **locals())
+    helper = LayerHelper("edit_distance", **locals())
 
     # edit distance op
     edit_distance_out = helper.create_tmp_variable(dtype="int64")
