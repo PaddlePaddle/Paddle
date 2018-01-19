@@ -28,19 +28,22 @@ def simple_img_conv_pool(input,
                          pool_stride,
                          act,
                          param_attr=None,
-                         pool_type='max'):
+                         pool_type='max',
+                         use_cudnn=True):
     conv_out = layers.conv2d(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
         param_attr=param_attr,
-        act=act)
+        act=act,
+        use_cudnn=use_cudnn)
 
     pool_out = layers.pool2d(
         input=conv_out,
         pool_size=pool_size,
         pool_type=pool_type,
-        pool_stride=pool_stride)
+        pool_stride=pool_stride,
+        use_cudnn=use_cudnn)
     return pool_out
 
 
@@ -54,7 +57,8 @@ def img_conv_group(input,
                    conv_with_batchnorm=False,
                    conv_batchnorm_drop_rate=None,
                    pool_stride=1,
-                   pool_type=None):
+                   pool_type=None,
+                   use_cudnn=True):
     """
     Image Convolution Group, Used for vgg net.
     """
@@ -85,7 +89,8 @@ def img_conv_group(input,
             filter_size=conv_filter_size[i],
             padding=conv_padding[i],
             param_attr=param_attr[i],
-            act=local_conv_act)
+            act=local_conv_act,
+            use_cudnn=use_cudnn)
 
         if conv_with_batchnorm[i]:
             tmp = layers.batch_norm(input=tmp, act=conv_act)
@@ -97,7 +102,8 @@ def img_conv_group(input,
         input=tmp,
         pool_size=pool_size,
         pool_type=pool_type,
-        pool_stride=pool_stride)
+        pool_stride=pool_stride,
+        use_cudnn=use_cudnn)
     return pool_out
 
 
