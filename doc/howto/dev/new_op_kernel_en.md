@@ -54,7 +54,7 @@ class DeviceContext {
 };
 ```
 
-#### 3. implement new [OpKernel](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L351) for your Device.
+#### Implement new [OpKernel](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L351) for your Device.
 
 A detailed documentation can be found in [`new_op_and_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_en.md)
 
@@ -81,7 +81,7 @@ class OpKernel : public OpKernelBase {
 ```
 
 
-#### 4. Register the OpKernel to framework
+#### Register the OpKernel to framework
 
 After writing the components described above, we should register the kernel to the framework.
 
