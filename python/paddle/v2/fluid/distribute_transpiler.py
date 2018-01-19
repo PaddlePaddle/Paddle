@@ -407,7 +407,7 @@ class DistributeTranspiler:
             outputs=opt_op.outputs,
             attrs=opt_op.attrs)
 
-    def get_pserver_program(self, endpoint, optimize_ops):
+    def get_pserver_program(self, endpoint):
         """
         get pserver side program by endpoint
 
@@ -422,9 +422,9 @@ class DistributeTranspiler:
             self._clone_var(pserver_program.global_block(), v)
         # step6
         optimize_sub_program = Program()
-        for idx, opt_op in enumerate(optimize_ops):
-            is_op_on_pserver = self._is_op_on_pserver(endpoint, optimize_ops,
-                                                      idx)
+        for idx, opt_op in enumerate(self.optimize_ops):
+            is_op_on_pserver = self._is_op_on_pserver(endpoint,
+                                                      self.optimize_ops, idx)
             if not is_op_on_pserver:
                 continue
             if opt_op.inputs.has_key("Grad"):
