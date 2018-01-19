@@ -22,30 +22,24 @@ namespace paddle {
 
 class InferenceEngine {
 public:
-  InferenceEngine() : program_(nullptr), load_program_(nullptr) {}
-  ~InferenceEngine() {
-    delete program_;
-    delete load_program_;
-  }
+  InferenceEngine() : program_(nullptr) {}
+  ~InferenceEngine() { delete program_; }
 
-  void LoadInferenceModel(const std::string& dirname);
-  void LoadInferenceModel(const std::string& dirname,
-                          const std::vector<std::string>& feed_var_names,
-                          const std::vector<std::string>& fetch_var_names);
-  void Execute(const std::vector<framework::LoDTensor>& feeds,
+  void LoadInferenceModel(framework::Executor& executor,
+                          framework::Scope& scope,
+                          const std::string& dirname);
+
+  void Execute(framework::Executor* executor,
+               framework::Scope* scope,
+               const std::vector<framework::LoDTensor>& feeds,
                std::vector<framework::LoDTensor>& fetchs);
 
 private:
-  bool IsParameter(const framework::VarDesc* var);
-  void GenerateLoadProgram(const std::string& dirname);
   void PrependFeedOp();
   void AppendFetchOp();
 
 private:
   framework::ProgramDesc* program_;
-  framework::ProgramDesc* load_program_;
-  std::vector<std::string> feed_var_names_;
-  std::vector<std::string> fetch_var_names_;
 };
 
 }  // namespace paddle

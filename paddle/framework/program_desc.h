@@ -45,10 +45,19 @@ class ProgramDesc {
 
   proto::ProgramDesc *Proto();
 
+  // 4 utility functions for inference (TODO: Better comment)
+  const std::vector<std::string> &GetFeedVarNames() const;
+  const std::vector<std::string> &GetFetchVarNames() const;
+  void InsertFeedVarName(std::string &feed_var_name);
+  void InsertFetchVarName(std::string &fetch_var_name);
+
  private:
   proto::ProgramDesc desc_;
 
   std::vector<std::unique_ptr<BlockDesc>> blocks_;
+
+  // These 2 are added for inference (TODO: Better comment)
+  std::vector<std::string> feed_var_names_, fetch_var_names_;
 };
 }  // namespace framework
 }  // namespace paddle

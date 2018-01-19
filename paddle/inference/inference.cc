@@ -19,67 +19,11 @@ limitations under the License. */
 #include "paddle/framework/init.h"
 #include "paddle/framework/scope.h"
 
-#ifdef PADDLE_USE_PTOOLS
-#include "chooseser.h"
-#endif
-
 namespace paddle {
 
-void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
-  std::string model_filename = dirname + "/__model__.dat";
-  LOG(INFO) << "loading model from " << model_filename;
-  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
-  std::string program_desc_str;
-  inputfs.seekg(0, std::ios::end);
-  program_desc_str.resize(inputfs.tellg());
-  inputfs.seekg(0, std::ios::beg);
-  LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
-  inputfs.read(&program_desc_str[0], program_desc_str.size());
-  inputfs.close();
+namespace infer {
 
-  program_ = new framework::ProgramDesc(program_desc_str);
-  GenerateLoadProgram(dirname);
-
-  framework::BlockDesc* global_block = program_->MutableBlock(0);
-  feed_var_names_.clear();
-  fetch_var_names_.clear();
-  for (auto* op : global_block->AllOps()) {
-    if (op->Type() == "feed") {
-      feed_var_names_.insert(feed_var_names_.begin(), op->Output("Out")[0]);
-    } else if (op->Type() == "fetch") {
-      fetch_var_names_.push_back(op->Input("X")[0]);
-    }
-  }
-}
-
-void InferenceEngine::LoadInferenceModel(
-    const std::string& dirname,
-    const std::vector<std::string>& feed_var_names,
-    const std::vector<std::string>& fetch_var_names) {
-  std::string model_filename = dirname + "/__model__.dat";
-  LOG(INFO) << "loading model from " << model_filename;
-  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
-  std::string program_desc_str;
-  inputfs.seekg(0, std::ios::end);
-  program_desc_str.resize(inputfs.tellg());
-  inputfs.seekg(0, std::ios::beg);
-  LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
-  inputfs.read(&program_desc_str[0], program_desc_str.size());
-  inputfs.close();
-
-  program_ = new framework::ProgramDesc(program_desc_str);
-  GenerateLoadProgram(dirname);
-
-  if (feed_var_names.empty() || fetch_var_names.empty()) {
-    LOG(FATAL) << "Please specify the feed_var_names and fetch_var_names.";
-  }
-  feed_var_names_ = feed_var_names;
-  fetch_var_names_ = fetch_var_names;
-  PrependFeedOp();
-  AppendFetchOp();
-}
-
-bool InferenceEngine::IsParameter(const framework::VarDesc* var) {
+bool IsParameter(const framework::VarDesc* var) {
   if (var->Persistable() && var->Name() != "feed" && var->Name() != "fetch") {
     // There are many unreachable variables in the program
     for (size_t i = 0; i < program_->Size(); ++i) {
@@ -96,11 +40,14 @@ bool InferenceEngine::IsParameter(const framework::VarDesc* var) {
   return false;
 }
 
-void InferenceEngine::GenerateLoadProgram(const std::string& dirname) {
-  framework::BlockDesc* global_block = program_->MutableBlock(0);
+void LoadPersistables(framework::Executor& executor,
+                      framework::Scope& scope,
+                      const std::string& dirname,
+                      framework::ProgramDesc* main_program) {
+  framework::BlockDesc* global_block = main_program->MutableBlock(0);
 
-  load_program_ = new framework::ProgramDesc();
-  framework::BlockDesc* load_block = load_program_->MutableBlock(0);
+  framework::ProgramDesc* load_program = new framework::ProgramDesc();
+  framework::BlockDesc* load_block = load_program->MutableBlock(0);
   for (auto* var : global_block->AllVars()) {
     if (IsParameter(var)) {
       LOG(INFO) << "parameter's name: " << var->Name();
@@ -120,6 +67,47 @@ void InferenceEngine::GenerateLoadProgram(const std::string& dirname) {
       op->CheckAttrs();
     }
   }
+  executor->Run(*load_program, scope, 0, true, true);
+}
+
+framework::ProgramDesc* LoadModelAndParam(framework::Executor& executor,
+                                          framework::Scope& scope,
+                                          const std::string& dirname) {
+  std::string model_filename = dirname + "/__model__.dat";
+  LOG(INFO) << "loading model from " << model_filename;
+  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
+  std::string program_desc_str;
+  inputfs.seekg(0, std::ios::end);
+  program_desc_str.resize(inputfs.tellg());
+  inputfs.seekg(0, std::ios::beg);
+  LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
+  inputfs.read(&program_desc_str[0], program_desc_str.size());
+  inputfs.close();
+
+  framework::ProgramDesc* main_program =
+      new framework::ProgramDesc(program_desc_str);
+
+  LoadPersistables(executor, scope, dirname, main_program);
+  framework::BlockDesc* global_block = main_program->MutableBlock(0);
+
+  for (auto* op : global_block->AllOps()) {
+    if (op->Type() == "feed") {
+      main_program->InsertFeedVarName(op->Output("Out")[0]);
+      //(main_program->feed_var_names_).insert((main_program->feed_var_names_).begin(),
+      // op->Output("Out")[0]);
+    } else if (op->Type() == "fetch") {
+      //(main_program->fetch_var_names_).push_back(op->Input("X")[0]);
+      main_program->InsertFetchVarName(op->Input("X")[0]);
+    }
+  }
+  return main_program;
+}
+}  // namespace infer
+
+void InferenceEngine::LoadInferenceModel(framework::Executor& executor,
+                                         framework::Scope& scope,
+                                         const std::string& dirname) {
+  program_ = infer::LoadModelAndParam(executor, scope, dirname);
 }
 
 void InferenceEngine::PrependFeedOp() {
@@ -135,8 +123,9 @@ void InferenceEngine::PrependFeedOp() {
   feed_var->SetPersistable(true);
 
   // prepend feed_op
-  for (size_t i = 0; i < feed_var_names_.size(); ++i) {
-    std::string var_name = feed_var_names_[i];
+  const std::vector<std::string>& feed_var_names = program_->GetFeedVarNames();
+  for (size_t i = 0; i < feed_var_names.size(); ++i) {
+    std::string var_name = feed_var_names[i];
     LOG(INFO) << "feed var's name: " << var_name;
 
     // prepend_op
@@ -162,8 +151,10 @@ void InferenceEngine::AppendFetchOp() {
   fetch_var->SetPersistable(true);
 
   // append fetch_op
-  for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
-    std::string var_name = fetch_var_names_[i];
+  const std::vector<std::string>& fetch_var_names =
+      program_->GetFetchVarNames();
+  for (size_t i = 0; i < fetch_var_names.size(); ++i) {
+    std::string var_name = fetch_var_names[i];
     LOG(INFO) << "fetch var's name: " << var_name;
 
     // append_op
@@ -176,38 +167,31 @@ void InferenceEngine::AppendFetchOp() {
   }
 }
 
-void InferenceEngine::Execute(const std::vector<framework::LoDTensor>& feeds,
+void InferenceEngine::Execute(framework::Executor* executor,
+                              framework::Scope* scope,
+                              const std::vector<framework::LoDTensor>& feeds,
                               std::vector<framework::LoDTensor>& fetchs) {
-  if (!program_ || !load_program_) {
-    LOG(FATAL) << "Please initialize the program_ and load_program_ first.";
+  if (!program_) {
+    LOG(FATAL) << "Please initialize the program_ first.";
   }
 
-  if (feeds.size() < feed_var_names_.size()) {
-    LOG(FATAL) << "Please feed " << feed_var_names_.size() << " input Tensors.";
+  const std::vector<std::string> feed_var_names = program_->GetFeedVarNames();
+  if (feeds.size() < feed_var_names.size()) {
+    LOG(FATAL) << "Please feed " << feed_var_names.size() << " input Tensors.";
   }
-
-  auto* place = new platform::CPUPlace();
-  framework::InitDevices();
-  framework::Executor* executor = new framework::Executor(*place);
-  framework::Scope* scope = new framework::Scope();
-
-  executor->Run(*load_program_, scope, 0, true, true);
 
   // set_feed_variable
-  for (size_t i = 0; i < feed_var_names_.size(); ++i) {
+  for (size_t i = 0; i < feed_var_names.size(); ++i) {
     framework::SetFeedVariable(scope, feeds[i], "feed", i);
   }
 
   executor->Run(*program_, scope, 0, true, true);
 
   // get_fetch_variable
-  fetchs.resize(fetch_var_names_.size());
-  for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
+  const std::vector<std::string> fetch_var_names = program_->GetFetchVarNames();
+  fetchs.resize(fetch_var_names.size());
+  for (size_t i = 0; i < fetch_var_names.size(); ++i) {
     fetchs[i] = framework::GetFetchVariable(*scope, "fetch", i);
   }
-
-  delete place;
-  delete scope;
-  delete executor;
 }
 }  // namespace paddle

@@ -28,11 +28,16 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
+  auto* place = new platform::CPUPlace();
+  framework::InitDevices();
+  framework::Executor* executor = new framework::Executor(*place);
+  framework::Scope* scope = new framework::Scope();
+
   std::cout << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
   std::string dirname = FLAGS_dirname;
 
   paddle::InferenceEngine* engine = new paddle::InferenceEngine();
-  engine->LoadInferenceModel(dirname);
+  engine->LoadInferenceModel(executor, scope, dirname);
 
   paddle::framework::LoDTensor input;
   srand(time(0));
@@ -45,7 +50,7 @@ int main(int argc, char** argv) {
   std::vector<paddle::framework::LoDTensor> feeds;
   feeds.push_back(input);
   std::vector<paddle::framework::LoDTensor> fetchs;
-  engine->Execute(feeds, fetchs);
+  engine->Execute(executor, scope, feeds, fetchs);
 
   for (size_t i = 0; i < fetchs.size(); ++i) {
     auto dims_i = fetchs[i].dims();
@@ -61,6 +66,10 @@ int main(int argc, char** argv) {
     }
     std::cout << std::endl;
   }
+
+  delete place;
+  delete scope;
+  delete executor;
 
   delete engine;
   return 0;
