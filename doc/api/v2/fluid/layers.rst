@@ -500,7 +500,7 @@ swish
 ..  autofunction:: paddle.v2.fluid.layers.swish
     :noindex:
 
-edit_distance_error
+edit_distance
 ---------------
 ..  autofunction:: paddle.v2.fluid.layers.edit_distance_error
     :noindex:
