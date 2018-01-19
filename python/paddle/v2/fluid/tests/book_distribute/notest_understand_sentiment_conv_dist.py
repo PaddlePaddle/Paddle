@@ -92,15 +92,16 @@ def main():
     t.transpile(
         optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2)
 
-    exe.run(fluid.default_startup_program())
-
     if training_role == "PSERVER":
         if not current_endpoint:
             print("need env SERVER_ENDPOINT")
             exit(1)
         pserver_prog = t.get_pserver_program(current_endpoint)
+        pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
+        exe.run(pserver_startup)
         exe.run(pserver_prog)
     elif training_role == "TRAINER":
+        exe.run(fluid.default_startup_program())
         trainer_prog = t.get_trainer_program()
         feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
 

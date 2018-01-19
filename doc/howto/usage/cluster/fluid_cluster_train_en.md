@@ -101,9 +101,11 @@ t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2)
 ... #create executor
 
 # in pserver, run this
-exe.run(fluid.default_startup_program())
 #current_endpoint here means current pserver IP:PORT you wish to run on
-exe.run(t.get_pserver_program(current_endpoint))
+pserver_prog = t.get_pserver_program(current_endpoint)
+pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
+exe.run(pserver_startup)
+exe.run(pserver_prog)
 
 # in trainer, run this
 ... # define data reader
