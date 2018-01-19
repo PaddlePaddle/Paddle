@@ -420,6 +420,19 @@ class DistributeTranspiler:
         pserver_program = Program()
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
             self._clone_var(pserver_program.global_block(), v)
+        for v in self.param_grad_ep_mapping[endpoint]["grads"]:
+            # create vars for each trainer in global scope, so
+            # we don't need to create them when grad arrives.
+            pserver_program.global_block().create_var(
+                name=v.name, persistable=True, dtype=v.dtype, shape=v.shape)
+            for trainer_id in xrange(self.trainers):
+                print("create variable for program: %s.trainer_%d" %
+                      (v.name, trainer_id))
+                pserver_program.global_block().create_var(
+                    name="%s.trainer_%d" % (v.name, trainer_id),
+                    persistable=True,
+                    dtype=v.dtype,
+                    shape=v.shape)
         # step6
         optimize_sub_program = Program()
         for idx, opt_op in enumerate(self.optimize_ops):
@@ -449,7 +462,7 @@ class DistributeTranspiler:
                     p.name
                     for p in self.param_grad_ep_mapping[endpoint]["grads"]
                 ],
-                "Trainers": self.trainers
+                "Fanin": self.trainers
             })
         pserver_program.sync_with_cpp()
         return pserver_program
