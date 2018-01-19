@@ -15,21 +15,10 @@ import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 
-
-def _get_global_param_norm_(params_grads):
-    res = fluid.layers.fill_constant(shape=[1], dtype="float32", value=0.0)
-    for _, grad in params_grads:
-        norm_var = fluid.layers.reduce_sum(
-            input=fluid.layers.pow(x=grad, factor=2.0))
-        fluid.layers.sums(input=[norm_var, res], out=[res])
-    fluid.layers.sqrt(x=res, out=res)
-    return res
-
-
 BATCH_SIZE = 128
-CLIP = 0.5
-prog = fluid.framework.Program()
+CLIP = 1
 
+prog = fluid.framework.Program()
 with fluid.program_guard(main_program=prog):
     image = fluid.layers.data(name='x', shape=[784], dtype='float32')
 
@@ -49,13 +38,12 @@ avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
 p_g = fluid.backward.append_backward(loss=avg_cost)
 p_g_clip = fluid.backward.append_backward(loss=avg_cost_clip)
 
-with fluid.program_guard(main_program=prog):
-    gloabl_norm = _get_global_param_norm_(p_g)
-
 with fluid.program_guard(main_program=prog_clip):
     fluid.clip.gradient_clip_by_global_norm(clip_norm=CLIP)
     p_g_clip = fluid.clip.append_gradient_clip_ops(p_g_clip)
-    gloabl_norm_clip = _get_global_param_norm_(p_g_clip)
+
+grad_list = [elem[1] for elem in p_g]
+grad_clip_list = [elem[1] for elem in p_g_clip]
 
 train_reader = paddle.batch(
     paddle.reader.shuffle(
@@ -72,11 +60,21 @@ for data in train_reader():
     count += 1
     if count > 5:
         break
-    out, = exe.run(prog, feed=feeder.feed(data), fetch_list=[gloabl_norm])
-    out_clip, = exe.run(prog_clip,
-                        feed=feeder.feed(data),
-                        fetch_list=[gloabl_norm_clip])
+    out = exe.run(prog, feed=feeder.feed(data), fetch_list=grad_list)
+    out_clip = exe.run(prog_clip,
+                       feed=feeder.feed(data),
+                       fetch_list=grad_clip_list)
+    global_norm = 0
+    for v in out[1:]:
+        global_norm += np.sum(np.power(v, 2))
+    global_norm = np.sqrt(global_norm)
 
-    if not np.allclose(out_clip, np.minimum(out, np.array([CLIP]))):
+    global_norm_clip = 0
+    for v in out_clip[1:]:
+        global_norm_clip += np.sum(np.power(v, 2))
+    global_norm_clip = np.sqrt(global_norm_clip)
+
+    if not np.isclose(
+            a=global_norm_clip, b=np.minimum(global_norm, CLIP), rtol=5e-3):
         exit(1)
 exit(0)
