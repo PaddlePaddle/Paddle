@@ -187,7 +187,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<LoDTensor>("Emission")->type()),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 
@@ -248,7 +248,7 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
         framework::ToDataType(
             ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))
                 ->type()),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 

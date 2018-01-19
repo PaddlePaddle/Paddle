@@ -41,10 +41,13 @@ class SendOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
     for (size_t i = 0; i < ins.size(); i++) {
+      VLOG(3) << "sending " << ins[i];
       client_.AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
     }
+    PADDLE_ENFORCE(client_.Wait());
 
     for (size_t i = 0; i < outs.size(); i++) {
+      VLOG(3) << "getting " << outs[i];
       client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
 
