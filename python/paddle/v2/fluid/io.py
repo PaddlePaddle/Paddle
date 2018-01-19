@@ -1,16 +1,46 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import os
 import cPickle as pickle
 
 from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable
+from . import core
 
 __all__ = [
-    'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', "save_inference_model", "load_inference_model",
-    "get_inference_program"
+    'save_vars',
+    'save_params',
+    'save_persistables',
+    'load_vars',
+    'load_params',
+    'load_persistables',
+    'save_inference_model',
+    'load_inference_model',
+    'get_inference_program',
 ]
 
 
 def is_parameter(var):
+    """Check whether the variable is a Parameter.
+
+    This function checks whether the input variable is a Parameter.
+
+    Args:
+        var : The input variable.
+
+    Returns:
+        boolean result whether the variable is a Parameter.
+    """
     return isinstance(var, Parameter)
 
 
@@ -36,7 +66,7 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     :param executor: executor that save variable
     :param dirname: directory path
     :param main_program: program. If vars is None, then filter all variables in this
-    program which fit `predicate`. Default g_program.
+    program which fit `predicate`. Default default_main_program.
     :param predicate: The Predicate describes a callable that returns a variable
     as a bool. If it returns true, the variables will be saved.
     :param vars: variables need to be saved. If specify vars, program & predicate
@@ -162,6 +192,33 @@ def get_inference_program(target_vars, main_program=None):
     return inference_program
 
 
+def prepend_feed_ops(inference_program, feeded_var_names):
+    global_block = inference_program.global_block()
+    feed_var = global_block.create_var(
+        name='feed', type=core.VarDesc.VarType.FEED_MINIBATCH, persistable=True)
+
+    for i, name in enumerate(feeded_var_names):
+        out = global_block.var(name)
+        global_block.prepend_op(
+            type='feed',
+            inputs={'X': [feed_var]},
+            outputs={'Out': [out]},
+            attrs={'col': i})
+
+
+def append_fetch_ops(inference_program, fetch_var_names):
+    global_block = inference_program.global_block()
+    fetch_var = global_block.create_var(
+        name='fetch', type=core.VarDesc.VarType.FETCH_LIST, persistable=True)
+
+    for i, name in enumerate(fetch_var_names):
+        global_block.append_op(
+            type='fetch',
+            inputs={'X': [name]},
+            outputs={'Out': [fetch_var]},
+            attrs={'col': i})
+
+
 def save_inference_model(dirname,
                          feeded_var_names,
                          target_vars,
@@ -180,10 +237,22 @@ def save_inference_model(dirname,
 
     :return: None
     """
+    if isinstance(feeded_var_names, basestring):
+        feeded_var_names = [feeded_var_names]
+    else:
+        if not (bool(feeded_var_names) and all(
+                isinstance(name, basestring) for name in feeded_var_names)):
+            raise ValueError("'feed_var_names' should be a list of str.")
+
+    if isinstance(target_vars, Variable):
+        target_vars = [target_vars]
+    else:
+        if not (bool(target_vars) and all(
+                isinstance(var, Variable) for var in target_vars)):
+            raise ValueError("'target_vars' should be a list of Variable.")
+
     if main_program is None:
         main_program = default_main_program()
-    if not isinstance(target_vars, list):
-        target_vars = [target_vars]
 
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
@@ -199,6 +268,14 @@ def save_inference_model(dirname,
             "feed_var_names": feeded_var_names,
             "fetch_var_names": fetch_var_names
         }, f, -1)
+
+    prepend_feed_ops(inference_program, feeded_var_names)
+    append_fetch_ops(inference_program, fetch_var_names)
+
+    # Save only programDesc of inference_program in binary format
+    # in another file: __model__.dat
+    with open(model_file_name + ".dat", "wb") as fp:
+        fp.write(inference_program.desc.serialize_to_string())
 
     save_params(executor, dirname, main_program)
 

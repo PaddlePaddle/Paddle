@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #define EIGEN_USE_GPU
 #include <thrust/device_ptr.h>
@@ -30,16 +30,15 @@ struct MaskGenerator {
   __host__ __device__ MaskGenerator(AttrType dropout_prob, int seed)
       : dropout_prob(dropout_prob), seed(seed) {}
 
-  __host__ __device__ T operator()(const unsigned int n) const {
+  inline __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed);
     thrust::uniform_real_distribution<AttrType> dist(0, 1);
     rng.discard(n);
     if (dist(rng) < dropout_prob) {
       return static_cast<T>(0);
-    } else {
-      return static_cast<T>(1);
     }
+    return static_cast<T>(1);
   }
 };
 
@@ -58,7 +57,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     auto X = EigenMatrix<T>::Reshape(*x, 1);
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
 
-    auto place = context.GetEigenDevice<Place>();
+    auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
@@ -71,7 +70,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto M = EigenMatrix<T>::Reshape(*mask, 1);
       Y.device(place) = X * M;
     } else {
-      Y.device(place) = X * dropout_prob;
+      Y.device(place) = X * (1.0f - dropout_prob);
     }
   }
 };
@@ -80,7 +79,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(
-    dropout, ops::GPUDropoutKernel<paddle::platform::GPUPlace, float, float>);
-REGISTER_OP_GPU_KERNEL(
-    dropout_grad, ops::DropoutGradKernel<paddle::platform::GPUPlace, float>);
+REGISTER_OP_CUDA_KERNEL(
+    dropout,
+    ops::GPUDropoutKernel<paddle::platform::CUDADeviceContext, float, float>);
+REGISTER_OP_CUDA_KERNEL(
+    dropout_grad,
+    ops::DropoutGradKernel<paddle::platform::CUDADeviceContext, float>);

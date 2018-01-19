@@ -113,7 +113,10 @@ EOF
             -DWITH_SWIG_PY=ON \
             -DWITH_STYLE_CHECK=OFF
         make -j `nproc` gen_proto_py
+        make -j `nproc` paddle_python
         make -j `nproc` paddle_docs paddle_docs_cn
+        make -j `nproc` print_operators_doc
+        paddle/pybind/print_operators_doc > doc/en/html/operators.json
         popd
     fi
 
@@ -175,7 +178,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode && pip install -U pip && \
+        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
@@ -185,17 +188,19 @@ EOF
     ${DOCKERFILE_GPU_ENV}
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
-EOF
-
-    if [[ ${WITH_DOC:-OFF} == 'ON' ]]; then
-        cat >> /paddle/build/Dockerfile <<EOF
-        ADD paddle/pybind/print_operators_doc /usr/bin/
-EOF
-    fi
-    cat >> /paddle/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD ["paddle", "version"]
 EOF
+}
+
+function gen_capi_package() {
+  if [[ ${WITH_C_API} == "ON" ]]; then
+    install_prefix="/paddle/build/capi_output"
+    rm -rf $install_prefix
+    make DESTDIR="$install_prefix" install
+    cd $install_prefix/usr/local
+    ls | egrep -v "^Found.*item$" | xargs tar -cf /paddle/build/paddle.tgz
+  fi
 }
 
 set -xe
@@ -205,6 +210,11 @@ run_build
 run_test
 gen_docs
 gen_dockerfile
+gen_capi_package
 
-printf "If you need to install PaddlePaddle in develop docker image,"
-printf "please make install or pip install build/python/dist/*.whl.\n"
+if [[ ${WITH_C_API:-OFF} == "ON" ]]; then
+  printf "PaddlePaddle C-API libraries was generated on build/paddle.tgz\n" 
+else
+  printf "If you need to install PaddlePaddle in develop docker image,"
+  printf "please make install or pip install build/python/dist/*.whl.\n"
+fi

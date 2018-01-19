@@ -37,8 +37,9 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     Tensor* y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
-    math::CrossEntropyFunctor<platform::CPUPlace, T>()(
-        ctx.device_context(), y, x, labels, ctx.Attr<bool>("soft_label"));
+    math::CrossEntropyFunctor<platform::CPUDeviceContext, T>()(
+        ctx.template device_context<platform::CPUDeviceContext>(), y, x, labels,
+        ctx.Attr<bool>("soft_label"));
   }
 };
 
@@ -61,7 +62,8 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
       auto lbl_mat = EigenMatrix<T>::From(*label);
       auto dx_mat = EigenMatrix<T>::From(*dx);
 
-      dx_mat.device(ctx.GetEigenDevice<platform::CPUPlace>()) =
+      dx_mat.device(*ctx.template device_context<platform::CPUDeviceContext>()
+                         .eigen_device()) =
           -(lbl_mat *
             dy_mat.broadcast(Eigen::DSizes<int64_t, 2>(1, class_num)) / x_mat);
     } else {
@@ -70,8 +72,8 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
       const T* x_data = x->data<T>();
       const int64_t* label_data = label->data<int64_t>();
 
-      math::SetConstant<platform::CPUPlace, T> functor;
-      functor(ctx.device_context(), dx, 0);
+      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      functor(ctx.template device_context<platform::CPUDeviceContext>(), dx, 0);
 
       for (int64_t i = 0; i < batch_size; ++i) {
         PADDLE_ASSERT(label_data[i] >= 0 || label_data[i] < class_num);

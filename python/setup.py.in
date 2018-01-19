@@ -5,7 +5,7 @@ class BinaryDistribution(Distribution):
         return True
 
 MAJOR   = 0
-MINOR   = 10
+MINOR   = 11
 PATCH   = 0
 RC      = 0
 ISTAGED = False
@@ -31,6 +31,7 @@ patch           = '%(patch)d'
 rc              = '%(rc)d'
 istaged         = %(istaged)s
 commit          = '%(commit)s'
+with_mkl        = '%(with_mkl)s'
 
 def show():
     if istaged:
@@ -41,6 +42,9 @@ def show():
         print 'rc:', rc
     else:
         print 'commit:', commit
+
+def mkl():
+    return with_mkl
 '''
     commit = git_commit()
     with open(filename, 'w') as f:
@@ -51,7 +55,8 @@ def show():
             'rc': RC,
             'version': '${PADDLE_VERSION}',
             'commit': commit,
-            'istaged': ISTAGED})
+            'istaged': ISTAGED,
+            'with_mkl': '@WITH_MKL@'})
 
 write_version_py(filename='@PADDLE_SOURCE_DIR@/python/paddle/version.py')
 
@@ -68,6 +73,7 @@ packages=['paddle',
           'paddle.v2.plot',
           'paddle.v2.fluid',
           'paddle.v2.fluid.proto',
+          'paddle.v2.fluid.layers',
           'py_paddle']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -78,8 +84,7 @@ if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
 
 # the prefix is sys.prefix which should always be usr
 paddle_bin_dir = 'opt/paddle/bin'
-paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle_usage',
-               '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_trainer',
+paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/trainer/paddle_trainer',
                '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_merge_model',
                '${PADDLE_BINARY_DIR}/paddle/pserver/paddle_pserver_main',
                '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
@@ -89,7 +94,7 @@ paddle_rt_libs = ['${WARPCTC_LIBRARIES}']
 if '${MKL_SHARED_LIBS}'!= '':
   paddle_rt_libs += '${MKL_SHARED_LIBS}'.split(';')
 
-setup(name='paddlepaddle',
+setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
       install_requires=setup_requires,

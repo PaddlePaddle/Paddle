@@ -20,12 +20,12 @@ limitations under the License. */
 #include <typeindex>
 #include <vector>
 
+#include "paddle/framework/data_layout.h"
 #include "paddle/framework/ddim.h"
 #include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 
@@ -54,6 +54,10 @@ class Tensor {
   /*! Return a pointer to constant memory block. */
   template <typename T>
   inline const T* data() const;
+
+  inline bool IsInitialized() const;
+
+  inline void switch_place(platform::Place new_place);
 
   /**
    * @brief   Return a pointer to mutable memory block.
@@ -115,6 +119,10 @@ class Tensor {
 
   inline void check_memory_size() const;
 
+  inline DataLayout layout() const { return layout_; }
+
+  inline void set_layout(const DataLayout layout) { layout_ = layout; }
+
  private:
   friend class LoDTensor;
 
@@ -174,6 +182,19 @@ class Tensor {
   DDim dims_;
 
   /**
+   * @brief the layout of memory block, default is NHWC.
+   *
+   * @note the memory allocation order, describe how weight/data is stored
+   *       For example, in 4-D Tensor(rank=4), there are three commonly
+   *       used layout. They are
+   *            NCHW, NHWC, CHWN.
+   *       N,C,H,W for respectively the batch size, the number of
+   *       feature maps, the height.
+   */
+
+  DataLayout layout_ = DataLayout::kNHWC;
+
+  /**
    * @brief   A PlaceHolder may be shared by more than one tensor.
    *
    * @note    Some of them may be slices of the others. So the offset_
@@ -182,6 +203,15 @@ class Tensor {
    */
   size_t offset_;
 };
+
+inline void Tensor::switch_place(platform::Place new_place) {
+  if (holder_->place() == new_place) {
+    return;
+  }
+
+  // TODO(tonyyang-svail): do memcpy here.
+  PADDLE_THROW("Not Implemented");
+}
 
 }  // namespace framework
 }  // namespace paddle

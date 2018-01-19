@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/beam_search_op.h"
 
@@ -29,7 +29,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   PruneEndidCandidates(pre_ids, &selected_items);
   // calculate the output tensor's height
   size_t num_instances = std::accumulate(
-      std::begin(items), std::end(items), 0,
+      std::begin(selected_items), std::end(selected_items), 0,
       [](size_t a, std::vector<Item> &b) { return a + b.size(); });
   // the output tensor shape should be [num_instances, 1]
   auto dims = framework::make_ddim(
@@ -39,7 +39,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
 
   std::map<size_t /*offset*/, std::vector<Item>> hash;
   framework::LoD new_lod;
-  auto *ids_data = selected_ids->mutable_data<int>(platform::CPUPlace());
+  auto *ids_data = selected_ids->mutable_data<int64_t>(platform::CPUPlace());
   auto *scores_data =
       selected_scores->mutable_data<float>(platform::CPUPlace());
 
@@ -48,12 +48,20 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   size_t low_offset = 0;
   for (auto &items : selected_items) {
     low_level.push_back(low_offset);
+    sort(items.begin(), items.end(), [](const Item &a, const Item &b) {
+      if (a.offset < b.offset) {
+        return true;
+      }
+      return a.id < b.id;
+    });
     for (auto &item : items) {
       ids_data[low_offset] = item.id;
       scores_data[low_offset] = item.score;
       low_offset++;
     }
   }
+  low_level.push_back(low_offset);
+
   // fill lod
   auto abs_lod = framework::ToAbsOffset(ids_->lod());
   auto &high_level = abs_lod[lod_level_];
@@ -64,16 +72,21 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   selected_scores->set_lod(lod);
 }
 
-void BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
-                                      std::vector<std::vector<Item>> *items) {
-  auto *pre_ids_data = pre_ids.data<int>();
+int BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
+                                     std::vector<std::vector<Item>> *items) {
+  auto *pre_ids_data = pre_ids.data<int64_t>();
 
+  int res = 0;
   for (size_t offset = 0; offset < items->size(); offset++) {
     auto prefix_id = pre_ids_data[offset];
     if (prefix_id == end_id_) {
       items->at(offset).clear();
+    } else {
+      res++;
     }
   }
+
+  return res;
 }
 
 std::vector<std::vector<BeamSearch::Item>> BeamSearch::ToMap(
@@ -121,13 +134,9 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   auto ids = *ids_;
   auto scores = *scores_;
 
-  auto source_abs_two_level_lod = framework::SliceInLevel(
-      ids.lod(), lod_level_, sent_offset_, sent_offset_ + 1);
-  source_abs_two_level_lod = framework::ToAbsOffset(source_abs_two_level_lod);
   auto abs_lod = framework::ToAbsOffset(ids.lod());
-  PADDLE_ENFORCE_GE(source_abs_two_level_lod.size(), 2UL);
 
-  auto *ids_data = ids.data<int>();
+  auto *ids_data = ids.data<int64_t>();
   auto *scores_data = scores.data<float>();
 
   size_t instance_dim = 1;
@@ -153,8 +162,7 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
 class BeamSearchProtoAndCheckerMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  BeamSearchProtoAndCheckerMaker(framework::OpProto *proto,
-                                 framework::OpAttrChecker *op_checker)
+  BeamSearchProtoAndCheckerMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // inputs and outputs stored in proto
     AddInput("pre_ids", "ids in previous step");

@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid.core as core
@@ -125,10 +138,11 @@ def model():
 
     # need cos sim
     inference = layers.cos_sim(X=usr_combined_features, Y=mov_combined_features)
+    scale_infer = layers.scale(x=inference, scale=5.0)
 
     label = layers.data(name='score', shape=[1], dtype='float32')
 
-    square_cost = layers.square_error_cost(input=inference, label=label)
+    square_cost = layers.square_error_cost(input=scale_infer, label=label)
 
     avg_cost = layers.mean(x=square_cost)
 
@@ -141,7 +155,7 @@ def main():
     opts = sgd_optimizer.minimize(cost)
 
     if USE_GPU:
-        place = core.GPUPlace(0)
+        place = core.CUDAPlace(0)
     else:
         place = core.CPUPlace()
 

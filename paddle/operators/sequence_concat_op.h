@@ -59,7 +59,7 @@ LoD ConcatLoD(const std::vector<const T*> ins, const size_t level) {
   return out_lod;
 }
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceConcatOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -119,7 +119,7 @@ class SequenceConcatOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class SequenceConcatGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

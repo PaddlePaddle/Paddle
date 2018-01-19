@@ -1,5 +1,20 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 from initializer import Initializer, Xavier, Constant
 from regularizer import WeightDecayRegularizer
+
+__all__ = ['ParamAttr']
 
 
 class ParamAttr(object):
@@ -8,12 +23,14 @@ class ParamAttr(object):
                  initializer=None,
                  learning_rate=1.0,
                  regularizer=None,
-                 trainable=True):
+                 trainable=True,
+                 clip=None):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
+        self.clip = clip
 
     def set_default_initializer(self, initializer):
         if initializer is None:
@@ -36,6 +53,8 @@ class ParamAttr(object):
     def to_attr(arg):
         if arg is None:
             return ParamAttr()
+        elif isinstance(arg, list) or isinstance(arg, tuple):
+            return [ParamAttr.to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
         elif isinstance(arg, str) or isinstance(arg, unicode):
@@ -52,9 +71,12 @@ class ParamAttr(object):
     def to_kwargs(self, with_initializer=False):
         kwargs = {
             'name': self.name,
-            'learning_rate': self.learning_rate,
+            'optimize_attr': {
+                'learning_rate': self.learning_rate
+            },
             'regularizer': self.regularizer,
-            'trainable': self.trainable
+            'trainable': self.trainable,
+            'clip_attr': self.clip
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer

@@ -21,10 +21,10 @@ TEST(selected_rows_functor, gpu_add) {
   using namespace paddle::platform;
   using namespace paddle::operators::math;
 
-  GPUPlace gpu_place(0);
+  CUDAPlace gpu_place(0);
   CPUPlace cpu_place;
   CUDADeviceContext ctx(gpu_place);
-  SetConstant<GPUPlace, float> functor;
+  SetConstant<CUDADeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -48,7 +48,7 @@ TEST(selected_rows_functor, gpu_add) {
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(make_ddim({7, 10}), gpu_place);
 
-  SelectedRowsAdd<GPUPlace, float> add_functor;
+  SelectedRowsAdd<CUDADeviceContext, float> add_functor;
   add_functor(ctx, *selected_rows1, *selected_rows2, output.get());
 
   auto out_height = output->height();
@@ -67,7 +67,7 @@ TEST(selected_rows_functor, gpu_add) {
   EXPECT_EQ(out_rows[6], 9);
 
   Tensor out_cpu;
-  CopyFrom(*out_value, cpu_place, ctx, &out_cpu);
+  Copy(*out_value, cpu_place, ctx, &out_cpu);
   ctx.Wait();
 
   auto* out_cpu_data = out_cpu.data<float>();
@@ -90,11 +90,11 @@ TEST(selected_rows_functor, gpu_add) {
   std::unique_ptr<Tensor> tensor2{new Tensor()};
   tensor2->mutable_data<float>(make_ddim({height, row_numel}), gpu_place);
 
-  SelectedRowsAddTensor<GPUPlace, float> add_tensor_functor;
+  SelectedRowsAddTensor<CUDADeviceContext, float> add_tensor_functor;
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
 
   Tensor tensor2_cpu;
-  CopyFrom(*tensor2, cpu_place, ctx, &tensor2_cpu);
+  Copy(*tensor2, cpu_place, ctx, &tensor2_cpu);
   ctx.Wait();
 
   auto* tensor2_cpu_data = tensor2_cpu.data<float>();
@@ -119,10 +119,10 @@ TEST(selected_rows_functor, gpu_add_to) {
   using namespace paddle::platform;
   using namespace paddle::operators::math;
 
-  GPUPlace gpu_place(0);
+  CUDAPlace gpu_place(0);
   CPUPlace cpu_place;
   CUDADeviceContext ctx(gpu_place);
-  SetConstant<GPUPlace, float> functor;
+  SetConstant<CUDADeviceContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
 
@@ -147,7 +147,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(make_ddim({7, 10}), gpu_place);
 
-  SelectedRowsAddTo<GPUPlace, float> add_to_functor;
+  SelectedRowsAddTo<CUDADeviceContext, float> add_to_functor;
   add_to_functor(ctx, *selected_rows1, 0, output.get());
   add_to_functor(ctx, *selected_rows2, in1_value->numel(), output.get());
 
@@ -167,7 +167,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   EXPECT_EQ(out_rows[6], 9);
 
   Tensor out_cpu;
-  CopyFrom(*out_value, cpu_place, ctx, &out_cpu);
+  Copy(*out_value, cpu_place, ctx, &out_cpu);
   ctx.Wait();
 
   auto* out_cpu_data = out_cpu.data<float>();
@@ -187,11 +187,11 @@ TEST(selected_rows_functor, gpu_add_to) {
   tensor1->mutable_data<float>(make_ddim({height, row_numel}), gpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
-  SelectedRowsAddToTensor<GPUPlace, float> add_to_tensor_functor;
+  SelectedRowsAddToTensor<CUDADeviceContext, float> add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
 
   Tensor tensor1_cpu;
-  CopyFrom(*tensor1, cpu_place, ctx, &tensor1_cpu);
+  Copy(*tensor1, cpu_place, ctx, &tensor1_cpu);
   ctx.Wait();
 
   auto* tensor1_cpu_data = tensor1_cpu.data<float>();

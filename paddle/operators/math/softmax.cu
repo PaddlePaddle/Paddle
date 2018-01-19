@@ -21,10 +21,10 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template class SoftmaxFunctor<platform::GPUPlace, float>;
-template class SoftmaxFunctor<platform::GPUPlace, double>;
-template class SoftmaxGradFunctor<platform::GPUPlace, float>;
-template class SoftmaxGradFunctor<platform::GPUPlace, double>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
+template class SoftmaxFunctor<platform::CUDADeviceContext, double>;
+template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
+template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

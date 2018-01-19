@@ -1,5 +1,20 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import unittest
 import numpy as np
+
+import paddle.v2.fluid.core as core
 from op_test import OpTest
 
 
@@ -44,6 +59,7 @@ def avg_pool2D_forward_naive(x, ksize, strides, paddings, global_pool=0):
 
 class TestPool2d_Op(OpTest):
     def setUp(self):
+        self.use_cudnn = False
         self.init_test_case()
         self.init_global_pool()
         self.init_op_type()
@@ -62,15 +78,25 @@ class TestPool2d_Op(OpTest):
             'ksize': self.ksize,
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
+            'use_cudnn': self.use_cudnn,
+            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
 
         self.outputs = {'Out': output.astype('float32')}
 
     def test_check_output(self):
-        self.check_output()
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
 
     def test_check_grad(self):
-        if self.pool_type != "max":
+        if self.use_cudnn and self.pool_type != "max":
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, set(['X']), 'Out', max_relative_error=0.07)
+        elif self.pool_type != "max":
             self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
     def init_test_case(self):
@@ -153,35 +179,41 @@ class TestCase5(TestCase2):
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-#--------------------test pool2d_cudnn--------------------
-class TestCudnnCase1(TestPool2d_Op):
+#--------------------test pool2d--------------------
+class TestCUDNNCase1(TestPool2d_Op):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool2d"
 
 
-class TestCudnnCase2(TestCase1):
+class TestCUDNNCase2(TestCase1):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool2d"
 
 
-class TestCudnnCase3(TestCase2):
+class TestCUDNNCase3(TestCase2):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool2d"
 
 
-class TestCudnnCase4(TestCase3):
+class TestCUDNNCase4(TestCase3):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool2d"
 
 
-class TestCudnnCase5(TestCase4):
+class TestCUDNNCase5(TestCase4):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool2d"
 
 
-class TestCudnnCase6(TestCase5):
+class TestCUDNNCase6(TestCase5):
     def init_op_type(self):
-        self.op_type = "pool2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "pool2d"
 
 
 if __name__ == '__main__':

@@ -50,7 +50,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -65,57 +65,14 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     const size_t level = 0;
     const size_t seq_num = in_lod[level].size() - 1;
 
-    // These local variables hold the inputs and outputs, garanteeing them on
-    // CPU memory, to provide a consistent reference.
-    // TODO(caoying) Fix this by moving all these local variables into the
-    // class's data members once we can profile the whole training process.
-    LoDTensor* emission_weights = nullptr;
-    LoDTensor emission_weight_tensor;
-    Tensor* transition_weights = nullptr;
-    Tensor transition_weight_tensor;
-    LoDTensor* label = nullptr;
-    LoDTensor label_tensor;
+    const LoDTensor* emission_weights = ctx.Input<LoDTensor>("Emission");
+    const Tensor* transition_weights = ctx.Input<Tensor>("Transition");
+    const LoDTensor* label = ctx.Input<LoDTensor>("Label");
 
-    Tensor* emission_exps = nullptr;
-    Tensor emission_exps_tensor;
-    Tensor* transition_exps = nullptr;
-    Tensor transition_exps_tensor;
-    Tensor* alpha = nullptr;
-    Tensor alpha_tensor;
-    Tensor* ll = nullptr;
-    Tensor ll_tensor;
-
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      emission_weights = &emission_weight_tensor;
-      transition_weights = &transition_weight_tensor;
-      label = &label_tensor;
-
-      CopyInputsToCpuMemory(
-          ctx.device_context(), *ctx.Input<LoDTensor>("Emission"),
-          *ctx.Input<Tensor>("Transition"), *ctx.Input<LoDTensor>("Label"),
-          emission_weights, transition_weights, label);
-
-      emission_exps = &emission_exps_tensor;
-      emission_exps->Resize(emission_weights->dims());
-
-      transition_exps = &transition_exps_tensor;
-      transition_exps->Resize(transition_weights->dims());
-
-      alpha = &alpha_tensor;
-      alpha->Resize(ctx.Output<Tensor>("Alpha")->dims());
-
-      ll = &ll_tensor;
-    } else {
-      emission_weights =
-          const_cast<LoDTensor*>(ctx.Input<LoDTensor>("Emission"));
-      transition_weights = const_cast<Tensor*>(ctx.Input<Tensor>("Transition"));
-      label = const_cast<LoDTensor*>(ctx.Input<LoDTensor>("Label"));
-
-      emission_exps = ctx.Output<Tensor>("EmissionExps");
-      transition_exps = ctx.Output<Tensor>("TransitionExps");
-      alpha = ctx.Output<Tensor>("Alpha");
-      ll = ctx.Output<Tensor>("LogLikelihood");
-    }
+    Tensor* emission_exps = ctx.Output<Tensor>("EmissionExps");
+    Tensor* transition_exps = ctx.Output<Tensor>("TransitionExps");
+    Tensor* alpha = ctx.Output<Tensor>("Alpha");
+    Tensor* ll = ctx.Output<Tensor>("LogLikelihood");
 
     // Because the computation codes only runs on CPU, here the memory for all
     // the outputs is FIXED to be allocated on the CPU memory.
@@ -137,7 +94,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
 
-    auto place = ctx.GetEigenDevice<platform::CPUPlace>();
+    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
     auto x = EigenMatrix<T>::From(*emission_weights);
     auto x_row_max = EigenMatrix<T>::From(emission_row_max);
     x_row_max.device(place) =
@@ -172,61 +130,9 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
           one_seq, one_seq_row_max, one_seq_exps, *transition_weights,
           *transition_exps, one_seq_label, &one_seq_alpha);
     }
-
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      CopyOutputsToGpuMemory(
-          ctx.device_context(), *emission_exps, *transition_exps, *alpha, *ll,
-          ctx.Output<Tensor>("EmissionExps"),
-          ctx.Output<Tensor>("TransitionExps"), ctx.Output<Tensor>("Alpha"),
-          ctx.Output<Tensor>("LogLikelihood"));
-    }
   };
 
  private:
-  void CopyInputsToCpuMemory(const platform::DeviceContext& ctx,
-                             const LoDTensor& emission_weights_src,
-                             const Tensor& transition_weights_src,
-                             const LoDTensor& label_src,
-                             LoDTensor* emission_weights_dst,
-                             Tensor* transition_weights_dst,
-                             LoDTensor* label_dst) const {
-    // Copy the inputs from GPU memory to CPU memory if this operators runs on
-    // GPU device.
-    auto copyLoDTensor = [](const platform::DeviceContext& ctx,
-                            const LoDTensor& src, LoDTensor* dst) {
-      dst->mutable_data<T>(src.dims(), platform::CPUPlace());
-      framework::CopyFrom(src, platform::CPUPlace(), ctx, dst);
-    };
-
-    copyLoDTensor(ctx, emission_weights_src, emission_weights_dst);
-    copyLoDTensor(ctx, label_src, label_dst);
-
-    transition_weights_dst->mutable_data<T>(transition_weights_src.dims(),
-                                            platform::CPUPlace());
-    framework::CopyFrom(transition_weights_src, platform::CPUPlace(), ctx,
-                        transition_weights_dst);
-  }
-
-  void CopyOutputsToGpuMemory(const platform::DeviceContext& ctx,
-                              const Tensor& emission_exps_src,
-                              const Tensor& transition_exps_src,
-                              const Tensor& alpha_src, const Tensor& ll_src,
-                              Tensor* emission_exps_dst,
-                              Tensor* transition_exps_dst, Tensor* alpha_dst,
-                              Tensor* ll_dst) const {
-    // Copy the forward results from CPU memory to GPU memory if this
-    // operators runs on GPU device.
-    auto copyTensor = [](const platform::DeviceContext& ctx, const Tensor& src,
-                         Tensor* dst) {
-      dst->mutable_data<T>(platform::GPUPlace());
-      framework::CopyFrom(src, platform::GPUPlace(), ctx, dst);
-    };
-    copyTensor(ctx, emission_exps_src, emission_exps_dst);
-    copyTensor(ctx, transition_exps_src, transition_exps_dst);
-    copyTensor(ctx, alpha_src, alpha_dst);
-    copyTensor(ctx, ll_src, ll_dst);
-  }
-
   T ForwardOneSequence(const Tensor& emission, const Tensor& emission_row_max,
                        const Tensor& emission_exps, const Tensor& trans_weights,
                        const Tensor& trans_weight_exps, const Tensor& label,
@@ -287,7 +193,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -295,63 +201,17 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     auto lod = ctx.Input<LoDTensor>("Label")->lod();
     PADDLE_ENFORCE(lod.size(), "Input(Label) must be a sequence.");
 
-    // These local variables hold the inputs and outputs, garanteeing them on
-    // CPU memory, to provide a consistent reference.
-    // TODO(caoying) Fix this by moving all these local variables into the
-    // class's data members once we can profile the training process, or
-    // implementing a real GPU kernel for CRF.
-    Tensor* label = nullptr;
-    Tensor label_tensor;
-    Tensor* emission_exps = nullptr;
-    Tensor emission_exps_tensor;
-    Tensor* transition_exps = nullptr;
-    Tensor transition_exps_tensor;
-    Tensor* alpha = nullptr;
-    Tensor alpha_tensor;
-    Tensor ll_grad_tensor;
-    T* ll_grad = nullptr;
+    const Tensor* label = ctx.Input<LoDTensor>("Label");
+    const Tensor* emission_exps = ctx.Input<Tensor>("EmissionExps");
+    const Tensor* transition_exps = ctx.Input<Tensor>("TransitionExps");
+    const Tensor* alpha = ctx.Input<Tensor>("Alpha");
+    const T* ll_grad =
+        ctx.Input<Tensor>(framework::GradVarName("LogLikelihood"))->data<T>();
 
-    Tensor* emission_grad = nullptr;
-    Tensor emission_grad_tensor;
-    Tensor* transition_grad = nullptr;
-    Tensor transition_grad_tensor;
-
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      label = &label_tensor;
-      emission_exps = &emission_exps_tensor;
-      transition_exps = &transition_exps_tensor;
-      alpha = &alpha_tensor;
-      CopyInputsToCpuMemory(
-          ctx.device_context(), *ctx.Input<LoDTensor>("Label"),
-          *ctx.Input<Tensor>("EmissionExps"),
-          *ctx.Input<Tensor>("TransitionExps"), *ctx.Input<Tensor>("Alpha"),
-          *ctx.Input<Tensor>(framework::GradVarName("LogLikelihood")), label,
-          emission_exps, transition_exps, alpha, &ll_grad_tensor);
-      ll_grad = ll_grad_tensor.data<T>();
-
-      if (ctx.Output<Tensor>(framework::GradVarName("Emission"))) {
-        emission_grad = &emission_grad_tensor;
-        emission_grad->Resize(emission_exps->dims());
-      }
-
-      if (ctx.Output<Tensor>(framework::GradVarName("Transition"))) {
-        transition_grad = &transition_grad_tensor;
-        transition_grad->Resize(transition_exps->dims());
-      }
-    } else {
-      label = const_cast<LoDTensor*>(ctx.Input<LoDTensor>("Label"));
-      emission_exps = const_cast<Tensor*>(ctx.Input<Tensor>("EmissionExps"));
-      transition_exps =
-          const_cast<Tensor*>(ctx.Input<Tensor>("TransitionExps"));
-      alpha = const_cast<Tensor*>(ctx.Input<Tensor>("Alpha"));
-      ll_grad = const_cast<Tensor*>(
-                    ctx.Input<Tensor>(framework::GradVarName("LogLikelihood")))
-                    ->data<T>();
-
-      emission_grad = ctx.Output<Tensor>(framework::GradVarName("Emission"));
-      transition_grad =
-          ctx.Output<Tensor>(framework::GradVarName("Transition"));
-    }
+    Tensor* emission_grad =
+        ctx.Output<Tensor>(framework::GradVarName("Emission"));
+    Tensor* transition_grad =
+        ctx.Output<Tensor>(framework::GradVarName("Transition"));
 
     // TODO(caoying) Fix this constraint. When the Input(Emission) is from the
     // data reader operator, it can have no gradients.
@@ -359,8 +219,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     emission_grad->mutable_data<T>(platform::CPUPlace());
     if (transition_grad) {
       transition_grad->mutable_data<T>(platform::CPUPlace());
-      math::SetConstant<platform::CPUPlace, T>()(ctx.device_context(),
-                                                 transition_grad, 0.);
+      math::set_constant(ctx.device_context(), transition_grad, 0.);
     }
     // Now, all the inputs and outputs should be on the CPU memory.
 
@@ -384,65 +243,16 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       Tensor one_seq_beta = beta.Slice(start_pos, end_pos);
       Tensor one_seq_emission_grad = emission_grad->Slice(start_pos, end_pos);
 
-      BackwardOneSequence(ctx.device_context(), ll_grad[i],
-                          one_seq_emission_exps, *transition_exps,
-                          one_seq_alpha, one_seq_label, &one_seq_beta,
-                          transition_grad, &one_seq_emission_grad);
-    }
-
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      CopyOutputsToGpuMemory(
-          ctx.device_context(), emission_grad, transition_grad,
-          ctx.Output<Tensor>(framework::GradVarName("Emission")),
-          ctx.Output<Tensor>(framework::GradVarName("Transition")));
+      BackwardOneSequence(
+          ctx.template device_context<platform::CPUDeviceContext>(), ll_grad[i],
+          one_seq_emission_exps, *transition_exps, one_seq_alpha, one_seq_label,
+          &one_seq_beta, transition_grad, &one_seq_emission_grad);
     }
   };
 
  private:
-  void CopyInputsToCpuMemory(const platform::DeviceContext& ctx,
-                             const LoDTensor& label_src,
-                             const Tensor& emission_exps_src,
-                             const Tensor& transition_exps_src,
-                             const Tensor& alpha_src, const Tensor& ll_grad_src,
-                             Tensor* label_dst, Tensor* emission_exps_dst,
-                             Tensor* transition_exps_dst, Tensor* alpha_dst,
-                             Tensor* ll_grad_dst) const {
-    // Copy the inputs from GPU memory to CPU memory when this operators runs on
-    // GPU device.
-    label_dst->mutable_data<T>(label_src.dims(), platform::CPUPlace());
-    framework::CopyFrom(label_src, platform::CPUPlace(), ctx, label_dst);
-
-    auto copyTensor = [](const platform::DeviceContext& ctx, const Tensor& src,
-                         Tensor* dst) {
-      dst->mutable_data<T>(src.dims(), platform::CPUPlace());
-      framework::CopyFrom(src, platform::CPUPlace(), ctx, dst);
-    };
-    copyTensor(ctx, emission_exps_src, emission_exps_dst);
-    copyTensor(ctx, transition_exps_src, transition_exps_dst);
-    copyTensor(ctx, alpha_src, alpha_dst);
-    copyTensor(ctx, ll_grad_src, ll_grad_dst);
-  }
-
-  void CopyOutputsToGpuMemory(const platform::DeviceContext& ctx,
-                              const Tensor* emission_grad_src,
-                              const Tensor* transition_grad_src,
-                              Tensor* emission_grad_dst,
-                              Tensor* transition_grad_dst) const {
-    // Copy the backward results from CPU memory to GPU
-    // memory if this operators runs on GPU device.
-    auto copyTensor = [](const platform::DeviceContext& ctx, const Tensor* src,
-                         Tensor* dst) {
-      if (src && dst) {
-        dst->mutable_data<T>(platform::GPUPlace());
-        framework::CopyFrom(*src, platform::GPUPlace(), ctx, dst);
-      }
-    };
-    copyTensor(ctx, emission_grad_src, emission_grad_dst);
-    copyTensor(ctx, transition_grad_src, transition_grad_dst);
-  }
-
-  void BackwardOneSequence(const platform::DeviceContext& ctx, const T ll_grad,
-                           const Tensor& emission_exps,
+  void BackwardOneSequence(const platform::CPUDeviceContext& ctx,
+                           const T ll_grad, const Tensor& emission_exps,
                            const Tensor& transition_exps, const Tensor& alpha,
                            const Tensor& label, Tensor* beta,
                            Tensor* transition_grad,
@@ -481,7 +291,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     auto alpha_mat = EigenMatrix<T>::From(alpha);
     auto beta_mat = EigenMatrix<T>::From(*beta);
 
-    auto* place = ctx.GetEigenDevice<platform::CPUPlace>();
+    auto* place = ctx.eigen_device();
     auto prob = alpha_mat * beta_mat;
     auto row_sum = prob.sum(Eigen::DSizes<int, 1>(1))
                        .reshape(Eigen::DSizes<int, 2>(seq_length, 1))

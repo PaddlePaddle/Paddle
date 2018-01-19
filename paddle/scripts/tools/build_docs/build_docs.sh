@@ -5,4 +5,4 @@ docker run --rm \
        -e "WITH_AVX=ON" \
        -e "WITH_DOC=ON" \
        -e "WOBOQ=ON" \
-       ${1:-"paddledev/paddle:dev"}
+       ${1:-"paddlepaddle/paddle:latest-dev"}

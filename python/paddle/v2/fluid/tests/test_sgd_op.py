@@ -1,3 +1,16 @@
+#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+#Licensed under the Apache License, Version 2.0 (the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 import unittest
 import numpy as np
 import paddle.v2.fluid.core as core
@@ -55,8 +68,7 @@ class TestSparseSGDOp(unittest.TestCase):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate')
-        ctx = core.DeviceContext.create(place)
-        sgd_op.run(scope, ctx)
+        sgd_op.run(scope, place)
 
         # get and compare result
         result_array = np.array(param)
@@ -79,7 +91,7 @@ class TestSparseSGDOp(unittest.TestCase):
     def test_sparse_sgd(self):
         places = [core.CPUPlace()]
         if core.is_compile_gpu():
-            places.append(core.GPUPlace(0))
+            places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place)
 

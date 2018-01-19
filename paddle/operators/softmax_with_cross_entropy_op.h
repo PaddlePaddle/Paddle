@@ -1,10 +1,10 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,11 +40,12 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxFunctor<platform::CPUPlace, T>()(context.device_context(),
-                                                  logits, softmax);
-    math::CrossEntropyFunctor<platform::CPUPlace, T>()(
-        context.device_context(), loss, softmax, labels,
-        context.Attr<bool>("soft_label"));
+    auto& dev_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    math::SoftmaxFunctor<platform::CPUDeviceContext, T>()(dev_ctx, logits,
+                                                          softmax);
+    math::CrossEntropyFunctor<platform::CPUDeviceContext, T>()(
+        dev_ctx, loss, softmax, labels, context.Attr<bool>("soft_label"));
   }
 };
 
@@ -62,14 +63,15 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     const int class_num = logit_grad->dims()[1];
     auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
     auto logit_grad_mat = EigenMatrix<T>::From(*logit_grad);
-
+    auto& place = *context.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
     if (context.Attr<bool>("soft_label")) {
       auto lbl_mat = EigenMatrix<T>::From(*labels);
-      logit_grad_mat.device(context.GetEigenDevice<platform::CPUPlace>()) =
+      logit_grad_mat.device(place) =
           out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num)) *
           (logit_grad_mat - lbl_mat);
     } else {
-      logit_grad_mat.device(context.GetEigenDevice<platform::CPUPlace>()) =
+      logit_grad_mat.device(place) =
           logit_grad_mat *
           out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num));
 

@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   You may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -56,7 +56,7 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -83,12 +83,13 @@ class ExpandKernel : public framework::OpKernel<T> {
     auto x = EigenTensor<T, Rank>::From(*in0);
     out0->mutable_data<T>(context.GetPlace());
     auto y = EigenTensor<T, Rank>::From(*out0);
-    auto place = context.GetEigenDevice<Place>();
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
     y.device(place) = x.broadcast(bcast_dims);
   }
 };
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class ExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -125,8 +126,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
       auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      framework::CopyFrom(*in0, context.GetPlace(), context.device_context(),
-                          out0);
+      framework::Copy(*in0, context.GetPlace(), context.device_context(), out0);
     } else {
       switch (dims) {
         REP_EXPAND_GRAD_TEMPLATE(72)
@@ -164,7 +164,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       reduce_dims[i] = reduce_dims_vec[i];
     }
     auto out_grad = EigenVector<T>::Flatten(*in0);
-    x_grad.device(context.GetEigenDevice<Place>()) =
+    x_grad.device(
+        *context.template device_context<DeviceContext>().eigen_device()) =
         out_grad.reshape(reshape_dims).sum(reduce_dims).reshape(x.dimensions());
   }
 };

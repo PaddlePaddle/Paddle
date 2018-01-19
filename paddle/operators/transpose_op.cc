@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/transpose_op.h"
 
@@ -55,8 +55,7 @@ class TransposeOp : public framework::OperatorWithKernel {
 
 class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TransposeOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  TransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
@@ -71,18 +70,31 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
 Transpose Operator.
 
 The input tensor will be permuted according to the axis values given.
-The op functions similar to how numpy.transpose works in python.
+The op functions is similar to how numpy.transpose works in python.
+
 For example:
- >> input = numpy.arange(6).reshape((2,3))
- >> input
- array([[0, 1, 2],
-        [3, 4, 5]])
- >> axis = [1, 0]
- >> output = input.transpose(axis)
- >> output
- array([[0, 3],
-        [1, 4],
-		[2, 5]])
+
+    .. code-block:: text
+
+      input = numpy.arange(6).reshape((2,3))
+
+      the input is:
+
+      array([[0, 1, 2],
+             [3, 4, 5]])
+
+      given axis is:
+
+      [1, 0]
+
+      output = input.transpose(axis)
+
+      then the output is:
+
+      array([[0, 3],
+             [1, 4],
+             [2, 5]])
+
 So, given a input tensor of shape(N, C, H, W) and the axis is {0, 2, 3, 1},
 the output tensor shape will be (N, H, W, C)
 
@@ -112,8 +124,8 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OP(transpose, ops::TransposeOp, ops::TransposeOpMaker, transpose_grad,
             ops::TransposeOpGrad);
-REGISTER_OP_CPU_KERNEL(transpose,
-                       ops::TransposeKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(
+    transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     transpose_grad,
-    ops::TransposeGradKernel<paddle::platform::CPUPlace, float>);
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>);

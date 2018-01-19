@@ -38,7 +38,7 @@ public:
     real torch_learningRate = optConfig_.learning_method() == "torch_momentum"
                                   ? 1.0 - paraConfig.momentum()
                                   : 1.0;
-#ifdef PADDLE_USE_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
     sgdUpdate(learningRate_ * paraConfig.learning_rate() *
                   (firstTime_ ? 1.0 : torch_learningRate),
               paraConfig.momentum(),

@@ -20,9 +20,9 @@ namespace math {
 
 // All tensors are in NCHW format, and the groups must be greater than 1
 template <typename T>
-class MaxOutFunctor<platform::CPUPlace, T> {
+class MaxOutFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, framework::Tensor* output,
                   int groups) {
     const int batch_size = input.dims()[0];
@@ -54,9 +54,9 @@ class MaxOutFunctor<platform::CPUPlace, T> {
 };
 
 template <class T>
-class MaxOutGradFunctor<platform::CPUPlace, T> {
+class MaxOutGradFunctor<platform::CPUDeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input, framework::Tensor* input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad, int groups) {
@@ -91,10 +91,10 @@ class MaxOutGradFunctor<platform::CPUPlace, T> {
   }
 };
 
-template class MaxOutGradFunctor<platform::CPUPlace, float>;
-template class MaxOutGradFunctor<platform::CPUPlace, double>;
-template class MaxOutFunctor<platform::CPUPlace, float>;
-template class MaxOutFunctor<platform::CPUPlace, double>;
+template class MaxOutGradFunctor<platform::CPUDeviceContext, float>;
+template class MaxOutGradFunctor<platform::CPUDeviceContext, double>;
+template class MaxOutFunctor<platform::CPUDeviceContext, float>;
+template class MaxOutFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators

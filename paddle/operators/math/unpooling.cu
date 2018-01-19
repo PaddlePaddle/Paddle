@@ -67,9 +67,9 @@ __global__ void KernelUnpool2dMaxGrad(
  * All tensors are in NCHW format.
  */
 template <typename T>
-class Unpool2dMaxFunctor<platform::GPUPlace, T> {
+class Unpool2dMaxFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
@@ -83,21 +83,18 @@ class Unpool2dMaxFunctor<platform::GPUPlace, T> {
     T* output_data = output->mutable_data<T>(context.GetPlace());
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool2dMax<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(input.numel(), input_data, indices_data,
-                              input_height, input_width, output_channels,
-                              output_data, output_height, output_width);
+    KernelUnpool2dMax<T><<<grid, threads, 0, context.stream()>>>(
+        input.numel(), input_data, indices_data, input_height, input_width,
+        output_channels, output_data, output_height, output_width);
   }
 };
 /*
  * All tensors are in NCHW format.
  */
 template <typename T>
-class Unpool2dMaxGradFunctor<platform::GPUPlace, T> {
+class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, T> {
  public:
-  void operator()(const platform::DeviceContext& context,
+  void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
@@ -116,19 +113,16 @@ class Unpool2dMaxGradFunctor<platform::GPUPlace, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool2dMaxGrad<
-        T><<<grid, threads, 0,
-             reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                 .stream()>>>(input.numel(), input_data, indices_data,
-                              input_height, input_width, output_channels,
-                              output_data, output_grad_data, output_height,
-                              output_width, input_grad_data);
+    KernelUnpool2dMaxGrad<T><<<grid, threads, 0, context.stream()>>>(
+        input.numel(), input_data, indices_data, input_height, input_width,
+        output_channels, output_data, output_grad_data, output_height,
+        output_width, input_grad_data);
   }
 };
-template class Unpool2dMaxGradFunctor<platform::GPUPlace, float>;
-template class Unpool2dMaxGradFunctor<platform::GPUPlace, double>;
-template class Unpool2dMaxFunctor<platform::GPUPlace, float>;
-template class Unpool2dMaxFunctor<platform::GPUPlace, double>;
+template class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, float>;
+template class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, double>;
+template class Unpool2dMaxFunctor<platform::CUDADeviceContext, float>;
+template class Unpool2dMaxFunctor<platform::CUDADeviceContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

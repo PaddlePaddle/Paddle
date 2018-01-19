@@ -28,6 +28,7 @@ limitations under the License. */
 #include "hl_top_k.h"
 #include "paddle/utils/Logging.h"
 
+#include "NEONFunctions.h"
 #include "paddle/function/GemmFunctor.h"
 #include "paddle/utils/ThreadLocal.h"
 
@@ -4165,16 +4166,36 @@ void CpuMatrix::print(std::ostream& os) const {
 void CpuMatrix::paramReluForward(Matrix& data, Matrix& W) {
   real* input = data.getData();
   real* w = W.getData();
+  real* output = data_;
   size_t numElements = data.getWidth();
   size_t numSamples = data.getHeight();
   size_t paraSize = W.getHeight() * W.getWidth();
   CHECK(!(numElements % paraSize));  // this check from ParameterReluLayer::init
+
   size_t partial_sum = numElements / paraSize;
+  if (paraSize == numElements) {
+    for (size_t n = 0; n < numSamples * numElements; ++n) {
+      output[n] = input[n] > 0 ? input[n] : input[n] * w[n % numElements];
+    }
+    return;
+  }
+
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+  for (size_t n = 0; n < numSamples; ++n) {
+    for (size_t i = 0; i < paraSize; i++) {
+      neon::prelu(
+          input + i * partial_sum, w[i], output + i * partial_sum, partial_sum);
+    }
+    input = input + numElements;
+    output = output + numElements;
+  }
+#else
   for (size_t n = 0, k = 0; n < numSamples; ++n) {
     for (size_t i = 0; i < numElements; ++i, ++k) {
-      data_[k] = input[k] > 0 ? input[k] : input[k] * w[i / partial_sum];
+      output[k] = input[k] > 0 ? input[k] : input[k] * w[i / partial_sum];
     }
   }
+#endif
 }
 
 void CpuMatrix::paramReluBackwardW(Matrix& oGrad, Matrix& data) {

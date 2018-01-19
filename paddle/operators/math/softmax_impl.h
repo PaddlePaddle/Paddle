@@ -32,10 +32,10 @@ struct ValueClip {
   }
 };
 
-template <typename Place, typename T>
-void SoftmaxFunctor<Place, T>::operator()(
-    const platform::DeviceContext& context, const framework::Tensor* X,
-    framework::Tensor* Y) {
+template <typename DeviceContext, typename T>
+void SoftmaxFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
+                                                  const framework::Tensor* X,
+                                                  framework::Tensor* Y) {
   auto logits = EigenMatrix<T>::From(*X);
   auto softmax = EigenMatrix<T>::From(*Y);
 
@@ -56,19 +56,18 @@ void SoftmaxFunctor<Place, T>::operator()(
                              .broadcast(one_by_class))
                             .unaryExpr(ValueClip<T>());
 
-  softmax.device(*context.GetEigenDevice<Place>()) = shifted_logits.exp();
-  softmax.device(*context.GetEigenDevice<Place>()) =
-      (softmax *
-       softmax.sum(along_class)
-           .inverse()
-           .eval()
-           .reshape(batch_by_one)
-           .broadcast(one_by_class));
+  softmax.device(*context.eigen_device()) = shifted_logits.exp();
+  softmax.device(*context.eigen_device()) = (softmax *
+                                             softmax.sum(along_class)
+                                                 .inverse()
+                                                 .eval()
+                                                 .reshape(batch_by_one)
+                                                 .broadcast(one_by_class));
 }
 
-template <typename Place, typename T>
-void SoftmaxGradFunctor<Place, T>::operator()(
-    const platform::DeviceContext& context, const framework::Tensor* y,
+template <typename DeviceContext, typename T>
+void SoftmaxGradFunctor<DeviceContext, T>::operator()(
+    const DeviceContext& context, const framework::Tensor* y,
     const framework::Tensor* y_grad, framework::Tensor* x_grad) {
   auto softmax = EigenMatrix<T>::From(*y);
   auto softmax_grad = EigenMatrix<T>::From(*y_grad);
@@ -89,8 +88,7 @@ void SoftmaxGradFunctor<Place, T>::operator()(
                  .eval()
                  .reshape(batch_by_one)
                  .broadcast(one_by_class);
-  logits_grad.device(*context.GetEigenDevice<Place>()) =
-      (softmax_grad - dot) * softmax;
+  logits_grad.device(*context.eigen_device()) = (softmax_grad - dot) * softmax;
 }
 
 }  // namespace math

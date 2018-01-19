@@ -1,27 +1,29 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
-
-#include "glog/logging.h"
-#include "gtest/gtest.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/dynload/nccl.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/gpu_info.h"
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include <thrust/device_vector.h>
 #include <memory>
 #include <vector>
+
+#include "glog/logging.h"
+#include "gtest/gtest.h"
+
+#include "paddle/framework/init.h"
+#include "paddle/platform/device_context.h"
+#include "paddle/platform/dynload/nccl.h"
+#include "paddle/platform/enforce.h"
+#include "paddle/platform/gpu_info.h"
 
 static int dev_count = 0;
 
@@ -32,6 +34,7 @@ TEST(NCCL, init) {
   std::vector<ncclComm_t> comms;
   comms.resize(dev_count);
   PADDLE_ENFORCE(dynload::ncclCommInitAll(comms.data(), dev_count, nullptr));
+
   for (int i = 0; i < dev_count; ++i) {
     dynload::ncclCommDestroy(comms[i]);
   }
@@ -47,7 +50,7 @@ struct PerThreadData {
 
   T* RecvBuff() { return thrust::raw_pointer_cast(recv_buff.data()); }
 
-  PerThreadData(int gpu_id, size_t size) : dev_ctx(GPUPlace(gpu_id)) {
+  PerThreadData(int gpu_id, size_t size) : dev_ctx(CUDAPlace(gpu_id)) {
     send_buff.resize(size);
     for (size_t i = 0; i < size; ++i) {
       send_buff[i] = static_cast<T>(i);
@@ -62,7 +65,7 @@ TEST(NCCL, all_reduce) {
   std::vector<ncclComm_t> comms;
   comms.resize(dev_count);
   VLOG(1) << "Initializing ncclComm";
-  PADDLE_ENFORCE(dynload::ncclCommInitAll(comms.data(), dev_count, nullptr));
+  dynload::ncclCommInitAll(comms.data(), dev_count, nullptr);
   VLOG(1) << "ncclComm initialized";
   VLOG(1) << "Creating thread data";
   std::vector<std::unique_ptr<PerThreadData<double>>> data;
@@ -131,6 +134,18 @@ int main(int argc, char** argv) {
         << dev_count;
     return 0;
   }
+
+  std::vector<paddle::platform::Place> places;
+
+  places.emplace_back(paddle::platform::CPUPlace());
+  int count = paddle::platform::GetCUDADeviceCount();
+  for (int i = 0; i < count; ++i) {
+    places.emplace_back(paddle::platform::CUDAPlace(i));
+  }
+
+  VLOG(0) << " DeviceCount " << count;
+  paddle::platform::DeviceContextPool::Init(places);
+
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

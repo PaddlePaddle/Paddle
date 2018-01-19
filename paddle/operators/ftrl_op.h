@@ -24,7 +24,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename Place, typename T>
+template <typename DeviceContext, typename T>
 class FTRLOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -53,7 +53,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto s_acc_out = EigenVector<T>::Flatten(*sq_accum_out);
     auto l_acc_out = EigenVector<T>::Flatten(*lin_accum_out);
-    auto place = ctx.GetEigenDevice<Place>();
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 
