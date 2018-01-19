@@ -4,12 +4,12 @@
 
 - A detailed documentation of how to add new operators and kernels is here: [`new_op_and_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_en.md).
 - we use `OpKernelType` to describe the attributes of each kernel. The design is [`op_kernel_type`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md).
-- The mechanism that an Operator choose a kernel is described in this document: [`switch_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md).
+- The mechanism that an Operator chooses a kernel is described in this document: [`switch_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md).
 
 ### Write OpKernel for new Device or Library
 
 #### Add new [library](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/library_type.h#L24)
-If you have a new kind of library, such as MKLDNN, you need to add a new library_type. Now we have:
+If you have a new kind of library, such as MKLDNN, you need to add a new `library_type`. Now we have:
 
 ```
 enum class LibraryType {
@@ -56,7 +56,7 @@ class DeviceContext {
 
 #### Implement new [OpKernel](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L351) for your Device.
 
-A detailed documentation can be found in [`new_op_and_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_en.md)
+A detailed documentation can be found in [`new_op_and_kernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_en.md), especially [Defining OpKernel](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/new_op_en.md#defining-opkernel). Your OpKernel need to rewrite the `Compute` interface. ELEMENT_TYPE is used to mark `data_type` for this OpKernel.
 
 ```cpp
 class OpKernelBase {
@@ -85,7 +85,7 @@ class OpKernel : public OpKernelBase {
 
 After writing the components described above, we should register the kernel to the framework.
 
-We use `REGISTER_OP_KERNEL` to do the registration.
+We use `REGISTER_OP_KERNEL` to do kernel registration.
 
 ```cpp
 REGISTER_OP_KERNEL(
@@ -99,19 +99,19 @@ kernel0, kernel1 are kernels that have the same `op_type`, `library_type`, `plac
 
 take [`conv2d`]((https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/conv_cudnn_op.cu.cc#L318)) as an example:
 
-	```cpp
-	REGISTER_OP_KERNEL(conv2d, CPU, paddle::platform::CPUPlace,
-    		paddle::operators::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    		paddle::operators::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+```cpp
+REGISTER_OP_KERNEL(conv2d, CPU, paddle::platform::CPUPlace,
+	paddle::operators::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+	paddle::operators::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
     
-	REGISTER_OP_KERNEL(conv2d, CUDNN, ::paddle::platform::CUDAPlace,
-	       paddle::operators::CUDNNConvOpKernel<float>,
-	       paddle::operators::CUDNNConvOpKernel<double>);
-	```
+REGISTER_OP_KERNEL(conv2d, CUDNN, ::paddle::platform::CUDAPlace,
+       paddle::operators::CUDNNConvOpKernel<float>,
+       paddle::operators::CUDNNConvOpKernel<double>);
+```
 
 In the code above:
 
  - `conv2d` is the type/name of the operator
- - `CUDNN/CPU` is `library`
- - `paddle::platform::CUDAPlace/CPUPlace` is `place`
+ - `CPU/CUDNN` is `library`
+ - `paddle::platform::CPUPlace/CUDAPlace` is `place`
  - template parameter `float/double` on `CUDNNConvOpKernel<T>` is `data_type`.
