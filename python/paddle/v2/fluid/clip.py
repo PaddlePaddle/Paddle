@@ -124,11 +124,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
 
         cls.global_norm_var = layers.fill_constant(
             shape=[1], dtype="float32", value=0.0)
-        cls.local_norm_var = framework.default_main_program().block(
-            0).create_var(
-                name=framework.unique_name("local_norm"),
-                dtype="float32",
-                persistable=False)
+        cls.local_norm_var = layers.create_tensor(dtype="float32")
         cls.clip_norm_var = layers.fill_constant(
             shape=[1], dtype="float32", value=clip_norm)
 
