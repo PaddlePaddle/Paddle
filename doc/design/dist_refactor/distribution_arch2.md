@@ -9,12 +9,16 @@ All modules are decupled when we store data(program and some output) to etcd.
    - worker store pod info to etcd, so 
    - the graph can commicate with each other by graph_ID.
 
+## 
+
 
 ## Architect graph
 <div style="align: center">
 <img src="src/arch2.png" width="700" align=center/>
 </div>
 
+- foreground job: when client exits the jobs will be killed.
+- background job: client's death doesn't affect the job.
 
 ## Peudo code of users
 ```
@@ -32,8 +36,8 @@ if err is not null:
    print "start job:", job_name, " errors:", err
    sys.exit(1)
    
-trainers = job.add_workers(t_graphs,sync,cpu=,gpu=,mem)
-pservers = job.add_workers(p_graphs,sync,cpu=,gpu=,mem)
+trainers = job.add_workers(t_graphs,cpu=,gpu=,mem)
+pservers = job.add_workers(p_graphs,cpu=,gpu=,mem)
 
 pserver.start(mode=sync)
 trainer.start(pass_num=10)
