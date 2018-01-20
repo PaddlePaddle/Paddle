@@ -25,20 +25,21 @@ limitations under the License. */
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/tensor_util.h"
+#include "paddle/memory/memcpy.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
 
 namespace paddle {
 namespace framework {
 
-#ifndef PADDLE_WITH_CUDA
-template <typename T>
-using Vector = std::vector<T>;
-#else
-template <typename T>
-using Vector = thrust::host_vector<
-    T, thrust::system::cuda::experimental::pinned_allocator<T>>;
-#endif
+// #ifndef PADDLE_WITH_CUDA
+// template <typename T>
+// using Vector = std::vector<T>;
+// #else
+// template <typename T>
+// using Vector = thrust::host_vector<
+//     T, thrust::system::cuda::experimental::pinned_allocator<T>>;
+// #endif
 
 /**
  * @brief Vector support both cpu and gpu.
@@ -47,19 +48,35 @@ using Vector = thrust::host_vector<
  */
 
 template <typename T>
-class Vector {
+class Vector : public std::vector<T> {
  public:
-  Vector() {}
-  Vector(const std::vector<T>& v) {}
+  virtual ~Vector() {
+    if (cuda_ptr_ != nullptr) {
+      memory::Free(place_, cuda_size_);
+    }
+  }
+  T* data() {
+    SyncData();
+    return self.data();
+  }
+  const T* data() const {
+    SyncData();
+    return self.data();
+  }
+  void SyncData() {
+#ifdef PADDLE_WITH_CUDA
+    cuda_size_ = this->size();
+    cuda_ptr_ = static_cast<uint8_t*>(memory::Alloc(place_, cuda_size_));
+    memory::Copy(place_, static_cast<void*>(cuda_ptr_), platform::CPUPlace(),
+                 this->size());
+    return static_cast<T*>(cuda_ptr_);
+#endif
+  }
 
  private:
-  size_t start_ = 0;
-  size_t end_ = 0;
-  size_t capacity_ = 0;
-
- private:
-  T* ptr_ = nullptr;
   uint8_t* cuda_ptr_ = nullptr;
+  size_t cuda_size_ = 0;
+  platform::CUDAPlace place_(0);
 };
 
 /*
