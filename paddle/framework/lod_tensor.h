@@ -40,6 +40,28 @@ using Vector = thrust::host_vector<
     T, thrust::system::cuda::experimental::pinned_allocator<T>>;
 #endif
 
+/**
+ * @brief Vector support both cpu and gpu.
+ * cpu vector lifetime is same with Vector
+ * gpu vector is lazily malloc and modified.
+ */
+
+template <typename T>
+class Vector {
+ public:
+  Vector() {}
+  Vector(const std::vector<T>& v) {}
+
+ private:
+  size_t start_ = 0;
+  size_t end_ = 0;
+  size_t capacity_ = 0;
+
+ private:
+  T* ptr_ = nullptr;
+  uint8_t* cuda_ptr_ = nullptr;
+};
+
 /*
  * LoD is short for Level of Details.
  *
@@ -109,7 +131,10 @@ bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
  */
 class LoDTensor : public Tensor {
  public:
-  LoDTensor() {}
+  LoDTensor() : Tensor() {}
+
+  /* Constructor with place should only be used in pybind */
+  explicit LoDTensor(const platform::Place& place) : Tensor(place) {}
 
   explicit LoDTensor(const LoD& lod) : lod_(lod) {}
 
