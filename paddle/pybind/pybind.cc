@@ -60,8 +60,8 @@ bool IsCompileGPU() {
 #endif
 }
 
-PYBIND11_PLUGIN(core) {
-  py::module m("core", "C++ core of PaddlePaddle");
+PYBIND11_MODULE(core, m) {
+  m.doc() = "C++ core of PaddlePaddle";
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
@@ -475,8 +475,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
 #endif
-
-  return m.ptr();
 }
 }  // namespace pybind
 }  // namespace paddle
