@@ -302,7 +302,7 @@ def get_feed_targets(program):
     global_block = program.global_block()
     for op in global_block.ops:
         if op.desc.type() == 'feed':
-            feed_targets.insert(0, op.outputs['Out'][0])
+            feed_targets.insert(0, op.desc.output('Out')[0])
     return feed_targets
 
 
@@ -311,7 +311,7 @@ def get_fetch_targets(program):
     global_block = program.global_block()
     for op in global_block.ops:
         if op.desc.type() == 'fetch':
-            fetch_targets.append(op.inputs['X'][0])
+            fetch_targets.append(op.desc.input('X')[0])
     return fetch_targets
 
 
