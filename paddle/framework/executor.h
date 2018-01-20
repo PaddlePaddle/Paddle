@@ -41,6 +41,12 @@ class Executor {
   void Run(const ProgramDesc&, Scope*, int, bool create_local_scope = true,
            bool create_vars = true);
 
+  void Run(const ProgramDesc& program, Scope* scope,
+           std::map<std::string, Tensor>& feeds,
+           std::map<std::string, Tensor>& fetchs,
+           std::string& feed_var_name = "feed",
+           std::string& fetch_var_name = "fetch");
+
  private:
   const platform::Place place_;
 };

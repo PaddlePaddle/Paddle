@@ -132,5 +132,62 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   }
 }
 
+void Run(const ProgramDesc& program, Scope* scope,
+         std::map<std::string, Tensor>& feeds,
+         std::map<std::string, Tensor>& fetchs, std::string& feed_var_name,
+         std::string& fetch_var_name) {
+  auto* local_program = new ProgramDesc(program);
+
+  // prepend feed_op and related variable
+
+  // first check if a feed variable already exists (check type instead of name)
+  // and create a feed var if needed
+  auto* global_block = local_program->MutableBlock(0);
+
+  VarDesc* feed_var = nullptr;
+  for (auto& var_desc : global_block->AllVars()) {
+    if (var_desc->GetType() == proto::VarDesc::FEED_MINIBATCH) {
+      PADDLE_ENFORCE(var_desc->Name() == feed_var_name,
+                     "The feed variable name does not match what's already in "
+                     "the program desc");
+      feed_var = var_desc;
+      break;
+    }
+  }
+  if (feed_var == nullptr) {
+    feed_var = global_block->Var(feed_var_name);
+    feed_var->SetType(proto::VarDesc::FEED_MINIBATCH);
+    feed_var->SetPersistable(true);
+  }
+
+  // if there are feed and fetch ops, check that they match the feeds info
+  int feed_count = 0;
+  for (auto* op : global_block->AllOps()) {
+    if (op->Type() == "feed") {
+      auto search = feeds.find(op->Out("Out")[0]);
+      PADDLE_ENFORCE(
+          search != feeds.end(),
+          "Feed operator output name does not match the info provided user");
+      PADDLE_ENFORCE(op->Input("X")[0] == feed_var_name, "")
+      Tensor& data = search->second;
+      framework::SetFeedVariable(scope, search->second, feed_var_name,
+                                 feed_count);
+    }
+  }
+
+  for (auto& feed : feeds) {
+    for (auto& op : global_block->AllOps()) {
+      if () }
+  }
+
+  // set feed variables
+
+  // append fetch_op and related variable
+
+  // get fetch variables
+
+  delete local_program;
+}
+
 }  // namespace framework
 }  // namespace paddle
