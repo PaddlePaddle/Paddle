@@ -146,33 +146,75 @@ class Executor(object):
 
         program = program.clone()
         global_block = program.global_block()
-        feed_var = global_block.create_var(
-            name=feed_var_name,
-            type=core.VarDesc.VarType.FEED_MINIBATCH,
-            persistable=True)
+        print global_block.vars
+        if feed_var_name in global_block.vars:
+            feed_var = global_block.var(feed_var_name)
+        else:
+            feed_var = global_block.create_var(
+                name=feed_var_name,
+                type=core.VarDesc.VarType.FEED_MINIBATCH,
+                persistable=True)
 
-        for i, name in enumerate(feed):
-            out = global_block.var(name)
-            global_block.prepend_op(
-                'feed',
-                inputs={'X': [feed_var]},
-                outputs={'Out': [out]},
-                attrs={'col': i})
-            cur_feed = feed[name]
-            if not isinstance(cur_feed, core.LoDTensor):
-                cur_feed = self.aslodtensor(cur_feed)
-            core.set_feed_variable(scope, cur_feed, feed_var.name, i)
+        if fetch_var_name in global_block.vars:
+            fetch_var = global_block.var(fetch_var_name)
+        else:
+            fetch_var = global_block.create_var(
+                name=fetch_var_name,
+                type=core.VarDesc.VarType.FETCH_LIST,
+                persistable=True)
 
-        fetch_var = global_block.create_var(
-            name=fetch_var_name,
-            type=core.VarDesc.VarType.FETCH_LIST,
-            persistable=True)
-        for i, var in enumerate(fetch_list):
-            global_block.append_op(
-                type='fetch',
-                inputs={'X': [var]},
-                outputs={'Out': [fetch_var]},
-                attrs={'col': i})
+        print global_block.ops
+        feed_count = 0
+        fetch_count = 0
+        for op in global_block.ops:
+            if op.desc.type() == 'feed':
+                feed_cout += 1
+                assert op.desc.input('X')[0] == feed_var_name
+                name = op.desc.output('Out')[0]
+                if name not in feed:
+                    raise Exception("feed does not have {} variable".format(
+                        name))
+                cur_feed = feed[name]
+                idx = op.desc.attr('col')
+                core.set_feed_variable(scope, cur_feed, feed_var.name, idx)
+            elif op.desc.type() == 'fetch':
+                fetch_count += 1
+                assert op.desc.output('Out')[0] == fetch_var_name
+                name = op.desc.input('X')[0]
+                if global_block.var(name) not in fetch_list:
+                    raise Exception(
+                        "fetch_list does not have {} variable".format(name))
+                idx = op.desc.attr('col')
+                assert name == fetch_list[idx].name()
+
+        if feed_count > 0 and feed_count != len(feed):
+            raise Exception(
+                "Feed operators info in program desc does not match feed input")
+
+        if fetch_count > 0 and fetch_count != len(fetch_list):
+            raise Exception(
+                "Fetch operators info in program desc does not match fetch_list")
+
+        if feed_count == 0:
+            for i, name in enumerate(feed):
+                out = global_block.var(name)
+                global_block.prepend_op(
+                    'feed',
+                    inputs={'X': [feed_var]},
+                    outputs={'Out': [out]},
+                    attrs={'col': i})
+                cur_feed = feed[name]
+                if not isinstance(cur_feed, core.LoDTensor):
+                    cur_feed = self.aslodtensor(cur_feed)
+                core.set_feed_variable(scope, cur_feed, feed_var.name, i)
+
+        if fetch_count == 0:
+            for i, var in enumerate(fetch_list):
+                global_block.append_op(
+                    type='fetch',
+                    inputs={'X': [var]},
+                    outputs={'Out': [fetch_var]},
+                    attrs={'col': i})
 
         self.executor.run(program.desc, scope, 0, True, True)
         outs = [
