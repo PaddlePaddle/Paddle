@@ -14,7 +14,7 @@
 
 INCLUDE(ExternalProject)
 
-set(BOOST_PROJECT       "boost")
+set(BOOST_PROJECT       "extern_boost")
 set(BOOST_VER           "1.66.0")
 set(BOOST_TAR           "boost_1_66_0")
 set(BOOST_URL           "https://dl.bintray.com/boostorg/release/${BOOST_VER}/source/${BOOST_TAR}.tar.gz")
@@ -52,6 +52,14 @@ ExternalProject_Add(
     INSTALL_COMMAND       ""
     UPDATE_COMMAND        ""
 )
+
+if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
+    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/boost_dummy.c)
+    file(WRITE ${dummyfile} "const char *dummy = \"${dummyfile}\";")
+    add_library(boost STATIC ${dummyfile})
+else()
+    add_library(boost INTERFACE)
+endif()
 
 ADD_DEPENDENCIES(boost ${BOOST_PROJECT})
 LIST(APPEND external_project_dependencies boost)
