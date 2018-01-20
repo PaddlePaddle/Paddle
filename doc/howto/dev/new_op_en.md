@@ -4,7 +4,8 @@
  - [Implementing C++ Types](#implementing-c-types)
    - [Defining ProtoMaker](#defining-protomaker)
    - [Defining Operator](#defining-operator)
-   - [Registering Operator](#registering-operator)
+   - [Defining OpKernel](#defining-opkernel)
+   - [Registering Operator and OpKernel](#registering-operator-and-opkernel)
    - [Compilation](#compilation)
  - [Python Binding](#python-binding)
  - [Unit Tests](#unit-tests)
@@ -16,12 +17,13 @@
 
 Here are the base types needed. For details, please refer to the design docs.
 
-- `framework::OperatorBase`: Operator (Op)base class.
-- `framework::OpKernel`: Base class for Op computation.
-- `framework::OperatorWithKernel`: Inherited from OperatorBase, describing an operator with computation.
 - `class OpProtoAndCheckerMaker`: Describes an Operator's input, output, attributes and description, mainly used to interface with Python API.
+- `framework::OperatorBase`: Operator (Op)base class.
+- `framework::OpKernel`: Base class for Op computation kernel.
+- `framework::OperatorWithKernel`: Inherited from OperatorBase, describing an operator with computation kernels.
 
-An operator can be differentiated by whether in has kernel methods. An operator with kernel inherits from `OperatorWithKernel` while the ones without inherit from `OperatorBase`. This tutorial focuses on implementing operators with kernels. In short, an operator includes the following information:
+
+Operators can be categorized into two groups: operator with kernel(s) and operator without kernel(s). An operator with kernel(s) inherits from `OperatorWithKernel` while the one without kernel(s) inherits from `OperatorBase`. This tutorial focuses on implementing operators with kernels. In short, an operator includes the following information:
 
 
  Information           | Where is it defined
@@ -32,7 +34,7 @@ Kernel implementation       | The kernel methods shared between CPU and CUDA are
 Registering the Op           | Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation, while `.cu` files contain the CUDA implementation.
 
 
-New Operator implementations are added to the list [paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators), with file names in the format `*_op.h` (if applicable), `*_op.cc`, `*_op.cu` (if applicable).** The system will use the naming scheme to automatically build operators and their corresponding Python extensions. **
+New Operator implementations are added to the list [paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators), with file names in the format `*_op.h` (if applicable), `*_op.cc`, `*_op.cu` (if applicable).** The system will use the naming scheme to automatically build operators and their corresponding Python extensions.**
 
 
 Let's take matrix multiplication operator, [MulOp](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc), as an example to introduce the writing of an Operator with Kernel.
@@ -156,7 +158,8 @@ Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, w
 - `typename T` denotes data type, such as `float` or `double`.
 
 `MulKernel` types need to rewrite the interface for `Compute`.
-- `Compute` takes one input variable `const framework::ExecutionContext& context`.
+
+- `Compute` takes one input parameter: `const framework::ExecutionContext& context`.
 - Compared with `InferShapeContext`, `ExecutionContext` includes device types, and can similarly extract input, output, and attribute variables.
 - `Compute` implements the computation logics of an `OpKernel`.
 
@@ -177,7 +180,7 @@ Usually `OpProtoMaker` and `Op`'s type definitions are written in `.cc` files, w
   };
   ```
 
-Note that **different devices (CPU, CUDA)share an Op definition; whether or not they share the same `OpKernel` depends on whether `Compute` calls functions that support both devices.**
+Note that **different devices (CPU, CUDA)share one Op definition; whether or not they share the same `OpKernel` depends on whether `Compute` calls functions can support both devices.**
 
 `MulOp`'s CPU and CUDA share the same `Kernel`. A non-sharing  `OpKernel` example can be seen in [`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43).
 
@@ -188,13 +191,14 @@ This concludes the forward implementation of an operator. Next its operation and
 
 The definition of its corresponding backward operator, if applicable, is similar to that of an forward operator. **Note that a backward operator does not include a `ProtoMaker`**.
 
-### Registering Operator
+### Registering Operator and OpKernel
 
 - In `.cc` files, register forward and backward operator classes and the CPU kernel.
 
     ```cpp
     namespace ops = paddle::operators;
     REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulOpGrad);
+
     REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
     REGISTER_OP_CPU_KERNEL(mul_grad,
                   ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
@@ -204,6 +208,7 @@ The definition of its corresponding backward operator, if applicable, is similar
 
     - `REGISTER_OP` registers the `ops::MulOp` class, type named `mul`, its type `ProtoMaker` is `ops::MulOpMaker`, registering `ops::MulOpGrad` as `mul_grad`.
     - `REGISTER_OP_WITHOUT_GRADIENT` registers an operator without gradient.
+
     - `REGISTER_OP_CPU_KERNEL` registers `ops::MulKernel` class and specialized template types `paddle::platform::CPUPlace` and `float`, which also registers `ops::MulGradKernel`.
 
 
@@ -225,6 +230,7 @@ The definition of its corresponding backward operator, if applicable, is similar
 Run the following commands to compile.
 
 ```
+# maybe you need to rerun cmake
 make mul_op
 ```
 

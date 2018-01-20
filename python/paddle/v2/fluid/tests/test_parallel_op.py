@@ -15,9 +15,6 @@ import unittest
 
 import paddle.v2.fluid as fluid
 import numpy
-import sys
-# TODO(dzhwinter): get places op check need to be enhanced.
-sys.exit(0)
 
 
 class BaseParallelForTest(unittest.TestCase):
@@ -165,13 +162,13 @@ class ParallelOpTest(BaseParallelForTest):
             feed={
                 'img': numpy.random.random(size=(51, 784)).astype('float32')
             },
-            fetch='fc1.w@GRAD')
+            fetch=['fc1.w@GRAD'])
 
     def test_fc_with_tiny_data(self):
         self.run_test(
             callback=ParallelOpTest.__network__,
             feed={'img': numpy.random.random(size=(1, 784)).astype('float32')},
-            fetch='fc1.w@GRAD')
+            fetch=['fc1.w@GRAD'])
 
 
 if __name__ == '__main__':
