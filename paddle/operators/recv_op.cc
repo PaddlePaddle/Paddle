@@ -107,7 +107,7 @@ class RecvOp : public framework::OperatorBase {
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
-    int64_t barrier_size = param_count * fan_in;
+    size_t barrier_size = param_count * fan_in;
     while (!exit_flag) {
       // Get from multiple trainers, we don't care about the order in which
       // the gradients arrives, just add suffix 0~n and merge the gradient.
