@@ -27,11 +27,12 @@ All modules are decoupled when we store data to storage.
 ```
 ...
 # get graphs and their relation.
-t_graphs,p_graphs = fluid.dist_transpiler(tainers_num=,pserves_num=)
+# the trainers iteration is implemented by fluid op.
+t_graphs,p_graphs = fluid.dist_transpiler(tainers_num=,tainer_pass_num=,pserves_num=,mode=sync)
 
 job_name = "test_1"
 
-# you can kill first
+# you can kill  a job first.
 #if fluid.k8s.find(job_name):
 #	fluid.k8s.kill(job_name)
 
@@ -46,8 +47,8 @@ trainers = job.add_workers(t_graphs,cpu=,gpu=,mem)
 pservers = job.add_workers(p_graphs,cpu=,gpu=,mem)
 
 # pod info will be stored to etcd after pod start.
-pserver.start(mode=sync)
-trainer.start(pass_num=10)
+pserver.start()
+trainer.start()
 
 # get fetchlist from etcd through k8s proxy.
 # and the job can be killed by the result.
