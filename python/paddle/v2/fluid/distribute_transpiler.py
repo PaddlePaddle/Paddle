@@ -18,6 +18,7 @@ import optimizer
 from layer_helper import LayerHelper
 from distributed_spliter import *
 import math
+from . import core
 
 
 class VarBlock:
@@ -216,15 +217,28 @@ class DistributeTranspiler:
             if len(splited_vars) <= 1:
                 continue
             orig_var = program.global_block().vars[varname]
-            sections = []
-            for v in splited_vars:
-                sections.append(v.shape[0])
-            program.global_block().append_op(
-                type="split",
-                inputs={"X": orig_var},
-                outputs={"Out": splited_vars},
-                attrs={"sections": sections}  # assume split evenly
-            )
+            if orig_var == core.VarDesc.VarType.SELECTED_ROWS:
+                height_sections = []
+                for v in splited_vars:
+                    height_sections.append(v.shape[0])
+                program.global_block().append_op(
+                    type="split_selected_rows",
+                    inputs={"X": orig_var},
+                    outputs={"Out": splited_vars},
+                    attrs={"height_sections": height_sections})
+            elif orig_var == core.VarDesc.VarType.LOD_TENSOR:
+                sections = []
+                for v in splited_vars:
+                    sections.append(v.shape[0])
+                program.global_block().append_op(
+                    type="split",
+                    inputs={"X": orig_var},
+                    outputs={"Out": splited_vars},
+                    attrs={"sections": sections}  # assume split evenly
+                )
+            else:
+                AssertionError("Variable type should be in set "
+                               "[LOD_TENSOR, SELECTED_ROWS]")
         return var_mapping
 
     def get_trainer_program(self):
