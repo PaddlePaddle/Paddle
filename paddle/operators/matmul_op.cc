@@ -51,7 +51,7 @@ class MatMulOp : public framework::OperatorWithKernel {
           "them should be %d-dimensional.",
           dim_x.size());
 
-      // The front rank-2 dimensions are accumulated on the batch_count, and the
+      // The first rank-2 dimensions are accumulated on the batch_count, and the
       // last two dimensions are used for matrix multiplication.
       for (int j = 0; j < dim_x.size() - 2; ++j) {
         PADDLE_ENFORCE_EQ(dim_y[j], dim_x[j],
@@ -196,7 +196,7 @@ The differences are:
 - When the rank of the input data is less than or equal to 3, it
   is similar to the `numpy.matmul` function.
 - When the rank of the input is greater than 3, the rank of X and
-  Y must be equal, and the front `rank - 2` dimensions must be equal.
+  Y must be equal, and the first `rank - 2` dimensions must be equal.
 - We add `transpose_X` and `transpose_Y` flags.
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
