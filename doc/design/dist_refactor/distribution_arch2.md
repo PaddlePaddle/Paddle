@@ -1,4 +1,4 @@
-## Abstract
+## Workflow
 All modules are decoupled when we store data to storage.
 
 - Transpile program desc to sub-program descs(graphs) and
@@ -21,10 +21,12 @@ All modules are decoupled when we store data to storage.
 <div style="align: center">
 <img src="src/dist-graph2.png" width="700" align=center/>
 </div>
+- OutputOperator appends fetchlist to etcd periodically.
 
 ## Peudo code of users
 ```
 ...
+# get graphs and their relation.
 t_graphs,p_graphs = fluid.dist_transpiler(tainers_num=,pserves_num=)
 
 job_name = "test_1"
@@ -33,17 +35,22 @@ job_name = "test_1"
 #if fluid.k8s.find(job_name):
 #	fluid.k8s.kill(job_name)
 
+# start etcd and keep heart-beat if need.
 job, err = fulid.k8s.init_job(job_name, run_type=foreground)
 if err is not null:
    print "start job:", job_name, " errors:", err
    sys.exit(1)
    
+# store graphs to etcd.
 trainers = job.add_workers(t_graphs,cpu=,gpu=,mem)
 pservers = job.add_workers(p_graphs,cpu=,gpu=,mem)
 
+# pod info will be stored to etcd after pod start.
 pserver.start(mode=sync)
 trainer.start(pass_num=10)
 
+# get fetchlist from etcd through k8s proxy.
+# and the job can be killed by the result.
 accs = trainers.get(acc)
 for c in acc:
     print(" acc:" + str(c))
