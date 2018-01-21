@@ -34,7 +34,7 @@ mix_hidden_lr = 1e-3
 
 IS_SPARSE = True
 PASS_NUM = 10
-BATCH_SIZE = 20
+BATCH_SIZE = 10
 
 embedding_name = 'emb'
 
