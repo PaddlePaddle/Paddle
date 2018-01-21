@@ -67,6 +67,8 @@ def lang_type(filename):
         return "Python"
     elif filename.endswith(".h"):
         return "C"
+    elif filename.endswith(".c"):
+        return "C"
     elif filename.endswith(".hpp"):
         return "C"
     elif filename.endswith(".cc"):
