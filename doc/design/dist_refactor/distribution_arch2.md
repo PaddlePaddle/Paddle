@@ -5,12 +5,9 @@ All modules are decoupled when we store data to storage.
 - Store graphs to etcd
 	- one graph has unique ID. 
 	- one graph has the desired resource.
-- Start workers(pods) to run one graph
+- Start worker(pod) to run one graph
    - worker stores pod info to etcd, so 
    - the graphs can communicate with each other by graphID.
-- Store output to Redis.
-   - lost data impact is not large.
-
 
 ## Architect graph
 <div style="align: center">
@@ -28,7 +25,7 @@ All modules are decoupled when we store data to storage.
 ## Peudo code of users
 ```
 ...
-t_graphs,p_graphs = fluid.dist_transpiler()
+t_graphs,p_graphs = fluid.dist_transpiler(tainers_num=,pserves_num=)
 
 job_name = "test_1"
 
@@ -56,7 +53,7 @@ jobs.stop()
 
 
 ## Data base 
-- etcd and Redis is a key-value storage, but we can convert a table to key-value style easily by use combination key.
+- etcd is a key-value storage, but we can convert a table to key-value style easily by use combination key.
 - We store info in multiple tables because some of them may be changed more frequently than others.
 
 ### Table: graph_program_desc
@@ -84,12 +81,8 @@ jobs.stop()
 |output|output of this graph,it's a list|
 |checkpoint|last checkpoint of this graph|
 
-## About Data-Operator
-## About Checkpoint-Operator
 
 ## Fault tolerant
-- Program desc contains check_point operator and
-- Kubernets start new worker and worker executor normally.
 
 ## Auto scaling
 Change graphID and send/receive the variable map, so the workers can communicate with others correctly.
