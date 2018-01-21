@@ -21,7 +21,7 @@ All modules are decoupled when we store data to storage.
 <div style="align: center">
 <img src="src/dist-graph2.png" width="700" align=center/>
 </div>
-- OutputOperator appends fetchlist to etcd periodically.
+- OutputOperator appends fetchlist to etcd when they are updated.
 
 ## Peudo code of users
 ```
@@ -46,6 +46,7 @@ if err is not null:
 trainers = job.add_workers(t_graphs,cpu=,gpu=,mem)
 pservers = job.add_workers(p_graphs,cpu=,gpu=,mem)
 
+# start trainers and pserver pods.
 # pod info will be stored to etcd after pod start.
 pserver.start()
 trainer.start()
@@ -92,6 +93,12 @@ jobs.stop()
 
 ## Fault tolerant
 Workers can communicate with others correctly by graphID.
+
+-  When send/recv meets error or timeout,workers should get new graphs' relation from etcd and retry again.
+- Trainers 
+	- When a trainer starts, it should determine to initialize parameter from pserver or from the startup_program_desc. 
+- Pservers 
+	- When a pserver starts, it should determine to load checkpoint or not.
 
 ## Auto scaling
 TODO
