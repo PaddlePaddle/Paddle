@@ -100,7 +100,7 @@ def main(argv=None):
         fd = io.open(filename, encoding="utf-8")
         first_line = fd.readline()
         second_line = fd.readline()
-        if "COPYRIGHT" in first_line.upper(): continue
+        if "COPYRIGHT (C)" in first_line.upper(): continue
         if first_line.startswith("#!") or PYTHON_ENCODE.match(
                 second_line) != None or PYTHON_ENCODE.match(first_line) != None:
             continue
