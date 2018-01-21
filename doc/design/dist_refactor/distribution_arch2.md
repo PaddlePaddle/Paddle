@@ -83,10 +83,10 @@ jobs.stop()
 
 
 ## Fault tolerant
+Workers can communicate with others correctly by graphID.
 
 ## Auto scaling
-Change graphID and send/receive the variable map, so the workers can communicate with others correctly.
-
+TODO
 
 ## Discussion
 - Is database like mysql is enough for us?
