@@ -29,12 +29,28 @@
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/platform/assert.h"
 
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 __global__ void test(size_t* a, int size) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
        i += blockDim.x * gridDim.x) {
     a[i] *= 2;
+  }
+}
+
+TEST(LoD, data) {
+  paddle::framework::LoD lod{{0, 1, 2}};
+  lod.push_back({0, 2, 4, 5});
+  lod.push_back(std::vector<size_t>({0, 1, 6, 8, 10, 11}));
+
+  auto& v = lod[0];
+  test<<<2, 2>>>(v.cuda_data(), v.size());
+  cudaDeviceSynchronize();
+
+  v.CopyFromCUDA();
+  for (int i = 0; i < v.size(); ++i) {
+    EXPECT_EQ(v[i], i * 2);
   }
 }
 
@@ -54,8 +70,9 @@ TEST(LoDTensor, LoDInGPU) {
 
   auto lod = lod_tensor.lod();
 
-  test<<<1, 8>>>(lod[0].data(), lod[0].size());
+  test<<<1, 8>>>(lod[0].cuda_data(), lod[0].size());
   cudaDeviceSynchronize();
+  lod.CopyFromCUDA();
 
   for (size_t i = 0; i < src_lod[0].size(); ++i) {
     EXPECT_EQ(lod[0].data()[i], src_lod[0].data()[i] * 2);

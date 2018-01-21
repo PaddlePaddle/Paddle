@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <initializer_list>
 #include <memory>
 #ifdef PADDLE_WITH_CUDA
 #include <thrust/device_vector.h>
@@ -50,33 +51,78 @@ namespace framework {
 template <typename T>
 class Vector : public std::vector<T> {
  public:
+  using std::vector<T>::vector;
+
+  Vector() {}
+  Vector(const std::vector<T>& v) : std::vector<T>(v) {}  // NOLINT
+
   virtual ~Vector() {
     if (cuda_ptr_ != nullptr) {
-      memory::Free(place_, cuda_size_);
+      memory::Free<platform::CUDAPlace>(place_, static_cast<void*>(cuda_ptr_));
     }
   }
-  T* data() {
-    SyncData();
-    return self.data();
-  }
-  const T* data() const {
-    SyncData();
-    return self.data();
-  }
-  void SyncData() {
-#ifdef PADDLE_WITH_CUDA
-    cuda_size_ = this->size();
-    cuda_ptr_ = static_cast<uint8_t*>(memory::Alloc(place_, cuda_size_));
-    memory::Copy(place_, static_cast<void*>(cuda_ptr_), platform::CPUPlace(),
-                 this->size());
+  // T* data() {
+  //   SyncData();
+  //   if (cuda_ptr_ != nullptr) {
+  //     return reinterpret_cast<T*>(cuda_ptr_);
+  //   } else {
+  //     return this->data();
+  //   }
+  // }
+  // const T* data() const {
+  //   SyncData();
+  //   if (cuda_ptr_ != nullptr) {
+  //     return reinterpret_cast<T*>(cuda_ptr_);
+  //   } else {
+  //     return this->data();
+  //   }
+  // }
+  T* cuda_data() {
+    CopyToCUDA();
+    PADDLE_ENFORCE_NOT_NULL(
+        cuda_ptr_, "No data or Insufficient CUDA memory to allocation");
     return static_cast<T*>(cuda_ptr_);
+  }
+
+  const T* cuda_data() const {
+    CopyToCUDA();
+    PADDLE_ENFORCE_NOT_NULL(
+        cuda_ptr_, "No data or Insufficient CUDA memory to allocation");
+    return static_cast<const T*>(cuda_ptr_);
+  }
+
+  void CopyToCUDA() {
+#ifdef PADDLE_WITH_CUDA
+    if (cuda_ptr_ == nullptr) {
+      cuda_ptr_ = memory::Alloc<platform::CUDAPlace>(place_, this->size());
+    }
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* cuda_ctx = pool.GetByPlace(place_);
+    memory::Copy(place_, cuda_ptr_, platform::CPUPlace(),
+                 static_cast<void*>(this->data()), this->size(),
+                 cuda_ctx->stream());
+    cuda_ctx->Wait();
 #endif
   }
 
- private:
-  uint8_t* cuda_ptr_ = nullptr;
-  size_t cuda_size_ = 0;
-  platform::CUDAPlace place_(0);
+  void CopyFromCUDA() {
+#ifdef PADDLE_WITH_CUDA
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* cuda_ctx = pool.GetByPlace(place_);
+    if (cuda_ptr_ == nullptr) {
+      LOG(WARNING) << "No uncommited cuda data.";
+      return;
+    }
+    memory::Copy(platform::CPUPlace(), static_cast<void*>(this->data()), place_,
+                 static_cast<const void*>(cuda_ptr_), this->size(),
+                 cuda_ctx->stream());
+    cuda_ctx->Wait();
+#endif
+  }
+
+  // private:
+  void* cuda_ptr_ = nullptr;
+  platform::CUDAPlace place_;
 };
 
 /*
@@ -94,7 +140,16 @@ class Vector : public std::vector<T> {
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-using LoD = std::vector<Vector<size_t>>;
+// using LoD = std::vector<Vector<size_t>>;
+struct LoD : public std::vector<Vector<size_t>> {
+  using std::vector<Vector<size_t>>::vector;
+
+  void CopyFromCUDA() {
+    for (auto it = this->begin(); it != this->end(); ++it) {
+      it->CopyFromCUDA();
+    }
+  }
+};
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
