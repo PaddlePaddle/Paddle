@@ -302,9 +302,7 @@ def get_feed_targets(program):
     global_block = program.global_block()
     for op in global_block.ops:
         if op.desc.type() == 'feed':
-            print op.outputs
-            print op.desc.output('Out')
-            feed_targets.insert(0, str(op.desc.output('Out')[0]))
+            feed_targets.insert(0, op.desc.output('Out')[0])
     return feed_targets
 
 
@@ -313,9 +311,7 @@ def get_fetch_targets(program):
     global_block = program.global_block()
     for op in global_block.ops:
         if op.desc.type() == 'fetch':
-            print op.inputs
-            print op.desc.input('X')
-            fetch_targets.append(str(op.desc.input('X')[0]))
+            fetch_targets.append(op.desc.input('X')[0])
     return fetch_targets
 
 
@@ -343,7 +339,6 @@ def load_inference_model(dirname, executor):
 
     feed_var_names = get_feed_targets(program)
     fetch_var_names = get_fetch_targets(program)
-
     fetch_vars = [program.global_block().var(name) for name in fetch_var_names]
 
     return [program, feed_var_names, fetch_vars]
