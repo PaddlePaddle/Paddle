@@ -33,15 +33,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// #ifndef PADDLE_WITH_CUDA
-// template <typename T>
-// using Vector = std::vector<T>;
-// #else
-// template <typename T>
-// using Vector = thrust::host_vector<
-//     T, thrust::system::cuda::experimental::pinned_allocator<T>>;
-// #endif
-
 /**
  * @brief Vector support both cpu and gpu.
  * cpu vector lifetime is same with Vector
@@ -61,22 +52,7 @@ class Vector : public std::vector<T> {
       memory::Free<platform::CUDAPlace>(place_, static_cast<void*>(cuda_ptr_));
     }
   }
-  // T* data() {
-  //   SyncData();
-  //   if (cuda_ptr_ != nullptr) {
-  //     return reinterpret_cast<T*>(cuda_ptr_);
-  //   } else {
-  //     return this->data();
-  //   }
-  // }
-  // const T* data() const {
-  //   SyncData();
-  //   if (cuda_ptr_ != nullptr) {
-  //     return reinterpret_cast<T*>(cuda_ptr_);
-  //   } else {
-  //     return this->data();
-  //   }
-  // }
+
   T* cuda_data() {
     CopyToCUDA();
     PADDLE_ENFORCE_NOT_NULL(
@@ -94,7 +70,8 @@ class Vector : public std::vector<T> {
   void CopyToCUDA() {
 #ifdef PADDLE_WITH_CUDA
     if (cuda_ptr_ == nullptr) {
-      cuda_ptr_ = memory::Alloc<platform::CUDAPlace>(place_, this->size());
+      cuda_ptr_ =
+          memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T));
     }
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto* cuda_ctx = pool.GetByPlace(place_);
