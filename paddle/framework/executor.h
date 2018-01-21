@@ -42,8 +42,8 @@ class Executor {
            bool create_vars = true);
 
   void Run(const ProgramDesc& program, Scope* scope,
-           std::map<std::string, Tensor>& feeds,
-           std::map<std::string, Tensor>& fetchs,
+           std::map<std::string, LoDTensor>& feeds,
+           std::map<std::string, LoDTensor>& fetchs,
            std::string& feed_var_name = "feed",
            std::string& fetch_var_name = "fetch");
 
