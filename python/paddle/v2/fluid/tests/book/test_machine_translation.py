@@ -139,12 +139,12 @@ def decoder_decode(context):
 
         pd.less_than(x=counter, y=array_len, cond=cond)
 
-    # translation_ids, translation_scores = pd.beam_search_decode(
-    #     ids=ids_array, scores=scores_array)
+    translation_ids, translation_scores = pd.beam_search_decode(
+        ids=ids_array, scores=scores_array)
 
     # return init_ids, init_scores
 
-    # return translation_ids, translation_scores
+    return translation_ids, translation_scores
 
 
 def set_init_lod(data, lod, place):
@@ -215,7 +215,7 @@ def decode_main():
     # with pd.BlockGuard() as block:
     context = encoder()
     # translation_ids, translation_scores = decoder_decode(context)
-    decoder_decode(context)
+    translation_ids, translation_scores = decoder_decode(context)
     exe = Executor(place)
     exe.run(framework.default_startup_program())
 

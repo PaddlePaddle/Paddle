@@ -59,7 +59,6 @@ using LoD = std::vector<Vector<size_t>>;
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
-std::string LoDToString(const LoD& lod);
 
 std::string LoDToString(const LoD& lod);
 

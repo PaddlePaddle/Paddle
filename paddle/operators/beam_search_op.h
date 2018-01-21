@@ -136,8 +136,6 @@ class BeamSearch {
   void operator()(const framework::LoDTensor& pre_ids,
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores);
-
- protected:
   /*
    * The basic items help to sort.
    */
@@ -155,6 +153,7 @@ class BeamSearch {
     score_t score;
   };
 
+ protected:
   /*
    * Delete all the records that follows the end token.
    */
@@ -166,7 +165,7 @@ class BeamSearch {
    * NOTE low performance
    */
   std::vector<std::vector<Item>> ToMap(
-      const std::vector<std::vector<Item>>& inputs);
+      const std::vector<std::vector<Item>>& inputs, size_t element_num);
 
   /*
    * For each source, select top beam_size records.
@@ -186,6 +185,10 @@ class BeamSearch {
   size_t sent_offset_{0};
   int end_id_{0};
 };
+
+std::ostream& operator<<(std::ostream& os, const BeamSearch::Item& item);
+
+std::string ItemToString(const BeamSearch::Item& item);
 
 class BeamSearchOp : public framework::OperatorBase {
  public:
@@ -220,7 +223,6 @@ class BeamSearchOp : public framework::OperatorBase {
     LOG(INFO) << "init beam search";
     BeamSearch alg(ids, scores, level, beam_size, end_id);
 
-    LOG(INFO) << "after beam search";
     auto selected_ids_var = scope.FindVar(Output("selected_ids"));
     auto selected_scores_var = scope.FindVar(Output("selected_scores"));
     PADDLE_ENFORCE_NOT_NULL(selected_ids_var);

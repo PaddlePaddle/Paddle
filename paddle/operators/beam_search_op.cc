@@ -24,8 +24,18 @@ namespace operators {
 void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
                             framework::LoDTensor *selected_ids,
                             framework::LoDTensor *selected_scores) {
+  auto abs_lod = framework::ToAbsOffset(ids_->lod());
+  auto &high_level = abs_lod[lod_level_];
+
   auto items = SelectTopBeamSizeItems();
-  auto selected_items = ToMap(items);
+  auto selected_items = ToMap(items, high_level.back());
+  VLOG(3) << "selected_items:";
+  for (size_t i = 0; i < selected_items.size(); ++i) {
+    VLOG(3) << "offset:" << i;
+    for (auto &item : selected_items[i]) {
+      VLOG(3) << ItemToString(item);
+    }
+  }
   PruneEndidCandidates(pre_ids, &selected_items);
   // calculate the output tensor's height
   size_t num_instances = std::accumulate(
@@ -63,11 +73,12 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   low_level.push_back(low_offset);
 
   // fill lod
-  auto abs_lod = framework::ToAbsOffset(ids_->lod());
-  auto &high_level = abs_lod[lod_level_];
   framework::LoD lod(2);
   lod[0].assign(high_level.begin(), high_level.end());
   lod[1].assign(low_level.begin(), low_level.end());
+  if (!framework::CheckLoD(lod)) {
+    PADDLE_THROW("lod %s is not right", framework::LoDToString(lod));
+  }
   selected_ids->set_lod(lod);
   selected_scores->set_lod(lod);
 }
@@ -90,13 +101,11 @@ int BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
 }
 
 std::vector<std::vector<BeamSearch::Item>> BeamSearch::ToMap(
-    const std::vector<std::vector<Item>> &items) {
+    const std::vector<std::vector<Item>> &items, size_t element_num) {
   std::vector<std::vector<Item>> result;
+  result.resize(element_num);
   for (auto &entries : items) {
     for (const auto &item : entries) {
-      if (item.offset >= result.size()) {
-        result.resize(item.offset + 1);
-      }
       result[item.offset].push_back(item);
     }
   }
@@ -123,8 +132,11 @@ BeamSearch::SelectTopBeamSizeItems() {
     result.emplace_back(items);
   }
   VLOG(3) << "SelectTopBeamSizeItems result size " << result.size();
-  for (auto &item : result) {
-    VLOG(3) << "item size " << item.size();
+  for (auto &items : result) {
+    VLOG(3) << "item set:";
+    for (auto &item : items) {
+      VLOG(3) << ItemToString(item);
+    }
   }
 
   return result;
@@ -132,7 +144,6 @@ BeamSearch::SelectTopBeamSizeItems() {
 
 // the candidates of a source
 bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
-  VLOG(3) << "NumElements: " << ids_->NumElements(lod_level_);
   if (sent_offset_ >= ids_->NumElements(lod_level_)) {
     return false;
   }
@@ -163,6 +174,22 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
 
   sent_offset_++;
   return true;
+}
+
+std::ostream &operator<<(std::ostream &os, const BeamSearch::Item &item) {
+  os << "{";
+  os << "offset: " << item.offset << ", ";
+  os << "id: " << item.id << ", ";
+  os << "score: " << item.score << "";
+  os << "}";
+
+  return os;
+}
+
+std::string ItemToString(const BeamSearch::Item &item) {
+  std::ostringstream stream;
+  stream << item;
+  return stream.str();
 }
 
 class BeamSearchProtoAndCheckerMaker

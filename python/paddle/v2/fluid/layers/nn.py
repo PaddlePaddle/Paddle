@@ -28,7 +28,7 @@ __all__ = [
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
     'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
     'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'l2_normalize', 'matmul', 'warpctc', 'sequence_reshape'
+    'l2_normalize', 'matmul', 'warpctc', 'sequence_reshape', 'beam_search'
 ]
 
 
