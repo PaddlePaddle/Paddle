@@ -1,15 +1,13 @@
 ## Logic
-All modules are decupled when we store data(program and some output) to etcd.
+All modules are decoupled when we store data(program and some output) to etcd.
 
-- Transpile program desc to sub program descs(graphs) and
+- Transpile program desc to sub-program descs(graphs) and
 - Store them to etcd
-	- one graph has uniq ID. 
-	- one graph has desired resource.
+	- one graph has unique ID. 
+	- one graph has the desired resource.
 - Start workers(pods) to run one graph
    - worker store pod info to etcd, so 
-   - the graph can commicate with each other by graph_ID.
-
-## 
+   - the graph can communicate with each other by graph_ID.
 
 
 ## Architect graph
@@ -17,7 +15,7 @@ All modules are decupled when we store data(program and some output) to etcd.
 <img src="src/arch2.png" width="700" align=center/>
 </div>
 
-- foreground job: when client exits the jobs will be killed.
+- foreground job: when the client exits the jobs will be killed.
 - background job: client's death doesn't affect the job.
 
 ## Peudo code of users
@@ -51,8 +49,8 @@ jobs.stop()
 
 
 ## Data base 
-- etcd is a key-value storage, but we can convert table to key-value style easily by use combination key.
-- We store info in multiple tables because some of them may be changed more frequtely than others.
+- etcd is a key-value storage, but we can convert a table to key-value style easily by use combination key.
+- We store info in multiple tables because some of them may be changed more frequently than others.
 
 ### Table: graph_program_desc
 
@@ -87,7 +85,7 @@ jobs.stop()
 - Kubernets start new worker and worker executor normally.
 
 ## Auto scaling
-Change graph_ID and send/recv variable map, so the  workers can communcation with others correctly.
+Change graph_ID and send/receive the variable map, so the workers can communicate with others correctly.
 
 
 ## Discussion
