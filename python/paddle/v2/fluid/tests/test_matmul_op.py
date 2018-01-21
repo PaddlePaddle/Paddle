@@ -127,6 +127,7 @@ for dim_X in [1, 2, 3]:
                 })
 
 
+# Test case n-dim
 def generate_compatible_shapes(dim, transpose_X, transpose_Y):
     M = 2
     N = 4
@@ -135,14 +136,14 @@ def generate_compatible_shapes(dim, transpose_X, transpose_Y):
     shape_Y = [2 for _ in range(dim - 2)]
 
     if transpose_X:
-        shape_X = shape_X + [K, M]
+        shape_X += [K, M]
     else:
-        shape_X = shape_X + [M, K]
+        shape_X += [M, K]
 
     if transpose_Y:
-        shape_Y = shape_Y + [N, K]
+        shape_Y += [N, K]
     else:
-        shape_Y = shape_Y + [K, N]
+        shape_Y += [K, N]
 
     return shape_X, shape_Y
 

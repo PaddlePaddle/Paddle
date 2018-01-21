@@ -49,7 +49,7 @@ class MatMulFunctor {
                      "The dimensions of X and Y must be the same, and both of "
                      "them should be %d-dimensional.",
                      dim_b.size());
-      // The front rank-2 dimensions are accumulated on the batch_count, and the
+      // The first rank-2 dimensions are accumulated on the batch_count, and the
       // last two dimensions are used for matrix multiplication.
       for (int j = 0; j < dim_a.size() - 2; ++j) {
         PADDLE_ENFORCE_EQ(dim_b[j], dim_a[j],
