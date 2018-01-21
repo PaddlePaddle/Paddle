@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/framework/data_device_transform.h"
 #include "paddle/framework/data_layout_transform.h"
+#include "paddle/framework/data_type_transform.h"
 
 namespace paddle {
 namespace framework {
@@ -41,15 +42,21 @@ void DataTransform(const OpKernelType& expected_kernel_type,
     PassTensorData(&out, &in);
   }
 
-  // do device transform
-  if (!platform::is_same_place(kernel_type_for_var.place_,
-                               expected_kernel_type.place_)) {
-    DeviceTransform(in, expected_kernel_type.place_, &out);
+  if (expected_kernel_type.data_type_ != kernel_type_for_var.data_type_) {
+    TransDataType(kernel_type_for_var, expected_kernel_type, in, &out);
     transformed = true;
     PassTensorData(&out, &in);
   }
 
-  PADDLE_ENFORCE(transformed, "no transform is done, please check!");
+  // do device transform
+  if (!platform::is_same_place(kernel_type_for_var.place_,
+                               expected_kernel_type.place_)) {
+    TransDataDevice(in, expected_kernel_type.place_, &out);
+    transformed = true;
+    PassTensorData(&out, &in);
+  }
+
+  PADDLE_ENFORCE(transformed, "No transform is applied, please check!");
   // get output data
   output_tensor->ShareDataWith(in);
 }
