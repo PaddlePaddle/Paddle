@@ -1,13 +1,15 @@
-## Logic
-All modules are decoupled when we store data(program and some output) to etcd.
+## Abstract
+All modules are decoupled when we store data to storage.
 
 - Transpile program desc to sub-program descs(graphs) and
-- Store them to etcd
+- Store graphs to etcd
 	- one graph has unique ID. 
 	- one graph has the desired resource.
 - Start workers(pods) to run one graph
-   - worker store pod info to etcd, so 
-   - the graph can communicate with each other by graph_ID.
+   - worker stores pod info to etcd, so 
+   - the graphs can communicate with each other by graphID.
+- Store output to Redis.
+   - lost data impact is not large.
 
 
 ## Architect graph
@@ -17,6 +19,11 @@ All modules are decoupled when we store data(program and some output) to etcd.
 
 - foreground job: when the client exits the jobs will be killed.
 - background job: client's death doesn't affect the job.
+
+
+<div style="align: center">
+<img src="src/dist-graph2.png" width="700" align=center/>
+</div>
 
 ## Peudo code of users
 ```
@@ -49,31 +56,31 @@ jobs.stop()
 
 
 ## Data base 
-- etcd is a key-value storage, but we can convert a table to key-value style easily by use combination key.
+- etcd and Redis is a key-value storage, but we can convert a table to key-value style easily by use combination key.
 - We store info in multiple tables because some of them may be changed more frequently than others.
 
 ### Table: graph_program_desc
 
 | column name | description|
 |----------|-------------|
-| graph_ID |  ID of graph, key    |
+| graphID |  ID of graph, key    |
 | program_desc| program desc to be executed    |
-| send_var_graph_map|map of var which will be send and graph_ID|
-| recv_var_graph_map|map of var which will be received and graphID|
-|resource|resource need by this graph|
+| send_var_graph_map|map of variable and graphID|
+| recv_var_graph_map|map of variable and graphID|
+|resource|resource needed by this graph|
 
 ### Table: graph_pod
 | column name | description|
 |----------|-------------|
-|graph_ID|ID of graph|
-|pod_name|pod name which execut graph, may be changed|
+|graphID|ID of graph|
+|pod_name|pod name which executes graph, may be changed|
 |pod_ip|pod ip which execut graph|
-|pod_port|pod port which execut graph|
+|pod_port|pod port which executes graph|
 
 ### Table: graph_output
 | column name | description|
 |----------|-------------|
-|graph_ID|ID of graph|
+|graphID|ID of graph|
 |output|output of this graph,it's a list|
 |checkpoint|last checkpoint of this graph|
 
@@ -85,7 +92,7 @@ jobs.stop()
 - Kubernets start new worker and worker executor normally.
 
 ## Auto scaling
-Change graph_ID and send/receive the variable map, so the workers can communicate with others correctly.
+Change graphID and send/receive the variable map, so the workers can communicate with others correctly.
 
 
 ## Discussion
