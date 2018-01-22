@@ -319,11 +319,11 @@ def simple_transform(im,
     """
     im = resize_short(im, resize_size)
     if is_train:
-        im = random_crop(im, crop_size)
+        im = random_crop(im, crop_size, is_color=is_color)
         if np.random.randint(2) == 0:
             im = left_right_flip(im)
     else:
-        im = center_crop(im, crop_size)
+        im = center_crop(im, crop_size, is_color=is_color)
     if len(im.shape) == 3:
         im = to_chw(im)
 
