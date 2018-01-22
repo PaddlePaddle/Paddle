@@ -41,10 +41,26 @@ class MatMulOp : public framework::OperatorWithKernel {
                       "Input tensor X must be at least 1-dimensional.");
     PADDLE_ENFORCE_GE(dim_y.size(), 1,
                       "Input tensor Y must be at least 1-dimensional.");
-    PADDLE_ENFORCE_LE(dim_x.size(), 3,
-                      "Input tensor X must be at most 3-dimensional.");
-    PADDLE_ENFORCE_LE(dim_y.size(), 3,
-                      "Input tensor Y must be at most 3-dimensional.");
+
+    std::vector<int64_t> out_dim;
+    int64_t batch_count = 1;
+    if (dim_x.size() > 3) {
+      PADDLE_ENFORCE_EQ(
+          dim_y.size(), dim_x.size(),
+          "The dimensions of X and Y must be the same, and both of "
+          "them should be %d-dimensional.",
+          dim_x.size());
+
+      // The first rank-2 dimensions are accumulated on the batch_count, and the
+      // last two dimensions are used for matrix multiplication.
+      for (int j = 0; j < dim_x.size() - 2; ++j) {
+        PADDLE_ENFORCE_EQ(dim_y[j], dim_x[j],
+                          "The %d-th dimension of X and Y must be the same.",
+                          j);
+        out_dim.push_back(dim_x[j]);
+        batch_count *= dim_x[j];
+      }
+    }
 
     int M = 0, N = 0, KX = 0, KY = 0, batchCountX = 0, batchCountY = 0;
     bool remove_initial_dim = false, remove_final_dim = false;
@@ -70,7 +86,11 @@ class MatMulOp : public framework::OperatorWithKernel {
         KX = transpose_x ? dim_x[1] : dim_x[2];
         break;
       default:
-        assert(false);
+        batchCountX = batch_count;
+        size_t mat_s = dim_x.size() - 2;
+        M = transpose_x ? dim_x[mat_s + 1] : dim_x[mat_s];
+        KX = transpose_x ? dim_x[mat_s] : dim_x[mat_s + 1];
+        break;
     }
 
     switch (dim_y.size()) {
@@ -94,7 +114,10 @@ class MatMulOp : public framework::OperatorWithKernel {
         N = transpose_y ? dim_y[1] : dim_y[2];
         break;
       default:
-        assert(false);
+        batchCountY = batch_count;
+        size_t mat_s = dim_y.size() - 2;
+        KY = transpose_y ? dim_y[mat_s + 1] : dim_y[mat_s];
+        N = transpose_y ? dim_y[mat_s] : dim_y[mat_s + 1];
     }
 
     PADDLE_ENFORCE_EQ(
@@ -110,7 +133,11 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> dim_out;
     if (batchCount) {
-      dim_out.push_back(batchCount);
+      if (dim_x.size() > 3) {
+        dim_out.insert(dim_out.begin(), out_dim.begin(), out_dim.end());
+      } else {
+        dim_out.push_back(batchCount);
+      }
     }
     if (!remove_initial_dim) {
       dim_out.push_back(M);
@@ -162,10 +189,14 @@ Examples without transpose:
 - X: [B, M, K], Y: [K] => Out: [B, M]
 - X: [M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
+- X: [B, ..., M, K], Y: [B, ..., K, N] => Out: [B, ..., M, N]
 
 The behavior is designed to be similar to the `numpy.matmul` function.
 The differences are:
-- Currently only rank 1 to rank 3 input tensors are supported.
+- When the rank of the input data is less than or equal to 3, it
+  is similar to the `numpy.matmul` function.
+- When the rank of the input is greater than 3, the rank of X and
+  Y must be equal, and the first `rank - 2` dimensions must be equal.
 - We add `transpose_X` and `transpose_Y` flags.
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,

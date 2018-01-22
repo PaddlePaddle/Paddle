@@ -31,7 +31,7 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
 
   cpu_seq.set_lod(lod);
   cpu_seq.mutable_data<T>(seq_dims, paddle::platform::CPUPlace());
-  for (size_t i = 0; i < cpu_seq.numel(); ++i) {
+  for (int64_t i = 0; i < cpu_seq.numel(); ++i) {
     cpu_seq.data<T>()[i] = static_cast<T>(i);
   }
 
@@ -69,7 +69,7 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
 
   EXPECT_EQ(cpu_seq.numel(), cpu_seq_back.numel());
   EXPECT_EQ(cpu_seq.dims(), cpu_seq_back.dims());
-  for (size_t i = 0; i < cpu_seq.numel(); ++i) {
+  for (int64_t i = 0; i < cpu_seq.numel(); ++i) {
     EXPECT_EQ(cpu_seq.data<T>()[i], cpu_seq_back.data<T>()[i]);
   }
 
