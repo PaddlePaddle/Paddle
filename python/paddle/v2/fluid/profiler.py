@@ -52,22 +52,30 @@ def cuda_profiler(output_file, output_mode=None, config=None):
 
 
 def reset_profiler():
+    """The profiler clear interface.
+    reset_profiler will clear the previous time record.
+    """
     core.reset_profiler()
 
 
 @contextmanager
 def profiler(state, sorted_key=None):
     """The profiler interface.
-    Different from cuda_profiler, this fuction can be used to profile both CPU
-    and GPU program.
+    Different from cuda_profiler, this profiler can be used to profile both CPU
+    and GPU program. By defalut, it records the CPU and GPU operator kernels,
+    if you want to profile other program, you can refer the profiling tutorial
+    to add more records.
 
     Args:
-        state (string) : The profiler state, It should be 'CPU' or 'GPU'.
-        sorted_key (string) : If None, the profiler results will be printed
-            without sorting. Otherwise, the profiler results will be sorted
-            by the this flag. This flag should be one of 'calls', 'total',
-            'max', 'min' or 'ave'.
-            The `calls` means sorting by the calling counter.
+        state (string) : The profiling state, It should be 'CPU' or 'GPU'.
+            Although users may define CPUPlace or CUDAPlace when using Fluid,
+            the profiler doesn't get the state based on this Place. Since the
+            implementation is an independent part from the Fluid.
+        sorted_key (string) : If None, the profiling results will be printed
+            in the order of first end time of events. Otherwise, the profiling
+            results will be sorted by the this flag. This flag should be one
+            of 'calls', 'total', 'max', 'min' or 'ave'.
+            The `calls` means sorting by the number of calls.
             The `total` means sorting by the total execution time.
             The `max` means sorting by the maximum execution time.
             The `min` means sorting by the minimum execution time.
@@ -92,5 +100,6 @@ def profiler(state, sorted_key=None):
         'min': core.EventSortingKey.kMin,
         'ave': core.EventSortingKey.kAve,
     }
-    with core.ostream_redirect(stdout=True, stderr=True):
-        core.disable_profiler(key_map[sorted_key])
+    # TODO(qingqing) : redirect C++ ostream to Python stream.
+    # with core.ostream_redirect(stdout=True, stderr=True):
+    core.disable_profiler(key_map[sorted_key])
