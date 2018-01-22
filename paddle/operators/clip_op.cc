@@ -51,8 +51,8 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Clip Operator.
 
-The clip operator limits the value of given input within an interval. The interval is
-specified with arguments 'min' and 'max':
+The clip operator limits the value of given input within an interval. The
+interval is specified with arguments 'min' and 'max':
 
 $$
 Out = \min(\max(X, min), max)
