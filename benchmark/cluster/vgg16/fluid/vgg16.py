@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """VGG16 benchmark in Fluid"""
 from __future__ import print_function
 
@@ -11,6 +25,7 @@ import argparse
 import functools
 import os
 
+
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True
@@ -18,6 +33,7 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -122,7 +138,6 @@ def main():
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     exe = fluid.Executor(place)
 
-
     # test
     def test(exe):
         accuracy.reset(exe)
@@ -148,20 +163,21 @@ def main():
             accuracy.reset(exe)
             for batch_id, data in enumerate(train_reader()):
                 ts = time.time()
-                img_data = np.array(map(lambda x: x[0].reshape(data_shape),
-                                        data)).astype("float32")
+                img_data = np.array(
+                    map(lambda x: x[0].reshape(data_shape), data)).astype(
+                        "float32")
                 y_data = np.array(map(lambda x: x[1], data)).astype("int64")
                 y_data = y_data.reshape([-1, 1])
 
                 loss, acc = exe.run(trainer_prog,
                                     feed={"pixel": img_data,
-                                        "label": y_data},
+                                          "label": y_data},
                                     fetch_list=[avg_cost] + accuracy.metrics)
                 iters += 1
                 num_samples += len(data)
                 print(
-                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, spent %f" %
-                    (pass_id, iters, loss, acc, time.time() - ts)
+                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, spent %f"
+                    % (pass_id, iters, loss, acc, time.time() - ts)
                 )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
@@ -170,7 +186,7 @@ def main():
             print(
                 "Pass = %d, Training performance = %f imgs/s, Train accuracy = %f, Test accuracy = %f\n"
                 % (pass_id, num_samples / pass_elapsed, pass_train_acc,
-                pass_test_acc))
+                   pass_test_acc))
 
     if args.local:
         # Parameter initialization
@@ -179,8 +195,8 @@ def main():
         # data reader
         train_reader = paddle.batch(
             paddle.reader.shuffle(
-                paddle.dataset.cifar.train10()
-                if args.data_set == 'cifar10' else paddle.dataset.flowers.train(),
+                paddle.dataset.cifar.train10() if args.data_set == 'cifar10'
+                else paddle.dataset.flowers.train(),
                 buf_size=5120),
             batch_size=args.batch_size)
         test_reader = paddle.batch(
@@ -196,19 +212,25 @@ def main():
         pserver_endpoints = ",".join(eplist)
         print("pserver endpoints: ", pserver_endpoints)
         trainers = int(os.getenv("TRAINERS"))  # total trainer count
-        current_endpoint = os.getenv("POD_IP") + ":6174"  # current pserver endpoint
-        training_role = os.getenv("TRAINING_ROLE",
-                                "TRAINER")  # get the training role: trainer/pserver
+        current_endpoint = os.getenv(
+            "POD_IP") + ":6174"  # current pserver endpoint
+        training_role = os.getenv(
+            "TRAINING_ROLE",
+            "TRAINER")  # get the training role: trainer/pserver
         t = fluid.DistributeTranspiler()
         t.transpile(
-            optimize_ops, params_grads, pservers=pserver_endpoints, trainers=trainers)
+            optimize_ops,
+            params_grads,
+            pservers=pserver_endpoints,
+            trainers=trainers)
 
         if training_role == "PSERVER":
             if not current_endpoint:
                 print("need env SERVER_ENDPOINT")
                 exit(1)
             pserver_prog = t.get_pserver_program(current_endpoint)
-            pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
             print("starting server side startup")
             exe.run(pserver_startup)
             print("starting parameter server...")
@@ -220,13 +242,13 @@ def main():
             # data reader
             train_reader = paddle.batch(
                 paddle.reader.shuffle(
-                    paddle.dataset.cifar.train10()
-                    if args.data_set == 'cifar10' else paddle.dataset.flowers.train(),
+                    paddle.dataset.cifar.train10() if args.data_set == 'cifar10'
+                    else paddle.dataset.flowers.train(),
                     buf_size=5120),
                 batch_size=args.batch_size)
             test_reader = paddle.batch(
-                paddle.dataset.cifar.test10()
-                if args.data_set == 'cifar10' else paddle.dataset.flowers.test(),
+                paddle.dataset.cifar.test10() if args.data_set == 'cifar10' else
+                paddle.dataset.flowers.test(),
                 batch_size=args.batch_size)
 
             trainer_prog = t.get_trainer_program()
