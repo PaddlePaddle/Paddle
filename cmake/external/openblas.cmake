@@ -100,6 +100,11 @@ IF(NOT ${CBLAS_FOUND})
                 \"${CBLAS_INSTALL_DIR}/lib -> ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}\"
             )"
         )
+        INSTALL(CODE "execute_process(
+            COMMAND rm -r ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}/cmake
+                    ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}/pkgconfig
+            )"
+        )
     ENDIF()
 ENDIF(NOT ${CBLAS_FOUND})
 
