@@ -28,7 +28,7 @@ __all__ = [
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
     'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
     'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'l2_normalize', 'matmul', 'warpctc', 'sequence_reshape'
+    'l2_normalize', 'matmul', 'warpctc', 'sequence_reshape', 'multiplex'
 ]
 
 
@@ -1813,11 +1813,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
       - If both are 2-D, they are multiplied like conventional matrices.
       - If either is n-D, it is treated as a stack of matrices residing in the
-        last two dimensions and a batched matrix multiply supporting broadcast 
+        last two dimensions and a batched matrix multiply supporting broadcast
         applies on the two tensors.
 
-    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and 
-    nontransposed, the prepended or appended dimension :math:`1` will be 
+    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and
+    nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multiplication.
 
     Args:
@@ -1970,4 +1970,51 @@ def sequence_reshape(input, new_dim):
         inputs={'X': [input]},
         outputs={'Out': [out]},
         attrs={'new_dim': new_dim})
+    return out
+
+
+def multiplex(inputs, index):
+    """
+    **Multiplex Layer**
+
+    Referring to the given index variable, this layer gathers from the input
+    variables to output a multiplex variable. Assuming that there are :math:`m`
+    input variables and let :math:`I_i` represents the i-th input variable and i
+    is in [0, :math:`m`). All input variables are tensors with same shape
+    [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`]. Please note that rank of the
+    input tensor should be at least 2. Each input variable will be viewed as a
+    2-D matrix with shape [:math:`M`, :math:`N`] where :math:`M` for :math:`d_0`
+    and :math:`N` for :math:`d_1` * :math:`d_2` * ... * :math:`d_R`. Let
+    :math:`I_i[j]` be the j-th row of the i-th input variable. The given index
+    variable should be a 2-D tensor with shape [:math:`M`, 1]. Let `ID[i]` be
+    the i-th index value of index variable. Then the output variable will be a
+    tensor with shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`]. If we view
+    the output tensor as a 2-D matrix with shape [:math:`M`, :math:`N`] and let
+    :math:`O[i]` be the i-th row of the matrix, then values of `O[i]` come from
+    :math:`I_{ID[i]}[i]`.
+
+    Args:
+       inputs (list): Input variables which are tensors with same shape and the
+                rank is at least 2.
+       index (Variable): Tensor<int>, index variable which is a 2-D tensor with
+                shape [M, 1] where M for batch size.
+
+    Returns:
+        Variable: Multiplex variable gathered from input variables.
+
+    Examples:
+        .. code-block:: python
+
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+            index = fluid.layers.data(name='index', shape=[1], dtype='int32')
+            out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+    """
+    helper = LayerHelper('multiplex', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype())
+    helper.append_op(
+        type='multiplex',
+        inputs={'X': inputs,
+                'Ids': index},
+        outputs={'Out': [out]})
     return out
