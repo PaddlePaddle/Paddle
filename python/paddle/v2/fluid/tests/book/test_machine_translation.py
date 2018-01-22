@@ -108,7 +108,7 @@ def decoder_decode(context):
         pre_state = pd.array_read(array=state_array, i=counter)
         pre_score = pd.array_read(array=scores_array, i=counter)
 
-        # pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
+        pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
 
         pre_ids_emb = pd.embedding(
             input=pre_ids,
@@ -118,8 +118,7 @@ def decoder_decode(context):
 
         # use rnn unit to update rnn
         # TODO share parameter with trainer
-        # current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
-        current_state = pd.fc(input=[pre_ids_emb],
+        current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
                               size=decoder_size,
                               act='tanh')
         current_score = pd.fc(input=current_state,
