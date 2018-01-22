@@ -235,6 +235,7 @@ mini-batch forward的output的值。获得的值类型均为 :code:`numpy.ndarra
                                 "average absolute diff scores: %.6f") %
                                 (event.pass_id, event.batch_id, event.cost, diff))
 
+注意：此方法不能获取 :code:`paddle.layer.recurrent_group` 里step的内容，但可以获取 :code:`paddle.layer.recurrent_group` 的输出。
 
 7.  如何在训练过程中获得参数的权重和梯度
 -----------------------------------------------
