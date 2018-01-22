@@ -219,15 +219,14 @@ class EditDistance(Evaluator):
 
         self.total_error = self.create_state(
             dtype='float32', shape=[1], suffix='total')
-        self.batch_num = self.create_state(
-            dtype='float32', shape=[1], suffix='total')
-        error = layers.edit_distance(input=input, label=label)
-        error = layers.cast(x=error, dtype='float32')
-        mean_error = layers.mean(x=error)
-        layers.sums(input=[self.total_error, mean_error], out=self.total_error)
-        const1 = layers.fill_constant(shape=[1], value=1.0, dtype="float32")
-        layers.sums(input=[self.batch_num, const1], out=self.batch_num)
-        self.metrics.append(mean_error)
+        self.seq_num = self.create_state(
+            dtype='int64', shape=[1], suffix='total')
+        error, seq_num = layers.edit_distance(input=input, label=label)
+        #error = layers.cast(x=error, dtype='float32')
+        sum_error = layers.reduce_sum(error)
+        layers.sums(input=[self.total_error, sum_error], out=self.total_error)
+        layers.sums(input=[self.seq_num, seq_num], out=self.seq_num)
+        self.metrics.append(sum_error)
 
     def eval(self, executor, eval_program=None):
         if eval_program is None:
@@ -235,6 +234,7 @@ class EditDistance(Evaluator):
         block = eval_program.current_block()
         with program_guard(main_program=eval_program):
             total_error = _clone_var_(block, self.total_error)
-            batch_num = _clone_var_(block, self.batch_num)
-            out = layers.elementwise_div(x=total_error, y=batch_num)
+            seq_num = _clone_var_(block, self.seq_num)
+            seq_num = layers.cast(x=seq_num, dtype='float32')
+            out = layers.elementwise_div(x=total_error, y=seq_num)
         return np.array(executor.run(eval_program, fetch_list=[out])[0])

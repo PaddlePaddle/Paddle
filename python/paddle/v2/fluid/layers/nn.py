@@ -1918,14 +1918,16 @@ def edit_distance(input, label, normalized=False, tokens=None, name=None):
 
     # edit distance op
     edit_distance_out = helper.create_tmp_variable(dtype="int64")
+    sequence_num = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
         type="edit_distance",
         inputs={"Hyps": [input],
                 "Refs": [label]},
-        outputs={"Out": [edit_distance_out]},
+        outputs={"Out": [edit_distance_out],
+                 "SequenceNum": [sequence_num]},
         attrs={"normalized": normalized})
 
-    return edit_distance_out
+    return edit_distance_out, sequence_num
 
 
 def ctc_greedy_decoder(input, blank, name=None):
