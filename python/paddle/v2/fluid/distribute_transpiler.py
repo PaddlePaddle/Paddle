@@ -41,11 +41,11 @@ def split_dense_variable(var_list,
         We may need to split dense tensor to one or several blocks and put
         them equally onto parameter server. One block is a sub-tensor
         aligned by dim[0] of the tensor.
-        
+
         We need to have a minimal block size so that the calculations in
         the parameter server side can gain better performance. By default
-        mininum block size is 1024. The max block size is used to prevent
-        too large block that may causing send error.
+        minimum block size is 1024. The max block size is used to prevent
+        very large blocks that may cause send error.
     """
     blocks = []
     for var in var_list:
@@ -83,18 +83,18 @@ class DistributeTranspiler:
                   trainers=1,
                   split_method=round_robin):
         """
-            Transpile the program to a distributed data-parallelism programs.
-            The main_program will be transform to use a remote parameter server
+            Transpile the program to distributed data-parallelism programs.
+            The main_program will be transformed to use a remote parameter server
             to do parameter optimization. And the optimization graph will be put
-            in to a parameter server program.
+            into a parameter server program.
 
-            Use different methods to split trainable varialbles to different
+            Use different methods to split trainable variables to different
             parameter servers.
 
             :param optimize_ops: op list of optimization, should be the
                                  return value of Optimizer.minimize
             :type optimize_ops: list
-            :param program: program to optimize, default default_main_program
+            :param program: program to optimize, default is default_main_program
             :param pservers: parameter server endpoints like "m1:6174,m2:6174"
             :type pservers: string
             :return: return a list of programs
@@ -136,10 +136,10 @@ class DistributeTranspiler:
         for b in param_blocks:
             varname, block_id, _ = b.split(":")
             send_outputs.append(param_var_mapping[varname][int(block_id)])
-        # let send_op know which endpoint to send which var, eplist is of the same
-        # order of send_inputs.
+        # let send_op know which endpoint to send which var, eplist has the same
+        # order as send_inputs.
         eplist = split_method(send_inputs, pserver_endpoints)
-        # create mapping of endpoint -> splited var to create pserver side program
+        # create mapping of endpoint -> split var to create pserver side program
         self.param_grad_ep_mapping = dict()
         for i, ep in enumerate(eplist):
             param = send_outputs[i]
@@ -300,7 +300,7 @@ class DistributeTranspiler:
             else:
                 for n in param_names:
                     if n.startswith(op.inputs["Param"].name+".block") and \
-                        n != op.inputs["Param"].name:
+                       n != op.inputs["Param"].name:
                         return True
                 return False
         else:
@@ -424,7 +424,7 @@ class DistributeTranspiler:
 
     def get_pserver_program(self, endpoint):
         """
-        get pserver side program by endpoint
+        get pserver side program using the endpoint
 
         NOTE: assume blocks of the same variable is not distributed
         on the same pserver, only change param/grad varnames for
@@ -486,7 +486,7 @@ class DistributeTranspiler:
         """
         Get startup program for current parameter server.
         Modify operator input variables if there are variables that
-        was splited to several blocks.
+        were split to several blocks.
         """
         s_prog = Program()
         orig_s_prog = framework.default_startup_program()
