@@ -364,6 +364,12 @@ split
 ..  autofunction:: paddle.v2.fluid.layers.split
     :noindex:
 
+
+matmul
+------
+..  autofunction:: paddle.v2.fluid.layers.matmul
+    :noindex:
+
 logsigmoid
 ----------
 ..  autofunction:: paddle.v2.fluid.layers.logsigmoid
@@ -497,4 +503,14 @@ swish
 im2sequence
 ------
 ..  autofunction:: paddle.v2.fluid.layers.im2sequence
+    :noindex:
+
+l2_normalize
+------------
+..  autofunction:: paddle.v2.fluid.layers.l2_normalize
+    :noindex:
+
+sequence_reshape
+----------------
+..  autofunction:: paddle.v2.fluid.layers.sequence_reshape
     :noindex:

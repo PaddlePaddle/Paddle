@@ -73,7 +73,15 @@ namespace operators {
  * second level:
  * [0, 2, 4]
  *
- * tensor's data
+ * id tensor's data
+ * [[
+ * 4,
+ * 1,
+ * 3,
+ * 8,
+ * ]]
+ *
+ * score tensor's data
  * [[
  * 0.5,
  * 0.3,
@@ -137,16 +145,21 @@ class BeamSearch {
     Item() {}
     Item(size_t offset, size_t id, float score)
         : offset(offset), id(id), score(score) {}
-    // offset in the lod_level_+1
+    // offset in the higher lod level.
     size_t offset;
+    // // prefix id in the lower lod level.
+    // size_t prefix;
     // the candidate id
     id_t id;
     // the corresponding score
     score_t score;
   };
 
-  void PruneEndidCandidates(const framework::LoDTensor& pre_ids,
-                            std::vector<std::vector<Item>>* items);
+  /*
+   * Delete all the records that follows the end token.
+   */
+  int PruneEndidCandidates(const framework::LoDTensor& pre_ids,
+                           std::vector<std::vector<Item>>* items);
 
   /*
    * Transform the items into a map whose key is offset, value is the items.
