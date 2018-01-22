@@ -46,20 +46,10 @@ __activations__ = [
 ]
 
 __all__ = [
-    'mean',
-    'mul',
-    'reshape',
-    'scale',
-    'transpose',
-    'sigmoid_cross_entropy_with_logits',
-    'elementwise_add',
-    'elementwise_div',
-    'elementwise_sub',
-    'elementwise_mul',
-    'elementwise_max',
-    'elementwise_min',
-    'clip',
-    'sequence_softmax',
+    'mean', 'mul', 'reshape', 'scale', 'transpose',
+    'sigmoid_cross_entropy_with_logits', 'elementwise_add', 'elementwise_div',
+    'elementwise_sub', 'elementwise_mul', 'elementwise_max', 'elementwise_min',
+    'clip', 'clip_by_norm', 'sequence_softmax'
 ] + __activations__
 
 for _OP in set(__all__):
