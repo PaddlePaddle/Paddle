@@ -33,7 +33,7 @@ spec:
         - name: TOPOLOGY
           value: ""
         - name: ENTRY
-          value: "MKL_NUM_THREADS=1 python /workspace/vgg16.py --local 0"
+          value: "LD_LIBRARY_PATH=/usr/local/lib MKL_NUM_THREADS=1 python /workspace/vgg16.py --local 0"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: PADDLE_INIT_PORT

@@ -17,7 +17,7 @@ spec:
       - name: trainer
         image: "registry.baidu.com/paddlepaddle/rawjob:vgg16_fluid"
         imagePullPolicy: Always
-        command: ["paddle_k8s", "start_trainer", "v2"]
+        command: ["paddle_k8s", "start_fluid"]
         env:
         - name: PADDLE_JOB_NAME
           value: vgg16job
@@ -30,7 +30,7 @@ spec:
         - name: TOPOLOGY
           value: ""
         - name: ENTRY
-          value: "cd /workspace && MKL_NUM_THREADS=1 python /workspace/vgg16.py"
+          value: "cd /workspace && LD_LIBRARY_PATH=/usr/local/lib MKL_NUM_THREADS=1 python /workspace/vgg16.py --local 0"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: PADDLE_INIT_PORT

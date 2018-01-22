@@ -61,7 +61,6 @@ start_fluid_process() {
   if [ "${TRAINING_ROLE}" == "TRAINER" ]; then
     check_failed_cnt ${TRAINERS}
     sleep 5
-    stdbuf -oL python /root/k8s_tools.py wait_pods_running  paddle-job-master=${PADDLE_JOB_NAME} 1
     export PADDLE_INIT_TRAINER_ID=$(python /root/k8s_tools.py fetch_trainer_id)
   fi
   export PADDLE_INIT_PSERVERS=$(python /root/k8s_tools.py fetch_pserver_ips)
