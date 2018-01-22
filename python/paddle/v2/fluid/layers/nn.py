@@ -1977,7 +1977,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     """Row Conv Operator. This layer will apply lookahead convolution to
     **input**. The input variable should be a 2D LoDTensor with shape [T, D].
     Parameters with shape [future_context_size + 1, D] will be created. The math
-    equation of row convolution is as following:
+    equation of row convolution is as follows:
 
     .. math::
         Out_{i} = \sum_{j = i} ^ {i + \\tau} X_{j} \odot W_{i - j}
