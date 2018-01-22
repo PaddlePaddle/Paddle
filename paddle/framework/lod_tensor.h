@@ -47,12 +47,11 @@ class Vector : public std::vector<T> {
    * If the data is modified when use cuda_data interface,
    * You need to call the CopyFromCUDA explicitly to synchronize data.
    *
-   * enum class kDataSyncType {
-   *   kDataOnHost = 0 ;
-   *   kDataOnDevice = 1;
-   *   kDataSync = 2;
-   * };
    */
+  enum class kDataPosition {
+    kDataOnHost = 0,
+    kDataOnDevice = 1,
+  };
 
  public:
   using std::vector<T>::vector;
@@ -67,17 +66,19 @@ class Vector : public std::vector<T> {
   }
 
   T* cuda_data() {
-    CopyToCUDA();
+    if (position_ == kDataPosition::kDataOnHost) {
+      CopyToCUDA();
+    }
     PADDLE_ENFORCE_NOT_NULL(
         cuda_ptr_, "No data or Insufficient CUDA memory to allocation");
     return static_cast<T*>(cuda_ptr_);
   }
 
-  const T* cuda_data() const {
-    CopyToCUDA();
-    PADDLE_ENFORCE_NOT_NULL(
-        cuda_ptr_, "No data or Insufficient CUDA memory to allocation");
-    return static_cast<const T*>(cuda_ptr_);
+  T* data() {
+    if (position_ == kDataPosition::kDataOnDevice) {
+      CopyFromCUDA();
+    }
+    return std::vector<T>::data();
   }
 
   void CopyToCUDA();
@@ -89,6 +90,7 @@ class Vector : public std::vector<T> {
  private:
   void* cuda_ptr_ = nullptr;
   size_t cuda_size_ = 0;
+  kDataPosition position_ = kDataPosition::kDataOnHost;
   platform::CUDAPlace place_;
 };
 

@@ -108,7 +108,7 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(in1_height, out_dims[0]);
 
     auto& in1_value = input1.value();
-    auto& in1_rows = framework::Vector<int64_t>(input1.rows());
+    framework::Vector<int64_t> in1_rows(input1.rows());
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(in1_row_numel, input2.numel() / in1_height);
@@ -146,7 +146,7 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(in1_height, input2->height());
 
-    auto& in1_rows = framework::Vector<int64_t>(input1.rows());
+    framework::Vector<int64_t> in1_rows(input1.rows());
     auto& in2_rows = *(input2->mutable_rows());
 
     auto& in1_value = input1.value();
@@ -257,7 +257,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
   framework::SelectedRows operator()(const platform::CUDADeviceContext& context,
                                      const framework::SelectedRows& input) {
     framework::SelectedRows out;
-    auto input_rows = input.rows();
+    framework::Vector<int64_t> input_rows(input.rows());
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
 
@@ -283,8 +283,8 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     MergeAddKernel<
         T, 256><<<grid1, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(input_data, input.rows().cuda_data(),
-                                   out_data, out.rows().cuda_data(),
+                      .stream()>>>(input_data, input_rows.cuda_data(), out_data,
+                                   out.mutable_rows()->cuda_data(),
                                    out.rows().size(), input_width);
     return out;
   }

@@ -82,8 +82,10 @@ void Vector<T>::CopyToCUDA() {
   memory::Copy(place_, static_cast<void *>(cuda_ptr_), platform::CPUPlace(),
                static_cast<const void *>(this->data()),
                this->size() * sizeof(T), cuda_ctx->stream());
-  cuda_size_ = this->size();
   cuda_ctx->Wait();
+
+  cuda_size_ = this->size();
+  position_ = kDataPosition::kDataOnDevice;
 #endif
 }
 
@@ -101,6 +103,8 @@ void Vector<T>::CopyFromCUDA() {
                static_cast<const void *>(cuda_ptr_), this->size() * sizeof(T),
                cuda_ctx->stream());
   cuda_ctx->Wait();
+
+  position_ = kDataPosition::kDataOnHost;
 #endif
 }
 
@@ -120,6 +124,11 @@ void Vector<T>::CopyToPeer(platform::Place peer_place) {
   cuda_ctx->Wait();
 #endif
 }
+
+template class Vector<int>;
+template class Vector<unsigned>;
+template class Vector<size_t>;
+template class Vector<int64_t>;
 
 std::string LoDToString(const LoD &lod) {
   std::ostringstream stream;
