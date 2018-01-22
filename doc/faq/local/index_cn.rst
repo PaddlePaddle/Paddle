@@ -236,7 +236,7 @@ mini-batch forward的output的值。获得的值类型均为 :code:`numpy.ndarra
                                 (event.pass_id, event.batch_id, event.cost, diff))
 
 
-6.  如何在训练过程中获得参数的权重和梯度
+7.  如何在训练过程中获得参数的权重和梯度
 -----------------------------------------------
 
 在某些情况下，获得当前mini-batch的权重（或称作weights, parameters）有助于在训练时观察具体数值，方便排查以及快速定位问题。
@@ -253,4 +253,7 @@ mini-batch forward的output的值。获得的值类型均为 :code:`numpy.ndarra
                 if event.batch_id % 25 == 0:
                     for p in parameters.keys():
                         logger.info("Param %s, Grad %s",
-                                (parameters.get(p), parameters.get_grad(p))
+                            parameters.get(p), parameters.get_grad(p))
+
+注意：“在训练过程中获得某一个layer的output”和“在训练过程中获得参数的权重和梯度”都会造成训练中的数据从C++拷贝到numpy，会对训练性能造成影响。不要在
+     注重性能的训练场景下使用。
