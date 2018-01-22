@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/pybind/protobuf.h"
-#include "pybind11/iostream.h"
 
 #include <mutex>  // for call_once
 #include <unordered_map>
@@ -62,8 +61,8 @@ bool IsCompileGPU() {
 #endif
 }
 
-PYBIND11_MODULE(core, m) {
-  m.doc() = "C++ core of PaddlePaddle";
+PYBIND11_PLUGIN(core) {
+  py::module m("core", "C++ core of PaddlePaddle");
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
@@ -501,8 +500,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("reset_profiler", platform::ResetProfiler);
-
-  py::add_ostream_redirect(m, "ostream_redirect");
+  return m.ptr();
 }
 }  // namespace pybind
 }  // namespace paddle
