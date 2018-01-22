@@ -28,7 +28,8 @@ __all__ = [
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
     'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
     'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'l2_normalize', 'matmul', 'warpctc', 'sequence_reshape'
+    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'warpctc',
+    'sequence_reshape'
 ]
 
 
@@ -1866,6 +1867,146 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
+def edit_distance(input,
+                  label,
+                  normalized=False,
+                  ignored_tokens=None,
+                  name=None):
+    """
+    EditDistance operator computes the edit distances between a batch of hypothesis strings and their references. Edit distance, also called Levenshtein distance, measures how dissimilar two strings are by counting the minimum number of operations to transform one string into anthor. Here the operations include insertion, deletion, and substitution. For example, given hypothesis string A = "kitten" and reference B = "sitting", the edit distance is 3 for A will be transformed into B at least after two substitutions and one insertion:
+
+       "kitten" -> "sitten" -> "sittin" -> "sitting"
+
+    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with the total number denoted by `batch_size`, and the separation is specified by the LoD information. And the `batch_size` reference strings are arranged in order in the same way in the LoDTensor Input(Refs).
+
+    Output(Out) contains the `batch_size` results and each stands for the edit stance for a pair of strings respectively. If Attr(normalized) is true, the edit distance will be divided by the length of reference string.
+
+    Args:
+
+        input(Variable): The indices for hypothesis strings.
+
+        label(Variable): The indices for reference strings.
+
+        normalized(bool): Indicated whether to normalize the edit distance by the length of reference string.
+
+        ignored_tokens(list of int): Tokens that should be removed before calculating edit distance.
+
+    Returns:
+        Variable: sequence-to-sequence edit distance in shape [batch_size, 1].
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[8], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[7], dtype='float32')
+
+            cost = fluid.layers.edit_distance(input=x,label=y)
+    """
+    helper = LayerHelper("edit_distance", **locals())
+
+    # remove some tokens from input and labels
+    if ignored_tokens is not None and len(ignored_tokens) > 0:
+        erased_input = helper.create_tmp_variable(dtype="int64")
+        erased_label = helper.create_tmp_variable(dtype="int64")
+
+        helper.append_op(
+            type="sequence_erase",
+            inputs={"X": [input]},
+            outputs={"Out": [erased_input]},
+            attrs={"tokens": ignored_tokens})
+        input = erased_input
+
+        helper.append_op(
+            type="sequence_erase",
+            inputs={"X": [label]},
+            outputs={"Out": [erase_label]},
+            attrs={"tokens": ignored_tokens})
+        label = erased_label
+
+    # edit distance op
+    edit_distance_out = helper.create_tmp_variable(dtype="int64")
+    sequence_num = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="edit_distance",
+        inputs={"Hyps": [input],
+                "Refs": [label]},
+        outputs={"Out": [edit_distance_out],
+                 "SequenceNum": [sequence_num]},
+        attrs={"normalized": normalized})
+
+    return edit_distance_out, sequence_num
+
+
+def ctc_greedy_decoder(input, blank, name=None):
+    """
+    This op is used to decode sequences by greedy policy by below steps:
+    1. Get the indexes of max value for each row in input. a.k.a. numpy.argmax(input, axis=0).
+    2. For each sequence in result of step1, merge repeated tokens between two blanks and delete all blanks.
+
+    A simple example as below:
+
+    .. code-block:: text
+
+        Given:
+
+        input.data = [[0.6, 0.1, 0.3, 0.1],
+                      [0.3, 0.2, 0.4, 0.1],
+                      [0.1, 0.5, 0.1, 0.3],
+                      [0.5, 0.1, 0.3, 0.1],
+
+                      [0.5, 0.1, 0.3, 0.1],
+                      [0.2, 0.2, 0.2, 0.4],
+                      [0.2, 0.2, 0.1, 0.5],
+                      [0.5, 0.1, 0.3, 0.1]]
+
+        input.lod = [[0, 4, 8]]
+
+        Then:
+
+        output.data = [[2],
+                       [1],
+                       [3]]
+
+        output.lod = [[0, 2, 3]]
+
+    Args:
+
+        input(Variable): (LoDTensor<float>), the probabilities of variable-length sequences, which is a 2-D Tensor with LoD information. It's shape is [Lp, num_classes + 1], where Lp is the sum of all input sequences' length and num_classes is the true number of classes. (not including the blank label).
+
+        blank(int): the blank label index of Connectionist Temporal Classification (CTC) loss, which is in thehalf-opened interval [0, num_classes + 1).
+
+    Returns:
+        Variable: CTC greedy decode result.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[8], dtype='float32')
+
+            cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
+    """
+    helper = LayerHelper("ctc_greedy_decoder", **locals())
+    # top 1 op
+    topk_out = helper.create_tmp_variable(dtype=input.dtype)
+    topk_indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [topk_out],
+                 "Indices": [topk_indices]},
+        attrs={"k": 1})
+
+    # ctc align op
+    ctc_out = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="ctc_align",
+        inputs={"Input": [topk_indices]},
+        outputs={"Output": [ctc_out]},
+        attrs={"merge_repeated": True,
+               "blank": blank})
+    return ctc_out
+
+
 def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
     """
     An operator integrating the open source Warp-CTC library
@@ -1890,7 +2031,7 @@ def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
          Temporal Classification (CTC) loss, which is in the
          half-opened interval [0, num_classes + 1).
        norm_by_times: (bool, default: false), whether to normalize
-       the gradients by the number of time-step,which is also the
+       the gradients by the number of time-step, which is also the
        sequence's length. There is no need to normalize the gradients
        if warpctc layer was follewed by a mean_op.
 
