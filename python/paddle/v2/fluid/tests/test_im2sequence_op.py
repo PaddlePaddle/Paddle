@@ -20,22 +20,19 @@ def get_output_shape(attrs, in_shape):
     img_height = in_shape[2]
     img_width = in_shape[3]
 
-    padding_height = attrs['padding_height']
-    padding_width = attrs['padding_width']
-    block_height = attrs['block_height']
-    block_width = attrs['block_width']
-    stride_height = attrs['stride_height']
-    stride_width = attrs['stride_width']
+    paddings = attrs['paddings']
+    kernels = attrs['kernels']
+    strides = attrs['strides']
 
     output_height = \
       1 +  \
-      (img_height + 2 * padding_height - block_height + stride_height - 1) / \
-          stride_height
+      (img_height + paddings[0] + paddings[2] - kernels[0] + strides[0] - 1) / \
+          strides[0]
 
     output_width = \
       1 + \
-      (img_width + 2 * padding_width - block_width + stride_width - 1) / \
-          stride_width
+      (img_width + paddings[1] + paddings[3] - kernels[1] + strides[1] - 1) / \
+          strides[1]
 
     return output_height, output_width
 
@@ -46,19 +43,11 @@ def im2col(attrs, im, col):
     col:
         {outputHeight, outputWidth, inputChannels, filterHeight, filterWidth}
     """
-    input_channels = im.shape[0]
-    input_height = im.shape[1]
-    input_width = im.shape[2]
+    input_channels, input_height, input_width = im.shape
+    output_height, output_width, _, filter_height, filter_width = col.shape
 
-    output_height = col.shape[0]
-    output_width = col.shape[1]
-    filter_height = col.shape[3]
-    filter_width = col.shape[4]
-
-    stride_height = attrs['stride_height']
-    stride_width = attrs['stride_width']
-    padding_height = attrs['padding_height']
-    padding_width = attrs['padding_width']
+    stride_height, stride_width = attrs['strides']
+    padding_height, padding_width = attrs['paddings'][0:2]
 
     for col_row_idx in range(0, output_height):
         for col_col_idx in range(0, output_width):
@@ -92,7 +81,7 @@ def Im2Sequence(inputs, attrs):
     batch_size = inputs.shape[0]
     out = np.zeros([
         batch_size, output_height, output_width, img_channels,
-        attrs['block_height'], attrs['block_width']
+        attrs['kernels'][0], attrs['kernels'][1]
     ]).astype("float32")
 
     for i in range(len(inputs)):
@@ -100,7 +89,7 @@ def Im2Sequence(inputs, attrs):
 
     out = out.reshape([
         batch_size * output_height * output_width,
-        img_channels * attrs['block_height'] * attrs['block_width']
+        img_channels * attrs['kernels'][0] * attrs['kernels'][1]
     ])
     return out
 
@@ -112,12 +101,9 @@ class TestBlockExpandOp(OpTest):
         self.img_height = 4
         self.img_width = 4
         self.attrs = {
-            'block_height': 2,
-            'block_width': 2,
-            'stride_height': 1,
-            'stride_width': 1,
-            'padding_height': 1,
-            'padding_width': 1,
+            'kernels': [2, 2],
+            'strides': [1, 1],
+            'paddings': [1, 1, 1, 1]
         }
 
     def setUp(self):
@@ -145,12 +131,9 @@ class TestBlockExpandOpCase2(TestBlockExpandOp):
         self.img_height = 4
         self.img_width = 5
         self.attrs = {
-            'block_height': 2,
-            'block_width': 1,
-            'stride_height': 2,
-            'stride_width': 1,
-            'padding_height': 2,
-            'padding_width': 1,
+            'kernels': [2, 1],
+            'strides': [2, 1],
+            'paddings': [2, 1, 2, 1]
         }
 
 
@@ -161,12 +144,9 @@ class TestBlockExpandOpCase3(TestBlockExpandOp):
         self.img_height = 4
         self.img_width = 5
         self.attrs = {
-            'block_height': 2,
-            'block_width': 1,
-            'stride_height': 2,
-            'stride_width': 1,
-            'padding_height': 2,
-            'padding_width': 0,
+            'kernels': [2, 1],
+            'strides': [2, 1],
+            'paddings': [2, 0, 2, 0]
         }
 
 
@@ -177,12 +157,9 @@ class TestBlockExpandOpCase4(TestBlockExpandOp):
         self.img_height = 3
         self.img_width = 3
         self.attrs = {
-            'block_height': 2,
-            'block_width': 2,
-            'stride_height': 1,
-            'stride_width': 1,
-            'padding_height': 0,
-            'padding_width': 0,
+            'kernels': [2, 2],
+            'strides': [1, 1],
+            'paddings': [0, 0, 0, 0]
         }
 
 

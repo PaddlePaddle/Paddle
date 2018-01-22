@@ -64,11 +64,11 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(LodTensor)The output data of im2sequence op,");
     AddAttr<std::vector<int>>("kernels",
                               "(vector<int>), the "
-                              "kernels(kernel_height, kernel_width)")
-        AddAttr<std::vector<int>>("strides",
-                                  "(vector<int> default:{1, 1}), the "
-                                  "strides(h_stride, w_stride)")
-            .SetDefault({1, 1});
+                              "kernels(kernel_height, kernel_width)");
+    AddAttr<std::vector<int>>("strides",
+                              "(vector<int> default:{1, 1}), the "
+                              "strides(h_stride, w_stride)")
+        .SetDefault({1, 1});
     AddAttr<std::vector<int>>("paddings",
                               "(vector<int> default:{0, 0, 0, 0}), the "
                               "paddings(up_pad, left_pad, down_pad, right_pad)")
