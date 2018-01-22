@@ -50,7 +50,7 @@ __all__ = [
     'sequence_last_step',
     'dropout',
     'split',
-    'block_expand',
+    'im2sequence',
 ]
 
 
@@ -1600,15 +1600,15 @@ def split(input, num_or_sections, dim=-1):
     return outs
 
 
-def block_expand(input,
-                 block_x=1,
-                 block_y=1,
-                 stride_x=1,
-                 stride_y=1,
-                 padding_x=0,
-                 padding_y=0,
-                 name=None,
-                 layer_attr=None):
+def im2sequence(input,
+                block_x=1,
+                block_y=1,
+                stride_x=1,
+                stride_y=1,
+                padding_x=0,
+                padding_y=0,
+                name=None,
+                layer_attr=None):
     """
     This op use block to scan images and convert these images to sequences.
     After expanding, the number of time step are output_height * output_width
@@ -1696,13 +1696,13 @@ def block_expand(input,
 
         .. code-block:: python
 
-            output = fluid.layers.block_expand(input=layer, stride_x=1, stride_y=1, block_x=2, block_y=2)
+            output = fluid.layers.im2sequence(input=layer, stride_x=1, stride_y=1, block_x=2, block_y=2)
 
     """
-    helper = LayerHelper('block_expand', **locals())
+    helper = LayerHelper('im2sequence', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
-        type='block_expand',
+        type='im2sequence',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={

@@ -494,7 +494,7 @@ swish
 ..  autofunction:: paddle.v2.fluid.layers.swish
     :noindex:
 
-block_expand
+im2sequence
 ------
-..  autofunction:: paddle.v2.fluid.layers.block_expand
+..  autofunction:: paddle.v2.fluid.layers.im2sequence
     :noindex:
