@@ -140,12 +140,14 @@ def main():
 
     def train_loop(exe, trainer_prog):
         iters = 0
+        ts = time.time()
         for pass_id in range(args.num_passes):
             # train
             start_time = time.time()
             num_samples = 0
             accuracy.reset(exe)
             for batch_id, data in enumerate(train_reader()):
+                ts = time.time()
                 img_data = np.array(map(lambda x: x[0].reshape(data_shape),
                                         data)).astype("float32")
                 y_data = np.array(map(lambda x: x[1], data)).astype("int64")
@@ -158,8 +160,8 @@ def main():
                 iters += 1
                 num_samples += len(data)
                 print(
-                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f" %
-                    (pass_id, iters, loss, acc)
+                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, spent %f" %
+                    (pass_id, iters, loss, acc, time.time() - ts)
                 )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
