@@ -1,16 +1,16 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 All layers just related to the neural network.
 """
@@ -22,36 +22,13 @@ from ..param_attr import ParamAttr
 from tensor import concat
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'accuracy',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'sequence_pool',
-    'pool2d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'l2_normalize',
-    'matmul',
+    'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
+    'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
+    'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
+    'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
+    'l2_normalize', 'matmul', 'warpctc', 'sequence_reshape'
 ]
 
 
@@ -229,6 +206,102 @@ def dynamic_lstm(input,
                  cell_activation='tanh',
                  candidate_activation='tanh',
                  dtype='float32'):
+    """
+    **Dynamic LSTM Layer**
+
+    The defalut implementation is diagonal/peephole connection
+    (https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
+
+    .. math::
+
+        i_t & = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i)
+
+        f_t & = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f)
+
+        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c)
+
+        o_t & = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o)
+
+        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
+
+        h_t & = o_t \odot act_h(c_t)
+
+    where the :math:`W` terms denote weight matrices (e.g. :math:`W_{xi}` is
+    the matrix of weights from the input gate to the input), :math:`W_{ic}, \
+    W_{fc}, W_{oc}` are diagonal weight matrices for peephole connections. In
+    our implementation, we use vectors to reprenset these diagonal weight
+    matrices. The :math:`b` terms denote bias vectors (:math:`b_i` is the input
+    gate bias vector), :math:`\sigma` is the non-line activations, such as
+    logistic sigmoid function, and :math:`i, f, o` and :math:`c` are the input
+    gate, forget gate, output gate, and cell activation vectors, respectively,
+    all of which have the same size as the cell output activation vector :math:`h`.
+
+    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
+    and :math:`act_h` are the cell input and cell output activation functions
+    and `tanh` is usually used for them. :math:`\\tilde{c_t}` is also called
+    candidate hidden state, which is computed based on the current input and
+    the previous hidden state.
+
+    Set `use_peepholes` to `False` to disable peephole connection. The formula
+    is omitted here, please refer to the paper
+    http://www.bioinf.jku.at/publications/older/2604.pdf for details.
+
+    Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
+    operations on the input :math:`x_{t}` are NOT included in this operator.
+    Users can choose to use fully-connect layer before LSTM layer.
+
+    Args:
+        input(Variable): The input of dynamic_lstm layer, which supports
+                         variable-time length input sequence. The underlying
+                         tensor in this Variable is a matrix with shape
+                         (T X 4D), where T is the total time steps in this
+                         mini-batch, D is the hidden size.
+        size(int): 4 * hidden size.
+        param_attr(ParamAttr): The parameter attribute for the learnable
+                               hidden-hidden weights.
+
+                               - The shape is (D x 4D), where D is the hidden
+                                 size.
+                               - Weights = {:math:`W_{ch}, W_{ih}, \
+                                                W_{fh}, W_{oh}`}
+        bias_attr(ParamAttr): The bias attribute for the learnable bias
+                              weights, which contains two parts, input-hidden
+                              bias weights and peephole connections weights if
+                              setting `use_peepholes` to `True`.
+
+                              1. `use_peepholes = False`
+                                - The shape is (1 x 4D).
+                                - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                              2. `use_peepholes = True`
+                                - The shape is (1 x 7D).
+                                - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                                 W_{fc}, W_{oc}`}.
+        use_peepholes(bool): Whether to enable diagonal/peephole connections,
+                             default `True`.
+        is_reverse(bool): Whether to compute reversed LSTM, default `False`.
+        gate_activation(str): The activation for input gate, forget gate and
+                              output gate. Choices = ["sigmoid", "tanh", "relu",
+                              "identity"], default "sigmoid".
+        cell_activation(str): The activation for cell output. Choices = ["sigmoid",
+                              "tanh", "relu", "identity"], default "tanh".
+        candidate_activation(str): The activation for candidate hidden state.
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              default "tanh".
+        dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
+
+    Returns:
+        tuple: The hidden state, and cell state of LSTM. The shape of both \
+        is (T x D), and lod is the same with the `input`.
+
+    Examples:
+        .. code-block:: python
+
+            hidden_dim = 512
+            forward_proj = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+                                           act=None, bias_attr=None)
+            forward, _ = fluid.layers.dynamic_lstm(
+                input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
+    """
     helper = LayerHelper('lstm', **locals())
     size = size / 4
     weight = helper.create_parameter(
@@ -1721,37 +1794,38 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
-    Applies matrix multipication to two tensors. Currently only rank 1 to rank 
-    3 input tensors are supported.
+    Applies matrix multiplication to two tensors. Currently, the input
+    tensors' rank can be any, but when the rank of anyone inputs is
+    bigger than 3, this two inputs' rank should be equal.
 
-    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the 
+    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
     flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
 
-    - If a transpose flag is specified, the last two dimensions of the tensor 
-      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for 
-      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as 
-      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the 
-      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as 
+    - If a transpose flag is specified, the last two dimensions of the tensor
+      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for
+      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as
+      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the
+      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as
       :math:`[1, D]` in transposed form.
 
-    - After transpose, the two tensors are 2-D or 3-D and matrix multipication 
+    - After transpose, the two tensors are 2-D or n-D and matrix multiplication
       performs in the following way.
 
       - If both are 2-D, they are multiplied like conventional matrices.
-      - If either is 3-D, it is treated as a stack of matrices residing in the 
+      - If either is n-D, it is treated as a stack of matrices residing in the
         last two dimensions and a batched matrix multiply supporting broadcast 
         applies on the two tensors.
 
     Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and 
     nontransposed, the prepended or appended dimension :math:`1` will be 
-    removed after matrix multipication.
+    removed after matrix multiplication.
 
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
         y (Variable): The input variable which is a Tensor or LoDTensor.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
-        name(str|None): A name for this layer(optional). If set None, the layer 
+        name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
     Returns:
@@ -1761,6 +1835,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         .. code-block:: python
 
             # Examples to clarify shapes of the inputs and output
+            # x: [B, ..., M, K], y: [B, ..., K, N]
+            fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
             # x: [B, M, K], y: [B, K, N]
             fluid.layers.matmul(x, y)  # out: [B, M, N]
             # x: [B, M, K], y: [K, N]
@@ -1776,9 +1852,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             fluid.layers.matmul(x, y, True, True)  # out: [M, N]
     """
     helper = LayerHelper('matmul', **locals())
-    assert max(
-        len(x.shape), len(y.shape)
-    ) <= 3, 'Currently only rank 1 to rank 3 input tensors are supported.'
+    assert max(len(x.shape), len(y.shape)) <= 3 or len(x.shape) == len(
+        y.
+        shape), 'Inputs\' rank should be equal or their rank should be less 4.'
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='matmul',
@@ -1787,4 +1863,111 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         outputs={'Out': out},
         attrs={'transpose_X': transpose_x,
                'transpose_Y': transpose_y})
+    return out
+
+
+def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
+    """
+    An operator integrating the open source Warp-CTC library
+    (https://github.com/baidu-research/warp-ctc)
+    to compute Connectionist Temporal Classification (CTC) loss.
+    It can be aliased as softmax with CTC, since a native softmax activation is
+    interated to the Warp-CTC library, to to normlize values for each row of the
+    input tensor.
+
+    Args:
+       input(Variable): (LodTensor, default: LoDTensor<float>),
+         the unscaled probabilities of variable-length sequences,
+         which is a 2-D Tensor with LoD information.
+         It's shape is [Lp, num_classes + 1], where Lp is the sum of all input
+         sequences' length and num_classes is the true number of classes.
+         (not including the blank label).
+       label(Variable): (LodTensor, default: LoDTensor<int>), the ground truth
+         of variable-length sequence, which is a 2-D Tensor with LoD
+         information. It is of the shape [Lg, 1], where Lg is th sum of
+         all labels' length.
+       blank: (int, default: 0), the blank label index of Connectionist
+         Temporal Classification (CTC) loss, which is in the
+         half-opened interval [0, num_classes + 1).
+       norm_by_times: (bool, default: false), whether to normalize
+       the gradients by the number of time-step,which is also the
+       sequence's length. There is no need to normalize the gradients
+       if warpctc layer was follewed by a mean_op.
+
+    Returns:
+        Variable: The Connectionist Temporal Classification (CTC) loss,
+        which is a 2-D Tensor of the shape [batch_size, 1].
+
+    Examples:
+        .. code-block:: python
+            y = layers.data(name='y', shape=[11, 8], dtype='float32', lod_level=1)
+            y_predict = layers.data(name='y_predict', shape=[11, 1], dtype='float32')
+            cost = layers.warpctc(input=y_predict, label=y)
+
+    """
+    helper = LayerHelper('warpctc', **kwargs)
+    loss_out = helper.create_tmp_variable(dtype=input.dtype)
+    grad_out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type='warpctc',
+        inputs={'Logits': [input],
+                'Label': [label]},
+        outputs={'WarpCTCGrad': [grad_out],
+                 'Loss': [loss_out]},
+        attrs={'blank': blank,
+               'norm_by_times': norm_by_times})
+    return loss_out
+
+
+def sequence_reshape(input, new_dim):
+    """
+    **Sequence Reshape Layer**
+
+    This layer will rearrange the input sequences. The new dimension is set by
+    user. Length of each sequence is computed according to original length,
+    original dimension and new dimension. The following example will help to
+    illustrate the function of this layer:
+
+    .. code-block:: text
+
+        x is a LoDTensor:
+            x.lod  = [[0, 2, 6]]
+            x.data = [[1, 2], [3, 4],
+                      [5, 6], [7, 8], [9, 10], [11, 12]]
+            x.dims = [6, 2]
+
+        set new_dim = 4
+
+        then out is a LoDTensor:
+            out.lod  = [[0, 1, 3]]
+            out.data = [[1, 2, 3, 4],
+                        [5, 6, 7, 8], [9, 10, 11, 12]]
+            out.dims = [3, 4]
+
+    Currently, only 1-level LoDTensor is supported and please make sure
+    (original length * original dimension) can be divided by new dimension with
+    no remainder for each sequence.
+
+    Args:
+       input (Variable): (LodTensor, default: LoDTensor<float>), a 2-D LoDTensor
+                with shape being [N, M] where M for dimension.
+       new_dim (int): New dimension which the input LoDTensor is reshaped to.
+
+    Returns:
+        Variable: Reshaped LoDTensor according to new dimension.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[5, 20],
+                              dtype='float32', lod_level=1)
+            x_reshaped = layers.sequence_reshape(input=x, new_dim=10)
+    """
+    helper = LayerHelper('sequence_reshape', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype())
+    helper.append_op(
+        type='sequence_reshape',
+        inputs={'X': [input]},
+        outputs={'Out': [out]},
+        attrs={'new_dim': new_dim})
     return out
