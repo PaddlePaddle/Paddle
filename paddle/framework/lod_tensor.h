@@ -81,6 +81,8 @@ class Vector : public std::vector<T> {
     return std::vector<T>::data();
   }
 
+  const T* data() const { return std::vector<T>::data(); }
+
   void CopyToCUDA();
 
   void CopyFromCUDA();

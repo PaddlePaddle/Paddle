@@ -69,12 +69,35 @@ PYBIND11_PLUGIN(core) {
 
   BindException(m);
 
+  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
+      .def(py::init<int>())
+      .def("__str__", string::to_string<const platform::CUDAPlace &>);
+
+  py::class_<platform::CPUPlace>(m, "CPUPlace")
+      .def(py::init<>())
+      .def("__str__", string::to_string<const platform::CPUPlace &>);
+
+  py::class_<platform::Place>(m, "Place")
+      .def(py::init<>())
+      .def("set_place",
+           [](platform::Place &self, const platform::CPUPlace &cpu_place) {
+             self = cpu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
+             self = gpu_place;
+           });
+
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
       .def("__init__",
-           [](Tensor &self, const paddle::platform::Place &place =
-                                paddle::platform::CPUPlace()) {
+           [](Tensor &self) {
+             paddle::platform::CPUPlace place;
+             new (&self) Tensor(place);
+           })
+      .def("__init__",
+           [](Tensor &self, paddle::platform::Place place) {
              new (&self) Tensor(place);
            })
       .def("get_dims",
@@ -125,8 +148,12 @@ PYBIND11_PLUGIN(core) {
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
       .def("__init__",
-           [](LoDTensor &instance, const paddle::platform::Place &place =
-                                       paddle::platform::CPUPlace()) {
+           [](LoDTensor &instance) {
+             paddle::platform::CPUPlace place;
+             new (&instance) LoDTensor(place);
+           })
+      .def("__init__",
+           [](LoDTensor &instance, paddle::platform::Place place) {
              new (&instance) LoDTensor(place);
            })
       .def("set_lod",
@@ -301,25 +328,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                   });
   // clang-format on
-
-  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
-      .def(py::init<int>())
-      .def("__str__", string::to_string<const platform::CUDAPlace &>);
-
-  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
-      .def(py::init<>())
-      .def("__str__", string::to_string<const platform::CPUPlace &>);
-
-  py::class_<platform::Place>(m, "Place")
-      .def(py::init<>())
-      .def("set_place",
-           [](platform::Place &self, const platform::CPUPlace &cpu_place) {
-             self = cpu_place;
-           })
-      .def("set_place",
-           [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
-             self = gpu_place;
-           });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
