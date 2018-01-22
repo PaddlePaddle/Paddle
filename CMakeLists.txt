@@ -159,7 +159,6 @@ include_directories("${PADDLE_SOURCE_DIR}")
 include_directories("${PADDLE_SOURCE_DIR}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
-include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXTERNAL_LIBS
     ${GFLAGS_LIBRARIES}
