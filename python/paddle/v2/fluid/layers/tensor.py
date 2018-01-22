@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
@@ -180,7 +194,7 @@ def assign(input, output):
     return output
 
 
-def fill_constant(shape, dtype, value, out=None):
+def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
     **fill_constant**
 
@@ -211,9 +225,12 @@ def fill_constant(shape, dtype, value, out=None):
         type='fill_constant',
         inputs={},
         outputs={'Out': [out]},
-        attrs={'shape': shape,
-               'dtype': out.dtype,
-               'value': float(value)})
+        attrs={
+            'shape': shape,
+            'dtype': out.dtype,
+            'value': float(value),
+            'force_cpu': force_cpu
+        })
     out.stop_gradient = True
     return out
 

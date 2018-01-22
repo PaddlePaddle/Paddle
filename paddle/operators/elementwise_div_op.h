@@ -19,11 +19,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct DivFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const { return a / b; }
+};
+
 template <typename DeviceContext, typename T>
 class ElementwiseDivKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseCompute<EigenDivFunctor, DeviceContext, T>(ctx);
+    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx);
   }
 };
 
@@ -107,7 +112,6 @@ class ElementwiseDivGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseGradCompute<DeviceContext, T, ElementwiseDivGradFunctor<T>,
-                           ElementwiseDivGradFunctor<T>,
                            ElementwiseDivBroadCastGradFunctor<T>,
                            ElementwiseDivBroadCast2GradFunctor<T>>(ctx);
   }

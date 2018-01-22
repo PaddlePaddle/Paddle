@@ -37,15 +37,18 @@ class RequestBase;
 
 class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
  public:
-  explicit AsyncGRPCServer(std::string address) { address_ = address; }
+  explicit AsyncGRPCServer(const std::string &address) : address_(address) {}
 
   void RunSyncUpdate();
 
-  void Reset();
-
-  void Done();
+  // functions to sync server barrier status.
+  void WaitCond(int cond);
+  void SetCond(int cond);
+  void WaitClientGet(int count);
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
+
+  void SetDevCtx(const platform::DeviceContext *dev_ctx) { dev_ctx_ = dev_ctx; }
 
   const MessageWithName Get() { return this->var_recv_queue_.Pop(); }
 
@@ -54,13 +57,11 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   void ShutDown();
 
  protected:
-  void Wait();
   void HandleRequest(bool wait, grpc::ServerCompletionQueue *cq,
                      std::string cq_name,
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
-  void SetFinishOrDelete(RequestBase *&last);
   void ShutdownQueue();
 
  private:
@@ -74,13 +75,15 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
   std::string address_;
   framework::Scope *scope_;
+  const platform::DeviceContext *dev_ctx_;
   // received variable from RPC, operators fetch variable from this queue.
   SimpleBlockQueue<MessageWithName> var_recv_queue_;
+  SimpleBlockQueue<char> var_get_queue_;
 
   // condition of the sub program
-  std::mutex mutex_;
-  volatile mutable bool done_;
-  std::condition_variable condition_;
+  std::mutex barrier_mutex_;
+  mutable int barrier_cond_step_;
+  std::condition_variable barrier_condition_;
 
   std::unique_ptr<std::thread> t_send_;
   std::unique_ptr<std::thread> t_get_;

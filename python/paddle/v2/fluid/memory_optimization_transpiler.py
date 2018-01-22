@@ -1,10 +1,23 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from collections import defaultdict
 import framework
 from framework import Program, default_main_program, Parameter, Variable
 import backward
 from backward import _rename_arg_
 from . import core
-from graphviz import Digraph
 
 dtype_to_size = {
     core.DataType.FP16: 2,
@@ -25,19 +38,23 @@ class ControlFlowGraph(object):
         self._program = Program
         self._ops = ops
         self._forward_num = forward_num
-        self._succesors = defaultdict(set)
-        self._presucessors = defaultdict(set)
+        self._successors = defaultdict(set)
+        self._presuccessors = defaultdict(set)
         self._uses = defaultdict(set)
         self._defs = defaultdict(set)
         self._live_in = defaultdict(set)
         self._live_out = defaultdict(set)
 
-    def _add_connection(self, node1, node2):
-        self._succesors[node1].add(node2)
-        self._presucessors[node2].add(node1)
+    def _add_connections(self, connections):
+        for node1, node2 in connections:
+            self._add(node1, node2)
+
+    def _add(self, node1, node2):
+        self._successors[node1].add(node2)
+        self._presuccessors[node2].add(node1)
 
     def _build_graph(self):
-        self.op_size = len(self.ops)
+        self.op_size = len(self._ops)
         op_node_connections = [(i, i + 1) for i in range(self.op_size - 1)]
         self._add_connections(op_node_connections)
         for i in range(self.op_size):
@@ -82,7 +99,7 @@ class ControlFlowGraph(object):
                 live_out[i] = set(self._live_out[i])
                 self._live_in[i] = self._uses[i] | (
                     self._live_out[i] - self._defs[i])
-                for s in self._succesors[i]:
+                for s in self._successors[i]:
                     self._live_out[i] |= self._live_in[s]
 
             if self._reach_fixed_point(live_in, live_out):
@@ -115,26 +132,32 @@ class ControlFlowGraph(object):
             block_desc = op.block()
             is_forward = i < self._forward_num
             if self.pool:
+                # print "defs: ", self._defs[i]
                 defs_can_optimize = filter(
-                    lambda x: str(x) != "@EMPTY@" and self._has_var(x, block_desc, is_forward) and self._find_var(x, block_desc, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
+                    lambda x: str(x) != "@EMPTY@" and self._has_var(block_desc, x, is_forward) and self._find_var(block_desc, x, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
                     self._defs[i])
+                # print "defs_can_optimize: ", defs_can_optimize
                 out_pair = [
                     (x, self._find_var(block_desc, x, is_forward).shape())
                     for x in defs_can_optimize
                 ]
                 for x, x_shape in out_pair:
+                    # print x, x_shape
+                    # print "pool: ", self.pool
                     if not self._find_var(block_desc, x,
                                           is_forward).persistable():
                         for index, cache_pair in enumerate(self.pool):
                             cache_var = cache_pair[0]
                             cache_shape = cache_pair[1]
+                            # print cache_var, cache_shape
                             if x_shape == cache_shape:
                                 if self._has_var(block_desc, cache_var,
                                                  is_forward):
                                     x_dtype = self._find_var(block_desc, x,
-                                                             is_forward)
+                                                             is_forward).dtype()
                                     cache_dtype = self._find_var(
-                                        block_desc, cache_var, is_forward)
+                                        block_desc, cache_var,
+                                        is_forward).dtype()
                                     # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
                                     # and dtype_to_size[cache_dtype]
                                     if x_dtype == cache_dtype:
@@ -167,27 +190,34 @@ class ControlFlowGraph(object):
 
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
+            # print in_diff
             can_optimize = filter(
                 lambda x: str(x) != "@EMPTY@" and self._has_var(block_desc, x, is_forward) and not self._find_var(block_desc, x, is_forward).persistable(),
                 in_diff)
+            # print can_optimize
             can_optimize = filter(
                 lambda x: self._find_var(block_desc, x, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
                 can_optimize)
+            # print can_optimize
             if can_optimize:
                 for var_name in can_optimize:
                     self.pool.append((var_name, self._find_var(
                         block_desc, var_name, is_forward).shape()))
 
-    def get_program(self):
-        return self._program
+    # def get_program(self):
+    #     return self._program
 
 
-def get_CFG(input_program):
+def get_cfg(input_program):
     ops_list = []
     pdesc = input_program.get_desc()
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
     ops_list.append(([block_desc.op(i) for i in range(op_size)], op_size))
+
+    while_sub_block_id = -1
+    while_grad_sub_block_id = -1
+
     for i in range(op_size):
         op = block_desc.op(i)
         if op.type() == "while":
@@ -195,26 +225,27 @@ def get_CFG(input_program):
         elif op.type() == "while_grad":
             while_grad_sub_block_id = op.attr("sub_block").id
 
-    while_block_ops = []
-    while_block = pdesc.block(while_sub_block_id)
-    while_block_op_size = while_block.op_size()
-    for i in range(while_block_op_size):
-        while_block_ops.append(while_block.op(i))
+    if while_sub_block_id > 0:
+        while_block_ops = []
+        while_block = pdesc.block(while_sub_block_id)
+        while_block_op_size = while_block.op_size()
+        for i in range(while_block_op_size):
+            while_block_ops.append(while_block.op(i))
 
-    while_grad_block = pdesc.block(while_grad_sub_block_id)
-    while_grad_block_op_size = while_grad_block.op_size()
-    for i in range(while_grad_block_op_size):
-        while_block_ops.append(while_grad_block.op(i))
+    if while_grad_sub_block_id > 0:
+        while_grad_block = pdesc.block(while_grad_sub_block_id)
+        while_grad_block_op_size = while_grad_block.op_size()
+        for i in range(while_grad_block_op_size):
+            while_block_ops.append(while_grad_block.op(i))
 
-    ops_list.append((while_block_ops, while_block_op_size))
+    if while_sub_block_id > 0:
+        ops_list.append((while_block_ops, while_block_op_size))
+
+    return ops_list
 
 
 def memory_optimize(input_program):
-    ops_list = get_CFG(input_program)
-    result_program = input_program
-    for i, j in ops_list:
-        result_program = ControlFlowGraph(result_program, i, j)
+    ops_list = get_cfg(input_program)
     cfgs = [ControlFlowGraph(input_program, i, j) for i, j in ops_list]
     for cfg in cfgs:
         cfg.memory_optimize()
-    return result_program

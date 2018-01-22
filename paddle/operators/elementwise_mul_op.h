@@ -18,11 +18,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct MulFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const { return a * b; }
+};
+
 template <typename DeviceContext, typename T>
 class ElementwiseMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseCompute<EigenMulFunctor, DeviceContext, T>(ctx);
+    ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx);
   }
 };
 
@@ -106,7 +111,6 @@ class ElementwiseMulGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseGradCompute<DeviceContext, T, ElementwiseMulGradFunctor<T>,
-                           ElementwiseMulGradFunctor<T>,
                            ElementwiseMulBroadCastGradFunctor<T>,
                            ElementwiseMulBroadCast2GradFunctor<T>>(ctx);
   }
