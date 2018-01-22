@@ -18,7 +18,7 @@ import unittest
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.optimizer as optimizer
 from paddle.v2.fluid.framework import Program, program_guard
-from paddle.v2.fluid.memory_optimization_transpiler import memory_optimize, ControlFlowGraph
+from paddle.v2.fluid.memory_optimization_transpiler import memory_optimize
 
 
 class TestControlFlowGraph(unittest.TestCase):
@@ -36,13 +36,8 @@ class TestControlFlowGraph(unittest.TestCase):
         self.program = program
 
     def test_control_flow_graph(self):
-        graph = ControlFlowGraph(self.program)
-        graph._build_graph()
-        graph.save_visualize_graph('a.png')
-
-    def test_memory_optimization(self):
         print("before optimization")
-        # print(str(self.program))
+        print(str(self.program))
         result_program = memory_optimize(self.program)
         print("after optimization")
         print(str(result_program))

@@ -133,8 +133,14 @@ class ControlFlowGraph(object):
             is_forward = i < self._forward_num
             if self.pool:
                 defs_can_optimize = filter(
-                    lambda x: str(x) != "@EMPTY@" and self._has_var(block_desc, x, is_forward) and self._find_var(block_desc, x, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR and not self._find_var(block_desc, x, is_forward).persistable(),
+                    lambda x: str(x) != "@EMPTY@" and self._has_var(block_desc, x, is_forward),
                     self._defs[i])
+                defs_can_optimize = filter(
+                    lambda x: not self._find_var(block_desc, x, is_forward).persistable(),
+                    defs_can_optimize)
+                defs_can_optimize = filter(
+                    lambda x: self._find_var(block_desc, x, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
+                    defs_can_optimize)
                 out_pair = [
                     (x, self._find_var(block_desc, x, is_forward).shape())
                     for x in defs_can_optimize
@@ -173,7 +179,10 @@ class ControlFlowGraph(object):
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
             can_optimize = filter(
-                lambda x: str(x) != "@EMPTY@" and self._has_var(block_desc, x, is_forward) and not self._find_var(block_desc, x, is_forward).persistable(),
+                lambda x: str(x) != "@EMPTY@" and self._has_var(block_desc, x, is_forward),
+                in_diff)
+            can_optimize = filter(
+                lambda x: not self._find_var(block_desc, x, is_forward).persistable(),
                 in_diff)
             can_optimize = filter(
                 lambda x: self._find_var(block_desc, x, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
@@ -184,6 +193,8 @@ class ControlFlowGraph(object):
                         block_desc, var_name, is_forward).shape()))
 
 
+# FIXME(qijun) Assume that a program has only one while operator.
+# We should make it more general.
 def get_cfgs(input_program):
     ops_list = []
     pdesc = input_program.get_desc()
