@@ -64,6 +64,12 @@ static void SplitTensorAndMoveTensorToScopes(
   }
 }
 
+void WaitOnPlace(const platform::Place place) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(place);
+  dev_ctx.Wait();
+}
+
 void WaitOnPlaces(const std::vector<platform::Place> places) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
 
@@ -214,6 +220,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
         auto &tensor_to_merge = sub_scopes[i]->FindVar(s)->Get<LoDTensor>();
         if (!(places[i] == places[0])) {
           framework::Copy(tensor_to_merge, places[0], tmp);
+          WaitOnPlace(places[0]);
         } else {
           tmp->ShareDataWith(tensor_to_merge);
         }
@@ -222,12 +229,13 @@ class ParallelDoGradOp : public framework::OperatorBase {
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
             framework::AttributeMap{});
         sum_op->Run(*sub_scopes[0], places[0]);
-        WaitOnPlaces(places);
+        WaitOnPlace(places[0]);
       }
 
       VLOG(3) << result;
       framework::Copy(result, place, scope.FindVar(s)->GetMutable<LoDTensor>());
     }
+    WaitOnPlaces(places);
   }
 };
 

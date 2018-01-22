@@ -48,7 +48,7 @@ Scale operator
 $$Out = scale*X$$
 )DOC");
     AddAttr<AttrType>("scale",
-                      "(float, default 0)"
+                      "(float, default 1.0)"
                       "The scaling factor of the scale operator.")
         .SetDefault(1.0);
   }
