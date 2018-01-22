@@ -17,16 +17,19 @@ limitations under the License. */
 #include "paddle/platform/for_range.h"
 
 template <typename T>
-inline T IOUSimilarity(T xmin1, T ymin1, T xmax1, T ymax1, T xmin2, T ymin2,
-                       T xmax2, T ymax2) {
+inline HOSTDEVICE T IOUSimilarity(T xmin1, T ymin1, T xmax1, T ymax1, T xmin2,
+                                  T ymin2, T xmax2, T ymax2) {
+  constexpr T zero = static_cast<T>(0);
   T area1 = (ymax1 - ymin1) * (xmax1 - xmin1);
   T area2 = (ymax2 - ymin2) * (xmax2 - xmin2);
-  T inter_xmax = std::min(xmax1, xmax2);
-  T inter_ymax = std::min(ymax1, ymax2);
-  T inter_xmin = std::max(xmin1, xmin2);
-  T inter_ymin = std::max(ymin1, ymin2);
-  T inter_height = std::max(inter_ymax - inter_ymin, static_cast<T>(0));
-  T inter_width = std::max(inter_xmax - inter_xmin, static_cast<T>(0));
+  T inter_xmax = xmax1 > xmax2 ? xmax2 : xmax1;
+  T inter_ymax = ymax1 > ymax2 ? ymax2 : ymax1;
+  T inter_xmin = xmin1 > xmin2 ? xmin1 : xmin2;
+  T inter_ymin = ymin1 > ymin2 ? ymin1 : ymin2;
+  T inter_height = inter_ymax - inter_ymin;
+  T inter_width = inter_xmax - inter_xmin;
+  inter_height = inter_height > zero ? inter_height : zero;
+  inter_width = inter_width > zero ? inter_width : zero;
   T inter_area = inter_width * inter_height;
   T union_area = area1 + area2 - inter_area;
   T sim_score = inter_area / union_area;

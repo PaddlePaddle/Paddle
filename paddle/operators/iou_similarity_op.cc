@@ -23,12 +23,16 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of IOUSimilarityOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"),
+                   "Input(Y) of IOUSimilarityOp should not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "The shape of X is [N, 4]");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "The rank of Input(X) must be 2.");
     PADDLE_ENFORCE_EQ(x_dims[1], 4UL, "The shape of X is [N, 4]");
-    PADDLE_ENFORCE_EQ(y_dims.size(), 2UL, "The shape of Y is [M, 4]");
+    PADDLE_ENFORCE_EQ(y_dims.size(), 2UL, "The rank of Input(Y) must be 2.");
     PADDLE_ENFORCE_EQ(y_dims[1], 4UL, "The shape of Y is [M, 4]");
 
     ctx->SetOutputDim("Out", framework::make_ddim({x_dims[0], y_dims[0]}));
@@ -39,16 +43,18 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   IOUSimilarityOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "X",
-        "(Tensor, default Tensor<float>) "
-        "BoxList X holding N boxes, each box is "
-        "represented as [xmin, ymin, xmax, ymax], the shape of X is [N, 4].");
-    AddInput(
-        "Y",
-        "(Tensor, default Tensor<float>) "
-        "BoxList Y holding M boxes, each box is "
-        "represented as [xmin, ymin, xmax, ymax], the shape of X is [N, 4].");
+    AddInput("X",
+             "(Tensor, default Tensor<float>) "
+             "Box list X holds N boxes, each box is "
+             "represented as [xmin, ymin, xmax, ymax], the shape of X is [N, "
+             "4]. [xmin, ymin] is the lower left coordinate of the box, and "
+             "[xmax, ymax] is the right upper coordinate of the box.");
+    AddInput("Y",
+             "(Tensor, default Tensor<float>) "
+             "Box list Y holds M boxes, each box is "
+             "represented as [xmin, ymin, xmax, ymax], the shape of X is [N, "
+             "4]. [xmin, ymin] is the lower left coordinate of the box, and "
+             "[xmax, ymax] is the right upper coordinate of the box.");
 
     AddOutput(
         "Out",
@@ -57,7 +63,7 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
 IOU Similarity Operator.
-Computes pairwise intersection-over-union between box collections.
+Computes intersection-over-union (IOU) between two box lists.
 )DOC");
   }
 };
