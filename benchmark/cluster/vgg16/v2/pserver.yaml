@@ -1,13 +1,13 @@
 apiVersion: extensions/v1beta1
 kind: ReplicaSet
 metadata:
-  name: vgg16job-pserver
+  name: vgg16v2job-pserver
 spec:
   replicas: 10
   template:
     metadata:
       labels:
-        paddle-job-pserver: vgg16job
+        paddle-job-pserver: vgg16v2job
     spec:
       hostNetwork: true
       imagePullSecrets:
@@ -21,7 +21,7 @@ spec:
           containerPort: 30236
         env:
         - name: PADDLE_JOB_NAME
-          value: vgg16job
+          value: vgg16v2job
         - name: TRAINERS
           value: "20"
         - name: PSERVERS
