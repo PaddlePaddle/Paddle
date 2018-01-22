@@ -37,6 +37,7 @@ import clip
 from memory_optimization_transpiler import memory_optimize
 
 Tensor = LoDTensor
+
 __all__ = framework.__all__ + executor.__all__ + [
     'io',
     'initializer',
@@ -85,7 +86,9 @@ def __bootstrap__():
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
-    read_env_flags = ['use_pinned_memory', 'check_nan_inf']
+    read_env_flags = [
+        'use_pinned_memory', 'check_nan_inf', 'do_memory_benchmark'
+    ]
     if core.is_compile_gpu():
         read_env_flags += ['fraction_of_gpu_memory_to_use', 'op_sync']
     core.init_gflags([sys.argv[0]] +
@@ -94,4 +97,5 @@ def __bootstrap__():
     core.init_devices()
 
 
+layers.monkey_patch_variable()
 __bootstrap__()

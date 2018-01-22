@@ -25,12 +25,20 @@ import gzip
 import paddle.v2.dataset.common
 from paddle.v2.parameters import Parameters
 
-__all__ = ['train', 'test', 'build_dict', 'convert']
+__all__ = [
+    'train',
+    'test',
+    'get_dict',
+    'convert',
+]
 
-URL_DEV_TEST = 'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
+URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
+                'cslm_joint_paper/data/dev+test.tgz')
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
-# this is a small set of data for test. The original data is too large and will be add later.
-URL_TRAIN = 'http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz'
+# this is a small set of data for test. The original data is too large and
+# will be add later.
+URL_TRAIN = ('http://paddlepaddle.cdn.bcebos.com/demo/'
+             'wmt_shrinked_data/wmt14.tgz')
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
 # BLEU of this trained model is 26.92
 URL_MODEL = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_14/wmt14_model.tar.gz'
@@ -42,8 +50,8 @@ UNK = "<unk>"
 UNK_IDX = 2
 
 
-def __read_to_dict__(tar_file, dict_size):
-    def __to_dict__(fd, size):
+def __read_to_dict(tar_file, dict_size):
+    def __to_dict(fd, size):
         out_dict = dict()
         for line_count, line in enumerate(fd):
             if line_count < size:
@@ -58,19 +66,19 @@ def __read_to_dict__(tar_file, dict_size):
             if each_item.name.endswith("src.dict")
         ]
         assert len(names) == 1
-        src_dict = __to_dict__(f.extractfile(names[0]), dict_size)
+        src_dict = __to_dict(f.extractfile(names[0]), dict_size)
         names = [
             each_item.name for each_item in f
             if each_item.name.endswith("trg.dict")
         ]
         assert len(names) == 1
-        trg_dict = __to_dict__(f.extractfile(names[0]), dict_size)
+        trg_dict = __to_dict(f.extractfile(names[0]), dict_size)
         return src_dict, trg_dict
 
 
 def reader_creator(tar_file, file_name, dict_size):
     def reader():
-        src_dict, trg_dict = __read_to_dict__(tar_file, dict_size)
+        src_dict, trg_dict = __read_to_dict(tar_file, dict_size)
         with tarfile.open(tar_file, mode='r') as f:
             names = [
                 each_item.name for each_item in f
@@ -152,7 +160,7 @@ def get_dict(dict_size, reverse=True):
     # if reverse = False, return dict = {'a':'001', 'b':'002', ...}
     # else reverse = true, return dict = {'001':'a', '002':'b', ...}
     tar_file = paddle.v2.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
-    src_dict, trg_dict = __read_to_dict__(tar_file, dict_size)
+    src_dict, trg_dict = __read_to_dict(tar_file, dict_size)
     if reverse:
         src_dict = {v: k for k, v in src_dict.items()}
         trg_dict = {v: k for k, v in trg_dict.items()}

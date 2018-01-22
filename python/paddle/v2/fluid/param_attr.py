@@ -25,13 +25,13 @@ class ParamAttr(object):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 clip=None):
+                 gradient_clip=None):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
-        self.clip = clip
+        self.gradient_clip = gradient_clip
 
     def set_default_initializer(self, initializer):
         if initializer is None:
@@ -77,7 +77,7 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'clip_attr': self.clip
+            'gradient_clip_attr': self.gradient_clip
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
