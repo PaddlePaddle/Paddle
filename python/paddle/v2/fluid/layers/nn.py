@@ -22,13 +22,38 @@ from ..param_attr import ParamAttr
 from tensor import concat
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
-    'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
-    'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
-    'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
-    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'l2_normalize', 'matmul', 'warpctc', 'sequence_reshape'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'accuracy',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'sequence_pool',
+    'pool2d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'sequence_expand',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'l2_normalize',
+    'matmul',
+    'warpctc',
+    'sequence_reshape',
 ]
 
 
@@ -43,14 +68,14 @@ def fc(input,
     **Fully Connected Layer**
 
     The fully connected layer can take multiple tensors as its inputs. It
-    creates a variable (one for each input tensor) called weights for each input
-    tensor, which represents a fully connected weight matrix from each input
-    unit to each output unit. The fully connected layer multiplies each input
-    tensor with its coresponding weight to produce an output Tensor. If
-    multiple input tensors are given, the results of multiple multiplications
-    will be sumed up. If bias_attr is not None, a biases variable will be
-    created and added to the output. Finally, if activation is not None,
-    it will be applied to the output as well.
+    creates a variable (one for each input tensor) called weights for each
+    input tensor, which represents a fully connected weight matrix from
+    each input unit to each output unit. The fully connected layer
+    multiplies each input tensor with its coresponding weight to produce
+    an output Tensor. If multiple input tensors are given, the results of
+    multiple multiplications will be sumed up. If bias_attr is not None,
+    a biases variable will be created and added to the output. Finally,
+    if activation is not None, it will be applied to the output as well.
 
     This process can be formulated as follows:
 
@@ -1813,11 +1838,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
       - If both are 2-D, they are multiplied like conventional matrices.
       - If either is n-D, it is treated as a stack of matrices residing in the
-        last two dimensions and a batched matrix multiply supporting broadcast 
+        last two dimensions and a batched matrix multiply supporting broadcast
         applies on the two tensors.
 
-    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and 
-    nontransposed, the prepended or appended dimension :math:`1` will be 
+    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and
+    nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multiplication.
 
     Args:
