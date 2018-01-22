@@ -69,7 +69,7 @@ class TestBipartiteMatchOpForWithLoD(OpTest):
         dis = np.random.random((23, 217)).astype('float32')
         match_indices, match_dis = batch_bipartite_match(dis, lod[0])
 
-        self.inputs = {'DisMat': (dis, lod)}
+        self.inputs = {'DistMat': (dis, lod)}
         self.outputs = {
             'ColToRowMatchIndices': (match_indices),
             'ColToRowMatchDis': (match_dis),
@@ -86,7 +86,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
         dis = np.random.random((8, 17)).astype('float32')
         match_indices, match_dis = batch_bipartite_match(dis, lod[0])
 
-        self.inputs = {'DisMat': dis}
+        self.inputs = {'DistMat': dis}
         self.outputs = {
             'ColToRowMatchIndices': (match_indices),
             'ColToRowMatchDis': (match_dis),
