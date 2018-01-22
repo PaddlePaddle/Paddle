@@ -84,44 +84,48 @@ def main():
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
     optimizer.minimize(avg_cost)
 
-    # memopt_program = fluid.default_main_program()
+    memopt_program = fluid.default_main_program()
 
-    memopt_program = fluid.memory_optimize(fluid.default_main_program())
+    # memopt_program = fluid.memory_optimize(fluid.default_main_program())
 
-    # print(str(memopt_program))
+    # graph = fluid.ControlFlowGraph(fluid.default_main_program())
+    # graph._build_graph()
+    # graph.save_visualize_graph('a.png')
+
+    print(str(memopt_program))
 
     # train_data = paddle.batch(
     #     paddle.reader.shuffle(
     #         paddle.dataset.wmt14.train(dict_size), buf_size=1000),
     #     batch_size=batch_size)
 
-    train_data = paddle.batch(
-        paddle.dataset.wmt14.train(dict_size), batch_size=batch_size)
-
-    place = core.CPUPlace()
-    exe = Executor(place)
-
-    exe.run(framework.default_startup_program())
-
-    batch_id = 0
-    for pass_id in xrange(10):
-        for data in train_data():
-            word_data = to_lodtensor(map(lambda x: x[0], data), place)
-            trg_word = to_lodtensor(map(lambda x: x[1], data), place)
-            trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
-            outs = exe.run(memopt_program,
-                           feed={
-                               'src_word_id': word_data,
-                               'target_language_word': trg_word,
-                               'target_language_next_word': trg_word_next
-                           },
-                           fetch_list=[avg_cost])
-            avg_cost_val = np.array(outs[0])
-            print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
-                  " avg_cost=" + str(avg_cost_val))
-            if batch_id > 1:
-                exit(0)
-            batch_id += 1
+    # train_data = paddle.batch(
+    #     paddle.dataset.wmt14.train(dict_size), batch_size=batch_size)
+    #
+    # place = core.CPUPlace()
+    # exe = Executor(place)
+    #
+    # exe.run(framework.default_startup_program())
+    #
+    # batch_id = 0
+    # for pass_id in xrange(10):
+    #     for data in train_data():
+    #         word_data = to_lodtensor(map(lambda x: x[0], data), place)
+    #         trg_word = to_lodtensor(map(lambda x: x[1], data), place)
+    #         trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
+    #         outs = exe.run(memopt_program,
+    #                        feed={
+    #                            'src_word_id': word_data,
+    #                            'target_language_word': trg_word,
+    #                            'target_language_next_word': trg_word_next
+    #                        },
+    #                        fetch_list=[avg_cost])
+    #         avg_cost_val = np.array(outs[0])
+    #         print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
+    #               " avg_cost=" + str(avg_cost_val))
+    #         if batch_id > 1:
+    #             exit(0)
+    #         batch_id += 1
 
 
 if __name__ == '__main__':

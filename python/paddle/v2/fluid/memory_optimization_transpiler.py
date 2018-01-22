@@ -4,6 +4,7 @@ from framework import Program, default_main_program, Parameter, Variable
 import backward
 from backward import _rename_arg_
 from . import core
+from graphviz import Digraph
 
 dtype_to_size = {
     core.DataType.FP16: 2,
@@ -20,59 +21,28 @@ kStepScopes = "StepScopes"
 
 
 class ControlFlowGraph(object):
-    def __init__(self, Program):
+    def __init__(self, Program, ops, forward_num):
         self._program = Program
+        self._ops = ops
+        self._forward_num = forward_num
         self._succesors = defaultdict(set)
         self._presucessors = defaultdict(set)
         self._uses = defaultdict(set)
         self._defs = defaultdict(set)
         self._live_in = defaultdict(set)
         self._live_out = defaultdict(set)
-        self._ops = []
 
     def _add_connection(self, node1, node2):
         self._succesors[node1].add(node2)
         self._presucessors[node2].add(node1)
 
-    def _build_graph_imp(self, block_idx, op_idx):
-        program_desc = self._program.get_desc()
-        block_desc = program_desc.block(block_idx)
-        op_size = block_desc.op_size()
-        for i in range(op_size):
-            op = block_desc.op(i)
-            if i != op_size - 1:
-                self._add_connection(op_idx, op_idx + 1)
-            self._ops.append(op)
-            if op.type() != "while" and op.type() != "while_grad":
-                self._uses[op_idx].update(op.input_arg_names())
-                self._defs[op_idx].update(op.output_arg_names())
-                op_idx += 1
-            else:
-                if op.type() == "while":
-                    self._uses[op_idx].update(op.input(kCondition))
-                    self._defs[op_idx].update(op.output(kStepScopes))
-                elif op.type() == "while_grad":
-                    self._uses[op_idx].update(op.input(kStepScopes))
-                sub_block_id = op.attr("sub_block").id
-                op_idx += 1
-                new_op_idx = self._build_graph_imp(sub_block_id, op_idx)
-                self._add_connection(new_op_idx - 1, op_idx - 1)
-                self._add_connection(op_idx - 1, new_op_idx)
-                op_idx = new_op_idx
-        return op_idx
-
     def _build_graph(self):
-        self._build_graph_imp(0, 0)
-        self.op_size = len(self._ops)
-
-    def clear_graph(self):
-        self._succesors.clear()
-        self._presucessors.clear()
-        self._uses.clear()
-        self._defs.clear()
-        self._live_in.clear()
-        self._live_out.clear()
-        del self.pool[:]
+        self.op_size = len(self.ops)
+        op_node_connections = [(i, i + 1) for i in range(self.op_size - 1)]
+        self._add_connections(op_node_connections)
+        for i in range(self.op_size):
+            self._uses[i].update(self._ops[i].input_arg_names())
+            self._defs[i].update(self._ops[i].output_arg_names())
 
     def _update_graph(self, old_name, new_name, begin_idx=0):
         for i in range(begin_idx, self.op_size):
@@ -103,6 +73,7 @@ class ControlFlowGraph(object):
         return True
 
     def _dataflow_analyze(self):
+        self._build_graph()
         live_in = defaultdict(set)
         live_out = defaultdict(set)
         while True:
@@ -121,35 +92,49 @@ class ControlFlowGraph(object):
         u = a & b
         return a - u, b - u
 
+    def _has_var(self, block_desc, var_name, is_forward):
+        if is_forward:
+            return block_desc.has_var(str(var_name))
+        else:
+            return block_desc.has_var_recursive(str(var_name))
+
+    def _find_var(self, block_desc, var_name, is_forward):
+        if is_forward:
+            return block_desc.find_var(str(var_name))
+        else:
+            return block_desc.find_var_recursive(str(var_name))
+
     def memory_optimize(self):
         self._build_graph()
         self._dataflow_analyze()
         self.pool = []
         for i in range(self.op_size):
             op = self._ops[i]
-            block_desc = op.block()
-            if op.type() == "read_from_array":
+            if op.type() == "while" or op.type() == "while_grad":
                 continue
+            block_desc = op.block()
+            is_forward = i < self._forward_num
             if self.pool:
                 defs_can_optimize = filter(
-                    lambda x: str(x) != "@EMPTY@" and
-                    block_desc.has_var_recursive(str(x)) and
-                    block_desc.find_var_recursive(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
+                    lambda x: str(x) != "@EMPTY@" and self._has_var(x, block_desc, is_forward) and self._find_var(x, block_desc, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
                     self._defs[i])
-                out_pair = [(x, block_desc.find_var_recursive(str(x)).shape())
-                            for x in defs_can_optimize]
+                out_pair = [
+                    (x, self._find_var(block_desc, x, is_forward).shape())
+                    for x in defs_can_optimize
+                ]
                 for x, x_shape in out_pair:
-                    if not block_desc.find_var_recursive(str(x)).persistable():
+                    if not self._find_var(block_desc, x,
+                                          is_forward).persistable():
                         for index, cache_pair in enumerate(self.pool):
                             cache_var = cache_pair[0]
                             cache_shape = cache_pair[1]
                             if x_shape == cache_shape:
-                                if block_desc.find_var_recursive(
-                                        str(cache_var)):
-                                    x_dtype = block_desc.find_var_recursive(
-                                        str(x)).dtype()
-                                    cache_dtype = block_desc.find_var_recursive(
-                                        str(cache_var)).dtype()
+                                if self._has_var(block_desc, cache_var,
+                                                 is_forward):
+                                    x_dtype = self._find_var(block_desc, x,
+                                                             is_forward)
+                                    cache_dtype = self._find_var(
+                                        block_desc, cache_var, is_forward)
                                     # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
                                     # and dtype_to_size[cache_dtype]
                                     if x_dtype == cache_dtype:
@@ -173,9 +158,9 @@ class ControlFlowGraph(object):
                                         #         block_desc.find_var_recursive(
                                         #             str(cache_var)).name())
                                         self._program.block(block_desc.id).var(
-                                            str(x)
-                                        ).desc = block_desc.find_var_recursive(
-                                            str(cache_var))
+                                            str(x)).desc = self._find_var(
+                                                block_desc, cache_var,
+                                                is_forward)
                                         self._update_graph(
                                             x, cache_var, begin_idx=i)
                                         break
@@ -183,25 +168,53 @@ class ControlFlowGraph(object):
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
             can_optimize = filter(
-                lambda x: str(x) != "@EMPTY@" and
-                block_desc.has_var_recursive(str(x)) and
-                not block_desc.find_var_recursive(str(x)).persistable(),
+                lambda x: str(x) != "@EMPTY@" and self._has_var(block_desc, x, is_forward) and not self._find_var(block_desc, x, is_forward).persistable(),
                 in_diff)
             can_optimize = filter(
-                lambda x: block_desc.find_var_recursive(str(x)).type() == core.VarDesc.VarType.LOD_TENSOR,
+                lambda x: self._find_var(block_desc, x, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
                 can_optimize)
             if can_optimize:
                 for var_name in can_optimize:
-                    self.pool.append(
-                        (var_name,
-                         block_desc.find_var_recursive(str(var_name)).shape()))
+                    self.pool.append((var_name, self._find_var(
+                        block_desc, var_name, is_forward).shape()))
 
     def get_program(self):
         return self._program
 
 
+def get_CFG(input_program):
+    ops_list = []
+    pdesc = input_program.get_desc()
+    block_desc = pdesc.block(0)
+    op_size = block_desc.op_size()
+    ops_list.append(([block_desc.op(i) for i in range(op_size)], op_size))
+    for i in range(op_size):
+        op = block_desc.op(i)
+        if op.type() == "while":
+            while_sub_block_id = op.attr("sub_block").id
+        elif op.type() == "while_grad":
+            while_grad_sub_block_id = op.attr("sub_block").id
+
+    while_block_ops = []
+    while_block = pdesc.block(while_sub_block_id)
+    while_block_op_size = while_block.op_size()
+    for i in range(while_block_op_size):
+        while_block_ops.append(while_block.op(i))
+
+    while_grad_block = pdesc.block(while_grad_sub_block_id)
+    while_grad_block_op_size = while_grad_block.op_size()
+    for i in range(while_grad_block_op_size):
+        while_block_ops.append(while_grad_block.op(i))
+
+    ops_list.append((while_block_ops, while_block_op_size))
+
+
 def memory_optimize(input_program):
-    graph = ControlFlowGraph(input_program)
-    graph.memory_optimize()
-    result_program = graph.get_program()
+    ops_list = get_CFG(input_program)
+    result_program = input_program
+    for i, j in ops_list:
+        result_program = ControlFlowGraph(result_program, i, j)
+    cfgs = [ControlFlowGraph(input_program, i, j) for i, j in ops_list]
+    for cfg in cfgs:
+        cfg.memory_optimize()
     return result_program
