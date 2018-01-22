@@ -31,7 +31,7 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(in1_height, input2.height());
     output->set_height(in1_height);
 
-    auto& in1_rows = input1.rows();
+    framework::Vector<int64_t> in1_rows(input1.rows());
     auto& in2_rows = input2.rows();
     std::vector<int64_t> out_rows;
     out_rows.reserve(in1_rows.size() + in2_rows.size());
@@ -108,7 +108,7 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(in1_height, out_dims[0]);
 
     auto& in1_value = input1.value();
-    auto& in1_rows = const_cast<framework::Vector<int64_t>>(input1.rows());
+    auto& in1_rows = framework::Vector<int64_t>(input1.rows());
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(in1_row_numel, input2.numel() / in1_height);
@@ -146,7 +146,7 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(in1_height, input2->height());
 
-    auto& in1_rows = input1.rows();
+    auto& in1_rows = framework::Vector<int64_t>(input1.rows());
     auto& in2_rows = *(input2->mutable_rows());
 
     auto& in1_value = input1.value();
@@ -204,7 +204,7 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(in1_height, in2_dims[0]);
 
     auto& in1_value = input1.value();
-    auto& in1_rows = input1.rows();
+    framework::Vector<int64_t> in1_rows(input1.rows());
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(in1_row_numel, input2->numel() / in1_height);
