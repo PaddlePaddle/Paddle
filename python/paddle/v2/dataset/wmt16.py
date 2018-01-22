@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-ACL2016 Multimodal Machine Translation. Please see this websit for more details:
-http://www.statmt.org/wmt16/multimodal-task.html#task1
+ACL2016 Multimodal Machine Translation. Please see this website for more
+details: http://www.statmt.org/wmt16/multimodal-task.html#task1
 
 If you use the dataset created for your task, please cite the following paper:
 Multi30K: Multilingual English-German Image Descriptions.
@@ -56,7 +56,7 @@ END_MARK = "<e>"
 UNK_MARK = "<unk>"
 
 
-def __build_dict__(tar_file, dict_size, save_path, lang):
+def __build_dict(tar_file, dict_size, save_path, lang):
     word_dict = defaultdict(int)
     with tarfile.open(tar_file, mode="r") as f:
         for line in f.extractfile("wmt16/train"):
@@ -75,12 +75,12 @@ def __build_dict__(tar_file, dict_size, save_path, lang):
             fout.write("%s\n" % (word[0]))
 
 
-def __load_dict__(tar_file, dict_size, lang, reverse=False):
+def __load_dict(tar_file, dict_size, lang, reverse=False):
     dict_path = os.path.join(paddle.v2.dataset.common.DATA_HOME,
                              "wmt16/%s_%d.dict" % (lang, dict_size))
     if not os.path.exists(dict_path) or (
             len(open(dict_path, "r").readlines()) != dict_size):
-        __build_dict__(tar_file, dict_size, dict_path, lang)
+        __build_dict(tar_file, dict_size, dict_path, lang)
 
     word_dict = {}
     with open(dict_path, "r") as fdict:
@@ -92,7 +92,7 @@ def __load_dict__(tar_file, dict_size, lang, reverse=False):
     return word_dict
 
 
-def __get_dict_size__(src_dict_size, trg_dict_size, src_lang):
+def __get_dict_size(src_dict_size, trg_dict_size, src_lang):
     src_dict_size = min(src_dict_size, (TOTAL_EN_WORDS if src_lang == "en" else
                                         TOTAL_DE_WORDS))
     trg_dict_size = min(trg_dict_size, (TOTAL_DE_WORDS if src_lang == "en" else
@@ -102,9 +102,9 @@ def __get_dict_size__(src_dict_size, trg_dict_size, src_lang):
 
 def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
     def reader():
-        src_dict = __load_dict__(tar_file, src_dict_size, src_lang)
-        trg_dict = __load_dict__(tar_file, trg_dict_size,
-                                 ("de" if src_lang == "en" else "en"))
+        src_dict = __load_dict(tar_file, src_dict_size, src_lang)
+        trg_dict = __load_dict(tar_file, trg_dict_size,
+                               ("de" if src_lang == "en" else "en"))
 
         # the indice for start mark, end mark, and unk are the same in source
         # language and target language. Here uses the source language
@@ -173,8 +173,8 @@ def train(src_dict_size, trg_dict_size, src_lang="en"):
 
     assert (src_lang in ["en", "de"], ("An error language type.  Only support: "
                                        "en (for English); de(for Germany)"))
-    src_dict_size, trg_dict_size = __get_dict_size__(src_dict_size,
-                                                     trg_dict_size, src_lang)
+    src_dict_size, trg_dict_size = __get_dict_size(src_dict_size, trg_dict_size,
+                                                   src_lang)
 
     return reader_creator(
         tar_file=paddle.v2.dataset.common.download(DATA_URL, "wmt16", DATA_MD5,
@@ -222,8 +222,8 @@ def test(src_dict_size, trg_dict_size, src_lang="en"):
             ("An error language type.  "
              "Only support: en (for English); de(for Germany)"))
 
-    src_dict_size, trg_dict_size = __get_dict_size__(src_dict_size,
-                                                     trg_dict_size, src_lang)
+    src_dict_size, trg_dict_size = __get_dict_size(src_dict_size, trg_dict_size,
+                                                   src_lang)
 
     return reader_creator(
         tar_file=paddle.v2.dataset.common.download(DATA_URL, "wmt16", DATA_MD5,
@@ -269,8 +269,8 @@ def validation(src_dict_size, trg_dict_size, src_lang="en"):
     assert (src_lang in ["en", "de"],
             ("An error language type.  "
              "Only support: en (for English); de(for Germany)"))
-    src_dict_size, trg_dict_size = __get_dict_size__(src_dict_size,
-                                                     trg_dict_size, src_lang)
+    src_dict_size, trg_dict_size = __get_dict_size(src_dict_size, trg_dict_size,
+                                                   src_lang)
 
     return reader_creator(
         tar_file=paddle.v2.dataset.common.download(DATA_URL, "wmt16", DATA_MD5,
@@ -308,7 +308,7 @@ def get_dict(lang, dict_size, reverse=False):
             "Please invoke paddle.dataset.wmt16.train/test/validation "
             "first to build the dictionary.")
     tar_file = os.path.join(paddle.v2.dataset.common.DATA_HOME, "wmt16.tar.gz")
-    return __load_dict__(tar_file, dict_size, lang, reverse)
+    return __load_dict(tar_file, dict_size, lang, reverse)
 
 
 def fetch():
