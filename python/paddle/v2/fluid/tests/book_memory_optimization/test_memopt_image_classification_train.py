@@ -19,6 +19,11 @@ import sys
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 
+# need to fix random seed and training data to compare the loss
+# value accurately calculated by the default and the memory optimization
+# version.
+fluid.default_startup_program().random_seed = 111
+
 
 def resnet_cifar10(input, depth=32):
     def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
@@ -122,16 +127,21 @@ fluid.memory_optimize(fluid.default_main_program())
 BATCH_SIZE = 128
 PASS_NUM = 1
 
+# fix the order of training data
 train_reader = paddle.batch(
-    paddle.reader.shuffle(
-        paddle.dataset.cifar.train10(), buf_size=128 * 10),
-    batch_size=BATCH_SIZE)
+    paddle.dataset.cifar.train10(), batch_size=BATCH_SIZE)
+
+# train_reader = paddle.batch(
+#     paddle.reader.shuffle(
+#         paddle.dataset.cifar.train10(), buf_size=128 * 10),
+#     batch_size=BATCH_SIZE)
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
 feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
 exe.run(fluid.default_startup_program())
 
+i = 0
 for pass_id in range(PASS_NUM):
     accuracy.reset(exe)
     for data in train_reader():
@@ -142,5 +152,7 @@ for pass_id in range(PASS_NUM):
         print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
             pass_acc))
         # this model is slow, so if we can train two mini batch, we think it works properly.
-        exit(0)
+        if i > 2:
+            exit(0)
+        i += 1
 exit(1)
