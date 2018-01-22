@@ -165,7 +165,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     }
 
     Eigen::Tensor<T, 2, Eigen::RowMajor> var_et(1, variances.size());
-    for (int i = 0; i < variances.size(); ++i) {
+    for (size_t i = 0; i < variances.size(); ++i) {
       var_et(0, i) = variances[i];
     }
 
