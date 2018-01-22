@@ -67,11 +67,16 @@ def decoder_train(context):
     rnn = pd.DynamicRNN()
     with rnn.block():
         current_word = rnn.step_input(trg_embedding)
-        mem = rnn.memory(init=context)
-        fc1 = pd.fc(input=[current_word, mem], size=decoder_size, act='tanh')
-        out = pd.fc(input=fc1, size=target_dict_dim, act='softmax')
-        rnn.update_memory(mem, fc1)
-        rnn.output(out)
+        pre_state = rnn.memory(init=context)
+        current_state = pd.fc(input=[current_word, pre_state],
+                              size=decoder_size,
+                              act='tanh')
+
+        current_score = pd.fc(input=current_state,
+                              size=target_dict_dim,
+                              act='softmax')
+        rnn.update_memory(pre_state, current_state)
+        rnn.output(current_score)
 
     return rnn()
 
@@ -108,6 +113,7 @@ def decoder_decode(context):
         pre_state = pd.array_read(array=state_array, i=counter)
         pre_score = pd.array_read(array=scores_array, i=counter)
 
+        # expand the lod of pre_state to be the same with pre_score
         pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
 
         pre_ids_emb = pd.embedding(
@@ -117,14 +123,14 @@ def decoder_decode(context):
             is_sparse=IS_SPARSE)
 
         # use rnn unit to update rnn
-        # TODO share parameter with trainer
         current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
                               size=decoder_size,
                               act='tanh')
+
+        # use score to do beam search
         current_score = pd.fc(input=current_state,
                               size=target_dict_dim,
                               act='softmax')
-
         topk_scores, topk_indices = pd.topk(current_score, k=50)
         selected_ids, selected_scores = pd.beam_search(
             pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
@@ -210,17 +216,15 @@ def train_main():
 
 
 def decode_main():
-    # a newe block
-    # with pd.BlockGuard() as block:
     context = encoder()
-    # translation_ids, translation_scores = decoder_decode(context)
     translation_ids, translation_scores = decoder_decode(context)
+
     exe = Executor(place)
     exe.run(framework.default_startup_program())
 
     init_ids_data = np.array([1 for i in range(batch_size)], dtype='int64')
     init_scores_data = np.array(
-        [1. for i in range(batch_size)], dtype='float32')
+        [1. for _ in range(batch_size)], dtype='float32')
     init_ids_data = init_ids_data.reshape((batch_size, 1))
     init_scores_data = init_scores_data.reshape((batch_size, 1))
     init_lod = [i for i in range(batch_size)] + [batch_size]
