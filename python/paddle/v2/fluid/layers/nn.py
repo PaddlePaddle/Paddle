@@ -1870,7 +1870,7 @@ def edit_distance(input,
                   ignored_tokens=None,
                   name=None):
     """
-    EditDistance operator computes the edit distances between a batch of hypothesis strings and their references.Edit distance, also called Levenshtein distance, measures how dissimilar two strings are by counting the minimum number of operations to transform one string into anthor. Here the operations include insertion, deletion, and substitution. For example, given hypothesis string A = "kitten" and reference B = "sitting", the edit distance is 3 for A will be transformed into B at least after two substitutions and one insertion:
+    EditDistance operator computes the edit distances between a batch of hypothesis strings and their references. Edit distance, also called Levenshtein distance, measures how dissimilar two strings are by counting the minimum number of operations to transform one string into anthor. Here the operations include insertion, deletion, and substitution. For example, given hypothesis string A = "kitten" and reference B = "sitting", the edit distance is 3 for A will be transformed into B at least after two substitutions and one insertion:
 
        "kitten" -> "sitten" -> "sittin" -> "sitting"
 
@@ -2028,7 +2028,7 @@ def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
          Temporal Classification (CTC) loss, which is in the
          half-opened interval [0, num_classes + 1).
        norm_by_times: (bool, default: false), whether to normalize
-       the gradients by the number of time-step,which is also the
+       the gradients by the number of time-step, which is also the
        sequence's length. There is no need to normalize the gradients
        if warpctc layer was follewed by a mean_op.
 

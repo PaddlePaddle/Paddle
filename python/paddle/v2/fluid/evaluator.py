@@ -212,7 +212,7 @@ class EditDistance(Evaluator):
     compute the average edit_distance of all batches.
 
     Args:
-        input: the sequences predicted by network
+        input: the sequences predicted by network.
         label: the target sequences which must has same sequence count
         with input.
         ignored_tokens(list of int): Tokens that should be removed before
