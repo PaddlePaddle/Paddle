@@ -20,13 +20,32 @@ import contextlib
 from ..registry import autodoc
 
 __all__ = [
-    'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard',
-    'BlockGuardWithCompletion', 'StaticRNNMemoryLink', 'WhileGuard', 'While',
-    'lod_rank_table', 'max_sequence_len', 'topk', 'lod_tensor_to_array',
-    'array_to_lod_tensor', 'increment', 'array_write', 'create_array',
-    'less_than', 'array_read', 'shrink_memory', 'array_length', 'IfElse',
-    'DynamicRNN', 'ConditionalBlock', 'StaticRNN', 'reorder_lod_tensor_by_rank',
-    'ParallelDo', 'Print'
+    'split_lod_tensor',
+    'merge_lod_tensor',
+    'BlockGuard',
+    'BlockGuardWithCompletion',
+    'StaticRNNMemoryLink',
+    'WhileGuard',
+    'While',
+    'lod_rank_table',
+    'max_sequence_len',
+    'topk',
+    'lod_tensor_to_array',
+    'array_to_lod_tensor',
+    'increment',
+    'array_write',
+    'create_array',
+    'less_than',
+    'array_read',
+    'shrink_memory',
+    'array_length',
+    'IfElse',
+    'DynamicRNN',
+    'ConditionalBlock',
+    'StaticRNN',
+    'reorder_lod_tensor_by_rank',
+    'ParallelDo',
+    'Print',
 ]
 
 
