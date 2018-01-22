@@ -113,7 +113,7 @@ Init from startup-program-desc or init from checkpoint(for fault-tolerant mode).
 Wait to receive gradients to update parameters.
 Wait for trainers to get updated parameters.
 ```
-
+g
 ## Autoscaling
 TODO
 
