@@ -104,6 +104,23 @@ void Vector<T>::CopyFromCUDA() {
 #endif
 }
 
+template <typename T>
+void Vector<T>::CopyToPeer(platform::Place peer_place) {
+  if (platform::is_cpu_place(peer_place)) {
+    return;
+  }
+#ifdef PADDLE_WITH_CUDA
+  auto *cuda_ctx = platform::DeviceContextPool::Instance().GetByPlace(place_);
+  void *peer_cuda_ptr_ = memory::Alloc<platform::CUDAPlace>(
+      boost::get<platform::CUDAPlace>(peer_place), this->size() * sizeof(T));
+  memory::Copy(boost::get<platform::CUDAPlace>(peer_place),
+               static_cast<void *>(peer_cuda_ptr_), place_,
+               static_cast<const void *>(cuda_ptr_), this->size() * sizeof(T),
+               cuda_ctx->stream());
+  cuda_ctx->Wait();
+#endif
+}
+
 std::string LoDToString(const LoD &lod) {
   std::ostringstream stream;
   stream << lod;

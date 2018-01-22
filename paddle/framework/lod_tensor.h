@@ -71,6 +71,8 @@ class Vector : public std::vector<T> {
 
   void CopyFromCUDA();
 
+  void CopyToPeer();
+
  private:
   void* cuda_ptr_ = nullptr;
   size_t cuda_size_ = 0;
