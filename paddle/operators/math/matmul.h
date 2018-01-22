@@ -41,10 +41,24 @@ class MatMulFunctor {
                       "Input tensor a must be at least 1-dimensional.");
     PADDLE_ENFORCE_GE(dim_b.size(), 1,
                       "Input tensor b must be at least 1-dimensional.");
-    PADDLE_ENFORCE_LE(dim_a.size(), 3,
-                      "Input tensor a must be at most 3-dimensional.");
-    PADDLE_ENFORCE_LE(dim_b.size(), 3,
-                      "Input tensor b must be at most 3-dimensional.");
+
+    std::vector<int64_t> out_dim;
+    int64_t batch_count = 1;
+    if (dim_a.size() > 3) {
+      PADDLE_ENFORCE(dim_b.size() == dim_a.size(),
+                     "The dimensions of X and Y must be the same, and both of "
+                     "them should be %d-dimensional.",
+                     dim_b.size());
+      // The first rank-2 dimensions are accumulated on the batch_count, and the
+      // last two dimensions are used for matrix multiplication.
+      for (int j = 0; j < dim_a.size() - 2; ++j) {
+        PADDLE_ENFORCE_EQ(dim_b[j], dim_a[j],
+                          "The %d-th dimension of X and Y must be the same.",
+                          j);
+        out_dim.push_back(dim_a[j]);
+        batch_count *= dim_a[j];
+      }
+    }
 
     int M = 0, N = 0, kA = 0, kB = 0, batchCountA = 0, batchCountB = 0,
         strideA = 0, strideB = 0;
@@ -67,7 +81,11 @@ class MatMulFunctor {
         strideA = M * kA;
         break;
       default:
-        assert(false);
+        batchCountA = batch_count;
+        size_t mat_s = dim_a.size() - 2;
+        M = trans_a ? dim_a[mat_s + 1] : dim_a[mat_s];
+        kA = trans_a ? dim_a[mat_s] : dim_a[mat_s + 1];
+        strideA = M * kA;
     }
 
     switch (dim_b.size()) {
@@ -88,7 +106,11 @@ class MatMulFunctor {
         strideB = kB * N;
         break;
       default:
-        assert(false);
+        batchCountB = batch_count;
+        size_t mat_s = dim_b.size() - 2;
+        kB = trans_b ? dim_b[mat_s + 1] : dim_b[mat_s];
+        N = trans_b ? dim_b[mat_s] : dim_b[mat_s + 1];
+        strideB = kB * N;
     }
 
     PADDLE_ENFORCE_EQ(
