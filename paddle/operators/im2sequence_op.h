@@ -50,11 +50,11 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     int img_height = in_dim[2];
     int img_width = in_dim[3];
 
-    auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
-    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    int output_height =
-        OutputSize(img_height, kernels[0], paddings[0], paddings[2] strides[0]);
+    auto kernels = ctx.Attr<std::vector<int>>("kernels");
+    auto strides = ctx.Attr<std::vector<int>>("strides");
+    auto paddings = ctx.Attr<std::vector<int>>("paddings");
+    int output_height = OutputSize(img_height, kernels[0], paddings[0],
+                                   paddings[2], strides[0]);
     int output_width =
         OutputSize(img_width, kernels[1], paddings[1], paddings[3], strides[1]);
 
@@ -106,9 +106,9 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
     int img_height = in_dim[2];
     int img_width = in_dim[3];
 
-    auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
-    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
-    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    auto kernels = ctx.Attr<std::vector<int>>("kernels");
+    auto strides = ctx.Attr<std::vector<int>>("strides");
+    auto paddings = ctx.Attr<std::vector<int>>("paddings");
     int output_height = OutputSize(img_height, kernels[0], paddings[0],
                                    paddings[2], strides[0]);
     int output_width =
