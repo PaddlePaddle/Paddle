@@ -86,7 +86,9 @@ def __bootstrap__():
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
-    read_env_flags = ['use_pinned_memory', 'check_nan_inf']
+    read_env_flags = [
+        'use_pinned_memory', 'check_nan_inf', 'do_memory_benchmark'
+    ]
     if core.is_compile_gpu():
         read_env_flags += ['fraction_of_gpu_memory_to_use', 'op_sync']
     core.init_gflags([sys.argv[0]] +
