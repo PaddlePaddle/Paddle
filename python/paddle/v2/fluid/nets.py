@@ -127,21 +127,21 @@ def sequence_conv_pool(input,
 
 def glu(input, dim=-1):
     """
-    The gated linear unit composed by split, sigmoid activation and elementwise 
-    multiplication. Specifically, Split the input into two equal sized parts 
-    :math:`a` and :math:`b` along the given dimension and then compute as 
+    The gated linear unit composed by split, sigmoid activation and elementwise
+    multiplication. Specifically, Split the input into two equal sized parts
+    :math:`a` and :math:`b` along the given dimension and then compute as
     following:
 
         .. math::
 
             {GLU}(a, b)= a \otimes \sigma(b)
 
-    Refer to `Language Modeling with Gated Convolutional Networks 
+    Refer to `Language Modeling with Gated Convolutional Networks
     <https://arxiv.org/pdf/1612.08083.pdf>`_.
-    
+
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the 
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`.
 
     Returns:
@@ -160,53 +160,105 @@ def glu(input, dim=-1):
     return out
 
 
-def dot_product_attention(querys, keys, values):
+def scaled_dot_product_attention(queries,
+                                 keys,
+                                 values,
+                                 num_heads,
+                                 dropout_rate=0.):
     """
     The dot-product attention.
 
-    Attention mechanism can be seen as mapping a query and a set of key-value 
-    pairs to an output. The output is computed as a weighted sum of the values, 
-    where the weight assigned to each value is computed by a compatibility 
-    function (dot-product here) of the query with the corresponding key.
-    
-    The dot-product attention can be implemented through (batch) matrix 
+    Attention mechanism can be seen as mapping a query and a set of
+    key-value pairs to an output. The output is computed as a weighted sum
+    of the values, where the weight assigned to each value is computed by a
+    compatibility function (dot-product here) of the query with the
+    corresponding key.
+
+    The dot-product attention can be implemented through (batch) matrix
     multipication as follows:
 
         .. math::
 
             Attention(Q, K, V)= softmax(QK^\mathrm{T})V
 
-    Refer to `Attention Is All You Need 
+    Refer to `Attention Is All You Need
     <https://arxiv.org/pdf/1706.03762.pdf>`_.
 
-    Note that batch data containing sequences with different lengths is not 
+    Note that batch data containing sequences with different lengths is not
     supported by this because of the (batch) matrix multipication.
-    
+
     Args:
-        query (Variable): The input variable which is a Tensor or LoDTensor.
+        query (Variable): The input variable which is a Tensor or
+                          LoDTensor.
         key (Variable): The input variable which is a Tensor or LoDTensor.
-        value (Variable): The input variable which is a Tensor or LoDTensor.
+        value (Variable): The input variable which is a Tensor or
+                          LoDTensor.
 
     Returns:
-        tuple: The Tensor variables representing the output and attention scores.
+        tuple: The Tensor variables representing the output and attention
+               scores.
 
     Examples:
         .. code-block:: python
 
-            # Suppose q, k, v are tensor variables with the following shape:
-            # q: [3, 5, 9], k: [3, 6, 9], v: [3, 6, 10]
+            # Suppose q, k, v are tensor variables with the following
+            # shape: q: [3, 5, 9], k: [3, 6, 9], v: [3, 6, 10]
             out, attn_scores = fluid.nets.dot_product_attention(q, k, v)
             out.shape  # [3, 5, 10]
             attn_scores.shape  # [3, 5, 6]
     """
-    assert keys.shape[-2] == values.shape[
-        -2], 'The shapes of keys and values mismatch.'
-    assert querys.shape[-1] == keys.shape[
-        -1], 'The shapes of querys and keys mismatch.'
-    product = layers.matmul(x=querys, y=keys, transpose_y=True)
+    if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
+        raise ValueError(
+            "Inputs quries, keys and values should all be 3-D tensors.")
+
+    if queries.shape[-1] != keys.shape[-1]:
+        raise ValueError(
+            "The hidden size of queries and keys should be the same.")
+    if keys.shape[-2] != values.shape[-2]:
+        raise ValueError(
+            "The max sequence length in query batch and in key batch "
+            "should be the same.")
+    if keys.shape[-1] % num_heads != 0:
+        raise ValueError("The hidden size of keys (%d) must be divisible "
+                         "by the number of attention heads (%d)." %
+                         (keys.shape[-1], num_heads))
+    if values.shape[-1] % num_heads != 0:
+        raise ValueError("The hidden size of values (%d) must be divisible "
+                         "by the number of attention heads (%d)." %
+                         (values.shape[-1], num_heads))
+
+    def __split_heads(x, num_heads):
+        """
+        Reshape the last dimension of inpunt tensor x so that it becomes two
+        dimensions.
+
+        Args:
+          x(Tensor): a 3-D input Tensor.
+          num_heads(int): The number of heads.
+
+        Returns:
+          a Tensor with shape [..., n, m/n]
+        """
+        hidden_size = x.shape[-1]
+        #
+        reshaped = layers.reshape(
+            x=x, shape=x.shape[:-1] + [num_heads, hidden_size // num_heads])
+        pass
+
+    def __combine_heads():
+        pass
+
+    q = __split_heads(quries, num_heads)
+    k = __split_heads(keys, num_heads)
+    v = __split_heads(values, num_heads)
+
+    key_dim_per_head = keys.shape[-1] // num_heads
+    scale = key_dim_per_head**-0.5
+
+    product = layers.matmul(x=k, y=q, transpose_y=True)
     attn_scores = layers.reshape(
         x=layers.reshape(
-            x=product, shape=[-1, product.shape[-1]], act='softmax'),
+            x=product, shape=[-1, product.shape[-1]], act="softmax"),
         shape=product.shape)
-    out = layers.matmul(attn_scores, values)
-    return out, attn_scores
+    context = layers.matmul(attn_scores, values)
+    return context, attn_scores
