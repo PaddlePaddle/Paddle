@@ -1985,8 +1985,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     In the above equation:
 
     * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
-    * :math:`\\tau`: Future context size. Please note, the shape of
-            convolution kernel is [future_context_size + 1, D].
+    * :math:`\\tau`: Future context size.
     * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
     * :math:`W_{i-j}`: The (i-j)-th row of parameters with shape [1, D].
 
@@ -1997,7 +1996,8 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
 
     Args:
         input (Variable): Input variable, a 2D LoDTensor with shape [T, D].
-        future_context_size (int): Future context size.
+        future_context_size (int): Future context size. Please note, the shape
+            of convolution kernel is [future_context_size + 1, D].
         param_attr (ParamAttr): Attributes of parameters, including
             name, initializer etc.
         act (str): Non-linear activation to be applied to output variable.
