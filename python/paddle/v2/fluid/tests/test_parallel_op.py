@@ -1,4 +1,19 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
+
 import paddle.v2.fluid as fluid
 import numpy
 
@@ -13,13 +28,13 @@ class BaseParallelForTest(unittest.TestCase):
                 returns the data layers, and the second yield returns the loss. 
                 The modified data variables will be sent back during the first 
                 yield.
-            
+
             feed(dict): The executor feeding dictionary.
             fetch(list|basestr): The fetch name lists. 
 
         Returns:
             None
-            
+
         Raises:
             AssertionError when the computation of cpu, parallel.for in cpu, 
                 gpu, parallel.for in gpu are different.
@@ -134,23 +149,27 @@ class BaseParallelForTest(unittest.TestCase):
 
 
 class ParallelOpTest(BaseParallelForTest):
-    def test_simple_fc(self):
-        def __network__():
-            x = fluid.layers.data(shape=[784], dtype='float32', name='img')
-            # FIXME: This is a bug of parallel.do
-            x.stop_gradient = False
-            x = yield x
-            hidden = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-            loss = fluid.layers.mean(x=hidden)
-            yield loss
+    @staticmethod
+    def __network__():
+        x = fluid.layers.data(shape=[784], dtype='float32', name='img')
+        x = yield x
+        hidden = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+        loss = fluid.layers.mean(x=hidden)
+        yield loss
 
+    def test_simple_fc(self):
         self.run_test(
-            callback=__network__,
+            callback=ParallelOpTest.__network__,
             feed={
-                'img':
-                numpy.random.random(size=(128 * 3, 784)).astype('float32')
+                'img': numpy.random.random(size=(51, 784)).astype('float32')
             },
-            fetch='fc1.w@GRAD')
+            fetch=['fc1.w@GRAD'])
+
+    def test_fc_with_tiny_data(self):
+        self.run_test(
+            callback=ParallelOpTest.__network__,
+            feed={'img': numpy.random.random(size=(1, 784)).astype('float32')},
+            fetch=['fc1.w@GRAD'])
 
 
 if __name__ == '__main__':

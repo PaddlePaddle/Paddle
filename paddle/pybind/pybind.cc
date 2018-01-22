@@ -430,13 +430,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_glog", framework::InitGLOG);
   m.def("init_devices", &framework::InitDevices);
 
-  m.def("use_cpu", framework::UseCPU);
-  m.def("use_mkldnn", framework::UseMKLDNN);
-  m.def("use_cuda", framework::UseCUDA);
-  m.def("use_cudnn", framework::UseCUDNN);
-  m.def("use_all", framework::UseALL);
-
   m.def("is_compile_gpu", IsCompileGPU);
+
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 

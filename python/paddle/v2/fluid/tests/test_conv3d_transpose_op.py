@@ -1,5 +1,21 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 import numpy as np
+
+import paddle.v2.fluid.core as core
 from op_test import OpTest
 
 
@@ -44,6 +60,7 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
 class TestConv3dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
+        self.use_cudnn = False
         self.init_op_type()
         self.init_test_case()
 
@@ -54,7 +71,9 @@ class TestConv3dTransposeOp(OpTest):
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
-            'dilations': self.dilations
+            'dilations': self.dilations,
+            'use_cudnn': self.use_cudnn,
+            'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
 
         output = conv3dtranspose_forward_naive(input_, filter_,
@@ -63,25 +82,53 @@ class TestConv3dTransposeOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output()
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                set(['Input', 'Filter']),
+                'Output',
+                max_relative_error=0.03)
+        else:
+            self.check_grad(
+                set(['Input', 'Filter']), 'Output', max_relative_error=0.03)
 
     def test_check_grad_no_filter(self):
-        self.check_grad(
-            ['Input'],
-            'Output',
-            max_relative_error=0.02,
-            no_grad_set=set(['Filter']))
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']))
+        else:
+            self.check_grad(
+                ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
-        self.check_grad(
-            ['Filter'],
-            'Output',
-            max_relative_error=0.02,
-            no_grad_set=set(['Input']))
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']))
+        else:
+            self.check_grad(
+                ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0, 0]
@@ -126,12 +173,13 @@ class TestWithDilation(TestConv3dTransposeOp):
 
 
 # ------------ test_cudnn ------------
-class TestCudnn(TestConv3dTransposeOp):
+class TestCUDNN(TestConv3dTransposeOp):
     def init_op_type(self):
-        self.op_type = "conv3d_transpose_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv3d_transpose"
 
 
-class TestCudnnWithPad(TestWithPad):
+class TestCUDNNWithPad(TestWithPad):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -141,10 +189,11 @@ class TestCudnnWithPad(TestWithPad):
         self.filter_size = [f_c, 6, 3, 3, 3]
 
     def init_op_type(self):
-        self.op_type = "conv3d_transpose_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv3d_transpose"
 
 
-class TestCudnnWithStride(TestWithStride):
+class TestCUDNNWithStride(TestWithStride):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [2, 2, 2]
@@ -154,11 +203,12 @@ class TestCudnnWithStride(TestWithStride):
         self.filter_size = [f_c, 6, 3, 3, 3]
 
     def init_op_type(self):
-        self.op_type = "conv3d_transpose_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv3d_transpose"
 
 
 # #cudnn v5 does not support dilation conv.
-# class TestCudnnWithDilation(TestWithDilation):
+# class TestCUDNNWithDilation(TestWithDilation):
 #     def init_test_case(self):
 #         self.pad = [1, 1, 1]
 #         self.stride = [2, 2, 2]
@@ -168,7 +218,7 @@ class TestCudnnWithStride(TestWithStride):
 #         self.filter_size = [f_c, 6, 3, 3, 3]
 #
 #     def init_op_type(self):
-#         self.op_type = "conv3d_transpose_cudnn"
+#         self.op_type = "conv3d_transpose"
 
 if __name__ == '__main__':
     unittest.main()

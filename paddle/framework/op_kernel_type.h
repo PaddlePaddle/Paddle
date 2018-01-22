@@ -85,5 +85,15 @@ inline std::string KernelTypeToString(const OpKernelType& kernel_key) {
   return stream.str();
 }
 
+inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
+  return l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r;
+}
+
+inline bool TransFromNeeded(const OpKernelType& l, const OpKernelType& r) {
+  return (!platform::places_are_same_class(l.place_, r.place_)) ||
+         (l.data_type_ != r.data_type_) ||
+         NeedTransformLayout(l.data_layout_, r.data_layout_);
+}
+
 }  // namespace framework
 }  // namespace paddle

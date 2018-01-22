@@ -29,7 +29,7 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   PruneEndidCandidates(pre_ids, &selected_items);
   // calculate the output tensor's height
   size_t num_instances = std::accumulate(
-      std::begin(items), std::end(items), 0,
+      std::begin(selected_items), std::end(selected_items), 0,
       [](size_t a, std::vector<Item> &b) { return a + b.size(); });
   // the output tensor shape should be [num_instances, 1]
   auto dims = framework::make_ddim(
@@ -48,12 +48,20 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   size_t low_offset = 0;
   for (auto &items : selected_items) {
     low_level.push_back(low_offset);
+    sort(items.begin(), items.end(), [](const Item &a, const Item &b) {
+      if (a.offset < b.offset) {
+        return true;
+      }
+      return a.id < b.id;
+    });
     for (auto &item : items) {
       ids_data[low_offset] = item.id;
       scores_data[low_offset] = item.score;
       low_offset++;
     }
   }
+  low_level.push_back(low_offset);
+
   // fill lod
   auto abs_lod = framework::ToAbsOffset(ids_->lod());
   auto &high_level = abs_lod[lod_level_];
@@ -64,16 +72,21 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   selected_scores->set_lod(lod);
 }
 
-void BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
-                                      std::vector<std::vector<Item>> *items) {
+int BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
+                                     std::vector<std::vector<Item>> *items) {
   auto *pre_ids_data = pre_ids.data<int64_t>();
 
+  int res = 0;
   for (size_t offset = 0; offset < items->size(); offset++) {
     auto prefix_id = pre_ids_data[offset];
     if (prefix_id == end_id_) {
       items->at(offset).clear();
+    } else {
+      res++;
     }
   }
+
+  return res;
 }
 
 std::vector<std::vector<BeamSearch::Item>> BeamSearch::ToMap(
@@ -121,11 +134,7 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   auto ids = *ids_;
   auto scores = *scores_;
 
-  auto source_abs_two_level_lod = framework::SliceInLevel(
-      ids.lod(), lod_level_, sent_offset_, sent_offset_ + 1);
-  source_abs_two_level_lod = framework::ToAbsOffset(source_abs_two_level_lod);
   auto abs_lod = framework::ToAbsOffset(ids.lod());
-  PADDLE_ENFORCE_GE(source_abs_two_level_lod.size(), 2UL);
 
   auto *ids_data = ids.data<int64_t>();
   auto *scores_data = scores.data<float>();
