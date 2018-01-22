@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy
 import random
 import collections
@@ -197,7 +211,24 @@ class BaseRNN(object):
         return numpy.array([o.mean() for o in outs.itervalues()]).mean()
 
 
-class TestSimpleMul(unittest.TestCase):
+class SeedFixedTestCase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Fix random seeds to remove randomness from tests"""
+        cls._np_rand_state = numpy.random.get_state()
+        cls._py_rand_state = random.getstate()
+
+        numpy.random.seed(123)
+        random.seed(124)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Restore random seeds"""
+        numpy.random.set_state(cls._np_rand_state)
+        random.setstate(cls._py_rand_state)
+
+
+class TestSimpleMul(SeedFixedTestCase):
     DATA_NAME = 'X'
     DATA_WIDTH = 32
     PARAM_NAME = 'W'
@@ -263,7 +294,7 @@ class TestSimpleMul(unittest.TestCase):
         self.assertTrue(numpy.allclose(i_g_num, i_g, rtol=0.05))
 
 
-class TestSimpleMulWithMemory(unittest.TestCase):
+class TestSimpleMulWithMemory(SeedFixedTestCase):
     DATA_WIDTH = 32
     HIDDEN_WIDTH = 20
     DATA_NAME = 'X'

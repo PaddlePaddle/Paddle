@@ -60,8 +60,8 @@ class EditDistanceKernel : public framework::OpKernel<T> {
         dist_t.Resize({m + 1, n + 1});
         dist_t.mutable_data<T>(ctx.GetPlace());
         auto dist = dist_t.data<T>();
-        auto x1 = x1_t->data<int>() + hyp_lod[num];
-        auto x2 = x2_t->data<int>() + ref_lod[num];
+        auto x1 = x1_t->data<int64_t>() + hyp_lod[num];
+        auto x2 = x2_t->data<int64_t>() + ref_lod[num];
         for (int64_t i = 0; i < m + 1; ++i) {
           dist[i * (n + 1)] = i;
         }

@@ -39,6 +39,11 @@ N-dim tensor. X and Y could be any type.  The each element of the Out tensor is
 calculated by %s
 )DOC",
                                comment.type, comment.equation));
+    AddAttr<int>("axis",
+                 "(int, default -1). The start dimension index "
+                 "for broadcasting Y onto X.")
+        .SetDefault(-1)
+        .EqualGreaterThan(-1);
   }
 };
 
@@ -95,11 +100,5 @@ REGISTER_LOGICAL_OP(less_than, "Out = X < Y");
 REGISTER_LOGICAL_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor);
 REGISTER_LOGICAL_OP(less_equal, "Out = X <= Y");
 REGISTER_LOGICAL_KERNEL(less_equal, CPU, paddle::operators::LessEqualFunctor);
-REGISTER_LOGICAL_OP(greater_than, "Out = X > Y");
-REGISTER_LOGICAL_KERNEL(greater_than, CPU,
-                        paddle::operators::GreaterThanFunctor);
-REGISTER_LOGICAL_OP(greater_equal, "Out = X >= Y");
-REGISTER_LOGICAL_KERNEL(greater_equal, CPU,
-                        paddle::operators::GreaterEqualFunctor);
 REGISTER_LOGICAL_OP(equal, "Out = X == Y");
 REGISTER_LOGICAL_KERNEL(equal, CPU, paddle::operators::EqualFunctor);

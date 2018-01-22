@@ -72,6 +72,38 @@ LoD ToAbsOffset(const LoD& in);
 bool operator==(const LoD& a, const LoD& b);
 
 /*
+ * Check whether this lod's format is valid.
+ *
+ * ATTENTION:
+ *   - Empty lod is treated as valid.
+ *
+ * It will check two things:
+ *
+ *  1. all the offsets in a level should be ascending(no same items allows).
+ *  2. there should be more than 2 offsets existing in each level.
+ *  3. the higher level's last offset should equals the lower level's size-1.
+ *  4. the first offset(the begin offset) of each level should be 0.
+ *  5. the lowest level's last offset should equals `tensor_height` if
+ * tensor_height>0.
+ */
+
+bool CheckLoD(const LoD& in, int tensor_height = -1);
+/*
+ * Check whether this absolute lod's format is valid.
+ *
+ * ATTENTION:
+ *   - Empty lod is treated as valid.
+ *
+ * It will check two things:
+ *  1. all the offsets in a level should be ascending(no same items allows)
+ *  2. there should be more than 2 offsets existing in each level.
+ *  3. the first offset of each level should be 0, and the last should be the
+ *     same(the height of underlying tensor) or `tensor_height` if
+ *     tensor_height>0.
+ */
+bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
+
+/*
  * LoDTensor (Level of details Tensor)
  * see https://en.wikipedia.org/wiki/Level_of_details for reference.
  */

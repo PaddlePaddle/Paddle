@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import collections
 import contextlib
 
@@ -103,8 +117,8 @@ def _debug_string_(proto, throw_on_error=True):
     """
     error_fields = list()
     if not proto.IsInitialized(error_fields) and throw_on_error:
-        raise ValueError("{0} are not initialized\nThe message is {1}".format(
-            error_fields, proto))
+        raise ValueError("{0} are not initialized.\nThe message is {1}:\n".
+                         format(error_fields, proto))
     return proto.__str__()
 
 
@@ -280,6 +294,9 @@ class Variable(object):
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
 
+    def set_error_clip(self, error_clip):
+        self.error_clip = error_clip
+
 
 def get_all_op_protos():
     """
@@ -358,12 +375,13 @@ class Operator(object):
         >>>                     outputs={"Out": [var1]})
 
         Args:
-            block(Block): The block has the current operator
-            desc(core.OpDesc): The protobuf description
+            block(Block): The block has the current operator.
+            desc(core.OpDesc): The protobuf description.
             type(str): The type of operator.
             inputs(dict): The input dictionary. Key is the input parameter name.
                 Value is a list of variables.
-            outputs(dict): The output dictionary. Has same format with inputs
+            outputs(dict): The output dictionary which has the same format with
+                           inputs.
             attrs(dict): The attributes dictionary. Key is attribute name. Value
                 is the attribute value. The attribute type should be as same as
                 the type registered in C++
@@ -420,10 +438,11 @@ class Operator(object):
             for m in proto.outputs:
                 need.add(m.name)
             if not given == need:
-                raise ValueError(
-                    "Incorrect setting for output(s) of operator \"%s\". Need: [%s] Given: [%s]"
-                    % (type, ", ".join(str(e) for e in need), ", ".join(
-                        str(e) for e in given)))
+                raise ValueError(("Incorrect setting for output(s) of "
+                                  "operator \"%s\". Need: [%s] Given: [%s]") %
+                                 (type, ", ".join(str(e)
+                                                  for e in need), ", ".join(
+                                                      str(e) for e in given)))
 
             for out_proto in proto.outputs:
                 out_args = outputs[out_proto.name]
@@ -761,7 +780,7 @@ class Block(object):
                 trainable=p.trainable,
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
-                clip_attr=p.clip_attr,
+                gradient_clip_attr=p.gradient_clip_attr,
                 error_clip=p.error_clip,
                 name=v.name)
             self.vars[new_p.name] = new_p
@@ -802,9 +821,8 @@ class Program(object):
                 if isinstance(t, Variable):
                     t = t.op
                 else:
-                    raise ValueError(
-                        "All targets of prune() can only be Variable or Operator."
-                    )
+                    raise ValueError(("All targets of prune() can only be "
+                                      "Variable or Operator."))
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
@@ -930,7 +948,7 @@ class Parameter(Variable):
 
         self.regularizer = kwargs.get('regularizer', None)
 
-        self.clip_attr = kwargs.get('clip_attr', None)
+        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
 
 
 # program is a global instance.
