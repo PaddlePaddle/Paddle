@@ -192,18 +192,18 @@ void InferenceEngine::Execute(const std::vector<framework::LoDTensor>& feeds,
 
   executor->Run(*load_program_, scope, 0, true, true);
 
-  std::map<std::string, framework::LoDTensor> feed_targets;
-  std::map<std::string, framework::LoDTensor> fetch_targets;
+  std::map<std::string, const framework::LoDTensor*> feed_targets;
+  std::map<std::string, framework::LoDTensor*> fetch_targets;
 
   // set_feed_variable
   for (size_t i = 0; i < feed_var_names_.size(); ++i) {
-    feed_targets[feed_var_names_[i]] = feeds[i];
+    feed_targets[feed_var_names_[i]] = &feeds[i];
   }
 
   // get_fetch_variable
   fetchs.resize(fetch_var_names_.size());
   for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
-    fetch_targets[fetch_var_names_[i]] = fetchs[i];
+    fetch_targets[fetch_var_names_[i]] = &fetchs[i];
   }
 
   executor->Run(*program_, scope, feed_targets, fetch_targets);

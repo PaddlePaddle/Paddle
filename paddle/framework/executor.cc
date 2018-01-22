@@ -134,8 +134,8 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 }
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,
-                   std::map<std::string, LoDTensor>& feeds,
-                   std::map<std::string, LoDTensor>& fetchs,
+                   std::map<std::string, const LoDTensor*>& feeds,
+                   std::map<std::string, LoDTensor*>& fetchs,
                    const std::string& feed_var_name,
                    const std::string& fetch_var_name) {
   auto* copy_program = new ProgramDesc(program);
@@ -181,8 +181,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
       Attribute attr = op->GetAttr("col");
       PADDLE_ENFORCE(attr.type() == typeid(int),
                      "Attribute type of 'col' should be int");
-      //      SetFeedVariable(scope, it->second, feed_var_name,
-      //      boost::get<int>(attr));
+      SetFeedVariable(scope, *it->second, feed_var_name, boost::get<int>(attr));
     } else if (op->Type() == "fetch") {
       fetch_count++;
       PADDLE_ENFORCE(op->Output("Out")[0] == fetch_var_name,
@@ -231,7 +230,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
       op->SetAttr("col", {static_cast<int>(i)});
       op->CheckAttrs();
 
-      //      SetFeedVariable(scope, feed_item.second, feed_var_name, i);
+      SetFeedVariable(scope, *feed_item.second, feed_var_name, i);
       i++;
     }
   }
@@ -259,8 +258,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   // get fetch variables
   int i = 0;
   for (auto& fetch_item : fetchs) {
-    //    fetch_item.second = GetFetchVariable(*scope, fetch_var_name, i);
-    LOG(INFO) << fetch_item.first;
+    *fetch_item.second = GetFetchVariable(*scope, fetch_var_name, i);
     i++;
   }
 
