@@ -509,3 +509,8 @@ sequence_reshape
 ----------------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_reshape
     :noindex:
+
+multiplex
+---------
+..  autofunction:: paddle.v2.fluid.layers.multiplex
+    :noindex:
