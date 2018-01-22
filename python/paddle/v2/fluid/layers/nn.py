@@ -19,6 +19,7 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
+from ..registry import autodoc
 from tensor import concat
 
 __all__ = [
@@ -28,7 +29,7 @@ __all__ = [
     'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
     'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
     'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'l2_normalize', 'matmul', 'warpctc', 'sequence_reshape'
+    'l2_normalize', 'matmul', 'warpctc', 'sequence_reshape', 'nce'
 ]
 
 
@@ -1971,3 +1972,52 @@ def sequence_reshape(input, new_dim):
         outputs={'Out': [out]},
         attrs={'new_dim': new_dim})
     return out
+
+
+@autodoc
+def nce(input,
+        label,
+        num_total_classes,
+        sample_weight=None,
+        param_attr=None,
+        bias_attr=None,
+        num_neg_samples=None):
+    helper = LayerHelper('nce', **locals())
+    assert isinstance(input, Variable)
+    dim = input.shape[1]
+    assert isinstance(label, Variable)
+    num_true_class = label.shape[1]
+    w = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[num_total_classes, dim],
+        is_bias=False,
+        dtype=input.dtype)
+    b = helper.create_parameter(
+        attr=helper.bias_attr,
+        shape=[num_total_classes, 1],
+        is_bias=True,
+        dtype=input.dtype)
+    cost = helper.create_tmp_variable(dtype=input.dtype)
+    sample_logits = helper.create_tmp_variable(dtype=input.dtype)
+    sample_labels = helper.create_tmp_variable(dtype=label.dtype)
+
+    attrs = {'num_total_classes': int(num_total_classes)}
+    if num_neg_samples is not None:
+        attrs['num_neg_samples'] = int(num_neg_samples)
+
+    helper.append_op(
+        type='nce',
+        inputs={
+            'Input': input,
+            'Label': label,
+            'Weight': w,
+            'Bias': b,
+            'SampleWeight': sample_weight if sample_weight is not None else []
+        },
+        outputs={
+            'Cost': cost,
+            'SampleLogits': sample_logits,
+            'SampleLabels': sample_labels
+        },
+        attrs=attrs)
+    return cost
