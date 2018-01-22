@@ -23,14 +23,14 @@ class PriorBoxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(X) of PriorBoxOp should not be null.");
+                   "Input(Input) of PriorBoxOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Image"),
-                   "Input(Offset) of PriorBoxOp should not be null.");
+                   "Input(Image) of PriorBoxOp should not be null.");
 
     auto image_dims = ctx->GetInputDim("Image");
     auto input_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE(image_dims.size() == 4, "The format of image is NCHW.");
-    PADDLE_ENFORCE(input_dims.size() == 4, "The format of input is NCHW.");
+    PADDLE_ENFORCE(image_dims.size() == 4, "The layout of image is NCHW.");
+    PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
 
     PADDLE_ENFORCE_LT(input_dims[2], image_dims[2],
                       "The height of input must smaller than image.");
@@ -45,7 +45,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     bool flip = ctx->Attrs().Get<bool>("flip");
 
     PADDLE_ENFORCE_GT(min_sizes.size(), 0,
-                      "Size of min_size must be at least 1.");
+                      "Size of min_sizes must be at least 1.");
     for (size_t i = 0; i < min_sizes.size(); ++i) {
       PADDLE_ENFORCE_GT(min_sizes[i], 0, "min_sizes[%d] must be positive.", i);
     }
@@ -56,7 +56,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     int num_priors = aspect_ratios_vec.size() * min_sizes.size();
     if (max_sizes.size() > 0) {
       PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
-                        "The length of min_size and max_size must be equal.");
+                        "The number of min_size and max_size must be equal.");
       for (size_t i = 0; i < min_sizes.size(); ++i) {
         PADDLE_ENFORCE_GT(max_sizes[i], min_sizes[i],
                           "max_size[%d] must be greater than min_size[%d].", i,
@@ -65,13 +65,10 @@ class PriorBoxOp : public framework::OperatorWithKernel {
       }
     }
 
-    if (variances.size() > 1) {
-      PADDLE_ENFORCE_EQ(variances.size(), 4,
-                        "Must and only provide 4 variance.");
-      for (size_t i = 0; i < variances.size(); ++i) {
-        PADDLE_ENFORCE_GT(variances[i], 0.0,
-                          "variance[%d] must be greater than 0.", i);
-      }
+    PADDLE_ENFORCE_EQ(variances.size(), 4, "Must and only provide 4 variance.");
+    for (size_t i = 0; i < variances.size(); ++i) {
+      PADDLE_ENFORCE_GT(variances[i], 0.0,
+                        "variance[%d] must be greater than 0.", i);
     }
 
     const float step_h = ctx->Attrs().Get<float>("step_h");
@@ -95,19 +92,19 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
              "(Tensor, default Tensor<float>), "
-             "the input feature data of PriorBoxOp, The format is NCHW.");
+             "the input feature data of PriorBoxOp, The layout is NCHW.");
     AddInput("Image",
              "(Tensor, default Tensor<float>), "
-             "the input image data of PriorBoxOp, The format is NCHW.");
+             "the input image data of PriorBoxOp, The layout is NCHW.");
     AddOutput("Boxes",
               "(Tensor, default Tensor<float>), the output prior boxes of "
-              "PriorBoxOp. The format is [layer_height, layer_width, "
+              "PriorBoxOp. The layout is [layer_height, layer_width, "
               "num_priors, 4]. layer_height is the height of input, "
               "layer_width is the width of input, num_priors is the box "
               "count of each position.");
     AddOutput("Variances",
               "(Tensor, default Tensor<float>), the expanded variances of "
-              "PriorBoxOp. The format is [layer_height, layer_width, "
+              "PriorBoxOp. The layout is [layer_height, layer_width, "
               "num_priors, 4]. layer_height is the height of input, "
               "layer_width is the width of input, num_priors is the box "
               "count of each position.");
@@ -117,12 +114,10 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                               "List of max sizes of generated prior boxes.");
     AddAttr<std::vector<float>>(
         "aspect_ratios", "(vector<float>) ",
-        "List of aspect ratios of generated prior boxes.")
-        .SetDefault({});
+        "List of aspect ratios of generated prior boxes.");
     AddAttr<std::vector<float>>(
         "variances", "(vector<float>) ",
-        "List of variances to be encoded in prior boxes.")
-        .SetDefault({0.1});
+        "List of variances to be encoded in prior boxes.");
     AddAttr<bool>("flip", "(bool) ", "Whether to flip aspect ratios.")
         .SetDefault(true);
     AddAttr<bool>("clip", "(bool) ", "Whether to clip out-of-boundary boxes.")

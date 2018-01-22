@@ -70,9 +70,9 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     std::vector<float> aspect_ratios;
     ExpandAspectRatios(input_aspect_ratio, flip, aspect_ratios);
 
-    auto step_w = ctx.Attr<float>("step_w");
-    auto step_h = ctx.Attr<float>("step_h");
-    auto offset = ctx.Attr<float>("offset");
+    T step_w = static_cast<T>(ctx.Attr<float>("step_w"));
+    T step_h = static_cast<T>(ctx.Attr<float>("step_h"));
+    T offset = static_cast<T>(ctx.Attr<float>("offset"));
 
     auto img_width = image->dims()[3];
     auto img_height = image->dims()[2];
@@ -80,10 +80,10 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto layer_width = input->dims()[3];
     auto layer_height = input->dims()[2];
 
-    float step_width, step_height;
+    T step_width, step_height;
     if (step_w == 0 || step_h == 0) {
-      step_width = static_cast<float>(img_width) / layer_width;
-      step_height = static_cast<float>(img_height) / layer_height;
+      step_width = static_cast<T>(img_width) / layer_width;
+      step_height = static_cast<T>(img_height) / layer_height;
     } else {
       step_width = step_w;
       step_height = step_h;
@@ -100,9 +100,9 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes);
     for (int h = 0; h < layer_height; ++h) {
       for (int w = 0; w < layer_width; ++w) {
-        float center_x = (w + offset) * step_width;
-        float center_y = (h + offset) * step_height;
-        float box_width, box_height;
+        T center_x = (w + offset) * step_width;
+        T center_y = (h + offset) * step_height;
+        T box_width, box_height;
         int idx = 0;
         for (size_t s = 0; s < min_sizes.size(); ++s) {
           int min_size = min_sizes[s];

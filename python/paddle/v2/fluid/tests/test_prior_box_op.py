@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 import numpy as np
 import sys
@@ -86,44 +100,26 @@ class TestPriorBoxOp(OpTest):
         idx = 0
         for h in range(self.layer_h):
             for w in range(self.layer_w):
-                center_x = (w + self.offset) * self.step_w
-                center_y = (h + self.offset) * self.step_h
+                c_x = (w + self.offset) * self.step_w
+                c_y = (h + self.offset) * self.step_h
                 idx = 0
                 for s in range(len(self.min_sizes)):
                     min_size = self.min_sizes[s]
-                    # first prior: aspect_ratio = 1, size = min_size
-                    box_width = box_height = min_size
-                    # xmin
-                    out_boxes[h, w, idx, 0] = (
-                        center_x - box_width / 2.) / self.image_w
-                    # ymin
-                    out_boxes[h, w, idx, 1] = (
-                        center_y - box_height / 2.) / self.image_h
-                    # xmax
-                    out_boxes[h, w, idx, 2] = (
-                        center_x + box_width / 2.) / self.image_w
-                    # ymax
-                    out_boxes[h, w, idx, 3] = (
-                        center_y + box_height / 2.) / self.image_h
+                    c_w = c_h = min_size / 2.
+                    out_boxes[h, w, idx, :] = [
+                        (c_x - c_w) / self.image_w, (c_y - c_h) / self.image_h,
+                        (c_x + c_w) / self.image_w, (c_y + c_h) / self.image_h
+                    ]
                     idx += 1
 
                     if len(self.max_sizes) > 0:
                         max_size = self.max_sizes[s]
                         # second prior: aspect_ratio = 1,
-                        # size = sqrt(min_size * max_size)
-                        box_width = box_height = math.sqrt(min_size * max_size)
-                        # xmin
-                        out_boxes[h, w, idx, 0] = (
-                            center_x - box_width / 2.) / self.image_w
-                        # ymin
-                        out_boxes[h, w, idx, 1] = (
-                            center_y - box_height / 2.) / self.image_h
-                        # xmax
-                        out_boxes[h, w, idx, 2] = (
-                            center_x + box_width / 2.) / self.image_w
-                        # ymax
-                        out_boxes[h, w, idx, 3] = (
-                            center_y + box_height / 2.) / self.image_h
+                        c_w = c_h = math.sqrt(min_size * max_size) / 2
+                        out_boxes[h, w, idx, :] = [(c_x - c_w) / self.image_w,
+                                                   (c_y - c_h) / self.image_h,
+                                                   (c_x + c_w) / self.image_w,
+                                                   (c_y + c_h) / self.image_h]
                         idx += 1
 
                     # rest of priors
@@ -131,20 +127,12 @@ class TestPriorBoxOp(OpTest):
                         ar = self.real_aspect_ratios[r]
                         if math.fabs(ar - 1.) < 1e-6:
                             continue
-                        box_width = min_size * math.sqrt(ar)
-                        box_height = min_size / math.sqrt(ar)
-                        # xmin
-                        out_boxes[h, w, idx, 0] = (
-                            center_x - box_width / 2.) / self.image_w
-                        # ymin
-                        out_boxes[h, w, idx, 1] = (
-                            center_y - box_height / 2.) / self.image_h
-                        # xmax
-                        out_boxes[h, w, idx, 2] = (
-                            center_x + box_width / 2.) / self.image_w
-                        # ymax
-                        out_boxes[h, w, idx, 3] = (
-                            center_y + box_height / 2.) / self.image_h
+                        c_w = min_size * math.sqrt(ar) / 2
+                        c_h = (min_size / math.sqrt(ar)) / 2
+                        out_boxes[h, w, idx, :] = [(c_x - c_w) / self.image_w,
+                                                   (c_y - c_h) / self.image_h,
+                                                   (c_x + c_w) / self.image_w,
+                                                   (c_y + c_h) / self.image_h]
                         idx += 1
         # clip the prior's coordidate such that it is within[0, 1]
         if self.clip:
