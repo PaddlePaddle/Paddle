@@ -67,3 +67,14 @@
 
   * 不同于上述介绍的recurrent layer , :code:`paddle.networks.lstmemory_unit` 定义了LSTM单元在一个时间步内的计算过程，它并不是一个完整的recurrent layer，也不能接收序列数据作为输入；
   * :code:`paddle.networks.lstmemory_unit` 只能在recurrent_group中作为step function使用；
+
+5. PaddlePaddle的softmax能否指定计算的维度
+-----------------------------------------
+
+PaddlePaddle的softmax不能指定计算维度，只能按行计算。
+在图像任务中，对于NCHW，如果需要在C维度计算softmax，可以先使用 :code:`paddle.layer.switch_order` 改变维度顺序，即将NCHW转换成NHWC，再做一定的reshape，最后计算softmax。
+
+6. PaddlePaddle是否支持维数可变的数据输入
+------------------------------------------
+
+PaddlePaddle提供的 :code:`paddle.data_type.dense_array` 支持维数可变的数据输入。在使用时，将对应数据层的维数设置成一个大于输入数据维数的值用于占位即可。
