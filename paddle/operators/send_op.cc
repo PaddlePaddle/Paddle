@@ -66,7 +66,7 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) Output tensor to get from server")
         .AsDuplicable();
     AddComment(R"DOC(
-Recv operator
+Send operator
 
 This operator will send tensor to recv_op.
 )DOC");
