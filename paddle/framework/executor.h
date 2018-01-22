@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"

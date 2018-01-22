@@ -17,6 +17,7 @@ limitations under the License. */
 #include <set>
 
 #include "gflags/gflags.h"
+#include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/feed_fetch_type.h"
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
