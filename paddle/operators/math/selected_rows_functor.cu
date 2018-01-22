@@ -284,7 +284,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
         T, 256><<<grid1, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
                       .stream()>>>(input_data, input.rows().data(), out_data,
-                                   out.rows().data(), out.rows().size(),
+                                   out.rows().cuda_data(), out.rows().size(),
                                    input_width);
     return out;
   }

@@ -69,6 +69,41 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
   return os;
 }
 
+template <typename T>
+void Vector<T>::CopyToCUDA() {
+#ifdef PADDLE_WITH_CUDA
+  if (cuda_ptr_ == nullptr) {
+    cuda_ptr_ =
+        memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T));
+  }
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *cuda_ctx = pool.GetByPlace(place_);
+
+  memory::Copy(place_, static_cast<void *>(cuda_ptr_), platform::CPUPlace(),
+               static_cast<const void *>(this->data()),
+               this->size() * sizeof(T), cuda_ctx->stream());
+  cuda_size_ = this->size();
+  cuda_ctx->Wait();
+#endif
+}
+
+template <typename T>
+void Vector<T>::CopyFromCUDA() {
+#ifdef PADDLE_WITH_CUDA
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *cuda_ctx = pool.GetByPlace(place_);
+  if (cuda_ptr_ == nullptr) {
+    LOG(WARNING) << "No uncommited cuda data.";
+    return;
+  }
+  this->resize(cuda_size_);
+  memory::Copy(platform::CPUPlace(), static_cast<void *>(this->data()), place_,
+               static_cast<const void *>(cuda_ptr_), this->size() * sizeof(T),
+               cuda_ctx->stream());
+  cuda_ctx->Wait();
+#endif
+}
+
 std::string LoDToString(const LoD &lod) {
   std::ostringstream stream;
   stream << lod;

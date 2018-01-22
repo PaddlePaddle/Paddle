@@ -67,38 +67,13 @@ class Vector : public std::vector<T> {
     return static_cast<const T*>(cuda_ptr_);
   }
 
-  void CopyToCUDA() {
-#ifdef PADDLE_WITH_CUDA
-    if (cuda_ptr_ == nullptr) {
-      cuda_ptr_ =
-          memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T));
-    }
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* cuda_ctx = pool.GetByPlace(place_);
-    memory::Copy(place_, cuda_ptr_, platform::CPUPlace(),
-                 static_cast<void*>(this->data()), this->size(),
-                 cuda_ctx->stream());
-    cuda_ctx->Wait();
-#endif
-  }
+  void CopyToCUDA();
 
-  void CopyFromCUDA() {
-#ifdef PADDLE_WITH_CUDA
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* cuda_ctx = pool.GetByPlace(place_);
-    if (cuda_ptr_ == nullptr) {
-      LOG(WARNING) << "No uncommited cuda data.";
-      return;
-    }
-    memory::Copy(platform::CPUPlace(), static_cast<void*>(this->data()), place_,
-                 static_cast<const void*>(cuda_ptr_), this->size(),
-                 cuda_ctx->stream());
-    cuda_ctx->Wait();
-#endif
-  }
+  void CopyFromCUDA();
 
-  // private:
+ private:
   void* cuda_ptr_ = nullptr;
+  size_t cuda_size_ = 0;
   platform::CUDAPlace place_;
 };
 
@@ -117,7 +92,6 @@ class Vector : public std::vector<T> {
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-// using LoD = std::vector<Vector<size_t>>;
 struct LoD : public std::vector<Vector<size_t>> {
   using std::vector<Vector<size_t>>::vector;
 
