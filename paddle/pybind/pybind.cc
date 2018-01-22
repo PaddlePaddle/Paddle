@@ -423,7 +423,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
-      .def("run", &Executor::Run);
+      .def("run",
+           (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
+               Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);
   m.def("init_gflags", framework::InitGflags);

@@ -135,7 +135,8 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, LoDTensor>& feeds,
                    std::map<std::string, LoDTensor>& fetchs,
-                   std::string& feed_var_name, std::string& fetch_var_name) {
+                   const std::string& feed_var_name,
+                   const std::string& fetch_var_name) {
   auto* copy_program = new ProgramDesc(program);
   auto* global_block = copy_program->MutableBlock(0);
 
@@ -164,41 +165,43 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   }
 
   // if there are feed and fetch ops, check that they match the feeds info
-  int feed_count = 0;
-  int fetch_count = 0;
+  size_t feed_count = 0;
+  size_t fetch_count = 0;
   for (auto* op : global_block->AllOps()) {
     if (op->Type() == "feed") {
       feed_count++;
       PADDLE_ENFORCE(op->Input("X")[0] == feed_var_name,
                      "Input to feed op should be '%s'", feed_var_name);
-      auto& it = feeds.find(op->Output("Out")[0]);
+      auto it = feeds.find(op->Output("Out")[0]);
       PADDLE_ENFORCE(
           it != feeds.end(),
           "Feed operator output name '%s' should match the info in 'feeds'",
           op->Output("Out")[0]);
-      Attribute attr = op->GetAttr("col") PADDLE_ENFORCE(
-          attr.type() == typeid(int), "Attribute type of 'col' should be int");
-      framework::SetFeedVariable(scope, it->second, feed_var_name,
-                                 boost::get<int>(attr));
+      Attribute attr = op->GetAttr("col");
+      PADDLE_ENFORCE(attr.type() == typeid(int),
+                     "Attribute type of 'col' should be int");
+      //      SetFeedVariable(scope, it->second, feed_var_name,
+      //      boost::get<int>(attr));
     } else if (op->Type() == "fetch") {
       fetch_count++;
-      PADDLE_ENFOCE(op->Output("Out")[0] == fetch_var_name,
-                    "Output of fetch op should be '%s'", fetch_var_name);
+      PADDLE_ENFORCE(op->Output("Out")[0] == fetch_var_name,
+                     "Output of fetch op should be '%s'", fetch_var_name);
       std::string fetch_input_name = op->Input("X")[0];
-      auto& it = fetchs.find(fetch_input_name);
+      auto it = fetchs.find(fetch_input_name);
       PADDLE_ENFORCE(
           it != fetchs.end(),
           "Fetch operator input name '%s' should match the info in 'fetchs'",
           fetch_input_name);
       int index = 0;
-      for (auto* fetch_item : fetchs) {
-        if (fetch_item->first == fetch_input_name) {
+      for (auto& fetch_item : fetchs) {
+        if (fetch_item.first == fetch_input_name) {
           break;
         }
         index++;
       }
-      Attribute attr = op->GetAttr("col") PADDLE_ENFORCE(
-          attr.type() == typeid(int), "Attribute type of 'col' should be int");
+      Attribute attr = op->GetAttr("col");
+      PADDLE_ENFORCE(attr.type() == typeid(int),
+                     "Attribute type of 'col' should be int");
       PADDLE_ENFORCE(boost::get<int>(attr) == index);
     }
   }
@@ -216,7 +219,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   if (feed_count == 0) {
     int i = 0;
     for (auto& feed_item : feeds) {
-      std::string var_name = feed_item->first;
+      std::string var_name = feed_item.first;
       LOG(INFO) << "feed var's name: " << var_name;
 
       // prepend_op
@@ -227,15 +230,15 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
       op->SetAttr("col", {static_cast<int>(i)});
       op->CheckAttrs();
 
-      framework::SetFeedVariable(scope, feed_item->second, feed_var_name, i)
-          i++;
+      //      SetFeedVariable(scope, feed_item.second, feed_var_name, i);
+      i++;
     }
   }
 
   if (fetch_count == 0) {
     int i = 0;
     for (auto& fetch_item : fetchs) {
-      std::string var_name = fetch_item->first;
+      std::string var_name = fetch_item.first;
       LOG(INFO) << "fetch var's name: " << var_name;
 
       // append_op
@@ -255,7 +258,8 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   // get fetch variables
   int i = 0;
   for (auto& fetch_item : fetchs) {
-    fetch_item->second = framework::GetFetchVariable(*scope, fetch_var_name, i);
+    //    fetch_item.second = GetFetchVariable(*scope, fetch_var_name, i);
+    LOG(INFO) << fetch_item.first;
     i++;
   }
 

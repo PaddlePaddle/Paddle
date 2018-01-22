@@ -15,7 +15,6 @@ limitations under the License. */
 #include "inference.h"
 #include <fstream>
 #include "paddle/framework/executor.h"
-#include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/init.h"
 #include "paddle/framework/scope.h"
 

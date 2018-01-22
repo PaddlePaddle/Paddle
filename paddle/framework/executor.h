@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/op_info.h"
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"
@@ -44,8 +45,8 @@ class Executor {
   void Run(const ProgramDesc& program, Scope* scope,
            std::map<std::string, LoDTensor>& feeds,
            std::map<std::string, LoDTensor>& fetchs,
-           std::string& feed_var_name = "feed",
-           std::string& fetch_var_name = "fetch");
+           const std::string& feed_var_name = "feed",
+           const std::string& fetch_var_name = "fetch");
 
  private:
   const platform::Place place_;
