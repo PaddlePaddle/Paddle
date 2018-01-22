@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/depthwise_conv.h"
 #include "paddle/operators/math/im2col.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/vol2col.h"
@@ -350,5 +351,34 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     }
   }
 };
+
+template <typename DeviceContext, typename T>
+class DepthwiseConvKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const Tensor* input = context.Input<Tensor>("Input");
+    // The filter will be reshaped in the calculations,
+    // so here use an assignment operation,
+    // that avoids modifying the variable in the Scope.
+    Tensor filter = *context.Input<Tensor>("Filter");
+    Tensor* output = context.Output<Tensor>("Output");
+    output->mutable_data<T>(context.GetPlace());
+
+    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
+    std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
+
+    framework::DDim filter_matrix_shape = {filter.dims()[0],
+                                           filter.numel() / filter.dims()[0]};
+    filter.Resize(filter_matrix_shape);
+
+    math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
+
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    depthwiseConv(dev_ctx, input, filter, filter_shape_vec, strides, paddings,
+                  output);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

@@ -17,6 +17,11 @@ limitations under the License. */
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
+    depthwiseConv,
+    ops::DepthwiseConvKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::DepthwiseConvKernel<paddle::platform::CUDADeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
     conv2d, ops::GemmConvKernel<paddle::platform::CUDADeviceContext, float>,
     ops::GemmConvKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
