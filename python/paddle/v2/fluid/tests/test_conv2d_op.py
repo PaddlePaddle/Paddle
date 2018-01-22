@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 import numpy as np
 
@@ -49,7 +63,7 @@ def conv2d_forward_naive(input, filter, group, conv_param):
 
 class TestConv2dOp(OpTest):
     def setUp(self):
-        core.use_cuda()
+        self.use_cudnn = False
         self.init_op_type()
         self.init_group()
         self.init_dilation()
@@ -70,30 +84,59 @@ class TestConv2dOp(OpTest):
             'strides': self.stride,
             'paddings': self.pad,
             'groups': self.groups,
-            'dilations': self.dilations
+            'dilations': self.dilations,
+            'use_cudnn': self.use_cudnn
         }
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output()
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                set(['Input', 'Filter']),
+                'Output',
+                max_relative_error=0.02)
+        else:
+            self.check_grad(
+                set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
-        self.check_grad(
-            ['Input'],
-            'Output',
-            max_relative_error=0.02,
-            no_grad_set=set(['Filter']))
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Input'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Filter']))
+        else:
+            self.check_grad(
+                ['Input'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
-        self.check_grad(
-            ['Filter'],
-            'Output',
-            max_relative_error=0.02,
-            no_grad_set=set(['Input']))
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Filter'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Input']))
+        else:
+            self.check_grad(
+                ['Filter'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -167,39 +210,39 @@ class TestWithDilation(TestConv2dOp):
         self.groups = 3
 
 
-#----------------Conv2dCudnn----------------
-class TestCudnn(TestConv2dOp):
+#----------------Conv2dCUDNN----------------
+class TestCUDNN(TestConv2dOp):
     def init_op_type(self):
-        core.use_cudnn()
-        self.op_type = "conv2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv2d"
 
 
-class TestCudnnWithPad(TestWithPad):
+class TestCUDNNWithPad(TestWithPad):
     def init_op_type(self):
-        core.use_cudnn()
-        self.op_type = "conv2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv2d"
 
 
-class TestCudnnWithStride(TestWithStride):
+class TestCUDNNWithStride(TestWithStride):
     def init_op_type(self):
-        core.use_cudnn()
-        self.op_type = "conv2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv2d"
 
 
-class TestCudnnWithGroup(TestWithGroup):
+class TestCUDNNWithGroup(TestWithGroup):
     def init_op_type(self):
-        core.use_cudnn()
-        self.op_type = "conv2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv2d"
 
 
-class TestCudnnWith1x1(TestWith1x1):
+class TestCUDNNWith1x1(TestWith1x1):
     def init_op_type(self):
-        core.use_cudnn()
-        self.op_type = "conv2d_cudnn"
+        self.use_cudnn = True
+        self.op_type = "conv2d"
 
 
 #  cudnn v5 does not support dilation conv.
-# class TestCudnnWithDilation(TestWithDilation):
+# class TestCUDNNWithDilation(TestWithDilation):
 #     def init_op_type(self):
 #         self.op_type = "conv_cudnn"
 

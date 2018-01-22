@@ -32,7 +32,8 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
 
     auto seq_dims = seq.dims();
-    PADDLE_ENFORCE_EQ(seq_dims[0], abs_offset_lod[level].back(),
+    PADDLE_ENFORCE_EQ(seq_dims[0],
+                      static_cast<int64_t>(abs_offset_lod[level].back()),
                       "The first dimension of LoDTensor seq should be "
                       "equal to the sum of all sequences's length.");
 
@@ -41,32 +42,32 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
                       "The input padding should be a 3-D Tensor of shape "
                       "[max_sequence_length, num_sequences, sequence_width].");
 
-    const size_t max_sequence_length = MaximumSequenceLength(lod, level);
+    const int64_t max_sequence_length = MaximumSequenceLength(lod, level);
     PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
                       "The first dimension of Tensor padding should be the "
                       "maximum length of all sequences in LoDTensor seq.");
 
-    const size_t num_sequences = abs_offset_lod[level].size() - 1;
+    const int64_t num_sequences = abs_offset_lod[level].size() - 1;
     PADDLE_ENFORCE_EQ(padding_dims[1], num_sequences,
                       "The second dimension of Tensor padding should be the "
                       "number of sequences in LoDTensor seq.");
 
-    const size_t sequence_width = seq.numel() / seq_dims[0];
+    const int64_t sequence_width = seq.numel() / seq_dims[0];
     PADDLE_ENFORCE_EQ(padding_dims[2], sequence_width,
                       "The third dimension of Tensor padding should be the "
                       "width of sequence in LoDTensor seq.");
 
     const T* seq_data = seq.data<T>();
     T* padding_data = padding.data<T>();
-    for (size_t i = 0; i < max_sequence_length; ++i) {
-      for (size_t j = 0; j < num_sequences; ++j) {
-        size_t start_pos = abs_offset_lod[level][j];
-        size_t sequence_length = abs_offset_lod[level][j + 1] - start_pos;
+    for (int64_t i = 0; i < max_sequence_length; ++i) {
+      for (int64_t j = 0; j < num_sequences; ++j) {
+        int64_t start_pos = abs_offset_lod[level][j];
+        int64_t sequence_length = abs_offset_lod[level][j + 1] - start_pos;
         if (i < sequence_length) {
           // i > 0 => sequence_length > 0
           T scale =
               norm_by_times ? (1.0f / static_cast<T>(sequence_length)) : 1.0f;
-          for (size_t k = 0; k < sequence_width; ++k) {
+          for (int64_t k = 0; k < sequence_width; ++k) {
             padding_data[(i * num_sequences + j) * sequence_width + k] =
                 seq_data[(start_pos + i) * sequence_width + k] * scale;
           }
@@ -93,7 +94,8 @@ class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
 
     auto seq_dims = seq.dims();
-    PADDLE_ENFORCE_EQ(seq_dims[0], abs_offset_lod[level].back(),
+    PADDLE_ENFORCE_EQ(seq_dims[0],
+                      static_cast<int64_t>(abs_offset_lod[level].back()),
                       "The first dimension of LoDTensor seq should be "
                       "equal to the sum of all sequences's length.");
 
@@ -102,31 +104,31 @@ class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
                       "The input padding should be a 3-D Tensor of shape "
                       "[max_sequnece_length, num_sequences, sequence_width].");
 
-    const size_t max_sequence_length = MaximumSequenceLength(lod, level);
+    const int64_t max_sequence_length = MaximumSequenceLength(lod, level);
     PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
                       "The first dimension of Tensor padding should be "
                       "the maximum length of all sequences in LoDTensor seq.");
 
-    const size_t num_sequences = abs_offset_lod[level].size() - 1;
+    const int64_t num_sequences = abs_offset_lod[level].size() - 1;
     PADDLE_ENFORCE_EQ(padding_dims[1], num_sequences,
                       "The second dimension of Tensor padding should be "
                       "the number of sequences in LoDTensor seq.");
 
-    const size_t sequence_width = seq.numel() / seq_dims[0];
+    const int64_t sequence_width = seq.numel() / seq_dims[0];
     PADDLE_ENFORCE_EQ(padding_dims[2], sequence_width,
                       "The third dimension of Tensor padding should be the "
                       "width of sequence in LoDTensor seq.");
 
     const T* padding_data = padding.data<T>();
     T* seq_data = seq.data<T>();
-    for (size_t i = 0; i < num_sequences; ++i) {
-      size_t start_pos = abs_offset_lod[level][i];
-      size_t sequence_length = abs_offset_lod[level][i + 1] - start_pos;
-      for (size_t j = 0; j < sequence_length; ++j) {
+    for (int64_t i = 0; i < num_sequences; ++i) {
+      int64_t start_pos = abs_offset_lod[level][i];
+      int64_t sequence_length = abs_offset_lod[level][i + 1] - start_pos;
+      for (int64_t j = 0; j < sequence_length; ++j) {
         // sequence_width > j > 0
         T scale =
             norm_by_times ? (1.0f / static_cast<T>(sequence_length)) : 1.0f;
-        for (size_t k = 0; k < sequence_width; ++k) {
+        for (int64_t k = 0; k < sequence_width; ++k) {
           seq_data[(start_pos + j) * sequence_width + k] =
               padding_data[(j * num_sequences + i) * sequence_width + k] *
               scale;
