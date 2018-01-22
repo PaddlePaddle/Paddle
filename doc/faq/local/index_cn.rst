@@ -255,5 +255,4 @@ mini-batch forward的output的值。获得的值类型均为 :code:`numpy.ndarra
                         logger.info("Param %s, Grad %s",
                             parameters.get(p), parameters.get_grad(p))
 
-注意：“在训练过程中获得某一个layer的output”和“在训练过程中获得参数的权重和梯度”都会造成训练中的数据从C++拷贝到numpy，会对训练性能造成影响。不要在
-     注重性能的训练场景下使用。
+注意：“在训练过程中获得某一个layer的output”和“在训练过程中获得参数的权重和梯度”都会造成训练中的数据从C++拷贝到numpy，会对训练性能造成影响。不要在注重性能的训练场景下使用。
