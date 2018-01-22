@@ -13,4 +13,3 @@ Check the logs for the distributed training progress and analyze the performance
 ## Enable verbos logs
 
 Edit `pserver.yaml` and `trainer.yaml` and add an environment variable `GLOG_v=3` to see what happend in detail.
-
