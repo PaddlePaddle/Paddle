@@ -289,7 +289,7 @@ class ParallelDoGradOpShapeInference : public framework::InferShapeBase {
 
     PADDLE_ENFORCE(ctx->HasInputs(kParameters));
     PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
-    PADDLE_ENFORCE(ctx->HasInput(kInputs));
+    PADDLE_ENFORCE(ctx->HasInputs(kInputs));
 
     for (auto &s : output) {
       PADDLE_ENFORCE(ctx->HasInputs(s));
