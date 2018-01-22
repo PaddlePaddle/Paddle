@@ -23,8 +23,6 @@ class SplitSelectedRowsOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input SelectedRows.");
     AddOutput("Out", "The outputs of input SelectedRows.").AsDuplicable();
-    AddAttr<std::vector<int>>("rows_sections", "Rows section for output.")
-        .SetDefault(std::vector<int>({}));
     AddAttr<std::vector<int>>("height_sections",
                               "Height for each output SelectedRows.")
         .SetDefault(std::vector<int>({}));
@@ -35,16 +33,16 @@ height_sections is only needed when need to split the dims of the original tenso
 
 Example:
   Input:
-    X.rows = {0, 7, 5}
+    X.rows = {7, 5}
     X.height = 12
   Attr:
-    rows_sections = {1, 2}
-    height_sections = {}
+    height_sections = {4, 8}
   Out:
-    out0.rows = {0}
-    out0.height = 12
-    out1.rows = {7, 5}
-    out2.height = 12
+    out0.rows = {}
+    out0.height = 4
+
+    out1.rows = {5, 7}
+    out2.height = 8
 
 )DOC");
   }
@@ -61,11 +59,6 @@ class SplitSelectedRowsOp : public framework::OperatorWithKernel {
 
     std::vector<int> height_sections =
         ctx->Attrs().Get<std::vector<int>>("height_sections");
-    std::vector<int> rows_sections =
-        ctx->Attrs().Get<std::vector<int>>("rows_sections");
-    PADDLE_ENFORCE_EQ(
-        rows_sections.size(), ctx->Outputs("Out").size(),
-        "The size of rows section should be the same with Outputs size.");
     int64_t n = ctx->Outputs("Out").size();
 
     std::vector<framework::DDim> outs_dims;
