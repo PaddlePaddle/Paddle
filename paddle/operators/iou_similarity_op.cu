@@ -18,4 +18,5 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     iou_similarity,
-    ops::IOUSimilarityKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::IOUSimilarityKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::IOUSimilarityKernel<paddle::platform::CUDADeviceContext, double>);

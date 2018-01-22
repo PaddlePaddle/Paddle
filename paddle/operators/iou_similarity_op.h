@@ -46,7 +46,7 @@ struct IOUSimilarityFunctor {
     T y_min1 = x_[row_id * 4 + 1];
     T x_max1 = x_[row_id * 4 + 2];
     T y_max1 = x_[row_id * 4 + 3];
-    for (int i = 0; i < cols_; ++i) {
+    for (size_t i = 0; i < cols_; ++i) {
       T x_min2 = y_[i * 4];
       T y_min2 = y_[i * 4 + 1];
       T x_max2 = y_[i * 4 + 2];
