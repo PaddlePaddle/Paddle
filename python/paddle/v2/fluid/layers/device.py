@@ -15,14 +15,14 @@
 All util layers.
 """
 
-from ..layer_helper import LayerHelper
+from layer_function_generator import autodoc
 from ..framework import unique_name
-from ..registry import autodoc
+from ..layer_helper import LayerHelper
 
 __all__ = ['get_places']
 
 
-@autodoc
+@autodoc()
 def get_places(device_count=None, device_type=None):
     helper = LayerHelper('get_places', **locals())
     out_places = helper.create_variable(name=unique_name(helper.name + ".out"))
