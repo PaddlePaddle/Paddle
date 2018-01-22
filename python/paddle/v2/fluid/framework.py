@@ -472,7 +472,6 @@ class Operator(object):
                     self.desc.set_serialized_attr(
                         attr_name, attrs[attr_name].serialize_to_string())
                 else:
-                    # print 'haha', attrs[attr_name], type(attrs[attr_name])
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
