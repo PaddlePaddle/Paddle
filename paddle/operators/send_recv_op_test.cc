@@ -130,10 +130,7 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
   attrs.insert({"ParamList", std::vector<std::string>({"Out"})});
   attrs.insert({"GradList", std::vector<std::string>({"x1"})});
-  std::string program_proto;
-  PADDLE_ENFORCE(program.Proto()->SerializeToString(&program_proto));
-
-  attrs.insert({"OptimizeProgram", program_proto});
+  attrs.insert({"OptimizeBlock", block});
   recv_op = f::OpRegistry::CreateOp("recv", {{"RX", {"x1"}}}, {}, attrs);
   recv_op->Run(scope, place);
 }
