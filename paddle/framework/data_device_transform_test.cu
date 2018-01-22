@@ -150,6 +150,7 @@ TEST(Operator, CPUtoGPU) {
   // get output
   auto* output2 = scope.Var("OUT2");
   gpu_op->Run(scope, cuda_place);
+  VLOG(3) << "after gpu_op run";
 
   // auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
   DeviceContextPool& pool = DeviceContextPool::Instance();
