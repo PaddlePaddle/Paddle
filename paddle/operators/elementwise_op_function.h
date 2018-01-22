@@ -373,7 +373,7 @@ void ElementwiseComputeEx(const framework::ExecutionContext& ctx) {
   auto* x = ctx.Input<Tensor>("X");
   auto* y = ctx.Input<Tensor>("Y");
   auto* z = ctx.Output<Tensor>("Out");
-  z->mutable_data<T>(ctx.GetPlace());
+  z->mutable_data<OutType>(ctx.GetPlace());
   TransformFunctor<Functor, T, DeviceContext, OutType> functor(
       x, y, z, ctx.template device_context<DeviceContext>(), Functor());
 

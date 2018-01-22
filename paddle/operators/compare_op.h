@@ -54,7 +54,7 @@ class CompareOpKernel
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     using T = typename Functor::ELEM_TYPE;
-    ElementwiseComputeEx<Functor, DeviceContext, T>(context);
+    ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context);
   }
 };
 
