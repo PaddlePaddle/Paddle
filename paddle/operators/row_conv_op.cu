@@ -307,7 +307,7 @@ class RowConvKernel<platform::CUDADeviceContext, T>
     int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.data();
+    size_t *idx = batch_indices.cuda_data();
     auto stream = context.cuda_device_context().stream();
 
     if (future_context <= 32) {

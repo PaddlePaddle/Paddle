@@ -35,12 +35,25 @@ namespace framework {
 
 /**
  * @brief Vector support both cpu and gpu.
- * cpu vector lifetime is same with Vector
- * gpu vector is lazily malloc and modified.
+ * host vector lifetime is same with Vector
+ * device vector is lazily malloc and modified.
  */
 
 template <typename T>
 class Vector : public std::vector<T> {
+ public:
+  /* NOTE(dzhwinter):
+   * Data always store and modified on Host.
+   * If the data is modified when use cuda_data interface,
+   * You need to call the CopyFromCUDA explicitly to synchronize data.
+   *
+   * enum class kDataSyncType {
+   *   kDataOnHost = 0 ;
+   *   kDataOnDevice = 1;
+   *   kDataSync = 2;
+   * };
+   */
+
  public:
   using std::vector<T>::vector;
 
@@ -71,7 +84,7 @@ class Vector : public std::vector<T> {
 
   void CopyFromCUDA();
 
-  void CopyToPeer();
+  void CopyToPeer(platform::Place);
 
  private:
   void* cuda_ptr_ = nullptr;

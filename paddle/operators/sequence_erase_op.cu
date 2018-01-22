@@ -109,7 +109,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
                 PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         num_erased_ptr, dev_in_lod_ptr, lod_len, dev_out_lod_ptr);
     thrust::host_vector<int> host_out_lod = dev_out_lod;
-    std::vector<int> out_lod0(lod_len, 0);
+    std::vector<size_t> out_lod0(lod_len, 0);
     for (size_t i = 0; i < lod_len; i++) {
       out_lod0[i] = host_out_lod[i];
     }
@@ -118,7 +118,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     out->set_lod(out_lod);
 
     // Set output
-    out->Resize({out_lod0.back(), 1});
+    out->Resize({static_cast<int64_t>(out_lod0.back()), 1});
     auto out_dat = out->mutable_data<T>(ctx.GetPlace());
     SetOutput<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
                 PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_dat, in_len,

@@ -102,7 +102,7 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       dim3 grid(1, in_rows.size());
       SparseSGDFunctorKernel<
           T, 256><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
-          in_data, in_rows.data(), learning_rate->data<T>(), out_data,
+          in_data, in_rows.cuda_data(), learning_rate->data<T>(), out_data,
           in_row_numel);
 
     } else {

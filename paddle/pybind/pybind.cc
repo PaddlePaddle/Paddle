@@ -131,10 +131,20 @@ PYBIND11_PLUGIN(core) {
            })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-             self.set_lod(lod);
+             paddle::framework::LoD inner_lod;
+             for (auto &level : lod) {
+               inner_lod.push_back(level);
+             }
+             self.set_lod(inner_lod);
            })
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-        return self.lod();
+        auto &inner_lod = self.lod();
+        std::vector<std::vector<size_t>> lod;
+
+        for (auto &level : inner_lod) {
+          lod.push_back(std::vector<size_t>(level.begin(), level.end()));
+        }
+        return lod;
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")
