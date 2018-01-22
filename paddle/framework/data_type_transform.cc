@@ -38,14 +38,11 @@ struct CastDataType {
 
   template <typename OutType>
   void operator()() {
-    auto place = ctx_->GetPlace();
-
     auto* in_begin = in_.data<InType>();
-    auto numel = in_.numel();
-    auto* in_end = in_begin + numel;
-    auto* out_begin = out_->mutable_data<OutType>(place);
+    auto* in_end = in_begin + in_.numel();
+    auto* out_begin = out_->mutable_data<OutType>(in_.place());
 
-    if (platform::is_cpu_place(place)) {
+    if (platform::is_cpu_place(in_.place())) {
       platform::Transform<platform::CPUDeviceContext> trans;
       auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
       trans(*context, in_begin, in_end, out_begin,
@@ -57,38 +54,31 @@ struct CastDataType {
   }
 };
 
-void TransDataType(const platform::DeviceContext* ctx,
-                   const KernelTypePair& kernel_pair, const Variable& in,
-                   Variable* out) {
-  PADDLE_ENFORCE(in.IsType<Tensor>(), "Only Support Tensor transform!.");
-  PADDLE_ENFORCE(
-      platform::places_are_same_class(kernel_pair.first.place_,
-                                      kernel_pair.second.place_),
-      "TransDataType Only Support DataType transform on same place!");
+void TransDataType(const OpKernelType& kernel_type_for_var,
+                   const OpKernelType& expected_kernel_type, const Tensor& in,
+                   Tensor* out) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
-  auto src = in.Get<Tensor>();
-  auto* dst = out->GetMutable<Tensor>();
-
-  auto dims = src.dims();
-  dst->Resize(dims);
-  auto dst_type = kernel_pair.second.data_type_;
-  auto src_type = kernel_pair.first.data_type_;
+  out->Resize(in.dims());
+  auto src_type = kernel_type_for_var.data_type_;
+  auto dst_type = expected_kernel_type.data_type_;
+  auto ctx = pool.Get(in.place());
 
   switch (src_type) {
     case proto::DataType::FP32:
-      framework::VisitDataType(dst_type, CastDataType<float>(src, dst, ctx));
+      framework::VisitDataType(dst_type, CastDataType<float>(in, out, ctx));
       break;
     case proto::DataType::FP64:
-      framework::VisitDataType(dst_type, CastDataType<double>(src, dst, ctx));
+      framework::VisitDataType(dst_type, CastDataType<double>(in, out, ctx));
       break;
     case proto::DataType::INT32:
-      framework::VisitDataType(dst_type, CastDataType<int>(src, dst, ctx));
+      framework::VisitDataType(dst_type, CastDataType<int>(in, out, ctx));
       break;
     case proto::DataType::INT64:
-      framework::VisitDataType(dst_type, CastDataType<int64_t>(src, dst, ctx));
+      framework::VisitDataType(dst_type, CastDataType<int64_t>(in, out, ctx));
       break;
     case proto::DataType::BOOL:
-      framework::VisitDataType(dst_type, CastDataType<bool>(src, dst, ctx));
+      framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
       break;
     default:
       PADDLE_THROW("Not support type %d", src_type);
