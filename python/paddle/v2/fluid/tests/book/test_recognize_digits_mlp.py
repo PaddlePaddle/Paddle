@@ -27,7 +27,7 @@ hidden1 = fluid.layers.fc(input=image,
                           act='relu',
                           param_attr=fluid.ParamAttr(
                               regularizer=regularizer,
-                              clip=fluid.clip.ClipByValue(10)))
+                              gradient_clip=fluid.clip.ClipByValue(10)))
 
 hidden2 = fluid.layers.fc(input=hidden1,
                           size=64,
