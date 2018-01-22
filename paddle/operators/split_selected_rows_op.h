@@ -16,9 +16,21 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
+
+static int FindOutIdx(int row, const std::vector<int>& height_sections) {
+  int offset = 0;
+  for (size_t i = 0; i < height_sections.size(); ++i) {
+    if (row >= offset && row < (offset + height_sections[i])) {
+      return i;
+    }
+    offset += height_sections[i];
+  }
+  return -1;
+}
 
 template <typename DeviceContext, typename T>
 class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
@@ -26,30 +38,48 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::SelectedRows>("X");
     auto outs = ctx.MultiOutput<framework::SelectedRows>("Out");
-
-    auto rows_sections = ctx.Attr<std::vector<int>>("rows_sections");
     auto height_sections = ctx.Attr<std::vector<int>>("height_sections");
 
-    int64_t n = outs.size();
-    int offset = 0;
+    auto x_rows = x->rows();
+    std::vector<std::vector<int>> outs_rows_idx;
+    outs_rows_idx.resize(outs.size());
 
-    for (int64_t i = 0; i < n; ++i) {
-      framework::Vector<int64_t> out_rows;
-      for (int64_t j = 0; j < rows_sections[i]; ++j) {
-        out_rows.push_back(x->rows()[offset + j]);
-      }
+    auto row_numel = x->value().numel() / x->value().dims()[0];
+    auto src = x->value().data<T>();
 
-      auto& out = outs[i];
-      auto x_dims = x->GetCompleteDims();
-      x_dims[0] = rows_sections[i];
-      out->mutable_value()->mutable_data<T>(x_dims, ctx.GetPlace());
-      framework::Copy(x->value().Slice(offset, rows_sections[i] + offset),
-                      x->place(), ctx.device_context(), out->mutable_value());
-      outs[i]->set_rows(out_rows);
-      if (height_sections.size()) {
-        outs[i]->set_height(height_sections[i]);
+    for (size_t i = 0; i < x_rows.size(); ++i) {
+      int out_idx = FindOutIdx(x_rows[i], height_sections);
+      outs_rows_idx[out_idx].push_back(i);
+    }
+    auto place = ctx.GetPlace();
+
+    for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
+      auto rows_idx = outs_rows_idx[i];
+      if (rows_idx.size() > 0) {
+        auto dims = x->GetCompleteDims();
+        dims[0] = rows_idx.size();
+        outs[i]->mutable_value()->mutable_data<T>(dims, x->place());
+        for (auto idx : rows_idx) {
+          outs[i]->mutable_rows()->push_back(x_rows[idx]);
+        }
+        auto dst = outs[i]->mutable_value()->mutable_data<T>(ctx.GetPlace());
+        for (size_t j = 0; j < rows_idx.size(); j++) {
+          if (platform::is_cpu_place(place)) {
+            memory::Copy(platform::CPUPlace(), dst + j * row_numel,
+                         platform::CPUPlace(), src + rows_idx[j] * row_numel,
+                         sizeof(T) * row_numel);
+          } else {
+#ifdef PADDLE_WITH_CUDA
+            auto stream = ctx.cuda_device_context().stream();
+            memory::Copy(platform::CUDAPlace(), dst + j * row_numel,
+                         platform::CUDAPlace(), src + rows_idx[j] * row_numel,
+                         sizeof(T) * row_numel, stream);
+#else
+            PADDLE_THROW("Paddle is not compiled with GPU");
+#endif
+          }
+        }
       }
-      offset += rows_sections[i];
     }
   }
 };
