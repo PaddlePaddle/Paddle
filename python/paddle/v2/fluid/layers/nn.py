@@ -176,22 +176,35 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
-def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
+def embedding(input,
+              size,
+              is_sparse=False,
+              padding_idx=None,
+              param_attr=None,
+              dtype='float32'):
     """
     **Embedding Layer**
 
-    This layer is used to lookup a vector of IDs, provided by *input*, in a lookup table.
-    The result of this lookup is the embedding of each ID in the *input*.
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in 
+    a lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
 
     All the input variables are passed in as local variables to the LayerHelper
     constructor.
 
     Args:
-       input(Variable): Input to the function
-       size(tuple|list|None): Shape of the look up table parameter
-       is_sparse(bool): Boolean flag that specifying whether the input is sparse
-       param_attr(ParamAttr): Parameters for this layer
-       dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
+        input(Variable): The tensor variable containing the IDs.
+        size(tuple|list): The shape of the look up table parameter. It should
+            have two elements which indicate the size of the dictionary of
+            embeddings and the size of each embedding vector respectively.
+        is_sparse(bool): The flag indicating whether to use sparse update.
+        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
+            Otherwise the given :attr:`padding_idx` indicates padding the output
+            with zeros whenever lookup encounters it in :attr:`input`. If 
+            :math:`padding_idx < 0`, the padding_idx to use in lookup is 
+            :math:`size[0] + dim`.
+        param_attr(ParamAttr): Parameters for this layer
+        dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -209,12 +222,15 @@ def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_tmp_variable(dtype)
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        size[0] + padding_idx)
     helper.append_op(
         type='lookup_table',
         inputs={'Ids': input,
                 'W': w},
         outputs={'Out': tmp},
-        attrs={'is_sparse': is_sparse})
+        attrs={'is_sparse': is_sparse,
+               'padding_idx': padding_idx})
     return tmp
 
 
