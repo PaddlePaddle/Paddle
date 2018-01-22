@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from ..layer_helper import LayerHelper, unique_name
-from ..framework import Program, Variable, Operator
-from .. import core
-from tensor import assign, fill_constant
 import contextlib
-from ..registry import autodoc
+
+from layer_function_generator import autodoc
+from tensor import assign, fill_constant
+from .. import core
+from ..framework import Program, Variable, Operator
+from ..layer_helper import LayerHelper, unique_name
 
 __all__ = [
     'split_lod_tensor',
@@ -1477,7 +1477,7 @@ class DynamicRNN(object):
                 method))
 
 
-@autodoc
+@autodoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)
