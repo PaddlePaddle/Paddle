@@ -12,7 +12,6 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 import os
-import cPickle as pickle
 
 from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable
 from . import core

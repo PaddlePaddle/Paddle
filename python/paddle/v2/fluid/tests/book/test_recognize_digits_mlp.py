@@ -82,14 +82,25 @@ for pass_id in range(PASS_NUM):
                                fetch_list=[avg_cost] + test_accuracy.metrics)
 
         test_pass_acc = test_accuracy.eval(exe)
-        print("pass_id=" + str(pass_id) + " train_cost=" + str(
-            out) + " train_acc=" + str(acc) + " train_pass_acc=" + str(pass_acc)
-              + " test_acc=" + str(test_pass_acc))
+        print("pass_id=" + str(pass_id) + " train_cost=" + str(out) +
+              " train_acc=" + str(acc) + " train_pass_acc=" + str(pass_acc) +
+              " test_acc=" + str(test_pass_acc))
 
         if test_pass_acc > 0.7:
             fluid.io.save_inference_model(
                 "./recognize_digits_mlp.inference.model/", ["x"], [predict],
                 exe)
+
+            [infer_prog, feed_var_names,
+             fetch_vars] = fluid.io.load_inference_model(
+                 "./recognize_digits_mlp.inference.model/", exe)
+
+            tensor_x = np.random.rand(1, 784).astype("float32")
+            results = exe.run(infer_prog,
+                              feed={feed_var_names[0]: tensor_x},
+                              fetch_list=fetch_vars)
+            print results[0]
+
             exit(0)
 
 exit(1)

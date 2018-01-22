@@ -19,10 +19,6 @@ limitations under the License. */
 #include "paddle/framework/init.h"
 #include "paddle/framework/scope.h"
 
-#ifdef PADDLE_USE_PTOOLS
-#include "chooseser.h"
-#endif
-
 namespace paddle {
 
 void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
