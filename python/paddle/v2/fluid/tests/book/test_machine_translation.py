@@ -230,9 +230,6 @@ def decode_main():
     init_lod = [i for i in range(batch_size)] + [batch_size]
     init_lod = [init_lod, init_lod]
 
-    print 'init_ids', init_ids_data
-    print 'init_scores', init_scores_data
-
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
@@ -240,11 +237,6 @@ def decode_main():
     for no, data in enumerate(train_data()):
         init_ids = set_init_lod(init_ids_data, init_lod, place)
         init_scores = set_init_lod(init_scores_data, init_lod, place)
-
-        print 'init_ids.dims', init_ids.dtype()
-        print 'init_scores.dims', init_scores.dtype()
-        print np.array(init_ids)
-        print np.array(init_scores)
 
         word_data = to_lodtensor(map(lambda x: x[0], data), place)
         # trg_word = to_lodtensor(map(lambda x: x[1], data), place)
