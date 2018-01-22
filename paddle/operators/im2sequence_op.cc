@@ -30,28 +30,24 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
     auto in_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(in_dim.size(), 4,
-                      "Input(X) format  must be 4D tensor, eg., NCHW.");
+                      "Input(X) format must be 4D tensor, eg., NCHW.");
 
-    int block_height = ctx->Attrs().Get<int>("block_height");
-    int block_width = ctx->Attrs().Get<int>("block_width");
-    int stride_height = ctx->Attrs().Get<int>("stride_height");
-    int stride_width = ctx->Attrs().Get<int>("stride_width");
-    int padding_height = ctx->Attrs().Get<int>("padding_height");
-    int padding_width = ctx->Attrs().Get<int>("padding_width");
+    auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
+    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
+    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
     int batch_size = in_dim[0];
     int img_channels = in_dim[1];
     int img_height = in_dim[2];
     int img_width = in_dim[3];
 
-    int output_height = get_output_size(img_height, block_height, stride_height,
-                                        padding_height);
+    int output_height = OutputSize(img_height, kernels[0], paddings[0],
+                                   paddings[2], strides[0]);
     int output_width =
-        get_output_size(img_width, block_width, stride_width, padding_width);
+        OutputSize(img_width, kernels[1], paddings[1], paddings[3], strides[1]);
 
     ctx->SetOutputDim("Out", {batch_size * output_height * output_width,
-                              img_channels * block_height * block_width});
-    // TODO(wanghaoshuang): cal lod in complie time
+                              img_channels * kernels[0] * kernels[1]});
   }
 };
 
@@ -66,26 +62,30 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
              "H: height"
              "W: width");
     AddOutput("Out", "(LodTensor)The output data of im2sequence op,");
-    AddAttr<int>("block_height", "(int)height of block.");
-    AddAttr<int>("block_width", "(int)width of block.");
-    AddAttr<int>("stride_height", "(int)height of stride.");
-    AddAttr<int>("stride_width", "(int)width of stride.");
-    AddAttr<int>("padding_height", "(int)height of padding.");
-    AddAttr<int>("padding_width", "(int)width of padding.");
+    AddAttr<std::vector<int>>("kernels",
+                              "(vector<int>), the "
+                              "kernels(kernel_height, kernel_width)")
+        AddAttr<std::vector<int>>("strides",
+                                  "(vector<int> default:{1, 1}), the "
+                                  "strides(h_stride, w_stride)")
+            .SetDefault({1, 1});
+    AddAttr<std::vector<int>>("paddings",
+                              "(vector<int> default:{0, 0, 0, 0}), the "
+                              "paddings(up_pad, left_pad, down_pad, right_pad)")
+        .SetDefault({0, 0, 0, 0});
     AddComment(R"DOC(
-Convert feature map to minibatch matrix.
-- matirx height is: output_height * output_width
-- matrix width is: block_height * block_width * channels
+This op uses kernels to scan images and converts these images to sequences.
+After expanding, The number of time steps are output_height * output_width
+and the dimension of each time step is kernel_height * kernel_width * channels,
+in which:
 
 output_height =
-    1 + (2 * padding_height + img_height - block_height + stride_height - 1) /
+    1 + (padding_height + padding_down + img_height - kernel_height + stride_height - 1) /
             stride_height;
 output_width =
-    1 + (2 * padding_width + img_width - block_width + stride_width - 1) /
+    1 + (padding_left + padding+right + img_width - kernel_width + stride_width - 1) /
             stride_width;
 
-After expanding, The number of time steps are output_height * output_width
-and the dimension of each time step is block_height * block_width * channels.
 This op can be used after convolution neural network, and before recurrent neural network.
 
 Given:
@@ -109,12 +109,9 @@ x.dims = {2, 2, 3, 3}
 
 And:
 
-block_height = 2
-block_width = 2
-stride_height = 1
-stride_width = 1
-padding_height = 0
-padding_width = 0
+kernels = [2, 2]
+strides = [1, 1]
+paddings = [0, 0, 0, 0]
 
 Then:
 

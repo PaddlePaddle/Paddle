@@ -26,9 +26,11 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-inline int get_output_size(int img_size, int block_size, int stride,
-                           int padding) {
-  return (1 + (img_size + 2 * padding - block_size + stride - 1) / stride);
+inline int OutputSize(int input_size, int filter_size, int padding_0,
+                      int padding_1, int stride) {
+  const int output_size =
+      (input_size + padding_0 + padding_1 - filter_size) / stride + 1;
+  return output_size;
 }
 
 template <typename DeviceContext, typename T>
@@ -47,32 +49,24 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     int img_channels = in_dim[1];
     int img_height = in_dim[2];
     int img_width = in_dim[3];
-    int block_height = ctx.Attr<int>("block_height");
-    int block_width = ctx.Attr<int>("block_width");
-    int stride_height = ctx.Attr<int>("stride_height");
-    int stride_width = ctx.Attr<int>("stride_width");
-    int padding_height = ctx.Attr<int>("padding_height");
-    int padding_width = ctx.Attr<int>("padding_width");
 
-    int output_height = get_output_size(img_height, block_height, stride_height,
-                                        padding_height);
+    auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
+    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
+    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    int output_height =
+        OutputSize(img_height, kernels[0], paddings[0], paddings[2] strides[0]);
     int output_width =
-        get_output_size(img_width, block_width, stride_width, padding_width);
+        OutputSize(img_width, kernels[1], paddings[1], paddings[3], strides[1]);
 
     const std::vector<int> dilations({1, 1});
-    const std::vector<int> strides(
-        {stride_height, stride_width, stride_height, stride_width});
-    const std::vector<int> paddings(
-        {padding_height, padding_width, padding_height, padding_width});
 
     auto out_dims = out->dims();
     out->Resize({batch_size, out->numel() / batch_size});
     for (int i = 0; i < batch_size; i++) {
       const Tensor src =
           in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-      Tensor dst = out->Slice(i, i + 1).Resize({output_height, output_width,
-                                                img_channels, block_height,
-                                                block_width});
+      Tensor dst = out->Slice(i, i + 1).Resize(
+          {output_height, output_width, img_channels, kernels[0], kernels[1]});
 
       math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -112,22 +106,15 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
     int img_height = in_dim[2];
     int img_width = in_dim[3];
 
-    int block_height = ctx.Attr<int>("block_height");
-    int block_width = ctx.Attr<int>("block_width");
-    int stride_height = ctx.Attr<int>("stride_height");
-    int stride_width = ctx.Attr<int>("stride_width");
-    int padding_height = ctx.Attr<int>("padding_height");
-    int padding_width = ctx.Attr<int>("padding_width");
-    int output_height = get_output_size(img_height, block_height, stride_height,
-                                        padding_height);
+    auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
+    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
+    auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    int output_height = OutputSize(img_height, kernels[0], paddings[0],
+                                   paddings[2], strides[0]);
     int output_width =
-        get_output_size(img_width, block_width, stride_width, padding_width);
+        OutputSize(img_width, kernels[1], paddings[1], paddings[3], strides[1]);
 
     const std::vector<int> dilations({1, 1});
-    const std::vector<int> strides(
-        {stride_height, stride_width, stride_height, stride_width});
-    const std::vector<int> paddings(
-        {padding_height, padding_width, padding_height, padding_width});
 
     auto d_out_dims = d_out->dims();
     d_out->Resize({batch_size, d_out->numel() / batch_size});
@@ -135,8 +122,7 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
       Tensor dst =
           d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
       const Tensor src = d_out->Slice(i, i + 1).Resize(
-          {output_height, output_width, img_channels, block_height,
-           block_width});
+          {output_height, output_width, img_channels, kernels[0], kernels[1]});
       math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       f(dev_ctx, src, dilations, strides, paddings, &dst);
