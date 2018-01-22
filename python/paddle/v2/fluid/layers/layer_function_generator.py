@@ -13,17 +13,19 @@
 # limitations under the License.
 import re
 import cStringIO
-import warnings
 import functools
-import inspect
+import warnings
 
-import proto.framework_pb2 as framework_pb2
-from framework import OpProtoHolder, Variable, Program, Operator
-from paddle.v2.fluid.layer_helper import LayerHelper, unique_name
+from .. import proto
+
+framework_pb2 = proto.framework_pb2
+
+from ..framework import OpProtoHolder, Variable
+from ..layer_helper import LayerHelper
 
 __all__ = [
     'deprecated',
-    'register_layer',
+    'generate_layer_fn',
     'autodoc',
 ]
 
@@ -96,7 +98,7 @@ def _generate_doc_string_(op_proto):
     return buf.getvalue()
 
 
-def register_layer(op_type):
+def generate_layer_fn(op_type):
     """Register the Python layer for an Operator.
 
     Args:
@@ -207,7 +209,10 @@ def deprecated(func_or_class):
     return func_wrapper
 
 
-def autodoc(func):
-    func.__doc__ = _generate_doc_string_(OpProtoHolder.instance().get_op_proto(
-        func.__name__))
-    return func
+def autodoc(comment=""):
+    def __impl__(func):
+        func.__doc__ = _generate_doc_string_(OpProtoHolder.instance(
+        ).get_op_proto(func.__name__)) + comment
+        return func
+
+    return __impl__

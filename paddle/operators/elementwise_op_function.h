@@ -176,14 +176,15 @@ class MidWiseTransformIterator<T, platform::CUDADeviceContext>
 };
 #endif
 
-template <typename Functor, typename T, typename DeviceContext>
+template <typename Functor, typename T, typename DeviceContext,
+          typename OutType = T>
 class TransformFunctor {
  public:
   TransformFunctor(const framework::Tensor* x, const framework::Tensor* y,
                    framework::Tensor* z, const DeviceContext& ctx, Functor func)
       : x_(x->data<T>()),
         y_(y->data<T>()),
-        z_(z->mutable_data<T>(ctx.GetPlace())),
+        z_(z->mutable_data<OutType>(ctx.GetPlace())),
         nx_(x->numel()),
         ctx_(ctx),
         func_(func) {}
@@ -208,7 +209,7 @@ class TransformFunctor {
  private:
   const T* x_;
   const T* y_;
-  T* z_;
+  OutType* z_;
   int64_t nx_;
   const DeviceContext& ctx_;
   Functor func_;
@@ -364,15 +365,16 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx) {
   }
 }
 
-template <typename Functor, typename DeviceContext, typename T>
+template <typename Functor, typename DeviceContext, typename T,
+          typename OutType = T>
 void ElementwiseComputeEx(const framework::ExecutionContext& ctx) {
   using Tensor = framework::Tensor;
 
   auto* x = ctx.Input<Tensor>("X");
   auto* y = ctx.Input<Tensor>("Y");
   auto* z = ctx.Output<Tensor>("Out");
-  z->mutable_data<T>(ctx.GetPlace());
-  TransformFunctor<Functor, T, DeviceContext> functor(
+  z->mutable_data<OutType>(ctx.GetPlace());
+  TransformFunctor<Functor, T, DeviceContext, OutType> functor(
       x, y, z, ctx.template device_context<DeviceContext>(), Functor());
 
   auto x_dims = x->dims();
