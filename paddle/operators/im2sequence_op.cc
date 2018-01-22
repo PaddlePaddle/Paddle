@@ -56,12 +56,12 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
   Im2SequenceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "(Tensor)The input tensor has NCHW format."
+             "(Tensor) The input tensor has NCHW format."
              "N: batch size"
              "C: channels"
              "H: height"
              "W: width");
-    AddOutput("Out", "(LodTensor)The output data of im2sequence op,");
+    AddOutput("Out", "(LodTensor) The output data of im2sequence op,");
     AddAttr<std::vector<int>>("kernels",
                               "(vector<int>), the "
                               "kernels(kernel_height, kernel_width)");
