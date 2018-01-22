@@ -17,12 +17,6 @@ All modules are decoupled when we store data to storage.
 - foreground job: when the client exits the jobs will be killed.
 - background job: client's death doesn't affect the job.
 
-
-<div style="align: center">
-<img src="src/dist-graph2.png" width="700" align=center/>
-</div>
-- OutputOperator appends fetchlist to etcd when they are updated.
-
 ## Peudo code of users
 ```
 ...
@@ -51,8 +45,7 @@ pservers = job.add_workers(p_graphs,cpu=,gpu=,mem)
 pserver.start()
 trainer.start()
 
-# get fetchlist from etcd through k8s proxy.
-# and the job can be killed by the result.
+# get fetchlist from trainers.
 accs = trainers.get(acc)
 for c in acc:
     print(" acc:" + str(c))
@@ -76,18 +69,19 @@ jobs.stop()
 |resource|resource needed by this graph|
 
 ### Table: graph_pod
+may be changed
+
 | column name | description|
 |----------|-------------|
 |graphID|ID of graph|
-|pod_name|pod name which executes graph, may be changed|
-|pod_ip|pod ip which execut graph|
-|pod_port|pod port which executes graph|
+|pod_name|pod name which executes graph|
+|pod_ip|pod ip|
+|pod_port|pod port exported|
 
 ### Table: graph_output
 | column name | description|
 |----------|-------------|
 |graphID|ID of graph|
-|output|output of this graph,it's a list|
 |checkpoint|last checkpoint of this graph|
 
 
@@ -102,6 +96,3 @@ Workers can communicate with others correctly by graphID.
 
 ## Auto scaling
 TODO
-
-## Discussion
-- Is database like mysql is enough for us?
