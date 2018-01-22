@@ -1985,7 +1985,8 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     In the above equation:
 
     * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
-    * :math:`\\tau`: Future context size.
+    * :math:`\\tau`: Future context size. Please note, the shape of
+            convolution kernel is [future_context_size + 1, D].
     * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
     * :math:`W_{i-j}`: The (i-j)-th row of parameters with shape [1, D].
 
