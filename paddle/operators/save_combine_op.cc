@@ -16,6 +16,7 @@ limitations under the License. */
 #include <sys/stat.h>
 #include <fstream>
 #include <numeric>
+#include <sstream>
 
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
@@ -68,6 +69,7 @@ class SaveCombineOp : public framework::OperatorBase {
            const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto overwrite = Attr<bool>("overwrite");
+    auto position_counter = Attr<bool>("position_counter");
 
     bool is_present = FileExists(filename);
     if (is_present && !overwrite && position_counter == 0) {
@@ -88,9 +90,6 @@ class SaveCombineOp : public framework::OperatorBase {
                    filename);
 
     auto iname = Input("X");
-    auto *position_counter_ip = Input("PositionCounter");
-    auto *position_counter_data = position_counter_ip->data<T>();
-    int position_counter = static_cast<int>(position_counter_data[0]);
 
     auto *var = scope.FindVar(iname);
     PADDLE_ENFORCE(var != nullptr,
@@ -127,8 +126,6 @@ class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   SaveCombineOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor ) Input tensor to be save_combined");
-    AddInput("PositionCounter",
-             "(Tensor) PositionCounter tensor for relative order");
     AddComment(R"DOC(
 Save_combine operator
 
@@ -139,6 +136,10 @@ combined fashion.
                   "(boolean, default true)"
                   "Overwrite the output file if exist")
         .SetDefault(true);
+    AddAttr<int>("position_counter",
+                 "(int) "
+                 "It specifies the relative ordering of different parameters.")
+        .AddCustomChecker([](const int &counter) { return counter >= 0; });
     AddAttr<std::string>(
         "file_path",
         "(string)"
