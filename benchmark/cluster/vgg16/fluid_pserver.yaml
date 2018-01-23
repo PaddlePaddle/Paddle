@@ -14,7 +14,7 @@ spec:
       - name: job-registry-secret
       containers:
       - name: pserver
-        image: "registry.baidu.com/paddlepaddle/rawjob:vgg16_fluid"
+        image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
         imagePullPolicy: Always
         ports:
         - name: jobport-30236
@@ -33,7 +33,7 @@ spec:
         - name: TOPOLOGY
           value: ""
         - name: ENTRY
-          value: "LD_LIBRARY_PATH=/usr/local/lib MKL_NUM_THREADS=1 python /workspace/vgg16.py --local 0"
+          value: "MKL_NUM_THREADS=1 python /workspace/vgg16_fluid.py --local 0"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: PADDLE_INIT_PORT
@@ -53,7 +53,7 @@ spec:
         - name: PADDLE_INIT_USE_GPU
           value: "0"
         - name: LD_LIBRARY_PATH
-          value: "/usr/local/nvidia/lib64"
+          value: "/usr/local/lib:/usr/local/nvidia/lib64"
         - name: NAMESPACE
           valueFrom:
             fieldRef:

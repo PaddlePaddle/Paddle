@@ -1,28 +1,27 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: extensions/v1beta1
+kind: ReplicaSet
 metadata:
-  name: vgg16job-trainer
+  name: vgg16v2job-pserver
 spec:
-  parallelism: 20
-  completions: 20
+  replicas: 10
   template:
     metadata:
       labels:
-        paddle-job: vgg16job
+        paddle-job-pserver: vgg16v2job
     spec:
-      imagePullSecrets:
-        - name: job-registry-secret
       hostNetwork: true
+      imagePullSecrets:
+      - name: job-registry-secret
       containers:
-      - name: trainer
-        image: "registry.baidu.com/paddlepaddle/rawjob:vgg16_fluid"
+      - name: pserver
+        image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
         imagePullPolicy: Always
-        command: ["paddle_k8s", "start_fluid"]
+        ports:
+        - name: jobport-30236
+          containerPort: 30236
         env:
         - name: PADDLE_JOB_NAME
-          value: vgg16job
-        - name: TRAINING_ROLE
-          value: "TRAINER"
+          value: vgg16v2job
         - name: TRAINERS
           value: "20"
         - name: PSERVERS
@@ -30,7 +29,7 @@ spec:
         - name: TOPOLOGY
           value: ""
         - name: ENTRY
-          value: "cd /workspace && LD_LIBRARY_PATH=/usr/local/lib MKL_NUM_THREADS=1 python /workspace/vgg16.py --local 0"
+          value: "python train.py"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: PADDLE_INIT_PORT
@@ -50,20 +49,16 @@ spec:
         - name: PADDLE_INIT_USE_GPU
           value: "0"
         - name: LD_LIBRARY_PATH
-          value: "/usr/local/nvidia/lib64"
+          value: "/usr/local/lib:/usr/local/nvidia/lib64"
         - name: NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: "metadata.namespace"
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: "status.podIP"
+        command: ["paddle_k8s", "start_pserver"]
         resources:
           requests:
-            memory: 40Gi
-            cpu: 2
+            memory: 10Gi
+            cpu: 4
           limits:
-            memory: 40Gi
-            cpu: 2
-      restartPolicy: Never
+            memory: 10Gi
+            cpu: 4
