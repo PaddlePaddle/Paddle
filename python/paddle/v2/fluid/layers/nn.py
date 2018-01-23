@@ -2286,17 +2286,15 @@ def transpose(x, perm, name=None):
     return out
 
 
-def im2sequence(input,
-                filter_size=1,
-                stride=1,
-                padding=0,
-                name=None,
-                layer_attr=None):
+def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
     """
-    This op use filter to scan images and convert these images to sequences.
-    After expanding, the number of time step are output_height * output_width
-    for an image, in which output_height and output_width are calculated
-    by below equation:
+    Extracts image patches from the input tensor to form a tensor of shape
+    {input.batch_size * output_height * output_width, filter_size_H *
+    filter_size_W * input.channels} which is similar with im2col.
+    This op use filter / kernel to scan images and convert these images to
+    sequences. After expanding, the number of time step are
+    output_height * output_width for an image, in which output_height and
+    output_width are calculated by below equation:
 
     .. math::
 
