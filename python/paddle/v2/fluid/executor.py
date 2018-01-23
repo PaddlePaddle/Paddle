@@ -131,7 +131,7 @@ class Executor(object):
                 feed_target_name = op.desc.output('Out')[0]
                 assert feed_target_name in feed_targets
                 cur_feed = feed_targets[feed_target_name]
-                if not instance(cur_feed, core.LoDTensor):
+                if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = self.aslodtensor(cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_holder_name, idx)
@@ -198,7 +198,8 @@ class Executor(object):
                 type=core.VarDesc.VarType.FETCH_LIST,
                 persistable=True)
 
-        if not has_feed_operators(scope, global_block, feed, feed_var_name):
+        if not self.has_feed_operators(scope, global_block, feed,
+                                       feed_var_name):
             for i, name in enumerate(feed):
                 out = global_block.var(name)
                 global_block.prepend_op(
@@ -211,7 +212,8 @@ class Executor(object):
                     cur_feed = self.aslodtensor(cur_feed)
                 core.set_feed_variable(scope, cur_feed, feed_var.name, i)
 
-        if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
+        if not self.has_fetch_operators(global_block, fetch_list,
+                                        fetch_var_name):
             for i, var in enumerate(fetch_list):
                 global_block.append_op(
                     type='fetch',
