@@ -207,8 +207,8 @@ class TestLstmOp(OpTest):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Weight', 'Bias'], ['Projection'],
-            max_relative_error=5e-3)
+            ['Input', 'Weight', 'ProjWeight', 'Bias'], ['Projection'],
+            max_relative_error=1e-2)
 
 
 class TestLstmOpHasInitial(TestLstmOp):
@@ -235,8 +235,9 @@ class TestLstmOpHasInitial(TestLstmOp):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Weight', 'Bias', 'H0', 'C0'], ['Projection'],
-            max_relative_error=5e-3)
+            ['Input', 'Weight', 'ProjWeight', 'Bias', 'H0', 'C0'],
+            ['Projection'],
+            max_relative_error=1e-2)
 
     def test_check_grad_ingore_bias(self):
         N = len(self.lod[0]) - 1
@@ -246,8 +247,8 @@ class TestLstmOpHasInitial(TestLstmOp):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Weight'], ['Projection'],
-            max_relative_error=5e-3,
+            ['Input', 'ProjWeight', 'Weight'], ['Projection'],
+            max_relative_error=1e-2,
             no_grad_set=set('Bias'))
 
     def test_check_grad_ingore_weight(self):
@@ -258,9 +259,21 @@ class TestLstmOpHasInitial(TestLstmOp):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Bias'], ['Projection'],
-            max_relative_error=5e-3,
+            ['Input', 'ProjWeight', 'Bias'], ['Projection'],
+            max_relative_error=1e-2,
             no_grad_set=set('Weight'))
+
+    def test_check_grad_ingore_proj_weight(self):
+        N = len(self.lod[0]) - 1
+        self.outputs['OrderedP0'] = np.zeros((N, self.P)).astype('float64')
+        self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
+        self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(
+            ['Input', 'Weight', 'Bias'], ['Projection'],
+            max_relative_error=1e-2,
+            no_grad_set=set('ProjWeight'))
 
     def test_check_grad_ingore_input(self):
         N = len(self.lod[0]) - 1
@@ -270,8 +283,8 @@ class TestLstmOpHasInitial(TestLstmOp):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Weight', 'Bias'], ['Projection'],
-            max_relative_error=5e-3,
+            ['Weight', 'ProjWeight', 'Bias'], ['Projection'],
+            max_relative_error=1e-2,
             no_grad_set=set('Input'))
 
     def test_check_grad_ingore_h0(self):
@@ -282,8 +295,8 @@ class TestLstmOpHasInitial(TestLstmOp):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Weight', 'Bias', 'C0'], ['Projection'],
-            max_relative_error=5e-3,
+            ['Input', 'Weight', 'ProjWeight', 'Bias', 'C0'], ['Projection'],
+            max_relative_error=1e-2,
             no_grad_set=set('H0'))
 
     def test_check_grad_ingore_c0(self):
@@ -294,8 +307,8 @@ class TestLstmOpHasInitial(TestLstmOp):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Weight', 'Bias', 'H0'], ['Projection'],
-            max_relative_error=5e-3,
+            ['Input', 'Weight', 'ProjWeight', 'Bias', 'H0'], ['Projection'],
+            max_relative_error=1e-2,
             no_grad_set=set('C0'))
 
 
