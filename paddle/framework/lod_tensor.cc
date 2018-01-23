@@ -123,7 +123,7 @@ void Vector<T>::CopyToPeer(platform::Place peer_place) {
                cuda_ctx->stream());
   cuda_ctx->Wait();
   memory::Free<platform::CUDAPlace>(place_, static_cast<void *>(cuda_ptr_));
-  place_ = peer_place;
+  place_ = boost::get<platform::CUDAPlace>(peer_place);
   cuda_ptr_ = peer_cuda_ptr_;
 #endif
 }
