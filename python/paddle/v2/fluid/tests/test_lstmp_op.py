@@ -192,7 +192,8 @@ class TestLstmOp(OpTest):
             'is_reverse': self.is_reverse,
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
-            'candidate_activation': self.act_cand
+            'candidate_activation': self.act_cand,
+            'share_cell_act': self.share_cell_act
         }
 
     def test_check_output(self):
@@ -340,8 +341,24 @@ class TestLstmOpNotUsePeepholes(TestLstmOp):
 
         self.share_cell_act = True
         self.has_initial_state = False
-        self.is_reverse = True
+        self.is_reverse = False
         self.use_peepholes = False
+
+
+class TestLstmOpNotShareCellAct(TestLstmOp):
+    def set_argument(self):
+        self.lod = [[0, 2, 5, 7]]
+        self.D = 16
+        self.P = 10
+
+        self.act_gate = 'sigmoid'
+        self.act_cell = 'tanh'
+        self.act_cand = 'tanh'
+
+        self.share_cell_act = False
+        self.has_initial_state = False
+        self.is_reverse = False
+        self.use_peepholes = True
 
 
 if __name__ == '__main__':
