@@ -99,10 +99,6 @@ def decoder_decode(context):
     init_scores = pd.data(
         name="init_scores", shape=[1], dtype="float32", lod_level=2)
 
-    # init_ids = pd.ones(shape=[batch_size, 1], dtype='int64')
-    # init_scores = pd.ones(shape=[batch_size, 1], dtype='float32')
-    # init ids to [1..]
-    # init scores to [1.]
     pd.array_write(init_ids, array=ids_array, i=counter)
     pd.array_write(init_scores, array=scores_array, i=counter)
 
@@ -223,7 +219,7 @@ def decode_main():
     exe = Executor(place)
     exe.run(framework.default_startup_program())
 
-    init_ids_data = np.array([1 for i in range(batch_size)], dtype='int64')
+    init_ids_data = np.array([1 for _ in range(batch_size)], dtype='int64')
     init_scores_data = np.array(
         [1. for _ in range(batch_size)], dtype='float32')
     init_ids_data = init_ids_data.reshape((batch_size, 1))
@@ -235,17 +231,16 @@ def decode_main():
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
-    for no, data in enumerate(train_data()):
+    for _, data in enumerate(train_data()):
         init_ids = set_init_lod(init_ids_data, init_lod, place)
         init_scores = set_init_lod(init_scores_data, init_lod, place)
 
-        word_data = to_lodtensor(map(lambda x: x[0], data), place)
-        # trg_word = to_lodtensor(map(lambda x: x[1], data), place)
-        # trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
+        src_word_data = to_lodtensor(map(lambda x: x[0], data), place)
+
         exe.run(
             framework.default_main_program(),
             feed={
-                'src_word_id': word_data,
+                'src_word_id': src_word_data,
                 'init_ids': init_ids,
                 'init_scores': init_scores
             },
