@@ -233,6 +233,6 @@ def get_cfgs(input_program):
 
 
 def memory_optimize(input_program):
-    cfgs = get_cfg(input_program)
+    cfgs = get_cfgs(input_program)
     for cfg in cfgs:
         cfg.memory_optimize()
