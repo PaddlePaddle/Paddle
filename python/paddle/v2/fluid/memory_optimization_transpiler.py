@@ -183,7 +183,7 @@ class ControlFlowGraph(object):
                 in_diff)
             can_optimize = filter(
                 lambda x: not self._find_var(block_desc, x, is_forward).persistable(),
-                in_diff)
+                can_optimize)
             can_optimize = filter(
                 lambda x: self._find_var(block_desc, x, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
                 can_optimize)
