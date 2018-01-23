@@ -81,10 +81,11 @@ def profiler(state, sorted_key=None):
     to add more records.
 
     Args:
-        state (string) : The profiling state, It should be 'CPU' or 'GPU'.
-            Although users may define CPUPlace or CUDAPlace when using Fluid,
-            the profiler doesn't get the state based on this Place. Since the
-            implementation is an independent part from the Fluid.
+        state (string) : The profiling state, which should be 'CPU' or 'GPU',
+            telling the profiler to use CPU timer or GPU timer for profiling.
+            Although users may have already specified the execution place
+            (CPUPlace/CUDAPlace) in the begining, for flexibility the profiler
+            would not inherit this place.
         sorted_key (string) : If None, the profiling results will be printed
             in the order of first end time of events. Otherwise, the profiling
             results will be sorted by the this flag. This flag should be one

@@ -29,7 +29,7 @@ class Event {
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
   Event(EventKind kind, std::string name, uint32_t thread_id,
-        DeviceContext* dev_ctx);
+        const DeviceContext* dev_ctx);
 
   std::string kind() const;
   std::string name() const { return name_; }
@@ -95,19 +95,19 @@ enum ProfilerState {
   kCUDA,      // GPU profiling state
 };
 
-void Mark(const std::string& name, DeviceContext* dev_ctx);
+void Mark(const std::string& name, const DeviceContext* dev_ctx);
 
-void PushEvent(const std::string& name, DeviceContext* dev_ctx);
+void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
 
-void PopEvent(const std::string& name, DeviceContext* dev_ctx);
+void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 struct RecordEvent {
-  explicit RecordEvent(const std::string& name, DeviceContext* dev_ctx);
+  explicit RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
 
   ~RecordEvent();
 
   // The device context is used by Event to get the current cuda stream.
-  DeviceContext* dev_ctx_;
+  const DeviceContext* dev_ctx_;
   // Event name
   std::string name_;
 };
