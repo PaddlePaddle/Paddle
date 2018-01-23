@@ -321,10 +321,10 @@ def load_inference_model(dirname, executor):
     :param dirname: directory path
     :param executor: executor that load inference model
 
-    :return: [program, feed_var_names, fetch_var_names]
+    :return: [program, feed_target_names, fetch_targets]
              program: program especially for inference.
-             feeded_var_names: Names of variables that need to feed data
-             fetch_vars: Variables from which we can get inference results.
+             feed_target_names: Names of variables that need to feed data
+             fetch_targets: Variables from which we can get inference results.
     """
     if not os.path.isdir(dirname):
         raise ValueError("There is no directory named '%s'", dirname)
@@ -336,11 +336,13 @@ def load_inference_model(dirname, executor):
     program = Program.parse_from_string(program_desc_str)
     load_persistables_if_exist(executor, dirname, program)
 
-    feed_var_names = get_feed_targets(program)
-    fetch_var_names = get_fetch_targets(program)
-    fetch_vars = [program.global_block().var(name) for name in fetch_var_names]
+    feed_target_names = get_feed_targets_names(program)
+    fetch_target_names = get_fetch_targets_names(program)
+    fetch_targets = [
+        program.global_block().var(name) for name in fetch_target_names
+    ]
 
-    return [program, feed_var_names, fetch_vars]
+    return [program, feed_target_names, fetch_targets]
 
 
 def get_parameter_value(para, executor):
