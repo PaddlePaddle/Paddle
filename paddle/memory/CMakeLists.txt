@@ -1,7 +1,7 @@
 add_subdirectory(detail)
 
 cc_library(memory SRCS memory.cc DEPS place enforce)
-cc_library(memcpy SRCS memcpy.cc)
+cc_library(memcpy SRCS memcpy.cc boost)
 
 cc_library(paddle_memory
     DEPS
