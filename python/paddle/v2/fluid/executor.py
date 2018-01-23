@@ -122,6 +122,41 @@ class Executor(object):
             tensor.set_lod(lod)
             return tensor
 
+    def has_feed_operators(self, scope, block, feed_targets, feed_holder_name):
+        feed_count = 0
+        for op in block.ops:
+            if op.desc.type() == 'feed':
+                feed_count += 1
+                assert op.desc.input('X')[0] == feed_holder_name
+                feed_target_name = op.desc.output('Out')[0]
+                assert feed_target_name in feed_targets
+                cur_feed = feed_targets[feed_target_name]
+                if not instance(cur_feed, core.LoDTensor):
+                    cur_feed = self.aslodtensor(cur_feed)
+                idx = op.desc.attr('col')
+                core.set_feed_variable(scope, cur_feed, feed_holder_name, idx)
+        if feed_count > 0 and feed_count != len(feed_targets):
+            raise Exception(
+                "Feed operators in program desc do not match 'feed_targets'")
+        return feed_count > 0
+
+    def has_fetch_operators(self, block, fetch_targets, fetch_holder_name):
+        fetch_count = 0
+        for op in block.ops:
+            if op.desc.type() == 'fetch':
+                fetch_count += 1
+                assert op.desc.output('Out')[0] == fetch_holder_name
+                fetch_target_name = op.desc.input('X')[0]
+                assert fetch_target_name in [
+                    var.desc.name() for var in fetch_targets
+                ]
+                idx = op.desc.attr('col')
+                assert fetch_target_name == fetch_targets[idx].desc.name()
+        if fetch_count > 0 and fetch_count != len(fetch_targets):
+            raise Exception(
+                "Fetch operators in program desc do not match 'fetch_targets'")
+        return fetch_count > 0
+
     def run(self,
             program=None,
             feed=None,
@@ -163,40 +198,7 @@ class Executor(object):
                 type=core.VarDesc.VarType.FETCH_LIST,
                 persistable=True)
 
-        feed_count = 0
-        fetch_count = 0
-        for op in global_block.ops:
-            if op.desc.type() == 'feed':
-                feed_count += 1
-                assert op.desc.input('X')[0] == feed_var_name
-                name = op.desc.output('Out')[0]
-                if name not in feed:
-                    raise Exception("feed does not have {} variable".format(
-                        name))
-                cur_feed = feed[name]
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = self.aslodtensor(cur_feed)
-                idx = op.desc.attr('col')
-                core.set_feed_variable(scope, cur_feed, feed_var.name, idx)
-            elif op.desc.type() == 'fetch':
-                fetch_count += 1
-                assert op.desc.output('Out')[0] == fetch_var_name
-                name = op.desc.input('X')[0]
-                if name not in [var.desc.name() for var in fetch_list]:
-                    raise Exception(
-                        "fetch_list does not have {} variable".format(name))
-                idx = op.desc.attr('col')
-                assert name == fetch_list[idx].desc.name()
-
-        if feed_count > 0 and feed_count != len(feed):
-            raise Exception(
-                "Feed operators in program desc does not match 'feed'")
-
-        if fetch_count > 0 and fetch_count != len(fetch_list):
-            raise Exception(
-                "Fetch operators in program desc does not match 'fetch_list'")
-
-        if feed_count == 0:
+        if not has_feed_operators(scope, global_block, feed, feed_var_name):
             for i, name in enumerate(feed):
                 out = global_block.var(name)
                 global_block.prepend_op(
@@ -209,7 +211,7 @@ class Executor(object):
                     cur_feed = self.aslodtensor(cur_feed)
                 core.set_feed_variable(scope, cur_feed, feed_var.name, i)
 
-        if fetch_count == 0:
+        if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
                 global_block.append_op(
                     type='fetch',
