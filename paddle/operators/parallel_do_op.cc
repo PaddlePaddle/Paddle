@@ -79,11 +79,11 @@ inline void CopyOrShare(const framework::Variable& src,
     auto *dst_sr = dst->GetMutable<SelectedRows>();
     dst_sr->set_rows(src_sr.rows());
     dst_sr->set_height(src_sr.height());
-    Copy(src_sr.value(), dst_place, dst_sr->mutable_value());
-//    if (src_sr.value().place() == dst_place) {
-//      dst_sr->mutable_value()->ShareDataWith(src_sr.value());
-//    } else {
-//    }
+    if (src_sr.value().place() == dst_place) {
+      dst_sr->mutable_value()->ShareDataWith(src_sr.value());
+    } else {
+      Copy(src_sr.value(), dst_place, dst_sr->mutable_value());
+    }
   } else {
     PADDLE_THROW("Expect LoDTensor/SelectedRows, get %s", src.Type().name());
   }
