@@ -71,9 +71,9 @@ template <typename DeviceContext, typename T>
 class IOUSimilarityKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Tensor* in_x = ctx.Input<framework::Tensor>("X");
+    const framework::LoDTensor* in_x = ctx.Input<framework::LoDTensor>("X");
     const framework::Tensor* in_y = ctx.Input<framework::Tensor>("Y");
-    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
+    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
 
     int x_n = in_x->dims()[0];
     int y_n = in_y->dims()[0];
@@ -83,6 +83,8 @@ class IOUSimilarityKernel : public framework::OpKernel<T> {
     platform::ForRange<DeviceContext> for_range(
         static_cast<const DeviceContext&>(ctx.device_context()), x_n);
     for_range(functor);
+
+    out->set_lod(in_x->lod());
   }
 };  // namespace operators
 

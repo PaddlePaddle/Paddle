@@ -38,5 +38,18 @@ class TestIOUSimilarityOp(OpTest):
         self.outputs = {'Out': self.output}
 
 
+class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
+    def test_check_output(self):
+        self.check_output()
+
+    def setUp(self):
+        super(TestIOUSimilarityOpWithLoD, self).setUp()
+        self.boxes1_lod = [[0, 1, 2]]
+        self.output_lod = [[0, 1, 2]]
+
+        self.inputs = {'X': (self.boxes1, self.boxes1_lod), 'Y': self.boxes2}
+        self.outputs = {'Out': (self.output, self.output_lod)}
+
+
 if __name__ == '__main__':
     unittest.main()
