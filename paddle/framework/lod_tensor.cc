@@ -24,8 +24,6 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 
-#include <glog/logging.h>
-
 namespace paddle {
 namespace framework {
 
@@ -68,70 +66,6 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
 
   return os;
 }
-
-template <typename T>
-void Vector<T>::CopyToCUDA() {
-#ifdef PADDLE_WITH_CUDA
-  if (cuda_ptr_ == nullptr) {
-    cuda_ptr_ =
-        memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T));
-  }
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto *cuda_ctx = pool.GetByPlace(place_);
-
-  memory::Copy(place_, static_cast<void *>(cuda_ptr_), platform::CPUPlace(),
-               static_cast<const void *>(this->data()),
-               this->size() * sizeof(T), cuda_ctx->stream());
-  cuda_ctx->Wait();
-
-  cuda_size_ = this->size();
-  position_ = kDataPosition::kDataOnDevice;
-#endif
-}
-
-template <typename T>
-void Vector<T>::CopyFromCUDA() {
-#ifdef PADDLE_WITH_CUDA
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto *cuda_ctx = pool.GetByPlace(place_);
-  if (cuda_ptr_ == nullptr) {
-    LOG(WARNING) << "No uncommited cuda data.";
-    return;
-  }
-  this->resize(cuda_size_);
-  memory::Copy(platform::CPUPlace(), static_cast<void *>(this->data()), place_,
-               static_cast<const void *>(cuda_ptr_), this->size() * sizeof(T),
-               cuda_ctx->stream());
-  cuda_ctx->Wait();
-
-  position_ = kDataPosition::kDataOnHost;
-#endif
-}
-
-template <typename T>
-void Vector<T>::CopyToPeer(platform::Place peer_place) {
-  if (platform::is_cpu_place(peer_place)) {
-    return;
-  }
-#ifdef PADDLE_WITH_CUDA
-  auto *cuda_ctx = platform::DeviceContextPool::Instance().GetByPlace(place_);
-  void *peer_cuda_ptr_ = memory::Alloc<platform::CUDAPlace>(
-      boost::get<platform::CUDAPlace>(peer_place), this->size() * sizeof(T));
-  memory::Copy(boost::get<platform::CUDAPlace>(peer_place),
-               static_cast<void *>(peer_cuda_ptr_), place_,
-               static_cast<const void *>(cuda_ptr_), this->size() * sizeof(T),
-               cuda_ctx->stream());
-  cuda_ctx->Wait();
-  memory::Free<platform::CUDAPlace>(place_, static_cast<void *>(cuda_ptr_));
-  place_ = boost::get<platform::CUDAPlace>(peer_place);
-  cuda_ptr_ = peer_cuda_ptr_;
-#endif
-}
-
-template class Vector<int>;
-template class Vector<unsigned>;
-template class Vector<size_t>;
-template class Vector<int64_t>;
 
 std::string LoDToString(const LoD &lod) {
   std::ostringstream stream;
