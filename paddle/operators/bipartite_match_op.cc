@@ -21,8 +21,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-constexpr double kEPS = 1e-6;
-
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -46,6 +44,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
   // The match_dist must be initialized to 0 at first.
   void BipartiteMatch(const Tensor& dist, int* match_indices,
                       T* match_dist) const {
+    constexpr T kEPS = static_cast<T>(1e-6);
     PADDLE_ENFORCE_EQ(dist.dims().size(), 2, "The rank of dist must be 2.");
     int64_t row = dist.dims()[0];
     int64_t col = dist.dims()[1];
