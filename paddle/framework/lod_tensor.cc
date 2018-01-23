@@ -122,6 +122,9 @@ void Vector<T>::CopyToPeer(platform::Place peer_place) {
                static_cast<const void *>(cuda_ptr_), this->size() * sizeof(T),
                cuda_ctx->stream());
   cuda_ctx->Wait();
+  memory::Free<platform::CUDAPlace>(place_, static_cast<void *>(cuda_ptr_));
+  place_ = peer_place;
+  cuda_ptr_ = peer_cuda_ptr_;
 #endif
 }
 

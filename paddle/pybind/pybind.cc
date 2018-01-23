@@ -69,37 +69,9 @@ PYBIND11_PLUGIN(core) {
 
   BindException(m);
 
-  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
-      .def(py::init<int>())
-      .def("__str__", string::to_string<const platform::CUDAPlace &>);
-
-  py::class_<platform::CPUPlace>(m, "CPUPlace")
-      .def(py::init<>())
-      .def("__str__", string::to_string<const platform::CPUPlace &>);
-
-  py::class_<platform::Place>(m, "Place")
-      .def(py::init<>())
-      .def("set_place",
-           [](platform::Place &self, const platform::CPUPlace &cpu_place) {
-             self = cpu_place;
-           })
-      .def("set_place",
-           [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
-             self = gpu_place;
-           });
-
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
-      .def("__init__",
-           [](Tensor &self) {
-             paddle::platform::CPUPlace place;
-             new (&self) Tensor(place);
-           })
-      .def("__init__",
-           [](Tensor &self, paddle::platform::Place place) {
-             new (&self) Tensor(place);
-           })
       .def("get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("set_dims",
@@ -110,7 +82,6 @@ PYBIND11_PLUGIN(core) {
            [](Tensor &self, const std::string &layout) {
              self.set_layout(StringToDataLayout(layout));
            })
-      // TODO(dzhwinter): place should be assigned with core.LoDTensor(place)
       .def("alloc_float",
            [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
@@ -147,31 +118,30 @@ PYBIND11_PLUGIN(core) {
       .def("dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
-      .def("__init__",
-           [](LoDTensor &instance) {
-             paddle::platform::CPUPlace place;
-             new (&instance) LoDTensor(place);
-           })
-      .def("__init__",
-           [](LoDTensor &instance, paddle::platform::Place place) {
-             new (&instance) LoDTensor(place);
-           })
+      .def_buffer(
+          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def(
+          "__init__",
+          [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
+            LoD new_lod;
+            new_lod.reserve(lod.size());
+            std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+            new (&instance) LoDTensor(new_lod);
+          })
+      .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-             paddle::framework::LoD inner_lod;
-             for (auto &level : lod) {
-               inner_lod.push_back(level);
-             }
-             self.set_lod(inner_lod);
+             LoD new_lod;
+             new_lod.reserve(lod.size());
+             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+             self.set_lod(new_lod);
            })
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-        auto &inner_lod = self.lod();
-        std::vector<std::vector<size_t>> lod;
-
-        for (auto &level : inner_lod) {
-          lod.push_back(std::vector<size_t>(level.begin(), level.end()));
-        }
-        return lod;
+        auto lod = self.lod();
+        std::vector<std::vector<size_t>> new_lod;
+        new_lod.reserve(lod.size());
+        std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+        return new_lod;
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")
@@ -239,6 +209,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
+#ifdef PADDLE_WITH_CUDA
+      .def("get_communicator",
+           [](Variable &self) -> platform::Communicator * {
+             return self.GetMutable<platform::Communicator>();
+           },
+           py::return_value_policy::reference)
+#endif
       .def("get_net",
            [](Variable &self) -> operators::NetOp * {
              return self.GetMutable<operators::NetOp>();
@@ -327,7 +304,29 @@ All parameter, weight, gradient are variables in Paddle.
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
                   });
-  // clang-format on
+// clang-format on
+
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
+#endif
+  py::class_<platform::CUDAPlace>(m, "CUDAPlace")
+      .def(py::init<int>())
+      .def("__str__", string::to_string<const platform::CUDAPlace &>);
+
+  py::class_<paddle::platform::CPUPlace>(m, "CPUPlace")
+      .def(py::init<>())
+      .def("__str__", string::to_string<const platform::CPUPlace &>);
+
+  py::class_<platform::Place>(m, "Place")
+      .def(py::init<>())
+      .def("set_place",
+           [](platform::Place &self, const platform::CPUPlace &cpu_place) {
+             self = cpu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
+             self = gpu_place;
+           });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",

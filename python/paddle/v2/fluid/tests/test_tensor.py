@@ -107,7 +107,7 @@ class TestTensor(unittest.TestCase):
         scope = core.Scope()
         place = core.CPUPlace()
         lod_py = [[0, 2, 5], [0, 2, 4, 5]]
-        lod_tensor = core.LoDTensor(place)
+        lod_tensor = core.LoDTensor()
 
         lod_tensor.set_dims([5, 2, 3, 4])
         lod_tensor.set_lod(lod_py)
