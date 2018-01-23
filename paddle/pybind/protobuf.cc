@@ -212,6 +212,7 @@ void BindVarDsec(py::module &m) {
              return name;
            },
            py::return_value_policy::reference)
+      .def("set_name", &VarDesc::SetName)
       .def("set_shape", &VarDesc::SetShape)
       .def("set_dtype", &VarDesc::SetDataType)
       .def("shape", &VarDesc::Shape, py::return_value_policy::reference)
@@ -280,7 +281,8 @@ void BindOpDesc(py::module &m) {
       .def("check_attrs", &OpDesc::CheckAttrs)
       .def("infer_shape", &OpDesc::InferShape)
       .def("infer_var_type", &OpDesc::InferVarType)
-      .def("serialize_to_string", SerializeMessage<OpDesc>);
+      .def("serialize_to_string", SerializeMessage<OpDesc>)
+      .def("block", &OpDesc::Block, py::return_value_policy::reference);
 }
 
 }  // namespace pybind
