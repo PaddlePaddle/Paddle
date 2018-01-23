@@ -16,12 +16,17 @@ import gzip
 
 import paddle.v2.dataset.cifar as cifar
 import paddle.v2 as paddle
-import reader
 import time
+import os
 
 DATA_DIM = 3 * 32 * 32
 CLASS_DIM = 10
-BATCH_SIZE = 128
+BATCH_SIZE = os.getenv("BATCH_SIZE")
+if BATCH_SIZE:
+    BATCH_SIZE = int(BATCH_SIZE)
+else:
+    BATCH_SIZE = 128
+NODE_COUNT = int(os.getenv("TRAINERS"))
 ts = 0
 
 
@@ -77,14 +82,15 @@ def vgg19(input, class_dim):
 
 def main():
     global ts
-    paddle.init(use_gpu=False, trainer_count=1)
+    paddle.init(use_gpu=False)
     image = paddle.layer.data(
         name="image", type=paddle.data_type.dense_vector(DATA_DIM))
     lbl = paddle.layer.data(
         name="label", type=paddle.data_type.integer_value(CLASS_DIM))
 
     extra_layers = None
-    learning_rate = 0.01
+    # NOTE: for v2 distributed training need averaging updates.
+    learning_rate = 1e-3 / NODE_COUNT
     out = vgg16(image, class_dim=CLASS_DIM)
     cost = paddle.layer.classification_cost(input=out, label=lbl)
 
@@ -123,7 +129,9 @@ def main():
 
     # End batch and end pass event handler
     def event_handler(event):
-        global ts
+        global ts, ts_pass
+        if isinstance(event, paddle.event.BeginPass):
+            ts_pass = time.time()
         if isinstance(event, paddle.event.BeginIteration):
             ts = time.time()
         if isinstance(event, paddle.event.EndIteration):
@@ -132,9 +140,8 @@ def main():
                     event.pass_id, event.batch_id, event.cost, event.metrics,
                     time.time() - ts)
         if isinstance(event, paddle.event.EndPass):
-            with gzip.open('params_pass_%d.tar.gz' % event.pass_id, 'w') as f:
-                trainer.save_parameter_to_tar(f)
-
+            print "Pass %d end, spent: %f" % (event.pass_id,
+                                              time.time() - ts_pass)
             result = trainer.test(reader=test_reader)
             print "\nTest with Pass %d, %s" % (event.pass_id, result.metrics)
 
