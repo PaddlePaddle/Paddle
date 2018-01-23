@@ -59,44 +59,39 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
-        "(Tensor)The input tensor, tensors with rank at most 6 are supported");
-    AddOutput("Out", "(Tensor)The output tensor");
+        "(Tensor) The input tensor, tensors with rank up to 6 are supported.");
+    AddOutput("Out", "(Tensor)The output tensor.");
     AddAttr<std::vector<int>>(
         "axis",
-        "(vector<int>)A list of values, and the size of the list should be "
-        "the same with the input tensor rank, the tensor will "
-        "permute the axes according the the values given");
+        "(vector<int>) A list of values, and the size of the list should be "
+        "the same with the input tensor rank. This operator permutes the input "
+        "tensor's axes according to the values given.");
     AddComment(R"DOC(
 Transpose Operator.
 
-The input tensor will be permuted according to the axis values given.
-The op functions is similar to how numpy.transpose works in python.
+The input tensor will be permuted according to the axes given.
+The behavior of this operator is similar to how `numpy.transpose` works.
 
-For example:
+- suppose the input `X` is a 2-D tensor:
+    $$
+    X = \begin{pmatrix}
+    0 &1 &2 \\
+    3 &4 &5
+    \end{pmatrix}$$
 
-    .. code-block:: text
+    the given `axes` is: $[1, 0]$, and $Y$ = transpose($X$, axis)
 
-      input = numpy.arange(6).reshape((2,3))
+    then the output $Y$ is:
 
-      the input is:
+    $$
+    Y = \begin{pmatrix}
+         0 &3 \\
+         1 &4  \\
+         2 &5
+    \end{pmatrix}$$
 
-      array([[0, 1, 2],
-             [3, 4, 5]])
-
-      given axis is:
-
-      [1, 0]
-
-      output = input.transpose(axis)
-
-      then the output is:
-
-      array([[0, 3],
-             [1, 4],
-             [2, 5]])
-
-So, given a input tensor of shape(N, C, H, W) and the axis is {0, 2, 3, 1},
-the output tensor shape will be (N, H, W, C)
+- Given a input tensor with shape $(N, C, H, W)$ and the `axes` is 
+$[0, 2, 3, 1]$, then shape of the output tensor will be: $(N, H, W, C)$.
 
 )DOC");
   }
