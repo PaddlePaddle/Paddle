@@ -77,13 +77,13 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto img_width = image->dims()[3];
     auto img_height = image->dims()[2];
 
-    auto layer_width = input->dims()[3];
-    auto layer_height = input->dims()[2];
+    auto feature_width = input->dims()[3];
+    auto feature_height = input->dims()[2];
 
     T step_width, step_height;
     if (step_w == 0 || step_h == 0) {
-      step_width = static_cast<T>(img_width) / layer_width;
-      step_height = static_cast<T>(img_height) / layer_height;
+      step_width = static_cast<T>(img_width) / feature_width;
+      step_height = static_cast<T>(img_height) / feature_height;
     } else {
       step_width = step_w;
       step_height = step_h;
@@ -98,8 +98,8 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     vars->mutable_data<T>(ctx.GetPlace());
 
     auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes);
-    for (int h = 0; h < layer_height; ++h) {
-      for (int w = 0; w < layer_width; ++w) {
+    for (int h = 0; h < feature_height; ++h) {
+      for (int w = 0; w < feature_width; ++w) {
         T center_x = (w + offset) * step_width;
         T center_y = (h + offset) * step_height;
         T box_width, box_height;
@@ -164,12 +164,16 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
             boxes->data<T>(), clip_func);
     }
 
-    Eigen::Tensor<T, 2, Eigen::RowMajor> var_et(1, variances.size());
+    framework::Tensor var_t;
+    var_t.mutable_data<T>(
+        framework::make_ddim({1, static_cast<int>(variances.size())}),
+        ctx.GetPlace());
+    auto var_et = framework::EigenTensor<T, 2>::From(var_t);
     for (size_t i = 0; i < variances.size(); ++i) {
       var_et(0, i) = variances[i];
     }
 
-    int box_num = layer_height * layer_width * num_priors;
+    int box_num = feature_height * feature_width * num_priors;
     auto var_dim = vars->dims();
     vars->Resize({box_num, static_cast<int>(variances.size())});
 
