@@ -213,6 +213,5 @@ TEST(LoD, CheckAbsLoD) {
   abs_lod0.push_back(std::vector<size_t>({0}));
   ASSERT_FALSE(CheckAbsLoD(abs_lod0));
 }
-
 }  // namespace framework
 }  // namespace paddle

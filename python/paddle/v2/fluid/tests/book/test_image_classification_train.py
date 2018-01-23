@@ -140,5 +140,5 @@ for pass_id in range(PASS_NUM):
         print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
             pass_acc))
         # this model is slow, so if we can train two mini batch, we think it works properly.
-        #exit(0)
+        exit(0)
 exit(1)
