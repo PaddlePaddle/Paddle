@@ -1,31 +1,51 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
-from ..layer_helper import LayerHelper, unique_name
-from ..framework import Program, Variable, Operator
-from .. import core
-from tensor import assign, fill_constant
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import contextlib
-from ..registry import autodoc
+
+from layer_function_generator import autodoc
+from tensor import assign, fill_constant
+from .. import core
+from ..framework import Program, Variable, Operator
+from ..layer_helper import LayerHelper, unique_name
 
 __all__ = [
-    'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard',
-    'BlockGuardWithCompletion', 'StaticRNNMemoryLink', 'WhileGuard', 'While',
-    'lod_rank_table', 'max_sequence_len', 'topk', 'lod_tensor_to_array',
-    'array_to_lod_tensor', 'increment', 'array_write', 'create_array',
-    'less_than', 'array_read', 'shrink_memory', 'array_length', 'IfElse',
-    'DynamicRNN', 'ConditionalBlock', 'StaticRNN', 'reorder_lod_tensor_by_rank',
-    'ParallelDo', 'Print'
+    'split_lod_tensor',
+    'merge_lod_tensor',
+    'BlockGuard',
+    'BlockGuardWithCompletion',
+    'StaticRNNMemoryLink',
+    'WhileGuard',
+    'While',
+    'lod_rank_table',
+    'max_sequence_len',
+    'topk',
+    'lod_tensor_to_array',
+    'array_to_lod_tensor',
+    'increment',
+    'array_write',
+    'create_array',
+    'less_than',
+    'array_read',
+    'shrink_memory',
+    'array_length',
+    'IfElse',
+    'DynamicRNN',
+    'ConditionalBlock',
+    'StaticRNN',
+    'reorder_lod_tensor_by_rank',
+    'ParallelDo',
+    'Print',
 ]
 
 
@@ -749,7 +769,7 @@ def topk(input, k):
           array = fluid.layers.topk(x, k)
     """
     helper = LayerHelper('topk', **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype='int64')
     helper.append_op(
         type='top_k',
@@ -1457,7 +1477,7 @@ class DynamicRNN(object):
                 method))
 
 
-@autodoc
+@autodoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)

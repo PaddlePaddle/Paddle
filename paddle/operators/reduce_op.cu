@@ -20,10 +20,22 @@ namespace ops = paddle::operators;
 #define REGISTER_REDUCE_GPU_KERNEL(reduce_type, functor, grad_functor)    \
   REGISTER_OP_CUDA_KERNEL(                                                \
       reduce_type, ops::ReduceKernel<paddle::platform::CUDADeviceContext, \
-                                     float, ops::functor>);               \
+                                     float, ops::functor>,                \
+      ops::ReduceKernel<paddle::platform::CUDADeviceContext, double,      \
+                        ops::functor>,                                    \
+      ops::ReduceKernel<paddle::platform::CUDADeviceContext, int,         \
+                        ops::functor>,                                    \
+      ops::ReduceKernel<paddle::platform::CUDADeviceContext, int64_t,     \
+                        ops::functor>);                                   \
   REGISTER_OP_CUDA_KERNEL(                                                \
       reduce_type##_grad,                                                 \
       ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, float,   \
+                            ops::grad_functor>,                           \
+      ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,  \
+                            ops::grad_functor>,                           \
+      ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,     \
+                            ops::grad_functor>,                           \
+      ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t, \
                             ops::grad_functor>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_REDUCE_GPU_KERNEL);
