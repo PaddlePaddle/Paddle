@@ -211,3 +211,49 @@ decoder_inputs = paddle.layer.fc(
 * list 中元素的个数等于网络中输出层的个数；
 * list 中每个元素是一个layer的输出结果矩阵，类型是numpy的ndarray；
 * 每一个layer输出矩阵的高度，在非序列输入时：等于样本数；序列输入时等于：输入序列中元素的总数；宽度等于配置中layer的size；
+
+6.  如何在训练过程中获得某一个layer的output
+-----------------------------------------------
+
+可以在event_handler中，通过 :code:`event.gm.getLayerOutputs("layer_name")` 获得在模型配置中某一层的name :code:`layer_name` 在当前
+mini-batch forward的output的值。获得的值类型均为 :code:`numpy.ndarray` ，可以通过这个输出来完成自定义的评估指标计算等功能。例如下面代码：
+
+..      code-block:: python
+
+        def score_diff(right_score, left_score):
+            return np.average(np.abs(right_score - left_score))
+
+        def event_handler(event):
+            if isinstance(event, paddle.event.EndIteration):
+                if event.batch_id % 25 == 0:
+                    diff = score_diff(
+                        event.gm.getLayerOutputs("right_score")["right_score"][
+                            "value"],
+                        event.gm.getLayerOutputs("left_score")["left_score"][
+                            "value"])
+                    logger.info(("Pass %d Batch %d : Cost %.6f, "
+                                "average absolute diff scores: %.6f") %
+                                (event.pass_id, event.batch_id, event.cost, diff))
+
+注意：此方法不能获取 :code:`paddle.layer.recurrent_group` 里step的内容，但可以获取 :code:`paddle.layer.recurrent_group` 的输出。
+
+7.  如何在训练过程中获得参数的权重和梯度
+-----------------------------------------------
+
+在某些情况下，获得当前mini-batch的权重（或称作weights, parameters）有助于在训练时观察具体数值，方便排查以及快速定位问题。
+可以通过在 :code:`event_handler` 中打印其值（注意，需要使用 :code:`paddle.event.EndForwardBackward` 保证使用GPU训练时也可以获得），
+示例代码如下：
+
+..      code-block:: python
+
+        ...
+        parameters = paddle.parameters.create(cost)
+        ...
+        def event_handler(event):
+            if isinstance(event, paddle.event.EndForwardBackward):
+                if event.batch_id % 25 == 0:
+                    for p in parameters.keys():
+                        logger.info("Param %s, Grad %s",
+                            parameters.get(p), parameters.get_grad(p))
+
+注意：“在训练过程中获得某一个layer的output”和“在训练过程中获得参数的权重和梯度”都会造成训练中的数据从C++拷贝到numpy，会对训练性能造成影响。不要在注重性能的训练场景下使用。

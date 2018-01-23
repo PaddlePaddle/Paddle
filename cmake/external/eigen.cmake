@@ -1,8 +1,8 @@
 INCLUDE(ExternalProject)
 
 SET(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3)
-
-INCLUDE_DIRECTORIES(${EIGEN_SOURCE_DIR}/src/extern_eigen3)
+SET(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR}/src/extern_eigen3)
+INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
 
 ExternalProject_Add(
     extern_eigen3
@@ -28,3 +28,9 @@ endif()
 add_dependencies(eigen3 extern_eigen3)
 
 LIST(APPEND external_project_dependencies eigen3)
+
+IF(NOT WITH_C_API AND WITH_FLUID)
+    INSTALL(FILES ${EIGEN_INCLUDE_DIR}/Eigen/Core DESTINATION third_party/eigen3/Eigen)
+    INSTALL(DIRECTORY ${EIGEN_INCLUDE_DIR}/Eigen/src DESTINATION third_party/eigen3/Eigen)
+    INSTALL(DIRECTORY ${EIGEN_INCLUDE_DIR}/unsupported/Eigen DESTINATION third_party/eigen3/unsupported)
+ENDIF()

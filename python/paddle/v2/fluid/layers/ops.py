@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from ..registry import register_layer
+from layer_function_generator import generate_layer_fn
 
 __activations__ = [
     'sigmoid',
@@ -50,7 +49,6 @@ __all__ = [
     'mul',
     'reshape',
     'scale',
-    'transpose',
     'sigmoid_cross_entropy_with_logits',
     'elementwise_add',
     'elementwise_div',
@@ -64,4 +62,4 @@ __all__ = [
 ] + __activations__
 
 for _OP in set(__all__):
-    globals()[_OP] = register_layer(_OP)
+    globals()[_OP] = generate_layer_fn(_OP)
