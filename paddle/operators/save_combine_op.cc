@@ -17,7 +17,6 @@ limitations under the License. */
 #include <fstream>
 #include <numeric>
 #include <sstream>
-
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
@@ -27,9 +26,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// TODO: These function are needed by other files (save_op), move them
-// to paddle::filesystem namespace.
-/*constexpr char kSEP = '/';
+// TODO(sidgoyal78): These function are needed by other files (save_op), move
+// them to paddle::filesystem namespace. (as noted by yuyang18 in save_op).
+constexpr char kSEP = '/';
 static bool FileExists(const std::string &filepath) {
   struct stat buffer;
   return (stat(filepath.c_str(), &buffer) == 0);
@@ -56,7 +55,6 @@ static void MkDirRecursively(const char *fullpath) {
   MkDirRecursively(DirName(fullpath).c_str());
   MkDir(fullpath);
 }
-*/
 
 class SaveCombineOp : public framework::OperatorBase {
  public:
@@ -69,7 +67,7 @@ class SaveCombineOp : public framework::OperatorBase {
            const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto overwrite = Attr<bool>("overwrite");
-    auto position_counter = Attr<bool>("position_counter");
+    auto position_counter = Attr<int>("position_counter");
 
     bool is_present = FileExists(filename);
     if (is_present && !overwrite && position_counter == 0) {
@@ -81,6 +79,9 @@ class SaveCombineOp : public framework::OperatorBase {
     MkDirRecursively(DirName(filename).c_str());
 
     std::ofstream fout;
+
+    // if position_counter is 0, we open the file in write mode,
+    // otherwise, we open in append mode.
     if (position_counter == 0) {
       fout.open(filename);
     } else {

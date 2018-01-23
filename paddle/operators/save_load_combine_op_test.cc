@@ -12,93 +12,114 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <iostream>
+#include <string>
+#include <vector>
 #include "gtest/gtest.h"
 #include "paddle/framework/op_registry.h"
 
 USE_NO_KERNEL_OP(save_combine);
 USE_NO_KERNEL_OP(load_combine);
 
+int* create_and_run_save_combine_op(
+    int x, int y, const std::vector<int>& lod_info, std::string var_name,
+    int pos_counter, std::string filename, paddle::framework::Scope& scope,
+    paddle::platform::CPUPlace& place, paddle::framework::LoD& expect_lod) {
+  auto var = scope.Var(var_name);
+  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  tensor->Resize({x, y});
+  expect_lod.resize(1);
+  for (size_t i = 0; i < lod_info.size(); i++) {
+    expect_lod[0].push_back(lod_info[i]);
+  }
+
+  tensor->set_lod(expect_lod);
+  int* expect = tensor->mutable_data<int>(place);
+  for (int64_t i = 0; i < tensor->numel(); ++i) {
+    expect[i] = static_cast<int>(i);
+  }
+  paddle::framework::AttributeMap attrs;
+  attrs.insert({"file_path", std::string(filename)});
+  attrs.insert({"position_counter", static_cast<int>(pos_counter)});
+  auto save_combine_op = paddle::framework::OpRegistry::CreateOp(
+      "save_combine", {{"X", {var_name}}}, {}, attrs);
+  save_combine_op->Run(scope, place);
+  return expect;
+}
+
+int* create_and_run_load_combine_op(std::string var_name, int pos_counter,
+                                    std::string filename,
+                                    paddle::framework::Scope& scope,
+                                    paddle::platform::CPUPlace& place,
+                                    paddle::framework::LoD& actual_lod) {
+  auto load_var = scope.Var(var_name);
+  auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
+  paddle::framework::AttributeMap attrs;
+  attrs.insert({"file_path", std::string(filename)});
+  attrs.insert({"position_counter", static_cast<int>(pos_counter)});
+  auto load_combine_op = paddle::framework::OpRegistry::CreateOp(
+      "load_combine", {}, {{"Out", {var_name}}}, attrs);
+  load_combine_op->Run(scope, place);
+  int* actual = target->data<int>();
+  actual_lod = target->lod();
+  return actual;
+}
+
+void check_values(int* expect, int* actual, paddle::framework::LoD expect_lod,
+                  paddle::framework::LoD actual_lod, const int& numel) {
+  for (int64_t i = 0; i < numel; ++i) {
+    EXPECT_EQ(expect[i], actual[i]);
+  }
+  EXPECT_EQ(expect_lod.size(), actual_lod.size());
+  for (size_t i = 0; i < expect_lod.size(); ++i) {
+    for (size_t j = 0; j < expect_lod[i].size(); ++j) {
+      EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
+    }
+  }
+}
+
+// Here, we create 4 LoDTensors and use save_combine_op to first save these
+// in a single file. Then, we use load_combine_op to load these sequentially
 TEST(SaveLoadCombineOp, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
 
-  auto var1 = scope.Var("test_var1");
-  auto tensor1 = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor1->Resize({10, 10});
+  std::vector<int> lod1 = {0, 1, 2, 3};
+  int numel1 = 100;
   paddle::framework::LoD expect_lod1;
-  expect_lod1.resize(1);
-  expect_lod1[0].push_back(0);
-  expect_lod1[0].push_back(1);
-  expect_lod1[0].push_back(2);
-  expect_lod1[0].push_back(3);
+  int* expect1 = create_and_run_save_combine_op(
+      10, 10, lod1, "test_var1", 0, "tensor.save", scope, place, expect_lod1);
 
-  tensor1->set_lod(expect_lod1);
-  int* expect1 = tensor1->mutable_data<int>(place);
-  for (int64_t i = 0; i < tensor1->numel(); ++i) {
-    expect1[i] = static_cast<int>(i);
-  }
-  paddle::framework::AttributeMap attrs1;
-  attrs1.insert({"file_path", std::string("tensor.save")});
-  attrs1.insert({"position_counter", 0});
-
-  auto save_op1 = paddle::framework::OpRegistry::CreateOp(
-      "save_combine", {{"X", {"test_var1"}}}, {}, attrs1);
-  save_op1->Run(scope, place);
-
-  auto var2 = scope.Var("test_var2");
-  auto tensor2 = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor2->Resize({20, 20});
+  std::vector<int> lod2 = {0, 2, 5};
+  int numel2 = 200;
   paddle::framework::LoD expect_lod2;
-  expect_lod2.resize(1);
-  expect_lod2[0].push_back(0);
-  expect_lod2[0].push_back(1);
-  expect_lod2[0].push_back(2);
-  expect_lod2[0].push_back(3);
+  int* expect2 = create_and_run_save_combine_op(
+      10, 20, lod2, "test_var2", 1, "tensor.save", scope, place, expect_lod2);
 
-  tensor2->set_lod(expect_lod2);
-  int* expect2 = tensor2->mutable_data<int>(place);
-  for (int64_t i = 0; i < tensor2->numel(); ++i) {
-    expect2[i] = static_cast<int>(i + 2);
-  }
-  paddle::framework::AttributeMap attrs2;
-  attrs2.insert({"file_path", std::string("tensor.save")});
-  attrs2.insert({"position_counter", 1});
+  std::vector<int> lod3 = {0, 2, 3};
+  int numel3 = 4000;
+  paddle::framework::LoD expect_lod3;
+  int* expect3 = create_and_run_save_combine_op(
+      200, 20, lod3, "test_var3", 2, "tensor.save", scope, place, expect_lod3);
 
-  auto save_op2 = paddle::framework::OpRegistry::CreateOp(
-      "save_combine", {{"X", {"test_var2"}}}, {}, attrs2);
-  save_op2->Run(scope, place);
+  std::vector<int> lod4 = {0, 1};
+  int numel4 = 1000;
+  paddle::framework::LoD expect_lod4;
+  int* expect4 = create_and_run_save_combine_op(
+      50, 20, lod4, "test_var4", 3, "tensor.save", scope, place, expect_lod4);
 
-  auto load_var1 = scope.Var("out_var1");
-  auto target1 = load_var1->GetMutable<paddle::framework::LoDTensor>();
-  auto load_op1 = paddle::framework::OpRegistry::CreateOp(
-      "load_combine", {}, {{"Out", {"out_var1"}}}, attrs1);
-  load_op1->Run(scope, place);
-  int* actual1 = target1->data<int>();
-  for (int64_t i = 0; i < tensor1->numel(); ++i) {
-    EXPECT_EQ(expect1[i], actual1[i]);
-  }
-  auto& actual_lod1 = target1->lod();
-  EXPECT_EQ(expect_lod1.size(), actual_lod1.size());
-  for (size_t i = 0; i < expect_lod1.size(); ++i) {
-    for (size_t j = 0; j < expect_lod1[i].size(); ++j) {
-      EXPECT_EQ(expect_lod1[i][j], actual_lod1[i][j]);
-    }
-  }
+  paddle::framework::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
+  int* actual1 = create_and_run_load_combine_op("out_var1", 0, "tensor.save",
+                                                scope, place, actual_lod1);
+  int* actual2 = create_and_run_load_combine_op("out_var2", 1, "tensor.save",
+                                                scope, place, actual_lod2);
+  int* actual3 = create_and_run_load_combine_op("out_var3", 2, "tensor.save",
+                                                scope, place, actual_lod3);
+  int* actual4 = create_and_run_load_combine_op("out_var4", 3, "tensor.save",
+                                                scope, place, actual_lod4);
 
-  auto load_var2 = scope.Var("out_var2");
-  auto target2 = load_var2->GetMutable<paddle::framework::LoDTensor>();
-  auto load_op2 = paddle::framework::OpRegistry::CreateOp(
-      "load_combine", {}, {{"Out", {"out_var2"}}}, attrs2);
-  load_op2->Run(scope, place);
-  int* actual2 = target2->data<int>();
-  for (int64_t i = 0; i < tensor2->numel(); ++i) {
-    EXPECT_EQ(expect2[i], actual2[i]);
-  }
-  auto& actual_lod2 = target2->lod();
-  EXPECT_EQ(expect_lod2.size(), actual_lod2.size());
-  for (size_t i = 0; i < expect_lod2.size(); ++i) {
-    for (size_t j = 0; j < expect_lod2[i].size(); ++j) {
-      EXPECT_EQ(expect_lod2[i][j], actual_lod2[i][j]);
-    }
-  }
+  check_values(expect1, actual1, expect_lod1, actual_lod1, numel1);
+  check_values(expect2, actual2, expect_lod2, actual_lod2, numel2);
+  check_values(expect3, actual3, expect_lod3, actual_lod3, numel3);
+  check_values(expect4, actual4, expect_lod4, actual_lod4, numel4);
 }

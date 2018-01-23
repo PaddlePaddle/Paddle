@@ -47,16 +47,29 @@ class LoadCombineOp : public framework::OperatorBase {
 
     uint64_t data_length;
     char *buffer = NULL;
-    std::stringstream str_stream;
     for (int i = 0; i <= position_counter; i++) {
-      if (!buffer) delete[] buf;
+      if (!buffer) delete[] buffer;
+
+      // Error checking
+      PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot read more from file %s",
+                     filename);
+
+      // Read a fixed-width int, to get the number of bytes
+      // for the serialized data.
       fin.read(reinterpret_cast<char *>(&data_length), sizeof(data_length));
-      // TODO: Error checking: if(!fin) throw error;
+
+      // Error checking
+      PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot read more from file %s",
+                     filename);
+
       buffer = new char[data_length];
+
+      // Read the serialized data into the buffer
       fin.read(buffer, data_length);
     }
 
-    std::string current_serialized_data(buffer);
+    std::string current_serialized_data;
+    current_serialized_data.assign(buffer, data_length);
 
     // Create an input string stream
     std::istringstream ist(current_serialized_data);
@@ -92,9 +105,9 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
     AddComment(R"DOC(
-Load Operator.
+LoadCombine Operator.
 
-Load operator will load_combine a tensor variable from disk file.
+LoadCombine operator combines together various tensor variable into a file.
 
 )DOC");
   }
