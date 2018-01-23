@@ -33,5 +33,19 @@ class TestLookupTableOp(OpTest):
         self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
 
 
+class TestLookupTableOpWithPadding(TestLookupTableOp):
+    def test_check_output(self):
+        ids = np.squeeze(self.inputs['Ids'])
+        padding_idx = np.random.choice(ids, 1)[0]
+        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
+        self.attrs = {'padding_idx': long(padding_idx)}
+        self.check_output()
+
+    def test_check_grad(self):
+        # Since paddings are not trainable and fixed in forward, the gradient of 
+        # paddings makes no sense and we don't test the gradient here.
+        pass
+
+
 if __name__ == "__main__":
     unittest.main()
