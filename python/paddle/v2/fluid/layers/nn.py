@@ -61,6 +61,7 @@ __all__ = [
     'transpose',
     'im2sequence',
     'nce',
+    'beam_search',
 ]
 
 
@@ -163,10 +164,8 @@ def fc(input,
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
-            inputs={
-                "X": input_var,
-                "Y": w,
-            },
+            inputs={"X": input_var,
+                    "Y": w},
             outputs={"Out": tmp},
             attrs={"x_num_col_dims": num_flatten_dims,
                    "y_num_col_dims": 1})
@@ -1549,6 +1548,38 @@ def sequence_expand(x, y, name=None):
         type='sequence_expand', inputs={'X': x,
                                         'Y': y}, outputs={'Out': tmp})
     return tmp
+
+
+def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
+    '''
+    This function implements the beam search algorithm.
+    '''
+    helper = LayerHelper('beam_search', **locals())
+    score_type = scores.dtype
+    id_type = ids.dtype
+
+    selected_scores = helper.create_tmp_variable(dtype=score_type)
+    selected_ids = helper.create_tmp_variable(dtype=id_type)
+
+    helper.append_op(
+        type='beam_search',
+        inputs={
+            'pre_ids': pre_ids,
+            'ids': ids,
+            'scores': scores,
+        },
+        outputs={
+            'selected_ids': selected_ids,
+            'selected_scores': selected_scores,
+        },
+        attrs={
+            # TODO(ChunweiYan) to assure other value support
+            'level': level,
+            'beam_size': beam_size,
+            'end_id': end_id,
+        })
+
+    return selected_ids, selected_scores
 
 
 def lstm_unit(x_t,
