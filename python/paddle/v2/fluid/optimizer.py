@@ -229,11 +229,19 @@ class SGDOptimizer(Optimizer):
     """ Simple SGD optimizer without any state.
     """
 
-    def __init__(self, learning_rate, **kwargs):
+    def __init__(self,
+                 learning_rate,
+                 use_local_lr=False,
+                 local_gw_ratio=0.001,
+                 weight_decay=0.0005,
+                 **kwargs):
         assert learning_rate is not None
         super(SGDOptimizer, self).__init__(**kwargs)
         self.type = "sgd"
         self._learning_rate = learning_rate
+        self._use_local_lr = bool(use_local_lr)
+        self._local_gw_ratio = local_gw_ratio
+        self._weight_decay = weight_decay
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -246,7 +254,12 @@ class SGDOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "LearningRate": self._create_param_lr(param_and_grad)
             },
-            outputs={"ParamOut": param_and_grad[0]})
+            outputs={"ParamOut": param_and_grad[0]},
+            attrs={
+                "use_local_lr": self._use_local_lr,
+                "local_gw_ratio": self._local_gw_ratio,
+                "weight_decay": self._weight_decay
+            })
 
         return sgd_op
 
@@ -256,7 +269,14 @@ class MomentumOptimizer(Optimizer):
     """
     _velocity_acc_str = "velocity"
 
-    def __init__(self, learning_rate, momentum, use_nesterov=False, **kwargs):
+    def __init__(self,
+                 learning_rate,
+                 momentum,
+                 use_nesterov=False,
+                 use_local_lr=False,
+                 local_gw_ratio=0.001,
+                 weight_decay=0.0005,
+                 **kwargs):
         assert learning_rate is not None
         assert momentum is not None
         super(MomentumOptimizer, self).__init__(**kwargs)
@@ -264,6 +284,9 @@ class MomentumOptimizer(Optimizer):
         self._learning_rate = learning_rate
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
+        self._use_local_lr = bool(use_local_lr)
+        self._local_gw_ratio = local_gw_ratio
+        self._weight_decay = weight_decay
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -289,8 +312,13 @@ class MomentumOptimizer(Optimizer):
                 "ParamOut": param_and_grad[0],
                 "VelocityOut": velocity_acc
             },
-            attrs={"mu": self._momentum,
-                   "use_nesterov": self._use_nesterov})
+            attrs={
+                "mu": self._momentum,
+                "use_nesterov": self._use_nesterov,
+                "use_local_lr": self._use_local_lr,
+                "local_gw_ratio": self._local_gw_ratio,
+                "weight_decay": self._weight_decay
+            })
 
         return momentum_op
 

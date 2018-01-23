@@ -33,6 +33,39 @@ class TestSGDOp(OpTest):
         self.check_output()
 
 
+class TestSGDLARSOp(OpTest):
+    def setUp(self):
+        self.op_type = "sgd"
+        w = np.random.random((102, 105)).astype("float32")
+        g = np.random.random((102, 105)).astype("float32")
+        lr = np.array([3.0]).astype("float32")
+
+        use_local_lr = True
+        local_gw_ratio = 0.02
+        weight_decay = 0.005
+        self.inputs = {'Param': w, 'Grad': g, 'LearningRate': lr}
+
+        self.attrs = {
+            'use_local_lr': use_local_lr,
+            'local_gw_ratio': local_gw_ratio,
+            'weight_decay': weight_decay,
+        }
+
+        local_lr = lr
+        if use_local_lr:
+            w_norm = np.sqrt(np.sum(np.square(w)))
+            g_norm = np.sqrt(np.sum(np.square(g)))
+            local_lr = lr * local_gw_ratio * w_norm / \
+                       (g_norm + weight_decay * w_norm)
+
+        param_out = w - local_lr * g
+        self.outputs = {'ParamOut': param_out}
+
+    def test_check_output(self):
+        place = core.CPUPlace()
+        self.check_output_with_place(place, atol=1e-3)
+
+
 class TestSparseSGDOp(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()

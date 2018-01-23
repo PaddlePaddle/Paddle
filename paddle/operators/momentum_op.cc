@@ -82,27 +82,93 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "Use Nesterov Momentum")
         .SetDefault(false);
+    AddAttr<bool>("use_local_lr",
+                  "(bool, default false) "
+                  "Use LARS")
+        .SetDefault(false);
+    AddAttr<float>("local_gw_ratio", "(float) LARS coefficient")
+        .SetDefault(0.001);
+    AddAttr<float>("weight_decay", "(float) LARS weight decay")
+        .SetDefault(0.0005);
+
     AddComment(R"DOC(
 Momentum Optimizer.
 
 This optimizer has a flag for Nestrov Momentum.
+Thie optimizer has attributes for LARS to adjust local LR for large batch training of CNN.
+paper : https://arxiv.org/abs/1708.03888.
 The update equations are as follows:
 
 $$
 velocity = mu * velocity + gradient \\
 if (use\_nesterov):   \\
   param = param - gradient * learning\_rate + mu * velocity * learning\_rate \\
-else:   \\
+else if (use\_lcoal\_lr): \\
+  learning\_rate *= local\_gw\_ratio * sqrt(sumsq(param)) 
+                  / (sqrt(sumsq(gradient))+ weight\_decay * sqrt(sumsq(param))) \\
+  param = param - learning\_rate * velocity. \\
+else: \\
   param = param - learning\_rate * velocity. \\
 $$
 
 )DOC");
   }
 };
+
+template <typename T>
+class MomentumOpCPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
+    auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
+    auto param = ctx.Input<framework::Tensor>("Param");
+    auto velocity = ctx.Input<framework::Tensor>("Velocity");
+    auto grad = ctx.Input<framework::Tensor>("Grad");
+    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+
+    param_out->mutable_data<T>(ctx.GetPlace());
+    velocity_out->mutable_data<T>(ctx.GetPlace());
+
+    T mu = static_cast<T>(ctx.Attr<float>("mu"));
+    bool use_nesterov = ctx.Attr<bool>("use_nesterov");
+    bool use_local_lr = ctx.Attr<bool>("use_local_lr");
+    T local_gw_ratio = static_cast<T>(ctx.Attr<float>("local_gw_ratio"));
+    T weight_decay = static_cast<T>(ctx.Attr<float>("weight_decay"));
+
+    auto p_out = framework::EigenVector<T>::Flatten(*param_out);
+    auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
+
+    auto p = framework::EigenVector<T>::Flatten(*param);
+    auto v = framework::EigenVector<T>::Flatten(*velocity);
+    auto g = framework::EigenVector<T>::Flatten(*grad);
+    auto *lr = learning_rate->data<T>();
+
+    T local_lr = lr[0];
+    if (use_local_lr) {
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, Eigen::RowMajor,
+                             Eigen::DenseIndex>
+          p_norm = p.square().sum().sqrt();
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, Eigen::RowMajor,
+                             Eigen::DenseIndex>
+          g_norm = g.square().sum().sqrt();
+      if ((p_norm(0) > static_cast<T>(0)) && (g_norm(0) > static_cast<T>(0)))
+        local_lr = lr[0] * local_gw_ratio * p_norm(0) /
+                   (g_norm(0) + weight_decay * p_norm(0));
+    }
+
+    v_out = v * mu + g;
+    if (use_nesterov) {
+      p_out = p - (g - v_out * mu) * lr[0];
+    } else {
+      p_out = p - local_lr * v_out;
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(momentum, ops::MomentumOp, ops::MomentumOpMaker);
-REGISTER_OP_CPU_KERNEL(momentum, ops::MomentumOpKernel<float>,
-                       ops::MomentumOpKernel<double>);
+REGISTER_OP_CPU_KERNEL(momentum, ops::MomentumOpCPUKernel<float>,
+                       ops::MomentumOpCPUKernel<double>);
