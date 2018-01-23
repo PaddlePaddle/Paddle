@@ -364,18 +364,15 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     Tensor* output = context.Output<Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
 
+    std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
 
-    framework::DDim filter_matrix_shape = {filter.dims()[0],
-                                           filter.numel() / filter.dims()[0]};
-    filter.Resize(filter_matrix_shape);
-
     math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    depthwiseConv(dev_ctx, input, filter, filter_shape_vec, strides, paddings,
+    depthwiseConv(dev_ctx, *input, filter, ksize, strides, paddings,
                   output);
   }
 };

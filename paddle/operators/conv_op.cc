@@ -318,15 +318,20 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 namespace ops = paddle::operators;
 REGISTER_OP(conv2d, ops::ConvOp, ops::Conv2DOpMaker, conv2d_grad,
             ops::ConvOpGrad);
-REGISTER_OP(depthwiseConv, ops::ConvOp, ops::Conv2DOpMaker, conv2d_grad,
+REGISTER_OP(depthwiseConv, ops::ConvOp, ops::Conv2DOpMaker, depthwiseConv_grad,
             ops::ConvOpGrad);
 REGISTER_OP(conv3d, ops::ConvOp, ops::Conv3DOpMaker, conv3d_grad,
             ops::ConvOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     depthwiseConv,
-    ops::DepthwiseConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DepthwiseConvKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CPU_KERNEL(
+    depthwiseConv_grad,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
     conv2d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
