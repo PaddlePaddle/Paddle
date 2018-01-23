@@ -258,8 +258,7 @@ def scaled_dot_product_attention(queries,
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
-        trans_x = layers.transpose(
-            x, perm=[x.shape[0], x.shape[2], x.shape[1], x.shape[3]])
+        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
         return layers.reshape(x=layers.reshape(
             x=trans_x,
             shape=[trans_x.shape[0], trans_x[1], trans_x[2] * trans_x[3]]))
@@ -276,6 +275,6 @@ def scaled_dot_product_attention(queries,
         x=layers.reshape(
             x=product, shape=[-1, product.shape[-1]], act="softmax"),
         shape=product.shape)
-    ctx_multiheads = layers.matmul(attn_scores, values)
+    ctx_multiheads = layers.matmul(attn_scores, v)
     context = __combine_heads(ctx_multiheads)
     return context
