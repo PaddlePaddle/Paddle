@@ -16,6 +16,11 @@ import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 
+# need to fix random seed and training data to compare the loss
+# value accurately calculated by the default and the memory optimization
+# version.
+fluid.default_startup_program().random_seed = 111
+
 x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 
 y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -28,15 +33,18 @@ avg_cost = fluid.layers.mean(x=cost)
 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
 sgd_optimizer.minimize(avg_cost)
 
-# memopt_program = fluid.default_main_program()
-memopt_program = fluid.memory_optimize(fluid.default_main_program())
+fluid.memory_optimize(fluid.default_main_program())
 
 BATCH_SIZE = 200
 
+# fix the order of training data
 train_reader = paddle.batch(
-    paddle.reader.shuffle(
-        paddle.dataset.uci_housing.train(), buf_size=500),
-    batch_size=BATCH_SIZE)
+    paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE)
+
+# train_reader = paddle.batch(
+#     paddle.reader.shuffle(
+#         paddle.dataset.uci_housing.train(), buf_size=500),
+#     batch_size=BATCH_SIZE)
 
 place = fluid.CPUPlace()
 feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
@@ -49,7 +57,7 @@ for pass_id in range(PASS_NUM):
     fluid.io.save_persistables(exe, "./fit_a_line.model/")
     fluid.io.load_persistables(exe, "./fit_a_line.model/")
     for data in train_reader():
-        avg_loss_value, = exe.run(memopt_program,
+        avg_loss_value, = exe.run(fluid.default_main_program(),
                                   feed=feeder.feed(data),
                                   fetch_list=[avg_cost])
 
