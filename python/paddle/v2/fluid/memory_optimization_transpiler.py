@@ -29,9 +29,6 @@ dtype_to_size = {
     core.DataType.BOOL: 1
 }
 
-kCondition = "Condition"
-kStepScopes = "StepScopes"
-
 
 class ControlFlowGraph(object):
     def __init__(self, Program, ops, forward_num):
@@ -193,39 +190,55 @@ class ControlFlowGraph(object):
                         block_desc, var_name, is_forward).shape()))
 
 
-# FIXME(qijun) Assume that a program has only one while operator.
-# We should make it more general.
 def get_cfgs(input_program):
     ops_list = []
     pdesc = input_program.get_desc()
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
+    # Get global block ops
     ops_list.append(([block_desc.op(i) for i in range(op_size)], op_size))
 
-    while_sub_block_id = -1
-    while_grad_sub_block_id = -1
+    while_sub_block_ids = []
+    while_grad_sub_block_ids = []
+    while_pair = []
 
     for i in range(op_size):
         op = block_desc.op(i)
         if op.type() == "while":
-            while_sub_block_id = op.attr("sub_block").id
+            while_sub_block_ids.append(op.attr("sub_block").id)
         elif op.type() == "while_grad":
-            while_grad_sub_block_id = op.attr("sub_block").id
+            while_grad_sub_block_ids.append(op.attr("sub_block").id)
 
-    if while_sub_block_id > 0:
+    # Find while/while_grad block pair
+    for grad_id in while_grad_sub_block_ids:
+        parent_id = pdesc.block(grad_id).parent
+        if parent_id in while_sub_block_ids:
+            while_pair.append((parent_id, grad_id))
+            while_sub_block_ids.remove(parent_id)
+
+    # Get while/while_grad block ops
+    for parent_id, grad_id in while_pair:
         while_block_ops = []
-        while_block = pdesc.block(while_sub_block_id)
+        while_block = pdesc.block(parent_id)
         while_block_op_size = while_block.op_size()
         for i in range(while_block_op_size):
             while_block_ops.append(while_block.op(i))
 
-    if while_grad_sub_block_id > 0:
-        while_grad_block = pdesc.block(while_grad_sub_block_id)
+        while_grad_block = pdesc.block(grad_id)
         while_grad_block_op_size = while_grad_block.op_size()
         for i in range(while_grad_block_op_size):
             while_block_ops.append(while_grad_block.op(i))
 
-    if while_sub_block_id > 0:
+        ops_list.append((while_block_ops, while_block_op_size))
+
+    # Process rest while block ops
+    for parent_id in while_sub_block_ids:
+        while_block_ops = []
+        while_block = pdesc.block(parent_id)
+        while_block_op_size = while_block.op_size()
+        for i in range(while_block_op_size):
+            while_block_ops.append(while_block.op(i))
+
         ops_list.append((while_block_ops, while_block_op_size))
 
     cfgs = [ControlFlowGraph(input_program, i, j) for i, j in ops_list]
