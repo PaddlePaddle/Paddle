@@ -31,6 +31,7 @@ static constexpr char kParallelScopes[] = "parallel_scopes";
 static constexpr char kParallelBlock[] = "sub_block";
 
 using LoDTensor = framework::LoDTensor;
+using SelectedRows = framework::SelectedRows;
 
 static void SplitTensorAndMoveTensorToScopes(
     const framework::Scope &scope, std::vector<framework::Scope *> *sub_scopes,
@@ -61,6 +62,30 @@ static void SplitTensorAndMoveTensorToScopes(
     for (size_t i = 0; i < lod_tensors.size(); ++i) {
       *(*sub_scopes)[i]->Var(argu)->GetMutable<LoDTensor>() = lod_tensors[i];
     }
+  }
+}
+
+inline void CopyOrShare(const framework::Variable& src,
+                        const platform::Place& dst_place,
+                        framework::Variable* dst) {
+  if (src.IsType<LoDTensor>()) {
+    if (src.Get<LoDTensor>().place() == dst_place) {
+      dst->GetMutable<LoDTensor>()->ShareDataWith(src.Get<LoDTensor>());
+    } else {
+      Copy(src.Get<LoDTensor>(), dst_place, dst->GetMutable<LoDTensor>());
+    }
+  } else if (src.IsType<SelectedRows>()) {
+    auto &src_sr = src.Get<SelectedRows>();
+    auto *dst_sr = dst->GetMutable<SelectedRows>();
+    dst_sr->set_rows(src_sr.rows());
+    dst_sr->set_height(src_sr.height());
+    Copy(src_sr.value(), dst_place, dst_sr->mutable_value());
+//    if (src_sr.value().place() == dst_place) {
+//      dst_sr->mutable_value()->ShareDataWith(src_sr.value());
+//    } else {
+//    }
+  } else {
+    PADDLE_THROW("Expect LoDTensor/SelectedRows, get %s", src.Type().name());
   }
 }
 
@@ -149,6 +174,7 @@ class ParallelDoOp : public framework::OperatorBase {
       lod_tensor_to_be_merged->MergeLoDTensor(lod_tensors, dev_ctx.GetPlace());
     }
     WaitOnPlaces(places);
+    LOG(INFO) << "End of ParallelGradDo";
   }
 };
 
@@ -210,21 +236,27 @@ class ParallelDoGradOp : public framework::OperatorBase {
     }
     WaitOnPlaces(places);
 
-    // merge grad
-    for (auto &s : Outputs(framework::GradVarName(kParameters))) {
-      auto &result = sub_scopes[0]->FindVar(s)->Get<LoDTensor>();
-      std::string tmp_name;
-      auto *tmp = sub_scopes[0]->Var(&tmp_name)->GetMutable<LoDTensor>();
+    AccumulateGrad(scope, place, sub_scopes, places);
+    LOG(INFO) << "End of ParallelDoGrad";
+  }
 
+  void AccumulateGrad(const framework::Scope &scope,
+                      const platform::Place &place,
+                      const std::vector<framework::Scope *> &sub_scopes,
+                      const platform::PlaceList &places) const {
+    for (auto &s : Outputs(framework::GradVarName(kParameters))) {
+      std::__cxx11::string tmp_name;
+      auto *tmp = sub_scopes[0]->Var(&tmp_name);
+
+      LOG(INFO) << "---" << s;
       for (size_t i = 1; i < sub_scopes.size(); ++i) {
-        auto &tensor_to_merge = sub_scopes[i]->FindVar(s)->Get<LoDTensor>();
         if (!(places[i] == places[0])) {
-          framework::Copy(tensor_to_merge, places[0], tmp);
+          LOG(INFO) << "---";
+          CopyOrShare(*sub_scopes[i]->FindVar(s), places[0], tmp);
           WaitOnPlace(places[0]);
-        } else {
-          tmp->ShareDataWith(tensor_to_merge);
         }
 
+        LOG(INFO) << "---";
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
             framework::AttributeMap{});
@@ -232,8 +264,8 @@ class ParallelDoGradOp : public framework::OperatorBase {
         WaitOnPlace(places[0]);
       }
 
-      VLOG(3) << result;
-      framework::Copy(result, place, scope.FindVar(s)->GetMutable<LoDTensor>());
+      LOG(INFO) << "---";
+      CopyOrShare(*sub_scopes[0]->FindVar(s), place, scope.FindVar(s));
     }
     WaitOnPlaces(places);
   }
@@ -289,7 +321,7 @@ class ParallelDoGradOpShapeInference : public framework::InferShapeBase {
 
     PADDLE_ENFORCE(ctx->HasInputs(kParameters));
     PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
-    PADDLE_ENFORCE(ctx->HasInput(kInputs));
+    PADDLE_ENFORCE(ctx->HasInputs(kInputs));
 
     for (auto &s : output) {
       PADDLE_ENFORCE(ctx->HasInputs(s));

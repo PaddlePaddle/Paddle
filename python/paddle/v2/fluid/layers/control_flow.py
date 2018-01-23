@@ -270,6 +270,7 @@ class ParallelDo(object):
                 for in_var_name in op.input(iname):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
+        params = list(set(params))
 
         return [parent_block.var(name) for name in params]
 
