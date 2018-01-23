@@ -500,7 +500,22 @@ swish
 ..  autofunction:: paddle.v2.fluid.layers.swish
     :noindex:
 
+edit_distance
+---------------
+..  autofunction:: paddle.v2.fluid.layers.edit_distance_error
+    :noindex:
+
+ctc_greedy_decoder
+---------------
+..  autofunction:: paddle.v2.fluid.layers.ctc_greedy_decoder
+    :noindex:
+
 l2_normalize
 ------------
 ..  autofunction:: paddle.v2.fluid.layers.l2_normalize
+    :noindex:
+
+sequence_reshape
+----------------
+..  autofunction:: paddle.v2.fluid.layers.sequence_reshape
     :noindex:

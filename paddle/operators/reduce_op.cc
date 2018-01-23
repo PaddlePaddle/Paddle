@@ -190,10 +190,22 @@ REGISTER_OP(reduce_min, ops::ReduceOp, ops::ReduceMinOpMaker, reduce_min_grad,
 #define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)         \
   REGISTER_OP_CPU_KERNEL(reduce_type,                                          \
                          ops::ReduceKernel<paddle::platform::CPUDeviceContext, \
-                                           float, ops::functor>);              \
+                                           float, ops::functor>,               \
+                         ops::ReduceKernel<paddle::platform::CPUDeviceContext, \
+                                           double, ops::functor>,              \
+                         ops::ReduceKernel<paddle::platform::CPUDeviceContext, \
+                                           int, ops::functor>,                 \
+                         ops::ReduceKernel<paddle::platform::CPUDeviceContext, \
+                                           int64_t, ops::functor>);            \
   REGISTER_OP_CPU_KERNEL(                                                      \
       reduce_type##_grad,                                                      \
       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, float,         \
+                            ops::grad_functor>,                                \
+      ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, double,        \
+                            ops::grad_functor>,                                \
+      ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int,           \
+                            ops::grad_functor>,                                \
+      ops::ReduceGradKernel<paddle::platform::CPUDeviceContext, int64_t,       \
                             ops::grad_functor>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_REDUCE_CPU_KERNEL);

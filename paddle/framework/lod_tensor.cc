@@ -350,18 +350,18 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-// TODO(tonyyang-svail): make this function support LoD
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
-  PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
-  size_t result_size = std::min(static_cast<size_t>(dims()[0]), places.size());
-  size_t remainder = dims()[0] % places.size();
+  int batch_size =
+      lod().empty() ? dims()[0] : static_cast<int>(lod()[0].size()) - 1;
+  size_t result_size = std::min(static_cast<size_t>(batch_size), places.size());
+  size_t remainder = batch_size % places.size();
 
   std::vector<LoDTensor> results;
   results.reserve(result_size);
 
-  int step_width = static_cast<int>(dims()[0] / result_size);
+  int step_width = static_cast<int>(batch_size / result_size);
   for (size_t i = 0; i < result_size; ++i) {
     int begin = static_cast<int>(i * step_width);
     int end = static_cast<int>((i + 1) * step_width);
@@ -369,13 +369,28 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
       end += remainder;
     }
 
-    auto src = Slice(begin, end);
-    auto &dst_place = places[i];
     LoDTensor dst;
-    if (!(dst_place == place())) {
+    if (lod().empty()) {
+      auto src = Slice(begin, end);
+      auto &dst_place = places[i];
       framework::Copy(src, dst_place, &dst);
-    } else {  // It is no need to copy if src_place and dst_place are same.
-      dst.ShareDataWith(src);
+    } else {
+      auto lod_and_offset = GetSubLoDAndAbsoluteOffset(lod(), begin, end, 0);
+
+      auto &offset = lod_and_offset.second;
+      auto src = Slice(offset.first, offset.second);
+      auto &dst_place = places[i];
+      framework::Copy(src, dst_place, &dst);
+
+      LoD my_lod;
+      for (auto &l : lod_and_offset.first) {
+        std::vector<size_t> v{0};
+        for (auto &ll : l) {
+          v.push_back(ll + v.back());
+        }
+        my_lod.emplace_back(v);
+      }
+      dst.set_lod(my_lod);
     }
     results.emplace_back(dst);
   }
@@ -383,29 +398,38 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
   return results;
 }
 
-// TODO(tonyyang-svail): make this function support LoD
 void LoDTensor::MergeLoDTensor(
     const std::vector<const LoDTensor *> &lod_tensors,
     platform::Place dst_place) {
   PADDLE_ENFORCE(!lod_tensors.empty());
+
   framework::DDim new_dim = lod_tensors[0]->dims();
   std::type_index new_type = lod_tensors[0]->type();
-  auto new_layout = lod_tensors[0]->layout();
-  int64_t new_height = 0;
-  for (auto *lod : lod_tensors) {
-    new_height += lod->dims()[0];
-    for (int i = 1; i < new_dim.size(); ++i) {
-      PADDLE_ENFORCE_EQ(new_dim[i], lod->dims()[i]);
-    }
+  framework::DataLayout new_layout = lod_tensors[0]->layout();
+  LoD new_lod = lod_tensors[0]->lod();
+  for (size_t i = 1; i < lod_tensors.size(); ++i) {
+    auto *t = lod_tensors[i];
+    PADDLE_ENFORCE_EQ(new_type.hash_code(), t->type().hash_code());
+    PADDLE_ENFORCE_EQ(new_layout, t->layout());
 
-    PADDLE_ENFORCE_EQ(new_type, lod->type());
-    PADDLE_ENFORCE_EQ(new_layout, lod->layout());
+    PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
+                      framework::product(t->dims()) / t->dims()[0]);
+    new_dim[0] += t->dims()[0];
+
+    auto &lod = t->lod();
+    for (size_t j = 0; j < lod.size(); ++j) {
+      auto &sub_lod = new_lod[j];
+      auto &offset = sub_lod.back();
+      for (size_t k = 1; k < lod[j].size(); ++k) {
+        sub_lod.push_back(lod[j][k] + offset);
+      }
+    }
   }
-  new_dim[0] = new_height;
   Resize(new_dim);
   set_layout(new_layout);
-
+  set_lod(new_lod);
   mutable_data(dst_place, new_type);
+
   int begin = 0;
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
