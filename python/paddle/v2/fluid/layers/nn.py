@@ -21,6 +21,8 @@ from ..framework import Variable
 from ..param_attr import ParamAttr
 from tensor import concat
 
+import pdb
+
 __all__ = [
     'fc',
     'embedding',
@@ -1871,9 +1873,10 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
-    Applies matrix multiplication to two tensors. Currently, the input
-    tensors' rank can be any, but when the rank of anyone inputs is
-    bigger than 3, this two inputs' rank should be equal.
+    Applies matrix multiplication to two tensors.
+
+    Currently, the input tensors' rank can be any, but when the rank of any
+    inputs is bigger than 3, this two inputs' rank should be equal.
 
     The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
     flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
@@ -1914,24 +1917,55 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             # Examples to clarify shapes of the inputs and output
             # x: [B, ..., M, K], y: [B, ..., K, N]
             fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
+
             # x: [B, M, K], y: [B, K, N]
             fluid.layers.matmul(x, y)  # out: [B, M, N]
+
             # x: [B, M, K], y: [K, N]
             fluid.layers.matmul(x, y)  # out: [B, M, N]
-            # x: [B, M, K], y: [K]
-            fluid.layers.matmul(x, y)  # out: [B, M]
+
             # x: [M, K], y: [K, N]
             fluid.layers.matmul(x, y)  # out: [M, N]
+
+            # x: [B, M, K], y: [K]
+            fluid.layers.matmul(x, y)  # out: [B, M]
+
             # x: [K], y: [K]
             fluid.layers.matmul(x, y)  # out: [1]
-            # x: [M], y: [N]
 
+            # x: [M], y: [N]
             fluid.layers.matmul(x, y, True, True)  # out: [M, N]
     """
+
+    def __check_input(x, y):
+        if len(y.shape) > len(x.shape):
+            raise ValueError(
+                "Invalid inputs for matmul. "
+                "x's rank should be always greater than or equal to y'rank.")
+
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if len(x_shape) == 1:
+            x_shape = [1] + x_shape
+        if len(y_shape) == 1:
+            y_shape = [1] + y_shape
+
+        # check the inner 2 dimensions
+        if transpose_x:
+            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
+        if transpose_y:
+            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
+        if x_shape[-1] != y_shape[-2]:
+            raise ValueError("Invalid inputs for matmul.")
+
+        if len(y_shape) > 2:
+            for i, dim_x in enumerate(x_shape[:-2]):
+                if dim_x != y_shape[i]:
+                    raise ValueError("Invalid inputs for matmul.")
+
+    __check_input(x, y)
+
     helper = LayerHelper('matmul', **locals())
-    assert max(len(x.shape), len(y.shape)) <= 3 or len(x.shape) == len(
-        y.
-        shape), 'Inputs\' rank should be equal or their rank should be less 4.'
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='matmul',
@@ -1949,13 +1983,26 @@ def edit_distance(input,
                   ignored_tokens=None,
                   name=None):
     """
-    EditDistance operator computes the edit distances between a batch of hypothesis strings and their references. Edit distance, also called Levenshtein distance, measures how dissimilar two strings are by counting the minimum number of operations to transform one string into anthor. Here the operations include insertion, deletion, and substitution. For example, given hypothesis string A = "kitten" and reference B = "sitting", the edit distance is 3 for A will be transformed into B at least after two substitutions and one insertion:
+    EditDistance operator computes the edit distances between a batch of
+    hypothesis strings and their references. Edit distance, also called
+    Levenshtein distance, measures how dissimilar two strings are by counting
+    the minimum number of operations to transform one string into anthor.
+    Here the operations include insertion, deletion, and substitution.
 
-       "kitten" -> "sitten" -> "sittin" -> "sitting"
+    For example, given hypothesis string A = "kitten" and reference
+    B = "sitting", the edit distance is 3 for A will be transformed into B
+    at least after two substitutions and one insertion:
 
-    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with the total number denoted by `batch_size`, and the separation is specified by the LoD information. And the `batch_size` reference strings are arranged in order in the same way in the LoDTensor Input(Refs).
+    "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-    Output(Out) contains the `batch_size` results and each stands for the edit stance for a pair of strings respectively. If Attr(normalized) is true, the edit distance will be divided by the length of reference string.
+    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with
+    the total number denoted by `batch_size`, and the separation is specified
+    by the LoD information. And the `batch_size` reference strings are arranged
+    in order in the same way in the LoDTensor Input(Refs).
+
+    Output(Out) contains the `batch_size` results and each stands for the edit
+    distance for a pair of strings respectively. If Attr(normalized) is true,
+    the edit distance will be divided by the length of reference string.
 
     Args:
 
@@ -1963,9 +2010,11 @@ def edit_distance(input,
 
         label(Variable): The indices for reference strings.
 
-        normalized(bool): Indicated whether to normalize the edit distance by the length of reference string.
+        normalized(bool): Indicated whether to normalize the edit distance by
+                          the length of reference string.
 
-        ignored_tokens(list of int): Tokens that should be removed before calculating edit distance.
+        ignored_tokens(list of int): Tokens that should be removed before
+                                     calculating edit distance.
 
     Returns:
         Variable: sequence-to-sequence edit distance in shape [batch_size, 1].
@@ -2016,8 +2065,10 @@ def edit_distance(input,
 def ctc_greedy_decoder(input, blank, name=None):
     """
     This op is used to decode sequences by greedy policy by below steps:
-    1. Get the indexes of max value for each row in input. a.k.a. numpy.argmax(input, axis=0).
-    2. For each sequence in result of step1, merge repeated tokens between two blanks and delete all blanks.
+    1. Get the indexes of max value for each row in input. a.k.a.
+       numpy.argmax(input, axis=0).
+    2. For each sequence in result of step1, merge repeated tokens between two
+       blanks and delete all blanks.
 
     A simple example as below:
 
@@ -2047,9 +2098,16 @@ def ctc_greedy_decoder(input, blank, name=None):
 
     Args:
 
-        input(Variable): (LoDTensor<float>), the probabilities of variable-length sequences, which is a 2-D Tensor with LoD information. It's shape is [Lp, num_classes + 1], where Lp is the sum of all input sequences' length and num_classes is the true number of classes. (not including the blank label).
+        input(Variable): (LoDTensor<float>), the probabilities of
+                         variable-length sequences, which is a 2-D Tensor with
+                         LoD information. It's shape is [Lp, num_classes + 1],
+                         where Lp is the sum of all input sequences' length and
+                         num_classes is the true number of classes. (not
+                         including the blank label).
 
-        blank(int): the blank label index of Connectionist Temporal Classification (CTC) loss, which is in thehalf-opened interval [0, num_classes + 1).
+        blank(int): the blank label index of Connectionist Temporal
+                    Classification (CTC) loss, which is in thehalf-opened
+                    interval [0, num_classes + 1).
 
     Returns:
         Variable: CTC greedy decode result.
@@ -2217,6 +2275,12 @@ def transpose(x, perm, name=None):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
             "It's length shoud be equal to Input(input)'s rank.")
+    for idx, dim in enumerate(perm):
+        if dim >= len(x.shape):
+            raise ValueError(
+                "Each element in perm should be less than x's rank. "
+                "%d-th element in perm is %d which accesses x's rank %d." %
+                (idx, perm[idx], len(x.shape)))
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_tmp_variable(x.dtype)
