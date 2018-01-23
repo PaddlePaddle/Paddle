@@ -39,20 +39,11 @@ class LSTMPOp : public framework::OperatorWithKernel {
                    "Output(BatchGate) of LSTMP should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchCellPreAct"),
                    "Output(BatchGate) of LSTMP should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("BatchHidden"),
+                   "Output(BatchHidden) of LSTMP should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(in_dims.size(), 2, "Input(X)'s rank must be 2.");
-
-    if (ctx->HasInput("H0")) {
-      PADDLE_ENFORCE(ctx->HasInput("C0"),
-                     "Input(C0) and Input(H0) of LSTMP should not "
-                     "be null at the same time.");
-      auto h_dims = ctx->GetInputDim("H0");
-      auto c_dims = ctx->GetInputDim("C0");
-      PADDLE_ENFORCE(h_dims == c_dims,
-                     "The dimension of Input(H0) and Input(C0) "
-                     "should be the same.");
-    }
 
     int frame_size = in_dims[1] / 4;
     auto w_dims = ctx->GetInputDim("Weight");
@@ -74,6 +65,18 @@ class LSTMPOp : public framework::OperatorWithKernel {
                       "The first dimension of Input(ProjWeight) "
                       "should be %d.",
                       frame_size);
+
+    if (ctx->HasInput("H0")) {
+      PADDLE_ENFORCE(ctx->HasInput("C0"),
+                     "Input(C0) and Input(H0) of LSTMP should not "
+                     "be null at the same time.");
+      auto h_dims = ctx->GetInputDim("H0");
+      auto c_dims = ctx->GetInputDim("C0");
+      PADDLE_ENFORCE(h_dims == c_dims,
+                     "The dimension of Input(H0) and Input(C0) "
+                     "should be the same.");
+      ctx->SetOutputDim("OrderedP0", {h_dims[0], proj_dims[1]});
+    }
 
     auto b_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
@@ -98,6 +101,7 @@ class LSTMPOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Cell", out_dims);
     ctx->SetOutputDim("BatchGate", in_dims);
     ctx->SetOutputDim("BatchCellPreAct", out_dims);
+    ctx->SetOutputDim("BatchHidden", out_dims);
     ctx->ShareLoD("Input", "Projection");
     ctx->ShareLoD("Input", "Cell");
   }
@@ -169,6 +173,15 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor) This LoDTensor is obtained in the forward and used "
               "in the backward.")
         .AsIntermediate();
+    AddOutput("BatchHidden",
+              "(LoDTensor) This LoDTensor is obtained in the forward and used "
+              "in the backward.")
+        .AsIntermediate();
+    AddOutput("OrderedP0",
+              "(Tensor) the projection of the initial hidden state "
+              "H0. This is a tensor with shape (N x P), where N is the "
+              "batch size and P is the hidden size.")
+        .AsIntermediate();
     AddAttr<bool>("use_peepholes",
                   "(bool, defalut: True) "
                   "whether to enable diagonal/peephole connections.")
@@ -177,6 +190,12 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, defalut: False) "
                   "whether to compute reversed LSTMP.")
         .SetDefault(false);
+    AddAttr<bool>("share_cell_act",
+                  "(bool, defalut: True) "
+                  "whether to share activation with cell output. "
+                  "If false, the projection would be linear, else "
+                  "through an activation same with the cell output.")
+        .SetDefault(true);
     AddAttr<std::string>(
         "gate_activation",
         "(string, default: sigmoid)"
@@ -213,7 +232,7 @@ o_t = \sigma(W_{ox}x_{t} + W_{oh}r_{t-1} + W_{oc}c_t + b_o) \\
 
 h_t = o_t \odot act_h(c_t)
 
-r_t = W_{rh}h_t
+r_t = act_h'(W_{rh}h_t)
 $$
 
 where the W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
@@ -229,7 +248,8 @@ layer.
 
 The $\odot$ is the element-wise product of the vectors. $act_g$ and $act_h$
 are the cell input and cell output activation functions and `tanh` is usually
-used for them.
+used for them. If `share_cell_act` setted to `False`, $act_h'$ will be linear
+else will be same with $act_h$.
 
 Note that these $W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}$
 operations on the input $x_{t}$ are NOT included in this operator.
@@ -246,12 +266,14 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of LSTMP should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Hidden"),
-                   "Input(Hidden) of LSTMP should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Projection"),
+                   "Input(Projection) of LSTMP should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Cell"),
                    "Input(Cell) of LSTMP should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
                    "Input(Weight) of LSTMP should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("ProjWeight"),
+                   "Input(ProjWeight) of LSTMP should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Bias"),
                    "Input(Bias) of LSTMP should not be null.");
 
@@ -268,6 +290,7 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
 
     SetOutGradDim("Input");
     SetOutGradDim("Weight");
+    SetOutGradDim("ProjWeight");
     SetOutGradDim("Bias");
     SetOutGradDim("H0");
     SetOutGradDim("C0");

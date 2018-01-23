@@ -13,17 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/op_registry.h"
+#include "paddle/operators/activation_op.h"
 #include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/lstm_compute.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/sequence2batch.h"
+
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
+
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
@@ -37,6 +44,21 @@ inline void ReorderInitState(const DeviceContext& ctx,
 template <typename DeviceContext, typename T>
 class LSTMPKernel : public framework::OpKernel<T> {
  public:
+  template <typename Device, typename X, typename Y>
+  void ActCompute(const math::detail::ActivationType act_type, const Device& d,
+                  X x, Y y) const {
+    if (act_type == math::detail::ActivationType::kIdentity)
+      y.device(d) = x;
+    else if (act_type == math::detail::ActivationType::kSigmoid)
+      SigmoidFunctor<T>()(d, x, y);
+    else if (act_type == math::detail::ActivationType::kTanh)
+      TanhFunctor<T>()(d, x, y);
+    else if (act_type == math::detail::ActivationType::kReLU)
+      ReluFunctor<T>()(d, x, y);
+    else
+      PADDLE_THROW("unsupported activation type");
+  }
+
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* weight = ctx.Input<Tensor>("Weight");
@@ -44,6 +66,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     auto* bias = ctx.Input<Tensor>("Bias");
 
     auto* hidden_t0 = ctx.Input<Tensor>("H0");
+    auto* ordered_proj0 = ctx.Output<Tensor>("OrderedP0");
     auto* cell_t0 = ctx.Input<Tensor>("C0");
 
     auto* batch_gate = ctx.Output<LoDTensor>("BatchGate");
@@ -97,12 +120,13 @@ class LSTMPKernel : public framework::OpKernel<T> {
     }
 
     // Use the local variable as here.
-    LoDTensor batch_hidden, batch_proj, batch_cell;
+    LoDTensor batch_proj, batch_cell;
     auto* batch_cell_pre_act = ctx.Output<LoDTensor>("BatchCellPreAct");
-    batch_hidden.mutable_data<T>(dims, ctx.GetPlace());     // T x D
+    batch_cell_pre_act->mutable_data<T>(dims, ctx.GetPlace());
+    auto* batch_hidden = ctx.Output<LoDTensor>("BatchHidden");
+    batch_hidden->mutable_data<T>(dims, ctx.GetPlace());    // T x D
     batch_proj.mutable_data<T>(proj_dims, ctx.GetPlace());  // T x P
     batch_cell.mutable_data<T>(dims, ctx.GetPlace());       // T x D
-    batch_cell_pre_act->mutable_data<T>(dims, ctx.GetPlace());
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
@@ -112,13 +136,15 @@ class LSTMPKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("cell_activation"));
     auto cand_act = math::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
+    auto share_cell_act = ctx.Attr<bool>("share_cell_act");
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     for (size_t n = 0; n < num_batch; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
 
       Tensor gate_t = batch_gate->Slice(bstart, bend);
-      Tensor hidden_t = batch_hidden.Slice(bstart, bend);
+      Tensor hidden_t = batch_hidden->Slice(bstart, bend);
       Tensor proj_t = batch_proj.Slice(bstart, bend);
       Tensor cell_t = batch_cell.Slice(bstart, bend);
       Tensor cell_pre_act_t = batch_cell_pre_act->Slice(bstart, bend);
@@ -140,15 +166,19 @@ class LSTMPKernel : public framework::OpKernel<T> {
         // Since the batch computing for LSTMP reorders the input sequence
         // according to their length. The initialized hidden state also needs
         // to reorder.
-        Tensor ordered_h0, ordered_proj0;
-        ordered_proj0.Resize({1, proj_weight->dims()[1]});
-        ordered_proj0.mutable_data<T>(ctx.GetPlace());
+
+        Tensor ordered_h0;
+        ordered_proj0->mutable_data<T>(ctx.GetPlace());
         ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
                                            &ordered_h0, true);
         math::matmul<DeviceContext, T>(device_ctx, ordered_h0, false,
                                        *proj_weight, false, static_cast<T>(1.0),
-                                       &ordered_proj0, static_cast<T>(0.0));
-        math::matmul<DeviceContext, T>(device_ctx, ordered_proj0, false,
+                                       ordered_proj0, static_cast<T>(0.0));
+        if (share_cell_act) {
+          auto proj0_dev = EigenMatrix<T>::From(*ordered_proj0);
+          ActCompute(cell_act, place, proj0_dev, proj0_dev);
+        }
+        math::matmul<DeviceContext, T>(device_ctx, *ordered_proj0, false,
                                        *weight, false, static_cast<T>(1.0),
                                        &gate_t, static_cast<T>(1.0));
       }
@@ -164,6 +194,10 @@ class LSTMPKernel : public framework::OpKernel<T> {
       math::matmul<DeviceContext, T>(device_ctx, hidden_t, false, *proj_weight,
                                      false, static_cast<T>(1.0), &proj_t,
                                      static_cast<T>(0.0));
+      if (share_cell_act) {
+        auto proj_t_dev = EigenMatrix<T>::From(proj_t);
+        ActCompute(cell_act, place, proj_t_dev, proj_t_dev);
+      }
     }
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
@@ -180,9 +214,26 @@ class LSTMPKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class LSTMPGradKernel : public framework::OpKernel<T> {
  public:
+  template <typename Device, typename X, typename Y, typename DX, typename DY>
+  void ActGradCompute(const math::detail::ActivationType act_type,
+                      const Device& d, X x, Y y, DX dx, DY dy) const {
+    // x is dummy and won't be used even in Relu(use y instead)
+    if (act_type == math::detail::ActivationType::kIdentity)
+      dx.device(d) = dy;
+    else if (act_type == math::detail::ActivationType::kSigmoid)
+      SigmoidGradFunctor<T>()(d, x, y, dy, dx);
+    else if (act_type == math::detail::ActivationType::kTanh)
+      TanhGradFunctor<T>()(d, x, y, dy, dx);
+    else if (act_type == math::detail::ActivationType::kReLU)
+      ReluGradFunctor<T>()(d, x, y, dy, dx);
+    else
+      PADDLE_THROW("unsupported activation type");
+  }
+
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* weight = ctx.Input<Tensor>("Weight");
+    auto* proj_weight = ctx.Input<Tensor>("ProjWeight");
     auto* bias = ctx.Input<Tensor>("Bias");
 
     auto* proj_out = ctx.Input<LoDTensor>("Projection");
@@ -190,14 +241,19 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
 
     auto* batch_gate = ctx.Input<LoDTensor>("BatchGate");
     auto* batch_cell_pre_act = ctx.Input<LoDTensor>("BatchCellPreAct");
+    auto* batch_hidden = ctx.Input<LoDTensor>("BatchHidden");
 
-    auto* hidden_g = ctx.Input<LoDTensor>(framework::GradVarName("Projection"));
+    auto* projection_g =
+        ctx.Input<LoDTensor>(framework::GradVarName("Projection"));
 
     auto* in_g = ctx.Output<LoDTensor>(framework::GradVarName("Input"));
     auto* weight_g = ctx.Output<Tensor>(framework::GradVarName("Weight"));
+    auto* proj_weight_g =
+        ctx.Output<Tensor>(framework::GradVarName("ProjWeight"));
     auto* bias_g = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     auto* h0 = ctx.Input<Tensor>("H0");
+    auto* ordered_proj0 = ctx.Input<Tensor>("OrderedP0");
     auto* c0 = ctx.Input<Tensor>("C0");
 
     auto* h0_g = ctx.Output<Tensor>(framework::GradVarName("H0"));
@@ -208,6 +264,10 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     if (weight_g) {
       weight_g->mutable_data<T>(ctx.GetPlace());
       zero(device_ctx, weight_g, static_cast<T>(0.0));
+    }
+    if (proj_weight_g) {
+      proj_weight_g->mutable_data<T>(ctx.GetPlace());
+      zero(device_ctx, proj_weight_g, static_cast<T>(0.0));
     }
 
     // ordered_h0/c0 is the reordered hidden/cell initialization.
@@ -224,7 +284,8 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     }
 
     auto in_dims = input->dims();
-    auto out_dims = hidden_g->dims();
+    auto out_dims = cell_out->dims();
+    framework::DDim proj_dims({in_dims[0], proj_weight->dims()[1]});
     int frame_size = static_cast<int>(in_dims[1] / 4);
     PADDLE_ENFORCE_EQ(frame_size, out_dims[1]);
 
@@ -267,10 +328,11 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       to_batch(ctx, src, dst, false);
     };
 
-    LoDTensor batch_proj, batch_proj_g, batch_cell;
-    ToBatch(device_ctx, *proj_out, out_dims, batch_proj);
-    ToBatch(device_ctx, *hidden_g, out_dims, batch_proj_g);
-    ToBatch(device_ctx, *cell_out, out_dims, batch_cell);
+    LoDTensor batch_hidden_g, batch_proj, batch_proj_g, batch_cell;
+    batch_hidden_g.mutable_data<T>(out_dims, ctx.GetPlace());
+    ToBatch(device_ctx, *proj_out, proj_dims, batch_proj);        // T x P
+    ToBatch(device_ctx, *projection_g, proj_dims, batch_proj_g);  // T x P
+    ToBatch(device_ctx, *cell_out, out_dims, batch_cell);         // T x D
 
     LoDTensor batch_cell_g, batch_gate_g;
     batch_cell_g.mutable_data<T>(out_dims, ctx.GetPlace());
@@ -286,12 +348,27 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("cell_activation"));
     auto cand_act = math::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
+    auto share_cell_act = ctx.Attr<bool>("share_cell_act");
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
+
+      Tensor cur_proj = batch_proj.Slice(bstart, bend);
+      Tensor proj_g = batch_proj_g.Slice(bstart, bend);
+      if (share_cell_act) {
+        auto cur_proj_dev = EigenMatrix<T>::From(cur_proj);
+        auto proj_g_dev = EigenMatrix<T>::From(proj_g);
+        ActGradCompute(cell_act, place, cur_proj_dev, cur_proj_dev, proj_g_dev,
+                       proj_g_dev);
+      }
+      Tensor out_g = batch_hidden_g.Slice(bstart, bend);
+      math::matmul<DeviceContext, T>(device_ctx, proj_g, false, *proj_weight,
+                                     true, static_cast<T>(1.0), &out_g,
+                                     static_cast<T>(0.0));
 
       Tensor gate = batch_gate->Slice(bstart, bend);
       Tensor cell = batch_cell.Slice(bstart, bend);
@@ -300,7 +377,6 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       lstmp_value.state_value = cell.data<T>();
       lstmp_value.state_active_value = cell_pre_act.data<T>();
 
-      Tensor out_g = batch_proj_g.Slice(bstart, bend);
       Tensor gate_g = batch_gate_g.Slice(bstart, bend);
       Tensor cell_g = batch_cell_g.Slice(bstart, bend);
       lstmp_grad.state_grad = cell_g.data<T>();
@@ -337,19 +413,48 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
                                          false, static_cast<T>(1.0), weight_g,
                                          static_cast<T>(1.0));
         }
+        if (proj_weight_g) {
+          /* backward proj weigh */
+          Tensor hidden_t = batch_hidden->Slice(bstart, bend);
+          math::matmul<DeviceContext, T>(device_ctx, hidden_t, true, proj_g,
+                                         false, static_cast<T>(1.0),
+                                         proj_weight_g, static_cast<T>(1.0));
+        }
       } else {
         if (h0 && weight_g) {
           ReorderInitState<DeviceContext, T>(device_ctx, *h0, order,
                                              &ordered_h0, true);
-          math::matmul<DeviceContext, T>(device_ctx, ordered_h0, true, gate_g,
-                                         false, static_cast<T>(1.0), weight_g,
-                                         static_cast<T>(1.0));
+          if (weight_g) {
+            math::matmul<DeviceContext, T>(device_ctx, *ordered_proj0, true,
+                                           gate_g, false, static_cast<T>(1.0),
+                                           weight_g, static_cast<T>(1.0));
+          }
         }
-        if (h0 && h0_g) {
+        if (h0 && (h0_g || proj_weight_g)) {
           ordered_h0_g.mutable_data<T>(h0_g->dims(), ctx.GetPlace());
+          Tensor proj0_g;
+          proj0_g.Resize({in_dims[0], proj_weight->dims()[1]});
+          proj0_g.mutable_data<T>(ctx.GetPlace());
           math::matmul<DeviceContext, T>(device_ctx, gate_g, false, *weight,
-                                         true, static_cast<T>(1.0),
-                                         &ordered_h0_g, static_cast<T>(0.0));
+                                         true, static_cast<T>(1.0), &proj0_g,
+                                         static_cast<T>(0.0));
+          if (share_cell_act) {
+            auto proj0_dev = EigenMatrix<T>::From(*ordered_proj0);
+            auto proj0_g_dev = EigenMatrix<T>::From(proj0_g);
+            ActGradCompute(cell_act, place, proj0_dev, proj0_dev, proj0_g_dev,
+                           proj0_g_dev);
+          }
+          // Tensor proj0_g = proj_g.Slice(bstart, bend);
+          if (h0_g) {
+            math::matmul<DeviceContext, T>(
+                device_ctx, proj0_g, false, *proj_weight, true,
+                static_cast<T>(1.0), &ordered_h0_g, static_cast<T>(0.0));
+          }
+          if (proj_weight_g) {
+            math::matmul<DeviceContext, T>(device_ctx, ordered_h0, true,
+                                           proj0_g, false, static_cast<T>(1.0),
+                                           proj_weight_g, static_cast<T>(1.0));
+          }
         }
       }
     }
