@@ -52,7 +52,7 @@ def img_conv_group(input,
                    conv_act=None,
                    param_attr=None,
                    conv_with_batchnorm=False,
-                   conv_batchnorm_drop_rate=0,
+                   conv_batchnorm_drop_rate=0.0,
                    pool_stride=1,
                    pool_type=None):
     """
