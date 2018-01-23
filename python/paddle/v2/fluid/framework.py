@@ -780,7 +780,7 @@ class Block(object):
                 trainable=p.trainable,
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
-                clip_attr=p.clip_attr,
+                gradient_clip_attr=p.gradient_clip_attr,
                 error_clip=p.error_clip,
                 name=v.name)
             self.vars[new_p.name] = new_p
@@ -948,7 +948,7 @@ class Parameter(Variable):
 
         self.regularizer = kwargs.get('regularizer', None)
 
-        self.clip_attr = kwargs.get('clip_attr', None)
+        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
 
 
 # program is a global instance.
