@@ -1,18 +1,51 @@
-from ..layer_helper import LayerHelper, unique_name
-from ..framework import Program, Variable, Operator
-from .. import core
-from tensor import assign, fill_constant
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import contextlib
-from ..registry import autodoc
+
+from layer_function_generator import autodoc
+from tensor import assign, fill_constant
+from .. import core
+from ..framework import Program, Variable, Operator
+from ..layer_helper import LayerHelper, unique_name
 
 __all__ = [
-    'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard',
-    'BlockGuardWithCompletion', 'StaticRNNMemoryLink', 'WhileGuard', 'While',
-    'lod_rank_table', 'max_sequence_len', 'topk', 'lod_tensor_to_array',
-    'array_to_lod_tensor', 'increment', 'array_write', 'create_array',
-    'less_than', 'array_read', 'shrink_memory', 'array_length', 'IfElse',
-    'DynamicRNN', 'ConditionalBlock', 'StaticRNN', 'reorder_lod_tensor_by_rank',
-    'ParallelDo', 'Print'
+    'split_lod_tensor',
+    'merge_lod_tensor',
+    'BlockGuard',
+    'BlockGuardWithCompletion',
+    'StaticRNNMemoryLink',
+    'WhileGuard',
+    'While',
+    'lod_rank_table',
+    'max_sequence_len',
+    'topk',
+    'lod_tensor_to_array',
+    'array_to_lod_tensor',
+    'increment',
+    'array_write',
+    'create_array',
+    'less_than',
+    'array_read',
+    'shrink_memory',
+    'array_length',
+    'IfElse',
+    'DynamicRNN',
+    'ConditionalBlock',
+    'StaticRNN',
+    'reorder_lod_tensor_by_rank',
+    'ParallelDo',
+    'Print',
 ]
 
 
@@ -1278,6 +1311,26 @@ class DynamicRNN(object):
             outputs={'Out': input_array})
         return array_read(array=input_array, i=self.step_idx)
 
+    def static_input(self, x):
+        self._assert_in_rnn_block_("static_input")
+        if not isinstance(x, Variable):
+            raise TypeError(
+                "static_input() can only take a Variable as its input")
+        if self.lod_rank_table is None:
+            raise RuntimeError(
+                "static_input() must be called after step_input().")
+        parent_block = self._parent_block_()
+        x_reordered = parent_block.create_var(
+            name=unique_name("dynamic_rnn_static_input_reordered"),
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            dtype=x.dtype)
+        parent_block.append_op(
+            type='reorder_lod_tensor_by_rank',
+            inputs={'X': [x],
+                    'RankTable': [self.lod_rank_table]},
+            outputs={'Out': [x_reordered]})
+        return shrink_memory(x_reordered, self.step_idx, self.lod_rank_table)
+
     @contextlib.contextmanager
     def block(self):
         if self.status != DynamicRNN.BEFORE_RNN:
@@ -1310,20 +1363,44 @@ class DynamicRNN(object):
         else:
             return self.outputs
 
-    def memory(self, init=None, shape=None, value=0.0, dtype='float32'):
+    def memory(self,
+               init=None,
+               shape=None,
+               value=0.0,
+               need_reorder=False,
+               dtype='float32'):
         self._assert_in_rnn_block_('memory')
         if init is not None:
             if not isinstance(init, Variable):
                 raise TypeError(
                     "The input arg `init` of memory() must be a Variable")
             parent_block = self._parent_block_()
+            init_tensor = init
+            if need_reorder == True:
+                if self.lod_rank_table is None:
+                    raise ValueError(
+                        'If set need_reorder to True, make sure step_input be '
+                        'invoked before '
+                        'memory(init=init, need_reordered=True, ...).')
+                init_reordered = parent_block.create_var(
+                    name=unique_name('dynamic_rnn_mem_init_reordered'),
+                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    dtype=init.dtype)
+                parent_block.append_op(
+                    type='reorder_lod_tensor_by_rank',
+                    inputs={
+                        'X': [init_tensor],
+                        'RankTable': [self.lod_rank_table]
+                    },
+                    outputs={'Out': [init_reordered]})
+                init_tensor = init_reordered
             mem_array = parent_block.create_var(
                 name=unique_name('dynamic_rnn_mem_array'),
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=init.dtype)
             parent_block.append_op(
                 type='write_to_array',
-                inputs={'X': init,
+                inputs={'X': init_tensor,
                         'I': self.zero_idx},
                 outputs={'Out': mem_array})
             retv = array_read(array=mem_array, i=self.step_idx)
@@ -1400,7 +1477,7 @@ class DynamicRNN(object):
                 method))
 
 
-@autodoc
+@autodoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)

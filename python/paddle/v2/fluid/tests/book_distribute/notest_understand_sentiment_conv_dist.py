@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import print_function
 import os
 import numpy as np
@@ -79,15 +93,16 @@ def main():
     t.transpile(
         optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2)
 
-    exe.run(fluid.default_startup_program())
-
     if training_role == "PSERVER":
         if not current_endpoint:
             print("need env SERVER_ENDPOINT")
             exit(1)
-        pserver_prog = t.get_pserver_program(current_endpoint, optimize_ops)
+        pserver_prog = t.get_pserver_program(current_endpoint)
+        pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
+        exe.run(pserver_startup)
         exe.run(pserver_prog)
     elif training_role == "TRAINER":
+        exe.run(fluid.default_startup_program())
         trainer_prog = t.get_trainer_program()
         feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
 

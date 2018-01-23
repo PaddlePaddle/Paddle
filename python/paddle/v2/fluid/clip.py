@@ -1,10 +1,29 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import copy
+
 import functools
 import layers
+import framework
 from . import core
 
 __all__ = [
-    'GradientClipByValue',
     'ErrorClipByValue',
+    'GradientClipByValue',
+    'GradientClipByNorm',
+    'GradientClipByGlobalNorm',
     'append_gradient_clip_ops',
     'error_clip_callback',
 ]
@@ -52,7 +71,7 @@ def error_clip_callback(block, context):
 
 
 class BaseGradientClipAttr(object):
-    def process_context(self, context, p_g):
+    def process_context(self, context, param, grad):
         raise NotImplementedError()
 
     def create_operators(self, param, grad):
@@ -60,7 +79,7 @@ class BaseGradientClipAttr(object):
 
 
 class NullGradientClipAttr(BaseGradientClipAttr):
-    def process_context(self, context, p_g):
+    def process_context(self, context, param, grad):
         pass
 
     def create_operators(self, param, grad):
@@ -77,7 +96,7 @@ class GradientClipByValue(BaseGradientClipAttr):
         self.max = max
         self.min = min
 
-    def process_context(self, context, p_g):
+    def process_context(self, context, param, grad):
         pass
 
     def create_operators(self, param, grad):
@@ -85,19 +104,93 @@ class GradientClipByValue(BaseGradientClipAttr):
         return param, new_grad
 
 
+class GradientClipByNorm(BaseGradientClipAttr):
+    def __init__(self, clip_norm):
+        self.clip_norm = clip_norm
+
+    def process_context(self, context, param, grad):
+        pass
+
+    def create_operators(self, param, grad):
+        new_grad = layers.clip_by_norm(x=grad, max_norm=self.clip_norm)
+        return param, new_grad
+
+
+class GradientClipByGlobalNorm(BaseGradientClipAttr):
+    def __init__(self, clip_norm, group_name="default_group"):
+        if not isinstance(group_name, basestring):
+            raise TypeError("'group_name' must be a basestring.")
+
+        self.clip_norm = clip_norm
+        self.group_name = group_name
+
+    def process_context(self, context, param, grad):
+        if self.group_name not in context:
+            context[self.group_name] = []
+            context[self.group_name + "_clip_value"] = self.clip_norm
+            context[self.group_name + "_clip"] = layers.fill_constant(
+                shape=[1], dtype="float32", value=self.clip_norm)
+        else:
+            if not self.clip_norm == context[self.group_name + "_clip_value"]:
+                raise ValueError(
+                    "All parameters' 'clip_norm' of a same group should be the same"
+                )
+
+        local_norm_var = layers.reduce_sum(input=layers.pow(x=grad, factor=2.0))
+        context[self.group_name].append(local_norm_var)
+
+        self.context = context
+
+    def create_operators(self, param, grad):
+        group_scale_name = self.group_name + "_scale"
+        if group_scale_name not in self.context:
+            group_norm_var = layers.sums(input=self.context[self.group_name])
+            layers.sqrt(x=group_norm_var, out=group_norm_var)
+            clip_var = self.context[self.group_name + "_clip"]
+            group_scale_var = layers.elementwise_div(
+                x=clip_var,
+                y=layers.elementwise_max(
+                    x=clip_var, y=group_norm_var))
+            assert group_scale_var.shape == (1L, )
+            self.context[group_scale_name] = group_scale_var
+
+        new_grad = layers.elementwise_mul(
+            x=grad, y=self.context[group_scale_name])
+        return param, new_grad
+
+
+def set_gradient_clip(clip, param_list=None, program=None):
+    if not isinstance(clip, BaseGradientClipAttr):
+        raise TypeError(
+            "'clip' should be an instance of BaseGradientClipAttr's derived class"
+        )
+    if program is None:
+        program = framework.default_main_program()
+    if param_list is None:
+        param_list = program.block(0).all_parameters()
+    if all(isinstance(elem, basestring) for elem in param_list):
+        param_list = [program.block(0).var(elem) for elem in param_list]
+    if not all(isinstance(elem, framework.Parameter) for elem in param_list):
+        raise TypeError(
+            "'param_list' should be a list of Parameter or basestring(parameter's name)."
+        )
+
+    for param in param_list:
+        param.gradient_clip_attr = copy.deepcopy(clip)
+
+
 def append_gradient_clip_ops(param_grad):
     context = dict()
     create_op_callbacks = []
     for p, g in param_grad:
-        clip_attr = getattr(p, 'clip_attr', NullGradientClipAttr())
+        clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
         if clip_attr is None:
             clip_attr = NullGradientClipAttr()
         if not isinstance(clip_attr, BaseGradientClipAttr):
             raise TypeError(
-                "clip attribute should be an instance of BaseGradientClippingAttr"
-            )
+                "clip attribute should be an instance of BaseGradientClipAttr")
 
-        clip_attr.process_context(context=context, p_g=param_grad)
+        clip_attr.process_context(context=context, param=p, grad=g)
         create_op_callbacks.append(
             functools.partial(
                 clip_attr.create_operators, param=p, grad=g))

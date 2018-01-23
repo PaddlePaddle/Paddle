@@ -117,7 +117,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("C0",
              "(Tensor, optional) the initial cell state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
-             "batch size. `H0` and `C0` can be NULL but only at the same time")
+             "batch size. `H0` and `C0` can be NULL but only at the same time.")
         .AsDispensable();
     AddInput("Weight",
              "(Tensor) the learnable hidden-hidden weights."
