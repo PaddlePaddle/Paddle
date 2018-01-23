@@ -2141,7 +2141,7 @@ def sequence_reshape(input, new_dim):
     return out
 
 
-def transpose(input, perm, name=None):
+def transpose(x, perm, name=None):
     """
     **transpose Layer**
 
@@ -2161,19 +2161,19 @@ def transpose(input, perm, name=None):
         .. code-block:: python
 
             x = fluid.layers.data(name='x', shape=[5, 10, 15], dtype='float32')
-            x_transposed = layers.transpose(input=x, perm=[1, 0, 2])
+            x_transposed = layers.transpose(x, perm=[1, 0, 2])
     """
 
-    if len(perm) != len(input.shape):
+    if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
             "It's length shoud be equal to Input(input)'s rank.")
 
     helper = LayerHelper('transpose', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype())
+    out = helper.create_tmp_variable(x.dtype)
     helper.append_op(
         type='transpose',
-        inputs={'X': [input]},
+        inputs={'X': [x]},
         outputs={'Out': [out]},
         attrs={'axis': perm})
     return out
