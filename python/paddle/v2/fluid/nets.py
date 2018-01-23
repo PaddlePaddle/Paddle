@@ -55,7 +55,7 @@ def img_conv_group(input,
                    conv_act=None,
                    param_attr=None,
                    conv_with_batchnorm=False,
-                   conv_batchnorm_drop_rate=None,
+                   conv_batchnorm_drop_rate=0.0,
                    pool_stride=1,
                    pool_type=None,
                    use_cudnn=True):
@@ -167,11 +167,10 @@ def scaled_dot_product_attention(queries,
     """
     The dot-product attention.
 
-    Attention mechanism can be seen as mapping a query and a set of
-    key-value pairs to an output. The output is computed as a weighted sum
-    of the values, where the weight assigned to each value is computed by a
-    compatibility function (dot-product here) of the query with the
-    corresponding key.
+    Attention mechanism can be seen as mapping a query and a set of key-value
+    pairs to an output. The output is computed as a weighted sum of the values,
+    where the weight assigned to each value is computed by a compatibility
+    function (dot-product here) of the query with the corresponding key.
 
     The dot-product attention can be implemented through (batch) matrix
     multipication as follows:
@@ -186,12 +185,14 @@ def scaled_dot_product_attention(queries,
     Note that batch data containing sequences with different lengths is not
     supported by this because of the (batch) matrix multipication.
 
-    Args:
-        query (Variable): The input variable which is a Tensor or
-                          LoDTensor.
-        key (Variable): The input variable which is a Tensor or LoDTensor.
-        value (Variable): The input variable which is a Tensor or
-                          LoDTensor.
+
+        queries (Variable): The input variable which is a Tensor or
+                            LoDTensor.
+        keys (Variable): The input variable which is a Tensor or LoDTensor.
+        values (Variable): The input variable which is a Tensor or
+                           LoDTensor.
+        num_heads (int): Head number to compute the dot product attention.
+        dropout_rate (float): The dropout rate for attention weight.
 
     Returns:
         Variable: The context Tensor computed by multi-head scaled dot product
