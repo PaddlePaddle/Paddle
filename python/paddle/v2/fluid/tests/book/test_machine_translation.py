@@ -245,8 +245,7 @@ def decode_main():
                 'init_scores': init_scores
             },
             fetch_list=[translation_ids, translation_scores],
-            return_numpy=False
-        )
+            return_numpy=False)
         print result_ids.lod()
         break
 
