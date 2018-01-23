@@ -17,20 +17,27 @@ import unittest
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.layers as layers
 import numpy
+import threading
 
 
 class TestRecvOp(unittest.TestCase):
-    def run_test(self):
+    def test_send(self):
         # Run init_serv in a thread
-        pass
+        place = fluid.CPUPlace()
+        t = threading.Thread(target=self.init_serv, args=(place, ))
+        t.start()
+        self.init_client(place)
+        t.join()
 
     def init_serv(self, place):
         main = fluid.Program()
         with fluid.program_guard(main):
             x = layers.data(shape=[32, 32], dtype='float32', name='X')
-            serv = fluid.ListenAndServ("127.0.0.1:6174")
+            i = fluid.initializer.Constant(value=1.0)
+            y = i(x, main.global_block())
+            serv = layers.ListenAndServ("127.0.0.1:6174")
             with serv.do():
-                layers.scale(input=x, scale=10)
+                layers.scale(input=y, scale=10.0)
         exe = fluid.Executor(place)
         exe.run(main)
 
@@ -38,8 +45,12 @@ class TestRecvOp(unittest.TestCase):
         main = fluid.Program()
         with fluid.program_guard(main):
             x = layers.data(shape=[32, 32], dtype='float32', name='X')
-            i = fluid.initializer.Constant(x=1.0)
+            i = fluid.initializer.Constant(value=1.0)
             i(x, main.global_block())
             layers.Send("127.0.0.1:6174", [x], [x])
         exe = fluid.Executor(place)
         exe.run(main)
+
+
+if __name__ == "__main__":
+    unittest.main()
