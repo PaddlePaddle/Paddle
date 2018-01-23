@@ -21,8 +21,6 @@ from ..framework import Variable
 from ..param_attr import ParamAttr
 from tensor import concat
 
-import pdb
-
 __all__ = [
     'fc',
     'embedding',
@@ -1966,7 +1964,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     __check_input(x, y)
 
     helper = LayerHelper('matmul', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type='matmul',
         inputs={'X': x,

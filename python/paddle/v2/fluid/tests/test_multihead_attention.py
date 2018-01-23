@@ -17,8 +17,6 @@ import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
 import numpy as np
 
-import pdb
-
 
 class TestMultiheadAttention(unittest.TestCase):
     def gen_random_input(self):
@@ -45,7 +43,7 @@ class TestMultiheadAttention(unittest.TestCase):
             append_batch_size=False)
         keys.stop_gradient = False
 
-        contexts, att_scores = fluid.nets.scaled_dot_product_attention(
+        contexts = fluid.nets.scaled_dot_product_attention(
             queries=queries,
             keys=keys,
             values=keys,
@@ -84,19 +82,13 @@ class TestMultiheadAttention(unittest.TestCase):
         keys.set(self.keys, place)
 
         self.inputs["keys"] = keys
-        self.inputs["values"] = values
+        self.inputs["queries"] = queries
 
     def test_multihead_attention(self):
         self.gen_random_input()
 
         self.set_program()
-        pdb.set_trace()
         self.run_program()
-
-        expect_output = self.l2_normalize(self.data, axis, epsilon)
-
-        # check output
-        self.assertTrue(np.allclose(self.op_output, expect_output, atol=0.001))
 
 
 if __name__ == '__main__':
