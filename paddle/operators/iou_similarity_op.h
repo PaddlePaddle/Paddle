@@ -83,8 +83,6 @@ class IOUSimilarityKernel : public framework::OpKernel<T> {
     platform::ForRange<DeviceContext> for_range(
         static_cast<const DeviceContext&>(ctx.device_context()), x_n);
     for_range(functor);
-
-    out->set_lod(in_x->lod());
   }
 };  // namespace operators
 
