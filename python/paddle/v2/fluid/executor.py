@@ -206,7 +206,7 @@ class Executor(object):
                     outputs={'Out': [out]},
                     attrs={'col': i})
 
-        for op in block.ops:
+        for op in global_block.ops:
             if op.desc.type() == 'feed':
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
