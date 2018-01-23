@@ -75,6 +75,8 @@ class LoadCombineOp : public framework::OperatorBase {
     std::istringstream ist(current_serialized_data);
     DeserializeFromStream(ist, tensor, dev_ctx);
 
+    if (!buffer) delete[] buffer;  // delete the last allocated memory
+
     if (platform::is_gpu_place(place)) {
       // copy CPU to GPU
       framework::LoDTensor cpu_tensor;
