@@ -65,9 +65,9 @@ static void SplitTensorAndMoveTensorToScopes(
   }
 }
 
-inline void CopyOrShare(const framework::Variable& src,
-                        const platform::Place& dst_place,
-                        framework::Variable* dst) {
+inline void CopyOrShare(const framework::Variable &src,
+                        const platform::Place &dst_place,
+                        framework::Variable *dst) {
   if (src.IsType<LoDTensor>()) {
     if (src.Get<LoDTensor>().place() == dst_place) {
       dst->GetMutable<LoDTensor>()->ShareDataWith(src.Get<LoDTensor>());
