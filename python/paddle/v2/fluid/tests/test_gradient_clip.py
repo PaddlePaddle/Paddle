@@ -40,7 +40,8 @@ p_g = fluid.backward.append_backward(loss=avg_cost)
 p_g_clip = fluid.backward.append_backward(loss=avg_cost_clip)
 
 with fluid.program_guard(main_program=prog_clip):
-    fluid.clip.gradient_clip_by_global_norm(clip_norm=CLIP)
+    fluid.clip.set_gradient_clip(
+        fluid.clip.GradientClipByGlobalNorm(clip_norm=CLIP))
     p_g_clip = fluid.clip.append_gradient_clip_ops(p_g_clip)
 
 grad_list = [elem[1] for elem in p_g]
