@@ -92,10 +92,7 @@ def to_lodtensor(data, place):
 def main():
     rnn_out = encoder_decoder()
     label = layers.data(
-        name="target_language_next_word",
-        shape=[1],
-        dtype='int64',
-        lod_level=1)
+        name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
     cost = layers.cross_entropy(input=rnn_out, label=label)
     avg_cost = fluid.layers.mean(x=cost)
 
@@ -116,13 +113,10 @@ def main():
     # server endpoint for current node
     current_endpoint = os.getenv("SERVER_ENDPOINT")
     # run as trainer or parameter server
-    training_role = os.getenv("TRAINING_ROLE",
-                              "TRAINER")  # get the training role: trainer/pserver
+    training_role = os.getenv(
+        "TRAINING_ROLE", "TRAINER")  # get the training role: trainer/pserver
     t.transpile(
-           optimize_ops,
-           params_grads,
-           pservers=pserver_endpoints,
-           trainers=2)
+        optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2)
 
     if training_role == "PSERVER":
         if not current_endpoint:
