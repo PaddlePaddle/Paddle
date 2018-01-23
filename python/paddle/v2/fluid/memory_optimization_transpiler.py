@@ -119,6 +119,19 @@ class ControlFlowGraph(object):
             return block_desc.find_var_recursive(str(var_name))
 
     def memory_optimize(self):
+        def check_var_validity(block_desc, x, is_forward):
+            if str(x) == "@EMPTY@":
+                return False
+            if not self._has_var(block_desc, x, is_forward):
+                return False
+            if self._find_var(block_desc, x, is_forward).persistable():
+                return False
+            if self._find_var(
+                    block_desc, x,
+                    is_forward).type() != core.VarDesc.VarType.LOD_TENSOR:
+                return False
+            return True
+
         self._build_graph()
         self._dataflow_analyze()
         self.pool = []
@@ -130,14 +143,8 @@ class ControlFlowGraph(object):
             is_forward = i < self._forward_num
             if self.pool:
                 defs_can_optimize = filter(
-                    lambda x: str(x) != "@EMPTY@" and self._has_var(block_desc, x, is_forward),
+                    lambda x: check_var_validity(block_desc, x, is_forward),
                     self._defs[i])
-                defs_can_optimize = filter(
-                    lambda x: not self._find_var(block_desc, x, is_forward).persistable(),
-                    defs_can_optimize)
-                defs_can_optimize = filter(
-                    lambda x: self._find_var(block_desc, x, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
-                    defs_can_optimize)
                 out_pair = [
                     (x, self._find_var(block_desc, x, is_forward).shape())
                     for x in defs_can_optimize
@@ -176,14 +183,8 @@ class ControlFlowGraph(object):
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
             can_optimize = filter(
-                lambda x: str(x) != "@EMPTY@" and self._has_var(block_desc, x, is_forward),
+                lambda x: check_var_validity(block_desc, x, is_forward),
                 in_diff)
-            can_optimize = filter(
-                lambda x: not self._find_var(block_desc, x, is_forward).persistable(),
-                can_optimize)
-            can_optimize = filter(
-                lambda x: self._find_var(block_desc, x, is_forward).type() == core.VarDesc.VarType.LOD_TENSOR,
-                can_optimize)
             if can_optimize:
                 for var_name in can_optimize:
                     self.pool.append((var_name, self._find_var(
