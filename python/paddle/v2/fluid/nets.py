@@ -56,7 +56,7 @@ def img_conv_group(input,
                    conv_act=None,
                    param_attr=None,
                    conv_with_batchnorm=False,
-                   conv_batchnorm_drop_rate=None,
+                   conv_batchnorm_drop_rate=0.0,
                    pool_stride=1,
                    pool_type=None,
                    use_cudnn=True):
@@ -127,21 +127,21 @@ def sequence_conv_pool(input,
 
 def glu(input, dim=-1):
     """
-    The gated linear unit composed by split, sigmoid activation and elementwise 
-    multiplication. Specifically, Split the input into two equal sized parts 
-    :math:`a` and :math:`b` along the given dimension and then compute as 
+    The gated linear unit composed by split, sigmoid activation and elementwise
+    multiplication. Specifically, Split the input into two equal sized parts
+    :math:`a` and :math:`b` along the given dimension and then compute as
     following:
 
         .. math::
 
             {GLU}(a, b)= a \otimes \sigma(b)
 
-    Refer to `Language Modeling with Gated Convolutional Networks 
+    Refer to `Language Modeling with Gated Convolutional Networks
     <https://arxiv.org/pdf/1612.08083.pdf>`_.
-    
+
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the 
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`.
 
     Returns:
@@ -164,24 +164,24 @@ def dot_product_attention(querys, keys, values):
     """
     The dot-product attention.
 
-    Attention mechanism can be seen as mapping a query and a set of key-value 
-    pairs to an output. The output is computed as a weighted sum of the values, 
-    where the weight assigned to each value is computed by a compatibility 
+    Attention mechanism can be seen as mapping a query and a set of key-value
+    pairs to an output. The output is computed as a weighted sum of the values,
+    where the weight assigned to each value is computed by a compatibility
     function (dot-product here) of the query with the corresponding key.
-    
-    The dot-product attention can be implemented through (batch) matrix 
+
+    The dot-product attention can be implemented through (batch) matrix
     multipication as follows:
 
         .. math::
 
             Attention(Q, K, V)= softmax(QK^\mathrm{T})V
 
-    Refer to `Attention Is All You Need 
+    Refer to `Attention Is All You Need
     <https://arxiv.org/pdf/1706.03762.pdf>`_.
 
-    Note that batch data containing sequences with different lengths is not 
+    Note that batch data containing sequences with different lengths is not
     supported by this because of the (batch) matrix multipication.
-    
+
     Args:
         query (Variable): The input variable which is a Tensor or LoDTensor.
         key (Variable): The input variable which is a Tensor or LoDTensor.
