@@ -179,8 +179,10 @@ class ParallelOpTestMultipleInput(BaseParallelForTest):
         y = fluid.layers.data(shape=[784], dtype='float32', name='img2', stop_gradient=False)
         yield [x, y]
         x = x + y
-        hidden = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-        loss = fluid.layers.mean(x=hidden)
+        hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+        hidden2 = fluid.layers.fc(input=hidden1, size=200, param_attr='fc2.w')
+        hidden3 = fluid.layers.fc(input=hidden2, size=200, param_attr='fc3.w')
+        loss = fluid.layers.mean(x=hidden3)
         yield loss
 
     def test_simple_fc(self):
@@ -190,7 +192,7 @@ class ParallelOpTestMultipleInput(BaseParallelForTest):
                 'img1': numpy.random.random(size=(51, 784)).astype('float32'),
                 'img2': numpy.random.random(size=(51, 784)).astype('float32')
             },
-            fetch=['fc1.w@GRAD'])
+            fetch=['fc1.w@GRAD', 'fc2.w@GRAD', 'fc3.w@GRAD'])
 
 
 if __name__ == '__main__':
