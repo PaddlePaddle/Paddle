@@ -217,7 +217,7 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Long-Short Term Memory with Recurrent Projection (LSTMP) Operator.
 
-LATMP is stand LSTM appended by a recurrent projection layer to reduce the
+LSTMP is stand LSTM appended by a recurrent projection layer to reduce the
 number of parameters, espeacially when the output size is relative large. 
 The formula is as follows:
 
@@ -232,7 +232,7 @@ o_t = \sigma(W_{ox}x_{t} + W_{oh}r_{t-1} + W_{oc}c_t + b_o) \\
 
 h_t = o_t \odot act_h(c_t)
 
-r_t = act_h'(W_{rh}h_t)
+r_t = act_{h'}(W_{rh}h_t)
 $$
 
 where the W terms denote weight matrices (e.g. $W_{xi}$ is the matrix

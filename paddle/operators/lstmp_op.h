@@ -365,10 +365,18 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
         ActGradCompute(cell_act, place, cur_proj_dev, cur_proj_dev, proj_g_dev,
                        proj_g_dev);
       }
+      /* hidden state backwarad */
       Tensor out_g = batch_hidden_g.Slice(bstart, bend);
       math::matmul<DeviceContext, T>(device_ctx, proj_g, false, *proj_weight,
                                      true, static_cast<T>(1.0), &out_g,
                                      static_cast<T>(0.0));
+      /* projection weight backward*/
+      if (proj_weight_g) {
+        Tensor hidden_t = batch_hidden->Slice(bstart, bend);
+        math::matmul<DeviceContext, T>(device_ctx, hidden_t, true, proj_g,
+                                       false, static_cast<T>(1.0),
+                                       proj_weight_g, static_cast<T>(1.0));
+      }
 
       Tensor gate = batch_gate->Slice(bstart, bend);
       Tensor cell = batch_cell.Slice(bstart, bend);
@@ -407,18 +415,11 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
                                        static_cast<T>(1.0), &pre_proj_g,
                                        static_cast<T>(1.0));
         if (weight_g) {
-          /* backward weight */
+          /* weight backward*/
           auto pre_proj = batch_proj.Slice(pre_h_start, pre_h_end);
           math::matmul<DeviceContext, T>(device_ctx, pre_proj, true, gate_g,
                                          false, static_cast<T>(1.0), weight_g,
                                          static_cast<T>(1.0));
-        }
-        if (proj_weight_g) {
-          /* backward proj weigh */
-          Tensor hidden_t = batch_hidden->Slice(bstart, bend);
-          math::matmul<DeviceContext, T>(device_ctx, hidden_t, true, proj_g,
-                                         false, static_cast<T>(1.0),
-                                         proj_weight_g, static_cast<T>(1.0));
         }
       } else {
         if (h0 && weight_g) {
@@ -444,7 +445,6 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
             ActGradCompute(cell_act, place, proj0_dev, proj0_dev, proj0_g_dev,
                            proj0_g_dev);
           }
-          // Tensor proj0_g = proj_g.Slice(bstart, bend);
           if (h0_g) {
             math::matmul<DeviceContext, T>(
                 device_ctx, proj0_g, false, *proj_weight, true,
