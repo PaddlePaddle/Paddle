@@ -16,7 +16,6 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/framework/eigen.h"
 #include "paddle/framework/op_registry.h"
-
 namespace paddle {
 namespace operators {
 
@@ -28,6 +27,8 @@ class EditDistanceKernel : public framework::OpKernel<T> {
 
     auto* x1_t = ctx.Input<framework::LoDTensor>("Hyps");
     auto* x2_t = ctx.Input<framework::LoDTensor>("Refs");
+    auto* sequence_num = ctx.Output<framework::Tensor>("SequenceNum");
+    int64_t* seq_num_data = sequence_num->mutable_data<int64_t>(ctx.GetPlace());
 
     auto normalized = ctx.Attr<bool>("normalized");
 
@@ -41,6 +42,7 @@ class EditDistanceKernel : public framework::OpKernel<T> {
                      "Reference string %d is empty.", i);
     }
     auto num_strs = hyp_lod.size() - 1;
+    *seq_num_data = static_cast<int64_t>(num_strs);
 
     out_t->Resize({static_cast<int64_t>(num_strs), 1});
     out_t->mutable_data<float>(ctx.GetPlace());

@@ -61,6 +61,7 @@ class TestEditDistanceOp(OpTest):
 
         num_strs = len(x1_lod) - 1
         distance = np.zeros((num_strs, 1)).astype("float32")
+        sequence_num = np.array(2).astype("int64")
         for i in range(0, num_strs):
             distance[i] = Levenshtein(
                 hyp=x1[x1_lod[i]:x1_lod[i + 1]],
@@ -70,7 +71,7 @@ class TestEditDistanceOp(OpTest):
                 distance[i] = distance[i] / len_ref
         self.attrs = {'normalized': normalized}
         self.inputs = {'Hyps': (x1, [x1_lod]), 'Refs': (x2, [x2_lod])}
-        self.outputs = {'Out': distance}
+        self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 
     def test_check_output(self):
         self.check_output()
@@ -89,6 +90,7 @@ class TestEditDistanceOpNormalized(OpTest):
 
         num_strs = len(x1_lod) - 1
         distance = np.zeros((num_strs, 1)).astype("float32")
+        sequence_num = np.array(3).astype("int64")
         for i in range(0, num_strs):
             distance[i] = Levenshtein(
                 hyp=x1[x1_lod[i]:x1_lod[i + 1]],
@@ -98,7 +100,7 @@ class TestEditDistanceOpNormalized(OpTest):
                 distance[i] = distance[i] / len_ref
         self.attrs = {'normalized': normalized}
         self.inputs = {'Hyps': (x1, [x1_lod]), 'Refs': (x2, [x2_lod])}
-        self.outputs = {'Out': distance}
+        self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 
     def test_check_output(self):
         self.check_output()
