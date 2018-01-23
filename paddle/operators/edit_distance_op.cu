@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/math/math_function.h"
 #include "paddle/platform/cuda_helper.h"
 #include "paddle/platform/gpu_info.h"
 
@@ -72,6 +73,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
 
     auto* x1_t = ctx.Input<framework::LoDTensor>("Hyps");
     auto* x2_t = ctx.Input<framework::LoDTensor>("Refs");
+    auto* sequence_num = ctx.Output<framework::Tensor>("SequenceNum");
+    sequence_num->mutable_data<int64_t>(ctx.GetPlace());
 
     auto normalized = ctx.Attr<bool>("normalized");
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(
@@ -88,7 +91,11 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
                      "Reference string %d is empty.", i);
     }
 
-    auto num_strs = hyp_lod.size() - 1;
+    const size_t num_strs = hyp_lod.size() - 1;
+    math::SetConstant<platform::CUDADeviceContext, int64_t> set_constant;
+    set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
+                 sequence_num, static_cast<int64_t>(num_strs));
+
     out_t->Resize({static_cast<int64_t>(num_strs), 1});
     out_t->mutable_data<T>(ctx.GetPlace());
     auto out = out_t->data<T>();
