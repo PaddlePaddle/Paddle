@@ -226,6 +226,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_im2sequence(self):
+        print("test_im2sequence")
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 128, 128], dtype='float32')
+            output = layers.im2sequence(
+                input=x, stride=[1, 1], filter_size=[2, 2])
+            self.assertIsNotNone(output)
+        print(str(program))
+
     @decorators.prog_scope()
     def test_nce(self):
         window_size = 5

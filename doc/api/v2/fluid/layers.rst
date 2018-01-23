@@ -505,6 +505,11 @@ swish
 ..  autofunction:: paddle.v2.fluid.layers.swish
     :noindex:
 
+im2sequence
+------
+..  autofunction:: paddle.v2.fluid.layers.im2sequence
+    :noindex:
+
 edit_distance
 ---------------
 ..  autofunction:: paddle.v2.fluid.layers.edit_distance_error
