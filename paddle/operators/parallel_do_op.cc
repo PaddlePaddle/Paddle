@@ -174,7 +174,6 @@ class ParallelDoOp : public framework::OperatorBase {
       lod_tensor_to_be_merged->MergeLoDTensor(lod_tensors, dev_ctx.GetPlace());
     }
     WaitOnPlaces(places);
-    LOG(INFO) << "End of ParallelGradDo";
   }
 };
 
@@ -237,7 +236,6 @@ class ParallelDoGradOp : public framework::OperatorBase {
     WaitOnPlaces(places);
 
     AccumulateGrad(scope, place, sub_scopes, places);
-    LOG(INFO) << "End of ParallelDoGrad";
   }
 
   void AccumulateGrad(const framework::Scope &scope,
@@ -248,15 +246,12 @@ class ParallelDoGradOp : public framework::OperatorBase {
       std::__cxx11::string tmp_name;
       auto *tmp = sub_scopes[0]->Var(&tmp_name);
 
-      LOG(INFO) << "---" << s;
       for (size_t i = 1; i < sub_scopes.size(); ++i) {
         if (!(places[i] == places[0])) {
-          LOG(INFO) << "---";
           CopyOrShare(*sub_scopes[i]->FindVar(s), places[0], tmp);
           WaitOnPlace(places[0]);
         }
 
-        LOG(INFO) << "---";
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
             framework::AttributeMap{});
@@ -264,7 +259,6 @@ class ParallelDoGradOp : public framework::OperatorBase {
         WaitOnPlace(places[0]);
       }
 
-      LOG(INFO) << "---";
       CopyOrShare(*sub_scopes[0]->FindVar(s), place, scope.FindVar(s));
     }
     WaitOnPlaces(places);
