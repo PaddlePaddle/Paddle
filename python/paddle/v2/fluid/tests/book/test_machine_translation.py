@@ -237,16 +237,17 @@ def decode_main():
 
         src_word_data = to_lodtensor(map(lambda x: x[0], data), place)
 
-        exe.run(
+        result_ids, result_scores = exe.run(
             framework.default_main_program(),
             feed={
                 'src_word_id': src_word_data,
                 'init_ids': init_ids,
                 'init_scores': init_scores
             },
-            #fetch_list=['init_ids', 'init_scores']
+            fetch_list=[translation_ids, translation_scores],
+            return_numpy=False
         )
-        #fetch_list=[translation_ids, translation_scores])
+        print result_ids.lod()
         break
 
 
