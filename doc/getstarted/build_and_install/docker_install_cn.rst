@@ -49,7 +49,7 @@
 
      docker pull paddlepaddle/paddle:[tag]
      # 比如：
-     docker pull docker.paddlepaddlehub.com/paddle:0.10.0-gpu
+     docker pull docker.paddlepaddlehub.com/paddle:0.11.0-gpu
 
 .. _docker_run:
 
