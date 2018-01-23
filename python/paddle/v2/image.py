@@ -277,10 +277,9 @@ def left_right_flip(im, is_color=True):
 
         im = left_right_flip(im)
     
-    :paam im: input image with HWC layout or HW layout for gray image
-
+    :param im: input image with HWC layout or HW layout for gray image
     :type im: ndarray
-    :paam is_color: whether color input image or not
+    :param is_color: whether input image is color or not
     :type is_color: bool
     """
     if len(im.shape) == 3 and is_color:
