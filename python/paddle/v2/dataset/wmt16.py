@@ -305,9 +305,9 @@ def get_dict(lang, dict_size, reverse=False):
 
     dict_path = os.path.join(paddle.v2.dataset.common.DATA_HOME,
                              "wmt16/%s_%d.dict" % (lang, dict_size))
-    assert (os.path.exists(dict_path), "Word dictionary does not exist. "
-            "Please invoke paddle.dataset.wmt16.train/test/validation "
-            "first to build the dictionary.")
+    assert os.path.exists(dict_path), "Word dictionary does not exist. "
+    "Please invoke paddle.dataset.wmt16.train/test/validation first "
+    "to build the dictionary."
     tar_file = os.path.join(paddle.v2.dataset.common.DATA_HOME, "wmt16.tar.gz")
     return __load_dict(tar_file, dict_size, lang, reverse)
 
