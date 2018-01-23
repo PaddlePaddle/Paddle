@@ -247,14 +247,13 @@ class ParallelDoGradOp : public framework::OperatorBase {
       auto *tmp = sub_scopes[0]->Var(&tmp_name);
 
       for (size_t i = 1; i < sub_scopes.size(); ++i) {
-        if (!(places[i] == places[0])) {
-          CopyOrShare(*sub_scopes[i]->FindVar(s), places[0], tmp);
-          WaitOnPlace(places[0]);
-        }
+        CopyOrShare(*sub_scopes[i]->FindVar(s), places[0], tmp);
+        WaitOnPlace(places[0]);
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
             framework::AttributeMap{});
+        VLOG(3) << sum_op->DebugStringEx(sub_scopes[0]);
         sum_op->Run(*sub_scopes[0], places[0]);
         WaitOnPlace(places[0]);
       }
