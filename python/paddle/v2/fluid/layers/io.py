@@ -74,3 +74,104 @@ def data(name,
         type=type,
         stop_gradient=stop_gradient,
         lod_level=lod_level)
+
+
+class BlockGuardServ(BlockGuard):
+    """
+    BlockGuardServ class.
+
+    BlockGuardServ class is used to create an op with a block in a program.
+    """
+
+    def __init__(self, server):
+        if not (isinstance(server, ListenAndServ)):
+            raise TypeError("BlockGuardServ takes a ListenAndServ")
+        super(BlockGuardServ, self).__init__(server.helper.main_program)
+        self.server = server
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            return False
+
+        self.server.complete_op()
+        return super(BlockGuardServ, self).__exit__(exc_type, exc_val, exc_tb)
+
+
+class ListenAndServ(object):
+    """
+    ListenAndServ class.
+
+    ListenAndServ class is used to wrap listen_and_serv op to create a server
+    which can receive variables from clients and run a block.
+    """
+
+    def __init__(self, endpoint, fan_in=1):
+        self.helper = LayerHelper("recv", name=name)
+        self.inputs = []
+        self.outputs = []
+        self.endpoint = endpoint
+        self.fan_in = fan_in
+
+    def do(self):
+        return BlockGuardServ(self)
+
+    def get_params_and_grads(self):
+        main_program = self.helper.main_program
+        current_block = main_program.current_block()
+        parent_block = self.parent_block()
+        # params and grads in the same order.
+        params = list()
+        grads = list()
+        for op in current_block.ops:
+            # FIXME(typhoonzero): op.inputs is None if it's cloned.
+            if "Grad" in op.inputs and "Param" in op.inputs:
+                params.append(op.inputs["Param"].name)
+                grads.append(op.inputs["Grad"].name)
+
+        return params, grads
+
+    def complete_op(self):
+        main_program = self.helper.main_program
+        current_block = main_program.current_block()
+        parent_block = self.parent_block()
+
+        params, grads = self.get_params_and_grads()
+        parent_block.append_op(
+            type='recv',
+            inputs={},
+            outputs={},
+            attrs={
+                'endpoint': self.endpoint,
+                'Fanin': self.fan_in,
+                'ParamList': params,
+                'GradList': grads,
+                'OptimizeBlock': current_block
+            })
+
+
+def Send(endpoints, send_vars, get_vars):
+    """
+    Send layer
+
+    Args:
+        endpoints: comma seperated IP:PORT pairs in the order
+                   of send_vars to send
+        send_vars: vars to send
+        get_vars: vars to get from server after send completes.
+
+    Send variables to the server side, and get vars from server
+    side when server have finished running server side program.
+    """
+    assert (type(send_vars) == list)
+    assert (type(get_vars) == list)
+
+    epmap = endpoints.split(",")
+    endpoints = set(epmap)
+
+    helper = LayerHelper("Send", **locals())
+    helper.append_op(
+        type="send",
+        inputs={"X": send_vars},
+        outputs={"Out": get_vars},
+        attrs={"endpoints": endpoints,
+               "epmap": epmap})
