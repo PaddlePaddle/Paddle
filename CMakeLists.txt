@@ -31,9 +31,6 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-if(NOT ANDROID AND NOT IOS)
-    find_package(Boost QUIET)
-endif()
 
 include(simd)
 
