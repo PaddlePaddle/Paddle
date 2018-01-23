@@ -60,7 +60,7 @@ __all__ = [
     'sequence_reshape',
     'transpose',
     'nce',
-    'beam_search'
+    'beam_search',
 ]
 
 
