@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ..framework import Variable, unique_name
-from ..registry import OpProtoHolder
+from layer_function_generator import OpProtoHolder
 
 __all__ = ['monkey_patch_variable']
 
