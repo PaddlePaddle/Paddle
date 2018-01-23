@@ -248,7 +248,8 @@ def scaled_dot_product_attention(queries,
         reshaped = layers.reshape(
             x=x,
             shape=list(x.shape[:-1]) + [num_heads, hidden_size // num_heads])
-        # permuate the original dimensions into:
+
+        # permuate the dimensions into:
         # [batch_size, num_heads, max_sequence_len, hidden_size_per_head]
         return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
