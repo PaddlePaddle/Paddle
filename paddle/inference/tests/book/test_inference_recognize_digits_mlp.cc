@@ -12,20 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <gtest/gtest.h>
 #include <time.h>
-#include <iostream>
+#include <sstream>
 #include "gflags/gflags.h"
 #include "paddle/inference/inference.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+TEST(inference, recognize_digits_mlp) {
   if (FLAGS_dirname.empty()) {
-    // Example:
-    //   ./example --dirname=recognize_digits_mlp.inference.model
-    std::cout << "Usage: ./example --dirname=path/to/your/model" << std::endl;
-    exit(1);
+    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
 
   std::cout << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
@@ -48,20 +45,21 @@ int main(int argc, char** argv) {
   engine->Execute(feeds, fetchs);
 
   for (size_t i = 0; i < fetchs.size(); ++i) {
-    auto dims_i = fetchs[i].dims();
-    std::cout << "dims_i:";
-    for (int j = 0; j < dims_i.size(); ++j) {
-      std::cout << " " << dims_i[j];
-    }
-    std::cout << std::endl;
-    std::cout << "result:";
+    LOG(INFO) << fetchs[i].dims();
+    std::stringstream ss;
+    ss << "result:";
     float* output_ptr = fetchs[i].data<float>();
-    for (int j = 0; j < paddle::framework::product(dims_i); ++j) {
-      std::cout << " " << output_ptr[j];
+    for (int j = 0; j < fetchs[i].numel(); ++j) {
+      ss << " " << output_ptr[j];
     }
-    std::cout << std::endl;
+    LOG(INFO) << ss.str();
   }
 
   delete engine;
-  return 0;
+}
+
+int main(int argc, char** argv) {
+  google::ParseCommandLineFlags(&argc, &argv, false);
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
