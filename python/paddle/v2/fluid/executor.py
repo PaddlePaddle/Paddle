@@ -67,6 +67,40 @@ def as_numpy(tensor):
     return ans
 
 
+def has_feed_operators(block, feed_targets, feed_holder_name):
+    feed_count = 0
+    for op in block.ops:
+        if op.desc.type() == 'feed':
+            feed_count += 1
+            assert op.desc.input('X')[0] == feed_holder_name
+            feed_target_name = op.desc.output('Out')[0]
+            assert feed_target_name in feed_targets
+        else:
+            break
+    if feed_count > 0 and feed_count != len(feed_targets):
+        raise Exception(
+            "Feed operators in program desc do not match 'feed_targets'")
+    return feed_count > 0
+
+
+def has_fetch_operators(block, fetch_targets, fetch_holder_name):
+    fetch_count = 0
+    for op in block.ops:
+        if op.desc.type() == 'fetch':
+            fetch_count += 1
+            assert op.desc.output('Out')[0] == fetch_holder_name
+            fetch_target_name = op.desc.input('X')[0]
+            assert fetch_target_name in [
+                var.desc.name() for var in fetch_targets
+            ]
+            idx = op.desc.attr('col')
+            assert fetch_target_name == fetch_targets[idx].desc.name()
+    if fetch_count > 0 and fetch_count != len(fetch_targets):
+        raise Exception(
+            "Fetch operators in program desc do not match 'fetch_targets'")
+    return fetch_count > 0
+
+
 class Executor(object):
     def __init__(self, places):
         if not isinstance(places, list) and not isinstance(places, tuple):
@@ -122,41 +156,6 @@ class Executor(object):
             tensor.set_lod(lod)
             return tensor
 
-    def has_feed_operators(self, scope, block, feed_targets, feed_holder_name):
-        feed_count = 0
-        for op in block.ops:
-            if op.desc.type() == 'feed':
-                feed_count += 1
-                assert op.desc.input('X')[0] == feed_holder_name
-                feed_target_name = op.desc.output('Out')[0]
-                assert feed_target_name in feed_targets
-                cur_feed = feed_targets[feed_target_name]
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = self.aslodtensor(cur_feed)
-                idx = op.desc.attr('col')
-                core.set_feed_variable(scope, cur_feed, feed_holder_name, idx)
-        if feed_count > 0 and feed_count != len(feed_targets):
-            raise Exception(
-                "Feed operators in program desc do not match 'feed_targets'")
-        return feed_count > 0
-
-    def has_fetch_operators(self, block, fetch_targets, fetch_holder_name):
-        fetch_count = 0
-        for op in block.ops:
-            if op.desc.type() == 'fetch':
-                fetch_count += 1
-                assert op.desc.output('Out')[0] == fetch_holder_name
-                fetch_target_name = op.desc.input('X')[0]
-                assert fetch_target_name in [
-                    var.desc.name() for var in fetch_targets
-                ]
-                idx = op.desc.attr('col')
-                assert fetch_target_name == fetch_targets[idx].desc.name()
-        if fetch_count > 0 and fetch_count != len(fetch_targets):
-            raise Exception(
-                "Fetch operators in program desc do not match 'fetch_targets'")
-        return fetch_count > 0
-
     def run(self,
             program=None,
             feed=None,
@@ -198,8 +197,7 @@ class Executor(object):
                 type=core.VarDesc.VarType.FETCH_LIST,
                 persistable=True)
 
-        if not self.has_feed_operators(scope, global_block, feed,
-                                       feed_var_name):
+        if not has_feed_operators(global_block, feed, feed_var_name):
             for i, name in enumerate(feed):
                 out = global_block.var(name)
                 global_block.prepend_op(
@@ -207,13 +205,19 @@ class Executor(object):
                     inputs={'X': [feed_var]},
                     outputs={'Out': [out]},
                     attrs={'col': i})
-                cur_feed = feed[name]
+
+        for op in block.ops:
+            if op.desc.type() == 'feed':
+                feed_target_name = op.desc.output('Out')[0]
+                cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = self.aslodtensor(cur_feed)
-                core.set_feed_variable(scope, cur_feed, feed_var.name, i)
+                idx = op.desc.attr('col')
+                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+            else:
+                break
 
-        if not self.has_fetch_operators(global_block, fetch_list,
-                                        fetch_var_name):
+        if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
                 global_block.append_op(
                     type='fetch',
