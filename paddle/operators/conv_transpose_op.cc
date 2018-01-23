@@ -160,8 +160,8 @@ Example:
        Output shape: $(N, C_{out}, H_{out}, W_{out})$
   Where
   $$
-       H_{out} = (H_{in} - 1) * strides[0] - 2 * paddings[0] + H_f \\
-       W_{out} = (W_{in} - 1) * strides[1] - 2 * paddings[1] + W_f
+       H_{out} = (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\
+       W_{out} = (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1
   $$
 )DOC");
 }
@@ -249,9 +249,9 @@ Example:
        Output shape: $(N, C_{out}, D_{out}, H_{out}, W_{out})$
   Where
   $$
-       D_{out} = (D_{in} - 1) * strides[0] - 2 * paddings[0] + D_f \\
-       H_{out} = (H_{in} - 1) * strides[1] - 2 * paddings[1] + H_f \\
-       W_{out} = (W_{in} - 1) * strides[2] - 2 * paddings[2] + W_f
+       D_{out} = (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\
+       H_{out} = (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\
+       W_{out} = (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1
   $$
 )DOC");
 }
