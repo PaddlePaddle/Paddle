@@ -44,11 +44,14 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
   IOUSimilarityOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
-             "(Tensor, default Tensor<float>) "
-             "Box list X holds N boxes, each box is "
-             "represented as [xmin, ymin, xmax, ymax], the shape of X is [N, "
-             "4]. [xmin, ymin] is the lower left coordinate of the box, and "
-             "[xmax, ymax] is the right upper coordinate of the box.");
+             "(LoDTensor, default LoDTensor<float>) "
+             "Box list X is a 2-D LoDTensor with shape [N, 4] holds N boxes, "
+             "each box is represented as [xmin, ymin, xmax, ymax], "
+             "the shape of X is [N, 4]. [xmin, ymin] is the lower left "
+             "coordinate of the box, and [xmax, ymax] is the right upper "
+             "coordinate of the box.This tensor can contain LoD information "
+             "to represent a batch of inputs. One instance of this batch can "
+             "contain different numbers of entities.");
     AddInput("Y",
              "(Tensor, default Tensor<float>) "
              "Box list Y holds M boxes, each box is "
@@ -56,14 +59,23 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
              "4]. [xmin, ymin] is the lower left coordinate of the box, and "
              "[xmax, ymax] is the right upper coordinate of the box.");
 
-    AddOutput(
-        "Out",
-        "(Tensor) The output of iou_similarity op, a tensor with shape [N, M] "
-        "representing pairwise iou scores.");
+    AddOutput("Out",
+              "(LoDTensor or Tensor, the lod is same as input X) The output of "
+              "iou_similarity op, a tensor with shape [N, M] "
+              "representing pairwise iou scores.");
 
     AddComment(R"DOC(
 IOU Similarity Operator.
 Computes intersection-over-union (IOU) between two box lists.
+ Box list 'X' should be a LoDTensor and 'Y' is a common Tensor,
+ boxes in 'Y' are shared by all input images.
+ Given two box A and B, the calculation of IOU is as follows:
+
+$$
+IOU(A, B) = 
+\frac{area(A\cap B)}{area(A)+area(B)-area(A\cap B)}
+$$
+
 )DOC");
   }
 };
