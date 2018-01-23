@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/platform/variant.h"
 
 namespace paddle {
@@ -35,7 +36,7 @@ using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using Attribute =
     boost::variant<boost::blank, int, float, std::string, std::vector<int>,
                    std::vector<float>, std::vector<std::string>, bool,
-                   std::vector<bool>, BlockDesc*>;
+                   std::vector<bool>, BlockDesc*, LoD>;
 
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 

@@ -282,6 +282,15 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
     VectorToRepeated(v, attr_->mutable_bools());
   }
   void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
+  void operator()(const framework::LoD &v) const {
+    auto lod = attr_->mutable_lod();
+    for (auto &vec : v) {
+      auto ints = lod->mutable_ints_vector()->Add();
+      for (auto &value : vec) {
+        *ints->mutable_ints()->Add() = value;
+      }
+    }
+  }
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 

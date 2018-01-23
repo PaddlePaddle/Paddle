@@ -194,7 +194,7 @@ def assign(input, output):
     return output
 
 
-def fill_constant(shape, dtype, value, force_cpu=False, out=None):
+def fill_constant(shape, dtype, value, force_cpu=False, out=None, lod=None):
     """
     **fill_constant**
 
@@ -229,7 +229,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             'shape': shape,
             'dtype': out.dtype,
             'value': float(value),
-            'force_cpu': force_cpu
+            'force_cpu': force_cpu,
+            'lod': lod or [[]]
         })
     out.stop_gradient = True
     return out
