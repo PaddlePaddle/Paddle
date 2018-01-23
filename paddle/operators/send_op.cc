@@ -62,13 +62,13 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SendOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) Input tensor to be send").AsDuplicable();
-    AddOutput("Out", "(Tensor) Output tensor to get from server")
+    AddInput("X", "(Tensor) Input tensor to be sent").AsDuplicable();
+    AddOutput("Out", "(Tensor) Output tensor to be received from server")
         .AsDuplicable();
     AddComment(R"DOC(
-Recv operator
+Send operator
 
-This operator will send tensor to recv_op.
+This operator will send tensor to recv_op at the parameter server.
 )DOC");
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"

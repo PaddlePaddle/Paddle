@@ -37,6 +37,7 @@ nv_test(data_device_transform_test SRCS data_device_transform_test.cu
         DEPS operator op_registry init math_function)
 
 cc_library(data_type_transform SRCS data_type_transform.cc DEPS tensor)
+cc_test(data_type_transform_test SRCS data_type_transform_test.cc DEPS data_type_transform)
 
 cc_library(data_layout_transform SRCS data_layout_transform.cc DEPS tensor math_function)
 cc_test(data_layout_transform_test SRCS data_layout_transform_test.cc DEPS data_layout_transform)
@@ -87,3 +88,10 @@ cc_test(init_test SRCS init_test.cc DEPS init)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
+      
+if(NOT WITH_C_API AND WITH_FLUID)
+  file(GLOB FRAMEWORK_HEADERS *.h)
+  install(FILES ${FRAMEWORK_HEADERS} DESTINATION include/paddle/framework)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/framework.pb.h DESTINATION include/paddle/framework)
+  install(FILES details/cow_ptr.h details/op_registry.h DESTINATION include/paddle/framework/details)
+endif()

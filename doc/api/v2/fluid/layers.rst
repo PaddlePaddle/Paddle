@@ -18,6 +18,11 @@ dynamic_lstm
 ..  autofunction:: paddle.v2.fluid.layers.dynamic_lstm
     :noindex:
 
+dynamic_gru
+-----------
+..  autofunction:: paddle.v2.fluid.layers.dynamic_gru
+    :noindex:
+
 data
 ----
 ..  autofunction:: paddle.v2.fluid.layers.data
@@ -498,6 +503,21 @@ hard_sigmoid
 swish
 ------
 ..  autofunction:: paddle.v2.fluid.layers.swish
+    :noindex:
+
+im2sequence
+------
+..  autofunction:: paddle.v2.fluid.layers.im2sequence
+    :noindex:
+
+edit_distance
+---------------
+..  autofunction:: paddle.v2.fluid.layers.edit_distance_error
+    :noindex:
+
+ctc_greedy_decoder
+---------------
+..  autofunction:: paddle.v2.fluid.layers.ctc_greedy_decoder
     :noindex:
 
 l2_normalize

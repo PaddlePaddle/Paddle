@@ -68,7 +68,7 @@ LINK_LIBRARIES(glog gflags)
 
 LIST(APPEND external_project_dependencies glog)
 
-IF(WITH_C_API)
+IF(WITH_C_API OR WITH_FLUID)
   INSTALL(DIRECTORY ${GLOG_INCLUDE_DIR} DESTINATION third_party/glog)
   IF(ANDROID)
     INSTALL(FILES ${GLOG_LIBRARIES} DESTINATION third_party/glog/lib/${ANDROID_ABI})

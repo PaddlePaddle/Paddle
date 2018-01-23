@@ -1,22 +1,23 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.layers as layers
+import paddle.v2.fluid.layers as pd
 from paddle.v2.fluid.executor import Executor
 
 dict_size = 30000
@@ -25,51 +26,134 @@ src_dict, trg_dict = paddle.dataset.wmt14.get_dict(dict_size)
 hidden_dim = 32
 word_dim = 16
 IS_SPARSE = True
-batch_size = 10
-max_length = 50
+batch_size = 2
+max_length = 8
 topk_size = 50
 trg_dic_size = 10000
+beam_size = 2
 
 decoder_size = hidden_dim
 
+place = core.CPUPlace()
 
-def encoder_decoder():
+
+def encoder():
     # encoder
-    src_word_id = layers.data(
+    src_word_id = pd.data(
         name="src_word_id", shape=[1], dtype='int64', lod_level=1)
-    src_embedding = layers.embedding(
+    src_embedding = pd.embedding(
         input=src_word_id,
         size=[dict_size, word_dim],
         dtype='float32',
         is_sparse=IS_SPARSE,
         param_attr=fluid.ParamAttr(name='vemb'))
 
-    fc1 = fluid.layers.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
-    lstm_hidden0, lstm_0 = layers.dynamic_lstm(input=fc1, size=hidden_dim * 4)
-    encoder_out = layers.sequence_last_step(input=lstm_hidden0)
+    fc1 = pd.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
+    lstm_hidden0, lstm_0 = pd.dynamic_lstm(input=fc1, size=hidden_dim * 4)
+    encoder_out = pd.sequence_last_step(input=lstm_hidden0)
+    return encoder_out
 
+
+def decoder_train(context):
     # decoder
-    trg_language_word = layers.data(
+    trg_language_word = pd.data(
         name="target_language_word", shape=[1], dtype='int64', lod_level=1)
-    trg_embedding = layers.embedding(
+    trg_embedding = pd.embedding(
         input=trg_language_word,
         size=[dict_size, word_dim],
         dtype='float32',
         is_sparse=IS_SPARSE,
         param_attr=fluid.ParamAttr(name='vemb'))
 
-    rnn = fluid.layers.DynamicRNN()
+    rnn = pd.DynamicRNN()
     with rnn.block():
         current_word = rnn.step_input(trg_embedding)
-        mem = rnn.memory(init=encoder_out)
-        fc1 = fluid.layers.fc(input=[current_word, mem],
+        pre_state = rnn.memory(init=context)
+        current_state = pd.fc(input=[current_word, pre_state],
                               size=decoder_size,
                               act='tanh')
-        out = fluid.layers.fc(input=fc1, size=target_dict_dim, act='softmax')
-        rnn.update_memory(mem, fc1)
-        rnn.output(out)
+
+        current_score = pd.fc(input=current_state,
+                              size=target_dict_dim,
+                              act='softmax')
+        rnn.update_memory(pre_state, current_state)
+        rnn.output(current_score)
 
     return rnn()
+
+
+def decoder_decode(context):
+    init_state = context
+    array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
+    counter = pd.zeros(shape=[1], dtype='int64')
+
+    # fill the first element with init_state
+    state_array = pd.create_array('float32')
+    pd.array_write(init_state, array=state_array, i=counter)
+
+    # ids, scores as memory
+    ids_array = pd.create_array('int64')
+    scores_array = pd.create_array('float32')
+
+    init_ids = pd.data(name="init_ids", shape=[1], dtype="int64", lod_level=2)
+    init_scores = pd.data(
+        name="init_scores", shape=[1], dtype="float32", lod_level=2)
+
+    pd.array_write(init_ids, array=ids_array, i=counter)
+    pd.array_write(init_scores, array=scores_array, i=counter)
+
+    cond = pd.less_than(x=counter, y=array_len)
+
+    while_op = pd.While(cond=cond)
+    with while_op.block():
+        pre_ids = pd.array_read(array=ids_array, i=counter)
+        pre_state = pd.array_read(array=state_array, i=counter)
+        pre_score = pd.array_read(array=scores_array, i=counter)
+
+        # expand the lod of pre_state to be the same with pre_score
+        pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
+
+        pre_ids_emb = pd.embedding(
+            input=pre_ids,
+            size=[dict_size, word_dim],
+            dtype='float32',
+            is_sparse=IS_SPARSE)
+
+        # use rnn unit to update rnn
+        current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
+                              size=decoder_size,
+                              act='tanh')
+
+        # use score to do beam search
+        current_score = pd.fc(input=current_state,
+                              size=target_dict_dim,
+                              act='softmax')
+        topk_scores, topk_indices = pd.topk(current_score, k=50)
+        selected_ids, selected_scores = pd.beam_search(
+            pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
+
+        pd.increment(x=counter, value=1, in_place=True)
+
+        # update the memories
+        pd.array_write(current_state, array=state_array, i=counter)
+        pd.array_write(selected_ids, array=ids_array, i=counter)
+        pd.array_write(selected_scores, array=scores_array, i=counter)
+
+        pd.less_than(x=counter, y=array_len, cond=cond)
+
+    translation_ids, translation_scores = pd.beam_search_decode(
+        ids=ids_array, scores=scores_array)
+
+    # return init_ids, init_scores
+
+    return translation_ids, translation_scores
+
+
+def set_init_lod(data, lod, place):
+    res = core.LoDTensor()
+    res.set(data, place)
+    res.set_lod(lod)
+    return res
 
 
 def to_lodtensor(data, place):
@@ -87,12 +171,13 @@ def to_lodtensor(data, place):
     return res
 
 
-def main():
-    rnn_out = encoder_decoder()
-    label = layers.data(
+def train_main():
+    context = encoder()
+    rnn_out = decoder_train(context)
+    label = pd.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
-    cost = layers.cross_entropy(input=rnn_out, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    cost = pd.cross_entropy(input=rnn_out, label=label)
+    avg_cost = pd.mean(x=cost)
 
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
     optimizer.minimize(avg_cost)
@@ -102,13 +187,12 @@ def main():
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
 
-    place = core.CPUPlace()
     exe = Executor(place)
 
     exe.run(framework.default_startup_program())
 
     batch_id = 0
-    for pass_id in xrange(2):
+    for pass_id in xrange(1):
         for data in train_data():
             word_data = to_lodtensor(map(lambda x: x[0], data), place)
             trg_word = to_lodtensor(map(lambda x: x[1], data), place)
@@ -124,9 +208,48 @@ def main():
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
                   " avg_cost=" + str(avg_cost_val))
             if batch_id > 3:
-                exit(0)
+                break
             batch_id += 1
 
 
+def decode_main():
+    context = encoder()
+    translation_ids, translation_scores = decoder_decode(context)
+
+    exe = Executor(place)
+    exe.run(framework.default_startup_program())
+
+    init_ids_data = np.array([1 for _ in range(batch_size)], dtype='int64')
+    init_scores_data = np.array(
+        [1. for _ in range(batch_size)], dtype='float32')
+    init_ids_data = init_ids_data.reshape((batch_size, 1))
+    init_scores_data = init_scores_data.reshape((batch_size, 1))
+    init_lod = [i for i in range(batch_size)] + [batch_size]
+    init_lod = [init_lod, init_lod]
+
+    train_data = paddle.batch(
+        paddle.reader.shuffle(
+            paddle.dataset.wmt14.train(dict_size), buf_size=1000),
+        batch_size=batch_size)
+    for _, data in enumerate(train_data()):
+        init_ids = set_init_lod(init_ids_data, init_lod, place)
+        init_scores = set_init_lod(init_scores_data, init_lod, place)
+
+        src_word_data = to_lodtensor(map(lambda x: x[0], data), place)
+
+        result_ids, result_scores = exe.run(
+            framework.default_main_program(),
+            feed={
+                'src_word_id': src_word_data,
+                'init_ids': init_ids,
+                'init_scores': init_scores
+            },
+            fetch_list=[translation_ids, translation_scores],
+            return_numpy=False)
+        print result_ids.lod()
+        break
+
+
 if __name__ == '__main__':
-    main()
+    # train_main()
+    decode_main()
