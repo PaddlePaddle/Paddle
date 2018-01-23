@@ -21,7 +21,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-constexpr char kEPS = 1e-6;
+constexpr double kEPS = 1e-6;
 
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
