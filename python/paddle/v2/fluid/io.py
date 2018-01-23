@@ -192,7 +192,7 @@ def get_inference_program(target_vars, main_program=None):
 
 
 def prepend_feed_ops(inference_program,
-                     feeded_var_names,
+                     feed_target_names,
                      feed_holder_name='feed'):
     global_block = inference_program.global_block()
     feed_var = global_block.create_var(
@@ -200,7 +200,7 @@ def prepend_feed_ops(inference_program,
         type=core.VarDesc.VarType.FEED_MINIBATCH,
         persistable=True)
 
-    for i, name in enumerate(feeded_var_names):
+    for i, name in enumerate(feed_target_names):
         out = global_block.var(name)
         global_block.prepend_op(
             type='feed',
@@ -210,7 +210,7 @@ def prepend_feed_ops(inference_program,
 
 
 def append_fetch_ops(inference_program,
-                     fetch_var_names,
+                     fetch_target_names,
                      fetch_holder_name='fetch'):
     global_block = inference_program.global_block()
     fetch_var = global_block.create_var(
@@ -218,7 +218,7 @@ def append_fetch_ops(inference_program,
         type=core.VarDesc.VarType.FETCH_LIST,
         persistable=True)
 
-    for i, name in enumerate(fetch_var_names):
+    for i, name in enumerate(fetch_target_names):
         global_block.append_op(
             type='fetch',
             inputs={'X': [name]},
@@ -296,22 +296,22 @@ def load_persistables_if_exist(executor, dirname, main_program=None):
         predicate=_is_presistable_and_exist_)
 
 
-def get_feed_targets(program):
-    feed_targets = []
+def get_feed_targets_names(program):
+    feed_targets_names = []
     global_block = program.global_block()
     for op in global_block.ops:
         if op.desc.type() == 'feed':
-            feed_targets.insert(0, op.desc.output('Out')[0])
-    return feed_targets
+            feed_targets_names.insert(0, op.desc.output('Out')[0])
+    return feed_targets_names
 
 
-def get_fetch_targets(program):
-    fetch_targets = []
+def get_fetch_targets_names(program):
+    fetch_targets_names = []
     global_block = program.global_block()
     for op in global_block.ops:
         if op.desc.type() == 'fetch':
-            fetch_targets.append(op.desc.input('X')[0])
-    return fetch_targets
+            fetch_targets_names.append(op.desc.input('X')[0])
+    return fetch_targets_names
 
 
 def load_inference_model(dirname, executor):

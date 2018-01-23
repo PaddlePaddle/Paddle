@@ -66,7 +66,7 @@ exe = fluid.Executor(place)
 feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
 exe.run(fluid.default_startup_program())
 
-PASS_NUM = 100
+PASS_NUM = 1
 for pass_id in range(PASS_NUM):
     accuracy.reset(exe)
     for data in train_reader():
@@ -90,17 +90,21 @@ for pass_id in range(PASS_NUM):
             fluid.io.save_inference_model(
                 "./recognize_digits_mlp.inference.model/", ["x"], [predict],
                 exe)
+            break
 
-            [infer_prog, feed_var_names,
-             fetch_vars] = fluid.io.load_inference_model(
-                 "./recognize_digits_mlp.inference.model/", exe)
+# Use load_inference_model to obtain the inference program desc,
+# the feed_target_names (the names of variables that will be feeded 
+# data using feed operators), and the fetch_targets (variables that 
+# we want to obtain data from using fetch operators).
+[infer_prog, feed_target_names, fetch_targets] = fluid.io.load_inference_model(
+    "./recognize_digits_mlp.inference.model/", exe)
 
-            tensor_x = np.random.rand(1, 784).astype("float32")
-            results = exe.run(infer_prog,
-                              feed={feed_var_names[0]: tensor_x},
-                              fetch_list=fetch_vars)
-            print(results[0])
+tensor_x = np.random.rand(1, 784).astype("float32")
+# Construct feed as a dictionary of {feed_target_name: feed_target_data}
+# and results will contain a list of data corresponding to fetch_targets.
+results = exe.run(infer_prog,
+                  feed={feed_target_names[0]: tensor_x},
+                  fetch_list=fetch_targets)
+print(results[0])
 
-            exit(0)
-
-exit(1)
+exit(0)

@@ -68,13 +68,35 @@ def as_numpy(tensor):
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):
+    """ Check whether the block already has feed operators.
+
+    Return false if the block does not have any feed operators.
+    If some feed operators have been prepended to the block, check that
+    the info contained in these feed operators matches the feed_targets
+    and feed_holder_name. Raise exception when any mismatch is found.
+    Return true when the block has feed operators with matching info.
+
+    Args:
+        block: a block instance (typically global block of a program)
+        feed_targets: a dictionary of {feed_target_name: feed_target_data}
+        feed_holder_name: the name of the variable that holds the data of 
+            all feed targets. The type of this feed_holder variable is 
+            FEED_MINIBATCH, which is essentially vector<LoDTensor>.
+
+    Returns:
+        A boolean value that indicates whether a block has feed operators 
+        that match the info contained in feed_targets and feed_holder_name.
+    """
+
     feed_count = 0
     for op in block.ops:
         if op.desc.type() == 'feed':
             feed_count += 1
             assert op.desc.input('X')[0] == feed_holder_name
             feed_target_name = op.desc.output('Out')[0]
-            assert feed_target_name in feed_targets
+            if feed_target_name not in feed_targets:
+                raise Exception("'feed_targets' does not have {} variable".
+                                format(feed_target_name))
         else:
             break
     if feed_count > 0 and feed_count != len(feed_targets):
@@ -84,15 +106,37 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
 
 
 def has_fetch_operators(block, fetch_targets, fetch_holder_name):
+    """ Check whether the block already has fetch operators.
+    
+    Return false if the block does not have any fetch operators.
+    If some fetch operators have been appended to the block, check that
+    the info contained in these fetch operators matches the fetch_targets
+    and fetch_holder_name. Raise exception when any mismatch is found.
+    Return true when the block has fetch operators with matching info.
+
+    Args:
+        block: a block instance (typically global block of a program)
+        fetch_targets: a dictionary of {fetch_target_name: fetch_target_data}
+        fetch_holder_name: the name of the variable that holds the data of 
+            all fetch targets. The type of this fetch_holder variable is 
+            FETCH_LIST, which is essentially vector<LoDTensor>.    
+
+    Return:    
+        A boolean value that indicates whether a block has fetch operators 
+        that match the info contained in fetch_targets and fetch_holder_name.     
+    """
+
     fetch_count = 0
     for op in block.ops:
         if op.desc.type() == 'fetch':
             fetch_count += 1
             assert op.desc.output('Out')[0] == fetch_holder_name
             fetch_target_name = op.desc.input('X')[0]
-            assert fetch_target_name in [
-                var.desc.name() for var in fetch_targets
-            ]
+            if fetch_target_name not in [
+                    var.desc.name() for var in fetch_targets
+            ]:
+                raise Exception("'fetch_targets' does not have {} variable".
+                                format(fetch_target_name))
             idx = op.desc.attr('col')
             assert fetch_target_name == fetch_targets[idx].desc.name()
     if fetch_count > 0 and fetch_count != len(fetch_targets):
