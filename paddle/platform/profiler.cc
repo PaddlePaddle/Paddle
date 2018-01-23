@@ -47,16 +47,16 @@ inline uint64_t GetTimeInNsec() {
 }
 
 Event::Event(EventKind kind, std::string name, uint32_t thread_id,
-             DeviceContext* dev_ctx)
+             const DeviceContext* dev_ctx)
     : kind_(kind), name_(name), thread_id_(thread_id), has_cuda_(false) {
 #ifdef PADDLE_WITH_CUDA
-  auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
-  if (cuda_dev_ctx) {
+  has_cuda_ = dev_ctx ? platform::is_gpu_place(dev_ctx->GetPlace()) : false;
+  if (has_cuda_) {
+    auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
     PADDLE_ENFORCE(cudaGetDevice(&device_));
     PADDLE_ENFORCE(cudaEventCreate(&event_));
     auto stream = cuda_dev_ctx->stream();
     PADDLE_ENFORCE(cudaEventRecord(event_, stream));
-    has_cuda_ = true;
   }
 #endif
   cpu_ns_ = GetTimeInNsec();
@@ -114,19 +114,20 @@ inline EventList& GetEventList() {
   return *g_event_list;
 }
 
-void Mark(const std::string& name, DeviceContext* dev_ctx) {
+void Mark(const std::string& name, const DeviceContext* dev_ctx) {
   GetEventList().Record(EventKind::kMark, name, g_thread_id, dev_ctx);
 }
 
-void PushEvent(const std::string& name, DeviceContext* dev_ctx) {
+void PushEvent(const std::string& name, const DeviceContext* dev_ctx) {
   GetEventList().Record(EventKind::kPushRange, name, g_thread_id, dev_ctx);
 }
 
-void PopEvent(const std::string& name, DeviceContext* dev_ctx) {
+void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
   GetEventList().Record(EventKind::kPopRange, name, g_thread_id, dev_ctx);
 }
 
-RecordEvent::RecordEvent(const std::string& name, DeviceContext* dev_ctx) {
+RecordEvent::RecordEvent(const std::string& name,
+                         const DeviceContext* dev_ctx) {
   if (g_state == ProfilerState::kDisabled) return;
   dev_ctx_ = dev_ctx;
   name_ = name;
@@ -155,6 +156,7 @@ void EnableProfiler(ProfilerState state) {
         DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(d));
         Mark("_cuda_startup_", dev_ctx);
         dev_ctx->Wait();
+        delete dev_ctx;
       });
     }
   }

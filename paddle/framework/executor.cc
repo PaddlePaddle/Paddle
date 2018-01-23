@@ -120,8 +120,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     VLOG(3) << op->DebugStringEx(local_scope);
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto dev_ctx = const_cast<platform::DeviceContext*>(pool.Get(place_));
-    platform::RecordEvent record_event(op->Type(), dev_ctx);
+    platform::RecordEvent record_event(op->Type(), pool.Get(place_));
 
     op->Run(*local_scope, place_);
     if (FLAGS_do_memory_benchmark) {

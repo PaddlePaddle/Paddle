@@ -41,8 +41,8 @@ class TestProfiler(unittest.TestCase):
                 exe.run(fluid.default_main_program(), feed={'data': input})
         os.remove(output_file)
 
-    def profiler(self, state):
-        if state == 'GPU' and core.is_compile_gpu():
+    def net_profiler(self, state):
+        if state == 'GPU' and not core.is_compile_gpu():
             return
         startup_program = fluid.Program()
         main_program = fluid.Program()
@@ -79,11 +79,11 @@ class TestProfiler(unittest.TestCase):
                 acc = np.array(outs[1])
                 pass_acc = accuracy.eval(exe)
 
-    def not_test_cpu_profiler(self):
-        self.profiler('CPU')
+    def test_cpu_profiler(self):
+        self.net_profiler('CPU')
 
-    def not_test_cuda_profiler(self):
-        self.profiler('GPU')
+    def test_cuda_profiler(self):
+        self.net_profiler('GPU')
 
 
 if __name__ == '__main__':
