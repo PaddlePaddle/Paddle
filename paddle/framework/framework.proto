@@ -16,6 +16,10 @@ syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 package paddle.framework.proto;
 
+message Ints { repeated int64 ints = 1; }
+
+message LoDDesc { repeated Ints ints_vector = 1; }
+
 enum AttrType {
   INT = 0;
   FLOAT = 1;
@@ -26,6 +30,7 @@ enum AttrType {
   BOOLEAN = 6;
   BOOLEANS = 7;
   BLOCK = 8;
+  LOD = 9;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
@@ -44,6 +49,7 @@ message OpDesc {
     optional bool b = 10;
     repeated bool bools = 11;
     optional int32 block_idx = 12;
+    optional LoDDesc lod = 13;
   };
 
   message Var {

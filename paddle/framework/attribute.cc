@@ -61,6 +61,18 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
       }
       return val;
     }
+    case proto::AttrType::LOD: {
+      LoD val(attr_desc.lod().ints_vector_size());
+      for (int i = 0; i < attr_desc.lod().ints_vector_size(); ++i) {
+        Vector<size_t> vec;
+        auto& ints = attr_desc.lod().ints_vector(i).ints();
+        for (auto& value : ints) {
+          vec.emplace_back(value);
+        }
+        val.emplace_back(vec);
+      }
+      return val;
+    }
     default:
       PADDLE_THROW("Unsupport attr type %d", attr_desc.type());
   }

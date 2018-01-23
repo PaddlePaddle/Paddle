@@ -39,6 +39,8 @@ class FillConstantOp : public framework::OperatorBase {
         static_cast<framework::proto::DataType>(Attr<int>("dtype"));
     auto value = Attr<float>("value");
     auto force_cpu = Attr<bool>("force_cpu");
+    auto lod = Attr<framework::LoD>("lod");
+    VLOG(3) << "fill_constant lod: " << framework::LoDToString(lod);
     auto &out =
         *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
     out.Resize(framework::make_ddim(Attr<std::vector<int>>("shape")));
@@ -48,7 +50,7 @@ class FillConstantOp : public framework::OperatorBase {
     } else {
       out.mutable_data(dev_place, framework::ToTypeIndex(data_type));
     }
-
+    out.set_lod(lod);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     math::set_constant(dev_ctx, &out, value);
@@ -64,6 +66,9 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Output data type")
         .SetDefault(framework::proto::DataType::FP32);
     AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
+    AddAttr<framework::LoD>("lod",
+                            "(vector<vector<int64>>) The LoD of the output")
+        .SetDefault({{}});
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
     AddAttr<bool>("force_cpu",
