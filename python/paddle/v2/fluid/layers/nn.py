@@ -1974,16 +1974,13 @@ def sequence_reshape(input, new_dim):
 
 
 def im2sequence(input,
-                block_x=1,
-                block_y=1,
-                stride_x=1,
-                stride_y=1,
-                padding_x=0,
-                padding_y=0,
+                filter_size=1,
+                stride=1,
+                padding=0,
                 name=None,
                 layer_attr=None):
     """
-    This op use block to scan images and convert these images to sequences.
+    This op use filter to scan images and convert these images to sequences.
     After expanding, the number of time step are output_height * output_width
     for an image, in which output_height and output_width are calculated
     by below equation:
@@ -1995,23 +1992,34 @@ def im2sequence(input,
 
     And the dimension of each time step is block_y * block_x * input.channels.
 
-
-
     Args:
         input (Variable): The input should be a tensor in NCHW format.
-        block_x (int): The width of sub block.
-        block_y (int): The width of sub block.
-        stride_x (int): The stride size in horizontal direction.
-        stride_y (int): The stride size in vertical direction.
-        padding_x (int): The padding size in horizontal direction.
-        padding_y (int): The padding size in vertical direction.
+
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+
+        padding(int|tuple): The padding size. If padding is a tuple, it can
+            contain two integers like (padding_H, padding_W) which means
+            padding_up = padding_down = padding_H and
+            padding_left = padding_right = padding_W. Or it can use
+            (padding_up, padding_left, padding_down, padding_right) to indicate
+            paddings of four direction. Otherwise, a scalar padding means
+            padding_up = padding_down = padding_left = padding_right = padding
+            Default: padding = 0.
+
         name (int): The name of this layer. It is optional.
 
     Returns:
-        output: The output is a LoDTensor woth shape
-        {input.batch_size * output_y * x,
-        block_y * block_x * input.channels}.
-        If we regard output as matrix, each row of this matrix is a step of sequence.
+        output: The output is a LoDTensor with shape
+        {input.batch_size * output_height * output_width,
+        filter_size_H * filter_size_W * input.channels}.
+        If we regard output as a matrix, each row of this matrix is
+        a step of a sequence.
 
     Examples:
 
@@ -2041,12 +2049,9 @@ def im2sequence(input,
 
             And:
 
-            block_height = 2
-            block_width = 2
-            stride_height = 1
-            stride_width = 1
-            padding_height = 0
-            padding_width = 0
+            filter = [2, 2]
+            stride = [1, 1]
+            padding = [0, 0]
 
             Then:
 
@@ -2063,15 +2068,24 @@ def im2sequence(input,
 
             output.lod = [[0, 4, 8]]
 
-
-
         The simple usage is:
 
         .. code-block:: python
 
-            output = fluid.layers.im2sequence(input=layer, stride_x=1, stride_y=1, block_x=2, block_y=2)
+            output = fluid.layers.im2sequence(input=layer, stride=[1, 1], filter=[2, 2])
 
     """
+
+    if isinstance(filter_size, int):
+        filter_size = [filter_size, filter_size]
+    if isinstance(stride, int):
+        stride = [stride, stride]
+    if isinstance(padding, int):
+        padding = [padding, padding]
+    if len(padding) == 2:
+        padding.append(padding[0])
+        padding.append(padding[1])
+
     helper = LayerHelper('im2sequence', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
@@ -2079,11 +2093,8 @@ def im2sequence(input,
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'block_height': block_y,
-            'block_width': block_x,
-            'stride_height': stride_y,
-            'stride_width': stride_x,
-            'padding_height': padding_y,
-            'padding_width': padding_x
+            'kernels': filter_size,
+            'strides': stride,
+            'paddings': padding,
         })
     return out
