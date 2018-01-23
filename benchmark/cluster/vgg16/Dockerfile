@@ -12,4 +12,4 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 ADD reader.py /workspace/
 RUN python /workspace/reader.py
 
-ADD vgg16.py /workspace/
+ADD vgg16_fluid.py vgg16_v2.py /workspace/
