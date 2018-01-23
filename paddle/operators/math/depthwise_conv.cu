@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/math/pooling.h"
+#include "paddle/operators/math/depthwise_conv.h"
 #include "paddle/platform/cuda_helper.h"
 
 namespace paddle {
@@ -195,7 +195,7 @@ __global__ void KernelDepthwiseConvFilterGrad(const int num_i,
  * Ksize, strides, paddings are two elements. These two elements represent
  * height and width, respectively.
  */
-template <typename T>
+template <class T>
 class DepthwiseConvFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
@@ -226,7 +226,7 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelDepthwiseConv<T><<<grid, threads, 0, STREAM_DEFAULT>>>(
+    KernelDepthwiseConv<T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, filter_data, batch_size, output_channels,
         output_height, output_width, input_channels, input_height, input_width,
         output_channels / input_channels, ksize_height, ksize_width,
@@ -236,7 +236,6 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T> {
 };
 
 /*
-
 template <typename T>
 class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, PoolProcess, T>
 {
@@ -254,8 +253,7 @@ class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, PoolProcess, T>
     const int output_height = output.dims()[2];
     const int output_width = output.dims()[3];
     const int ksize_height = ksize[0];
-    const int ksize_width = ksize[1];
-    const int stride_height = strides[0];
+    const int ksize_width = ksize[1]; const int stride_height = strides[0];
     const int stride_width = strides[1];
     const int padding_height = paddings[0];
     const int padding_width = paddings[1];
@@ -321,24 +319,20 @@ class DepthwiseConvdFilterGradFunctor<platform::CUDADeviceContext, T> {
 */
 
 template class DepthwiseConvFunctor<platform::CUDADeviceContext,
-                                    paddle::operators::math::MaxPool<float>,
                                     float>;
+template class DepthwiseConvFunctor<platform::CUDADeviceContext,
+                                    double>;
 
 /*
 template class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext,
-                                 paddle::operators::math::MaxPoolGrad<float>,
                                  float>;
 template class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext,
-                                 paddle::operators::math::MaxPoolGrad<float>,
                                  float>;
 
 template class DepthwiseConvFunctor<platform::CUDADeviceContext,
-                             paddle::operators::math::MaxPool<double>, double>;
 template class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext,
-                                 paddle::operators::math::MaxPoolGrad<double>,
                                  double>;
 template class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext,
-                                 paddle::operators::math::MaxPoolGrad<double>,
                                  double>;
 */
 
