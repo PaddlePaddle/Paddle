@@ -25,6 +25,8 @@ class EditDistanceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Hyps"), "Input(Hyps) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("Refs"), "Input(Refs) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("SequenceNum"),
+                   "Output(SequenceNum) shouldn't be null.");
     auto hyp_dims = ctx->GetInputDim("Hyps");
     auto ref_dims = ctx->GetInputDim("Refs");
     PADDLE_ENFORCE(hyp_dims.size() == 2 && hyp_dims[1] == 1,
@@ -34,6 +36,7 @@ class EditDistanceOp : public framework::OperatorWithKernel {
                    "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
                    "equal to 1.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("Refs"));
+    ctx->SetOutputDim("SequenceNum", {1});
   }
 
  protected:
@@ -54,6 +57,7 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Refs",
              "(2-D LoDTensor<int64_t>, 2nd dim. equal to 1) "
              "The indices for reference strings.");
+    AddOutput("SequenceNum", "The sequence count of current batch");
     AddAttr<bool>("normalized",
                   "(bool, default false) Indicated whether to normalize "
                   "the edit distance by the length of reference string.")
