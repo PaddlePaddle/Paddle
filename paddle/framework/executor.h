@@ -42,10 +42,10 @@ class Executor {
            bool create_vars = true);
 
   void Run(const ProgramDesc& program, Scope* scope,
-           std::map<std::string, const LoDTensor*>& feeds,
-           std::map<std::string, LoDTensor*>& fetchs,
-           const std::string& feed_var_name = "feed",
-           const std::string& fetch_var_name = "fetch");
+           std::map<std::string, const LoDTensor*>& feed_targets,
+           std::map<std::string, LoDTensor*>& fetch_targets,
+           const std::string& feed_holder_name = "feed",
+           const std::string& fetch_holder_name = "fetch");
 
  private:
   const platform::Place place_;

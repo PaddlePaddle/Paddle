@@ -133,119 +133,138 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   }
 }
 
-void Executor::Run(const ProgramDesc& program, Scope* scope,
-                   std::map<std::string, const LoDTensor*>& feeds,
-                   std::map<std::string, LoDTensor*>& fetchs,
-                   const std::string& feed_var_name,
-                   const std::string& fetch_var_name) {
-  auto* copy_program = new ProgramDesc(program);
-  auto* global_block = copy_program->MutableBlock(0);
-
-  VarDesc* feed_var = nullptr;
-  VarDesc* fetch_var = nullptr;
-  for (auto& var_desc : global_block->AllVars()) {
-    if (var_desc->GetType() == proto::VarDesc::FEED_MINIBATCH) {
-      PADDLE_ENFORCE(var_desc->Name() == feed_var_name,
-                     "The feed variable name should match the program desc");
-      feed_var = var_desc;
-    } else if (var_desc->GetType() == proto::VarDesc::FETCH_LIST) {
-      PADDLE_ENFORCE(var_desc->Name() == fetch_var_name,
-                     "The fetch variable name should match the program desc");
-      fetch_var = var_desc;
-    }
-  }
-  if (feed_var == nullptr) {
-    feed_var = global_block->Var(feed_var_name);
-    feed_var->SetType(proto::VarDesc::FEED_MINIBATCH);
-    feed_var->SetPersistable(true);
-  }
-  if (fetch_var == nullptr) {
-    fetch_var = global_block->Var(fetch_var_name);
-    fetch_var->SetType(proto::VarDesc::FETCH_LIST);
-    feed_var->SetPersistable(true);
-  }
-
-  // if there are feed and fetch ops, check that they match the feeds info
+static bool has_feed_operators(
+    BlockDesc* block, std::map<std::string, const LoDTensor*>& feed_targets,
+    const std::string& feed_holder_name) {
   size_t feed_count = 0;
-  size_t fetch_count = 0;
-  for (auto* op : global_block->AllOps()) {
+  for (auto* op : block->AllOps()) {
     if (op->Type() == "feed") {
       feed_count++;
-      PADDLE_ENFORCE(op->Input("X")[0] == feed_var_name,
-                     "Input to feed op should be '%s'", feed_var_name);
-      auto it = feeds.find(op->Output("Out")[0]);
+      PADDLE_ENFORCE(op->Input("X")[0] == feed_holder_name,
+                     "Input to feed op should be '%s'", feed_holder_name);
+      std::string feed_target_name = op->Output("Out")[0];
       PADDLE_ENFORCE(
-          it != feeds.end(),
-          "Feed operator output name '%s' should match the info in 'feeds'",
-          op->Output("Out")[0]);
-      Attribute attr = op->GetAttr("col");
-      PADDLE_ENFORCE(attr.type() == typeid(int),
+          feed_targets.find(feed_target_name) != feed_targets.end(),
+          "Feed operator output name '%s' cannot be found in 'feed_targets'",
+          feed_target_name);
+      PADDLE_ENFORCE(op->GetAttr("col").type() == typeid(int),
                      "Attribute type of 'col' should be int");
-      SetFeedVariable(scope, *it->second, feed_var_name, boost::get<int>(attr));
-    } else if (op->Type() == "fetch") {
-      fetch_count++;
-      PADDLE_ENFORCE(op->Output("Out")[0] == fetch_var_name,
-                     "Output of fetch op should be '%s'", fetch_var_name);
-      std::string fetch_input_name = op->Input("X")[0];
-      auto it = fetchs.find(fetch_input_name);
-      PADDLE_ENFORCE(
-          it != fetchs.end(),
-          "Fetch operator input name '%s' should match the info in 'fetchs'",
-          fetch_input_name);
-      int index = 0;
-      for (auto& fetch_item : fetchs) {
-        if (fetch_item.first == fetch_input_name) {
-          break;
-        }
-        index++;
-      }
-      Attribute attr = op->GetAttr("col");
-      PADDLE_ENFORCE(attr.type() == typeid(int),
-                     "Attribute type of 'col' should be int");
-      PADDLE_ENFORCE(boost::get<int>(attr) == index);
+    } else {
+      break;
     }
   }
 
   if (feed_count > 0) {
-    PADDLE_ENFORCE(feed_count == feeds.size(),
-                   "The number of fetch operators should match 'feeds'");
+    PADDLE_ENFORCE(feed_count == feed_targets.size(),
+                   "The number of feed operators should match 'feed_targets'");
   }
+
+  return feed_count > 0;
+}
+
+static bool has_fetch_operators(
+    BlockDesc* block, std::map<std::string, LoDTensor*>& fetch_targets,
+    const std::string& fetch_holder_name) {
+  size_t fetch_count = 0;
+  for (auto* op : block->AllOps()) {
+    if (op->Type() == "fetch") {
+      fetch_count++;
+      PADDLE_ENFORCE(op->Output("Out")[0] == fetch_holder_name,
+                     "Output of fetch op should be '%s'", fetch_holder_name);
+      std::string fetch_target_name = op->Input("X")[0];
+      PADDLE_ENFORCE(
+          fetch_targets.find(fetch_target_name) != fetch_targets.end(),
+          "Fetch operator input name '%s' cannot be found in 'fetch_targets'",
+          fetch_target_name);
+      PADDLE_ENFORCE(op->GetAttr("col").type() == typeid(int),
+                     "Attribute type of 'col' should be int");
+    }
+  }
+
   if (fetch_count > 0) {
-    PADDLE_ENFORCE(fetch_count == fetchs.size(),
-                   "The number of fetch operators should match 'feeds'");
+    PADDLE_ENFORCE(
+        fetch_count == fetch_targets.size(),
+        "The number of fetch operators should match 'fetch_targets'");
   }
 
-  // append fetch_op and related variable
-  if (feed_count == 0) {
-    int i = 0;
-    for (auto& feed_item : feeds) {
-      std::string var_name = feed_item.first;
-      LOG(INFO) << "feed var's name: " << var_name;
+  return fetch_count > 0;
+}
 
-      // prepend_op
+void Executor::Run(const ProgramDesc& program, Scope* scope,
+                   std::map<std::string, const LoDTensor*>& feed_targets,
+                   std::map<std::string, LoDTensor*>& fetch_targets,
+                   const std::string& feed_holder_name,
+                   const std::string& fetch_holder_name) {
+  auto* copy_program = new ProgramDesc(program);
+  auto* global_block = copy_program->MutableBlock(0);
+
+  VarDesc* feed_holder = nullptr;
+  VarDesc* fetch_holder = nullptr;
+  for (auto* var : global_block->AllVars()) {
+    if (var->GetType() == proto::VarDesc::FEED_MINIBATCH) {
+      PADDLE_ENFORCE(var->Name() == feed_holder_name,
+                     "'feed_holder_name' should match the program desc");
+      feed_holder = var;
+    } else if (var->GetType() == proto::VarDesc::FETCH_LIST) {
+      PADDLE_ENFORCE(var->Name() == fetch_holder_name,
+                     "'fetch_holder_name' should match the program desc");
+      fetch_holder = var;
+    }
+  }
+
+  if (feed_holder == nullptr) {
+    feed_holder = global_block->Var(feed_holder_name);
+    feed_holder->SetType(proto::VarDesc::FEED_MINIBATCH);
+    feed_holder->SetPersistable(true);
+  }
+
+  if (fetch_holder == nullptr) {
+    fetch_holder = global_block->Var(fetch_holder_name);
+    fetch_holder->SetType(proto::VarDesc::FETCH_LIST);
+    fetch_holder->SetPersistable(true);
+  }
+
+  if (!has_feed_operators(global_block, feed_targets, feed_holder_name)) {
+    int i = 0;
+    for (auto& feed_target : feed_targets) {
+      std::string var_name = feed_target.first;
+      LOG(INFO) << "feed target's name: " << var_name;
+
+      // prepend feed op
       auto* op = global_block->PrependOp();
       op->SetType("feed");
-      op->SetInput("X", {feed_var_name});
+      op->SetInput("X", {feed_holder_name});
       op->SetOutput("Out", {var_name});
       op->SetAttr("col", {static_cast<int>(i)});
       op->CheckAttrs();
 
-      SetFeedVariable(scope, *feed_item.second, feed_var_name, i);
       i++;
     }
   }
 
-  if (fetch_count == 0) {
-    int i = 0;
-    for (auto& fetch_item : fetchs) {
-      std::string var_name = fetch_item.first;
-      LOG(INFO) << "fetch var's name: " << var_name;
+  // map the data of feed_targets to feed_holder
+  for (auto* op : global_block->AllOps()) {
+    if (op->Type() == "feed") {
+      std::string feed_target_name = op->Output("Out")[0];
+      int idx = boost::get<int>(op->GetAttr("col"));
+      SetFeedVariable(scope, *feed_targets[feed_target_name], feed_holder_name,
+                      idx);
+    } else {
+      break;
+    }
+  }
 
-      // append_op
+  if (!has_fetch_operators(global_block, fetch_targets, fetch_holder_name)) {
+    int i = 0;
+    for (auto& fetch_target : fetch_targets) {
+      std::string var_name = fetch_target.first;
+      LOG(INFO) << "fetch target's name: " << var_name;
+
+      // append fetch op
       auto* op = global_block->AppendOp();
       op->SetType("fetch");
       op->SetInput("X", {var_name});
-      op->SetOutput("Out", {fetch_var_name});
+      op->SetOutput("Out", {fetch_holder_name});
       op->SetAttr("col", {static_cast<int>(i)});
       op->CheckAttrs();
 
@@ -255,11 +274,14 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 
   Run(*copy_program, scope, 0, true, true);
 
-  // get fetch variables
-  int i = 0;
-  for (auto& fetch_item : fetchs) {
-    *fetch_item.second = GetFetchVariable(*scope, fetch_var_name, i);
-    i++;
+  // obtain the data of fetch_targets from fetch_holder
+  for (auto* op : global_block->AllOps()) {
+    if (op->Type() == "fetch") {
+      std::string fetch_target_name = op->Input("X")[0];
+      int idx = boost::get<int>(op->GetAttr("col"));
+      *fetch_targets[fetch_target_name] =
+          GetFetchVariable(*scope, fetch_holder_name, idx);
+    }
   }
 
   delete copy_program;
