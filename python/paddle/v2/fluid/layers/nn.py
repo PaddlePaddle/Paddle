@@ -108,16 +108,17 @@ def fc(input,
                               into a 2-dimensional matrix. The parameter
                               `num_flatten_dims` determines how the input tensor
                               is flattened: the first `num_flatten_dims`
-                              dimensions will be flatten to form the first
-                              dimension of the final matrix (height of the
-                              matrix), and the rest `rank(X) - num_flatten_dims`
-                              dimensions are flattened to form the second
-                              dimension of the final matrix (width of the matrix).
-                              For example, suppose `X` is a 6-dimensional tensor
-                              with a shape [2, 3, 4, 5, 6], and
-                              `num_flatten_dims` = 3. Then, the flattened matrix
-                              will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-                              By default, `num_flatten_dims` is set to 1.
+                              (inclusive, index starts from 1) dimensions will
+                              be flatten to form the first dimension of the
+                              final matrix (height of the matrix), and the rest
+                              `rank(X) - num_flatten_dims` dimensions are
+                              flattened to form the second dimension of the
+                              final matrix (width of the matrix). For example,
+                              suppose `X` is a 6-dimensional tensor with a shape
+                              [2, 3, 4, 5, 6], and `num_flatten_dims` = 3. Then,
+                              the flattened matrix will have a shape
+                              [2 x 3 x 4, 5 x 6] = [24, 30]. By default,
+                              `num_flatten_dims` is set to 1.
        param_attr(ParamAttr|list): The parameter attribute for learnable
                                    parameters/weights of the fully connected
                                    layer.
@@ -158,6 +159,7 @@ def fc(input,
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
+
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         tmp = helper.create_tmp_variable(dtype)
@@ -747,7 +749,7 @@ def square_error_cost(input, label, **kwargs):
 
     This layer accepts input predictions and target label and returns the
     squared error cost.
-    
+
     For predictions, :math:`X`, and target labels, :math:`Y`, the equation is:
 
     .. math::

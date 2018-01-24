@@ -65,6 +65,7 @@ class TestMultiheadAttention(unittest.TestCase):
             self.set_inputs(place)
             exe = fluid.Executor(place)
 
+            exe.run(fluid.default_startup_program())
             output = exe.run(fluid.default_main_program(),
                              feed=self.inputs,
                              fetch_list=self.fetch_list,
@@ -89,6 +90,8 @@ class TestMultiheadAttention(unittest.TestCase):
 
         self.set_program()
         self.run_program()
+
+        #fixme(caoying) add more meaningfull unittest.
 
 
 if __name__ == '__main__':
