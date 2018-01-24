@@ -133,6 +133,11 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   }
 }
 
+// Return false if the block does not have any feed operators.
+// If some feed operators have been prepended to the block, check that
+// the info contained in these feed operators matches the feed_targets
+// and feed_holder_name. Raise exception when any mismatch is found.
+// Return true when the block has feed operators with matching info.
 static bool has_feed_operators(
     BlockDesc* block, std::map<std::string, const LoDTensor*>& feed_targets,
     const std::string& feed_holder_name) {
@@ -158,10 +163,14 @@ static bool has_feed_operators(
     PADDLE_ENFORCE(feed_count == feed_targets.size(),
                    "The number of feed operators should match 'feed_targets'");
   }
-
   return feed_count > 0;
 }
 
+// Return false if the block does not have any fetch operators.
+// If some fetch operators have been appended to the block, check that
+// the info contained in these fetch operators matches the fetch_targets
+// and fetch_holder_name. Raise exception when any mismatch is found.
+// Return true when the block has fetch operators with matching info.
 static bool has_fetch_operators(
     BlockDesc* block, std::map<std::string, LoDTensor*>& fetch_targets,
     const std::string& fetch_holder_name) {
@@ -186,7 +195,6 @@ static bool has_fetch_operators(
         fetch_count == fetch_targets.size(),
         "The number of fetch operators should match 'fetch_targets'");
   }
-
   return fetch_count > 0;
 }
 
@@ -212,12 +220,14 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     }
   }
 
+  // create a feed_holder variable if not found
   if (feed_holder == nullptr) {
     feed_holder = global_block->Var(feed_holder_name);
     feed_holder->SetType(proto::VarDesc::FEED_MINIBATCH);
     feed_holder->SetPersistable(true);
   }
 
+  // create a fetch_holder variable if not found
   if (fetch_holder == nullptr) {
     fetch_holder = global_block->Var(fetch_holder_name);
     fetch_holder->SetType(proto::VarDesc::FETCH_LIST);
