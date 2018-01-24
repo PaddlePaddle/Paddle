@@ -22,7 +22,7 @@ The current `LoDTensor` is designed to store levels of variable-length sequences
 The integers in each level represent the begin and end (not inclusive) offset of a sequence **in the underlying tensor**,
 let's call this format the **absolute-offset LoD** for clarity.
 
-The relative-offset LoD can retrieve any sequence very quickly but fails to represent empty sequences, for example, a two-level LoD is as follows
+The absolute-offset LoD can retrieve any sequence very quickly but fails to represent empty sequences, for example, a two-level LoD is as follows
 ```python
 [[0, 3, 9]
  [0, 2, 3, 3, 3, 9]]
@@ -119,7 +119,7 @@ def generate():
         encoder_ctx_expanded = pd.lod_expand(encoder_ctx, target_word)
         decoder_input = pd.fc(
             act=pd.activation.Linear(),
-            input=[target_word, encoder_ctx],
+            input=[target_word, encoder_ctx_expanded],
             size=3 * decoder_dim)
         gru_out, cur_mem = pd.gru_step(
             decoder_input, mem=decoder_mem, size=decoder_dim)
