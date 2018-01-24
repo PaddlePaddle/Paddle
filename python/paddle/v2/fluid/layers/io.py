@@ -136,10 +136,17 @@ class ListenAndServ(object):
                 # simple recv mode, recv operators inputs.
                 for iname in op.input_names:
                     for in_var_name in op.input(iname):
-                        params.append(parent_block.var(name))
-                        grads.append(parent_block.var(name))
+                        params.append(parent_block.var(in_var_name))
+                        grads.append(parent_block.var(in_var_name))
 
         return params, grads
+
+    def parent_block(self):
+        prog = self.helper.main_program
+        parent_idx = prog.current_block().parent_idx
+        assert parent_idx >= 0
+        parent_block = prog.block(parent_idx)
+        return parent_block
 
     def complete_op(self):
         main_program = self.helper.main_program
@@ -147,6 +154,8 @@ class ListenAndServ(object):
         parent_block = self.parent_block()
 
         params, grads = self.get_params_and_grads()
+        param_names = [p.name for p in params]
+        grad_names = [g.name for g in grads]
         parent_block.append_op(
             type='recv',
             inputs={},
@@ -154,8 +163,8 @@ class ListenAndServ(object):
             attrs={
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
-                'ParamList': params,
-                'GradList': grads,
+                'ParamList': param_names,
+                'GradList': grad_names,
                 'OptimizeBlock': current_block
             })
 
@@ -177,7 +186,7 @@ def Send(endpoints, send_vars, get_vars):
     assert (type(get_vars) == list)
 
     epmap = endpoints.split(",")
-    endpoints = set(epmap)
+    endpoints = list(set(epmap))
 
     helper = LayerHelper("Send", **locals())
     helper.append_op(
