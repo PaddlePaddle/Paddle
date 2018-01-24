@@ -769,7 +769,7 @@ def topk(input, k):
           array = fluid.layers.topk(x, k)
     """
     helper = LayerHelper('topk', **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype='int64')
     helper.append_op(
         type='top_k',

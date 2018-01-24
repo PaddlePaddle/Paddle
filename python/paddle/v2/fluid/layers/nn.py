@@ -19,17 +19,49 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
+from layer_function_generator import autodoc
 from tensor import concat
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'gru_unit', 'linear_chain_crf',
-    'crf_decoding', 'cos_sim', 'cross_entropy', 'square_error_cost', 'accuracy',
-    'chunk_eval', 'sequence_conv', 'conv2d', 'sequence_pool', 'pool2d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'sequence_expand',
-    'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min',
-    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'warpctc',
-    'sequence_reshape'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'dynamic_gru',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'accuracy',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'sequence_pool',
+    'pool2d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'sequence_expand',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'edit_distance',
+    'l2_normalize',
+    'matmul',
+    'warpctc',
+    'sequence_reshape',
+    'transpose',
+    'im2sequence',
+    'nce',
+    'beam_search',
 ]
 
 
@@ -44,14 +76,14 @@ def fc(input,
     **Fully Connected Layer**
 
     The fully connected layer can take multiple tensors as its inputs. It
-    creates a variable (one for each input tensor) called weights for each input
-    tensor, which represents a fully connected weight matrix from each input
-    unit to each output unit. The fully connected layer multiplies each input
-    tensor with its coresponding weight to produce an output Tensor. If
-    multiple input tensors are given, the results of multiple multiplications
-    will be sumed up. If bias_attr is not None, a biases variable will be
-    created and added to the output. Finally, if activation is not None,
-    it will be applied to the output as well.
+    creates a variable (one for each input tensor) called weights for each
+    input tensor, which represents a fully connected weight matrix from
+    each input unit to each output unit. The fully connected layer
+    multiplies each input tensor with its coresponding weight to produce
+    an output Tensor. If multiple input tensors are given, the results of
+    multiple multiplications will be sumed up. If bias_attr is not None,
+    a biases variable will be created and added to the output. Finally,
+    if activation is not None, it will be applied to the output as well.
 
     This process can be formulated as follows:
 
@@ -132,10 +164,8 @@ def fc(input,
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
-            inputs={
-                "X": input_var,
-                "Y": w,
-            },
+            inputs={"X": input_var,
+                    "Y": w},
             outputs={"Out": tmp},
             attrs={"x_num_col_dims": num_flatten_dims,
                    "y_num_col_dims": 1})
@@ -154,22 +184,35 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
-def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
+def embedding(input,
+              size,
+              is_sparse=False,
+              padding_idx=None,
+              param_attr=None,
+              dtype='float32'):
     """
     **Embedding Layer**
 
-    This layer is used to lookup a vector of IDs, provided by *input*, in a lookup table.
-    The result of this lookup is the embedding of each ID in the *input*.
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in 
+    a lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
 
     All the input variables are passed in as local variables to the LayerHelper
     constructor.
 
     Args:
-       input(Variable): Input to the function
-       size(tuple|list|None): Shape of the look up table parameter
-       is_sparse(bool): Boolean flag that specifying whether the input is sparse
-       param_attr(ParamAttr): Parameters for this layer
-       dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
+        input(Variable): The tensor variable containing the IDs.
+        size(tuple|list): The shape of the look up table parameter. It should
+            have two elements which indicate the size of the dictionary of
+            embeddings and the size of each embedding vector respectively.
+        is_sparse(bool): The flag indicating whether to use sparse update.
+        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
+            Otherwise the given :attr:`padding_idx` indicates padding the output
+            with zeros whenever lookup encounters it in :attr:`input`. If 
+            :math:`padding_idx < 0`, the padding_idx to use in lookup is 
+            :math:`size[0] + dim`.
+        param_attr(ParamAttr): Parameters for this layer
+        dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -187,12 +230,15 @@ def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_tmp_variable(dtype)
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        size[0] + padding_idx)
     helper.append_op(
         type='lookup_table',
         inputs={'Ids': input,
                 'W': w},
         outputs={'Out': tmp},
-        attrs={'is_sparse': is_sparse})
+        attrs={'is_sparse': is_sparse,
+               'padding_idx': padding_idx})
     return tmp
 
 
@@ -337,6 +383,113 @@ def dynamic_lstm(input,
             'candidate_activation': candidate_activation
         })
     return hidden, cell
+
+
+def dynamic_gru(input,
+                size,
+                param_attr=None,
+                bias_attr=None,
+                is_reverse=False,
+                gate_activation='sigmoid',
+                candidate_activation='tanh',
+                h_0=None):
+    """
+    **Dynamic GRU Layer**
+
+    Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on 
+    Sequence Modeling <https://arxiv.org/abs/1412.3555>`_
+    
+    The formula is as follows:
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+        
+        h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
+    
+    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
+    is the update gate and reset gate activation function and :math:`sigmoid` 
+    is usually used for it. :math:`act_c` is the activation function for 
+    candidate hidden state and :math:`tanh` is usually used for it.
+
+    Note that these :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` operations on
+    the input :math:`x_{t}` are NOT included in this operator. Users can choose
+    to use fully-connect layer before GRU layer. 
+
+    Args:
+        input(Variable): The input of dynamic_gru layer, which supports 
+            variable-time length input sequence. The underlying tensor in this 
+            Variable is a matrix with shape :math:`(T \\times 3D)`, where
+            :math:`T` is the total time steps in this mini-batch, :math:`D` 
+            is the hidden size.
+        size(int): The dimension of the gru cell.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable 
+            hidden-hidden weight matrix. Note:
+
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where 
+              :math:`D` is the hidden size.
+            - All elements in the weight matrix can be divided into two parts. 
+              The first part are weights of the update gate and reset gate with
+              shape :math:`(D \\times 2D)`, and the second part are weights for 
+              candidate hidden state with shape :math:`(D \\times D)`.
+        bias_attr(ParamAttr): The parameter attribute for learnable the 
+            hidden-hidden bias.
+        is_reverse(bool): Whether to compute reversed GRU, default 
+            :attr:`False`.
+        gate_activation(str): The activation for update gate and reset gate.
+            Choices = ["sigmoid", "tanh", "relu", "identity"], default "sigmoid".
+        activation(str): The activation for candidate hidden state. 
+            Choices = ["sigmoid", "tanh", "relu", "identity"], default "tanh".
+
+    Returns:
+        Variable: The hidden state of GRU. The shape is (T \\times D), and lod \
+            is the same with the input.
+    
+    Examples:
+        .. code-block:: python
+
+            hidden_dim = 512
+            x = fluid.layers.fc(input=data, size=hidden_dim * 3)
+            hidden = fluid.layers.dynamic_gru(input=x, dim=hidden_dim)
+    """
+
+    helper = LayerHelper('gru', **locals())
+    dtype = helper.input_dtype()
+
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
+    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+    if h_0 != None:
+        assert h_0.shape == (
+            size, size), 'The shape of h0 should be(%d, %d)' % (size, size)
+        inputs['h0'] = h_0
+
+    hidden = helper.create_tmp_variable(dtype)
+    batch_gate = helper.create_tmp_variable(dtype)
+    batch_reset_hidden_prev = helper.create_tmp_variable(dtype)
+    batch_hidden = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='gru',
+        inputs=inputs,
+        outputs={
+            'Hidden': hidden,
+            'BatchGate': batch_gate,
+            'BatchResetHiddenPrev': batch_reset_hidden_prev,
+            'BatchHidden': batch_hidden
+        },
+        attrs={
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'activation': candidate_activation
+        })
+    return hidden
 
 
 def gru_unit(input,
@@ -763,8 +916,8 @@ def conv2d(input,
     <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_ .
     If bias attribution and activation type are provided, bias is added to the output of the convolution,
     and the corresponding activation function is applied to the final result.
-    For each input :math:`X`, the equation is:
 
+    For each input :math:`X`, the equation is:
 
     .. math::
 
@@ -772,51 +925,54 @@ def conv2d(input,
 
     In the above equation:
 
-        * :math:`X`: Input value, a tensor with NCHW format.
-        * :math:`W`: Filter value, a tensor with MCHW format.
-        * :math:`\\ast`: Convolution operation.
-        * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
-        * :math:`\\sigma`: Activation function.
-        * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+    * :math:`X`: Input value, a tensor with NCHW format.
+    * :math:`W`: Filter value, a tensor with MCHW format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
+    * :math:`\\sigma`: Activation function.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
 
-        Input:
-            Input shape: $(N, C_{in}, H_{in}, W_{in})$
+        - Input:
 
-            Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
+          Input shape: $(N, C_{in}, H_{in}, W_{in})$
 
-        Output:
-            Output shape: $(N, C_{out}, H_{out}, W_{out})$
+          Filter shape: $(C_{out}, C_{in}, H_f, W_f)$
+
+        - Output:
+          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+
         Where
-    .. math::
+
+        .. math::
 
         H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
         W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input(Variable): The input image with [N, C, H, W] format.
-        num_filters(int): The number of filter. It is as same as the output
-            image channel.
-        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
-        stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
-        padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
-        groups(int): The groups number of the Conv2d Layer. According to grouped
-            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
-            the first half of the filters is only connected to the first half
-            of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1
-        param_attr(ParamAttr): The parameters to the Conv2d Layer. Default: None
-        bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
-        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True
-        act(str): Activation type. Default: None
+       input(Variable): The input image with [N, C, H, W] format.
+       num_filters(int): The number of filter. It is as same as the output
+           image channel.
+       filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+           it must contain two integers, (filter_size_H, filter_size_W).
+           Otherwise, the filter will be a square.
+       stride(int|tuple): The stride size. If stride is a tuple, it must
+           contain two integers, (stride_H, stride_W). Otherwise, the
+           stride_H = stride_W = stride. Default: stride = 1.
+       padding(int|tuple): The padding size. If padding is a tuple, it must
+           contain two integers, (padding_H, padding_W). Otherwise, the
+           padding_H = padding_W = padding. Default: padding = 0.
+       groups(int): The groups number of the Conv2d Layer. According to grouped
+           convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+           the first half of the filters is only connected to the first half
+           of the input channels, while the second half of the filters is only
+           connected to the second half of the input channels. Default: groups=1
+       param_attr(ParamAttr): The parameters to the Conv2d Layer. Default: None
+       bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
+       use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+           library is installed. Default: True
+       act(str): Activation type. Default: None
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -831,7 +987,6 @@ def conv2d(input,
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
-
     if stride is None:
         stride = [1, 1]
     helper = LayerHelper('conv2d', **locals())
@@ -1185,38 +1340,85 @@ def conv2d_transpose(input,
                      use_cudnn=True,
                      name=None):
     """
-    The transpose of conv2d layer.
+    **Convlution2D transpose layer**
 
-    This layer is also known as deconvolution layer.
+    The convolution2D transpose layer calculates the output based on the input,
+    filter, and dilations, strides, paddings. Input(Input) and output(Output)
+    are in NCHW format. Where N is batch size, C is the number of channels,
+    H is the height of the feature, and W is the width of the feature.
+    Parameters(dilations, strides, paddings) are two elements. These two elements
+    represent height and width, respectively. The details of convolution transpose
+    layer, please refer to the following explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+
+    For each input :math:`X`, the equation is:
+
+    .. math::
+
+        Out = W \\ast X
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NCHW format.
+    * :math:`W`: Filter value, a tensor with MCHW format.
+    * :math:`\\ast` : Convolution transpose operation.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Example:
+
+        - Input:
+
+          Input shape: $(N, C_{in}, H_{in}, W_{in})$
+
+          Filter shape: $(C_{in}, C_{out}, H_f, W_f)$
+
+        - Output:
+
+          Output shape: $(N, C_{out}, H_{out}, W_{out})$
+
+        Where
+
+        .. math::
+
+           H_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
+           W_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1
 
     Args:
-        input(Variable): The input image with [N, C, H, W] format.
-        num_filters(int): The number of filter. It is as same as the output
-            image channel.
-        output_size(int|tuple|None): The output image size. If output size is a
-            tuple, it must contain two integers, (image_H, image_W). This
-            parameter only works when filter_size is None.
-        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.  None if use output size to
-            calculate filter_size
-        padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding.
-        stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride.
-        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation.
-        param_attr: Parameter Attribute.
-        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+       input(Variable): The input image with [N, C, H, W] format.
+       num_filters(int): The number of the filter. It is as same as the output
+           image channel.
+       output_size(int|tuple|None): The output image size. If output size is a
+           tuple, it must contain two integers, (image_H, image_W). This
+           parameter only works when filter_size is None.
+       filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+           it must contain two integers, (filter_size_H, filter_size_W).
+           Otherwise, the filter will be a square. None if use output size to
+           calculate filter_size.
+       padding(int|tuple): The padding size. If padding is a tuple, it must
+           contain two integers, (padding_H, padding_W). Otherwise, the
+           padding_H = padding_W = padding. Default: padding = 0.
+       stride(int|tuple): The stride size. If stride is a tuple, it must
+           contain two integers, (stride_H, stride_W). Otherwise, the
+           stride_H = stride_W = stride. Default: stride = 1.
+       dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+           contain two integers, (dilation_H, dilation_W). Otherwise, the
+           dilation_H = dilation_W = dilation. Default: dilation = 1.
+       param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer. Default: None
+       use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
+           library is installed. Default: True
+       name(str|None): A name for this layer(optional). If set None, the layer
+           will be named automatically.
 
     Returns:
-        Variable: Output image.
+       Variable: The tensor variable storing the convolution transpose result.
+
+    Raises:
+       ValueError: If the shapes of input, filter_size, stride, padding and groups mismatch.
+
+    Examples:
+       .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
     helper = LayerHelper("conv2d_transpose", **locals())
     if not isinstance(input, Variable):
@@ -1346,6 +1548,38 @@ def sequence_expand(x, y, name=None):
         type='sequence_expand', inputs={'X': x,
                                         'Y': y}, outputs={'Out': tmp})
     return tmp
+
+
+def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
+    '''
+    This function implements the beam search algorithm.
+    '''
+    helper = LayerHelper('beam_search', **locals())
+    score_type = scores.dtype
+    id_type = ids.dtype
+
+    selected_scores = helper.create_tmp_variable(dtype=score_type)
+    selected_ids = helper.create_tmp_variable(dtype=id_type)
+
+    helper.append_op(
+        type='beam_search',
+        inputs={
+            'pre_ids': pre_ids,
+            'ids': ids,
+            'scores': scores,
+        },
+        outputs={
+            'selected_ids': selected_ids,
+            'selected_scores': selected_scores,
+        },
+        attrs={
+            # TODO(ChunweiYan) to assure other value support
+            'level': level,
+            'beam_size': beam_size,
+            'end_id': end_id,
+        })
+
+    return selected_ids, selected_scores
 
 
 def lstm_unit(x_t,
@@ -1814,11 +2048,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
 
       - If both are 2-D, they are multiplied like conventional matrices.
       - If either is n-D, it is treated as a stack of matrices residing in the
-        last two dimensions and a batched matrix multiply supporting broadcast 
+        last two dimensions and a batched matrix multiply supporting broadcast
         applies on the two tensors.
 
-    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and 
-    nontransposed, the prepended or appended dimension :math:`1` will be 
+    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and
+    nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multiplication.
 
     Args:
@@ -2111,4 +2345,222 @@ def sequence_reshape(input, new_dim):
         inputs={'X': [input]},
         outputs={'Out': [out]},
         attrs={'new_dim': new_dim})
+    return out
+
+
+@autodoc()
+def nce(input,
+        label,
+        num_total_classes,
+        sample_weight=None,
+        param_attr=None,
+        bias_attr=None,
+        num_neg_samples=None):
+    helper = LayerHelper('nce', **locals())
+    assert isinstance(input, Variable)
+    dim = input.shape[1]
+    assert isinstance(label, Variable)
+    num_true_class = label.shape[1]
+    w = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[num_total_classes, dim],
+        is_bias=False,
+        dtype=input.dtype)
+    b = helper.create_parameter(
+        attr=helper.bias_attr,
+        shape=[num_total_classes, 1],
+        is_bias=True,
+        dtype=input.dtype)
+    cost = helper.create_tmp_variable(dtype=input.dtype)
+    sample_logits = helper.create_tmp_variable(dtype=input.dtype)
+    sample_labels = helper.create_tmp_variable(dtype=label.dtype)
+
+    if num_neg_samples is None:
+        num_neg_samples = 10
+    else:
+        num_neg_samples = int(num_neg_samples)
+
+    attrs = {
+        'num_total_classes': int(num_total_classes),
+        'num_neg_samples': num_neg_samples
+    }
+
+    helper.append_op(
+        type='nce',
+        inputs={
+            'Input': input,
+            'Label': label,
+            'Weight': w,
+            'Bias': b,
+            'SampleWeight': sample_weight if sample_weight is not None else []
+        },
+        outputs={
+            'Cost': cost,
+            'SampleLogits': sample_logits,
+            'SampleLabels': sample_labels
+        },
+        attrs=attrs)
+    return cost / (num_neg_samples + 1)
+
+
+def transpose(x, perm, name=None):
+    """
+    **transpose Layer**
+
+    Permute the dimensions of `input` according to `perm`.
+
+    The `i`-th dimension  of the returned tensor will correspond to the
+    perm[i]-th dimension of `input`.
+
+    Args:
+       input (Variable): (Tensor), A Tensor.
+       perm (list): A permutation of the dimensions of `input`.
+
+    Returns:
+        Variable: A transposed Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[5, 10, 15], dtype='float32')
+            x_transposed = layers.transpose(x, perm=[1, 0, 2])
+    """
+
+    if len(perm) != len(x.shape):
+        raise ValueError(
+            "Input(perm) is the permutation of dimensions of Input(input). "
+            "It's length shoud be equal to Input(input)'s rank.")
+
+    helper = LayerHelper('transpose', **locals())
+    out = helper.create_tmp_variable(x.dtype)
+    helper.append_op(
+        type='transpose',
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+        attrs={'axis': perm})
+    return out
+
+
+def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
+    """
+    Extracts image patches from the input tensor to form a tensor of shape
+    {input.batch_size * output_height * output_width, filter_size_H *
+    filter_size_W * input.channels} which is similar with im2col.
+    This op use filter / kernel to scan images and convert these images to
+    sequences. After expanding, the number of time step are
+    output_height * output_width for an image, in which output_height and
+    output_width are calculated by below equation:
+
+    .. math::
+
+        output\_size = 1 + \
+            (2 * padding + img\_size - block\_size + stride - 1) / stride
+
+    And the dimension of each time step is block_y * block_x * input.channels.
+
+    Args:
+        input (Variable): The input should be a tensor in NCHW format.
+
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+
+        padding(int|tuple): The padding size. If padding is a tuple, it can
+            contain two integers like (padding_H, padding_W) which means
+            padding_up = padding_down = padding_H and
+            padding_left = padding_right = padding_W. Or it can use
+            (padding_up, padding_left, padding_down, padding_right) to indicate
+            paddings of four direction. Otherwise, a scalar padding means
+            padding_up = padding_down = padding_left = padding_right = padding
+            Default: padding = 0.
+
+        name (int): The name of this layer. It is optional.
+
+    Returns:
+        output: The output is a LoDTensor with shape
+        {input.batch_size * output_height * output_width,
+        filter_size_H * filter_size_W * input.channels}.
+        If we regard output as a matrix, each row of this matrix is
+        a step of a sequence.
+
+    Examples:
+
+    As an example:
+
+        .. code-block:: text
+
+            Given:
+
+            x = [[[[ 6.  2.  1.]
+                   [ 8.  3.  5.]
+                   [ 0.  2.  6.]]
+
+                  [[ 2.  4.  4.]
+                   [ 6.  3.  0.]
+                   [ 6.  4.  7.]]]
+
+                 [[[ 6.  7.  1.]
+                   [ 5.  7.  9.]
+                   [ 2.  4.  8.]]
+
+                  [[ 1.  2.  1.]
+                   [ 1.  3.  5.]
+                   [ 9.  0.  8.]]]]
+
+            x.dims = {2, 2, 3, 3}
+
+            And:
+
+            filter = [2, 2]
+            stride = [1, 1]
+            padding = [0, 0]
+
+            Then:
+
+            output.data = [[ 6.  2.  8.  3.  2.  4.  6.  3.]
+                           [ 2.  1.  3.  5.  4.  4.  3.  0.]
+                           [ 8.  3.  0.  2.  6.  3.  6.  4.]
+                           [ 3.  5.  2.  6.  3.  0.  4.  7.]
+                           [ 6.  7.  5.  7.  1.  2.  1.  3.]
+                           [ 7.  1.  7.  9.  2.  1.  3.  5.]
+                           [ 5.  7.  2.  4.  1.  3.  9.  0.]
+                           [ 7.  9.  4.  8.  3.  5.  0.  8.]]
+
+            output.dims = {8, 9}
+
+            output.lod = [[0, 4, 8]]
+
+        The simple usage is:
+
+        .. code-block:: python
+
+            output = fluid.layers.im2sequence(input=layer, stride=[1, 1], filter_size=[2, 2])
+
+    """
+
+    if isinstance(filter_size, int):
+        filter_size = [filter_size, filter_size]
+    if isinstance(stride, int):
+        stride = [stride, stride]
+    if isinstance(padding, int):
+        padding = [padding, padding]
+    if len(padding) == 2:
+        padding.append(padding[0])
+        padding.append(padding[1])
+
+    helper = LayerHelper('im2sequence', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='im2sequence',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'kernels': filter_size,
+            'strides': stride,
+            'paddings': padding,
+        })
     return out

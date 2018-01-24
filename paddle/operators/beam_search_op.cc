@@ -24,8 +24,18 @@ namespace operators {
 void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
                             framework::LoDTensor *selected_ids,
                             framework::LoDTensor *selected_scores) {
+  auto abs_lod = framework::ToAbsOffset(ids_->lod());
+  auto &high_level = abs_lod[lod_level_];
+
   auto items = SelectTopBeamSizeItems();
-  auto selected_items = ToMap(items);
+  auto selected_items = ToMap(items, high_level.back());
+  VLOG(3) << "selected_items:";
+  for (size_t i = 0; i < selected_items.size(); ++i) {
+    VLOG(3) << "offset:" << i;
+    for (auto &item : selected_items[i]) {
+      VLOG(3) << ItemToString(item);
+    }
+  }
   PruneEndidCandidates(pre_ids, &selected_items);
   // calculate the output tensor's height
   size_t num_instances = std::accumulate(
@@ -63,11 +73,12 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   low_level.push_back(low_offset);
 
   // fill lod
-  auto abs_lod = framework::ToAbsOffset(ids_->lod());
-  auto &high_level = abs_lod[lod_level_];
   framework::LoD lod(2);
   lod[0].assign(high_level.begin(), high_level.end());
   lod[1].assign(low_level.begin(), low_level.end());
+  if (!framework::CheckLoD(lod)) {
+    PADDLE_THROW("lod %s is not right", framework::LoDToString(lod));
+  }
   selected_ids->set_lod(lod);
   selected_scores->set_lod(lod);
 }
@@ -90,13 +101,11 @@ int BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
 }
 
 std::vector<std::vector<BeamSearch::Item>> BeamSearch::ToMap(
-    const std::vector<std::vector<Item>> &items) {
+    const std::vector<std::vector<Item>> &items, size_t element_num) {
   std::vector<std::vector<Item>> result;
+  result.resize(element_num);
   for (auto &entries : items) {
     for (const auto &item : entries) {
-      if (item.offset >= result.size()) {
-        result.resize(item.offset + 1);
-      }
       result[item.offset].push_back(item);
     }
   }
@@ -122,6 +131,14 @@ BeamSearch::SelectTopBeamSizeItems() {
     }
     result.emplace_back(items);
   }
+  VLOG(3) << "SelectTopBeamSizeItems result size " << result.size();
+  for (auto &items : result) {
+    VLOG(3) << "item set:";
+    for (auto &item : items) {
+      VLOG(3) << ItemToString(item);
+    }
+  }
+
   return result;
 }
 
@@ -159,6 +176,22 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   return true;
 }
 
+std::ostream &operator<<(std::ostream &os, const BeamSearch::Item &item) {
+  os << "{";
+  os << "offset: " << item.offset << ", ";
+  os << "id: " << item.id << ", ";
+  os << "score: " << item.score << "";
+  os << "}";
+
+  return os;
+}
+
+std::string ItemToString(const BeamSearch::Item &item) {
+  std::ostringstream stream;
+  stream << item;
+  return stream.str();
+}
+
 class BeamSearchProtoAndCheckerMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
@@ -186,8 +219,40 @@ class BeamSearchProtoAndCheckerMaker
   }
 };
 
+class BeamSearchInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *context) const override {
+    for (const std::string &arg :
+         std::vector<std::string>({"pre_ids", "ids", "scores"})) {
+      PADDLE_ENFORCE(context->HasInput(arg),
+                     "BeamSearch need input argument '%s'", arg);
+    }
+    for (const std::string &arg :
+         std::vector<std::string>({"selected_ids", "selected_scores"})) {
+      PADDLE_ENFORCE(context->HasOutput(arg),
+                     "BeamSearch need output argument '%s'", arg);
+    }
+  }
+};
+
+class BeamSearchInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    for (auto &o : op_desc.Output("selected_ids")) {
+      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
+    }
+    for (auto &o : op_desc.Output("selected_scores")) {
+      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(beam_search, paddle::operators::BeamSearchOp,
-                             paddle::operators::BeamSearchProtoAndCheckerMaker);
+REGISTER_OPERATOR(beam_search, paddle::operators::BeamSearchOp,
+                  paddle::operators::BeamSearchProtoAndCheckerMaker,
+                  paddle::operators::BeamSearchInferShape,
+                  paddle::operators::BeamSearchInferVarType,
+                  paddle::framework::EmptyGradOpMaker);

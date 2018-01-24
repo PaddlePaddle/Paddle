@@ -64,6 +64,8 @@ std::string AttrType(paddle::framework::proto::AttrType at) {
       return "bool array";
     case paddle::framework::proto::BLOCK:
       return "block id";
+    case paddle::framework::proto::LONG:
+      return "long";
   }
   return "UNKNOWN";  // not possible
 }
