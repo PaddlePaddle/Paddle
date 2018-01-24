@@ -1,16 +1,17 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import layers
 
 __all__ = [
@@ -28,19 +29,22 @@ def simple_img_conv_pool(input,
                          pool_stride,
                          act,
                          param_attr=None,
-                         pool_type='max'):
+                         pool_type='max',
+                         use_cudnn=True):
     conv_out = layers.conv2d(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
         param_attr=param_attr,
-        act=act)
+        act=act,
+        use_cudnn=use_cudnn)
 
     pool_out = layers.pool2d(
         input=conv_out,
         pool_size=pool_size,
         pool_type=pool_type,
-        pool_stride=pool_stride)
+        pool_stride=pool_stride,
+        use_cudnn=use_cudnn)
     return pool_out
 
 
@@ -52,9 +56,10 @@ def img_conv_group(input,
                    conv_act=None,
                    param_attr=None,
                    conv_with_batchnorm=False,
-                   conv_batchnorm_drop_rate=None,
+                   conv_batchnorm_drop_rate=0.0,
                    pool_stride=1,
-                   pool_type=None):
+                   pool_type=None,
+                   use_cudnn=True):
     """
     Image Convolution Group, Used for vgg net.
     """
@@ -85,7 +90,8 @@ def img_conv_group(input,
             filter_size=conv_filter_size[i],
             padding=conv_padding[i],
             param_attr=param_attr[i],
-            act=local_conv_act)
+            act=local_conv_act,
+            use_cudnn=use_cudnn)
 
         if conv_with_batchnorm[i]:
             tmp = layers.batch_norm(input=tmp, act=conv_act)
@@ -97,7 +103,8 @@ def img_conv_group(input,
         input=tmp,
         pool_size=pool_size,
         pool_type=pool_type,
-        pool_stride=pool_stride)
+        pool_stride=pool_stride,
+        use_cudnn=use_cudnn)
     return pool_out
 
 
@@ -120,21 +127,21 @@ def sequence_conv_pool(input,
 
 def glu(input, dim=-1):
     """
-    The gated linear unit composed by split, sigmoid activation and elementwise 
-    multiplication. Specifically, Split the input into two equal sized parts 
-    :math:`a` and :math:`b` along the given dimension and then compute as 
+    The gated linear unit composed by split, sigmoid activation and elementwise
+    multiplication. Specifically, Split the input into two equal sized parts
+    :math:`a` and :math:`b` along the given dimension and then compute as
     following:
 
         .. math::
 
             {GLU}(a, b)= a \otimes \sigma(b)
 
-    Refer to `Language Modeling with Gated Convolutional Networks 
+    Refer to `Language Modeling with Gated Convolutional Networks
     <https://arxiv.org/pdf/1612.08083.pdf>`_.
-    
+
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the 
+        dim (int): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`.
 
     Returns:
@@ -157,24 +164,24 @@ def dot_product_attention(querys, keys, values):
     """
     The dot-product attention.
 
-    Attention mechanism can be seen as mapping a query and a set of key-value 
-    pairs to an output. The output is computed as a weighted sum of the values, 
-    where the weight assigned to each value is computed by a compatibility 
+    Attention mechanism can be seen as mapping a query and a set of key-value
+    pairs to an output. The output is computed as a weighted sum of the values,
+    where the weight assigned to each value is computed by a compatibility
     function (dot-product here) of the query with the corresponding key.
-    
-    The dot-product attention can be implemented through (batch) matrix 
+
+    The dot-product attention can be implemented through (batch) matrix
     multipication as follows:
 
         .. math::
 
             Attention(Q, K, V)= softmax(QK^\mathrm{T})V
 
-    Refer to `Attention Is All You Need 
+    Refer to `Attention Is All You Need
     <https://arxiv.org/pdf/1706.03762.pdf>`_.
 
-    Note that batch data containing sequences with different lengths is not 
+    Note that batch data containing sequences with different lengths is not
     supported by this because of the (batch) matrix multipication.
-    
+
     Args:
         query (Variable): The input variable which is a Tensor or LoDTensor.
         key (Variable): The input variable which is a Tensor or LoDTensor.

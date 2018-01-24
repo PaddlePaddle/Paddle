@@ -52,7 +52,7 @@ ADD_DEPENDENCIES(gflags extern_gflags)
 
 LIST(APPEND external_project_dependencies gflags)
 
-IF(WITH_C_API)
+IF(WITH_C_API OR WITH_FLUID)
   INSTALL(DIRECTORY ${GFLAGS_INCLUDE_DIR} DESTINATION third_party/gflags)
   IF(ANDROID)
     INSTALL(FILES ${GFLAGS_LIBRARIES} DESTINATION third_party/gflags/lib/${ANDROID_ABI})
