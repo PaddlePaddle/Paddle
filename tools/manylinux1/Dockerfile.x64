@@ -35,7 +35,7 @@ RUN cd /opt && wget -q --no-check-certificate https://github.com/google/protobuf
     cd protobuf-3.1.0 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.1.0.tar.gz
 
 
-RUN yum install -y sqlite-devel zlib-devel openssl-devel boost boost-devel pcre-devel vim tk-devel tkinter libtool
+RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool
 
 RUN wget -O /root/requirements.txt https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt
 
