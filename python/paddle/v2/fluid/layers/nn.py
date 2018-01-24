@@ -62,6 +62,7 @@ __all__ = [
     'im2sequence',
     'nce',
     'beam_search',
+    'row_conv',
 ]
 
 
@@ -193,7 +194,7 @@ def embedding(input,
     """
     **Embedding Layer**
 
-    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in 
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
     a lookup table. The result of this lookup is the embedding of each ID in the
     :attr:`input`.
 
@@ -208,8 +209,8 @@ def embedding(input,
         is_sparse(bool): The flag indicating whether to use sparse update.
         padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
             Otherwise the given :attr:`padding_idx` indicates padding the output
-            with zeros whenever lookup encounters it in :attr:`input`. If 
-            :math:`padding_idx < 0`, the padding_idx to use in lookup is 
+            with zeros whenever lookup encounters it in :attr:`input`. If
+            :math:`padding_idx < 0`, the padding_idx to use in lookup is
             :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
         dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
@@ -396,9 +397,9 @@ def dynamic_gru(input,
     """
     **Dynamic GRU Layer**
 
-    Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on 
+    Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on
     Sequence Modeling <https://arxiv.org/abs/1412.3555>`_
-    
+
     The formula is as follows:
 
     .. math::
@@ -408,47 +409,47 @@ def dynamic_gru(input,
         r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
 
         \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
-        
+
         h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
-    
+
     The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
-    is the update gate and reset gate activation function and :math:`sigmoid` 
-    is usually used for it. :math:`act_c` is the activation function for 
+    is the update gate and reset gate activation function and :math:`sigmoid`
+    is usually used for it. :math:`act_c` is the activation function for
     candidate hidden state and :math:`tanh` is usually used for it.
 
     Note that these :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` operations on
     the input :math:`x_{t}` are NOT included in this operator. Users can choose
-    to use fully-connect layer before GRU layer. 
+    to use fully-connect layer before GRU layer.
 
     Args:
-        input(Variable): The input of dynamic_gru layer, which supports 
-            variable-time length input sequence. The underlying tensor in this 
+        input(Variable): The input of dynamic_gru layer, which supports
+            variable-time length input sequence. The underlying tensor in this
             Variable is a matrix with shape :math:`(T \\times 3D)`, where
-            :math:`T` is the total time steps in this mini-batch, :math:`D` 
+            :math:`T` is the total time steps in this mini-batch, :math:`D`
             is the hidden size.
         size(int): The dimension of the gru cell.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable 
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
             hidden-hidden weight matrix. Note:
 
-            - The shape of the weight matrix is :math:`(T \\times 3D)`, where 
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
               :math:`D` is the hidden size.
-            - All elements in the weight matrix can be divided into two parts. 
+            - All elements in the weight matrix can be divided into two parts.
               The first part are weights of the update gate and reset gate with
-              shape :math:`(D \\times 2D)`, and the second part are weights for 
+              shape :math:`(D \\times 2D)`, and the second part are weights for
               candidate hidden state with shape :math:`(D \\times D)`.
-        bias_attr(ParamAttr): The parameter attribute for learnable the 
+        bias_attr(ParamAttr): The parameter attribute for learnable the
             hidden-hidden bias.
-        is_reverse(bool): Whether to compute reversed GRU, default 
+        is_reverse(bool): Whether to compute reversed GRU, default
             :attr:`False`.
         gate_activation(str): The activation for update gate and reset gate.
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "sigmoid".
-        activation(str): The activation for candidate hidden state. 
+        activation(str): The activation for candidate hidden state.
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "tanh".
 
     Returns:
         Variable: The hidden state of GRU. The shape is (T \\times D), and lod \
             is the same with the input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -2564,3 +2565,56 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
             'paddings': padding,
         })
     return out
+
+
+def row_conv(input, future_context_size, param_attr=None, act=None):
+    """Row Conv Operator. This layer will apply lookahead convolution to
+    **input**. The input variable should be a 2D LoDTensor with shape [T, D].
+    Parameters with shape [future_context_size + 1, D] will be created. The math
+    equation of row convolution is as follows:
+
+    .. math::
+        Out_{i} = \sum_{j = i} ^ {i + \\tau} X_{j} \odot W_{i - j}
+
+    In the above equation:
+
+    * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
+    * :math:`\\tau`: Future context size.
+    * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
+    * :math:`W_{i-j}`: The (i-j)-th row of parameters with shape [1, D].
+
+    More details about row_conv please refer to the paper \
+    (http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf) and
+    the design document \
+    (https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645).
+
+    Args:
+        input (Variable): Input variable, a 2D LoDTensor with shape [T, D].
+        future_context_size (int): Future context size. Please note, the shape
+            of convolution kernel is [future_context_size + 1, D].
+        param_attr (ParamAttr): Attributes of parameters, including
+            name, initializer etc.
+        act (str): Non-linear activation to be applied to output variable.
+
+    Returns:
+        Variable: The output tensor with same shape as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[16],
+                            dtype='float32', lod_level=1)
+            out = fluid.layers.row_conv(input=x, future_context_size=2)
+    """
+    helper = LayerHelper('row_conv', **locals())
+    dtype = helper.input_dtype()
+    filter_shape = [future_context_size + 1, input.shape[1]]
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='row_conv',
+        inputs={'X': [input],
+                'Filter': [filter_param]},
+        outputs={'Out': [out]})
+    return helper.append_activation(out)
