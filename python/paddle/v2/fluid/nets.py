@@ -197,15 +197,27 @@ def scaled_dot_product_attention(queries,
         Variable: A 3-D Tensor computed by multi-head scaled dot product
                   attention.
 
+    Raises:
+
+        ValueError: If input queries, keys, values are not 3-D Tensors.
+
+    NOTE:
+        1. When num_heads > 1, three linear projections are learned respectively
+        to map input queries, keys and values into queries', keys' and values'.
+        queries', keys' and values' have the same shapes with queries, keys
+        and values.
+
+        1. When num_heads == 1, scaled_dot_product_attention has no learnable
+        parameters.
+
     Examples:
         .. code-block:: python
 
             # Suppose q, k, v are Tensors with the following shape:
             # q: [3, 5, 9], k: [3, 6, 9], v: [3, 6, 10]
 
-            contexts = fluid.nets.dot_product_attention(q, k, v)
-            out.shape  # [3, 5, 10]
-            attn_scores.shape  # [3, 5, 6]
+            contexts = fluid.nets.scaled_dot_product_attention(q, k, v)
+            contexts.shape  # [3, 5, 10]
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
@@ -228,6 +240,22 @@ def scaled_dot_product_attention(queries,
                          (values.shape[-1], num_heads))
 
     def __compute_qkv(queries, keys, values, num_heads):
+        """
+        Add linear projection to queries, keys, and values.
+
+        Args:
+            queries(Tensor): a 3-D input Tensor.
+            keys(Tensor): a 3-D input Tensor.
+            values(Tensor): a 3-D input Tensor.
+            num_heads(int): The number of heads. Linearly project the inputs
+                            ONLY when num_heads > 1.
+
+        Returns:
+            Tensor: linearly projected output Tensors: queries', keys' and
+                    values'. They have the same shapes with queries, keys and
+                    values.
+        """
+
         if num_heads == 1:
             return queries, keys, values
 
