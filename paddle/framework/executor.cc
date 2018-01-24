@@ -103,14 +103,14 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
           VLOG(3) << "Create Variable " << var->Name()
                   << " locally, the pointer for which is " << ptr;
         }
-      } // for loop
+      }  // for loop
     } else {
       for (auto& var : block.AllVars()) {
         auto* ptr = local_scope->Var(var->Name());
         CreateTensor(ptr, var->GetType());
         VLOG(3) << "Created variable " << var->Name() << ", the pointer for "
                    "which is " << ptr;
-      } // for loop
+      }  // for loop
     }  // if (create_local_scope)
   }    // if (create_vars)
 
@@ -131,8 +131,8 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
           CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
         }
       }
-    } // if (FLAGS_check_nan_inf)
-  } // for loop
+    }  // if (FLAGS_check_nan_inf)
+  }  // for loop
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
   }
