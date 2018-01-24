@@ -175,8 +175,10 @@ class ParallelOpTest(BaseParallelForTest):
 class ParallelOpTestMultipleInput(BaseParallelForTest):
     @staticmethod
     def __network__():
-        x = fluid.layers.data(shape=[784], dtype='float32', name='img1', stop_gradient=False)
-        y = fluid.layers.data(shape=[784], dtype='float32', name='img2', stop_gradient=False)
+        x = fluid.layers.data(
+            shape=[784], dtype='float32', name='img1', stop_gradient=False)
+        y = fluid.layers.data(
+            shape=[784], dtype='float32', name='img2', stop_gradient=False)
         yield [x, y]
         x = x + y
         hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
