@@ -1968,7 +1968,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
           data = fluid.layers.data(name="data",
                                    shape=(3, 17, 13),
                                    dtype="float32")
-          fc = fluid.layers.l2_normalize(x=data, axis=1)
+          normed = fluid.layers.l2_normalize(x=data, axis=1)
     """
 
     if len(x.shape) == 1: axis = 0
