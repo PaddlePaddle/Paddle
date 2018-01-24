@@ -66,6 +66,8 @@ class VarDesc {
 
   std::string Name() const { return desc_.name(); }
 
+  void SetName(std::string name) { desc_.set_name(name); }
+
   void SetShape(const std::vector<int64_t> &dims);
 
   void SetDataType(proto::DataType data_type);
