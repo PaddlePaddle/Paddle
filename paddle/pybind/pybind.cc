@@ -53,7 +53,7 @@ static size_t UniqueIntegerGenerator(const std::string &prefix) {
   return generators[prefix].fetch_add(1);
 }
 
-bool IsCompileGPU() {
+bool IsCompiledWithCUDA() {
 #ifndef PADDLE_WITH_CUDA
   return false;
 #else
@@ -431,7 +431,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_glog", framework::InitGLOG);
   m.def("init_devices", &framework::InitDevices);
 
-  m.def("is_compile_gpu", IsCompileGPU);
+  m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
