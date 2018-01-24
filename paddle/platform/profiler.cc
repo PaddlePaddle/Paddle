@@ -47,16 +47,16 @@ inline uint64_t GetTimeInNsec() {
 }
 
 Event::Event(EventKind kind, std::string name, uint32_t thread_id,
-             DeviceContext* dev_ctx)
+             const DeviceContext* dev_ctx)
     : kind_(kind), name_(name), thread_id_(thread_id), has_cuda_(false) {
 #ifdef PADDLE_WITH_CUDA
-  auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
-  if (cuda_dev_ctx) {
+  has_cuda_ = dev_ctx ? platform::is_gpu_place(dev_ctx->GetPlace()) : false;
+  if (has_cuda_) {
+    auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
     PADDLE_ENFORCE(cudaGetDevice(&device_));
     PADDLE_ENFORCE(cudaEventCreate(&event_));
     auto stream = cuda_dev_ctx->stream();
     PADDLE_ENFORCE(cudaEventRecord(event_, stream));
-    has_cuda_ = true;
   }
 #endif
   cpu_ns_ = GetTimeInNsec();
@@ -114,19 +114,20 @@ inline EventList& GetEventList() {
   return *g_event_list;
 }
 
-void Mark(const std::string& name, DeviceContext* dev_ctx) {
+void Mark(const std::string& name, const DeviceContext* dev_ctx) {
   GetEventList().Record(EventKind::kMark, name, g_thread_id, dev_ctx);
 }
 
-void PushEvent(const std::string& name, DeviceContext* dev_ctx) {
+void PushEvent(const std::string& name, const DeviceContext* dev_ctx) {
   GetEventList().Record(EventKind::kPushRange, name, g_thread_id, dev_ctx);
 }
 
-void PopEvent(const std::string& name, DeviceContext* dev_ctx) {
+void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
   GetEventList().Record(EventKind::kPopRange, name, g_thread_id, dev_ctx);
 }
 
-RecordEvent::RecordEvent(const std::string& name, DeviceContext* dev_ctx) {
+RecordEvent::RecordEvent(const std::string& name,
+                         const DeviceContext* dev_ctx) {
   if (g_state == ProfilerState::kDisabled) return;
   dev_ctx_ = dev_ctx;
   name_ = name;
@@ -155,6 +156,7 @@ void EnableProfiler(ProfilerState state) {
         DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(d));
         Mark("_cuda_startup_", dev_ctx);
         dev_ctx->Wait();
+        delete dev_ctx;
       });
     }
   }
@@ -163,19 +165,34 @@ void EnableProfiler(ProfilerState state) {
   Mark("_start_profiler_", nullptr);
 }
 
-std::vector<std::vector<Event>> DisableProfiler() {
-  PADDLE_ENFORCE(g_state != ProfilerState::kDisabled,
-                 "Can't disable profiling, since it's not starting.");
-  // Mark the profiling stop.
-  Mark("_stop_profiler_", nullptr);
-  g_state = ProfilerState::kDisabled;
-  std::vector<std::vector<Event>> result;
+void ResetProfiler() {
   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
+  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
+       ++it) {
+    (*it)->Clear();
+  }
+}
+
+std::vector<std::vector<Event>> GetAllEvents() {
+  std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
+  std::vector<std::vector<Event>> result;
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
        ++it) {
     result.emplace_back((*it)->Reduce());
   }
   return result;
+}
+
+void DisableProfiler(EventSortingKey sorted_key) {
+  PADDLE_ENFORCE(g_state != ProfilerState::kDisabled,
+                 "Can't disable profiling, since it's not starting.");
+  // Mark the profiling stop.
+  Mark("_stop_profiler_", nullptr);
+  g_state = ProfilerState::kDisabled;
+
+  std::vector<std::vector<Event>> all_events = GetAllEvents();
+  ParseEvents(all_events, sorted_key);
+  ResetProfiler();
 }
 
 void ParseEvents(std::vector<std::vector<Event>>& events,
@@ -291,12 +308,12 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
   }
 
   // Print report
-  PrintProfilingReport(events_table, sorted_domain, max_name_width + 4, 12);
+  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12);
 }
 
-void PrintProfilingReport(std::vector<std::vector<EventItem>>& events_table,
-                          std::string& sorted_domain, const size_t name_width,
-                          const size_t data_width) {
+void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
+                   std::string& sorted_domain, const size_t name_width,
+                   const size_t data_width) {
   // Output header information
   std::cout << "\n------------------------->"
             << "     Profiling Report     "

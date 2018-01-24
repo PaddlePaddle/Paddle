@@ -271,6 +271,14 @@ class TestBook(unittest.TestCase):
         self.assertIsNotNone(avg_loss)
         print(str(default_main_program()))
 
+    def test_row_conv(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[16], dtype='float32', lod_level=1)
+            out = layers.row_conv(input=x, future_context_size=2)
+            self.assertIsNotNone(out)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
