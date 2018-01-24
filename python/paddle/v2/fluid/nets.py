@@ -306,7 +306,7 @@ def scaled_dot_product_attention(queries,
                     [bs, max_sequence_length, num_heads * hidden_dim].
         """
 
-        if len(x.shape) == 3: return
+        if len(x.shape) == 3: return x
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 

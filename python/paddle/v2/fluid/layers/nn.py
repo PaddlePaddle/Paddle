@@ -2097,7 +2097,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         if len(x_shape) == 1:
             x_shape = [1] + x_shape
         if len(y_shape) == 1:
-            y_shape = [1] + y_shape
+            y_shape = y_shape + [1]
 
         # check the inner 2 dimensions
         if transpose_x:

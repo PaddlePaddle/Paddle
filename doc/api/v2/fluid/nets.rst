@@ -28,6 +28,6 @@ glu
 
 scaled_dot_product_attention
 ----------------------------
-..  autofunction:: paddle.v2.fluid.nets.dot_product_attention
+..  autofunction:: paddle.v2.fluid.nets.scaled_dot_product_attention
     :noindex:
 
