@@ -120,7 +120,7 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
   LSTMPOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
-             "(LoDTensor) the first input is a LodTensor, which support "
+             "(LoDTensor) the input for sequence data, which supports "
              "variable-time length input sequence. The underlying tensor in "
              "this LoDTensor is a matrix with shape (T X 4D), where T is the "
              "total time steps in this mini-batch, D is the hidden size.");
@@ -132,21 +132,23 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("C0",
              "(Tensor, optional) the initial cell state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
-             "batch size. `H0` and `C0` can be NULL but only at the same time")
+             "batch size. Only one of `H0` and `C0` can be NULL at the same "
+             "time.")
         .AsDispensable();
     AddInput("Weight",
              "(Tensor) the learnable hidden-hidden weights."
-             " - The shape is (P x 4D), where P is the recurrent projection "
-             "layer size and  D is the hidden size. "
+             " - The shape is (P x 4D), where P is the projection layer size "
+             "and  D is the hidden size."
              " - Weight = {W_cr, W_ir, W_fr, W_or}");
     AddInput("ProjWeight",
-             "(Tensor) the learnable weight `W_rh` of the projection layer."
+             "(Tensor) the learnable weight of the projection layer."
              " - The shape is (D x P), where P is the recurrent projection "
-             "layer size and  D is the hidden size.");
+             "layer size and  D is the hidden size."
+             " - ProjWeight = {W_rh}");
     AddInput("Bias",
-             "(Tensor) the learnable weights, which contains two parts: "
-             "input-hidden bias weight and peephole connections weight if "
-             "setting `use_peepholes` True. "
+             "(Tensor) the learnable biases, which contains two parts: "
+             "input-hidden biases and peephole connections weights if "
+             "setting `use_peepholes` to `True`. "
              "1. `use_peepholes = False` "
              " - The shape is (1 x 4D). "
              " - Bias = {b_c, b_i, b_f, b_o}."
@@ -155,27 +157,28 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
              " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
     AddOutput("Projection",
               "(LoDTensor) the projection of the hidden state of LSTMP "
-              "operator. The shape is (T x P), and lod is the same with the "
+              "operator. The shape is (T x P), and LoD is the same with the "
               "`Input`.");
     AddOutput("Cell",
               "(LoDTensor) the cell state of LSTMP operator. "
               "The shape is (T x D), and lod is the same with the `Input`.");
     AddOutput("BatchGate",
               "(LoDTensor) This LoDTensor contains input gate, forget gate "
-              "and output gate after the nonlinear computation. This "
-              "LoDTensor has the same shape as the reorganized input, which "
-              "is also be called batch input. The LoD size is 2. The first "
-              "LoD is the batch offsets and the second LoD contains the "
-              "indexes, which denote the position of reorganized sequence "
-              "in the raw input.")
+              "and output gate after the activations. This LoDTensor has the "
+              "same shape as the reorganized input, which is also be called "
+              "batch input. The LoD size is 2. The first-level LoD is the "
+              "batch offsets and the second contains the indices, which "
+              "denotes the position of reorganized sequence in the raw input.")
         .AsIntermediate();
     AddOutput("BatchCellPreAct",
-              "(LoDTensor) This LoDTensor is obtained in the forward and used "
-              "in the backward.")
+              "(LoDTensor) the pre-activation cell state reorganized in batch. "
+              "This LoDTensor is obtained in the forward and used in the "
+              "backward.")
         .AsIntermediate();
     AddOutput("BatchHidden",
-              "(LoDTensor) This LoDTensor is obtained in the forward and used "
-              "in the backward.")
+              "(LoDTensor) the hidden state reorganized in batch. "
+              "This LoDTensor is obtained in the forward and used in the "
+              "backward.")
         .AsIntermediate();
     AddOutput("OrderedP0",
               "(Tensor) the projection of the initial hidden state "
@@ -190,12 +193,6 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, defalut: False) "
                   "whether to compute reversed LSTMP.")
         .SetDefault(false);
-    AddAttr<bool>("share_cell_act",
-                  "(bool, defalut: True) "
-                  "whether to share activation with cell output. "
-                  "If false, the projection would be linear, else "
-                  "through an activation same with the cell output.")
-        .SetDefault(true);
     AddAttr<std::string>(
         "gate_activation",
         "(string, default: sigmoid)"
@@ -214,11 +211,21 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
                          "`tanh` by default.")
         .SetDefault("tanh")
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
+    AddAttr<bool>("share_cell_act",
+                  "(bool, defalut: True) "
+                  "whether to share the activation of cell output with the "
+                  "projection layer. When set to `False`, the projection "
+                  "is simple linear, otherwise it will go through an "
+                  "activation function same as `cell_activation`.")
+        .SetDefault(true);
     AddComment(R"DOC(
-Long-Short Term Memory with Recurrent Projection (LSTMP) Operator.
+Long-Short Term Memory with recurrent Projection layer (LSTMP) Operator.
 
-LSTMP is stand LSTM appended by a recurrent projection layer to reduce the
-number of parameters, espeacially when the output size is relative large. 
+LSTMP has a separate projection layer after the LSTM layer, projecting the 
+original hidden state to a lower-dimensional one, which is proposed to reduce 
+the number of total parameters and furthermore computational complexity for 
+the LSTM, espeacially for the case that the size of output units is relative 
+large (https://research.google.com/pubs/archive/43905.pdf). 
 The formula is as follows:
 
 $$
@@ -226,13 +233,15 @@ i_t = \sigma(W_{ix}x_{t} + W_{ih}r_{t-1} + W_{ic}c_{t-1} + b_i) \\
 
 f_t = \sigma(W_{fx}x_{t} + W_{fh}r_{t-1} + W_{fc}c_{t-1} + b_f) \\
 
-c_t = f_t \odot c_{t-1} + i_t \odot act_g(W_{cx}x_t + W_{ch}r_{t-1} + b_c) \\
+\tilde{c_t} = act_g(W_{cx}x_t + W_{ch}r_{t-1} + b_c) \\
 
 o_t = \sigma(W_{ox}x_{t} + W_{oh}r_{t-1} + W_{oc}c_t + b_o) \\
 
+c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c_t}
+
 h_t = o_t \odot act_h(c_t)
 
-r_t = act_{h'}(W_{rh}h_t)
+r_t = \overline{act_h}(W_{rh}h_t)
 $$
 
 where the W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
@@ -240,20 +249,23 @@ of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
 are diagonal weight matrices for peephole connections. In our implementation,
 we use vectors to reprenset these diagonal weight matrices. The b terms
 denote bias vectors ($b_i$ is the input gate bias vector), $\sigma$
-is the non-line activations, such as logistic sigmoid function, and
+is the activation, such as logistic sigmoid function, and
 $i, f, o$ and $c$ are the input gate, forget gate, output gate,
 and cell activation vectors, respectively, all of which have the same size as
-the cell output activation vector $h$. $r$ denotes the recurrent projection 
-layer.
+the cell output activation vector $h$. Here $h$ is usually called the hidden 
+state and $r$ denotes its recurrent projection. And $\tilde{c_t}$ is also 
+called the candidate hidden state, whose computation is based on the current 
+input and previous hidden state.
 
 The $\odot$ is the element-wise product of the vectors. $act_g$ and $act_h$
 are the cell input and cell output activation functions and `tanh` is usually
-used for them. If `share_cell_act` setted to `False`, $act_h'$ will be linear
-else will be same with $act_h$.
+used for them. $\overline{act_h}$ is the activation function for the projection 
+layer. When `share_cell_act` set to `False`, $\overline{act_h}$ is an
+identity activation, otherwise it will be same as $act_h$.
 
 Note that these $W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}$
 operations on the input $x_{t}$ are NOT included in this operator.
-Users can choose to use fully-connect operator before LSTMP operator.
+Users can choose to use fully-connected operator before LSTMP operator.
 
 )DOC");
   }
