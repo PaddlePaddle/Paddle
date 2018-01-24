@@ -66,7 +66,7 @@ exe = fluid.Executor(place)
 feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
 exe.run(fluid.default_startup_program())
 
-PASS_NUM = 1
+PASS_NUM = 100
 for pass_id in range(PASS_NUM):
     accuracy.reset(exe)
     for data in train_reader():
