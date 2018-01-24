@@ -20,7 +20,7 @@ from op_test import OpTest
 class TestSumOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
@@ -33,7 +33,7 @@ class TestSumOp(OpTest):
 class TestMeanOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
+        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float64")}
         self.attrs = {'dim': 1}
         self.outputs = {'Out': self.inputs['X'].mean(axis=self.attrs['dim'])}
 
@@ -49,7 +49,7 @@ class TestMaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_max"
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': -1}
         self.outputs = {'Out': self.inputs['X'].max(axis=self.attrs['dim'])}
 
@@ -62,7 +62,7 @@ class TestMinOp(OpTest):
 
     def setUp(self):
         self.op_type = "reduce_min"
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': 2}
         self.outputs = {'Out': self.inputs['X'].min(axis=self.attrs['dim'])}
 
@@ -73,7 +73,7 @@ class TestMinOp(OpTest):
 class TestKeepDimReduce(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': -2, 'keep_dim': True}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=self.attrs['dim'], keepdims=True)
@@ -89,7 +89,7 @@ class TestKeepDimReduce(OpTest):
 class Test1DReduce(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random(20).astype("float32")}
+        self.inputs = {'X': np.random.random(20).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
@@ -102,7 +102,7 @@ class Test1DReduce(OpTest):
 class TestReduceAll(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
+        self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float64")}
         self.attrs = {'reduce_all': True}
         self.outputs = {'Out': self.inputs['X'].sum()}
 
