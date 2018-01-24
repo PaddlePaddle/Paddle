@@ -59,7 +59,10 @@ __all__ = [
     'warpctc',
     'sequence_reshape',
     'transpose',
+    'im2sequence',
     'nce',
+    'beam_search',
+    'row_conv',
 ]
 
 
@@ -162,10 +165,8 @@ def fc(input,
         tmp = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="mul",
-            inputs={
-                "X": input_var,
-                "Y": w,
-            },
+            inputs={"X": input_var,
+                    "Y": w},
             outputs={"Out": tmp},
             attrs={"x_num_col_dims": num_flatten_dims,
                    "y_num_col_dims": 1})
@@ -184,22 +185,35 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
-def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
+def embedding(input,
+              size,
+              is_sparse=False,
+              padding_idx=None,
+              param_attr=None,
+              dtype='float32'):
     """
     **Embedding Layer**
 
-    This layer is used to lookup a vector of IDs, provided by *input*, in a lookup table.
-    The result of this lookup is the embedding of each ID in the *input*.
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    a lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
 
     All the input variables are passed in as local variables to the LayerHelper
     constructor.
 
     Args:
-       input(Variable): Input to the function
-       size(tuple|list|None): Shape of the look up table parameter
-       is_sparse(bool): Boolean flag that specifying whether the input is sparse
-       param_attr(ParamAttr): Parameters for this layer
-       dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
+        input(Variable): The tensor variable containing the IDs.
+        size(tuple|list): The shape of the look up table parameter. It should
+            have two elements which indicate the size of the dictionary of
+            embeddings and the size of each embedding vector respectively.
+        is_sparse(bool): The flag indicating whether to use sparse update.
+        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
+            Otherwise the given :attr:`padding_idx` indicates padding the output
+            with zeros whenever lookup encounters it in :attr:`input`. If
+            :math:`padding_idx < 0`, the padding_idx to use in lookup is
+            :math:`size[0] + dim`.
+        param_attr(ParamAttr): Parameters for this layer
+        dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -217,12 +231,15 @@ def embedding(input, size, is_sparse=False, param_attr=None, dtype='float32'):
     w = helper.create_parameter(
         attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
     tmp = helper.create_tmp_variable(dtype)
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        size[0] + padding_idx)
     helper.append_op(
         type='lookup_table',
         inputs={'Ids': input,
                 'W': w},
         outputs={'Out': tmp},
-        attrs={'is_sparse': is_sparse})
+        attrs={'is_sparse': is_sparse,
+               'padding_idx': padding_idx})
     return tmp
 
 
@@ -380,9 +397,9 @@ def dynamic_gru(input,
     """
     **Dynamic GRU Layer**
 
-    Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on 
+    Refer to `Empirical Evaluation of Gated Recurrent Neural Networks on
     Sequence Modeling <https://arxiv.org/abs/1412.3555>`_
-    
+
     The formula is as follows:
 
     .. math::
@@ -392,47 +409,47 @@ def dynamic_gru(input,
         r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
 
         \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
-        
+
         h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
-    
+
     The :math:`\odot` is the element-wise product of the vectors. :math:`act_g`
-    is the update gate and reset gate activation function and :math:`sigmoid` 
-    is usually used for it. :math:`act_c` is the activation function for 
+    is the update gate and reset gate activation function and :math:`sigmoid`
+    is usually used for it. :math:`act_c` is the activation function for
     candidate hidden state and :math:`tanh` is usually used for it.
 
     Note that these :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` operations on
     the input :math:`x_{t}` are NOT included in this operator. Users can choose
-    to use fully-connect layer before GRU layer. 
+    to use fully-connect layer before GRU layer.
 
     Args:
-        input(Variable): The input of dynamic_gru layer, which supports 
-            variable-time length input sequence. The underlying tensor in this 
+        input(Variable): The input of dynamic_gru layer, which supports
+            variable-time length input sequence. The underlying tensor in this
             Variable is a matrix with shape :math:`(T \\times 3D)`, where
-            :math:`T` is the total time steps in this mini-batch, :math:`D` 
+            :math:`T` is the total time steps in this mini-batch, :math:`D`
             is the hidden size.
         size(int): The dimension of the gru cell.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable 
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
             hidden-hidden weight matrix. Note:
 
-            - The shape of the weight matrix is :math:`(T \\times 3D)`, where 
+            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
               :math:`D` is the hidden size.
-            - All elements in the weight matrix can be divided into two parts. 
+            - All elements in the weight matrix can be divided into two parts.
               The first part are weights of the update gate and reset gate with
-              shape :math:`(D \\times 2D)`, and the second part are weights for 
+              shape :math:`(D \\times 2D)`, and the second part are weights for
               candidate hidden state with shape :math:`(D \\times D)`.
-        bias_attr(ParamAttr): The parameter attribute for learnable the 
+        bias_attr(ParamAttr): The parameter attribute for learnable the
             hidden-hidden bias.
-        is_reverse(bool): Whether to compute reversed GRU, default 
+        is_reverse(bool): Whether to compute reversed GRU, default
             :attr:`False`.
         gate_activation(str): The activation for update gate and reset gate.
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "sigmoid".
-        activation(str): The activation for candidate hidden state. 
+        activation(str): The activation for candidate hidden state.
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "tanh".
 
     Returns:
         Variable: The hidden state of GRU. The shape is (T \\times D), and lod \
             is the same with the input.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1534,6 +1551,38 @@ def sequence_expand(x, y, name=None):
     return tmp
 
 
+def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
+    '''
+    This function implements the beam search algorithm.
+    '''
+    helper = LayerHelper('beam_search', **locals())
+    score_type = scores.dtype
+    id_type = ids.dtype
+
+    selected_scores = helper.create_tmp_variable(dtype=score_type)
+    selected_ids = helper.create_tmp_variable(dtype=id_type)
+
+    helper.append_op(
+        type='beam_search',
+        inputs={
+            'pre_ids': pre_ids,
+            'ids': ids,
+            'scores': scores,
+        },
+        outputs={
+            'selected_ids': selected_ids,
+            'selected_scores': selected_scores,
+        },
+        attrs={
+            # TODO(ChunweiYan) to assure other value support
+            'level': level,
+            'beam_size': beam_size,
+            'end_id': end_id,
+        })
+
+    return selected_ids, selected_scores
+
+
 def lstm_unit(x_t,
               hidden_t_prev,
               cell_t_prev,
@@ -2391,3 +2440,181 @@ def transpose(x, perm, name=None):
         outputs={'Out': [out]},
         attrs={'axis': perm})
     return out
+
+
+def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
+    """
+    Extracts image patches from the input tensor to form a tensor of shape
+    {input.batch_size * output_height * output_width, filter_size_H *
+    filter_size_W * input.channels} which is similar with im2col.
+    This op use filter / kernel to scan images and convert these images to
+    sequences. After expanding, the number of time step are
+    output_height * output_width for an image, in which output_height and
+    output_width are calculated by below equation:
+
+    .. math::
+
+        output\_size = 1 + \
+            (2 * padding + img\_size - block\_size + stride - 1) / stride
+
+    And the dimension of each time step is block_y * block_x * input.channels.
+
+    Args:
+        input (Variable): The input should be a tensor in NCHW format.
+
+        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
+
+        stride(int|tuple): The stride size. If stride is a tuple, it must
+            contain two integers, (stride_H, stride_W). Otherwise, the
+            stride_H = stride_W = stride. Default: stride = 1.
+
+        padding(int|tuple): The padding size. If padding is a tuple, it can
+            contain two integers like (padding_H, padding_W) which means
+            padding_up = padding_down = padding_H and
+            padding_left = padding_right = padding_W. Or it can use
+            (padding_up, padding_left, padding_down, padding_right) to indicate
+            paddings of four direction. Otherwise, a scalar padding means
+            padding_up = padding_down = padding_left = padding_right = padding
+            Default: padding = 0.
+
+        name (int): The name of this layer. It is optional.
+
+    Returns:
+        output: The output is a LoDTensor with shape
+        {input.batch_size * output_height * output_width,
+        filter_size_H * filter_size_W * input.channels}.
+        If we regard output as a matrix, each row of this matrix is
+        a step of a sequence.
+
+    Examples:
+
+    As an example:
+
+        .. code-block:: text
+
+            Given:
+
+            x = [[[[ 6.  2.  1.]
+                   [ 8.  3.  5.]
+                   [ 0.  2.  6.]]
+
+                  [[ 2.  4.  4.]
+                   [ 6.  3.  0.]
+                   [ 6.  4.  7.]]]
+
+                 [[[ 6.  7.  1.]
+                   [ 5.  7.  9.]
+                   [ 2.  4.  8.]]
+
+                  [[ 1.  2.  1.]
+                   [ 1.  3.  5.]
+                   [ 9.  0.  8.]]]]
+
+            x.dims = {2, 2, 3, 3}
+
+            And:
+
+            filter = [2, 2]
+            stride = [1, 1]
+            padding = [0, 0]
+
+            Then:
+
+            output.data = [[ 6.  2.  8.  3.  2.  4.  6.  3.]
+                           [ 2.  1.  3.  5.  4.  4.  3.  0.]
+                           [ 8.  3.  0.  2.  6.  3.  6.  4.]
+                           [ 3.  5.  2.  6.  3.  0.  4.  7.]
+                           [ 6.  7.  5.  7.  1.  2.  1.  3.]
+                           [ 7.  1.  7.  9.  2.  1.  3.  5.]
+                           [ 5.  7.  2.  4.  1.  3.  9.  0.]
+                           [ 7.  9.  4.  8.  3.  5.  0.  8.]]
+
+            output.dims = {8, 9}
+
+            output.lod = [[0, 4, 8]]
+
+        The simple usage is:
+
+        .. code-block:: python
+
+            output = fluid.layers.im2sequence(input=layer, stride=[1, 1], filter_size=[2, 2])
+
+    """
+
+    if isinstance(filter_size, int):
+        filter_size = [filter_size, filter_size]
+    if isinstance(stride, int):
+        stride = [stride, stride]
+    if isinstance(padding, int):
+        padding = [padding, padding]
+    if len(padding) == 2:
+        padding.append(padding[0])
+        padding.append(padding[1])
+
+    helper = LayerHelper('im2sequence', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='im2sequence',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'kernels': filter_size,
+            'strides': stride,
+            'paddings': padding,
+        })
+    return out
+
+
+def row_conv(input, future_context_size, param_attr=None, act=None):
+    """Row Conv Operator. This layer will apply lookahead convolution to
+    **input**. The input variable should be a 2D LoDTensor with shape [T, D].
+    Parameters with shape [future_context_size + 1, D] will be created. The math
+    equation of row convolution is as follows:
+
+    .. math::
+        Out_{i} = \sum_{j = i} ^ {i + \\tau} X_{j} \odot W_{i - j}
+
+    In the above equation:
+
+    * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
+    * :math:`\\tau`: Future context size.
+    * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
+    * :math:`W_{i-j}`: The (i-j)-th row of parameters with shape [1, D].
+
+    More details about row_conv please refer to the paper \
+    (http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf) and
+    the design document \
+    (https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645).
+
+    Args:
+        input (Variable): Input variable, a 2D LoDTensor with shape [T, D].
+        future_context_size (int): Future context size. Please note, the shape
+            of convolution kernel is [future_context_size + 1, D].
+        param_attr (ParamAttr): Attributes of parameters, including
+            name, initializer etc.
+        act (str): Non-linear activation to be applied to output variable.
+
+    Returns:
+        Variable: The output tensor with same shape as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[16],
+                            dtype='float32', lod_level=1)
+            out = fluid.layers.row_conv(input=x, future_context_size=2)
+    """
+    helper = LayerHelper('row_conv', **locals())
+    dtype = helper.input_dtype()
+    filter_shape = [future_context_size + 1, input.shape[1]]
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='row_conv',
+        inputs={'X': [input],
+                'Filter': [filter_param]},
+        outputs={'Out': [out]})
+    return helper.append_activation(out)

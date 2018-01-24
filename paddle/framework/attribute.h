@@ -168,6 +168,32 @@ struct ExtractAttribute<bool> {
   const std::string& attr_name_;
 };
 
+template <>
+struct ExtractAttribute<int64_t> {
+  explicit ExtractAttribute(const std::string& attr_name)
+      : attr_name_(attr_name) {}
+
+  int64_t* operator()(Attribute& attr) const {
+    if (attr.type() == typeid(int)) {  // NOLINT
+      int val = boost::get<int>(attr);
+      attr = static_cast<int64_t>(val);
+    } else if (attr.type() == typeid(float)) {  // NOLINT
+      int val = boost::get<float>(attr);
+      attr = static_cast<int64_t>(val);
+    }
+    int64_t* attr_value = nullptr;
+    try {
+      attr_value = &boost::get<int64_t>(attr);
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
+                   attr_name_, attr.type().name());
+    }
+    return attr_value;
+  }
+
+  const std::string& attr_name_;
+};
+
 // check whether a certain attribute fit its limits
 // an attribute can have more than one limits
 template <typename T>
