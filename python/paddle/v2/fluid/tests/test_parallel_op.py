@@ -53,7 +53,7 @@ class BaseParallelForTest(unittest.TestCase):
             fetch=fetch,
             place=cpu,
             use_parallel=True)
-        if fluid.core.is_compile_gpu():
+        if fluid.core.is_compiled_with_cuda():
             gpu = fluid.CUDAPlace(0)
             result_gpu = self._run_test_impl_(
                 callback=callback,
