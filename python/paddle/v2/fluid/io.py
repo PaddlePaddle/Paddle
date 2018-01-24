@@ -191,8 +191,8 @@ def get_inference_program(target_vars, main_program=None):
     vars = []
     for var in target_vars:
         if isinstance(var, Evaluator):
-            vars.append(var.states)
-            vars.append(var.metrics)
+            vars.extend(var.states)
+            vars.extend(var.metrics)
         else:
             vars.append(var)
     pruned_program = main_program.prune(targets=vars)
