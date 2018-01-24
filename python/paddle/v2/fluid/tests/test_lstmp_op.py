@@ -131,7 +131,10 @@ def lstmp(
 
 
 class TestLstmpOp(OpTest):
-    def set_argument(self):
+    def reset_argument(self):
+        pass
+
+    def setUp(self):
         self.lod = [[0, 2, 5, 7]]
         # hidden size
         self.D = 16
@@ -147,8 +150,7 @@ class TestLstmpOp(OpTest):
         self.is_reverse = False
         self.use_peepholes = True
 
-    def setUp(self):
-        self.set_argument()
+        self.reset_argument()
         self.op_type = 'lstmp'
 
         T = self.lod[0][-1]
@@ -212,19 +214,8 @@ class TestLstmpOp(OpTest):
 
 
 class TestLstmpOpHasInitial(TestLstmpOp):
-    def set_argument(self):
-        self.lod = [[0, 2, 5, 7]]
-        self.D = 16
-        self.P = 5
-
-        self.act_gate = 'sigmoid'
-        self.act_cell = 'tanh'
-        self.act_cand = 'tanh'
-        self.act_proj = self.act_cell
-
+    def reset_argument(self):
         self.has_initial_state = True
-        self.is_reverse = True
-        self.use_peepholes = True
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
@@ -313,51 +304,18 @@ class TestLstmpOpHasInitial(TestLstmpOp):
 
 
 class TestLstmpOpRerverse(TestLstmpOp):
-    def set_argument(self):
-        self.lod = [[0, 2, 5, 7]]
-        self.D = 16
-        self.P = 10
-
-        self.act_gate = 'sigmoid'
-        self.act_cell = 'tanh'
-        self.act_cand = 'tanh'
-        self.act_proj = self.act_cell
-
-        self.has_initial_state = False
+    def reset_argument(self):
         self.is_reverse = True
-        self.use_peepholes = True
 
 
 class TestLstmpOpNotUsePeepholes(TestLstmpOp):
-    def set_argument(self):
-        self.lod = [[0, 2, 5, 7]]
-        self.D = 16
-        self.P = 10
-
-        self.act_gate = 'sigmoid'
-        self.act_cell = 'tanh'
-        self.act_cand = 'tanh'
-        self.act_proj = self.act_cell
-
-        self.has_initial_state = False
-        self.is_reverse = False
+    def reset_argument(self):
         self.use_peepholes = False
 
 
 class TestLstmpOpLinearProjection(TestLstmpOp):
-    def set_argument(self):
-        self.lod = [[0, 2, 5, 7]]
-        self.D = 16
-        self.P = 10
-
-        self.act_gate = 'sigmoid'
-        self.act_cell = 'tanh'
-        self.act_cand = 'tanh'
+    def reset_argument(self):
         self.act_proj = 'identity'
-
-        self.has_initial_state = False
-        self.is_reverse = False
-        self.use_peepholes = True
 
 
 if __name__ == '__main__':
