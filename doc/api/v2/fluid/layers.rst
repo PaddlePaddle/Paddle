@@ -529,3 +529,8 @@ sequence_reshape
 ----------------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_reshape
     :noindex:
+
+row_conv
+--------
+..  autofunction:: paddle.v2.fluid.layers.row_conv
+    :noindex:
