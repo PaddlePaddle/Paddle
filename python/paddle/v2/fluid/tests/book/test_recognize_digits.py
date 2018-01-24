@@ -122,11 +122,9 @@ def main():
     PASS_NUM = 100
     for pass_id in range(PASS_NUM):
         for batch_id, data in enumerate(train_reader()):
-            need_check = (batch_id + 1) % 10 == 0
-
             # train a mini-batch, fetch nothing
             exe.run(feed=feeder.feed(data))
-            if need_check:
+            if (batch_id + 1) % 10 == 0:
                 acc_set = []
                 avg_loss_set = []
                 for test_data in test_reader():
