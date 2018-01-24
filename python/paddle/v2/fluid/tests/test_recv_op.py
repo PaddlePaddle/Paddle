@@ -47,7 +47,6 @@ class TestRecvOp(unittest.TestCase):
                 o = layers.scale(x=x, scale=10.0)
             main.global_block().create_var(
                 name=o.name, psersistable=False, dtype=o.dtype, shape=o.shape)
-            print main
         exe = fluid.Executor(place)
         exe.run(main)
 
@@ -61,16 +60,9 @@ class TestRecvOp(unittest.TestCase):
                 append_batch_size=False)
             fluid.initializer.Constant(value=1.0)(x, main.global_block())
             layers.Send("127.0.0.1:6174", [x], [x])
-            print main
         exe = fluid.Executor(place)
         exe.run(main)
 
 
 if __name__ == "__main__":
     unittest.main()
-    # test = TestRecvOp()
-    # place = fluid.CPUPlace()
-    # if sys.argv[1] == "server":
-    #     test.init_serv(place)
-    # else:
-    #     test.init_client(place)
