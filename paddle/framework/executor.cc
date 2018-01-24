@@ -108,7 +108,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
       for (auto& var : block.AllVars()) {
         auto* ptr = local_scope->Var(var->Name());
         CreateTensor(ptr, var->GetType());
-        VLOG(3) << "Create variable " << var->Name() << ", the pointer for "
+        VLOG(3) << "Created variable " << var->Name() << ", the pointer for "
                    "which is " << ptr;
       } // for loop
     }  // if (create_local_scope)
