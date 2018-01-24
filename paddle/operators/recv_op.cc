@@ -161,7 +161,6 @@ class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   RecvOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    // AddInput("RX", "(Tensor) Input tensor to be optimized").AsDuplicable();
     AddComment(R"DOC(
 Recv operator
 
