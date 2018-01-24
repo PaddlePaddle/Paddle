@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/threadpool.h"
+#include "paddle/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -39,8 +40,10 @@ static void SplitTensorAndMoveTensorToScopes(
     const std::vector<std::string> &names) {
   size_t num_sub_scopes = 0;
   for (auto &argu : names) {
-    auto *var = scope.FindVar(argu);
-    const auto &tensor = var->Get<LoDTensor>();
+    const auto &tensor =
+        detail::Ref(scope.FindVar(argu),
+                    "Cannot find variable %s in the parent scope", argu)
+            .Get<LoDTensor>();
     auto lod_tensors = tensor.SplitLoDTensor(places);
 
     for (auto &lod : lod_tensors) {
@@ -60,7 +63,9 @@ static void SplitTensorAndMoveTensorToScopes(
     }
 
     for (size_t i = 0; i < lod_tensors.size(); ++i) {
-      *(*sub_scopes)[i]->Var(argu)->GetMutable<LoDTensor>() = lod_tensors[i];
+      *detail::Ref(sub_scopes->at(i)->Var(argu),
+                   "Cannot find variable in the sub-scope", argu)
+           .GetMutable<LoDTensor>() = lod_tensors[i];
     }
   }
 }
@@ -287,6 +292,17 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
                         this->InputGrad(input_param, false));
       }
     }
+    auto *g_block = this->grad_block_[0];
+
+    // All variable name that needed by gradient operators
+    std::unordered_set<std::string> all_inputs_in_grad_blocks;
+
+    for (size_t i = 0; i < g_block->OpSize(); ++i) {
+      auto *op = g_block->Op(i);
+      for (auto &var_name : op->InputArgumentNames()) {
+        all_inputs_in_grad_blocks.insert(var_name);
+      }
+    }
 
     for (auto &output_param : this->OutputNames()) {
       if (output_param == kParallelScopes) {
@@ -295,8 +311,17 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
                        this->Output(output_param));
       } else {
         grad->SetInput(output_param, this->Output(output_param));
-        grad->SetInput(framework::GradVarName(output_param),
-                       this->OutputGrad(output_param));
+        std::vector<std::string> og_names;
+        for (auto &og_name : this->OutputGrad(output_param)) {
+          if (all_inputs_in_grad_blocks.count(og_name) != 0) {
+            // there is some gradient operator needs the og, make this og as the
+            // input of parallel.do
+            // if there is no operator need this og, just do not make this og as
+            // input.
+            og_names.push_back(og_name);
+          }
+        }
+        grad->SetInput(framework::GradVarName(output_param), og_names);
       }
     }
     grad->SetAttrMap(this->Attrs());
