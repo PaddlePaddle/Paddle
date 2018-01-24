@@ -89,7 +89,9 @@ class SumOp : public framework::OperatorWithKernel {
           }
         }
       }
-      PADDLE_THROW("Cannot find the input data type by all input data");
+      return framework::OpKernelType(
+          framework::ToDataType(typeid(float)),  // NOLINT
+          ctx.device_context());
     }
     PADDLE_THROW("Unexpected branch. Input type is %s",
                  x_vars[0]->Type().name());

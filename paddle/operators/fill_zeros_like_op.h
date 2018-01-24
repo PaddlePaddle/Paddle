@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
 
@@ -23,12 +24,19 @@ template <typename DeviceContext, typename T>
 class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
+    auto* x_var = context.InputVar("X");
 
-    math::SetConstant<DeviceContext, T> setter;
-    setter(context.template device_context<DeviceContext>(), out,
-           static_cast<T>(0));
+    if (x_var->IsType<framework::LoDTensor>()) {
+      VLOG(10) << context.op().Input("X") << " " << context.op().Output("Out");
+      auto* out = context.Output<framework::LoDTensor>("Out");
+      out->mutable_data<T>(context.GetPlace());
+
+      math::SetConstant<DeviceContext, T> setter;
+      setter(context.template device_context<DeviceContext>(), out,
+             static_cast<T>(0));
+    } else if (x_var->IsType<framework::LoDTensorArray>()) {
+      // Do nothing. empty tensor array is zero
+    }
   }
 };
 

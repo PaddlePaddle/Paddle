@@ -26,8 +26,27 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
                    "Input(X) of FillZerosLikeOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FillZerosLikeOp should not be null.");
+    if (ctx->IsRuntime() &&
+        ctx->GetInputsVarType("X")[0] ==
+            framework::proto::VarDesc::LOD_TENSOR_ARRAY) {
+      return;  // skip runtime infershape when is tensor array;
+    }
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto *in_var = ctx.InputVar("X");
+    if (in_var->IsType<framework::LoDTensor>()) {
+      return framework::OpKernelType(
+          framework::ToDataType(in_var->Get<framework::LoDTensor>().type()),
+          ctx.GetPlace());
+    } else {
+      return framework::OpKernelType(
+          framework::ToDataType(typeid(float)),  // NOLINT
+          ctx.GetPlace());
+    }
   }
 };
 
@@ -46,12 +65,24 @@ The output will have the same size as the input.
 )DOC");
   }
 };
+
+class FillZeroVarTypeInferer : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    auto vtype =
+        block->FindRecursiveOrCreateVar(op_desc.Input("X").at(0)).GetType();
+    block->FindRecursiveOrCreateVar(op_desc.Output("Out").at(0)).SetType(vtype);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, ops::FillZerosLikeOp,
-                             ops::FillZerosLikeOpMaker);
+
+REGISTER_OPERATOR(fill_zeros_like, ops::FillZerosLikeOp,
+                  ops::FillZerosLikeOpMaker, ops::FillZeroVarTypeInferer);
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like,
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int>,
