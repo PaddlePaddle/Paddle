@@ -243,7 +243,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
                       const std::vector<framework::Scope *> &sub_scopes,
                       const platform::PlaceList &places) const {
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
-      std::__cxx11::string tmp_name;
+      std::string tmp_name;
       auto *tmp = sub_scopes[0]->Var(&tmp_name);
 
       for (size_t i = 1; i < sub_scopes.size(); ++i) {
