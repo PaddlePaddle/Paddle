@@ -2437,6 +2437,7 @@ TEST(Layer, test3DDeConvLayer) {
 
 TEST(Layer, ScaleShiftLayer) {
   // FIXME: Disable ScaleShiftLayer because it is not stable.
+  // https://github.com/PaddlePaddle/Paddle/issues/7781
   return;
   //  const size_t batchSize = 16;
   //  const size_t size = 32;
