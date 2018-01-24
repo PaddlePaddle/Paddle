@@ -43,3 +43,7 @@ cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selec
 cc_test(im2col_test SRCS im2col_test.cc DEPS math_function tensor)
 cc_test(vol2col_test SRCS vol2col_test.cc DEPS vol2col tensor)
 cc_test(sequence_padding_test SRCS sequence_padding_test.cc DEPS sequence_padding)
+
+set(OP_MATH_MODULES math_function selected_rows_functor softmax cross_entropy pooling sequence_pooling 
+  vol2col context_project sequence2batch sequence_padding sequence_scale lstm_compute maxouting 
+  unpooling gru_compute cos_sim_functor activation_functions CACHE INTERNAL "Global OP Math Modules")
