@@ -4,13 +4,17 @@ cc_library(paddle_fluid_api
     SRCS inference.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
+if(WITH_GPU)
+  set(GPU_DEPS gpu_info dynload_cuda)
+endif()
 # Merge all modules into a single static library
 cc_library(paddle_fluid DEPS paddle_fluid_api 
   framework_proto ddim tensor place scope threadpool attribute 
   shape_inference cpu_info op_registry operator op_proto_maker op_info 
   data_transform data_device_transform data_type_transform data_layout_transform
-  selected_rows lod_tensor lod_rank_table dynload_warpctc
-  device_context dynload_cuda dynamic_loader
+  selected_rows lod_tensor lod_rank_table dynload_warpctc dynamic_loader 
+  device_context profiler
+  ${GPU_DEPS}
   ${OP_MATH_MODULES}
   ${FLUID_CORE_MODULES} 
   ${GLOB_OP_LIB})
