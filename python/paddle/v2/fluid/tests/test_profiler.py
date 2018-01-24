@@ -23,7 +23,7 @@ import paddle.v2.fluid.core as core
 
 class TestProfiler(unittest.TestCase):
     def test_nvprof(self):
-        if not fluid.core.is_compile_gpu():
+        if not fluid.core.is_compiled_with_cuda():
             return
         epoc = 8
         dshape = [4, 3, 28, 28]
@@ -42,7 +42,7 @@ class TestProfiler(unittest.TestCase):
         os.remove(output_file)
 
     def net_profiler(self, state):
-        if state == 'GPU' and not core.is_compile_gpu():
+        if state == 'GPU' and not core.is_compiled_with_cuda():
             return
         startup_program = fluid.Program()
         main_program = fluid.Program()
