@@ -100,7 +100,8 @@ class LayerHelper(object):
             if dtype is None:
                 dtype = each.dtype
             elif dtype != each.dtype:
-                raise ValueError("Data Type mismatch")
+                raise ValueError("Data Type mismatch: %d to %d" %
+                                 (dtype, each.dtype))
         return dtype
 
     def create_parameter(self,
