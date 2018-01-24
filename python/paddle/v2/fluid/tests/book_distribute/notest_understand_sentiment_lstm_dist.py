@@ -70,13 +70,13 @@ def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
 
     emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
     emb = fluid.layers.reshape(x=emb, shape=[batch_size, seq_len, emb_dim])
-    emb = fluid.layers.transpose(x=emb, axis=[1, 0, 2])
+    emb = fluid.layers.transpose(x=emb, perm=[1, 0, 2])
 
     c_pre_init = fluid.layers.fill_constant(
         dtype=emb.dtype, shape=[batch_size, emb_dim], value=0.0)
     c_pre_init.stop_gradient = False
     layer_1_out = lstm(emb, c_pre_init=c_pre_init, hidden_dim=emb_dim)
-    layer_1_out = fluid.layers.transpose(x=layer_1_out, axis=[1, 0, 2])
+    layer_1_out = fluid.layers.transpose(x=layer_1_out, perm=[1, 0, 2])
 
     prediction = fluid.layers.fc(input=layer_1_out,
                                  size=class_dim,
