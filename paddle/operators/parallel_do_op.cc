@@ -314,12 +314,12 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
         std::vector<std::string> og_names;
         for (auto &og_name : this->OutputGrad(output_param)) {
           if (all_inputs_in_grad_blocks.count(og_name) != 0) {
-            // there is some gradient operator needs the og, make this og as the
-            // input of parallel.do
-            // if there is no operator need this og, just do not make this og as
-            // input.
+            // there are some gradient operators who need the OG. So make this
+            // OG as an input of parallel.do
             og_names.push_back(og_name);
           }
+          // else, there is no operator who need the OG. Do not use this OG as
+          // an input
         }
         grad->SetInput(framework::GradVarName(output_param), og_names);
       }
