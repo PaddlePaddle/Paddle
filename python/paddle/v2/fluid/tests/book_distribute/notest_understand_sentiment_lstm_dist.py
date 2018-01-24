@@ -168,7 +168,7 @@ def main():
                                                                place)
 
                 outs = exe.run(
-                    fluid.default_main_program(),
+                    trainer_prog,
                     feed={"words": tensor_words,
                           "label": tensor_label},
                     fetch_list=[cost, acc])
@@ -176,14 +176,8 @@ def main():
                 cost_val = np.array(outs[0])
                 acc_val = np.array(outs[1])
 
-                cost_val, acc_val = exe.run(
-                    trainer_prog,
-                    feed={"words": tensor_words,
-                          "label": tensor_label},
-                    fetch_list=[cost, acc])
-
                 print("cost=" + str(cost_val) + " acc=" + str(acc_val))
-                if pass_acc > 0.7:
+                if acc_val > 0.7:
                     exit(0)
     else:
         print("environment var TRAINER_ROLE should be TRAINER os PSERVER")
