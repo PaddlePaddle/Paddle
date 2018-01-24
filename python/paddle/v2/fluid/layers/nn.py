@@ -111,16 +111,17 @@ def fc(input,
                               into a 2-dimensional matrix. The parameter
                               `num_flatten_dims` determines how the input tensor
                               is flattened: the first `num_flatten_dims`
-                              dimensions will be flatten to form the first
-                              dimension of the final matrix (height of the
-                              matrix), and the rest `rank(X) - num_flatten_dims`
-                              dimensions are flattened to form the second
-                              dimension of the final matrix (width of the matrix).
-                              For example, suppose `X` is a 6-dimensional tensor
-                              with a shape [2, 3, 4, 5, 6], and
-                              `num_flatten_dims` = 3. Then, the flattened matrix
-                              will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-                              By default, `num_flatten_dims` is set to 1.
+                              (inclusive, index starts from 1) dimensions will
+                              be flatten to form the first dimension of the
+                              final matrix (height of the matrix), and the rest
+                              `rank(X) - num_flatten_dims` dimensions are
+                              flattened to form the second dimension of the
+                              final matrix (width of the matrix). For example,
+                              suppose `X` is a 6-dimensional tensor with a shape
+                              [2, 3, 4, 5, 6], and `num_flatten_dims` = 3. Then,
+                              the flattened matrix will have a shape
+                              [2 x 3 x 4, 5 x 6] = [24, 30]. By default,
+                              `num_flatten_dims` is set to 1.
        param_attr(ParamAttr|list): The parameter attribute for learnable
                                    parameters/weights of the fully connected
                                    layer.
@@ -161,6 +162,7 @@ def fc(input,
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
+
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         tmp = helper.create_tmp_variable(dtype)
@@ -531,8 +533,10 @@ def gru_unit(input,
         size (integer): The input dimension value.
         weight (ParamAttr): The weight parameters for gru unit. Default: None
         bias (ParamAttr): The bias parameters for gru unit. Default: None
-        activation (string): The activation type for cell (actNode). Default: 'tanh'
-        gate_activation (string): The activation type for gates (actGate). Default: 'sigmoid'
+        activation (string): The activation type for cell (actNode).
+                             Default: 'tanh'
+        gate_activation (string): The activation type for gates (actGate).
+                                  Default: 'sigmoid'
 
     Returns:
         tuple: The hidden value, reset-hidden value and gate values.
@@ -671,8 +675,9 @@ def cross_entropy(input, label, **kwargs):
     """
     **Cross Entropy Layer**
 
-    This layer computes the cross entropy between `input` and `label`. It supports
-    both standard cross-entropy and soft-label cross-entropy loss computation.
+    This layer computes the cross entropy between `input` and `label`. It
+    supports both standard cross-entropy and soft-label cross-entropy loss
+    computation.
 
     1) One-hot cross-entropy:
 	`soft_label = False`, `Label[i, 0]` indicates the class index for sample i:
@@ -699,23 +704,28 @@ def cross_entropy(input, label, **kwargs):
 
     Args:
         input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
-            batch size and D is the number of classes. This input is a probability
-            computed by the previous operator, which is almost always the result
-            of a softmax operator.
+                                batch size and D is the number of classes. This
+                                input is a probability computed by the previous
+                                operator, which is almost always the result of
+                                a softmax operator.
         label (Variable|list): the ground truth which is a 2-D tensor. When
-              `soft_label` is set to `False`, `label` is a tensor<int64> with shape
-              [N x 1]. When `soft_label` is set to `True`, `label` is a
-              tensor<float/double> with shape [N x D].
-        soft_label (bool, via `**kwargs`): a flag indicating whether to interpretate
-              the given labels as soft labels, default `False`.
+                               `soft_label` is set to `False`, `label` is a
+                               tensor<int64> with shape [N x 1]. When
+                               `soft_label` is set to `True`, `label` is a
+                               tensor<float/double> with shape [N x D].
+        soft_label (bool, via `**kwargs`): a flag indicating whether to
+                                           interpretate the given labels as soft
+                                           labels, default `False`.
 
     Returns:
          A 2-D tensor with shape [N x 1], the cross entropy loss.
 
     Raises:
-        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal; 2) when \
-              `soft_label == True`, and the 2nd dimension of `input` and `label` are not \
-               equal; 3) when `soft_label == False`, and the 2nd dimension of `label` is not 1.
+        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal.
+                      2) when `soft_label == True`, and the 2nd dimension of
+                         `input` and `label` are not equal.
+                      3) when `soft_label == False`, and the 2nd dimension of
+                         `label` is not 1.
 
     Examples:
         .. code-block:: python
@@ -738,7 +748,9 @@ def square_error_cost(input, label, **kwargs):
     """
     **Square error cost layer**
 
-    This layer accepts input predictions and target label and returns the squared error cost.
+    This layer accepts input predictions and target label and returns the
+    squared error cost.
+
     For predictions, :math:`X`, and target labels, :math:`Y`, the equation is:
 
     .. math::
@@ -756,8 +768,8 @@ def square_error_cost(input, label, **kwargs):
        label(Variable): Label tensor, has target labels.
 
     Returns:
-        Variable: The tensor variable storing the element-wise squared error difference \
-                  of input and label.
+        Variable: The tensor variable storing the element-wise squared error
+                  difference of input and label.
 
     Examples:
         .. code-block:: python
@@ -853,7 +865,8 @@ def chunk_eval(input,
             "chunk_scheme": chunk_scheme,
             "excluded_chunk_types": excluded_chunk_types or []
         })
-    return precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks
+    return (precision, recall, f1_score, num_infer_chunks, num_label_chunks,
+            num_correct_chunks)
 
 
 def sequence_conv(input,
@@ -911,13 +924,14 @@ def conv2d(input,
     **Convlution2D Layer**
 
     The convolution2D layer calculates the output based on the input, filter
-    and strides, paddings, dilations, groups parameters. Input(Input) and Output(Output)
-    are in NCHW format. Where N is batch size, C is the number of channels, H is the height
-    of the feature, and W is the width of the feature.
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are in NCHW format. Where N is batch size, C is the number of
+    channels, H is the height of the feature, and W is the width of the feature.
     The details of convolution layer, please refer UFLDL's `convolution,
     <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_ .
-    If bias attribution and activation type are provided, bias is added to the output of the convolution,
-    and the corresponding activation function is applied to the final result.
+    If bias attribution and activation type are provided, bias is added to the
+    output of the convolution, and the corresponding activation function is
+    applied to the final result.
 
     For each input :math:`X`, the equation is:
 
@@ -932,7 +946,8 @@ def conv2d(input,
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
+                   different.
 
     Example:
 
@@ -977,17 +992,20 @@ def conv2d(input,
        act(str): Activation type. Default: None
 
     Returns:
-        Variable: The tensor variable storing the convolution and \
+        Variable: The tensor variable storing the convolution and
                   non-linearity activation result.
 
     Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and groups mismatch.
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
 
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.conv2d(
+              input=data, num_filters=2, filter_size=3, act="relu")
     """
     if stride is None:
         stride = [1, 1]
@@ -1350,7 +1368,8 @@ def conv2d_transpose(input,
     H is the height of the feature, and W is the width of the feature.
     Parameters(dilations, strides, paddings) are two elements. These two elements
     represent height and width, respectively. The details of convolution transpose
-    layer, please refer to the following explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    layer, please refer to the following explanation and references
+    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
 
     For each input :math:`X`, the equation is:
 
@@ -1363,7 +1382,8 @@ def conv2d_transpose(input,
     * :math:`X`: Input value, a tensor with NCHW format.
     * :math:`W`: Filter value, a tensor with MCHW format.
     * :math:`\\ast` : Convolution transpose operation.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
+                   different.
 
     Example:
 
@@ -1404,7 +1424,8 @@ def conv2d_transpose(input,
        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
            contain two integers, (dilation_H, dilation_W). Otherwise, the
            dilation_H = dilation_W = dilation. Default: dilation = 1.
-       param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer. Default: None
+       param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
+                              Default: None
        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
            library is installed. Default: True
        name(str|None): A name for this layer(optional). If set None, the layer
@@ -1414,13 +1435,16 @@ def conv2d_transpose(input,
        Variable: The tensor variable storing the convolution transpose result.
 
     Raises:
-       ValueError: If the shapes of input, filter_size, stride, padding and groups mismatch.
+       ValueError: If the shapes of input, filter_size, stride, padding and
+                   groups mismatch.
 
     Examples:
        .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d_transpose = fluid.layers.conv2d_transpose(
+              input=data, num_filters=2, filter_size=3)
     """
     helper = LayerHelper("conv2d_transpose", **locals())
     if not isinstance(input, Variable):
@@ -1644,10 +1668,10 @@ def lstm_unit(x_t,
         tuple: The hidden value and cell value of lstm unit.
 
     Raises:
-        ValueError: The ranks of **x_t**, **hidden_t_prev** and **cell_t_prev**\
-                not be 2 or the 1st dimensions of **x_t**, **hidden_t_prev** \
-                and **cell_t_prev** not be the same or the 2nd dimensions of \
-                **hidden_t_prev** and **cell_t_prev** not be the same.
+        ValueError: The ranks of **x_t**, **hidden_t_prev** and **cell_t_prev**
+                    not be 2 or the 1st dimensions of **x_t**, **hidden_t_prev**
+                    and **cell_t_prev** not be the same or the 2nd dimensions of
+                    **hidden_t_prev** and **cell_t_prev** not be the same.
 
     Examples:
 
@@ -1979,7 +2003,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
           data = fluid.layers.data(name="data",
                                    shape=(3, 17, 13),
                                    dtype="float32")
-          fc = fluid.layers.l2_normalize(x=data, axis=1)
+          normed = fluid.layers.l2_normalize(x=data, axis=1)
     """
 
     if len(x.shape) == 1: axis = 0
@@ -2031,9 +2055,10 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
-    Applies matrix multiplication to two tensors. Currently, the input
-    tensors' rank can be any, but when the rank of anyone inputs is
-    bigger than 3, this two inputs' rank should be equal.
+    Applies matrix multiplication to two tensors.
+
+    Currently, the input tensors' rank can be any, but when the rank of any
+    inputs is bigger than 3, this two inputs' rank should be equal.
 
     The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
     flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
@@ -2074,25 +2099,56 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             # Examples to clarify shapes of the inputs and output
             # x: [B, ..., M, K], y: [B, ..., K, N]
             fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
+
             # x: [B, M, K], y: [B, K, N]
             fluid.layers.matmul(x, y)  # out: [B, M, N]
+
             # x: [B, M, K], y: [K, N]
             fluid.layers.matmul(x, y)  # out: [B, M, N]
-            # x: [B, M, K], y: [K]
-            fluid.layers.matmul(x, y)  # out: [B, M]
+
             # x: [M, K], y: [K, N]
             fluid.layers.matmul(x, y)  # out: [M, N]
+
+            # x: [B, M, K], y: [K]
+            fluid.layers.matmul(x, y)  # out: [B, M]
+
             # x: [K], y: [K]
             fluid.layers.matmul(x, y)  # out: [1]
-            # x: [M], y: [N]
 
+            # x: [M], y: [N]
             fluid.layers.matmul(x, y, True, True)  # out: [M, N]
     """
+
+    def __check_input(x, y):
+        if len(y.shape) > len(x.shape):
+            raise ValueError(
+                "Invalid inputs for matmul. "
+                "x's rank should be always greater than or equal to y'rank.")
+
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if len(x_shape) == 1:
+            x_shape = [1] + x_shape
+        if len(y_shape) == 1:
+            y_shape = y_shape + [1]
+
+        # check the inner 2 dimensions
+        if transpose_x:
+            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
+        if transpose_y:
+            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
+        if x_shape[-1] != y_shape[-2]:
+            raise ValueError("Invalid inputs for matmul.")
+
+        if len(y_shape) > 2:
+            for i, dim_x in enumerate(x_shape[:-2]):
+                if dim_x != y_shape[i]:
+                    raise ValueError("Invalid inputs for matmul.")
+
+    __check_input(x, y)
+
     helper = LayerHelper('matmul', **locals())
-    assert max(len(x.shape), len(y.shape)) <= 3 or len(x.shape) == len(
-        y.
-        shape), 'Inputs\' rank should be equal or their rank should be less 4.'
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type='matmul',
         inputs={'X': x,
@@ -2109,13 +2165,26 @@ def edit_distance(input,
                   ignored_tokens=None,
                   name=None):
     """
-    EditDistance operator computes the edit distances between a batch of hypothesis strings and their references. Edit distance, also called Levenshtein distance, measures how dissimilar two strings are by counting the minimum number of operations to transform one string into anthor. Here the operations include insertion, deletion, and substitution. For example, given hypothesis string A = "kitten" and reference B = "sitting", the edit distance is 3 for A will be transformed into B at least after two substitutions and one insertion:
+    EditDistance operator computes the edit distances between a batch of
+    hypothesis strings and their references. Edit distance, also called
+    Levenshtein distance, measures how dissimilar two strings are by counting
+    the minimum number of operations to transform one string into anthor.
+    Here the operations include insertion, deletion, and substitution.
 
-       "kitten" -> "sitten" -> "sittin" -> "sitting"
+    For example, given hypothesis string A = "kitten" and reference
+    B = "sitting", the edit distance is 3 for A will be transformed into B
+    at least after two substitutions and one insertion:
 
-    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with the total number denoted by `batch_size`, and the separation is specified by the LoD information. And the `batch_size` reference strings are arranged in order in the same way in the LoDTensor Input(Refs).
+    "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-    Output(Out) contains the `batch_size` results and each stands for the edit stance for a pair of strings respectively. If Attr(normalized) is true, the edit distance will be divided by the length of reference string.
+    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with
+    the total number denoted by `batch_size`, and the separation is specified
+    by the LoD information. And the `batch_size` reference strings are arranged
+    in order in the same way in the LoDTensor Input(Refs).
+
+    Output(Out) contains the `batch_size` results and each stands for the edit
+    distance for a pair of strings respectively. If Attr(normalized) is true,
+    the edit distance will be divided by the length of reference string.
 
     Args:
 
@@ -2123,9 +2192,11 @@ def edit_distance(input,
 
         label(Variable): The indices for reference strings.
 
-        normalized(bool): Indicated whether to normalize the edit distance by the length of reference string.
+        normalized(bool): Indicated whether to normalize the edit distance by
+                          the length of reference string.
 
-        ignored_tokens(list of int): Tokens that should be removed before calculating edit distance.
+        ignored_tokens(list of int): Tokens that should be removed before
+                                     calculating edit distance.
 
     Returns:
         Variable: sequence-to-sequence edit distance in shape [batch_size, 1].
@@ -2176,8 +2247,10 @@ def edit_distance(input,
 def ctc_greedy_decoder(input, blank, name=None):
     """
     This op is used to decode sequences by greedy policy by below steps:
-    1. Get the indexes of max value for each row in input. a.k.a. numpy.argmax(input, axis=0).
-    2. For each sequence in result of step1, merge repeated tokens between two blanks and delete all blanks.
+    1. Get the indexes of max value for each row in input. a.k.a.
+       numpy.argmax(input, axis=0).
+    2. For each sequence in result of step1, merge repeated tokens between two
+       blanks and delete all blanks.
 
     A simple example as below:
 
@@ -2207,9 +2280,16 @@ def ctc_greedy_decoder(input, blank, name=None):
 
     Args:
 
-        input(Variable): (LoDTensor<float>), the probabilities of variable-length sequences, which is a 2-D Tensor with LoD information. It's shape is [Lp, num_classes + 1], where Lp is the sum of all input sequences' length and num_classes is the true number of classes. (not including the blank label).
+        input(Variable): (LoDTensor<float>), the probabilities of
+                         variable-length sequences, which is a 2-D Tensor with
+                         LoD information. It's shape is [Lp, num_classes + 1],
+                         where Lp is the sum of all input sequences' length and
+                         num_classes is the true number of classes. (not
+                         including the blank label).
 
-        blank(int): the blank label index of Connectionist Temporal Classification (CTC) loss, which is in thehalf-opened interval [0, num_classes + 1).
+        blank(int): the blank label index of Connectionist Temporal
+                    Classification (CTC) loss, which is in thehalf-opened
+                    interval [0, num_classes + 1).
 
     Returns:
         Variable: CTC greedy decode result.
@@ -2277,8 +2357,10 @@ def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
 
     Examples:
         .. code-block:: python
-            y = layers.data(name='y', shape=[11, 8], dtype='float32', lod_level=1)
-            y_predict = layers.data(name='y_predict', shape=[11, 1], dtype='float32')
+            y = layers.data(
+                name='y', shape=[11, 8], dtype='float32', lod_level=1)
+            y_predict = layers.data(
+                name='y_predict', shape=[11, 1], dtype='float32')
             cost = layers.warpctc(input=y_predict, label=y)
 
     """
@@ -2432,6 +2514,12 @@ def transpose(x, perm, name=None):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
             "It's length shoud be equal to Input(input)'s rank.")
+    for idx, dim in enumerate(perm):
+        if dim >= len(x.shape):
+            raise ValueError(
+                "Each element in perm should be less than x's rank. "
+                "%d-th element in perm is %d which accesses x's rank %d." %
+                (idx, perm[idx], len(x.shape)))
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_tmp_variable(x.dtype)
@@ -2540,7 +2628,8 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
         .. code-block:: python
 
-            output = fluid.layers.im2sequence(input=layer, stride=[1, 1], filter_size=[2, 2])
+            output = fluid.layers.im2sequence(
+                input=layer, stride=[1, 1], filter_size=[2, 2])
 
     """
 

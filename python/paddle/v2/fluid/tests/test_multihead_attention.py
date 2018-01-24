@@ -18,41 +18,54 @@ import paddle.v2.fluid.core as core
 import numpy as np
 
 
-class TestNormalization(unittest.TestCase):
-    data_desc = {"name": "input", "shape": (2, 3, 7)}
-
+class TestMultiheadAttention(unittest.TestCase):
     def gen_random_input(self):
         """Generate random input data.
         """
-        self.data = np.random.random(
-            size=self.data_desc["shape"]).astype("float32")
+        # batch_size, max_sequence_length, hidden dimension
+        self.input_shape = (3, 13, 16)
+        self.queries = np.random.random(size=self.input_shape).astype("float32")
+        self.keys = np.random.random(size=self.input_shape).astype("float32")
 
-    def set_program(self, axis, epsilon):
+    def set_program(self):
         """Build the test program.
         """
-        data = fluid.layers.data(
-            name=self.data_desc["name"],
-            shape=self.data_desc["shape"],
+        queries = fluid.layers.data(
+            name="queries",
+            shape=self.input_shape,
             dtype="float32",
             append_batch_size=False)
-        data.stop_gradient = False
-        l2_norm = fluid.layers.l2_normalize(x=data, axis=axis, epsilon=epsilon)
-        out = fluid.layers.reduce_sum(l2_norm, dim=None)
+        queries.stop_gradient = False
+        keys = fluid.layers.data(
+            name="keys",
+            shape=self.input_shape,
+            dtype="float32",
+            append_batch_size=False)
+        keys.stop_gradient = False
 
+        contexts = fluid.nets.scaled_dot_product_attention(
+            queries=queries,
+            keys=keys,
+            values=keys,
+            num_heads=8,
+            dropout_rate=0.)
+        out = fluid.layers.reduce_sum(contexts, dim=None)
         fluid.backward.append_backward(loss=out)
-        self.fetch_list = [l2_norm]
+
+        self.fetch_list = [contexts]
 
     def run_program(self):
         """Run the test program.
         """
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
+        if core.is_compile_gpu():
             places.append(core.CUDAPlace(0))
 
         for place in places:
             self.set_inputs(place)
             exe = fluid.Executor(place)
 
+            exe.run(fluid.default_startup_program())
             output = exe.run(fluid.default_main_program(),
                              feed=self.inputs,
                              fetch_list=self.fetch_list,
@@ -63,33 +76,22 @@ class TestNormalization(unittest.TestCase):
         """Set the randomly generated data to the test program.
         """
         self.inputs = {}
-        tensor = fluid.Tensor()
-        tensor.set(self.data, place)
-        self.inputs[self.data_desc["name"]] = tensor
+        queries = fluid.Tensor()
+        queries.set(self.queries, place)
 
-    def l2_normalize(self, data, axis, epsilon):
-        """ Compute the groundtruth.
-        """
-        output = data * np.reciprocal(
-            np.sum(np.square(data), axis=axis, keepdims=True))
-        return output
+        keys = fluid.Tensor()
+        keys.set(self.keys, place)
 
-    def test_l2_normalize(self):
-        """ Test the python wrapper for l2_normalize.
-        """
-        axis = 1
-        #TODO(caoying) epsilon is not supported due to lack of a maximum_op.
-        epsilon = 1e-6
+        self.inputs["keys"] = keys
+        self.inputs["queries"] = queries
 
+    def test_multihead_attention(self):
         self.gen_random_input()
 
-        self.set_program(axis, epsilon)
+        self.set_program()
         self.run_program()
 
-        expect_output = self.l2_normalize(self.data, axis, epsilon)
-
-        # check output
-        self.assertTrue(np.allclose(self.op_output, expect_output, atol=0.001))
+        #fixme(caoying) add more meaningfull unittest.
 
 
 if __name__ == '__main__':
