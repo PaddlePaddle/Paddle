@@ -79,7 +79,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     framework::LoD lod(1);
     lod[0].reserve(batch_size + 1);
     for (int i = 0, offset = 0; i < batch_size + 1; ++i) {
-      lod[0][i] = offset;
+      lod[0].push_back(offset);
       offset += output_height * output_width;
     }
     out->set_lod(lod);
