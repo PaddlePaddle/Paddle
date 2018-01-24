@@ -58,11 +58,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 void ProcGetResponse(const VarHandle& var_h,
                      const sendrecv::VariableMessage& ret_msg) {
   auto* outvar = var_h.scope->FindVar(var_h.name);
-  const VarHandle* p_var_h = &var_h;
-  const sendrecv::VariableMessage* p_ret_msg = &ret_msg;
-  framework::Async([outvar, p_var_h, p_ret_msg] {
-    DeserializeFromMessage(*p_ret_msg, *(p_var_h->ctx), outvar);
-  }).wait();
+  DeserializeFromMessage(ret_msg, *var_h.ctx, outvar);
 }
 
 bool RPCClient::AsyncGetVariable(const std::string& ep,
@@ -102,19 +98,31 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
 }
 
 bool RPCClient::Wait() {
-  bool ok = true;
+  if (req_count_ <= 0) {
+    return true;
+  }
 
-  while (true) {
-    if (req_count_ <= 0) {
-      break;
-    }
+  std::vector<bool> a(req_count_);
+  std::vector<std::future<void>> waits(req_count_);
 
-    if (!Proceed()) {
+  for (int i = 0; i < req_count_; i++) {
+    waits[i] = framework::Async([i, &a, this] { a[i] = Proceed(); });
+  }
+
+  for (int i = 0; i < req_count_; i++) {
+    waits[i].wait();
+  }
+
+  int last_req_count = req_count_;
+  req_count_ = 0;
+
+  for (int i = 0; i < last_req_count; i++) {
+    if (!a[i]) {
       return false;
     }
   }
 
-  return ok;
+  return true;
 }
 
 bool RPCClient::Proceed() {
@@ -141,7 +149,6 @@ bool RPCClient::Proceed() {
 
   c->Process();
   delete c;
-  req_count_--;
   return true;
 }
 
