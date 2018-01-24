@@ -2719,22 +2719,22 @@ def multiplex(inputs, index):
     input variables and let :math:`I_i` represents the i-th input variable and i
     is in [0, :math:`m`). All input variables are tensors with same shape
     [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`]. Please note that rank of the
-    input tensor should be at least 2. Each input variable will be viewed as a
+    input tensor should be at least 2. Each input variable will be treated as a
     2-D matrix with shape [:math:`M`, :math:`N`] where :math:`M` for :math:`d_0`
     and :math:`N` for :math:`d_1` * :math:`d_2` * ... * :math:`d_R`. Let
     :math:`I_i[j]` be the j-th row of the i-th input variable. The given index
     variable should be a 2-D tensor with shape [:math:`M`, 1]. Let `ID[i]` be
-    the i-th index value of index variable. Then the output variable will be a
-    tensor with shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`]. If we view
-    the output tensor as a 2-D matrix with shape [:math:`M`, :math:`N`] and let
-    :math:`O[i]` be the i-th row of the matrix, then values of `O[i]` come from
+    the i-th index value of the index variable. Then the output variable will
+    be a tensor with shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`]. If we
+    treat the output tensor as a 2-D matrix with shape [:math:`M`, :math:`N`]
+    and let :math:`O[i]` be the i-th row of the matrix, then `O[i]` is equal to
     :math:`I_{ID[i]}[i]`.
 
     Args:
-       inputs (list): Input variables which are tensors with same shape and the
-                rank is at least 2.
+       inputs (list): A list of variables to gather from. All variables have the
+                same shape and the rank is at least 2.
        index (Variable): Tensor<int32>, index variable which is a 2-D tensor
-                with shape [M, 1] where M for batch size.
+                with shape [M, 1] where M is the batch size.
 
     Returns:
         Variable: Multiplex variable gathered from input variables.
@@ -2748,7 +2748,12 @@ def multiplex(inputs, index):
             out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
     """
     helper = LayerHelper('multiplex', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype())
+
+    if not isinstance(inputs, list) and len(inputs) < 2:
+        raise ValueError("inputs should be a list object and contains at least "
+                         "2 elements.")
+
+    out = helper.create_tmp_variable(inputs[0].dtype)
     helper.append_op(
         type='multiplex',
         inputs={'X': inputs,
