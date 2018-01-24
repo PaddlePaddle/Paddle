@@ -18,14 +18,10 @@ limitations under the License. */
 #include "paddle/framework/init.h"
 #include "paddle/framework/scope.h"
 
-#ifdef PADDLE_USE_PTOOLS
-#include "chooseser.h"
-#endif
-
 namespace paddle {
 
 void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
-  std::string model_filename = dirname + "/__model__.dat";
+  std::string model_filename = dirname + "/__model__";
   LOG(INFO) << "loading model from " << model_filename;
   std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
   std::string program_desc_str;
@@ -51,39 +47,15 @@ void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
   }
 }
 
-void InferenceEngine::LoadInferenceModel(
-    const std::string& dirname,
-    const std::vector<std::string>& feed_var_names,
-    const std::vector<std::string>& fetch_var_names) {
-  std::string model_filename = dirname + "/__model__.dat";
-  LOG(INFO) << "loading model from " << model_filename;
-  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
-  std::string program_desc_str;
-  inputfs.seekg(0, std::ios::end);
-  program_desc_str.resize(inputfs.tellg());
-  inputfs.seekg(0, std::ios::beg);
-  LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
-  inputfs.read(&program_desc_str[0], program_desc_str.size());
-  inputfs.close();
-
-  program_ = new framework::ProgramDesc(program_desc_str);
-  GenerateLoadProgram(dirname);
-
-  if (feed_var_names.empty() || fetch_var_names.empty()) {
-    LOG(FATAL) << "Please specify the feed_var_names and fetch_var_names.";
-  }
-  feed_var_names_ = feed_var_names;
-  fetch_var_names_ = fetch_var_names;
-  PrependFeedOp();
-  AppendFetchOp();
-}
-
 bool InferenceEngine::IsParameter(const framework::VarDesc* var) {
-  if (var->Persistable() && var->Name() != "feed" && var->Name() != "fetch") {
+  if (var->Persistable()) {
     // There are many unreachable variables in the program
     for (size_t i = 0; i < program_->Size(); ++i) {
       const framework::BlockDesc& block = program_->Block(i);
       for (auto* op : block.AllOps()) {
+        if (op->Type() == "feed") {
+          continue;
+        }
         for (auto input_argument_name : op->InputArgumentNames()) {
           if (input_argument_name == var->Name()) {
             return true;

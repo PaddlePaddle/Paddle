@@ -31,9 +31,6 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-if(NOT ANDROID AND NOT IOS)
-    find_package(Boost QUIET)
-endif()
 
 include(simd)
 
@@ -55,6 +52,8 @@ option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
+# TODO: Only compile PaddlePaddle fluid version by WITH_FLUID option. 
+option(WITH_FLUID       "Compile PaddlePaddle fluid only(TODO)"         ON)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
@@ -107,6 +106,10 @@ if (WITH_C_API AND WITH_PYTHON)
     "different Python interpreter from compiling.")
 endif()
 
+if (WITH_C_API)
+  set(WITH_FLUID OFF CACHE STRING "Disable install fluid when compile the C_API" FORCE)
+endif()
+
 if(MOBILE_INFERENCE)
     set(THIRD_PARTY_BUILD_TYPE MinSizeRel)
 else()
@@ -134,6 +137,7 @@ include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
+include(external/boost)     # download, build, install boost
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
@@ -158,7 +162,6 @@ include_directories("${PADDLE_SOURCE_DIR}")
 include_directories("${PADDLE_SOURCE_DIR}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
-include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXTERNAL_LIBS
     ${GFLAGS_LIBRARIES}

@@ -25,6 +25,8 @@ class EditDistanceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Hyps"), "Input(Hyps) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("Refs"), "Input(Refs) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("SequenceNum"),
+                   "Output(SequenceNum) shouldn't be null.");
     auto hyp_dims = ctx->GetInputDim("Hyps");
     auto ref_dims = ctx->GetInputDim("Refs");
     PADDLE_ENFORCE(hyp_dims.size() == 2 && hyp_dims[1] == 1,
@@ -34,6 +36,7 @@ class EditDistanceOp : public framework::OperatorWithKernel {
                    "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
                    "equal to 1.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("Refs"));
+    ctx->SetOutputDim("SequenceNum", {1});
   }
 
  protected:
@@ -49,11 +52,12 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
   EditDistanceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Hyps",
-             "(2-D LoDTensor<int>, 2nd dim. equal to 1) "
+             "(2-D LoDTensor<int64_t>, 2nd dim. equal to 1) "
              "The indices for hypothesis strings.");
     AddInput("Refs",
-             "(2-D LoDTensor<int>, 2nd dim. equal to 1) "
+             "(2-D LoDTensor<int64_t>, 2nd dim. equal to 1) "
              "The indices for reference strings.");
+    AddOutput("SequenceNum", "The sequence count of current batch");
     AddAttr<bool>("normalized",
                   "(bool, default false) Indicated whether to normalize "
                   "the edit distance by the length of reference string.")
@@ -66,22 +70,22 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
 EditDistance operator computes the edit distances between a batch of hypothesis
 strings and their references.
 
-Edit distance, also called Levenshtein distance, measures how dissimilar two strings 
-are by counting the minimum number of operations to transform one string into anthor. 
-Here the operations include insertion, deletion, and substitution. For example, 
-given hypothesis string A = "kitten" and reference B = "sitting", the edit distance 
-is 3 for A will be transformed into B at least after two substitutions and one 
+Edit distance, also called Levenshtein distance, measures how dissimilar two strings
+are by counting the minimum number of operations to transform one string into anthor.
+Here the operations include insertion, deletion, and substitution. For example,
+given hypothesis string A = "kitten" and reference B = "sitting", the edit distance
+is 3 for A will be transformed into B at least after two substitutions and one
 insertion:
-  
+
    "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with the total 
-number denoted by `batch_size`, and the separation is specified by the LoD information. 
-And the `batch_size` reference strings are arranged in order in the same way in the 
+Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with the total
+number denoted by `batch_size`, and the separation is specified by the LoD information.
+And the `batch_size` reference strings are arranged in order in the same way in the
 LoDTensor Input(Refs).
 
-Output(Out) contains the `batch_size` results and each stands for the edit stance 
-for a pair of strings respectively. If Attr(normalized) is true, the edit distance 
+Output(Out) contains the `batch_size` results and each stands for the edit stance
+for a pair of strings respectively. If Attr(normalized) is true, the edit distance
 will be divided by the length of reference string.
 )DOC");
   }

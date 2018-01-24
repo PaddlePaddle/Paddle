@@ -1,16 +1,17 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import collections
 import contextlib
 
@@ -779,7 +780,7 @@ class Block(object):
                 trainable=p.trainable,
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
-                clip_attr=p.clip_attr,
+                gradient_clip_attr=p.gradient_clip_attr,
                 error_clip=p.error_clip,
                 name=v.name)
             self.vars[new_p.name] = new_p
@@ -947,7 +948,7 @@ class Parameter(Variable):
 
         self.regularizer = kwargs.get('regularizer', None)
 
-        self.clip_attr = kwargs.get('clip_attr', None)
+        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
 
 
 # program is a global instance.

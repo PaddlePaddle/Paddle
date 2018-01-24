@@ -1,16 +1,17 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import print_function
 import numpy as np
 import paddle.v2 as paddle
@@ -26,7 +27,7 @@ hidden1 = fluid.layers.fc(input=image,
                           act='relu',
                           param_attr=fluid.ParamAttr(
                               regularizer=regularizer,
-                              clip=fluid.clip.ClipByValue(10)))
+                              gradient_clip=fluid.clip.ClipByValue(10)))
 
 hidden2 = fluid.layers.fc(input=hidden1,
                           size=64,
@@ -90,6 +91,21 @@ for pass_id in range(PASS_NUM):
             fluid.io.save_inference_model(
                 "./recognize_digits_mlp.inference.model/", ["x"], [predict],
                 exe)
-            exit(0)
+            break
 
-exit(1)
+# Use load_inference_model to obtain the inference program desc,
+# the feed_target_names (the names of variables that will be feeded 
+# data using feed operators), and the fetch_targets (variables that 
+# we want to obtain data from using fetch operators).
+[infer_prog, feed_target_names, fetch_targets] = fluid.io.load_inference_model(
+    "./recognize_digits_mlp.inference.model/", exe)
+
+tensor_x = np.random.rand(1, 784).astype("float32")
+# Construct feed as a dictionary of {feed_target_name: feed_target_data}
+# and results will contain a list of data corresponding to fetch_targets.
+results = exe.run(infer_prog,
+                  feed={feed_target_names[0]: tensor_x},
+                  fetch_list=fetch_targets)
+print(results[0])
+
+exit(0)
