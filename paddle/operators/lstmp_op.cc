@@ -23,27 +23,29 @@ class LSTMPOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTMP should not be null.");
+                   "Input(Input) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of LSTMP should not be null.");
+                   "Input(Weight) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ProjWeight"),
-                   "Input(ProjWeight) of LSTMP should not be null.");
+                   "Input(ProjWeight) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of LSTMP should not be null.");
+                   "Input(Bias) of LSTMP operator should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("Projection"),
-                   "Output(Projection) of LSTMP should not be null.");
+                   "Output(Projection) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Cell"),
-                   "Output(Cell) of LSTMP should not be null.");
+                   "Output(Cell) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchGate"),
-                   "Output(BatchGate) of LSTMP should not be null.");
+                   "Output(BatchGate) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchCellPreAct"),
-                   "Output(BatchGate) of LSTMP should not be null.");
+                   "Output(BatchCellPreAct) of LSTMP operator should not be "
+                   "null.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchHidden"),
-                   "Output(BatchHidden) of LSTMP should not be null.");
+                   "Output(BatchHidden) of LSTMP operator should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_EQ(in_dims.size(), 2, "Input(X)'s rank must be 2.");
+    PADDLE_ENFORCE_EQ(in_dims.size(), 2,
+                      "Input(X)'s rank of LSTMP operator must be 2.");
 
     int frame_size = in_dims[1] / 4;
     auto w_dims = ctx->GetInputDim("Weight");
@@ -68,8 +70,8 @@ class LSTMPOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("H0")) {
       PADDLE_ENFORCE(ctx->HasInput("C0"),
-                     "Input(C0) and Input(H0) of LSTMP should not "
-                     "be null at the same time.");
+                     "Input(C0) of LSTMP operator should not be null after "
+                     "Input(H0) provided.");
       auto h_dims = ctx->GetInputDim("H0");
       auto c_dims = ctx->GetInputDim("C0");
       PADDLE_ENFORCE(h_dims == c_dims,
@@ -132,8 +134,7 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("C0",
              "(Tensor, optional) the initial cell state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
-             "batch size. Only one of `H0` and `C0` can be NULL at the same "
-             "time.")
+             "batch size. `C0` should not be null if `H0` provided.")
         .AsDispensable();
     AddInput("Weight",
              "(Tensor) the learnable hidden-hidden weights."
@@ -211,13 +212,12 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
                          "`tanh` by default.")
         .SetDefault("tanh")
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
-    AddAttr<bool>("share_cell_act",
-                  "(bool, defalut: True) "
-                  "whether to share the activation of cell output with the "
-                  "projection layer. When set to `False`, the projection "
-                  "is simple linear, otherwise it will go through an "
-                  "activation function same as `cell_activation`.")
-        .SetDefault(true);
+    AddAttr<std::string>("proj_activation",
+                         "(string, default: tanh)"
+                         "The activation for projection output, "
+                         "`tanh` by defalut.")
+        .SetDefault("tanh")
+        .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddComment(R"DOC(
 Long-Short Term Memory with recurrent Projection layer (LSTMP) Operator.
 
@@ -226,20 +226,21 @@ original hidden state to a lower-dimensional one, which is proposed to reduce
 the number of total parameters and furthermore computational complexity for 
 the LSTM, espeacially for the case that the size of output units is relative 
 large (https://research.google.com/pubs/archive/43905.pdf). 
+
 The formula is as follows:
 
 $$
-i_t = \sigma(W_{ix}x_{t} + W_{ih}r_{t-1} + W_{ic}c_{t-1} + b_i) \\
+i_t = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i) \\
 
-f_t = \sigma(W_{fx}x_{t} + W_{fh}r_{t-1} + W_{fc}c_{t-1} + b_f) \\
+f_t = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f) \\
 
-\tilde{c_t} = act_g(W_{cx}x_t + W_{ch}r_{t-1} + b_c) \\
+\tilde{c_t} = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c) \\
 
-o_t = \sigma(W_{ox}x_{t} + W_{oh}r_{t-1} + W_{oc}c_t + b_o) \\
+o_t = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_t + b_o) \\
 
-c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c_t}
+c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c_t} \\
 
-h_t = o_t \odot act_h(c_t)
+h_t = o_t \odot act_h(c_t) \\
 
 r_t = \overline{act_h}(W_{rh}h_t)
 $$
@@ -259,9 +260,8 @@ input and previous hidden state.
 
 The $\odot$ is the element-wise product of the vectors. $act_g$ and $act_h$
 are the cell input and cell output activation functions and `tanh` is usually
-used for them. $\overline{act_h}$ is the activation function for the projection 
-layer. When `share_cell_act` set to `False`, $\overline{act_h}$ is an
-identity activation, otherwise it will be same as $act_h$.
+used for them. $\overline{act_h}$ is the activation function for the 
+projection output, usually using `identity` or same as $act_h$.
 
 Note that these $W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}$
 operations on the input $x_{t}$ are NOT included in this operator.
@@ -277,22 +277,22 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTMP should not be null.");
+                   "Input(Input) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Projection"),
-                   "Input(Projection) of LSTMP should not be null.");
+                   "Input(Projection) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Cell"),
-                   "Input(Cell) of LSTMP should not be null.");
+                   "Input(Cell) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of LSTMP should not be null.");
+                   "Input(Weight) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ProjWeight"),
-                   "Input(ProjWeight) of LSTMP should not be null.");
+                   "Input(ProjWeight) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of LSTMP should not be null.");
+                   "Input(Bias) of LSTMP operator should not be null.");
 
     PADDLE_ENFORCE(ctx->HasInput("BatchGate"),
-                   "Input(BatchGate) of LSTMP should not be null.");
+                   "Input(BatchGate) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("BatchCellPreAct"),
-                   "Input(BatchGate) of LSTMP should not be null.");
+                   "Input(BatchGate) of LSTMP operator should not be null.");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
       auto g_name = framework::GradVarName(name);

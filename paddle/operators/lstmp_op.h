@@ -136,7 +136,8 @@ class LSTMPKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("cell_activation"));
     auto cand_act = math::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
-    auto share_cell_act = ctx.Attr<bool>("share_cell_act");
+    auto proj_act = math::detail::GetActivationType(
+        ctx.Attr<std::string>("proj_activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     for (size_t n = 0; n < num_batch; n++) {
@@ -174,7 +175,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
         math::matmul<DeviceContext, T>(device_ctx, ordered_h0, false,
                                        *proj_weight, false, static_cast<T>(1.0),
                                        ordered_proj0, static_cast<T>(0.0));
-        if (share_cell_act) {
+        if (proj_act != math::detail::ActivationType::kIdentity) {
           auto proj0_dev = EigenMatrix<T>::From(*ordered_proj0);
           ActCompute(cell_act, place, proj0_dev, proj0_dev);
         }
@@ -194,7 +195,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
       math::matmul<DeviceContext, T>(device_ctx, hidden_t, false, *proj_weight,
                                      false, static_cast<T>(1.0), &proj_t,
                                      static_cast<T>(0.0));
-      if (share_cell_act) {
+      if (proj_act != math::detail::ActivationType::kIdentity) {
         auto proj_t_dev = EigenMatrix<T>::From(proj_t);
         ActCompute(cell_act, place, proj_t_dev, proj_t_dev);
       }
@@ -348,7 +349,8 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("cell_activation"));
     auto cand_act = math::detail::GetActivationType(
         ctx.Attr<std::string>("candidate_activation"));
-    auto share_cell_act = ctx.Attr<bool>("share_cell_act");
+    auto proj_act = math::detail::GetActivationType(
+        ctx.Attr<std::string>("proj_activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     auto batch_starts = batch_gate->lod()[0];
@@ -359,7 +361,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
 
       Tensor cur_proj = batch_proj.Slice(bstart, bend);
       Tensor proj_g = batch_proj_g.Slice(bstart, bend);
-      if (share_cell_act) {
+      if (proj_act != math::detail::ActivationType::kIdentity) {
         auto cur_proj_dev = EigenMatrix<T>::From(cur_proj);
         auto proj_g_dev = EigenMatrix<T>::From(proj_g);
         ActGradCompute(cell_act, place, cur_proj_dev, cur_proj_dev, proj_g_dev,
@@ -439,7 +441,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
           math::matmul<DeviceContext, T>(device_ctx, gate_g, false, *weight,
                                          true, static_cast<T>(1.0), &proj0_g,
                                          static_cast<T>(0.0));
-          if (share_cell_act) {
+          if (proj_act != math::detail::ActivationType::kIdentity) {
             auto proj0_dev = EigenMatrix<T>::From(*ordered_proj0);
             auto proj0_g_dev = EigenMatrix<T>::From(proj0_g);
             ActGradCompute(cell_act, place, proj0_dev, proj0_dev, proj0_g_dev,

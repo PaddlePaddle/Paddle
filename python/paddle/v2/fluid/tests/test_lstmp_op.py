@@ -41,7 +41,7 @@ def relu(x):
     return np.maximum(x, 0)
 
 
-ACTVATION = {
+ACTIVATION = {
     'identity': identity,
     'sigmoid': sigmoid,
     'tanh': tanh,
@@ -63,8 +63,9 @@ def lstmp(
         act_gate=None,
         act_cell=None,
         act_cand=None,
-        share_cell_act=True):
-    def _step(x, w_r, w_rh, w_c, r_pre, c_pre, act_gate, act_cell, act_cand):
+        act_proj=None):
+    def _step(x, w_r, w_rh, w_c, r_pre, c_pre, act_gate, act_cell, act_cand,
+              act_proj):
         g = np.dot(r_pre, w_r)  # 1 x 4D
         g = g + x
         g = np.reshape(g, (1, g.size))
@@ -86,8 +87,7 @@ def lstmp(
         h = g_o * act_cell(c)
         # projection
         r = np.dot(h, w_rh)
-        if share_cell_act:
-            r = act_cell(r)
+        r = act_proj(r)
         return r, c
 
     def _reverse(x, lod):
@@ -110,13 +110,12 @@ def lstmp(
         seq_len = offset[i + 1] - offset[i]
         x = input[offset[i]:offset[i + 1], :]
         r_pre = np.dot(h0[i], w_rh)  # 1 x P
-        if share_cell_act:
-            r_pre = act_cell(r_pre)
+        r_pre = act_proj(r_pre)
         c_pre = c0[i]  # 1 x D
         for j in range(seq_len):
             # compute one step
             r_pre, c_pre = _step(x[j], w_r, w_rh, w_c, r_pre, c_pre, act_gate,
-                                 act_cell, act_cand)
+                                 act_cell, act_cand, act_proj)
             projection.append(r_pre.flatten())
             cell.append(c_pre.flatten())
 
@@ -131,7 +130,7 @@ def lstmp(
     return projection, cell
 
 
-class TestLstmOp(OpTest):
+class TestLstmpOp(OpTest):
     def set_argument(self):
         self.lod = [[0, 2, 5, 7]]
         # hidden size
@@ -142,8 +141,8 @@ class TestLstmOp(OpTest):
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
+        self.act_proj = self.act_cell
 
-        self.share_cell_act = True
         self.has_initial_state = False
         self.is_reverse = False
         self.use_peepholes = True
@@ -172,8 +171,8 @@ class TestLstmOp(OpTest):
         w_c = b[:, 4 * self.D:] if self.use_peepholes else None
         w_rh = np.random.normal(size=(self.D, self.P)).astype('float64')
         r, c = lstmp(x, self.lod, h0, c0, w, w_rh, w_b, w_c, self.is_reverse,
-                     ACTVATION[self.act_gate], ACTVATION[self.act_cell],
-                     ACTVATION[self.act_cand], self.share_cell_act)
+                     ACTIVATION[self.act_gate], ACTIVATION[self.act_cell],
+                     ACTIVATION[self.act_cand], ACTIVATION[self.act_proj])
 
         self.inputs = {'Input': (x, self.lod), 'Weight': w, 'ProjWeight': w_rh}
 
@@ -193,7 +192,7 @@ class TestLstmOp(OpTest):
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
-            'share_cell_act': self.share_cell_act
+            'proj_activation': self.act_proj
         }
 
     def test_check_output(self):
@@ -212,7 +211,7 @@ class TestLstmOp(OpTest):
             max_relative_error=1e-2)
 
 
-class TestLstmOpHasInitial(TestLstmOp):
+class TestLstmpOpHasInitial(TestLstmpOp):
     def set_argument(self):
         self.lod = [[0, 2, 5, 7]]
         self.D = 16
@@ -221,8 +220,8 @@ class TestLstmOpHasInitial(TestLstmOp):
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
+        self.act_proj = self.act_cell
 
-        self.share_cell_act = True
         self.has_initial_state = True
         self.is_reverse = True
         self.use_peepholes = True
@@ -313,7 +312,7 @@ class TestLstmOpHasInitial(TestLstmOp):
             no_grad_set=set('C0'))
 
 
-class TestLstmOpRerverse(TestLstmOp):
+class TestLstmpOpRerverse(TestLstmpOp):
     def set_argument(self):
         self.lod = [[0, 2, 5, 7]]
         self.D = 16
@@ -322,14 +321,14 @@ class TestLstmOpRerverse(TestLstmOp):
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
+        self.act_proj = self.act_cell
 
-        self.share_cell_act = True
         self.has_initial_state = False
         self.is_reverse = True
         self.use_peepholes = True
 
 
-class TestLstmOpNotUsePeepholes(TestLstmOp):
+class TestLstmpOpNotUsePeepholes(TestLstmpOp):
     def set_argument(self):
         self.lod = [[0, 2, 5, 7]]
         self.D = 16
@@ -338,14 +337,14 @@ class TestLstmOpNotUsePeepholes(TestLstmOp):
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
+        self.act_proj = self.act_cell
 
-        self.share_cell_act = True
         self.has_initial_state = False
         self.is_reverse = False
         self.use_peepholes = False
 
 
-class TestLstmOpNotShareCellAct(TestLstmOp):
+class TestLstmpOpLinearProjection(TestLstmpOp):
     def set_argument(self):
         self.lod = [[0, 2, 5, 7]]
         self.D = 16
@@ -354,8 +353,8 @@ class TestLstmOpNotShareCellAct(TestLstmOp):
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
+        self.act_proj = 'identity'
 
-        self.share_cell_act = False
         self.has_initial_state = False
         self.is_reverse = False
         self.use_peepholes = True
