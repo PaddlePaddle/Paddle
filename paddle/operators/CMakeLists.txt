@@ -155,8 +155,12 @@ op_library(parallel_do_op DEPS executor)
 
 # Regist multiple Kernel to pybind
 if (WITH_GPU)
+
 op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS
     vol2col depthwise_conv)
+
+# op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS vol2col)
+op_library(edit_distance_op SRCS edit_distance_op.cc edit_distance_op.cu DEPS math_function)
 op_library(pool_op SRCS pool_op.cc pool_op.cu.cc pool_cudnn_op.cu.cc DEPS pooling)
 op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
   conv_transpose_cudnn_op.cu.cc DEPS vol2col)
