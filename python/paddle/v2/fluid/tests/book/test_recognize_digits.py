@@ -45,8 +45,9 @@ BATCH_SIZE = 64
 def loss_net(hidden, label):
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    return fluid.layers.mean(x=loss), fluid.layers.accuracy(
-        input=prediction, label=label)
+    avg_loss = fluid.layers.mean(x=loss)
+    acc = fluid.layers.accuracy(input=prediction, label=label)
+    return prediction, avg_loss, acc
 
 
 def mlp(img, label):
@@ -73,8 +74,7 @@ def conv_net(img, label):
     return loss_net(conv_pool_2, label)
 
 
-def main():
-    args = parse_arg()
+def train(args, save_dirname=None):
     print("recognize digits with args: {0}".format(" ".join(sys.argv[1:])))
 
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
@@ -91,7 +91,8 @@ def main():
         with pd.do():
             img_ = pd.read_input(img)
             label_ = pd.read_input(label)
-            for o in net_conf(img_, label_):
+            prediction, avg_loss, acc = net_conf(img_, label_)
+            for o in [avg_loss, acc]:
                 pd.write_output(o)
 
         avg_loss, acc = pd()
@@ -99,7 +100,7 @@ def main():
         avg_loss = fluid.layers.mean(x=avg_loss)
         acc = fluid.layers.mean(x=acc)
     else:
-        avg_loss, acc = net_conf(img, label)
+        prediction, avg_loss, acc = net_conf(img, label)
 
     test_program = fluid.default_main_program().clone()
 
@@ -137,7 +138,10 @@ def main():
                 acc_val = numpy.array(acc_set).mean()
                 avg_loss_val = numpy.array(avg_loss_set).mean()
                 if float(acc_val) > 0.85:  # test acc > 85%
-                    exit(0)
+                    if save_dirname is not None:
+                        fluid.io.save_inference_model(save_dirname, ["img"],
+                                                      [prediction], exe)
+                    return
                 else:
                     print(
                         'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
@@ -145,5 +149,38 @@ def main():
                                float(avg_loss_val), float(acc_val)))
 
 
+def infer(args, save_dirname=None):
+    if save_dirname is None:
+        return
+
+    place = fluid.CUDAPlace(0) if args.use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    if args.nn_type == 'mlp':
+        tensor_img = numpy.random.rand(1, 28, 28).astype("float32")
+    else:
+        tensor_img = numpy.random.rand(1, 1, 28, 28).astype("float32")
+
+    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+    # and results will contain a list of data corresponding to fetch_targets.
+    results = exe.run(inference_program,
+                      feed={feed_target_names[0]: tensor_img},
+                      fetch_list=fetch_targets)
+    print("infer results: ", results[0])
+
+
 if __name__ == '__main__':
-    main()
+    args = parse_arg()
+    if not args.use_cuda and not args.parallel:
+        save_dirname = "recognize_digits_" + args.nn_type + ".inference.model"
+    else:
+        save_dirname = None
+    train(args, save_dirname)
+    infer(args, save_dirname)

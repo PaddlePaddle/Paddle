@@ -75,7 +75,7 @@ void InferenceEngine::GenerateLoadProgram(const std::string& dirname) {
   framework::BlockDesc* load_block = load_program_->MutableBlock(0);
   for (auto* var : global_block->AllVars()) {
     if (IsParameter(var)) {
-      LOG(INFO) << "parameter's name: " << var->Name();
+      VLOG(3) << "parameter's name: " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());
       new_var->SetShape(var->Shape());
