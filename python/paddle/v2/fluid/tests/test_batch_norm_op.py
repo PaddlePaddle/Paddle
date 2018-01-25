@@ -352,7 +352,7 @@ class TestBatchNormOp(OpTest):
             print "op test backward passed: ", str(place), data_layout
 
         places = [core.CPUPlace()]
-        if core.is_compile_gpu() and core.op_support_gpu("batch_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
             places.append(core.CUDAPlace(0))
 
         for place in places:

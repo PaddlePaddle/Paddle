@@ -289,6 +289,7 @@ class ParallelDo(object):
                 for in_var_name in op.input(iname):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
+        params = list(set(params))
 
         return [parent_block.var(name) for name in params]
 
@@ -769,7 +770,7 @@ def topk(input, k):
           array = fluid.layers.topk(x, k)
     """
     helper = LayerHelper('topk', **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype='int64')
     helper.append_op(
         type='top_k',
