@@ -21,36 +21,36 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+/*
+ * \brief Compute the depthwise convolution which include
+ * forward process and backpropagation process
+ */
 template <typename DeviceContext, typename T>
 class DepthwiseConvFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  const framework::Tensor& filter, std::vector<int>& ksize,
-                  std::vector<int>& strides, std::vector<int>& paddings,
-                  framework::Tensor* output);
+                  const framework::Tensor& filter, std::vector<int>& strides,
+                  std::vector<int>& paddings, framework::Tensor* output);
 };
 
-/*
 template <typename DeviceContext, typename T>
 class DepthwiseConvInputGradFunctor {
-public:
-  void operator()(const DeviceContext& context,
+ public:
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& filter,
-                  const framework::Tensor& output_grad, std::vector<int>& ksize,
+                  const framework::Tensor& output_grad,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* input_grad);
 };
 
 template <typename DeviceContext, typename T>
 class DepthwiseConvFilterGradFunctor {
-public:
-  void operator()(const DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& output_grad, std::vector<int>& ksize,
+ public:
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  const framework::Tensor& output_grad,
                   std::vector<int>& strides, std::vector<int>& paddings,
                   framework::Tensor* filter_grad);
 };
-*/
 
 }  // namespace math
 }  // namespace operators

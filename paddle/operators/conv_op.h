@@ -357,14 +357,10 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* input = context.Input<Tensor>("Input");
-    // The filter will be reshaped in the calculations,
-    // so here use an assignment operation,
-    // that avoids modifying the variable in the Scope.
     Tensor filter = *context.Input<Tensor>("Filter");
     Tensor* output = context.Output<Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
 
-    std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
@@ -372,8 +368,50 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    depthwiseConv(dev_ctx, *input, filter, ksize, strides, paddings,
-                  output);
+    depthwiseConv(dev_ctx, *input, filter, strides, paddings, output);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class DepthwiseConvGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    const Tensor* input = context.Input<Tensor>("Input");
+    const Tensor* output_grad =
+        context.Input<Tensor>(framework::GradVarName("Output"));
+    Tensor* input_grad =
+        context.Output<Tensor>(framework::GradVarName("Input"));
+    Tensor* filter_grad =
+        context.Output<Tensor>(framework::GradVarName("Filter"));
+    Tensor filter = *context.Input<Tensor>("Filter");
+
+    if (!input_grad && !filter_grad) return;
+
+    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
+    std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
+
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+
+    math::DepthwiseConvInputGradFunctor<DeviceContext, T>
+        depthwiseConvInputGrad;
+    math::DepthwiseConvFilterGradFunctor<DeviceContext, T>
+        depthwiseConvFilterGrad;
+
+    if (input_grad) {
+      input_grad->mutable_data<T>(context.GetPlace());
+      set_zero(dev_ctx, input_grad, static_cast<T>(0));
+      depthwiseConvInputGrad(dev_ctx, *input, filter, *output_grad, strides,
+                             paddings, input_grad);
+    }
+
+    if (filter_grad) {
+      filter_grad->mutable_data<T>(context.GetPlace());
+      set_zero(dev_ctx, filter_grad, static_cast<T>(0));
+      depthwiseConvFilterGrad(dev_ctx, *input, *output_grad, strides, paddings,
+                              filter_grad);
+    }
   }
 };
 
