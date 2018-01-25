@@ -166,7 +166,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     // device id
     int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
-
+    LOG(INFO) << gpu_id << " " << idx << " " << root;
     if (idx == root) {
       auto ins = ctx.MultiInput<LoDTensor>("X");
       for (size_t i = 0; i < ins.size(); ++i) {
@@ -188,8 +188,11 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
         VLOG(1) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
                 << framework::product(outs[i]->dims());
 
+        LOG(INFO) << (void*)outs[i]->mutable_data<T>(ctx.GetPlace());
+        LOG(INFO) << outs[i]->numel();
+        LOG(INFO) << root;
         PADDLE_ENFORCE(platform::dynload::ncclBcast(
-            outs[i]->mutable_data<T>(ctx.GetPlace()), outs[i]->numel(),
+            (void*)outs[i]->mutable_data<T>(ctx.GetPlace()), outs[i]->numel(),
             NCCLTypeWrapper<T>::type, root, comm->comms_[idx], stream));
         PADDLE_ENFORCE(cudaStreamSynchronize(stream));
 
