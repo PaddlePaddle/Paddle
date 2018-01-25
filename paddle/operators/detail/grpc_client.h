@@ -117,6 +117,17 @@ class GetProcessor : public ClientBase {
   RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 
+class BatchBarrierProcessor : public ClientBase {
+ public:
+  explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
+      : ClientBase(ch) {}
+
+  virtual ~BatchBarrierProcessor() {}
+
+  virtual void Process() {}
+  sendrecv::VoidMessage reply_;
+};
+
 class RPCClient {
  public:
   bool AsyncSendVariable(const std::string& ep,
@@ -130,6 +141,9 @@ class RPCClient {
                         const framework::Scope& scope,
                         const std::string& var_name,
                         int64_t time_out = 600 * 1000);
+
+  bool AsyncBatchBarrier(const std::string& ep, int64_t time_out = 600 * 1000);
+
   bool Wait();
 
  private:

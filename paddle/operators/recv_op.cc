@@ -107,8 +107,8 @@ class RecvOp : public framework::OperatorBase {
     while (!exit_flag) {
       // Get from multiple trainers, we don't care about the order in which
       // the gradients arrives, just add suffix 0~n and merge the gradient.
-      rpc_service_->SetCond(0);
-      for (size_t i = 0; i < barrier_size; ++i) {
+      rpc_service_->SetCond(fan_in);
+      while (rpc_service_->CondEqualTo(0)) {
         const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
         if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
@@ -145,7 +145,7 @@ class RecvOp : public framework::OperatorBase {
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
-      rpc_service_->SetCond(1);
+      rpc_service_->SetCond(fan_in);
       rpc_service_->WaitClientGet(barrier_size);
       grads_counter_.clear();
     }  // while(true)

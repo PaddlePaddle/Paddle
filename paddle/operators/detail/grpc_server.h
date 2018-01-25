@@ -45,6 +45,8 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   void WaitCond(int cond);
   void SetCond(int cond);
   void WaitClientGet(int count);
+  bool CondEqualTo(int cond);
+  void SubCond(int arg);
 
   void SetScope(framework::Scope *scope) { scope_ = scope; }
 
@@ -57,11 +59,11 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   void ShutDown();
 
  protected:
-  void HandleRequest(bool wait, grpc::ServerCompletionQueue *cq,
-                     std::string cq_name,
+  void HandleRequest(grpc::ServerCompletionQueue *cq, std::string cq_name,
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
+  void TryToRegisterNewBatchBarrier();
   void ShutdownQueue();
 
  private:
@@ -69,6 +71,7 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   volatile bool is_shut_down_ = false;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_send_;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_get_;
+  std::unique_ptr<grpc::ServerCompletionQueue> cq_batch_barrier_;
 
   sendrecv::SendRecvService::AsyncService service_;
   std::unique_ptr<grpc::Server> server_;
@@ -87,6 +90,7 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
   std::unique_ptr<std::thread> t_send_;
   std::unique_ptr<std::thread> t_get_;
+  std::unique_ptr<std::thread> t_batch_barrier_;
 };
 
 };  // namespace detail

@@ -46,6 +46,11 @@ class SendOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE(client_.Wait());
 
+    for (auto& ep : epmap) {
+      client_.AsyncBatchBarrier(ep);
+    }
+    PADDLE_ENFORCE(client_.Wait());
+
     for (size_t i = 0; i < outs.size(); i++) {
       VLOG(3) << "getting " << outs[i];
       client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
