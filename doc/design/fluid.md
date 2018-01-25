@@ -14,7 +14,7 @@ Deep learning infrastructure is one of the fastest evolving technologies. Within
 |--|--|--|--|
 | 2013 | Caffe, Theano, Torch, PaddlePaddle | | |
 | 2015 | | TensorFlow, MxNet, Caffe2, ONNX, n-graph | |
-| 2016 | | | PyTorch, TensorFlow Eager Execution, PaddlePaddle Fluid |
+| 2017 | | | PyTorch, TensorFlow Eager Execution, PaddlePaddle Fluid |
 
 From the above table, we see that the deep learning technology is evolving towards getting rid of the concept of a model.  To understand the reasons behind this direction, a comparison of the *programming paradigms* or the ways to program deep learning applications using these systems, would be helpful. The following section goes over these.
 
