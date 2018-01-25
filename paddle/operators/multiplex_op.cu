@@ -90,7 +90,13 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
     multiplex,
-    ops::MultiplexGPUKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::MultiplexGPUKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MultiplexGPUKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MultiplexGPUKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::MultiplexGPUKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     multiplex_grad,
-    ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::MultiplexGradGPUKernel<paddle::platform::CUDADeviceContext, int64_t>);

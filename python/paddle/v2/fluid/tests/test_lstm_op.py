@@ -42,7 +42,7 @@ def relu(x):
     return np.maximum(x, 0)
 
 
-ACTVATION = {
+ACTIVATION = {
     'identity': identity,
     'sigmoid': sigmoid,
     'tanh': tanh,
@@ -158,8 +158,8 @@ class TestLstmOp(OpTest):
         w_b = b[:, 0:4 * self.D]
         w_c = b[:, 4 * self.D:] if self.use_peepholes else None
         h, c = lstm(x, self.lod, h0, c0, w, w_b, w_c, self.is_reverse,
-                    ACTVATION[self.act_gate], ACTVATION[self.act_cell],
-                    ACTVATION[self.act_cand])
+                    ACTIVATION[self.act_gate], ACTIVATION[self.act_cell],
+                    ACTIVATION[self.act_cand])
 
         self.inputs = {'Input': (x, self.lod), 'Weight': w}
 
