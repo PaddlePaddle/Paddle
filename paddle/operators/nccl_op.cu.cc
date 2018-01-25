@@ -166,6 +166,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     // device id
     int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
+
     if (idx == root) {
       auto ins = ctx.MultiInput<LoDTensor>("X");
       for (size_t i = 0; i < ins.size(); ++i) {
