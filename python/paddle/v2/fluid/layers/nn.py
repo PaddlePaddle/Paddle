@@ -2714,21 +2714,21 @@ def multiplex(inputs, index):
     """
     **Multiplex Layer**
 
-    Referring to the given index variable, this layer gathers from the input
-    variables to output a multiplex variable. Assuming that there are :math:`m`
-    input variables and let :math:`I_i` represents the i-th input variable and i
-    is in [0, :math:`m`). All input variables are tensors with same shape
-    [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`]. Please note that rank of the
-    input tensor should be at least 2. Each input variable will be treated as a
-    2-D matrix with shape [:math:`M`, :math:`N`] where :math:`M` for :math:`d_0`
-    and :math:`N` for :math:`d_1` * :math:`d_2` * ... * :math:`d_R`. Let
-    :math:`I_i[j]` be the j-th row of the i-th input variable. The given index
-    variable should be a 2-D tensor with shape [:math:`M`, 1]. Let `ID[i]` be
-    the i-th index value of the index variable. Then the output variable will
-    be a tensor with shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`]. If we
-    treat the output tensor as a 2-D matrix with shape [:math:`M`, :math:`N`]
-    and let :math:`O[i]` be the i-th row of the matrix, then `O[i]` is equal to
-    :math:`I_{ID[i]}[i]`.
+    Referring to the given index variable, this layer selects rows from the
+    input variables to construct a multiplex variable. Assuming that there are
+    :math:`m` input variables and :math:`I_i` represents the i-th input
+    variable and :math:`i` is in [0, :math:`m`). All input variables are
+    tensors with same shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`].
+    Please note that rank of the input tensor should be at least 2. Each input
+    variable will be treated as a 2-D matrix with shape [:math:`M`, :math:`N`]
+    where :math:`M` for :math:`d_0` and :math:`N` for :math:`d_1` * :math:`d_2`
+    * ... * :math:`d_R`. Let :math:`I_i[j]` be the j-th row of the i-th input
+    variable. The given index variable should be a 2-D tensor with shape
+    [:math:`M`, 1]. Let `ID[i]` be the i-th index value of the index variable.
+    Then the output variable will be a tensor with shape [:math:`d_0`,
+    :math:`d_1`, ..., :math:`d_R`]. If we treat the output tensor as a 2-D
+    matrix with shape [:math:`M`, :math:`N`] and let :math:`O[i]` be the i-th
+    row of the matrix, then `O[i]` is equal to :math:`I_{ID[i]}[i]`.
 
     Args:
        inputs (list): A list of variables to gather from. All variables have the
