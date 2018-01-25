@@ -1,7 +1,7 @@
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
-cc_library(ddim SRCS ddim.cc DEPS eigen3)
+cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
@@ -45,7 +45,7 @@ cc_test(data_layout_transform_test SRCS data_layout_transform_test.cc DEPS data_
 cc_library(data_transform SRCS data_transform.cc DEPS math_function tensor
         framework_proto selected_rows data_device_transform data_type_transform data_layout_transform)
 
-cc_library(attribute SRCS attribute.cc DEPS framework_proto)
+cc_library(attribute SRCS attribute.cc DEPS framework_proto boost)
 cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute)
@@ -74,7 +74,8 @@ cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context fill_constant_op)
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
-cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog lod_rank_table)
+cc_library(executor SRCS executor.cc DEPS op_registry device_context scope
+framework_proto backward glog lod_rank_table profiler)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)

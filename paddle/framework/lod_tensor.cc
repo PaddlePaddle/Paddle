@@ -105,9 +105,10 @@ LoD ToAbsOffset(const LoD &in) {
   // the lowest level stores relative offsets
   if (in.empty() || in.size() == 1) return in;
   LoD result = in;
-  for (int level = result.size() - 2; level >= 0; level--) {
-    for (auto &ele : result[level]) {
-      ele = result[level + 1][ele];
+  for (auto level = static_cast<int>(in.size() - 2); level >= 0; level--) {
+    for (size_t i = 0; i < in[level].size(); ++i) {
+      size_t index = in[level][i];
+      result[level][i] = result[level + 1][index];
     }
   }
   return result;

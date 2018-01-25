@@ -91,6 +91,21 @@ for pass_id in range(PASS_NUM):
             fluid.io.save_inference_model(
                 "./recognize_digits_mlp.inference.model/", ["x"], [predict],
                 exe)
-            exit(0)
+            break
 
-exit(1)
+# Use load_inference_model to obtain the inference program desc,
+# the feed_target_names (the names of variables that will be feeded 
+# data using feed operators), and the fetch_targets (variables that 
+# we want to obtain data from using fetch operators).
+[infer_prog, feed_target_names, fetch_targets] = fluid.io.load_inference_model(
+    "./recognize_digits_mlp.inference.model/", exe)
+
+tensor_x = np.random.rand(1, 784).astype("float32")
+# Construct feed as a dictionary of {feed_target_name: feed_target_data}
+# and results will contain a list of data corresponding to fetch_targets.
+results = exe.run(infer_prog,
+                  feed={feed_target_names[0]: tensor_x},
+                  fetch_list=fetch_targets)
+print(results[0])
+
+exit(0)
