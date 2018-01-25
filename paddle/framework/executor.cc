@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/platform/place.h"
+#include "paddle/platform/profiler.h"
 
 DECLARE_bool(do_memory_benchmark);
 DEFINE_bool(check_nan_inf, false,
@@ -116,8 +117,13 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-    VLOG(3) << op->DebugStringEx(local_scope);
+    VLOG(4) << op->DebugStringEx(local_scope);
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::RecordEvent record_event(op->Type(), pool.Get(place_));
+
     op->Run(*local_scope, place_);
+    VLOG(3) << op->DebugStringEx(local_scope);
     if (FLAGS_do_memory_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);

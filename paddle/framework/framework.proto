@@ -26,6 +26,7 @@ enum AttrType {
   BOOLEAN = 6;
   BOOLEANS = 7;
   BLOCK = 8;
+  LONG = 9;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
@@ -44,6 +45,7 @@ message OpDesc {
     optional bool b = 10;
     repeated bool bools = 11;
     optional int32 block_idx = 12;
+    optional int64 l = 13;
   };
 
   message Var {

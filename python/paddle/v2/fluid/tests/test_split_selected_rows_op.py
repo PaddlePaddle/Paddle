@@ -21,7 +21,7 @@ from paddle.v2.fluid.op import Operator
 class TestSpliteSelectedRows(unittest.TestCase):
     def get_places(self):
         places = [core.CPUPlace()]
-        if core.is_compile_gpu():
+        if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places
 
