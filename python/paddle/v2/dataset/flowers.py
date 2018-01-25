@@ -36,6 +36,7 @@ import tarfile
 import scipy.io as scio
 from paddle.v2.image import *
 from paddle.v2.reader import *
+import random
 import os
 import numpy as np
 from multiprocessing import cpu_count
@@ -61,6 +62,9 @@ def default_mapper(is_train, sample):
     '''
     img, label = sample
     img = load_image_bytes(img)
+
+    if is_train and random.randint(0, 1):
+        img = left_right_flip(img)
     img = simple_transform(
         img, 256, 224, is_train, mean=[103.94, 116.78, 123.68])
     return img.flatten().astype('float32'), label
