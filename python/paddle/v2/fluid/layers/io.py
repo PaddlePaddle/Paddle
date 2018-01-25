@@ -113,7 +113,8 @@ class ListenAndServ(object):
         self.outputs = []
         self.endpoint = endpoint
         self.fan_in = fan_in
-        # FIXME(typhoonzero): Add this switch is stupid
+        # FIXME(typhoonzero): add optimizer_mode is stupid, should make it more
+        # general.
         self.optimizer_mode = optimizer_mode
 
     def do(self):
