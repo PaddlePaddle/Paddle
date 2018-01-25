@@ -20,7 +20,7 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-TEST(inference, recognize_digits_mlp) {
+TEST(inference, recognize_digits) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
