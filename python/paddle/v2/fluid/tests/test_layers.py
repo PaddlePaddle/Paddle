@@ -226,6 +226,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_im2sequence(self):
+        print("test_im2sequence")
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 128, 128], dtype='float32')
+            output = layers.im2sequence(
+                input=x, stride=[1, 1], filter_size=[2, 2])
+            self.assertIsNotNone(output)
+        print(str(program))
+
     @decorators.prog_scope()
     def test_nce(self):
         window_size = 5
@@ -260,6 +270,14 @@ class TestBook(unittest.TestCase):
         avg_loss = layers.mean(x=loss)
         self.assertIsNotNone(avg_loss)
         print(str(default_main_program()))
+
+    def test_row_conv(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[16], dtype='float32', lod_level=1)
+            out = layers.row_conv(input=x, future_context_size=2)
+            self.assertIsNotNone(out)
+        print(str(program))
 
 
 if __name__ == '__main__':

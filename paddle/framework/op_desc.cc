@@ -97,7 +97,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   need_update_ = true;
 }
 
-OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog)
+OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
     : desc_(desc), need_update_(false) {
   // restore inputs_
   int input_size = desc_.inputs_size();
@@ -131,6 +131,7 @@ OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog)
       attrs_[attr_name] = prog->MutableBlock(bid);
     }
   }
+  this->block_ = block;
 }
 
 proto::OpDesc *OpDesc::Proto() {
@@ -282,6 +283,7 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
     VectorToRepeated(v, attr_->mutable_bools());
   }
   void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
+  void operator()(int64_t v) const { attr_->set_l(v); }
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 

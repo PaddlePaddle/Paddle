@@ -31,9 +31,6 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
-if(NOT ANDROID AND NOT IOS)
-    find_package(Boost QUIET)
-endif()
 
 include(simd)
 
@@ -140,6 +137,7 @@ include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/swig)      # download, build, install swig
 include(external/warpctc)   # download, build, install warpctc
+include(external/boost)     # download, build, install boost
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
@@ -164,7 +162,6 @@ include_directories("${PADDLE_SOURCE_DIR}")
 include_directories("${PADDLE_SOURCE_DIR}/paddle/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
-include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXTERNAL_LIBS
     ${GFLAGS_LIBRARIES}
