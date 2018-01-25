@@ -61,20 +61,13 @@ class Vector : public std::vector<T> {
   }
 
   T *cuda_data() {
-    if (position_ == kDataPosition::kDataOnHost) {
-      CopyToCUDA();
-    }
+    CopyToCUDA();
     PADDLE_ENFORCE_NOT_NULL(
         cuda_ptr_, "No data or Insufficient CUDA memory to allocation");
     return static_cast<T *>(cuda_ptr_);
   }
 
-  T *data() {
-    if (position_ == kDataPosition::kDataOnDevice) {
-      CopyFromCUDA();
-    }
-    return std::vector<T>::data();
-  }
+  T *data() { return std::vector<T>::data(); }
 
   const T *data() const { return std::vector<T>::data(); }
 
@@ -87,6 +80,10 @@ class Vector : public std::vector<T> {
  private:
   void *cuda_ptr_ = nullptr;
   size_t cuda_size_ = 0;
+  /*The DataPosition is unused now,
+    if we want support random access from cpu and cuda,
+    we need to overload all the vector method */
+
   kDataPosition position_ = kDataPosition::kDataOnHost;
   platform::CUDAPlace place_;
 };
@@ -107,7 +104,6 @@ void Vector<T>::CopyToCUDA() {
   cuda_ctx->Wait();
 
   cuda_size_ = this->size();
-  position_ = kDataPosition::kDataOnDevice;
 #endif
 }
 
@@ -126,7 +122,6 @@ void Vector<T>::CopyFromCUDA() {
                cuda_ctx->stream());
   cuda_ctx->Wait();
 
-  position_ = kDataPosition::kDataOnHost;
 #endif
 }
 

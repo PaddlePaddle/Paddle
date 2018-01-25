@@ -44,6 +44,7 @@ TEST(Vector, Normal) {
 
   vec.clear();
   vec.CopyFromCUDA();
+
   std::vector<size_t> v = {1, 2, 3};
   for (size_t i = 0; i < v.size(); ++i) {
     EXPECT_EQ(v[i], vec[i]);
