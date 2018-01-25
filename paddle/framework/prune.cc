@@ -102,6 +102,34 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
       *op_field->Add() = input.blocks(block_id).ops(i);
     }
   }
+
+  // remove the vars in ProgramDesc that are not referenced in
+  // the pruned ops
+  std::unordered_map<std::string name, proto::VarDesc> var_map;
+  auto* var_field = output->mutable_blocks(block_id)->mutable_vars();
+  for (auto* var : *var_field) {
+    var_map[var->name()] = *var;
+  }
+
+  //  for (size_t i = 0; i < var_field->size(); ++i) {
+  //    auto* var = (*var_field)[i];
+  //    var_map[var->name()] = *var;
+  //  }
+
+  //  var_field->Clear();
+  //  for (size_t i = 0; i < op_field->size(); ++i) {
+  //    auto* op = (*op_field)[i];
+
+  //    auto* input_field = op->mutable_inputs();
+  //    for (size_t j = 0; j < input_field->size(); ++j) {
+  //        auto* input_names = (*input_field)[j]->arguments();
+  //        for ()
+  //        *var_field->Add() = var_map[]
+  //    }
+  //    auto* ouput_field = op->mutable_outputs();
+  //    for (size_t k = 0; k < output_field->size(); ++k) {
+  //    }
+  //  }
 }
 
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
