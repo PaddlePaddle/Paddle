@@ -241,7 +241,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
 // ncclBcastOp with desc
 TEST_F(NCCLTester, ncclBcastOp) {
   std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
-  const int kRoot = 5;
+  const int kRoot = 0;
   op2->SetType("ncclBcast");
   op2->SetInput("X", {"st"});
   op2->SetInput("Communicator", {"comm"});
