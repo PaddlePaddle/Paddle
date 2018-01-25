@@ -69,7 +69,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.cuda_device_context().stream();
     MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
-        num_tokens, tokens, num_seq, input_lod[level].data(), blank,
+        num_tokens, tokens, num_seq, input_lod[level].cuda_data(), blank,
         merge_repeated, dev_out_lod0_ptr, output_data);
 
     // set output lod
