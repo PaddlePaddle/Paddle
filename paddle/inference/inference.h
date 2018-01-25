@@ -29,9 +29,6 @@ public:
   }
 
   void LoadInferenceModel(const std::string& dirname);
-  void LoadInferenceModel(const std::string& dirname,
-                          const std::vector<std::string>& feed_var_names,
-                          const std::vector<std::string>& fetch_var_names);
   void Execute(const std::vector<framework::LoDTensor>& feeds,
                std::vector<framework::LoDTensor>& fetchs);
 

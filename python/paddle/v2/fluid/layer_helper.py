@@ -100,7 +100,8 @@ class LayerHelper(object):
             if dtype is None:
                 dtype = each.dtype
             elif dtype != each.dtype:
-                raise ValueError("Data Type mismatch")
+                raise ValueError("Data Type mismatch: %d to %d" %
+                                 (dtype, each.dtype))
         return dtype
 
     def create_parameter(self,
@@ -110,6 +111,7 @@ class LayerHelper(object):
                          is_bias=False,
                          default_initializer=None):
         # Deepcopy the attr so that parameters can be shared in program
+        attr = copy.deepcopy(attr)
         assert isinstance(attr, ParamAttr)
         suffix = 'b' if is_bias else 'w'
 
