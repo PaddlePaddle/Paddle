@@ -279,6 +279,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_multiplex(self):
+        program = Program()
+        with program_guard(program):
+            x1 = layers.data(name='x1', shape=[4], dtype='float32')
+            x2 = layers.data(name='x2', shape=[4], dtype='float32')
+            index = layers.data(name='index', shape=[1], dtype='int32')
+            out = layers.multiplex(inputs=[x1, x2], index=index)
+            self.assertIsNotNone(out)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
