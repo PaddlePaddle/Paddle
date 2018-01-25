@@ -135,6 +135,7 @@ class RecvOp : public framework::OperatorBase {
         }
         detail::DeserializeFromMessage(v.second, dev_ctx, var);
       }
+      // TODO(Yancey1989): merge SelectedRows variables here
       if (exit_flag) {
         break;
       }
