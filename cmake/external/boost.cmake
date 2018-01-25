@@ -15,8 +15,8 @@
 include(ExternalProject)
 
 set(BOOST_PROJECT       "extern_boost")
-set(BOOST_VER           "1.66.0")
-set(BOOST_TAR           "boost_1_66_0")
+set(BOOST_VER           "1.41.0")
+set(BOOST_TAR           "boost_1_41_0")
 set(BOOST_URL           "https://dl.bintray.com/boostorg/release/${BOOST_VER}/source/${BOOST_TAR}.tar.gz")
 set(BOOST_SOURCES_DIR ${THIRD_PARTY_PATH}/boost)
 set(BOOST_DOWNLOAD_DIR  "${BOOST_SOURCES_DIR}/src/${BOOST_PROJECT}")
