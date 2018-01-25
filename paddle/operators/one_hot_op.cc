@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/operators/one_hot_op.h"
+#include "paddle/framework/framework.pb.h"
 
 namespace paddle {
 namespace operators {
@@ -33,6 +34,9 @@ class OneHotOp : public framework::OperatorWithKernel {
                       "Last dimension of Input(X) should be 1.");
 
     int depth = ctx->Attrs().Get<int>("depth");
+
+    PADDLE_ENFORCE_GT(depth, 0, "Should provide a positive depth (%d).", depth);
+
     framework::DDim out_dims(x_dims);
     out_dims[out_dims.size() - 1] = depth;
     ctx->SetOutputDim("Out", out_dims);
@@ -52,10 +56,11 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor, Tensor<float>) Output tensor with same rank as X. "
               "The tensor consists of one-hot representations of values in X.");
     AddAttr<int>("depth",
-                 "An integer to specify the length of one-hot vector.");
+                 "A positive integer to specify the length of one-hot vector.");
     AddAttr<int>("dtype",
                  "An integer to specify the data type of one-hot "
-                 "vector.");
+                 "vector. The default value is FP32.")
+        .SetDefault(paddle::framework::proto::DataType::FP32);
     AddComment(R"DOC(
 One Hot Operator. This operator creates the one-hot representations for input
 index values. The following example will help to explain the function of this
