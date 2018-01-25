@@ -181,7 +181,7 @@ static bool has_feed_operators(
         "The number of feed operators should match 'feed_targets'");
 
     // When feed operator are present, so should be feed_holder
-    auto var = global_block->FindVar(feed_holder_name);
+    auto var = block->FindVar(feed_holder_name);
     PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
                             feed_holder_name);
     PADDLE_ENFORCE_EQ(var->GetType(), proto::VarDesc::FEED_MINIBATCH,
@@ -221,7 +221,7 @@ static bool has_fetch_operators(
         "The number of fetch operators should match 'fetch_targets'");
 
     // When fetch operator are present, so should be fetch_holder
-    auto var = global_block->FindVar(fetch_holder_name);
+    auto var = block->FindVar(fetch_holder_name);
     PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
                             fetch_holder_name);
     PADDLE_ENFORCE_EQ(var->GetType(), proto::VarDesc::FETCH_LIST,
@@ -242,7 +242,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 
   if (!has_feed_operators(global_block, feed_targets, feed_holder_name)) {
     // create feed_holder variable
-    feed_holder = global_block->Var(feed_holder_name);
+    auto* feed_holder = global_block->Var(feed_holder_name);
     feed_holder->SetType(proto::VarDesc::FEED_MINIBATCH);
     feed_holder->SetPersistable(true);
 
@@ -277,7 +277,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 
   if (!has_fetch_operators(global_block, fetch_targets, fetch_holder_name)) {
     // create fetch_holder variable
-    fetch_holder = global_block->Var(fetch_holder_name);
+    auto* fetch_holder = global_block->Var(fetch_holder_name);
     fetch_holder->SetType(proto::VarDesc::FETCH_LIST);
     fetch_holder->SetPersistable(true);
 
