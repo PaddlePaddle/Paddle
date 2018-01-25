@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <iostream>
 #include "paddle/operators/array_operator.h"
 #include "paddle/operators/detail/safe_ref.h"
 namespace paddle {
@@ -124,6 +125,7 @@ class ReadFromArrayOp : public ArrayOp {
       : ArrayOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    std::cout << "into read array op" << std::endl;
     auto *x = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x != nullptr, "X must be set");
     auto &x_array = x->Get<framework::LoDTensorArray>();
