@@ -33,15 +33,28 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self, global_step=None, regularization=None):
+    def __init__(self, learning_rate, global_step=None, regularization=None):
+        assert learning_rate is not None
         self._global_step = global_step
         self.regularization = regularization
+        self._learning_rate = learning_rate
+        self._global_lr_var = None
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+
+    def _create_global_learning_rate(self):
+        self._global_lr_var = self.helper.create_global_variable(
+            name=unique_name("learning_rate"),
+            dtype='float32',
+            shape=[1],
+            lod_level=1,
+            persistable=True)
+        self.helper.set_variable_initializer(
+            var=self._global_lr_var, initializer=Constant(self._learning_rate))
 
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
@@ -54,14 +67,17 @@ class Optimizer(object):
         param_lr = param.optimize_attr['learning_rate']
         param_lr_shape = [1]
         param_lr_var = self.helper.create_global_variable(
-            name=unique_name("learning_rate"),
+            name=unique_name("learning_rate_" + param.name),
             dtype='float32',
             shape=param_lr_shape,
             lod_level=1,
             persistable=True)
-        param_lr = param_lr * self._learning_rate
-        self.helper.set_variable_initializer(
-            var=param_lr_var, initializer=Constant(param_lr))
+        param.block.program.global_block().append_op(
+            type="scale",
+            inputs={"X": self._global_lr_var},
+            outputs={"Out": param_lr_var},
+            attrs={"scale": param_lr})
+
         return param_lr_var
 
     def _create_accumulators(self, block, parameters):
@@ -163,7 +179,7 @@ class Optimizer(object):
           optimization. This will include parameter update ops, global step
           update ops and any other custom ops required by subclasses to manage
           their internal state.
-          :param startup_program: 
+          :param startup_program:
         """
         # This is a default implementation of create_optimization_pass that
         # can be shared by most optimizers. This implementation assumes that
@@ -176,6 +192,7 @@ class Optimizer(object):
         program = loss.block.program
         with program_guard(program, startup_program):
             self.helper = LayerHelper(self.__class__.__name__)
+            self._create_global_learning_rate()
             self._create_accumulators(loss.block,
                                       [p[0] for p in parameters_and_grads])
 
@@ -233,7 +250,6 @@ class SGDOptimizer(Optimizer):
         assert learning_rate is not None
         super(SGDOptimizer, self).__init__(**kwargs)
         self.type = "sgd"
-        self._learning_rate = learning_rate
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -261,7 +277,6 @@ class MomentumOptimizer(Optimizer):
         assert momentum is not None
         super(MomentumOptimizer, self).__init__(**kwargs)
         self.type = "momentum"
-        self._learning_rate = learning_rate
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
 
@@ -305,7 +320,6 @@ class AdagradOptimizer(Optimizer):
         assert epsilon is not None
         super(AdagradOptimizer, self).__init__(**kwargs)
         self.type = "adagrad"
-        self._learning_rate = learning_rate
         self._epsilon = epsilon
 
     def _create_accumulators(self, block, parameters):
@@ -354,7 +368,6 @@ class AdamOptimizer(Optimizer):
         assert epsilon is not None
         super(AdamOptimizer, self).__init__(**kwargs)
         self.type = "adam"
-        self._learning_rate = learning_rate
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
@@ -459,7 +472,6 @@ class AdamaxOptimizer(Optimizer):
         assert epsilon is not None
         super(AdamaxOptimizer, self).__init__(**kwargs)
         self.type = "adamax"
-        self._learning_rate = learning_rate
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
@@ -537,7 +549,6 @@ class DecayedAdagradOptimizer(Optimizer):
 
         super(DecayedAdagradOptimizer, self).__init__(**kwargs)
         self.type = "decayed_adagrad"
-        self._learning_rate = learning_rate
         self._decay = decay
         self._epsilon = epsilon
 

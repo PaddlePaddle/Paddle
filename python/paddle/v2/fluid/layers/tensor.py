@@ -16,6 +16,7 @@ from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
+from ..initializer import Constant
 from ..core import DataType
 import numpy
 
@@ -63,6 +64,11 @@ def create_parameter(shape,
         attr = ParamAttr()
     return helper.create_parameter(attr, shape, dtype, is_bias,
                                    default_initializer)
+
+
+def create_global_step():
+    return create_parameter(
+        shape=[1], dtype='int64', default_initializer=Constant(value=0))
 
 
 def cast(x, dtype):
