@@ -41,12 +41,14 @@ class SendOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
     for (size_t i = 0; i < ins.size(); i++) {
-      VLOG(3) << "sending " << ins[i];
+      VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
       client_.AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
     }
     PADDLE_ENFORCE(client_.Wait());
 
-    for (auto& ep : epmap) {
+    std::set<std::string> epset(epmap.begin(), epmap.end());
+    for (auto& ep : epset) {
+      VLOG(3) << "batch barrier, ep: " << ep;
       client_.AsyncBatchBarrier(ep);
     }
     PADDLE_ENFORCE(client_.Wait());

@@ -119,9 +119,10 @@ class RequestGet final : public RequestBase {
 
 class RequestBatchBarrier final : public RequestBase {
  public:
-  explicit RequestBatchBarrier(sendrecv::SendRecvService::AsyncService* service,
+  explicit RequestBatchBarrier(AsyncGRPCServer* server,
+                               sendrecv::SendRecvService::AsyncService* service,
                                grpc::ServerCompletionQueue* cq)
-      : RequestBase(service, cq), responder_(&ctx_) {
+      : RequestBase(service, cq), responder_(&ctx_), server_(server) {
     service_->RequestBatchBarrier(&ctx_, &request_, &responder_, cq_, cq_,
                                   this);
   }
@@ -131,6 +132,7 @@ class RequestBatchBarrier final : public RequestBase {
   virtual std::string GetReqName() { return "Batch Barrier"; }
 
   virtual void Process() {
+    server_->SubBatchCond(1);
     // TODO(Yancey1989): sub batch cond
     responder_.Finish(reply_, grpc::Status::OK, this);
     status_ = FINISH;
@@ -140,6 +142,7 @@ class RequestBatchBarrier final : public RequestBase {
   sendrecv::VoidMessage request_;
   sendrecv::VoidMessage reply_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
+  AsyncGRPCServer* server_;
 };
 
 void AsyncGRPCServer::WaitClientGet(int count) {
@@ -227,7 +230,7 @@ void AsyncGRPCServer::TryToRegisterNewBatchBarrier() {
     return;
   }
   RequestBatchBarrier* r =
-      new RequestBatchBarrier(&service_, cq_batch_barrier_.get());
+      new RequestBatchBarrier(this, &service_, cq_batch_barrier_.get());
   VLOG(4) << "Create RequestBatchBarrier status:" << r->Status();
 }
 
@@ -294,19 +297,19 @@ void AsyncGRPCServer::SetCond(int cond) {
   barrier_condition_.notify_all();
 }
 
-void AsyncGRPCServer::SubCond(int arg) {
-  {
-    std::unique_lock<std::mutex> lock(this->barrier_mutex_);
-    barrier_cond_step_ -= arg;
-  }
-  barrier_condition_.notify_all();
+void AsyncGRPCServer::SetBatchCond(int cond) {
+  std::unique_lock<std::mutex> lock(this->batch_barrier_mutex_);
+  batch_barrier_cond_ = cond;
 }
 
-bool AsyncGRPCServer::CondEqualTo(int arg) {
-  {
-    std::unique_lock<std::mutex> lock(this->barrier_mutex_);
-    return barrier_cond_step_ == arg;
-  }
+void AsyncGRPCServer::SubBatchCond(int arg) {
+  std::unique_lock<std::mutex> lock(this->batch_barrier_mutex_);
+  batch_barrier_cond_ -= arg;
+}
+
+bool AsyncGRPCServer::BatchCondEqualTo(int arg) {
+  std::unique_lock<std::mutex> lock(this->batch_barrier_mutex_);
+  return batch_barrier_cond_ == arg;
 }
 
 }  // namespace detail

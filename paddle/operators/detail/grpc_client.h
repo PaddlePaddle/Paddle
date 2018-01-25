@@ -71,6 +71,15 @@ class ClientBase {
     context_->set_deadline(deadline);
   }
 
+  virtual void Prepare(int64_t time_out) {
+    context_.reset(new grpc::ClientContext());
+
+    std::chrono::system_clock::time_point deadline =
+        std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);
+
+    context_->set_deadline(deadline);
+  }
+
   virtual void Process() = 0;
 
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;

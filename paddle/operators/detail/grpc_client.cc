@@ -45,7 +45,6 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     SendProcessor* s = new SendProcessor(ch);
     s->Prepare(var_h, time_out);
     s->response_call_back_ = NULL;
-
     auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
     rpc->Finish(&s->reply_, &s->status_, (void*)s);
   });
@@ -98,17 +97,14 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
 }
 
 bool RPCClient::AsyncBatchBarrier(const std::string& ep, int64_t time_out) {
-  const std::string ep_val = ep;
-  const auto ch = GetChannel(ep_val);
+  const auto ch = GetChannel(ep);
 
-  framework::Async([ep_val, time_out, ch, this] {
-    BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-    sendrecv::VoidMessage req;
+  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  s->Prepare(time_out);
 
-    auto rpc = s->stub_->AsyncBatchBarrier(s->context_.get(), req, &cq_);
-    rpc->Finish(&s->reply_, &s->status_, (void*)s);
-  });
-
+  sendrecv::VoidMessage req;
+  auto rpc = s->stub_->AsyncBatchBarrier(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, (void*)s);
   req_count_++;
 
   return true;

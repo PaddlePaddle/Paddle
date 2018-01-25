@@ -95,7 +95,6 @@ class RecvOp : public framework::OperatorBase {
     auto param_list = Attr<std::vector<std::string>>("ParamList");
     auto grad_list = Attr<std::vector<std::string>>("GradList");
     auto fan_in = Attr<int>("Fanin");
-    size_t param_count = param_list.size();
 
     auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
     auto *program = block->Program();
@@ -103,13 +102,16 @@ class RecvOp : public framework::OperatorBase {
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
-    size_t barrier_size = param_count * fan_in;
     while (!exit_flag) {
       // Get from multiple trainers, we don't care about the order in which
       // the gradients arrives, just add suffix 0~n and merge the gradient.
-      rpc_service_->SetCond(fan_in);
-      while (rpc_service_->CondEqualTo(0)) {
+      rpc_service_->SetCond(0);
+      rpc_service_->SetBatchCond(fan_in);
+      size_t barrier_size = 0;
+      while (!rpc_service_->BatchCondEqualTo(0) ||
+             !rpc_service_->IsRecvQueueEmpty()) {
         const detail::MessageWithName &v = rpc_service_->Get();
+        barrier_size++;
         auto grad_var_name = v.first;
         if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
           LOG(INFO) << "received terminate message and exit";
@@ -135,6 +137,7 @@ class RecvOp : public framework::OperatorBase {
         }
         detail::DeserializeFromMessage(v.second, dev_ctx, var);
       }
+      VLOG(3) << "recv " << barrier_size << " parmeters for one barrier.";
       // TODO(Yancey1989): merge SelectedRows variables here
       if (exit_flag) {
         break;
@@ -146,7 +149,8 @@ class RecvOp : public framework::OperatorBase {
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
-      rpc_service_->SetCond(fan_in);
+      rpc_service_->SetBatchCond(fan_in);
+      rpc_service_->SetCond(0);
       rpc_service_->WaitClientGet(barrier_size);
       grads_counter_.clear();
     }  // while(true)
