@@ -53,9 +53,11 @@ class Vector : public std::vector<T> {
   Vector(const std::vector<T> &v) : std::vector<T>(v) {}  // NOLINT
 
   virtual ~Vector() {
+#ifdef PADDLE_WITH_CUDA
     if (cuda_ptr_ != nullptr) {
       memory::Free<platform::CUDAPlace>(place_, static_cast<void *>(cuda_ptr_));
     }
+#endif
   }
 
   T *cuda_data() {
