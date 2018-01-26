@@ -156,6 +156,7 @@ def main():
     avg_cost = fluid.layers.mean(x=crf_cost)
 
     global_step = fluid.layers.create_global_step()
+    # print(str(global_step.block.program))
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001,

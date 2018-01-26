@@ -36,6 +36,6 @@ def exponential_decay(learning_rate, global_step, decay_steps, decay_rate):
     # update learning_rate
     print("xxxxxxx")
     print(global_step)
-    div_res = layers.elementwise_div(X=global_step, Y=decay_steps_var)
-    pow_res = layers.pow(X=decay_rate_var, Y=div_res)
+    div_res = layers.elementwise_div(x=global_step, y=decay_steps_var)
+    pow_res = layers.pow(x=decay_rate_var, y=div_res)
     layers.assign(learning_rate, learning_rate * pow_res)
