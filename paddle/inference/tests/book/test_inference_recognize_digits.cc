@@ -16,11 +16,12 @@ limitations under the License. */
 #include <time.h>
 #include <sstream>
 #include "gflags/gflags.h"
+#include "paddle/framework/init.h"
 #include "paddle/inference/inference.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-TEST(inference, recognize_digits) {
+TEST(recognize_digits, CPU) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
@@ -28,33 +29,54 @@ TEST(inference, recognize_digits) {
   std::cout << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
   std::string dirname = FLAGS_dirname;
 
-  paddle::InferenceEngine* engine = new paddle::InferenceEngine();
-  engine->LoadInferenceModel(dirname);
+  // 0. Initialize all the devices
+  paddle::framework::InitDevices();
 
+  // 1. Define place, executor and scope
+  auto place = paddle::platform::CPUPlace();
+  auto executor = paddle::framework::Executor(place);
+  auto* scope = new paddle::framework::Scope();
+
+  // 2. Initialize the inference_program and load all parameters from file
+  paddle::InferenceEngine* engine = new paddle::InferenceEngine();
+  paddle::framework::ProgramDesc* inference_program =
+      engine->LoadInferenceModel(executor, scope, dirname);
+
+  // 3. Get the feed_var_names and fetch_var_names
+  const std::vector<std::string>& feed_target_names = engine->GetFeedVarNames();
+  const std::vector<std::string>& fetch_target_names =
+      engine->GetFetchVarNames();
+
+  // 4. Prepare inputs
+  std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
   paddle::framework::LoDTensor input;
   srand(time(0));
   float* input_ptr =
-      input.mutable_data<float>({1, 784}, paddle::platform::CPUPlace());
+      input.mutable_data<float>({1, 28, 28}, paddle::platform::CPUPlace());
   for (int i = 0; i < 784; ++i) {
     input_ptr[i] = rand() / (static_cast<float>(RAND_MAX));
   }
+  feed_targets[feed_target_names[0]] = &input;
 
-  std::vector<paddle::framework::LoDTensor> feeds;
-  feeds.push_back(input);
-  std::vector<paddle::framework::LoDTensor> fetchs;
-  engine->Execute(feeds, fetchs);
+  // 5. Define Tensor to get the outputs
+  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
+  paddle::framework::LoDTensor output;
+  fetch_targets[fetch_target_names[0]] = &output;
 
-  for (size_t i = 0; i < fetchs.size(); ++i) {
-    LOG(INFO) << fetchs[i].dims();
-    std::stringstream ss;
-    ss << "result:";
-    float* output_ptr = fetchs[i].data<float>();
-    for (int j = 0; j < fetchs[i].numel(); ++j) {
-      ss << " " << output_ptr[j];
-    }
-    LOG(INFO) << ss.str();
+  // 6. Run the inference program
+  executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+
+  // 7. Use the output as your expect.
+  LOG(INFO) << output.dims();
+  std::stringstream ss;
+  ss << "result:";
+  float* output_ptr = output.data<float>();
+  for (int j = 0; j < output.numel(); ++j) {
+    ss << " " << output_ptr[j];
   }
+  LOG(INFO) << ss.str();
 
+  delete scope;
   delete engine;
 }
 
