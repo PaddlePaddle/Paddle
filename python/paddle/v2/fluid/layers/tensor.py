@@ -23,6 +23,7 @@ import numpy
 __all__ = [
     'create_tensor',
     'create_parameter',
+    'create_global_step',
     'cast',
     'concat',
     'sums',
@@ -59,7 +60,7 @@ def create_parameter(shape,
     Returns:
         Parameter: the created parameter
     """
-    helper = LayerHelper("create_parameter")
+    helper = LayerHelper("create_parameter", **locals())
     if attr is None:
         attr = ParamAttr()
     return helper.create_parameter(attr, shape, dtype, is_bias,
@@ -67,8 +68,9 @@ def create_parameter(shape,
 
 
 def create_global_step():
-    return create_parameter(
-        shape=[1], dtype='int64', default_initializer=Constant(value=0))
+    helper = LayerHelper("create_global_step", **locals())
+    return helper.create_global_variable(
+        shape=[1], dtype='int32', default_initializer=Constant(value=0.0))
 
 
 def cast(x, dtype):

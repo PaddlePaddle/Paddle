@@ -26,6 +26,7 @@ import initializer
 import layers
 import nets
 import optimizer
+import learning_rate_decay
 import backward
 import regularizer
 from param_attr import ParamAttr
@@ -44,6 +45,7 @@ __all__ = framework.__all__ + executor.__all__ + [
     'layers',
     'nets',
     'optimizer',
+    'learning_rate_decay',
     'backward',
     'regularizer',
     'LoDTensor',

@@ -155,10 +155,25 @@ def main():
             name='crfw', learning_rate=mix_hidden_lr))
     avg_cost = fluid.layers.mean(x=crf_cost)
 
+    global_step = fluid.layers.create_global_step()
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
+    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001,
+                                        global_step=global_step)
     sgd_optimizer.minimize(avg_cost)
+
+    print(global_step)
+    fluid.learning_rate_decay.exponential_decay(
+        learning_rate=sgd_optimizer.global_learning_rate,
+        global_step=global_step,
+        decay_steps=2,
+        decay_rate=0.1)
+
+    with open("startup_program.proto", 'w') as f:
+        f.write(str(fluid.default_startup_program()))
+
+    with open("main_program.proto", 'w') as f:
+        f.write(str(fluid.default_main_program()))
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
@@ -175,8 +190,8 @@ def main():
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    #place = fluid.CPUPlace()
-    place = fluid.CUDAPlace(0)
+    place = fluid.CPUPlace()
+    # place = fluid.CUDAPlace(0)
     feeder = fluid.DataFeeder(
         feed_list=[
             word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target

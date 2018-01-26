@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.layers as layers
+import layers
+from framework import Variable
+
+__all__ = ['exponential_decay', ]
 
 
 def exponential_decay(learning_rate, global_step, decay_steps, decay_rate):
@@ -23,7 +25,7 @@ def exponential_decay(learning_rate, global_step, decay_steps, decay_rate):
             decay_rate ^ (global_step / decay_steps)
     ```
     """
-    if global_step is None or not isinstance(global_step, fluid.Variable):
+    if global_step is None or not isinstance(global_step, Variable):
         raise ValueError("global_step is required for exponential_decay.")
 
     decay_steps_var = layers.fill_constant(
@@ -32,6 +34,8 @@ def exponential_decay(learning_rate, global_step, decay_steps, decay_rate):
         shape=[1], dtype='float64', value=decay_rate)
 
     # update learning_rate
+    print("xxxxxxx")
+    print(global_step)
     div_res = layers.elementwise_div(X=global_step, Y=decay_steps_var)
-    pow_res = fluid.layers.pow(X=decay_rate_var, Y=div_res)
+    pow_res = layers.pow(X=decay_rate_var, Y=div_res)
     layers.assign(learning_rate, learning_rate * pow_res)

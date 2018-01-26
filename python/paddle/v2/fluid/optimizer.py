@@ -56,6 +56,10 @@ class Optimizer(object):
         self.helper.set_variable_initializer(
             var=self._global_lr_var, initializer=Constant(self._learning_rate))
 
+    @property
+    def global_learning_rate(self):
+        return self._global_lr_var
+
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
         """
@@ -248,7 +252,8 @@ class SGDOptimizer(Optimizer):
 
     def __init__(self, learning_rate, **kwargs):
         assert learning_rate is not None
-        super(SGDOptimizer, self).__init__(**kwargs)
+        super(SGDOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
         self.type = "sgd"
 
     def _append_optimize_op(self, block, param_and_grad):
@@ -275,7 +280,8 @@ class MomentumOptimizer(Optimizer):
     def __init__(self, learning_rate, momentum, use_nesterov=False, **kwargs):
         assert learning_rate is not None
         assert momentum is not None
-        super(MomentumOptimizer, self).__init__(**kwargs)
+        super(MomentumOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
         self.type = "momentum"
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
@@ -318,7 +324,8 @@ class AdagradOptimizer(Optimizer):
     def __init__(self, learning_rate, epsilon=1.0e-6, **kwargs):
         assert learning_rate is not None
         assert epsilon is not None
-        super(AdagradOptimizer, self).__init__(**kwargs)
+        super(AdagradOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
         self.type = "adagrad"
         self._epsilon = epsilon
 
@@ -366,7 +373,8 @@ class AdamOptimizer(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(AdamOptimizer, self).__init__(**kwargs)
+        super(AdamOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
         self.type = "adam"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -470,7 +478,8 @@ class AdamaxOptimizer(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(AdamaxOptimizer, self).__init__(**kwargs)
+        super(AdamaxOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
         self.type = "adamax"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -547,7 +556,8 @@ class DecayedAdagradOptimizer(Optimizer):
         assert decay is not None
         assert epsilon is not None
 
-        super(DecayedAdagradOptimizer, self).__init__(**kwargs)
+        super(DecayedAdagradOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
         self.type = "decayed_adagrad"
         self._decay = decay
         self._epsilon = epsilon
