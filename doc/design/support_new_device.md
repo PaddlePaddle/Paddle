@@ -17,7 +17,7 @@ For a general overview of fluid, please refer to the [overview doc](https://gith
 
 There are mainly three parts that we have to consider while integrating a new device/library:
 
-- Place and DeviceContext: indicate the device id and manages hardware resources
+- Place and DeviceContext: indicate the device id and manage hardware resources
 
 - Memory and Tensor: malloc/free data on certain device
 
@@ -203,7 +203,7 @@ class MaxOutFunctor<platform::CUDADeviceContext, T> {
 ```
 
 
-We get computing handle from a concrete DeviceContext, and compute on tensors.
+We first obtain the computing handle from a concrete DeviceContext, and then compute on tensors.
 
 The implemention of `OpKernel` is similar to math functors, the extra thing we need to do is to register the OpKernel in a global map.
 
