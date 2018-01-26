@@ -140,8 +140,13 @@ def init_config_environment(
         g_submodel_stack=[],
         g_add_submodel_suffix=False, ):
 
-    for k, v in locals().iteritems():
-        globals()[k] = copy.deepcopy(v)
+    # directly iterate through locals().iteritems() will change
+    # the size of locals() due to introducting k, v into scope
+    # which will break the process in some env
+
+    local_vars = copy.deepcopy(locals())
+    for k, v in local_vars.iteritems():
+        globals()[k] = v
 
 
 # Because type is widely used as a variable name in this code.
