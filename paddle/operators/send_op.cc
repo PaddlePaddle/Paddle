@@ -63,21 +63,21 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
   SendOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor to be sent").AsDuplicable();
-    AddOutput("Out", "(Tensor) Output tensor to be received from server")
+    AddOutput("Out", "(Tensor) Output tensor to be received from the recv OP")
         .AsDuplicable();
     AddComment(R"DOC(
 Send operator
 
-This operator will send tensor to recv_op at the parameter server.
+This operator sends its input tensors to one or multiple recv OPs and then fetches its output tensors from the recv OPs.
 )DOC");
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
-                                      "Server endpoints to send variables to.")
+                                      "Endpoints to send the variables to")
         .SetDefault({});
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
-                                      "Server endpoints in the order of input "
-                                      "variables for mapping")
+                                      "Endpoints in the order of input "
+                                      "variables, used for sharding")
         .SetDefault({});
   }
 };

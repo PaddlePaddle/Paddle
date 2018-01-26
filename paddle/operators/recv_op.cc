@@ -161,11 +161,11 @@ class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   RecvOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("RX", "(Tensor) Input tensor to be optimized").AsDuplicable();
+    AddInput("RX", "(Tensor) Input tensor to be received").AsDuplicable();
     AddComment(R"DOC(
 Recv operator
 
-This operator will recieve tensor from send_op
+This operator receives its input tensors, runs the optimize block, and serves the tensors requested by the send OP.
 )DOC");
     AddAttr<std::string>("endpoint",
                          "(string, default 127.0.0.1:6164)"
@@ -173,17 +173,17 @@ This operator will recieve tensor from send_op
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
     AddAttr<framework::BlockDesc *>(
-        kOptimizeBlock, "Serialized ProgramDesc string for recv to run.");
+        kOptimizeBlock, "The block to run after receiving the tensors from the send OP.");
     AddAttr<std::vector<std::string>>(
         "ParamList", "type list of string",
-        "grad->param name mapping to find which parameters to optimize.")
+        "gradient name to parameter name mapping to find which parameters to optimize.")
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "GradList", "type list of string",
-        "grad->param name mapping to find which parameters to optimize.")
+        "parameter name to gradient name mapping to find which gradient to use.")
         .SetDefault({});
     AddAttr<int>("Fanin", "type int",
-                 "Number of trainers in the current cluster job")
+                 "Number of send OPs connected to this recv OP")
         .SetDefault(1);
   }
 };
