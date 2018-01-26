@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ limitations under the License. */
 #include <iostream>
 #include "gflags/gflags.h"
 #include "paddle/framework/init.h"
-#include "paddle/inference/inference.h"
+#include "paddle/io/io.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
@@ -29,9 +29,9 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
+  // 1. Define place, executor, scope
   auto* place = new paddle::platform::CPUPlace();
   paddle::framework::InitDevices();
-
   paddle::framework::Executor* executor =
       new paddle::framework::Executor(*place);
   paddle::framework::Scope* scope = new paddle::framework::Scope();
@@ -39,9 +39,19 @@ int main(int argc, char** argv) {
   std::cout << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
   std::string dirname = FLAGS_dirname;
 
-  paddle::InferenceEngine* engine = new paddle::InferenceEngine();
-  engine->LoadInferenceModel(*executor, *scope, dirname);
+  // 2. Initialize the inference program
+  framework::ProgramDesc* inference_program =
+      paddle::io::Load(exe, scope, dirname);
 
+  // 3. Optional: perform optimization on the inference_program
+
+  // 4. Get the feed_var_names and fetch_var_names
+  std::vector<std::string>& feed_var_names =
+      paddle::io::GetFeedVarNames(inference_program);
+  std::vector<std::string>& fetch_var_names =
+      paddle::io::GetFetchVarNames(inference_program);
+
+  // 5. Generate input
   paddle::framework::LoDTensor input;
   srand(time(0));
   float* input_ptr =
@@ -53,8 +63,26 @@ int main(int argc, char** argv) {
   std::vector<paddle::framework::LoDTensor> feeds;
   feeds.push_back(input);
   std::vector<paddle::framework::LoDTensor> fetchs;
-  engine->Execute(executor, scope, feeds, fetchs);
 
+  // Set up maps for feed and fetch targets
+  std::map<std::string, const framework::LoDTensor*> feed_targets;
+  std::map<std::string, framework::LoDTensor*> fetch_targets;
+
+  // set_feed_variable
+  for (size_t i = 0; i < feed_var_names_.size(); ++i) {
+    feed_targets[feed_var_names_[i]] = &feeds[i];
+  }
+
+  // get_fetch_variable
+  fetchs.resize(fetch_var_names_.size());
+  for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
+    fetch_targets[fetch_var_names_[i]] = &fetchs[i];
+  }
+
+  // Run the inference program
+  executor->Run(*program_, scope, feed_targets, fetch_targets);
+
+  // Get outputs
   for (size_t i = 0; i < fetchs.size(); ++i) {
     auto dims_i = fetchs[i].dims();
     std::cout << "dims_i:";
@@ -74,6 +102,5 @@ int main(int argc, char** argv) {
   delete scope;
   delete executor;
 
-  delete engine;
   return 0;
 }
