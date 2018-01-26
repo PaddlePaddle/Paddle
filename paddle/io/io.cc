@@ -91,18 +91,19 @@ framework::ProgramDesc* Load(framework::Executor& executor,
   return main_program;
 }
 
-std::vector<std::string> GetFeedVarNames(const ProgramDesc* main_program) {
+std::vector<std::string> GetFeedVarNames(framework::ProgramDesc* main_program) {
   framework::BlockDesc* global_block = main_program->MutableBlock(0);
   std::vector<std::string> feed_var_names;
   for (auto* op : global_block->AllOps()) {
     if (op->Type() == "feed") {
-      feed_var_names_.insert(feed_var_names.begin(), op->Output("Out")[0]);
+      feed_var_names.insert(feed_var_names.begin(), op->Output("Out")[0]);
     }
   }
   return feed_var_names;
 }
 
-std::vector<std::string> GetFetchVarNames(const ProgramDesc* main_program) {
+std::vector<std::string> GetFetchVarNames(
+    framework::ProgramDesc* main_program) {
   framework::BlockDesc* global_block = main_program->MutableBlock(0);
   std::vector<std::string> fetch_var_names;
 

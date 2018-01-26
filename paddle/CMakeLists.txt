@@ -25,6 +25,7 @@ else()
     add_subdirectory(operators)
     add_subdirectory(pybind)
     add_subdirectory(inference)
+    add_subdirectory(io)
   endif()
 
   if(WITH_SWIG_PY)

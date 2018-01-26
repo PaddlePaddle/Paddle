@@ -16,6 +16,7 @@ limitations under the License. */
 #include <iostream>
 #include "gflags/gflags.h"
 #include "paddle/framework/init.h"
+#include "paddle/framework/lod_tensor.h"
 #include "paddle/io/io.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -40,15 +41,15 @@ int main(int argc, char** argv) {
   std::string dirname = FLAGS_dirname;
 
   // 2. Initialize the inference program
-  framework::ProgramDesc* inference_program =
-      paddle::io::Load(exe, scope, dirname);
+  paddle::framework::ProgramDesc* inference_program =
+      paddle::io::Load(*executor, *scope, dirname);
 
   // 3. Optional: perform optimization on the inference_program
 
   // 4. Get the feed_var_names and fetch_var_names
-  std::vector<std::string>& feed_var_names =
+  std::vector<std::string> feed_var_names =
       paddle::io::GetFeedVarNames(inference_program);
-  std::vector<std::string>& fetch_var_names =
+  std::vector<std::string> fetch_var_names =
       paddle::io::GetFetchVarNames(inference_program);
 
   // 5. Generate input
@@ -65,22 +66,22 @@ int main(int argc, char** argv) {
   std::vector<paddle::framework::LoDTensor> fetchs;
 
   // Set up maps for feed and fetch targets
-  std::map<std::string, const framework::LoDTensor*> feed_targets;
-  std::map<std::string, framework::LoDTensor*> fetch_targets;
+  std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
+  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
 
   // set_feed_variable
-  for (size_t i = 0; i < feed_var_names_.size(); ++i) {
-    feed_targets[feed_var_names_[i]] = &feeds[i];
+  for (size_t i = 0; i < feed_var_names.size(); ++i) {
+    feed_targets[feed_var_names[i]] = &feeds[i];
   }
 
   // get_fetch_variable
-  fetchs.resize(fetch_var_names_.size());
-  for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
-    fetch_targets[fetch_var_names_[i]] = &fetchs[i];
+  fetchs.resize(fetch_var_names.size());
+  for (size_t i = 0; i < fetch_var_names.size(); ++i) {
+    fetch_targets[fetch_var_names[i]] = &fetchs[i];
   }
 
   // Run the inference program
-  executor->Run(*program_, scope, feed_targets, fetch_targets);
+  executor->Run(*inference_program, scope, feed_targets, fetch_targets);
 
   // Get outputs
   for (size_t i = 0; i < fetchs.size(); ++i) {

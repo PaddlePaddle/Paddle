@@ -1,22 +1,19 @@
-set(FLUID_CORE_MODULES proto_desc paddle_memory executor prune init)
+set(FLUID_CORE_MODULES proto_desc paddle_memory executor prune init io)
 
 # Merge all modules into a single static library
 cc_library(paddle_fluid DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
-# Create shared library
-add_library(paddle_fluid_shared)
-
-target_circle_link_libraries(paddle_fluid_shared
+target_circle_link_libraries(paddle_fluid
   ARCHIVE_START
   ${GLOB_OP_LIB}
   ARCHIVE_END
   ${FLUID_CORE_MODULES})
 
-SET_TARGET_PROPERTIES(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
+SET_TARGET_PROPERTIES(paddle_fluid PROPERTIES OUTPUT_NAME paddle_fluid)
 
 # install library & headers
 if(NOT WITH_C_API AND WITH_FLUID)
-  install(TARGETS paddle_fluid_shared DESTINATION lib)
+  install(TARGETS paddle_fluid DESTINATION lib)
 endif()
 
 add_executable(example example.cc)

@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 #include <string>
 #include <vector>
+#include "paddle/framework/block_desc.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/init.h"
 #include "paddle/framework/program_desc.h"
@@ -36,8 +39,8 @@ framework::ProgramDesc* Load(framework::Executor& executor,
                              framework::Scope& scope,
                              const std::string& dirname);
 
-std::vector<std::string> GetFeedVarNames(const ProgramDesc* main_program);
-std::vector<std::string> GetFetchVarNames(const ProgramDesc* main_program);
+std::vector<std::string> GetFeedVarNames(framework::ProgramDesc* main_program);
+std::vector<std::string> GetFetchVarNames(framework::ProgramDesc* main_program);
 
 }  // namespace io
 }  // namespace paddle
