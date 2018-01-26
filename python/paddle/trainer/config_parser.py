@@ -141,7 +141,7 @@ def init_config_environment(
         g_add_submodel_suffix=False, ):
 
     # directly iterate through locals().iteritems() will change
-    # the size of locals() due to introducting k, v into scope
+    # the size of locals() due to introducing k, v into scope
     # which will break the process in some env
 
     local_vars = copy.deepcopy(locals())
