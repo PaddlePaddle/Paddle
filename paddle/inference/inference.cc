@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include "inference.h"
 #include <fstream>
-#include "paddle/framework/executor.h"
-#include "paddle/framework/init.h"
-#include "paddle/framework/scope.h"
 
 namespace paddle {
 
-void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
+framework::ProgramDesc* InferenceEngine::LoadInferenceModel(
+    framework::Executor& exe,
+    framework::Scope* scope,
+    const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
   LOG(INFO) << "loading model from " << model_filename;
   std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
@@ -34,6 +34,7 @@ void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
 
   program_ = new framework::ProgramDesc(program_desc_str);
   GenerateLoadProgram(dirname);
+  exe.Run(*load_program_, scope, 0, true, true);
 
   framework::BlockDesc* global_block = program_->MutableBlock(0);
   feed_var_names_.clear();
@@ -45,6 +46,8 @@ void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
       fetch_var_names_.push_back(op->Input("X")[0]);
     }
   }
+
+  return program_;
 }
 
 bool InferenceEngine::IsParameter(const framework::VarDesc* var) {
@@ -91,97 +94,5 @@ void InferenceEngine::GenerateLoadProgram(const std::string& dirname) {
       op->CheckAttrs();
     }
   }
-}
-
-void InferenceEngine::PrependFeedOp() {
-  if (!program_) {
-    LOG(FATAL) << "Please initialize the program_ first.";
-  }
-
-  framework::BlockDesc* global_block = program_->MutableBlock(0);
-
-  // create_var
-  framework::VarDesc* feed_var = global_block->Var("feed");
-  feed_var->SetType(framework::proto::VarDesc::FEED_MINIBATCH);
-  feed_var->SetPersistable(true);
-
-  // prepend feed_op
-  for (size_t i = 0; i < feed_var_names_.size(); ++i) {
-    std::string var_name = feed_var_names_[i];
-    LOG(INFO) << "feed var's name: " << var_name;
-
-    // prepend_op
-    framework::OpDesc* op = global_block->PrependOp();
-    op->SetType("feed");
-    op->SetInput("X", {"feed"});
-    op->SetOutput("Out", {var_name});
-    op->SetAttr("col", {static_cast<int>(i)});
-    op->CheckAttrs();
-  }
-}
-
-void InferenceEngine::AppendFetchOp() {
-  if (!program_) {
-    LOG(FATAL) << "Please initialize the program_ first.";
-  }
-
-  framework::BlockDesc* global_block = program_->MutableBlock(0);
-
-  // create_var
-  framework::VarDesc* fetch_var = global_block->Var("fetch");
-  fetch_var->SetType(framework::proto::VarDesc::FETCH_LIST);
-  fetch_var->SetPersistable(true);
-
-  // append fetch_op
-  for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
-    std::string var_name = fetch_var_names_[i];
-    LOG(INFO) << "fetch var's name: " << var_name;
-
-    // append_op
-    framework::OpDesc* op = global_block->AppendOp();
-    op->SetType("fetch");
-    op->SetInput("X", {var_name});
-    op->SetOutput("Out", {"fetch"});
-    op->SetAttr("col", {static_cast<int>(i)});
-    op->CheckAttrs();
-  }
-}
-
-void InferenceEngine::Execute(const std::vector<framework::LoDTensor>& feeds,
-                              std::vector<framework::LoDTensor>& fetchs) {
-  if (!program_ || !load_program_) {
-    LOG(FATAL) << "Please initialize the program_ and load_program_ first.";
-  }
-
-  if (feeds.size() != feed_var_names_.size()) {
-    LOG(FATAL) << "Please feed " << feed_var_names_.size() << " input Tensors.";
-  }
-
-  auto* place = new platform::CPUPlace();
-  framework::InitDevices();
-  framework::Executor* executor = new framework::Executor(*place);
-  framework::Scope* scope = new framework::Scope();
-
-  executor->Run(*load_program_, scope, 0, true, true);
-
-  std::map<std::string, const framework::LoDTensor*> feed_targets;
-  std::map<std::string, framework::LoDTensor*> fetch_targets;
-
-  // set_feed_variable
-  for (size_t i = 0; i < feed_var_names_.size(); ++i) {
-    feed_targets[feed_var_names_[i]] = &feeds[i];
-  }
-
-  // get_fetch_variable
-  fetchs.resize(fetch_var_names_.size());
-  for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
-    fetch_targets[fetch_var_names_[i]] = &fetchs[i];
-  }
-
-  executor->Run(*program_, scope, feed_targets, fetch_targets);
-
-  delete place;
-  delete scope;
-  delete executor;
 }
 }  // namespace paddle

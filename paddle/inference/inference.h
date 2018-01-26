@@ -15,8 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/framework/block_desc.h"
+#include "paddle/framework/executor.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/program_desc.h"
+#include "paddle/framework/scope.h"
 
 namespace paddle {
 
@@ -28,15 +30,21 @@ public:
     delete load_program_;
   }
 
-  void LoadInferenceModel(const std::string& dirname);
-  void Execute(const std::vector<framework::LoDTensor>& feeds,
-               std::vector<framework::LoDTensor>& fetchs);
+  framework::ProgramDesc* LoadInferenceModel(framework::Executor& exe,
+                                             framework::Scope* scope,
+                                             const std::string& dirname);
+
+  const std::vector<std::string>& GetFeedVarNames() const {
+    return feed_var_names_;
+  }
+
+  const std::vector<std::string>& GetFetchVarNames() const {
+    return fetch_var_names_;
+  }
 
 private:
   bool IsParameter(const framework::VarDesc* var);
   void GenerateLoadProgram(const std::string& dirname);
-  void PrependFeedOp();
-  void AppendFetchOp();
 
 private:
   framework::ProgramDesc* program_;
