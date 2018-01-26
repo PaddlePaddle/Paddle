@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,19 +21,12 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-TEST(recognize_digits, CPU) {
-  if (FLAGS_dirname.empty()) {
-    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
-  }
-
-  std::cout << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
-  std::string dirname = FLAGS_dirname;
-
-  // 0. Initialize all the devices
-  paddle::framework::InitDevices();
-
+template <typename Place, typename T>
+void TestInference(const std::string& dirname,
+                   const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
+                   std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
   // 1. Define place, executor and scope
-  auto place = paddle::platform::CPUPlace();
+  auto place = Place();
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
 
@@ -49,6 +42,34 @@ TEST(recognize_digits, CPU) {
 
   // 4. Prepare inputs
   std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
+  for (size_t i = 0; i < feed_target_names.size(); ++i) {
+    // Please make sure that cpu_feeds[i] is right for feed_target_names[i]
+    feed_targets[feed_target_names[i]] = cpu_feeds[i];
+  }
+
+  // 5. Define Tensor to get the outputs
+  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
+  for (size_t i = 0; i < fetch_target_names.size(); ++i) {
+    fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
+  }
+
+  // 6. Run the inference program
+  executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+
+  delete scope;
+  delete engine;
+}
+
+TEST(inference, recognize_digits) {
+  if (FLAGS_dirname.empty()) {
+    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
+  }
+
+  LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
+
+  // 0. Initialize all the devices
+  paddle::framework::InitDevices();
+
   paddle::framework::LoDTensor input;
   srand(time(0));
   float* input_ptr =
@@ -56,28 +77,40 @@ TEST(recognize_digits, CPU) {
   for (int i = 0; i < 784; ++i) {
     input_ptr[i] = rand() / (static_cast<float>(RAND_MAX));
   }
-  feed_targets[feed_target_names[0]] = &input;
+  std::vector<paddle::framework::LoDTensor*> cpu_feeds;
+  cpu_feeds.push_back(&input);
 
-  // 5. Define Tensor to get the outputs
-  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
-  paddle::framework::LoDTensor output;
-  fetch_targets[fetch_target_names[0]] = &output;
+  paddle::framework::LoDTensor output1;
+  std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+  cpu_fetchs1.push_back(&output1);
 
-  // 6. Run the inference program
-  executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+  // Run inference on CPU
+  TestInference<paddle::platform::CPUPlace, float>(
+      FLAGS_dirname, cpu_feeds, cpu_fetchs1);
+  LOG(INFO) << output1.dims();
 
-  // 7. Use the output as your expect.
-  LOG(INFO) << output.dims();
-  std::stringstream ss;
-  ss << "result:";
-  float* output_ptr = output.data<float>();
-  for (int j = 0; j < output.numel(); ++j) {
-    ss << " " << output_ptr[j];
+#ifdef PADDLE_WITH_CUDA
+  paddle::framework::LoDTensor output2;
+  std::vector<paddle::framework::LoDTensor*> cpu_fetchs2;
+  cpu_fetchs2.push_back(&output2);
+
+  // Run inference on CUDA GPU
+  TestInference<paddle::platform::CUDAPlace, float>(
+      FLAGS_dirname, cpu_feeds, cpu_fetchs2);
+  LOG(INFO) << output2.dims();
+
+  EXPECT_EQ(output1.dims(), output2.dims());
+  EXPECT_EQ(output1.numel(), output2.numel());
+
+  float err = 1E-3;
+  int count = 0;
+  for (int64_t i = 0; i < output1.numel(); ++i) {
+    if (fabs(output1.data<float>()[i] - output2.data<float>()[i]) > err) {
+      count++;
+    }
   }
-  LOG(INFO) << ss.str();
-
-  delete scope;
-  delete engine;
+  EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
+#endif
 }
 
 int main(int argc, char** argv) {
