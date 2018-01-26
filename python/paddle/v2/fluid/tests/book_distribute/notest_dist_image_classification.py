@@ -160,9 +160,9 @@ elif training_role == "TRAINER":
                                 feed=feeder.feed(data),
                                 fetch_list=[avg_cost] + accuracy.metrics)
             pass_acc = accuracy.eval(exe)
-            print("pass_id:" + str(pass_id) + "loss:" + str(loss) +
-                  " pass_acc:" + str(pass_acc))
-            # this model is slow, so if we can train two mini batch,
+            print("pass_id:" + str(pass_id) + "loss:" + str(loss) + " pass_acc:"
+                  + str(pass_acc))
+            # this model is slow, so if we can train two mini batches,
             # we think it works properly.
     print("trainer run end")
 else:
