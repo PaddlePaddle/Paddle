@@ -25,14 +25,14 @@
 
   .. code-block:: bash
 
-     docker pull docker.paddlepaddle.org/paddle
+     docker pull docker.paddlepaddlehub.com/paddle
 
 下载GPU版本（cuda8.0_cudnn5_avx_mkl）的Docker镜像：
 
   .. code-block:: bash
 
      docker pull paddlepaddle/paddle:latest-gpu
-     docker pull docker.paddlepaddle.org/paddle:latest-gpu
+     docker pull docker.paddlepaddlehub.com/paddle:latest-gpu
 
 选择下载使用不同的BLAS库的Docker镜像：
 
@@ -49,7 +49,7 @@
 
      docker pull paddlepaddle/paddle:[tag]
      # 比如：
-     docker pull docker.paddlepaddle.org/paddle:0.10.0-gpu
+     docker pull docker.paddlepaddlehub.com/paddle:0.11.0-gpu
 
 .. _docker_run:
 

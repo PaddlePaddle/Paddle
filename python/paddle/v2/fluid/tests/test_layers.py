@@ -1,23 +1,25 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import print_function
 import unittest
 
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
-from paddle.v2.fluid.framework import Program, program_guard
+from paddle.v2.fluid.framework import Program, program_guard, default_main_program
 from paddle.v2.fluid.param_attr import ParamAttr
+import decorators
 
 
 class TestBook(unittest.TestCase):
@@ -214,6 +216,77 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.get_places(device_count=4)
             self.assertIsNotNone(x)
+        print(str(program))
+
+    def test_sequence_reshape(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[8], dtype='float32', lod_level=1)
+            out = layers.sequence_reshape(input=x, new_dim=16)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_im2sequence(self):
+        print("test_im2sequence")
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[3, 128, 128], dtype='float32')
+            output = layers.im2sequence(
+                input=x, stride=[1, 1], filter_size=[2, 2])
+            self.assertIsNotNone(output)
+        print(str(program))
+
+    @decorators.prog_scope()
+    def test_nce(self):
+        window_size = 5
+        words = []
+        for i in xrange(window_size):
+            words.append(
+                layers.data(
+                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+
+        dict_size = 10000
+        label_word = int(window_size / 2) + 1
+
+        embs = []
+        for i in xrange(window_size):
+            if i == label_word:
+                continue
+
+            emb = layers.embedding(
+                input=words[i],
+                size=[dict_size, 32],
+                param_attr='emb.w',
+                is_sparse=True)
+
+            embs.append(emb)
+
+        embs = layers.concat(input=embs, axis=1)
+        loss = layers.nce(input=embs,
+                          label=words[label_word],
+                          num_total_classes=dict_size,
+                          param_attr='nce.w',
+                          bias_attr='nce.b')
+        avg_loss = layers.mean(x=loss)
+        self.assertIsNotNone(avg_loss)
+        print(str(default_main_program()))
+
+    def test_row_conv(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[16], dtype='float32', lod_level=1)
+            out = layers.row_conv(input=x, future_context_size=2)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_multiplex(self):
+        program = Program()
+        with program_guard(program):
+            x1 = layers.data(name='x1', shape=[4], dtype='float32')
+            x2 = layers.data(name='x2', shape=[4], dtype='float32')
+            index = layers.data(name='index', shape=[1], dtype='int32')
+            out = layers.multiplex(inputs=[x1, x2], index=index)
+            self.assertIsNotNone(out)
         print(str(program))
 
 

@@ -1,16 +1,17 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
@@ -64,13 +65,13 @@ def lstm_net(dict_dim, class_dim=2, emb_dim=32, seq_len=80, batch_size=50):
 
     emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
     emb = fluid.layers.reshape(x=emb, shape=[batch_size, seq_len, emb_dim])
-    emb = fluid.layers.transpose(x=emb, axis=[1, 0, 2])
+    emb = fluid.layers.transpose(x=emb, perm=[1, 0, 2])
 
     c_pre_init = fluid.layers.fill_constant(
         dtype=emb.dtype, shape=[batch_size, emb_dim], value=0.0)
     c_pre_init.stop_gradient = False
     layer_1_out = lstm(emb, c_pre_init=c_pre_init, hidden_dim=emb_dim)
-    layer_1_out = fluid.layers.transpose(x=layer_1_out, axis=[1, 0, 2])
+    layer_1_out = fluid.layers.transpose(x=layer_1_out, perm=[1, 0, 2])
 
     prediction = fluid.layers.fc(input=layer_1_out,
                                  size=class_dim,

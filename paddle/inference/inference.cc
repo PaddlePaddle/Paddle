@@ -24,11 +24,14 @@ namespace infer {
 
 bool IsParameter(const framework::VarDesc* var,
                  const framework::ProgramDesc* main_program) {
-  if (var->Persistable() && var->Name() != "feed" && var->Name() != "fetch") {
+  if (var->Persistable()) {
     // There are many unreachable variables in the program
     for (size_t i = 0; i < main_program->Size(); ++i) {
       const framework::BlockDesc& block = main_program->Block(i);
       for (auto* op : block.AllOps()) {
+        if (op->Type() == "feed") {
+          continue;
+        }
         for (auto input_argument_name : op->InputArgumentNames()) {
           if (input_argument_name == var->Name()) {
             return true;
