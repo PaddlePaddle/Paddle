@@ -116,15 +116,15 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   for (const auto& op : *op_field) {
     // add VarDescs of all input arguments for each OpDesc
     auto& input_field = op.inputs();
-    for (auto& input : input_field) {
-      for (auto& arg : input.arguments()) {
+    for (auto& input_var : input_field) {
+      for (auto& arg : input_var.arguments()) {
         *var_field->Add() = var_map[arg];
       }
     }
     // add VarDescs of all output arguments for each OpDesc
     auto& output_field = op.outputs();
-    for (auto& output : output_field) {
-      for (auto& arg : output.arguments()) {
+    for (auto& output_var : output_field) {
+      for (auto& arg : output_var.arguments()) {
         *var_field->Add() = var_map[arg];
       }
     }
