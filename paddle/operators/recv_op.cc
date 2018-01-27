@@ -173,14 +173,15 @@ This operator receives its input tensors, runs the optimize block, and serves th
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
     AddAttr<framework::BlockDesc *>(
-        kOptimizeBlock, "The block to run after receiving the tensors from the send OP.");
-    AddAttr<std::vector<std::string>>(
-        "ParamList", "type list of string",
-        "gradient name to parameter name mapping to find which parameters to optimize.")
+        kOptimizeBlock,
+        "The block to run after receiving the tensors from the send OP.");
+    AddAttr<std::vector<std::string>>("ParamList", "type list of string",
+                                      "gradient name to parameter name mapping "
+                                      "to find which parameters to optimize.")
         .SetDefault({});
-    AddAttr<std::vector<std::string>>(
-        "GradList", "type list of string",
-        "parameter name to gradient name mapping to find which gradient to use.")
+    AddAttr<std::vector<std::string>>("GradList", "type list of string",
+                                      "parameter name to gradient name mapping "
+                                      "to find which gradient to use.")
         .SetDefault({});
     AddAttr<int>("Fanin", "type int",
                  "Number of send OPs connected to this recv OP")
