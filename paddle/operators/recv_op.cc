@@ -150,7 +150,7 @@ class RecvOp : public framework::OperatorBase {
         LOG(ERROR) << "run sub program error " << e.what();
       }
       rpc_service_->SetBatchCond(fan_in);
-      rpc_service_->SetCond(0);
+      rpc_service_->SetCond(1);
       rpc_service_->WaitClientGet(barrier_size);
       grads_counter_.clear();
     }  // while(true)
