@@ -171,8 +171,9 @@ def train(src_dict_size, trg_dict_size, src_lang="en"):
         callable: The train reader.
     """
 
-    assert (src_lang in ["en", "de"], ("An error language type.  Only support: "
-                                       "en (for English); de(for Germany)"))
+    if src_lang not in ["en", "de"]:
+        raise ValueError("An error language type.  Only support: "
+                         "en (for English); de(for Germany).")
     src_dict_size, trg_dict_size = __get_dict_size(src_dict_size, trg_dict_size,
                                                    src_lang)
 
@@ -218,9 +219,9 @@ def test(src_dict_size, trg_dict_size, src_lang="en"):
         callable: The test reader.
     """
 
-    assert (src_lang in ["en", "de"],
-            ("An error language type.  "
-             "Only support: en (for English); de(for Germany)"))
+    if src_lang not in ["en", "de"]:
+        raise ValueError("An error language type. "
+                         "Only support: en (for English); de(for Germany).")
 
     src_dict_size, trg_dict_size = __get_dict_size(src_dict_size, trg_dict_size,
                                                    src_lang)
@@ -266,9 +267,9 @@ def validation(src_dict_size, trg_dict_size, src_lang="en"):
     Returns:
         callable: The validation reader.
     """
-    assert (src_lang in ["en", "de"],
-            ("An error language type.  "
-             "Only support: en (for English); de(for Germany)"))
+    if src_lang not in ["en", "de"]:
+        raise ValueError("An error language type. "
+                         "Only support: en (for English); de(for Germany).")
     src_dict_size, trg_dict_size = __get_dict_size(src_dict_size, trg_dict_size,
                                                    src_lang)
 
@@ -304,9 +305,9 @@ def get_dict(lang, dict_size, reverse=False):
 
     dict_path = os.path.join(paddle.v2.dataset.common.DATA_HOME,
                              "wmt16/%s_%d.dict" % (lang, dict_size))
-    assert (os.path.exists(dict_path), "Word dictionary does not exist. "
-            "Please invoke paddle.dataset.wmt16.train/test/validation "
-            "first to build the dictionary.")
+    assert os.path.exists(dict_path), "Word dictionary does not exist. "
+    "Please invoke paddle.dataset.wmt16.train/test/validation first "
+    "to build the dictionary."
     tar_file = os.path.join(paddle.v2.dataset.common.DATA_HOME, "wmt16.tar.gz")
     return __load_dict(tar_file, dict_size, lang, reverse)
 

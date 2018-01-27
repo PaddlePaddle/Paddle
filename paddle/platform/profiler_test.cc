@@ -103,18 +103,14 @@ TEST(RecordEvent, RecordEvent) {
   // Bad Usage:
   PushEvent("event_without_pop", dev_ctx);
   PopEvent("event_without_push", dev_ctx);
-  std::vector<std::vector<Event>> events = paddle::platform::DisableProfiler();
-  // Will remove parsing-related code from test later
-  ParseEvents(events, EventSortingKey::kTotal);
+  std::vector<std::vector<Event>> events = paddle::platform::GetAllEvents();
 
   int cuda_startup_count = 0;
   int start_profiler_count = 0;
-  int stop_profiler_count = 0;
   for (size_t i = 0; i < events.size(); ++i) {
     for (size_t j = 0; j < events[i].size(); ++j) {
       if (events[i][j].name() == "_cuda_startup_") ++cuda_startup_count;
       if (events[i][j].name() == "_start_profiler_") ++start_profiler_count;
-      if (events[i][j].name() == "_stop_profiler_") ++stop_profiler_count;
       if (events[i][j].name() == "push") {
         EXPECT_EQ(events[i][j + 1].name(), "pop");
 #ifdef PADDLE_WITH_CUDA
@@ -127,5 +123,7 @@ TEST(RecordEvent, RecordEvent) {
   }
   EXPECT_EQ(cuda_startup_count % 5, 0);
   EXPECT_EQ(start_profiler_count, 1);
-  EXPECT_EQ(stop_profiler_count, 1);
+
+  // Will remove parsing-related code from test later
+  DisableProfiler(EventSortingKey::kTotal);
 }
