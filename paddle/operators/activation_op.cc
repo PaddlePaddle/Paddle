@@ -416,6 +416,7 @@ class PowOpMaker : public framework::OpProtoAndCheckerMaker {
   PowOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Pow operator");
+    AddInput("Y", "factor of Pow operator");
     AddOutput("Out", "Output of Pow operator");
     AddAttr<float>("factor", "The exponential factor of Pow").SetDefault(1.0f);
     AddComment(R"DOC(

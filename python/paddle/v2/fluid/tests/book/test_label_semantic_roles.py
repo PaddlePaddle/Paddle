@@ -156,25 +156,24 @@ def main():
     avg_cost = fluid.layers.mean(x=crf_cost)
 
     global_step = fluid.layers.create_global_step()
-    # print(str(global_step.block.program))
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001,
                                         global_step=global_step)
     sgd_optimizer.minimize(avg_cost)
 
-    print(global_step)
+    global_learning_rate = sgd_optimizer.global_learning_rate
     fluid.learning_rate_decay.exponential_decay(
-        learning_rate=sgd_optimizer.global_learning_rate,
+        learning_rate=global_learning_rate,
         global_step=global_step,
         decay_steps=2,
         decay_rate=0.1)
 
-    with open("startup_program.proto", 'w') as f:
-        f.write(str(fluid.default_startup_program()))
-
-    with open("main_program.proto", 'w') as f:
-        f.write(str(fluid.default_main_program()))
+    # with open("startup_program.proto", 'w') as f:
+    #     f.write(str(fluid.default_startup_program()))
+    #
+    # with open("main_program.proto", 'w') as f:
+    #     f.write(str(fluid.default_main_program()))
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
@@ -211,13 +210,15 @@ def main():
     for pass_id in xrange(PASS_NUM):
         chunk_evaluator.reset(exe)
         for data in train_data():
-            cost, precision, recall, f1_score = exe.run(
+            cost, precision, recall, f1_score, global_step_val, global_lr_val = exe.run(
                 fluid.default_main_program(),
                 feed=feeder.feed(data),
-                fetch_list=[avg_cost] + chunk_evaluator.metrics)
+                fetch_list=[avg_cost] + chunk_evaluator.metrics +
+                [global_step, global_learning_rate])
             pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
                 exe)
 
+            print(str(global_step_val) + ":" + str(global_lr_val))
             if batch_id % 10 == 0:
                 print("avg_cost:" + str(cost) + " precision:" + str(
                     precision) + " recall:" + str(recall) + " f1_score:" + str(
@@ -229,7 +230,7 @@ def main():
                                                      / batch_id))
 
             # exit early for CI
-            exit(0)
+            # exit(0)
 
             batch_id = batch_id + 1
 
