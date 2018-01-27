@@ -29,26 +29,27 @@ class LoadCombineOp : public framework::OperatorBase {
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
-    auto position_counter = Attr<int>("position_counter");
 
     std::ifstream fin(filename);
     PADDLE_ENFORCE(static_cast<bool>(fin),
                    "Cannot open file %s for load_combine op", filename);
 
-    auto out_var_name = Output("Out");
-    auto *out_var = scope.FindVar(out_var_name);
-    PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
-                   out_var_name);
-
-    auto *tensor = out_var->GetMutable<framework::LoDTensor>();
+    auto out_var_names = Outputs("Out");
+    PADDLE_ENFORCE(out_var_names.size(), "Output variables cannot be found");
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
-    uint64_t data_length;
-    char *buffer = NULL;
-    for (int i = 0; i <= position_counter; i++) {
-      if (!buffer) delete[] buffer;
+    for (size_t i = 0; i < out_var_names.size(); i++) {
+      auto *out_var = scope.FindVar(out_var_names[i]);
+
+      PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
+                     out_var_names[i]);
+
+      auto *tensor = out_var->GetMutable<framework::LoDTensor>();
+
+      uint64_t data_length;
+      char *buffer = NULL;
 
       // Error checking
       PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot read more from file %s",
@@ -66,28 +67,28 @@ class LoadCombineOp : public framework::OperatorBase {
 
       // Read the serialized data into the buffer
       fin.read(buffer, data_length);
-    }
 
-    std::string current_serialized_data;
-    current_serialized_data.assign(buffer, data_length);
+      std::string current_serialized_data;
+      current_serialized_data.assign(buffer, data_length);
 
-    // Create an input string stream
-    std::istringstream ist(current_serialized_data);
-    DeserializeFromStream(ist, tensor, dev_ctx);
+      // Create an input string stream
+      std::istringstream ist(current_serialized_data);
+      DeserializeFromStream(ist, tensor, dev_ctx);
 
-    if (!buffer) delete[] buffer;  // delete the last allocated memory
+      delete[] buffer;  // delete the allocated memory
 
-    if (platform::is_gpu_place(place)) {
-      // copy CPU to GPU
-      framework::LoDTensor cpu_tensor;
-      cpu_tensor.ShareDataWith(*tensor);
-      cpu_tensor.set_lod(tensor->lod());
+      if (platform::is_gpu_place(place)) {
+        // copy CPU to GPU
+        framework::LoDTensor cpu_tensor;
+        cpu_tensor.ShareDataWith(*tensor);
+        cpu_tensor.set_lod(tensor->lod());
 
-      // reset tensor
-      out_var->Clear();
-      tensor = out_var->GetMutable<framework::LoDTensor>();
-      tensor->set_lod(cpu_tensor.lod());
-      Copy(cpu_tensor, place, dev_ctx, tensor);
+        // reset tensor
+        out_var->Clear();
+        tensor = out_var->GetMutable<framework::LoDTensor>();
+        tensor->set_lod(cpu_tensor.lod());
+        Copy(cpu_tensor, place, dev_ctx, tensor);
+      }
     }
   }
 };
@@ -96,11 +97,8 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   LoadCombineOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddOutput("Out", "(Tensor) The tensor need to be load_combineed");
-    AddAttr<int>("position_counter",
-                 "(int) "
-                 "It specifies the relative ordering of different parameters.")
-        .AddCustomChecker([](const int &counter) { return counter >= 0; });
+    AddOutput("Out", "(LoDTensor) The tensor need to be load_combined")
+        .AsDuplicable();
     AddAttr<std::string>("file_path",
                          "(string) "
                          "Variable will be load_combined from \"file_path\".")

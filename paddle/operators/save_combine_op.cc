@@ -67,57 +67,50 @@ class SaveCombineOp : public framework::OperatorBase {
            const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto overwrite = Attr<bool>("overwrite");
-    auto position_counter = Attr<int>("position_counter");
 
     bool is_present = FileExists(filename);
-    if (is_present && !overwrite && position_counter == 0) {
-      PADDLE_THROW(
-          "%s is existed, cannot save_combine to it when overwrite=false",
-          filename, overwrite);
+    if (is_present && !overwrite) {
+      PADDLE_THROW("%s exists!, cannot save_combine to it when overwrite=false",
+                   filename, overwrite);
     }
 
     MkDirRecursively(DirName(filename).c_str());
 
-    std::ofstream fout;
-
-    // if position_counter is 0, we open the file in write mode,
-    // otherwise, we open in append mode.
-    if (position_counter == 0) {
-      fout.open(filename);
-    } else {
-      fout.open(filename, std::ios_base::app);
-    }
+    std::ofstream fout(filename);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
 
-    auto iname = Input("X");
-
-    auto *var = scope.FindVar(iname);
-    PADDLE_ENFORCE(var != nullptr,
-                   "Cannot find variable %s for save_combine_op", iname);
-
-    PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
-                   "SaveCombineOp only support LoDTensor, %s has wrong type",
-                   iname);
-
-    auto &tensor = var->Get<framework::LoDTensor>();
+    auto inames = Inputs("X");
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
-    // Create "output string stream" to get the serialized LodTensor
-    std::ostringstream str_stream;
-    framework::SerializeToStream(str_stream, tensor, dev_ctx);
-    std::string current_serialized_data = str_stream.str();
+    for (size_t i = 0; i < inames.size(); i++) {
+      auto *var = scope.FindVar(inames[i]);
 
-    // Save 'current_size' information as a fixed width integer, and
-    // further save the serialized data using 'current_size' bytes
-    uint64_t current_size = current_serialized_data.size();
-    fout.write(reinterpret_cast<const char *>(&current_size),
-               sizeof(current_size));
-    fout.write(reinterpret_cast<const char *>(current_serialized_data.c_str()),
-               static_cast<std::streamsize>(current_size));
+      PADDLE_ENFORCE(var != nullptr,
+                     "Cannot find variable %s for save_combine_op", inames[i]);
+      PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
+                     "SaveCombineOp only support LoDTensor, %s has wrong type",
+                     inames[i]);
+
+      auto &tensor = var->Get<framework::LoDTensor>();
+
+      // Create "output string stream" to get the serialized LodTensor
+      std::ostringstream str_stream;
+      framework::SerializeToStream(str_stream, tensor, dev_ctx);
+      std::string current_serialized_data = str_stream.str();
+
+      // Save 'current_size' information as a fixed width integer, and
+      // further save the serialized data using 'current_size' bytes
+      uint64_t current_size = current_serialized_data.size();
+      fout.write(reinterpret_cast<const char *>(&current_size),
+                 sizeof(current_size));
+      fout.write(
+          reinterpret_cast<const char *>(current_serialized_data.c_str()),
+          static_cast<std::streamsize>(current_size));
+    }
     fout.close();
   }
 };
@@ -126,21 +119,17 @@ class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SaveCombineOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor ) Input tensor to be save_combined");
+    AddInput("X", "(Tensor) Input tensors to be save_combined").AsDuplicable();
     AddComment(R"DOC(
 Save_combine operator
 
-This operator will serialize and write tensor variables to file on disk in a 
-combined fashion.
+This operator will serialize and write a list of input tensor variables 
+to a file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
                   "(boolean, default true)"
                   "Overwrite the output file if exist")
         .SetDefault(true);
-    AddAttr<int>("position_counter",
-                 "(int) "
-                 "It specifies the relative ordering of different parameters.")
-        .AddCustomChecker([](const int &counter) { return counter >= 0; });
     AddAttr<std::string>(
         "file_path",
         "(string)"
