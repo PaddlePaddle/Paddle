@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <condition_variable>
 #include <mutex>
-#include <queue>
+#include <deque>
 
 namespace paddle {
 namespace framework {
@@ -28,12 +28,10 @@ class Channel {
   void Send(T* channel_element) {
     std::unique_lock<std::mutex> lock(mu_);
 
-    if (IsBounded()) {
-      full_cond_var_.wait(lock, [this]() {
-        bool capacity_valid = capacity_ > 0 ? !IsCapacityFull() : true;
+    full_cond_var_.wait(lock, [this]() {
+        bool capacity_valid = capacity_ > 0 ? !IsFull() : true;
         return capacity_valid;
       });
-    }
     channel_.push_back(std::move(*channel_element));
 
     lock.unlock();
@@ -64,24 +62,19 @@ class Channel {
   }
 
  private:
+  void NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
+    lock->unlock();
+    full_cond_var_.notify_one();
+  }
+
+  bool IsFull() const { return channel_.size() >= capacity_; }
+
   std::size_t capacity_;
   std::mutex mu_;
   std::condition_variable empty_cond_var_;
   std::condition_variable full_cond_var_;
   std::deque<T> channel_;
-
- private:
-  void NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
-    if (IsBounded()) {
-      lock->unlock();
-      full_cond_var_.notify_one();
-    }
-  }
-
-  bool IsBounded() const { return capacity_ > 0; }
-
-  bool IsCapacityFull() const { return channel_.size() >= capacity_; }
 };
 
-}  // namespace operator
+}  // namespace framework
 }  // namespace paddle
