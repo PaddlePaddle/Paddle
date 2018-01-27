@@ -41,11 +41,15 @@ int* create_for_save_combine_op(int x, int y, const std::vector<int>& lod_info,
   return expect;
 }
 
-int* get_values_after_load_combine_op(std::string var_name,
+paddle::framework::LoDTensor* generate_placeholder_before_load(
+    const std::string out_var_name, paddle::framework::Scope& scope) {
+  auto load_var = scope.Var(out_var_name);
+  auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
+  return target;
+}
+int* get_values_after_load_combine_op(paddle::framework::LoDTensor* target,
                                       paddle::framework::Scope& scope,
                                       paddle::framework::LoD& actual_lod) {
-  auto load_var = scope.Var(var_name);
-  auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
   int* actual = target->data<int>();
   actual_lod = target->lod();
   return actual;
@@ -95,7 +99,7 @@ TEST(SaveLoadCombineOp, CPU) {
                                             scope, expect_lod4);
 
   // Set attributes
-  std::string filename = "check_tensors.ls";
+  std::string filename = "check_tensor.ls";
   paddle::framework::AttributeMap attrs;
   attrs.insert({"file_path", std::string(filename)});
 
@@ -105,6 +109,12 @@ TEST(SaveLoadCombineOp, CPU) {
       {{"X", {"test_var1", "test_var2", "test_var3", "test_var4"}}}, {}, attrs);
   save_combine_op->Run(scope, place);
 
+  // Set up output vars
+  auto target1 = generate_placeholder_before_load("out_var1", scope);
+  auto target2 = generate_placeholder_before_load("out_var2", scope);
+  auto target3 = generate_placeholder_before_load("out_var3", scope);
+  auto target4 = generate_placeholder_before_load("out_var4", scope);
+
   // Run the load_combine_op
   auto load_combine_op = paddle::framework::OpRegistry::CreateOp(
       "load_combine", {},
@@ -112,14 +122,10 @@ TEST(SaveLoadCombineOp, CPU) {
   load_combine_op->Run(scope, place);
 
   paddle::framework::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
-  int* actual1 =
-      get_values_after_load_combine_op("out_var1", scope, actual_lod1);
-  int* actual2 =
-      get_values_after_load_combine_op("out_var2", scope, actual_lod2);
-  int* actual3 =
-      get_values_after_load_combine_op("out_var3", scope, actual_lod3);
-  int* actual4 =
-      get_values_after_load_combine_op("out_var4", scope, actual_lod4);
+  int* actual1 = get_values_after_load_combine_op(target1, scope, actual_lod1);
+  int* actual2 = get_values_after_load_combine_op(target2, scope, actual_lod2);
+  int* actual3 = get_values_after_load_combine_op(target3, scope, actual_lod3);
+  int* actual4 = get_values_after_load_combine_op(target4, scope, actual_lod4);
 
   check_values(expect1, actual1, expect_lod1, actual_lod1, numel1);
   check_values(expect2, actual2, expect_lod2, actual_lod2, numel2);
