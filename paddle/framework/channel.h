@@ -20,61 +20,61 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+// Channel is the abstract class of buffered and un-buffered channels.
 template <typename T>
 class Channel {
  public:
-  explicit Channel(std::size_t capacity) : capacity_(capacity) {}
+  // Instantiate and delete channels.
+  static Channel* Make(size_t buffer_size);
+  static void Close(Channel* ch);
+  
+  virtual void Send(T*) = 0;
+  virtual T* Receive() = 0;
+  virtual size_t Cap() = 0;
 
-  void Send(T* channel_element) {
-    std::unique_lock<std::mutex> lock(mu_);
-
-    full_cond_var_.wait(lock, [this]() {
-        bool capacity_valid = capacity_ > 0 ? !IsFull() : true;
-        return capacity_valid;
-      });
-    channel_.push_back(std::move(*channel_element));
-
-    lock.unlock();
-    empty_cond_var_.notify_one();
-  }
-
-  T* Receive() {
-    std::unique_lock<std::mutex> lock(mu_);
-    empty_cond_var_.wait(lock, [this]() { return !channel_.empty(); });
-
-    T* channel_element = std::move(channel_.front());
-    channel_.pop_front();
-
-    NotifyAllSenders(&lock);
-    return channel_element;
-  }
-
-  size_t Size() {
-    std::unique_lock<std::mutex> lock(mu_);
-    return channel_.size();
-  }
-
-  void Clear() {
-    std::unique_lock<std::mutex> lock(mu_);
-    channel_.clear();
-
-    NotifyAllSenders(&lock);
-  }
-
- private:
-  void NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
-    lock->unlock();
-    full_cond_var_.notify_one();
-  }
-
-  bool IsFull() const { return channel_.size() >= capacity_; }
-
-  std::size_t capacity_;
-  std::mutex mu_;
-  std::condition_variable empty_cond_var_;
-  std::condition_variable full_cond_var_;
-  std::deque<T> channel_;
+  // Don't delete channels; instead, call Channel::Close.
+ protected:
+  virtual ~Channel() {}
 };
 
+
+// details::Buffered and details::UnBuffered are derived from Channel.
+namespace details {
+
+template <typename T>
+class Buffered : public Channel<T> {
+  friend Channel<T>* Channel<T>::Make(size_t);
+  friend void Channel<T>::Close(Channel<T>*);
+  
+ public:
+  virtual void Send(T*);
+  virtual T* Receive();
+  virtual size_t Cap() { return cap_; }
+  
+ private:
+  size_t cap_;
+
+  Buffered(size_t cap) : cap_(cap) {}
+  virtual ~Buffered() {}
+};
+
+template <typename T>
+class UnBuffered : public Channel<T> {
+  friend Channel<T>* Channel<T>::Make(size_t);
+  friend void Channel<T>::Close(Channel<T>*);
+  
+ public:
+  virtual void Send(T*);
+  virtual T* Receive();
+  virtual size_t Cap() { return 0; }
+    
+ private:
+  UnBuffered() {}
+  virtual ~UnBuffered() {}
+};
+
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle
+
+#include "paddle/framework/details/channel.h"
