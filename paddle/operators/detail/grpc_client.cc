@@ -102,8 +102,9 @@ bool RPCClient::AsyncBatchBarrier(const std::string& ep, int64_t time_out) {
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
   s->Prepare(time_out);
 
-  sendrecv::VoidMessage req;
-  auto rpc = s->stub_->AsyncBatchBarrier(s->context_.get(), req, &cq_);
+  sendrecv::VariableMessage req;
+  req.set_varname(BATCH_BARRIER_MESSAGE);
+  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, (void*)s);
   req_count_++;
 

@@ -29,8 +29,6 @@ limitations under the License. */
 #include "paddle/operators/detail/simple_block_queue.h"
 #include "paddle/string/printf.h"
 
-#define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
-
 namespace paddle {
 namespace operators {
 
@@ -106,18 +104,22 @@ class RecvOp : public framework::OperatorBase {
       // Get from multiple trainers, we don't care about the order in which
       // the gradients arrives, just add suffix 0~n and merge the gradient.
       rpc_service_->SetCond(0);
-      rpc_service_->SetBatchCond(fan_in);
       size_t barrier_size = 0;
-      while (!rpc_service_->BatchCondEqualTo(0) ||
-             !rpc_service_->IsRecvQueueEmpty()) {
+      int batch_barrier = 0;
+      while (batch_barrier != fan_in || !rpc_service_->IsRecvQueueEmpty()) {
         const detail::MessageWithName &v = rpc_service_->Get();
-        barrier_size++;
         auto grad_var_name = v.first;
         if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
           LOG(INFO) << "received terminate message and exit";
           exit_flag = true;
           break;
         }
+        if (grad_var_name == BATCH_BARRIER_MESSAGE) {
+          VLOG(3) << "recv batch barrier message";
+          batch_barrier++;
+          continue;
+        }
+        barrier_size++;
         auto it = std::find(grad_list.begin(), grad_list.end(), grad_var_name);
         std::string param_var_name;
         if (it != grad_list.end()) {
@@ -127,6 +129,7 @@ class RecvOp : public framework::OperatorBase {
         }
         VLOG(3) << "received grad: " << grad_var_name
                 << " updating param: " << param_var_name;
+
         if (fan_in > 1) {
           grad_var_name = this->GetGradVarNameForTrainer(grad_var_name);
         }
@@ -149,7 +152,6 @@ class RecvOp : public framework::OperatorBase {
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
-      rpc_service_->SetBatchCond(fan_in);
       rpc_service_->SetCond(1);
       rpc_service_->WaitClientGet(barrier_size);
       grads_counter_.clear();

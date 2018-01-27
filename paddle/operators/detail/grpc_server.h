@@ -46,10 +46,6 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   void SetCond(int cond);
   void WaitClientGet(int count);
 
-  void SetBatchCond(int cond);
-  bool BatchCondEqualTo(int arg);
-  void SubBatchCond(int arg);
-
   void SetScope(framework::Scope *scope) { scope_ = scope; }
 
   void SetDevCtx(const platform::DeviceContext *dev_ctx) { dev_ctx_ = dev_ctx; }
@@ -67,7 +63,6 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
-  void TryToRegisterNewBatchBarrier();
   void ShutdownQueue();
 
  private:
@@ -92,13 +87,8 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   mutable int barrier_cond_step_;
   std::condition_variable barrier_condition_;
 
-  // condition of batch barrier
-  std::mutex batch_barrier_mutex_;
-  mutable int batch_barrier_cond_;
-
   std::unique_ptr<std::thread> t_send_;
   std::unique_ptr<std::thread> t_get_;
-  std::unique_ptr<std::thread> t_batch_barrier_;
 };
 
 };  // namespace detail

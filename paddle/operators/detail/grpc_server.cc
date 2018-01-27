@@ -117,34 +117,6 @@ class RequestGet final : public RequestBase {
   SimpleBlockQueue<char>* queue_;
 };
 
-class RequestBatchBarrier final : public RequestBase {
- public:
-  explicit RequestBatchBarrier(AsyncGRPCServer* server,
-                               sendrecv::SendRecvService::AsyncService* service,
-                               grpc::ServerCompletionQueue* cq)
-      : RequestBase(service, cq), responder_(&ctx_), server_(server) {
-    service_->RequestBatchBarrier(&ctx_, &request_, &responder_, cq_, cq_,
-                                  this);
-  }
-
-  virtual ~RequestBatchBarrier() {}
-
-  virtual std::string GetReqName() { return "Batch Barrier"; }
-
-  virtual void Process() {
-    server_->SubBatchCond(1);
-    // TODO(Yancey1989): sub batch cond
-    responder_.Finish(reply_, grpc::Status::OK, this);
-    status_ = FINISH;
-  }
-
- protected:
-  sendrecv::VoidMessage request_;
-  sendrecv::VoidMessage reply_;
-  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
-  AsyncGRPCServer* server_;
-};
-
 void AsyncGRPCServer::WaitClientGet(int count) {
   for (int i = 0; i < count; ++i) {
     var_get_queue_.Pop();
@@ -169,8 +141,6 @@ void AsyncGRPCServer::RunSyncUpdate() {
       std::bind(&AsyncGRPCServer::TryToRegisterNewSendOne, this);
   std::function<void()> get_register =
       std::bind(&AsyncGRPCServer::TryToRegisterNewGetOne, this);
-  std::function<void()> batch_barrier_register =
-      std::bind(&AsyncGRPCServer::TryToRegisterNewBatchBarrier, this);
 
   t_send_.reset(
       new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
@@ -180,15 +150,10 @@ void AsyncGRPCServer::RunSyncUpdate() {
       new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
                                 cq_get_.get(), "cq_get", get_register)));
 
-  t_batch_barrier_.reset(new std::thread(
-      std::bind(&AsyncGRPCServer::HandleRequest, this, cq_batch_barrier_.get(),
-                "cq_batch_barrier", batch_barrier_register)));
-
   // wait server
   server_->Wait();
   t_send_->join();
   t_get_->join();
-  t_batch_barrier_->join();
 }
 
 void AsyncGRPCServer::ShutdownQueue() {
@@ -222,16 +187,6 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
   RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_, dev_ctx_,
                                    &var_get_queue_);
   VLOG(4) << "Create RequestGet status:" << get->Status();
-}
-
-void AsyncGRPCServer::TryToRegisterNewBatchBarrier() {
-  std::unique_lock<std::mutex> lock(cq_mutex_);
-  if (is_shut_down_) {
-    return;
-  }
-  RequestBatchBarrier* r =
-      new RequestBatchBarrier(this, &service_, cq_batch_barrier_.get());
-  VLOG(4) << "Create RequestBatchBarrier status:" << r->Status();
 }
 
 // FIXME(typhoonzero): change cq_name to enum.
@@ -295,21 +250,6 @@ void AsyncGRPCServer::SetCond(int cond) {
     barrier_cond_step_ = cond;
   }
   barrier_condition_.notify_all();
-}
-
-void AsyncGRPCServer::SetBatchCond(int cond) {
-  std::unique_lock<std::mutex> lock(this->batch_barrier_mutex_);
-  batch_barrier_cond_ = cond;
-}
-
-void AsyncGRPCServer::SubBatchCond(int arg) {
-  std::unique_lock<std::mutex> lock(this->batch_barrier_mutex_);
-  batch_barrier_cond_ -= arg;
-}
-
-bool AsyncGRPCServer::BatchCondEqualTo(int arg) {
-  std::unique_lock<std::mutex> lock(this->batch_barrier_mutex_);
-  return batch_barrier_cond_ == arg;
 }
 
 }  // namespace detail

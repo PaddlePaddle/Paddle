@@ -30,6 +30,9 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
+#define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
+#define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
+
 void SerializeToMessage(const std::string& name, const framework::Variable* var,
                         const platform::DeviceContext& ctx,
                         sendrecv::VariableMessage* msg);
