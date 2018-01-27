@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <condition_variable>
-#include <mutex>
-#include <deque>
+
+#include <stddef.h>  // for size_t
 
 namespace paddle {
 namespace framework {
@@ -24,10 +23,6 @@ namespace framework {
 template <typename T>
 class Channel {
  public:
-  // Instantiate and delete channels.
-  static Channel* Make(size_t buffer_size);
-  static void Close(Channel* ch);
-  
   virtual void Send(T*) = 0;
   virtual T* Receive() = 0;
   virtual size_t Cap() = 0;
@@ -38,43 +33,32 @@ class Channel {
 };
 
 
-// details::Buffered and details::UnBuffered are derived from Channel.
+// Forward declaration of channel implementations.
 namespace details {
-
-template <typename T>
-class Buffered : public Channel<T> {
-  friend Channel<T>* Channel<T>::Make(size_t);
-  friend void Channel<T>::Close(Channel<T>*);
-  
- public:
-  virtual void Send(T*);
-  virtual T* Receive();
-  virtual size_t Cap() { return cap_; }
-  
- private:
-  size_t cap_;
-
-  Buffered(size_t cap) : cap_(cap) {}
-  virtual ~Buffered() {}
-};
-
-template <typename T>
-class UnBuffered : public Channel<T> {
-  friend Channel<T>* Channel<T>::Make(size_t);
-  friend void Channel<T>::Close(Channel<T>*);
-  
- public:
-  virtual void Send(T*);
-  virtual T* Receive();
-  virtual size_t Cap() { return 0; }
-    
- private:
-  UnBuffered() {}
-  virtual ~UnBuffered() {}
-};
-
+template <typename T> class Buffered;
+template <typename T> class UnBuffered;
 }  // namespace details
+
+
+template <typename T>
+Channel<T>* MakeChannel(size_t buffer_size) {
+  if (buffer_size > 0) {
+    return new details::Buffered<T>(buffer_size);
+  }
+  return new details::UnBuffered<T>();
+}
+
+template <typename T>
+void CloseChannel(Channel<T>* ch) {
+  if (ch->Cap() > 0) {
+    delete dynamic_cast<details::Buffered<T>*>(ch);
+  } else {
+    delete dynamic_cast<details::UnBuffered<T>*>(ch);
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
 
-#include "paddle/framework/details/channel.h"
+#include "paddle/framework/details/buffered_channel.h"
+#include "paddle/framework/details/unbuffered_channel.h"
