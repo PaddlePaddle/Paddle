@@ -233,39 +233,37 @@ class LayerNormGradKernel<platform::CPUDeviceContext, T>
     if (d_x) {
       d_x->mutable_data<T>(ctx.GetPlace());
       auto d_x_map = EigenMatrixMapRowMajor<T>(d_x->data<T>(), left, right);
-      auto triple_product = [](T ele) { return ele * ele; };
-      auto neg_inv_std = [](T ele) { return -std::sqrt(1 / ele); };
+      auto triple_product_func = [](T ele) { return ele * ele * ele; };
+      auto scale_func = [scale_data](T ele) { return ele * scale_data; };
+      auto inv_std_func = [](T ele) { return std::sqrt(1 / ele); };
       auto inv_std_scale_func = [scale_data](T ele) {
         return std::sqrt(1 / ele) * scale_data;
-      };
-      auto neg_inv_std_scale_func = [scale_data](T ele) {
-        return -std::sqrt(1 / ele) * scale_data;
       };
       // dy_dx
       auto dx_end = var_map.unaryExpr(inv_std_scale_func)
                         .replicate(1, right)
                         .cwiseProduct(d_y_map);
       // dy_dmean_dx
-      auto dmean_end = var_map.unaryExpr(neg_inv_std_scale_func)
-                           .replicate(1, right)
-                           .cwiseProduct(d_y_map)
-                           .rowwise()
-                           .sum();
-      auto dx_mean = (T(1.0) / right) * dmean_end.replicate(1, right);
+      auto dx_mean = (T(-1.0) / right) *
+                     var_map.unaryExpr(inv_std_scale_func)
+                         .replicate(1, right)
+                         .cwiseProduct(d_y_map)
+                         .rowwise()
+                         .sum()
+                         .replicate(1, right);
       // dy_var_dx
-      auto dvar_end_0 = (x_map - mean_map.replicate(1, right))
-                            .cwiseProduct(d_y_map)
-                            .rowwise()
-                            .sum();
-      auto dvar_end = var_map.unaryExpr(neg_inv_std)
-                          .unaryExpr(triple_product)
-                          .cwiseProduct(dvar_end_0);
-      auto dx_var = (T(1.0) / right) *
+      auto dvar_end_part = (x_map - mean_map.replicate(1, right))
+                               .cwiseProduct(d_y_map)
+                               .rowwise()
+                               .sum();
+      auto dvar_end = var_map.unaryExpr(inv_std_func)
+                          .unaryExpr(triple_product_func)
+                          .cwiseProduct(dvar_end_part)
+                          .replicate(1, right);
+      auto dx_var = (T(-1.0) / right) *
                     (x_map - mean_map.replicate(1, right))
-                        .cwiseProduct(dvar_end.replicate(1, right));
-
-      // d_x = (1. / N) * scale * inv_var * (N * d_y - np.sum(d_y, axis=0)
-      //   - (X - mean) * inv_var * inv_var * np.sum(d_y * (X - mean), axis=0))
+                        .cwiseProduct(dvar_end)
+                        .unaryExpr(scale_func);
 
       d_x_map = dx_end + dx_mean + dx_var;
     }

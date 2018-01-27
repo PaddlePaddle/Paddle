@@ -52,18 +52,19 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, epsilon):
     D = reduce(mul, x_shape, 1) / N
     grad_y.shape = [N, D]
     x.shape = [N, D]
-    grad_offset = np.sum(grad_y)
     mean.shape = [N, 1]
     var.shape = [N, 1]
-    grad_scale = np.sum(((x - mean) * np.sqrt(1 / var)) * grad_y)
+
+    d_scale = np.sum(grad_y).reshape([1, ])
+    d_bias = np.sum(((x - mean) * np.sqrt(1 / var)) * grad_y).reshape([1, ])
 
     dx_end = np.sqrt(1.0 / var) * grad_y
 
     d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y, axis=1).reshape([N, 1])
-    d_mean_1 = np.sum(-1.0 / var * (x - mean) * grad_y, axis=1).reshape(
-        [N, 1]) * (-1.0 / D * np.sqrt(1.0 / var) *
-                   np.sum(x - mean, axis=1).reshape([N, 1])).reshape([N, 1])
-    d_mean = 1.0 / D * (d_mean_0 + d_mean_1)
+    # d_mean_1 = np.sum(-1.0 / var * (x - mean) * grad_y, axis=1).reshape(
+    #     [N, 1]) * (-1.0 / D * np.sqrt(1.0 / var) *
+    #                np.sum(x - mean, axis=1).reshape([N, 1])).reshape([N, 1])
+    d_mean = 1.0 / D * (d_mean_0)
 
     d_std = np.sum(-1.0 / var * (x - mean) * grad_y, axis=1).reshape([N, 1]) * (
         1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) * (x - mean))
@@ -73,7 +74,7 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, epsilon):
     grad_y.shape = x_shape
     x.shape = x_shape
 
-    return grad_x, grad_scale, grad_offset
+    return grad_x, d_bias, d_scale
 
 
 def create_or_get_tensor(scope, var_name, var, place):
@@ -144,7 +145,7 @@ class TestLayerNormdOp(OpTest):
             epsilon = 0.00001
             x_shape = shape
             scale_shape = [1]
-
+            np.random.random(123)
             x_val = np.random.random_sample(x_shape).astype(np.float32)
             scale_val = np.random.random_sample(scale_shape).astype(np.float32)
             bias_val = np.random.random_sample(scale_shape).astype(np.float32)
@@ -154,7 +155,6 @@ class TestLayerNormdOp(OpTest):
                 x_val, scale_val, bias_val, epsilon)
 
             #  for gradient test
-            # y_grad = np.ones(x_shape).astype(np.float32) * 0.00277778
             y_grad = np.random.random_sample(x_shape).astype(np.float32)
 
             x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_layer_norm_grad(
@@ -229,7 +229,6 @@ class TestLayerNormdOp(OpTest):
 
         for place in places:
             test_with_place(place, [2, 3, 4, 5])
-            test_with_place(place, [2, 3])
 
 
 if __name__ == '__main__':
