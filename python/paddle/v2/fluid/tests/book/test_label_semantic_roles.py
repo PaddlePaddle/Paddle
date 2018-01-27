@@ -166,7 +166,7 @@ def main():
     fluid.learning_rate_decay.exponential_decay(
         learning_rate=global_learning_rate,
         global_step=global_step,
-        decay_steps=2,
+        decay_steps=5,
         decay_rate=0.1)
 
     # with open("startup_program.proto", 'w') as f:
@@ -230,7 +230,7 @@ def main():
                                                      / batch_id))
 
             # exit early for CI
-            # exit(0)
+            exit(0)
 
             batch_id = batch_id + 1
 

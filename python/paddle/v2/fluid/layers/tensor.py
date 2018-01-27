@@ -70,7 +70,7 @@ def create_parameter(shape,
 def create_global_step():
     helper = LayerHelper("create_global_step", **locals())
     var = helper.create_global_variable(
-        dtype='int64', shape=[1], persistable=True)
+        dtype='float32', shape=[1], persistable=True)
     helper.set_variable_initializer(var, initializer=Constant(value=float(0)))
     return var
 
