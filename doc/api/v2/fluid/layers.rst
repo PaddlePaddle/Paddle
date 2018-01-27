@@ -534,3 +534,8 @@ row_conv
 --------
 ..  autofunction:: paddle.v2.fluid.layers.row_conv
     :noindex:
+
+multiplex
+---------
+..  autofunction:: paddle.v2.fluid.layers.multiplex
+    :noindex:

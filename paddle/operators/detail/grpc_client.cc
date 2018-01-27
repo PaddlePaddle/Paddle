@@ -116,7 +116,7 @@ bool RPCClient::Wait() {
     return true;
   }
 
-  std::vector<bool> a(req_count_);
+  bool a[req_count_];
   std::vector<std::future<void>> waits(req_count_);
 
   for (int i = 0; i < req_count_; i++) {

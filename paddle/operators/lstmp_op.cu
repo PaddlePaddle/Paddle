@@ -12,19 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/operators/lstmp_op.h"
 
-#include "paddle/framework/feed_fetch_type.h"
-#include "paddle/framework/scope.h"
-
-namespace paddle {
-namespace framework {
-
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index);
-
-LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
-                            size_t index);
-
-}  // namespace framework
-}  // namespace paddle
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    lstmp, ops::LSTMPKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LSTMPKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    lstmp_grad,
+    ops::LSTMPGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LSTMPGradKernel<paddle::platform::CUDADeviceContext, double>);
