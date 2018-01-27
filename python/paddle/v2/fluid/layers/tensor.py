@@ -23,7 +23,7 @@ import numpy
 __all__ = [
     'create_tensor',
     'create_parameter',
-    'create_global_step',
+    'create_global_var',
     'cast',
     'concat',
     'sums',
@@ -67,11 +67,12 @@ def create_parameter(shape,
                                    default_initializer)
 
 
-def create_global_step():
-    helper = LayerHelper("create_global_step", **locals())
+def create_global_var(shape, value, dtype):
+    helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
-        dtype='float32', shape=[1], persistable=True)
-    helper.set_variable_initializer(var, initializer=Constant(value=float(0)))
+        dtype=dtype, shape=shape, persistable=True)
+    helper.set_variable_initializer(
+        var, initializer=Constant(value=float(value)))
     return var
 
 

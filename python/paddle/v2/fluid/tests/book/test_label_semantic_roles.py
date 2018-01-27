@@ -155,7 +155,8 @@ def main():
             name='crfw', learning_rate=mix_hidden_lr))
     avg_cost = fluid.layers.mean(x=crf_cost)
 
-    global_step = fluid.layers.create_global_step()
+    global_step = fluid.layers.create_global_var(
+        shape=[1], value=1, dtype='float32')
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001,
