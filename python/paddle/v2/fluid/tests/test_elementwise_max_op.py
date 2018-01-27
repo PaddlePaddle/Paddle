@@ -44,7 +44,7 @@ class TestElementwiseMaxOp(OpTest):
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
-class TestElementwiseMaxOp_scalar(TestElementwiseOp):
+class TestElementwiseMaxOp_scalar(TestElementwiseMaxOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         x = np.random.random_integers(-5, 5, [2, 3, 4]).astype("float32")
@@ -53,7 +53,7 @@ class TestElementwiseMaxOp_scalar(TestElementwiseOp):
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseMaxOp_Vector(TestElementwiseOp):
+class TestElementwiseMaxOp_Vector(TestElementwiseMaxOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         x = np.random.random((32, )).astype("float32")
@@ -63,7 +63,7 @@ class TestElementwiseMaxOp_Vector(TestElementwiseOp):
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
+class TestElementwiseMaxOp_broadcast_0(TestElementwiseMaxOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -79,7 +79,7 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
+class TestElementwiseMaxOp_broadcast_1(TestElementwiseMaxOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -95,7 +95,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
+class TestElementwiseMaxOp_broadcast_2(TestElementwiseMaxOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -110,7 +110,7 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
+class TestElementwiseMaxOp_broadcast_3(TestElementwiseMaxOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)
