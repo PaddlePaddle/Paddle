@@ -35,7 +35,9 @@ void ThreadPool::Init() {
 }
 
 ThreadPool::ThreadPool(int num_threads)
-    : num_threads_(num_threads), available_(num_threads), running_(true) {
+    : total_threads_(num_threads),
+      idle_threads_(num_threads),
+      running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
     // TODO(Yancey1989): binding the thread on the specify CPU number
@@ -73,7 +75,7 @@ void ThreadPool::TaskLoop() {
     auto task = std::move(tasks_.front());
     tasks_.pop();
 
-    --available_;
+    --idle_threads_;
     lock.unlock();
 
     // run the task
@@ -81,7 +83,7 @@ void ThreadPool::TaskLoop() {
 
     {
       std::unique_lock<std::mutex> lock(mutex_);
-      ++available_;
+      ++idle_threads_;
       if (Done()) {
         completed_.notify_all();
       }
