@@ -42,10 +42,17 @@ class LayerNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], 1);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], 1);
+    auto x_dim = ctx->GetInputDim("X");
+    auto begin_norm_axis = ctx->Attrs().Get<int>("begin_norm_axis");
+    PADDLE_ENFORCE_LT(begin_norm_axis, x_dim.size(),
+                      "'begin_norm_axis' must be less than the rank of X");
+
+    auto matrix_dim = framework::flatten_to_2d(x_dim, begin_norm_axis);
+    int left = static_cast<int>(matrix_dim[0]);
 
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
-    ctx->SetOutputDim("Mean", {ctx->GetInputDim("X")[0]});
-    ctx->SetOutputDim("Variance", {ctx->GetInputDim("X")[0]});
+    ctx->SetOutputDim("Mean", {left});
+    ctx->SetOutputDim("Variance", {left});
 
     ctx->ShareLoD("X", "Y");
   }
@@ -72,10 +79,14 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
                          "'epsilon' should be between 0.0 and 0.001.");
         });
-    AddAttr<std::vector<int>>("axis",
-                              "(vector<int> default:{1, 1, 1}), the "
-                              "axis to normalize.")
-        .SetDefault({1, 2, 3});  // todo(zcd) : who to set axis
+    AddAttr<int>("begin_norm_axis",
+                 "(int default:1), the "
+                 "axis of `begin_norm_axis ... Rank(X) - 1` will be normalized")
+        .SetDefault(1)
+        .AddCustomChecker([](const int &begin_norm_axis) {
+          PADDLE_ENFORCE_GT(begin_norm_axis, 0,
+                            "'begin_norm_axis' should be greater than zero.");
+        });
 
     AddComment(R"DOC(
 Layer Normalization.
@@ -97,9 +108,7 @@ class LayerNormKernel<platform::CPUDeviceContext, T>
     const auto *bias = ctx.Input<Tensor>("Bias");
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-
-    const int N = x_dims[0];
-    const int sample_size = x->numel() / N;
+    const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
 
     auto scale_data = scale->data<T>()[0];
     auto bias_data = bias->data<T>()[0];
@@ -111,7 +120,9 @@ class LayerNormKernel<platform::CPUDeviceContext, T>
     mean->mutable_data<T>(ctx.GetPlace());
     var->mutable_data<T>(ctx.GetPlace());
 
-    int left = N, right = sample_size;
+    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    int left = static_cast<int>(matrix_dim[0]);
+    int right = static_cast<int>(matrix_dim[1]);
     auto input_map = ConstEigenMatrixMapRowMajor<T>(x->data<T>(), left, right);
     auto mean_map = EigenMatrixMapRowMajor<T>(mean->data<T>(), left, 1);
     auto var_map = EigenMatrixMapRowMajor<T>(var->data<T>(), left, 1);
@@ -131,7 +142,8 @@ class LayerNormKernel<platform::CPUDeviceContext, T>
       return std::sqrt(1 / ele) * scale_data;
     };
     auto sub_bias = [bias_data](T ele) { return bias_data - ele; };
-
+    // TODO(zcd): Some thinking about output_map, is it appropriate that
+    // `output_map` and `input_map` point to the same memory.
     output_map = (var_map.unaryExpr(scale_inv_std).replicate(1, right))
                      .cwiseProduct(input_map) +
                  var_map.unaryExpr(scale_inv_std)
@@ -198,13 +210,14 @@ class LayerNormGradKernel<platform::CPUDeviceContext, T>
     const auto *var = ctx.Input<Tensor>("Variance");
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto scale_data = scale->data<T>()[0];
 
     const auto &x_dims = x->dims();
-    const int N = x_dims[0];
-    const int sample_size = x->numel() / N;
-    int left = N, right = sample_size;
 
-    auto scale_data = scale->data<T>()[0];
+    const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
+    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    int left = static_cast<int>(matrix_dim[0]),
+        right = static_cast<int>(matrix_dim[1]);
 
     // init output
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -223,11 +236,13 @@ class LayerNormGradKernel<platform::CPUDeviceContext, T>
     if (d_scale) {
       d_scale->mutable_data<T>(ctx.GetPlace());
       auto inv_std = [](T ele) { return std::sqrt(1 / ele); };
+      // There are two equation to compute d_scale. One uses "Y" and the other
+      // does not use "Y"
       d_scale->data<T>()[0] =
           ((x_map - mean_map.replicate(1, right))
                .cwiseProduct(var_map.unaryExpr(inv_std).replicate(1, right))
                .cwiseProduct(d_y_map))
-              .sum();  // also can use `y` to get d_scale_map
+              .sum();
     }
 
     if (d_x) {
