@@ -20,6 +20,7 @@ limitations under the License. */
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <vector>
 
 #include "paddle/platform/enforce.h"
 
