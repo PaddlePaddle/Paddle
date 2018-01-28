@@ -79,5 +79,33 @@ inline void VisitDataType(proto::DataType type, Visitor visitor) {
   }
 }
 
+inline std::string DataTypeToString(const proto::DataType type) {
+  using namespace paddle::framework::proto;
+  switch (type) {
+    case DataType::FP16:
+      return "float16";
+    case DataType::FP32:
+      return "float32";
+    case DataType::FP64:
+      return "float64";
+    case DataType::INT16:
+      return "int16";
+    case DataType::INT32:
+      return "int32";
+    case DataType::INT64:
+      return "int64";
+    case DataType::BOOL:
+      return "bool";
+    default:
+      PADDLE_THROW("Not support type %d", type);
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const proto::DataType& type) {
+  out << DataTypeToString(type);
+  return out;
+}
+
 }  // namespace framework
 }  // namespace paddle
