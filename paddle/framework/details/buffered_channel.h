@@ -77,7 +77,6 @@ void Buffered<T>::NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
   full_cond_var_.notify_one();
 }
 
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -38,7 +38,6 @@ class UnBuffered : public paddle::framework::Channel<T> {
   virtual ~UnBuffered();
 };
 
-
 template <typename T>
 void UnBuffered<T>::Send(T* channel_element) {}
 
@@ -47,7 +46,6 @@ void UnBuffered<T>::Receive(T*) {}
 
 template <typename T>
 UnBuffered<T>::~UnBuffered() {}
-
 
 }  // namespace details
 }  // namespace framework
