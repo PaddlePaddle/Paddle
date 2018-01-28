@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <condition_variable>
-#include <mutex>
 #include <deque>
+#include <mutex>
 
 #include "paddle/framework/channel.h"
 
@@ -27,12 +27,12 @@ template <typename T>
 class Buffered : public paddle::framework::Channel<T> {
   friend Channel<T>* paddle::framework::MakeChannel<T>(size_t);
   friend void paddle::framework::CloseChannel<T>(Channel<T>*);
-  
+
  public:
   virtual void Send(T*);
   virtual void Receive(T*);
   virtual size_t Cap() { return cap_; }
-  
+
  private:
   size_t cap_;
   std::mutex mu_;

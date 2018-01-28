@@ -35,8 +35,10 @@ class Channel {
 
 // Forward declaration of channel implementations.
 namespace details {
-template <typename T> class Buffered;
-template <typename T> class UnBuffered;
+template <typename T>
+class Buffered;
+template <typename T>
+class UnBuffered;
 }  // namespace details
 
 
