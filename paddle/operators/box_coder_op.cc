@@ -32,15 +32,15 @@ class BoxCoderOp : public framework::OperatorWithKernel {
     auto target_box_dims = ctx->GetInputDim("TargetBox");
 
     PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2UL,
-                      "The shape of PriorBox is [N, 4]");
+                      "The rank of Input of PriorBox must be 2");
     PADDLE_ENFORCE_EQ(prior_box_dims[1], 4UL,
                       "The shape of PriorBox is [N, 4]");
     PADDLE_ENFORCE_EQ(prior_box_var_dims.size(), 2UL,
-                      "The shape of PriorBoxVar is [N, 4]");
+                      "The rank of Input of PriorBoxVar must be 2");
     PADDLE_ENFORCE_EQ(prior_box_var_dims[1], 4UL,
                       "The shape of PriorBoxVar is [N, 4]");
     PADDLE_ENFORCE_EQ(target_box_dims.size(), 2UL,
-                      "The shape of TargetBox is [M, 4]");
+                      "The rank of Input of TargetBox must be 2");
     PADDLE_ENFORCE_EQ(target_box_dims[1], 4UL,
                       "The shape of TargetBox is [M, 4]");
 
