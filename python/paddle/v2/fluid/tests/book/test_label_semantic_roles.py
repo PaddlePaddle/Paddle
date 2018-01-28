@@ -165,7 +165,7 @@ def main():
         learning_rate=fluid.learning_rate_decay.exponential_decay(
             learning_rate=init_lr,
             global_step=global_step,
-            decay_steps=5,
+            decay_steps=100000,
             decay_rate=0.5,
             staircase=True),
         global_step=global_step)
@@ -214,7 +214,6 @@ def main():
             pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
                 exe)
 
-            print(str(global_step_val) + ":" + str(global_lr_val))
             if batch_id % 10 == 0:
                 print("avg_cost:" + str(cost) + " precision:" + str(
                     precision) + " recall:" + str(recall) + " f1_score:" + str(
