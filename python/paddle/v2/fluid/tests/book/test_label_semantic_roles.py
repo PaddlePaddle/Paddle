@@ -156,25 +156,20 @@ def main():
     avg_cost = fluid.layers.mean(x=crf_cost)
 
     global_step = fluid.layers.create_global_var(
-        shape=[1], value=1, dtype='float32')
+        shape=[1], value=0, dtype='float32')
+    init_lr = fluid.layers.create_global_var(
+        shape=[1], value=0.0001, dtype='float32')
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001,
-                                        global_step=global_step)
+    sgd_optimizer = fluid.optimizer.SGD(
+        learning_rate=fluid.learning_rate_decay.exponential_decay(
+            learning_rate=init_lr,
+            global_step=global_step,
+            decay_steps=5,
+            decay_rate=0.5,
+            staircase=True),
+        global_step=global_step)
     sgd_optimizer.minimize(avg_cost)
-
-    global_learning_rate = sgd_optimizer.global_learning_rate
-    fluid.learning_rate_decay.exponential_decay(
-        learning_rate=global_learning_rate,
-        global_step=global_step,
-        decay_steps=5,
-        decay_rate=0.1)
-
-    # with open("startup_program.proto", 'w') as f:
-    #     f.write(str(fluid.default_startup_program()))
-    #
-    # with open("main_program.proto", 'w') as f:
-    #     f.write(str(fluid.default_main_program()))
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
@@ -215,7 +210,7 @@ def main():
                 fluid.default_main_program(),
                 feed=feeder.feed(data),
                 fetch_list=[avg_cost] + chunk_evaluator.metrics +
-                [global_step, global_learning_rate])
+                [global_step, sgd_optimizer.learning_rate])
             pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
                 exe)
 

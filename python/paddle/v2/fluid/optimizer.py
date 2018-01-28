@@ -47,17 +47,25 @@ class Optimizer(object):
         self.helper = None
 
     def _create_global_learning_rate(self):
-        self._global_lr_var = self.helper.create_global_variable(
-            name=unique_name("learning_rate"),
-            dtype='float32',
-            shape=[1],
-            lod_level=1,
-            persistable=True)
-        self.helper.set_variable_initializer(
-            var=self._global_lr_var, initializer=Constant(self._learning_rate))
+        if isinstance(self._learning_rate, float):
+            self._global_lr_var = self.helper.create_global_variable(
+                name=unique_name("learning_rate"),
+                dtype='float32',
+                shape=[1],
+                lod_level=1,
+                persistable=True)
+            self.helper.set_variable_initializer(
+                var=self._global_lr_var,
+                initializer=Constant(self._learning_rate))
+        elif isinstance(self._learning_rate, framework.Variable):
+            self._global_lr_var = self._learning_rate
 
     @property
-    def global_learning_rate(self):
+    def learning_rate(self):
+        """
+        get global decayed learning rate
+        :return:
+        """
         return self._global_lr_var
 
     def _append_optimize_op(self, block, param_and_grad):

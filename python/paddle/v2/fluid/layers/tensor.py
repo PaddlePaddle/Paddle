@@ -67,8 +67,8 @@ def create_parameter(shape,
                                    default_initializer)
 
 
-def create_global_var(shape, value, dtype):
-    helper = LayerHelper("global_var", **locals())
+def create_global_var(shape, value, dtype, name=""):
+    helper = LayerHelper("global_var_" + name, **locals())
     var = helper.create_global_variable(
         dtype=dtype, shape=shape, persistable=True)
     helper.set_variable_initializer(
