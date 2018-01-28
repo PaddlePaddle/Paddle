@@ -257,7 +257,8 @@ def dynamic_lstm(input,
                  gate_activation='sigmoid',
                  cell_activation='tanh',
                  candidate_activation='tanh',
-                 dtype='float32'):
+                 dtype='float32',
+                 name=None):
     """
     **Dynamic LSTM Layer**
 
@@ -309,25 +310,25 @@ def dynamic_lstm(input,
                          (T X 4D), where T is the total time steps in this
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
-        param_attr(ParamAttr): The parameter attribute for the learnable
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weights.
 
-                               - The shape is (D x 4D), where D is the hidden
-                                 size.
                                - Weights = {:math:`W_{ch}, W_{ih}, \
                                                 W_{fh}, W_{oh}`}
-        bias_attr(ParamAttr): The bias attribute for the learnable bias
+                               - The shape is (D x 4D), where D is the hidden
+                                 size.
+        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
 
                               1. `use_peepholes = False`
-                                - The shape is (1 x 4D).
                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                - The shape is (1 x 4D).
                               2. `use_peepholes = True`
-                                - The shape is (1 x 7D).
                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
+                                - The shape is (1 x 7D).
         use_peepholes(bool): Whether to enable diagonal/peephole connections,
                              default `True`.
         is_reverse(bool): Whether to compute reversed LSTM, default `False`.
@@ -340,6 +341,8 @@ def dynamic_lstm(input,
                               Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
 
     Returns:
         tuple: The hidden state, and cell state of LSTM. The shape of both \
@@ -354,6 +357,7 @@ def dynamic_lstm(input,
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
+
     helper = LayerHelper('lstm', **locals())
     size = size / 4
     weight = helper.create_parameter(
@@ -401,7 +405,8 @@ def dynamic_lstmp(input,
                   cell_activation='tanh',
                   candidate_activation='tanh',
                   proj_activation='tanh',
-                  dtype='float32'):
+                  dtype='float32',
+                  name=None):
     """
     **Dynamic LSTMP Layer**
 
@@ -416,19 +421,19 @@ def dynamic_lstmp(input,
 
     .. math::
 
-        i_t = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i) \\
+        i_t & = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i)
 
-        f_t = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f) \\
+        f_t & = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f)
 
-        \tilde{c_t} = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c) \\
+        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c)
 
-        o_t = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_t + b_o) \\
+        o_t & = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_t + b_o)
 
-        c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c_t} \\
+        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
 
-        h_t = o_t \odot act_h(c_t) \\
+        h_t & = o_t \odot act_h(c_t)
 
-        r_t = \overline{act_h}(W_{rh}h_t)
+        r_t & = \overline{act_h}(W_{rh}h_t)
 
     where the :math:`W` terms denote weight matrices (e.g. :math:`W_{xi}` is 
     the matrix of weights from the input gate to the input), :math:`W_{ic}`, 
@@ -441,7 +446,7 @@ def dynamic_lstmp(input,
     vectors, respectively, all of which have the same size as the cell output 
     activation vector :math:`h`. Here :math:`h` is usually called the hidden 
     state and :math:`r` denotes its recurrent projection. And 
-    :math:`\tilde{c_t}` is also called the candidate hidden state, whose 
+    :math:`\\tilde{c_t}` is also called the candidate hidden state, whose 
     computation is based on the current input and previous hidden state.
 
     The :math:`\odot` is the element-wise product of the vectors. :math:`act_g` 
@@ -466,28 +471,28 @@ def dynamic_lstmp(input,
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
         proj_size(int): The size of projection output.
-        param_attr(ParamAttr): The parameter attribute for the learnable
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weight and projection weight.
 
+                               - Hidden-hidden weight = {:math:`W_{ch}, W_{ih}, \
+                                                W_{fh}, W_{oh}`}.
                                - The shape of hidden-hidden weight is (P x 4D), 
                                  where P is the projection size and D the hidden 
                                  size.
-                               - The shape of projection weight is (D x P).
-                               - Hidden-hidden weight = {:math:`W_{ch}, W_{ih}, \
-                                                W_{fh}, W_{oh}`}.
                                - Projection weight = {:math:`W_{rh}`}.
-        bias_attr(ParamAttr): The bias attribute for the learnable bias
+                               - The shape of projection weight is (D x P).
+        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
 
                               1. `use_peepholes = False`
-                                - The shape is (1 x 4D).
                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                - The shape is (1 x 4D).
                               2. `use_peepholes = True`
-                                - The shape is (1 x 7D).
                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
+                                - The shape is (1 x 7D).
         use_peepholes(bool): Whether to enable diagonal/peephole connections,
                              default `True`.
         is_reverse(bool): Whether to compute reversed LSTM, default `False`.
@@ -503,10 +508,12 @@ def dynamic_lstmp(input,
                               Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
 
     Returns:
-        tuple: The projection of hidden state, and cell state of LSTMP. The 
-               shape of projection is (T x P), for the cell state which is 
+        tuple: The projection of hidden state, and cell state of LSTMP. The \
+               shape of projection is (T x P), for the cell state which is \
                (T x D), and both LoD is the same with the `input`.
 
     Examples:
@@ -519,6 +526,7 @@ def dynamic_lstmp(input,
             proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out, 
                 size=hidden_dim * 4, proj_size=proj_dim, use_peepholes=False)
     """
+
     helper = LayerHelper('lstmp', **locals())
     size = size / 4
     weight = helper.create_parameter(
