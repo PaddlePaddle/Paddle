@@ -30,7 +30,7 @@ class Buffered : public paddle::framework::Channel<T> {
   
  public:
   virtual void Send(T*);
-  virtual T* Receive();
+  virtual void Receive(T*);
   virtual size_t Cap() { return cap_; }
   
  private:
@@ -47,24 +47,21 @@ class Buffered : public paddle::framework::Channel<T> {
 };
 
 template <typename T>
-void Buffered<T>::Send(T* channel_element) {
+void Buffered<T>::Send(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
   full_cond_var_.wait(lock, [this]() { return channel_.size() < cap_; });
-  channel_.push_back(std::move(*channel_element));
+  channel_.push_back(std::move(*item));
   lock.unlock();
   empty_cond_var_.notify_one();
 }
 
 template <typename T>
-T* Buffered<T>::Receive() {
+void Buffered<T>::Receive(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
   empty_cond_var_.wait(lock, [this]() { return !channel_.empty(); });
-  
-  T* channel_element = std::move(channel_.front());
+  *item = std::move(channel_.front());
   channel_.pop_front();
-  
   NotifyAllSenders(&lock);
-  return channel_element;
 }
 
 template <typename T>

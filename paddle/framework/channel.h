@@ -24,7 +24,7 @@ template <typename T>
 class Channel {
  public:
   virtual void Send(T*) = 0;
-  virtual T* Receive() = 0;
+  virtual void Receive(T*) = 0;
   virtual size_t Cap() = 0;
 
   // Don't delete channels; instead, call Channel::Close.
