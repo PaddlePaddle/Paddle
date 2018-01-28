@@ -35,9 +35,7 @@ void ThreadPool::Init() {
 }
 
 ThreadPool::ThreadPool(int num_threads)
-    : total_threads_(num_threads),
-      idle_threads_(num_threads),
-      running_(true) {
+    : total_threads_(num_threads), idle_threads_(num_threads), running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
     // TODO(Yancey1989): binding the thread on the specify CPU number
