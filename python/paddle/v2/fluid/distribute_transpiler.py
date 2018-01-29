@@ -471,11 +471,10 @@ class DistributeTranspiler:
             else:
                 self._append_pserver_non_opt_ops(optimize_sub_program,
                                                  pserver_program, opt_op)
-        # Append the recv op
+        # Append the listen_and_serv op
         pserver_program.global_block().append_op(
-            type="recv",
-            inputs={"RX": self.param_grad_ep_mapping[endpoint]["grads"]
-                    },  # grads to recv
+            type="listen_and_serv",
+            inputs={},
             outputs={},
             attrs={
                 "OptimizeBlock": optimize_sub_program.global_block(),

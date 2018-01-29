@@ -98,3 +98,5 @@ if(NOT WITH_C_API AND WITH_FLUID)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/framework.pb.h DESTINATION include/paddle/framework)
   install(FILES details/cow_ptr.h details/op_registry.h DESTINATION include/paddle/framework/details)
 endif()
+
+cc_test(channel_test SRCS channel_test.cc)

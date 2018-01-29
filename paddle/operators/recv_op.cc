@@ -25,9 +25,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class SendOp : public framework::OperatorBase {
+class RecvOp : public framework::OperatorBase {
  public:
-  SendOp(const std::string& type, const framework::VariableNameMap& inputs,
+  RecvOp(const std::string& type, const framework::VariableNameMap& inputs,
          const framework::VariableNameMap& outputs,
          const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -44,7 +44,6 @@ class SendOp : public framework::OperatorBase {
       VLOG(3) << "getting " << outs[i];
       client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
-
     PADDLE_ENFORCE(client_.Wait());
   }
 
@@ -52,21 +51,22 @@ class SendOp : public framework::OperatorBase {
   mutable detail::RPCClient client_;
 };
 
-class SendOpMaker : public framework::OpProtoAndCheckerMaker {
+class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendOpMaker(OpProto* proto, OpAttrChecker* op_checker)
+  RecvOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor to be sent").AsDuplicable();
     AddOutput("Out", "(Tensor) Output tensor to be received from server")
         .AsDuplicable();
     AddComment(R"DOC(
-Send operator
+Recv operator
 
-This operator will send tensor to recv_op at the parameter server.
+This operator can get variables from server side.
 )DOC");
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
-                                      "Server endpoints to send variables to.")
+                                      "Server endpoints to recv variables"
+                                      "from.")
         .SetDefault({});
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
@@ -81,4 +81,4 @@ This operator will send tensor to recv_op at the parameter server.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send, ops::SendOp, ops::SendOpMaker);
+REGISTER_OPERATOR(recv, ops::RecvOp, ops::RecvOpMaker);
