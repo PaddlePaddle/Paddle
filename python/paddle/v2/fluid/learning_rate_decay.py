@@ -67,8 +67,7 @@ def exponential_decay(learning_rate,
         shape=[1], dtype='float32', value=float(decay_rate))
 
     # update learning_rate
-    div_res = layers.elementwise_div(x=global_step, y=decay_steps_var)
+    div_res = global_step / decay_steps_var
     if staircase:
         div_res = layers.floor(x=div_res)
-    pow_res = layers.elementwise_pow(x=decay_rate_var, y=div_res)
-    return lr * pow_res
+    return lr * (decay_rate_var**div_res)

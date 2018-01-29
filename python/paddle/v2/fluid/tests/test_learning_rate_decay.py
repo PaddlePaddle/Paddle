@@ -15,6 +15,7 @@
 import unittest
 
 import math
+import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.layers as layers
 
@@ -62,11 +63,17 @@ class TestExponentialDecay(unittest.TestCase):
                 staircase=staircase)
             self.assertAlmostEqual(python_decaied_lr, lr_val[0])
 
-    def test_exponential_decay_staircase(self):
-        self.check_exponential_decay(True)
+    def test_exponential_decay_staircase_true(self):
+        main_program = framework.Program()
+        startup_program = framework.Program()
+        with framework.program_guard(main_program, startup_program):
+            self.check_exponential_decay(True)
 
-    def test_exponential_decay_staircase(self):
-        self.check_exponential_decay(False)
+    def test_exponential_decay_staircase_false(self):
+        main_program = framework.Program()
+        startup_program = framework.Program()
+        with framework.program_guard(main_program, startup_program):
+            self.check_exponential_decay(False)
 
 
 if __name__ == '__main__':
