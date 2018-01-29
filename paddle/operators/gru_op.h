@@ -76,12 +76,15 @@ class GRUKernel : public framework::OpKernel<T> {
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
     Tensor ordered_h0;
-    const size_t* order = nullptr;
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      order = batch_gate->lod()[2].cuda_data();
+
+    size_t* order = nullptr;
+    framework::Vector<size_t> order_lod(batch_gate->lod()[2]);
+    if (platform::is_gpu_place(context.GetPlace())) {
+      order = order_lod.cuda_data();
     } else {
-      order = batch_gate->lod()[2].data();
+      order = order_lod.data();
     }
+
     if (h0) {
       // Since the batch computing for GRU reorders the input sequences
       // according to their length. The initialized cell state also needs
@@ -164,11 +167,13 @@ class GRUGradKernel : public framework::OpKernel<T> {
     zero(dev_ctx, &batch_reset_hidden_prev_grad, static_cast<T>(0.0));
 
     Tensor ordered_h0, ordered_h0_grad;
-    const size_t* order = nullptr;
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      order = batch_gate->lod()[2].cuda_data();
+
+    size_t* order = nullptr;
+    framework::Vector<size_t> order_lod(batch_gate->lod()[2]);
+    if (platform::is_gpu_place(context.GetPlace())) {
+      order = order_lod.cuda_data();
     } else {
-      order = batch_gate->lod()[2].data();
+      order = order_lod.data();
     }
 
     if (h0) {

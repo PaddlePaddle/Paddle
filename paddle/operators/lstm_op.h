@@ -85,11 +85,12 @@ class LSTMKernel : public framework::OpKernel<T> {
     lstm_value.prev_state_value = nullptr;
     Tensor ordered_c0;
 
-    const size_t* order = nullptr;
+    size_t* order = nullptr;
+    framework::Vector<size_t> order_lod(batch_gate->lod()[2]);
     if (platform::is_gpu_place(ctx.GetPlace())) {
-      order = batch_gate->lod()[2].cuda_data();
+      order = order_lod.cuda_data();
     } else {
-      order = batch_gate->lod()[2].data();
+      order = order_lod.data();
     }
 
     if (cell_t0) {
@@ -209,11 +210,12 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     // ordered_h0_g/c0_g is the reordered gradient of hidden/cell
     // initialization.
     Tensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
-    const size_t* order = nullptr;
+    size_t* order = nullptr;
+    framework::Vector<size_t> order_lod(batch_gate->lod()[2]);
     if (platform::is_gpu_place(ctx.GetPlace())) {
-      order = batch_gate->lod()[2].cuda_data();
+      order = order_lod.cuda_data();
     } else {
-      order = batch_gate->lod()[2].data();
+      order = order_lod.data();
     }
 
     if (c0) {
