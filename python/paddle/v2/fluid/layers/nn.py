@@ -435,25 +435,28 @@ def dynamic_lstmp(input,
 
         r_t & = \overline{act_h}(W_{rh}h_t)
 
-    where the :math:`W` terms denote weight matrices (e.g. :math:`W_{xi}` is 
-    the matrix of weights from the input gate to the input), :math:`W_{ic}`, 
-    :math:`W_{fc}`, :math:`W_{oc}` are diagonal weight matrices for peephole 
-    connections. In our implementation, we use vectors to reprenset these 
-    diagonal weight matrices. The :math:`b` terms denote bias vectors 
-    (:math:`b_i` is the input gate bias vector), :math:`\sigma` is the 
-    activation, such as logistic sigmoid function, and :math:`i, f, o` and 
-    :math:`c` are the input gate, forget gate, output gate, and cell activation 
-    vectors, respectively, all of which have the same size as the cell output 
-    activation vector :math:`h`. Here :math:`h` is usually called the hidden 
-    state and :math:`r` denotes its recurrent projection. And 
-    :math:`\\tilde{c_t}` is also called the candidate hidden state, whose 
-    computation is based on the current input and previous hidden state.
+    In the above formula:
 
-    The :math:`\odot` is the element-wise product of the vectors. :math:`act_g` 
-    and :math:`act_h` are the cell input and cell output activation functions 
-    and `tanh` is usually used for them. :math:`\overline{act_h}` is the 
-    activation function for the projection output, usually using `identity` or 
-    same as :math:`act_h`.
+    * :math:`W`: Denotes weight matrices (e.g. :math:`W_{xi}` is \
+          the matrix of weights from the input gate to the input).
+    * :math:`W_{ic}`, :math:`W_{fc}`, :math:`W_{oc}`: Diagonal weight \
+          matrices for peephole connections. In our implementation, \
+          we use vectors to reprenset these diagonal weight matrices. 
+    * :math:`b`: Denotes bias vectors (e.g. :math:`b_i` is the input gate \
+          bias vector). 
+    * :math:`\sigma`: The activation, such as logistic sigmoid function.
+    * :math:`i, f, o` and :math:`c`: The input gate, forget gate, output \
+          gate, and cell activation vectors, respectively, all of which have \
+          the same size as the cell output activation vector :math:`h`. 
+    * :math:`h`: The hidden state.
+    * :math:`r`: The recurrent projection of the hidden state. 
+    * :math:`\\tilde{c_t}`: The candidate hidden state, whose \
+          computation is based on the current input and previous hidden state.
+    * :math:`\odot`: The element-wise product of the vectors. 
+    * :math:`act_g` and :math:`act_h`: The cell input and cell output \
+          activation functions and `tanh` is usually used for them. 
+    * :math:`\overline{act_h}`: The activation function for the projection \
+          output, usually using `identity` or same as :math:`act_h`.
 
     Set `use_peepholes` to `False` to disable peephole connection. The formula
     is omitted here, please refer to the paper
@@ -519,12 +522,16 @@ def dynamic_lstmp(input,
     Examples:
         .. code-block:: python
 
-            hidden_dim = 512
-            proj_dim = 256
+            hidden_dim, proj_dim = 512, 256
             fc_out = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
                                      act=None, bias_attr=None)
             proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out, 
-                size=hidden_dim * 4, proj_size=proj_dim, use_peepholes=False)
+                                                     size=hidden_dim * 4, 
+                                                     proj_size=proj_dim, 
+                                                     use_peepholes=False,
+                                                     is_reverse=True,
+                                                     cell_activation="tanh",
+                                                     proj_activation="tanh")
     """
 
     helper = LayerHelper('lstmp', **locals())
