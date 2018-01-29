@@ -147,6 +147,7 @@ op_library(max_sequence_len_op DEPS lod_rank_table)
 op_library(sequence_conv_op DEPS context_project)
 op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
+op_library(lstmp_op DEPS sequence2batch lstm_compute)
 op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(recurrent_op DEPS executor)
 op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale math_function)
@@ -156,6 +157,7 @@ op_library(parallel_do_op DEPS executor)
 # Regist multiple Kernel to pybind
 if (WITH_GPU)
 op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS vol2col)
+op_library(edit_distance_op SRCS edit_distance_op.cc edit_distance_op.cu DEPS math_function)
 op_library(pool_op SRCS pool_op.cc pool_op.cu.cc pool_cudnn_op.cu.cc DEPS pooling)
 op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
   conv_transpose_cudnn_op.cu.cc DEPS vol2col)
@@ -178,14 +180,13 @@ foreach(src ${GENERAL_OPS})
 endforeach()
 file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
 
-
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
-
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
+cc_test(beam_search_op_test SRCS beam_search_op_test.cc DEPS lod_tensor beam_search_op)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memory)
 if(WITH_GPU)
     cc_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)

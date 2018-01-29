@@ -26,9 +26,9 @@ TEST(OpKernelType, ToString) {
   OpKernelType op_kernel_type(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
                               LibraryType::kCUDNN);
 
-  ASSERT_EQ(
-      paddle::framework::KernelTypeToString(op_kernel_type),
-      "data_type[5]:data_layout[NCHW]:place[CPUPlace]:library_type[CUDNN]");
+  ASSERT_EQ(paddle::framework::KernelTypeToString(op_kernel_type),
+            "data_type[float32]:data_layout[NCHW]:place[CPUPlace]:library_type["
+            "CUDNN]");
 }
 
 TEST(OpKernelType, Hash) {

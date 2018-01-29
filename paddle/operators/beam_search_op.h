@@ -73,7 +73,15 @@ namespace operators {
  * second level:
  * [0, 2, 4]
  *
- * tensor's data
+ * id tensor's data
+ * [[
+ * 4,
+ * 1,
+ * 3,
+ * 8,
+ * ]]
+ *
+ * score tensor's data
  * [[
  * 0.5,
  * 0.3,
@@ -128,8 +136,6 @@ class BeamSearch {
   void operator()(const framework::LoDTensor& pre_ids,
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores);
-
- protected:
   /*
    * The basic items help to sort.
    */
@@ -137,23 +143,29 @@ class BeamSearch {
     Item() {}
     Item(size_t offset, size_t id, float score)
         : offset(offset), id(id), score(score) {}
-    // offset in the lod_level_+1
+    // offset in the higher lod level.
     size_t offset;
+    // // prefix id in the lower lod level.
+    // size_t prefix;
     // the candidate id
     id_t id;
     // the corresponding score
     score_t score;
   };
 
-  void PruneEndidCandidates(const framework::LoDTensor& pre_ids,
-                            std::vector<std::vector<Item>>* items);
+ protected:
+  /*
+   * Delete all the records that follows the end token.
+   */
+  int PruneEndidCandidates(const framework::LoDTensor& pre_ids,
+                           std::vector<std::vector<Item>>* items);
 
   /*
    * Transform the items into a map whose key is offset, value is the items.
    * NOTE low performance
    */
   std::vector<std::vector<Item>> ToMap(
-      const std::vector<std::vector<Item>>& inputs);
+      const std::vector<std::vector<Item>>& inputs, size_t element_num);
 
   /*
    * For each source, select top beam_size records.
@@ -174,6 +186,10 @@ class BeamSearch {
   int end_id_{0};
 };
 
+std::ostream& operator<<(std::ostream& os, const BeamSearch::Item& item);
+
+std::string ItemToString(const BeamSearch::Item& item);
+
 class BeamSearchOp : public framework::OperatorBase {
  public:
   BeamSearchOp(const std::string& type,
@@ -190,7 +206,6 @@ class BeamSearchOp : public framework::OperatorBase {
 
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
-    LOG(INFO) << "run beam search op";
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));
     auto pre_ids_var = scope.FindVar(Input("pre_ids"));
@@ -204,10 +219,8 @@ class BeamSearchOp : public framework::OperatorBase {
     size_t level = Attr<int>("level");
     size_t beam_size = Attr<int>("beam_size");
     int end_id = Attr<int>("end_id");
-    LOG(INFO) << "init beam search";
     BeamSearch alg(ids, scores, level, beam_size, end_id);
 
-    LOG(INFO) << "after beam search";
     auto selected_ids_var = scope.FindVar(Output("selected_ids"));
     auto selected_scores_var = scope.FindVar(Output("selected_scores"));
     PADDLE_ENFORCE_NOT_NULL(selected_ids_var);
@@ -216,9 +229,7 @@ class BeamSearchOp : public framework::OperatorBase {
         *selected_ids_var->GetMutable<framework::LoDTensor>();
     auto& selected_scores_tensor =
         *selected_scores_var->GetMutable<framework::LoDTensor>();
-    LOG(INFO) << "run beam search";
     alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
-    LOG(INFO) << "finish beam search";
   }
 };
 

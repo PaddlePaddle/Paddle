@@ -107,9 +107,10 @@ LoD ToAbsOffset(const LoD &in) {
   // the lowest level stores relative offsets
   if (in.empty() || in.size() == 1) return in;
   LoD result = in;
-  for (int level = result.size() - 2; level >= 0; level--) {
-    for (auto &ele : result[level]) {
-      ele = result[level + 1][ele];
+  for (auto level = static_cast<int>(in.size() - 2); level >= 0; level--) {
+    for (size_t i = 0; i < in[level].size(); ++i) {
+      size_t index = in[level][i];
+      result[level][i] = result[level + 1][index];
     }
   }
   return result;
@@ -130,6 +131,65 @@ bool operator==(const LoD &a, const LoD &b) {
       if (a_level[j] != b_level[j]) {
         return false;
       }
+    }
+  }
+  return true;
+}
+
+bool CheckLoD(const LoD &in, int tensor_height) {
+  if (in.empty()) return true;
+  for (const auto &level : in) {
+    // check: there should be more than 2 offsets existing in each level.
+    if (level.size() < 2) return false;
+    // check: the first offset(the begin offset) of each level should be 0.
+    if (level.front() != 0) return false;
+    // check: all the offsets in a level should be ascending(no same items
+    // allows).
+    if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
+          if (a < b) return true;
+          return false;
+        })) {
+      LOG(INFO) << "ascending error";
+      return false;
+    }
+  }
+  // check: the lowest level's last offset should equals `tensor_height` if
+  //        tensor_height>0.
+  if (tensor_height > 0 && (size_t)tensor_height != in.back().back())
+    return false;
+
+  // check: the higher level's last offset should equals the lower level's
+  // size-1.
+  // NOTE LoD store the levels from top to bottom, so the higher level goes
+  // first.
+  for (size_t level = 0; level < in.size() - 1; level++) {
+    if (in[level].back() != in[level + 1].size() - 1) return false;
+  }
+  return true;
+}
+
+bool CheckAbsLoD(const LoD &in, int tensor_height) {
+  if (in.empty()) return true;
+  for (const auto &level : in) {
+    // check: all the offsets in a level should be ascending(no same items
+    // allows).
+    if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
+          if (a < b) return true;
+          return false;
+        })) {
+      return false;
+    }
+
+    // check: there should be more than 2 offsets existing in each level.
+    if (level.size() < 2) return false;
+
+    // check: the first offset of each level should be 0, and the last should be
+    // the same(the height of underlying tensor).
+    if (level.front() != 0) return false;
+    if (tensor_height < 0) {
+      tensor_height = level.back();
+    } else if ((size_t)tensor_height != level.back()) {
+      return false;
     }
   }
   return true;
@@ -227,48 +287,86 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-// TODO(tonyyang-svail): make this function support LoD
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();
-  PADDLE_ENFORCE(lod().empty(), "Disable parallel lod for now");
-  PADDLE_ENFORCE(dims()[0] % places.size() == 0,
-                 "Batch size should be divided by places size");
+  int batch_size =
+      lod().empty() ? dims()[0] : static_cast<int>(lod()[0].size()) - 1;
+  size_t result_size = std::min(static_cast<size_t>(batch_size), places.size());
+  size_t remainder = batch_size % places.size();
 
-  std::vector<LoDTensor> lods;
-  for (size_t place_idx = 0; place_idx < places.size(); ++place_idx) {
-    int begin = place_idx * dims()[0] / places.size();
-    int end = (place_idx + 1) * dims()[0] / places.size();
+  std::vector<LoDTensor> results;
+  results.reserve(result_size);
 
-    auto src = Slice(begin, end);
-    auto &dst_place = places[place_idx];
+  int step_width = static_cast<int>(batch_size / result_size);
+  for (size_t i = 0; i < result_size; ++i) {
+    int begin = static_cast<int>(i * step_width);
+    int end = static_cast<int>((i + 1) * step_width);
+    if (i + 1 == places.size()) {  // last
+      end += remainder;
+    }
+
     LoDTensor dst;
-    framework::Copy(src, dst_place, &dst);
+    if (lod().empty()) {
+      auto src = Slice(begin, end);
+      auto &dst_place = places[i];
+      framework::Copy(src, dst_place, &dst);
+    } else {
+      auto lod_and_offset = GetSubLoDAndAbsoluteOffset(lod(), begin, end, 0);
 
-    lods.emplace_back(dst);
+      auto &offset = lod_and_offset.second;
+      auto src = Slice(offset.first, offset.second);
+      auto &dst_place = places[i];
+      framework::Copy(src, dst_place, &dst);
+
+      LoD my_lod;
+      for (auto &l : lod_and_offset.first) {
+        std::vector<size_t> v{0};
+        for (auto &ll : l) {
+          v.push_back(ll + v.back());
+        }
+        my_lod.emplace_back(v);
+      }
+      dst.set_lod(my_lod);
+    }
+    results.emplace_back(dst);
   }
 
-  return lods;
+  return results;
 }
 
-// TODO(tonyyang-svail): make this function support LoD
 void LoDTensor::MergeLoDTensor(
     const std::vector<const LoDTensor *> &lod_tensors,
     platform::Place dst_place) {
   PADDLE_ENFORCE(!lod_tensors.empty());
+
   framework::DDim new_dim = lod_tensors[0]->dims();
   std::type_index new_type = lod_tensors[0]->type();
-  auto new_layout = lod_tensors[0]->layout();
-  for (auto *lod : lod_tensors) {
-    PADDLE_ENFORCE(new_dim == lod->dims());
-    PADDLE_ENFORCE(new_type == lod->type());
-    PADDLE_ENFORCE(new_layout == lod->layout());
+  framework::DataLayout new_layout = lod_tensors[0]->layout();
+  LoD new_lod = lod_tensors[0]->lod();
+  for (size_t i = 1; i < lod_tensors.size(); ++i) {
+    auto *t = lod_tensors[i];
+    PADDLE_ENFORCE_EQ(new_type.hash_code(), t->type().hash_code());
+    PADDLE_ENFORCE_EQ(new_layout, t->layout());
+
+    PADDLE_ENFORCE_EQ(framework::product(new_dim) / new_dim[0],
+                      framework::product(t->dims()) / t->dims()[0]);
+    new_dim[0] += t->dims()[0];
+
+    auto &lod = t->lod();
+    for (size_t j = 0; j < lod.size(); ++j) {
+      auto &sub_lod = new_lod[j];
+      auto &offset = sub_lod.back();
+      for (size_t k = 1; k < lod[j].size(); ++k) {
+        sub_lod.push_back(lod[j][k] + offset);
+      }
+    }
   }
-  new_dim[0] *= lod_tensors.size();
   Resize(new_dim);
   set_layout(new_layout);
-
+  set_lod(new_lod);
   mutable_data(dst_place, new_type);
+
   int begin = 0;
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];

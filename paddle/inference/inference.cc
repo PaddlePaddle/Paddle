@@ -15,30 +15,13 @@ limitations under the License. */
 #include "inference.h"
 #include <fstream>
 #include "paddle/framework/executor.h"
-#include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/init.h"
 #include "paddle/framework/scope.h"
 
-#ifdef PADDLE_USE_PTOOLS
-#include "chooseser.h"
-#endif
-
 namespace paddle {
 
-void InferenceEngine::LoadInferenceModel(
-    const std::string& dirname,
-    const std::vector<std::string>& feed_var_names,
-    const std::vector<std::string>& fetch_var_names) {
-#ifdef PADDLE_USE_PTOOLS
+void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
-  LOG(INFO) << "Using PicklingTools, loading model from " << model_filename;
-  Val v;
-  LoadValFromFile(model_filename.c_str(), v, SERIALIZE_P0);
-  std::string program_desc_str = v["program_desc_str"];
-  LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
-// PicklingTools cannot parse the vector of strings correctly.
-#else
-  std::string model_filename = dirname + "/__model__.dat";
   LOG(INFO) << "loading model from " << model_filename;
   std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
   std::string program_desc_str;
@@ -48,17 +31,20 @@ void InferenceEngine::LoadInferenceModel(
   LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
   inputfs.read(&program_desc_str[0], program_desc_str.size());
   inputfs.close();
-#endif
+
   program_ = new framework::ProgramDesc(program_desc_str);
   GenerateLoadProgram(dirname);
 
-  if (feed_var_names.empty() || fetch_var_names.empty()) {
-    LOG(FATAL) << "Please specify the feed_var_names and fetch_var_names.";
+  framework::BlockDesc* global_block = program_->MutableBlock(0);
+  feed_var_names_.clear();
+  fetch_var_names_.clear();
+  for (auto* op : global_block->AllOps()) {
+    if (op->Type() == "feed") {
+      feed_var_names_.insert(feed_var_names_.begin(), op->Output("Out")[0]);
+    } else if (op->Type() == "fetch") {
+      fetch_var_names_.push_back(op->Input("X")[0]);
+    }
   }
-  feed_var_names_ = feed_var_names;
-  fetch_var_names_ = fetch_var_names;
-  PrependFeedOp();
-  AppendFetchOp();
 }
 
 bool InferenceEngine::IsParameter(const framework::VarDesc* var) {
@@ -67,6 +53,9 @@ bool InferenceEngine::IsParameter(const framework::VarDesc* var) {
     for (size_t i = 0; i < program_->Size(); ++i) {
       const framework::BlockDesc& block = program_->Block(i);
       for (auto* op : block.AllOps()) {
+        if (op->Type() == "feed") {
+          continue;
+        }
         for (auto input_argument_name : op->InputArgumentNames()) {
           if (input_argument_name == var->Name()) {
             return true;
@@ -164,7 +153,7 @@ void InferenceEngine::Execute(const std::vector<framework::LoDTensor>& feeds,
     LOG(FATAL) << "Please initialize the program_ and load_program_ first.";
   }
 
-  if (feeds.size() < feed_var_names_.size()) {
+  if (feeds.size() != feed_var_names_.size()) {
     LOG(FATAL) << "Please feed " << feed_var_names_.size() << " input Tensors.";
   }
 
@@ -175,18 +164,21 @@ void InferenceEngine::Execute(const std::vector<framework::LoDTensor>& feeds,
 
   executor->Run(*load_program_, scope, 0, true, true);
 
+  std::map<std::string, const framework::LoDTensor*> feed_targets;
+  std::map<std::string, framework::LoDTensor*> fetch_targets;
+
   // set_feed_variable
   for (size_t i = 0; i < feed_var_names_.size(); ++i) {
-    framework::SetFeedVariable(scope, feeds[i], "feed", i);
+    feed_targets[feed_var_names_[i]] = &feeds[i];
   }
-
-  executor->Run(*program_, scope, 0, true, true);
 
   // get_fetch_variable
   fetchs.resize(fetch_var_names_.size());
   for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
-    fetchs[i] = framework::GetFetchVariable(*scope, "fetch", i);
+    fetch_targets[fetch_var_names_[i]] = &fetchs[i];
   }
+
+  executor->Run(*program_, scope, feed_targets, fetch_targets);
 
   delete place;
   delete scope;
