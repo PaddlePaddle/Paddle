@@ -22,8 +22,6 @@ limitations under the License. */
 #include <thread>
 #include <vector>
 
-#include "paddle/platform/enforce.h"
-
 namespace paddle {
 namespace framework {
 
