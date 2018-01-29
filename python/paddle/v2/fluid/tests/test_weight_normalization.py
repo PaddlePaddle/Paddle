@@ -112,9 +112,8 @@ class TestWeightNormalization(unittest.TestCase):
             [
                 self.assertTrue(
                     numpy.allclose(
-                        numpy.array(actual_output), expect_output, atol=0.001))
-                for expect_output, actual_output in zip(expect_output,
-                                                        actual_output)
+                        numpy.array(actual), expect, atol=0.001))
+                for expect, actual in zip(expect_output, actual_output)
             ]
 
 
