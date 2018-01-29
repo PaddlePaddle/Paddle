@@ -22,6 +22,8 @@ limitations under the License. */
 #include <thread>
 #include <vector>
 
+#include "paddle/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+
 namespace paddle {
 namespace framework {
 
