@@ -54,8 +54,6 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
   void Push(const MessageWithName &msg) { this->var_recv_queue_.Push(msg); }
 
-  bool IsRecvQueueEmpty() { return this->var_recv_queue_.IsEmpty(); }
-
   void ShutDown();
 
  protected:

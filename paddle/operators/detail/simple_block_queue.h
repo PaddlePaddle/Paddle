@@ -45,11 +45,6 @@ class SimpleBlockQueue {
     this->queue_.pop_back();
     return rc;
   }
-
-  bool IsEmpty() {
-    std::unique_lock<std::mutex> lock(this->mutex_);
-    return this->queue_.empty();
-  }
 };
 
 }  // namespace detail

@@ -104,43 +104,45 @@ class RecvOp : public framework::OperatorBase {
       // Get from multiple trainers, we don't care about the order in which
       // the gradients arrives, just add suffix 0~n and merge the gradient.
       rpc_service_->SetCond(0);
-      size_t barrier_size = 0;
+      size_t recv_var_cnt = 0;
       int batch_barrier = 0;
-      while (batch_barrier != fan_in || !rpc_service_->IsRecvQueueEmpty()) {
+      while (batch_barrier != fan_in) {
         const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
         if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
           LOG(INFO) << "received terminate message and exit";
           exit_flag = true;
           break;
-        }
-        if (grad_var_name == BATCH_BARRIER_MESSAGE) {
+        } else if (grad_var_name == BATCH_BARRIER_MESSAGE) {
           VLOG(3) << "recv batch barrier message";
           batch_barrier++;
           continue;
-        }
-        barrier_size++;
-        auto it = std::find(grad_list.begin(), grad_list.end(), grad_var_name);
-        std::string param_var_name;
-        if (it != grad_list.end()) {
-          param_var_name = param_list[it - grad_list.begin()];
         } else {
-          LOG(ERROR) << "grad has no paired param:" << grad_var_name;
-        }
-        VLOG(3) << "received grad: " << grad_var_name
-                << " updating param: " << param_var_name;
+          // receive a variable
+          recv_var_cnt++;
+          auto it =
+              std::find(grad_list.begin(), grad_list.end(), grad_var_name);
+          std::string param_var_name;
+          if (it != grad_list.end()) {
+            param_var_name = param_list[it - grad_list.begin()];
+          } else {
+            LOG(ERROR) << "grad has no paired param:" << grad_var_name;
+          }
+          VLOG(3) << "received grad: " << grad_var_name
+                  << " updating param: " << param_var_name;
 
-        if (fan_in > 1) {
-          grad_var_name = this->GetGradVarNameForTrainer(grad_var_name);
+          if (fan_in > 1) {
+            grad_var_name = this->GetGradVarNameForTrainer(grad_var_name);
+          }
+          auto *var = recv_scope.FindVar(grad_var_name);
+          if (var == nullptr) {
+            LOG(ERROR) << "Can not find server side var: " << grad_var_name;
+            PADDLE_THROW("Can not find server side var");
+          }
+          detail::DeserializeFromMessage(v.second, dev_ctx, var);
         }
-        auto *var = recv_scope.FindVar(grad_var_name);
-        if (var == nullptr) {
-          LOG(ERROR) << "Can not find server side var: " << grad_var_name;
-          PADDLE_THROW("Can not find server side var");
-        }
-        detail::DeserializeFromMessage(v.second, dev_ctx, var);
       }
-      VLOG(3) << "recv " << barrier_size << " parmeters for one barrier.";
+      VLOG(3) << "recv " << recv_var_cnt << " parmeters for one barrier.";
       // TODO(Yancey1989): merge SelectedRows variables here
       if (exit_flag) {
         break;
@@ -153,7 +155,7 @@ class RecvOp : public framework::OperatorBase {
         LOG(ERROR) << "run sub program error " << e.what();
       }
       rpc_service_->SetCond(1);
-      rpc_service_->WaitClientGet(barrier_size);
+      rpc_service_->WaitClientGet(recv_var_cnt);
       grads_counter_.clear();
     }  // while(true)
   }
