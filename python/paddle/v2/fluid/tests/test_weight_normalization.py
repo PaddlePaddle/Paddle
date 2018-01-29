@@ -52,7 +52,7 @@ class TestWeightNormalization(unittest.TestCase):
     def run_program(self):
         outputs = []
         places = [core.CPUPlace()]
-        if core.is_compile_gpu():
+        if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
             self.set_inputs(place)

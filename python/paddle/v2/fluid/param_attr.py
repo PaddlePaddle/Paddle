@@ -15,7 +15,10 @@
 from initializer import Initializer, Xavier, Constant
 from regularizer import WeightDecayRegularizer
 
-__all__ = ['ParamAttr']
+__all__ = [
+    'ParamAttr',
+    'WeightNormParamAttr',
+]
 
 
 class ParamAttr(object):
@@ -92,7 +95,7 @@ class WeightNormParamAttr(ParamAttr):
     """
     # List to record the parameters reparameterized by weight normalization.
     # If these parameters are treated as Variable rather than Parameter,
-    # it can be used to discriminate these parameters and help to serialize 
+    # it can be used to discriminate these parameters and help to serialize
     # these paramters for inference.
     params_with_weight_norm = []
 
