@@ -49,7 +49,11 @@ def bi_lstm_encoder(input_seq, hidden_size):
         size=hidden_size * 4,
         is_reverse=True,
         use_peepholes=USE_PEEPHOLES)
-    return forward, backward
+
+    forward_last = fluid.layers.sequence_last_step(input=forward)
+    backward_first = fluid.layers.sequence_first_step(input=backward)
+
+    return forward_last, backward_first
 
 
 # FIXME(peterzhang2029): Replace this function with the lstm_unit_op.
@@ -115,16 +119,13 @@ def seq_to_seq_net():
         size=[source_dict_dim, embedding_dim],
         dtype='float32')
 
-    src_forward, src_backward = bi_lstm_encoder(
+    src_forward_last, src_backward_first = bi_lstm_encoder(
         input_seq=src_embedding, hidden_size=encoder_size)
-
-    src_forward_last = fluid.layers.sequence_last_step(input=src_forward)
-    src_backward_first = fluid.layers.sequence_first_step(input=src_backward)
 
     encoded_vector = fluid.layers.concat(
         input=[src_forward_last, src_backward_first], axis=1)
 
-    decoder_boot = fluid.layers.fc(input=encoded_vector,
+    decoder_boot = fluid.layers.fc(input=src_backward_first,
                                    size=decoder_size,
                                    bias_attr=False,
                                    act='tanh')
