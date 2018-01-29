@@ -37,11 +37,9 @@ class TestExponentialDecay(unittest.TestCase):
 
         global_step = layers.create_global_var(
             shape=[1], value=0.0, dtype='float32')
-        global_lr = layers.create_global_var(
-            shape=[1], value=init_lr, dtype='float32')
 
         decaied_lr = fluid.learning_rate_decay.exponential_decay(
-            learning_rate=global_lr,
+            learning_rate=init_lr,
             global_step=global_step,
             decay_steps=decay_steps,
             decay_rate=decay_rate,

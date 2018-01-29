@@ -32,6 +32,11 @@ def exponential_decay(learning_rate,
     if global_step is None or not isinstance(global_step, Variable):
         raise ValueError("global_step is required for exponential_decay.")
 
+    lr = learning_rate
+    if not isinstance(lr, Variable):
+        lr = layers.create_global_var(
+            shape=[1], value=learning_rate, dtype='float32')
+
     decay_steps_var = layers.fill_constant(
         shape=[1], dtype='float32', value=decay_steps)
     decay_rate_var = layers.fill_constant(
@@ -42,4 +47,4 @@ def exponential_decay(learning_rate,
     if staircase:
         div_res = layers.floor(x=div_res)
     pow_res = layers.elementwise_pow(x=decay_rate_var, y=div_res)
-    return learning_rate * pow_res
+    return lr * pow_res
