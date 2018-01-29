@@ -37,6 +37,7 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+    bool do_get = Attr<bool>("DoGet");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
@@ -46,9 +47,11 @@ class SendOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE(client_.Wait());
 
-    for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting " << outs[i];
-      client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+    if (do_get) {
+      for (size_t i = 0; i < outs.size(); i++) {
+        VLOG(3) << "getting " << outs[i];
+        client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+      }
     }
 
     PADDLE_ENFORCE(client_.Wait());
@@ -79,6 +82,10 @@ This operator will send tensor to recv_op at the parameter server.
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({});
+    AddAttr<bool>("DoGet",
+                  "(bool, default true)"
+                  "Whether do GetVariable call after send")
+        .SetDefault(true);
   }
 };
 
