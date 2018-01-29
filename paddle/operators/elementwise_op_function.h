@@ -215,6 +215,75 @@ class TransformFunctor {
   Functor func_;
 };
 
+// TODO(dzhwinter)
+// move reduce, transform functor into math
+template <typename DeviceContext>
+struct Reduce {
+  template <typename InputIter, typename BinaryOperation, typename T>
+  void operator()(const DeviceContext& ctx, InputIter first, InputIter last,
+                  BinaryOperation op, T init);
+};
+
+template <>
+struct Reduce<platform::CPUDeviceContext> {
+  template <typename InputIter, typename BinaryOperation, typename T>
+  void operator()(const platform::CPUDeviceContext& ctx, InputIter first,
+                  InputIter last, BinaryOperation op, T* init) {
+    *init = std::accumulate(first, last, op, *init);
+  }
+};
+
+#ifdef __NVCC__
+template <>
+struct Reduce<platform::CUDADeviceContext> {
+  template <typename InputIter, typename BinaryOperation, typename T>
+  void operator()(const platform::CUDADeviceContext& ctx, InputIter first,
+                  InputIter last, BinaryOperation op, T* init) {
+    auto place = context.GetPlace();
+    PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
+    *init = thrust::transform(thrust::cuda::par.on(ctx.stream()),
+                              platform::details::DevPtrCast(first),
+                              platform::details::DevPtrCast(last), op, *init);
+  }
+};
+
+#endif
+
+template <typename Functor, typename DeviceContext,
+          typename T typename OutType = T>
+class ReduceFunctor {
+ public:
+  ReduceFunctor(const framework::Tensor* x, framework::Tensor* out,
+                const DeviceContext& ctx, Functor func)
+      : x_(x->data<T>()),
+        out_(out->mutable_data<OutType>(ctx.GetPlace())),
+        ctx_(ctx),
+        func_(func) {}
+
+  inline void Run() const {
+    Reduce<DeviceContext> reducer;
+    reducer(ctx_, x_, x_ + numel_, func_, out_);
+  }
+
+  inline void RunRowWise(int n) const {
+    Reduce<DeviceContext> reducer;
+    reducer(ctx_, RowwiseTransformIterator<T, DeviceContext>(x_, x_ + numel_),
+            func_, out_);
+  }
+
+  inline void RunMidWise() const {
+    Reduce<DeviceContext> reducer;
+    reducer(ctx_, MidWiseTransformIterator<T, DeviceContext>())
+  }
+
+ private:
+  const T* x_;
+  OutType* out_;
+  int64_t numel_;
+  const DeviceContext& ctx_;
+  Functor func_;
+};
+
 #define EIGEN_FUNCTOR(name, eigen_op)                                          \
   struct Eigen##name##Functor {                                                \
     template <typename DeviceContext, typename T>                              \
@@ -379,8 +448,6 @@ void ElementwiseComputeEx(const framework::ExecutionContext& ctx) {
 
   auto x_dims = x->dims();
   auto y_dims = y->dims();
-  PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
-                    "Rank of first input must >= rank of second input.");
 
   if (x_dims == y_dims) {
     functor.Run();
@@ -396,8 +463,6 @@ void ElementwiseComputeEx(const framework::ExecutionContext& ctx) {
 
   int axis = ctx.Attr<int>("axis");
   axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
-  PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
-                 "Axis should be in range [0, x_dims)");
 
   int pre, n, post;
   get_mid_dims(x_dims, y_dims, axis, pre, n, post);
@@ -407,6 +472,46 @@ void ElementwiseComputeEx(const framework::ExecutionContext& ctx) {
   } else {
     functor.RunMidWise(n, pre, post);
     return;
+  }
+}
+
+template <typename Functor, typename DeviceContext, typename T,
+          typename OutType = T>
+void ElementwiseGradComputeEx(const framework::ExecutionContext& ctx) {
+  using Tensor = framework::Tensor;
+
+  auto* x = ctx.Input<Tensor>("X");
+  auto* y = ctx.Input<Tensor>("Y");
+  auto* out = ctx.Input<Tensor>("Out");
+  auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+  auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+  auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+
+  auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+
+  auto x_dims = x->dims();
+  auto y_dims = y->dims();
+
+  if (y_dims.size() == 1 && y_dims[0] == 1) {
+    // y is a scalar
+    auto extended_dims = framework::vectorize(x_dims);
+    extended_dims.push_back(1);
+    x_dims = framework::make_ddim(extended_dims);
+  }
+  int axis = ctx.Attr<int>("axis");
+  axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
+
+  int pre, n, post;
+  get_mid_dims(x_dims, y_dims, axis, pre, n, post);
+
+  if (dx) {
+    auto dx_e = framework::EigenVector<T>::Flatten(*dx);
+    auto dout_e = framework::EigenVector<T>::Flatten(*dout);
+    dx_e.device(d) = dout_e;
+  }
+  if (dy) {
+    TransformFunctor<Functor, T, DeviceContext, OutType> functor(dout, dy);
   }
 }
 
