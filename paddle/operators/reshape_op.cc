@@ -90,14 +90,10 @@ Reshape Operator.
 Reshape Input(X) into the shape specified by Attr(shape).
 
 An example:
-Given a 2-D tensor X with 2 rows and 2 columns
-
-    [[1, 2], [3, 4]]
+Given a 2-D tensor X with 2 rows and 2 columns : [[1, 2], [3, 4]]
 
 and target shape = [1, 4], the reshape operator will transform
-the tensor X into a 2-D tensor:
-
-    [[1, 2, 3, 4]]
+the tensor X into a 2-D tensor: [[1, 2, 3, 4]]
 
 One dimension in the target shape can be set -1, representing that its
 size is unknown. In this case, the real dimension will be infered from 

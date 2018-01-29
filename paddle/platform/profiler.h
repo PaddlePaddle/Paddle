@@ -29,7 +29,7 @@ class Event {
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
   Event(EventKind kind, std::string name, uint32_t thread_id,
-        DeviceContext* dev_ctx);
+        const DeviceContext* dev_ctx);
 
   std::string kind() const;
   std::string name() const { return name_; }
@@ -84,6 +84,8 @@ struct EventList {
     return result;
   }
 
+  void Clear() { event_blocks.clear(); }
+
   std::forward_list<std::vector<Event>> event_blocks;
 };
 
@@ -93,29 +95,26 @@ enum ProfilerState {
   kCUDA,      // GPU profiling state
 };
 
-void Mark(const std::string& name, DeviceContext* dev_ctx);
+void Mark(const std::string& name, const DeviceContext* dev_ctx);
 
-void PushEvent(const std::string& name, DeviceContext* dev_ctx);
+void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
 
-void PopEvent(const std::string& name, DeviceContext* dev_ctx);
+void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 struct RecordEvent {
-  explicit RecordEvent(const std::string& name, DeviceContext* dev_ctx);
+  explicit RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
 
   ~RecordEvent();
 
   // The device context is used by Event to get the current cuda stream.
-  DeviceContext* dev_ctx_;
+  const DeviceContext* dev_ctx_;
   // Event name
   std::string name_;
 };
 
-// Enable the profiling function.
-void EnableProfiler(ProfilerState state);
-
 // Return the event list of all threads. Asummed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
-std::vector<std::vector<Event>> DisableProfiler();
+std::vector<std::vector<Event>> GetAllEvents();
 
 // The information of each event given in the profiling report
 struct EventItem {
@@ -130,13 +129,22 @@ struct EventItem {
 // Candidate keys to sort the profiling report
 enum EventSortingKey { kDefault, kCalls, kTotal, kMin, kMax, kAve };
 
+// Enable the profiling function.
+void EnableProfiler(ProfilerState state);
+
+// Clear the g_all_event_lists, which is total event lists of all threads.
+void ResetProfiler();
+
+void DisableProfiler(EventSortingKey sorted_key);
+
 // Parse the event list and output the profiling report
 void ParseEvents(std::vector<std::vector<Event>>&,
                  EventSortingKey sorted_by = EventSortingKey::kDefault);
 
 // Print results
-void PrintProfilingReport(std::vector<std::vector<EventItem>>& events_table,
-                          std::string& sorted_domain, const size_t name_width,
-                          const size_t data_width);
+void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
+                   std::string& sorted_domain, const size_t name_width,
+                   const size_t data_width);
+
 }  // namespace platform
 }  // namespace paddle

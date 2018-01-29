@@ -35,7 +35,7 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(in_lod.size(), 1UL,
                       "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(
-        in_dims[0], in_lod[0].back(),
+        (uint64_t)in_dims[0], in_lod[0].back(),
         "Inconsistent size between X.shape[0] and X.lod()[0].back().");
 
     auto in_lod_l0 = in_lod[0];

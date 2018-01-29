@@ -15,18 +15,13 @@ limitations under the License. */
 #include "inference.h"
 #include <fstream>
 #include "paddle/framework/executor.h"
-#include "paddle/framework/feed_fetch_method.h"
 #include "paddle/framework/init.h"
 #include "paddle/framework/scope.h"
-
-#ifdef PADDLE_USE_PTOOLS
-#include "chooseser.h"
-#endif
 
 namespace paddle {
 
 void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
-  std::string model_filename = dirname + "/__model__.dat";
+  std::string model_filename = dirname + "/__model__";
   LOG(INFO) << "loading model from " << model_filename;
   std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
   std::string program_desc_str;
@@ -52,39 +47,15 @@ void InferenceEngine::LoadInferenceModel(const std::string& dirname) {
   }
 }
 
-void InferenceEngine::LoadInferenceModel(
-    const std::string& dirname,
-    const std::vector<std::string>& feed_var_names,
-    const std::vector<std::string>& fetch_var_names) {
-  std::string model_filename = dirname + "/__model__.dat";
-  LOG(INFO) << "loading model from " << model_filename;
-  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
-  std::string program_desc_str;
-  inputfs.seekg(0, std::ios::end);
-  program_desc_str.resize(inputfs.tellg());
-  inputfs.seekg(0, std::ios::beg);
-  LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
-  inputfs.read(&program_desc_str[0], program_desc_str.size());
-  inputfs.close();
-
-  program_ = new framework::ProgramDesc(program_desc_str);
-  GenerateLoadProgram(dirname);
-
-  if (feed_var_names.empty() || fetch_var_names.empty()) {
-    LOG(FATAL) << "Please specify the feed_var_names and fetch_var_names.";
-  }
-  feed_var_names_ = feed_var_names;
-  fetch_var_names_ = fetch_var_names;
-  PrependFeedOp();
-  AppendFetchOp();
-}
-
 bool InferenceEngine::IsParameter(const framework::VarDesc* var) {
-  if (var->Persistable() && var->Name() != "feed" && var->Name() != "fetch") {
+  if (var->Persistable()) {
     // There are many unreachable variables in the program
     for (size_t i = 0; i < program_->Size(); ++i) {
       const framework::BlockDesc& block = program_->Block(i);
       for (auto* op : block.AllOps()) {
+        if (op->Type() == "feed") {
+          continue;
+        }
         for (auto input_argument_name : op->InputArgumentNames()) {
           if (input_argument_name == var->Name()) {
             return true;
@@ -182,7 +153,7 @@ void InferenceEngine::Execute(const std::vector<framework::LoDTensor>& feeds,
     LOG(FATAL) << "Please initialize the program_ and load_program_ first.";
   }
 
-  if (feeds.size() < feed_var_names_.size()) {
+  if (feeds.size() != feed_var_names_.size()) {
     LOG(FATAL) << "Please feed " << feed_var_names_.size() << " input Tensors.";
   }
 
@@ -193,18 +164,21 @@ void InferenceEngine::Execute(const std::vector<framework::LoDTensor>& feeds,
 
   executor->Run(*load_program_, scope, 0, true, true);
 
+  std::map<std::string, const framework::LoDTensor*> feed_targets;
+  std::map<std::string, framework::LoDTensor*> fetch_targets;
+
   // set_feed_variable
   for (size_t i = 0; i < feed_var_names_.size(); ++i) {
-    framework::SetFeedVariable(scope, feeds[i], "feed", i);
+    feed_targets[feed_var_names_[i]] = &feeds[i];
   }
-
-  executor->Run(*program_, scope, 0, true, true);
 
   // get_fetch_variable
   fetchs.resize(fetch_var_names_.size());
   for (size_t i = 0; i < fetch_var_names_.size(); ++i) {
-    fetchs[i] = framework::GetFetchVariable(*scope, "fetch", i);
+    fetch_targets[fetch_var_names_[i]] = &fetchs[i];
   }
+
+  executor->Run(*program_, scope, feed_targets, fetch_targets);
 
   delete place;
   delete scope;
