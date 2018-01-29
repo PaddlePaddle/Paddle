@@ -37,6 +37,8 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+    std::vector<std::string> endpoints =
+        Attr<std::vector<std::string>>("endpoints");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
@@ -46,8 +48,7 @@ class SendOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE(client_.Wait());
 
-    std::set<std::string> epset(epmap.begin(), epmap.end());
-    for (auto& ep : epset) {
+    for (auto& ep : endpoints) {
       VLOG(3) << "batch barrier, ep: " << ep;
       client_.AsyncSendBatchBarrier(ep);
     }
