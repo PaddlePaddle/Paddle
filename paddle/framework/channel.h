@@ -18,8 +18,7 @@ limitations under the License. */
 #include <queue>
 
 namespace paddle {
-namespace operators {
-namespace detail {
+namespace framework {
 
 template <typename T>
 class Channel {
@@ -38,7 +37,7 @@ class Channel {
     channel_.push_back(std::move(*channel_element));
 
     lock.unlock();
-    empty_cond_var_.notify_all();
+    empty_cond_var_.notify_one();
   }
 
   T* Receive() {
@@ -75,7 +74,7 @@ class Channel {
   void NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
     if (IsBounded()) {
       lock->unlock();
-      full_cond_var_.notify_all();
+      full_cond_var_.notify_one();
     }
   }
 
@@ -84,6 +83,5 @@ class Channel {
   bool IsCapacityFull() const { return channel_.size() >= capacity_; }
 };
 
-}  // namespace detail
 }  // namespace operator
 }  // namespace paddle
