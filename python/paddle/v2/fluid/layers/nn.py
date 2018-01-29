@@ -26,6 +26,7 @@ __all__ = [
     'fc',
     'embedding',
     'dynamic_lstm',
+    'dynamic_lstmp',
     'dynamic_gru',
     'gru_unit',
     'linear_chain_crf',
@@ -63,6 +64,7 @@ __all__ = [
     'nce',
     'beam_search',
     'row_conv',
+    'multiplex',
 ]
 
 
@@ -110,16 +112,17 @@ def fc(input,
                               into a 2-dimensional matrix. The parameter
                               `num_flatten_dims` determines how the input tensor
                               is flattened: the first `num_flatten_dims`
-                              dimensions will be flatten to form the first
-                              dimension of the final matrix (height of the
-                              matrix), and the rest `rank(X) - num_flatten_dims`
-                              dimensions are flattened to form the second
-                              dimension of the final matrix (width of the matrix).
-                              For example, suppose `X` is a 6-dimensional tensor
-                              with a shape [2, 3, 4, 5, 6], and
-                              `num_flatten_dims` = 3. Then, the flattened matrix
-                              will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
-                              By default, `num_flatten_dims` is set to 1.
+                              (inclusive, index starts from 1) dimensions will
+                              be flatten to form the first dimension of the
+                              final matrix (height of the matrix), and the rest
+                              `rank(X) - num_flatten_dims` dimensions are
+                              flattened to form the second dimension of the
+                              final matrix (width of the matrix). For example,
+                              suppose `X` is a 6-dimensional tensor with a shape
+                              [2, 3, 4, 5, 6], and `num_flatten_dims` = 3. Then,
+                              the flattened matrix will have a shape
+                              [2 x 3 x 4, 5 x 6] = [24, 30]. By default,
+                              `num_flatten_dims` is set to 1.
        param_attr(ParamAttr|list): The parameter attribute for learnable
                                    parameters/weights of the fully connected
                                    layer.
@@ -160,6 +163,7 @@ def fc(input,
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
+
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         tmp = helper.create_tmp_variable(dtype)
@@ -253,7 +257,8 @@ def dynamic_lstm(input,
                  gate_activation='sigmoid',
                  cell_activation='tanh',
                  candidate_activation='tanh',
-                 dtype='float32'):
+                 dtype='float32',
+                 name=None):
     """
     **Dynamic LSTM Layer**
 
@@ -279,7 +284,7 @@ def dynamic_lstm(input,
     W_{fc}, W_{oc}` are diagonal weight matrices for peephole connections. In
     our implementation, we use vectors to reprenset these diagonal weight
     matrices. The :math:`b` terms denote bias vectors (:math:`b_i` is the input
-    gate bias vector), :math:`\sigma` is the non-line activations, such as
+    gate bias vector), :math:`\sigma` is the non-linear activations, such as
     logistic sigmoid function, and :math:`i, f, o` and :math:`c` are the input
     gate, forget gate, output gate, and cell activation vectors, respectively,
     all of which have the same size as the cell output activation vector :math:`h`.
@@ -305,25 +310,25 @@ def dynamic_lstm(input,
                          (T X 4D), where T is the total time steps in this
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
-        param_attr(ParamAttr): The parameter attribute for the learnable
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weights.
 
-                               - The shape is (D x 4D), where D is the hidden
-                                 size.
                                - Weights = {:math:`W_{ch}, W_{ih}, \
                                                 W_{fh}, W_{oh}`}
-        bias_attr(ParamAttr): The bias attribute for the learnable bias
+                               - The shape is (D x 4D), where D is the hidden
+                                 size.
+        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
 
                               1. `use_peepholes = False`
-                                - The shape is (1 x 4D).
                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                - The shape is (1 x 4D).
                               2. `use_peepholes = True`
-                                - The shape is (1 x 7D).
                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
+                                - The shape is (1 x 7D).
         use_peepholes(bool): Whether to enable diagonal/peephole connections,
                              default `True`.
         is_reverse(bool): Whether to compute reversed LSTM, default `False`.
@@ -336,6 +341,8 @@ def dynamic_lstm(input,
                               Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
 
     Returns:
         tuple: The hidden state, and cell state of LSTM. The shape of both \
@@ -350,6 +357,7 @@ def dynamic_lstm(input,
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
+
     helper = LayerHelper('lstm', **locals())
     size = size / 4
     weight = helper.create_parameter(
@@ -384,6 +392,192 @@ def dynamic_lstm(input,
             'candidate_activation': candidate_activation
         })
     return hidden, cell
+
+
+def dynamic_lstmp(input,
+                  size,
+                  proj_size,
+                  param_attr=None,
+                  bias_attr=None,
+                  use_peepholes=True,
+                  is_reverse=False,
+                  gate_activation='sigmoid',
+                  cell_activation='tanh',
+                  candidate_activation='tanh',
+                  proj_activation='tanh',
+                  dtype='float32',
+                  name=None):
+    """
+    **Dynamic LSTMP Layer**
+
+    LSTMP (LSTM with recurrent projection) layer has a separate projection 
+    layer after the LSTM layer, projecting the original hidden state to a 
+    lower-dimensional one, which is proposed to reduce the number of total 
+    parameters and furthermore computational complexity for the LSTM, 
+    espeacially for the case that the size of output units is relative 
+    large (https://research.google.com/pubs/archive/43905.pdf). 
+
+    The formula is as follows:
+
+    .. math::
+
+        i_t & = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i)
+
+        f_t & = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f)
+
+        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c)
+
+        o_t & = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_t + b_o)
+
+        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
+
+        h_t & = o_t \odot act_h(c_t)
+
+        r_t & = \overline{act_h}(W_{rh}h_t)
+
+    In the above formula:
+
+    * :math:`W`: Denotes weight matrices (e.g. :math:`W_{xi}` is \
+          the matrix of weights from the input gate to the input).
+    * :math:`W_{ic}`, :math:`W_{fc}`, :math:`W_{oc}`: Diagonal weight \
+          matrices for peephole connections. In our implementation, \
+          we use vectors to reprenset these diagonal weight matrices. 
+    * :math:`b`: Denotes bias vectors (e.g. :math:`b_i` is the input gate \
+          bias vector). 
+    * :math:`\sigma`: The activation, such as logistic sigmoid function.
+    * :math:`i, f, o` and :math:`c`: The input gate, forget gate, output \
+          gate, and cell activation vectors, respectively, all of which have \
+          the same size as the cell output activation vector :math:`h`. 
+    * :math:`h`: The hidden state.
+    * :math:`r`: The recurrent projection of the hidden state. 
+    * :math:`\\tilde{c_t}`: The candidate hidden state, whose \
+          computation is based on the current input and previous hidden state.
+    * :math:`\odot`: The element-wise product of the vectors. 
+    * :math:`act_g` and :math:`act_h`: The cell input and cell output \
+          activation functions and `tanh` is usually used for them. 
+    * :math:`\overline{act_h}`: The activation function for the projection \
+          output, usually using `identity` or same as :math:`act_h`.
+
+    Set `use_peepholes` to `False` to disable peephole connection. The formula
+    is omitted here, please refer to the paper
+    http://www.bioinf.jku.at/publications/older/2604.pdf for details.
+    
+    Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
+    operations on the input :math:`x_{t}` are NOT included in this operator.
+    Users can choose to use fully-connected layer before LSTMP layer.
+
+    Args:
+        input(Variable): The input of dynamic_lstmp layer, which supports
+                         variable-time length input sequence. The underlying
+                         tensor in this Variable is a matrix with shape
+                         (T X 4D), where T is the total time steps in this
+                         mini-batch, D is the hidden size.
+        size(int): 4 * hidden size.
+        proj_size(int): The size of projection output.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+                               hidden-hidden weight and projection weight.
+
+                               - Hidden-hidden weight = {:math:`W_{ch}, W_{ih}, \
+                                                W_{fh}, W_{oh}`}.
+                               - The shape of hidden-hidden weight is (P x 4D), 
+                                 where P is the projection size and D the hidden 
+                                 size.
+                               - Projection weight = {:math:`W_{rh}`}.
+                               - The shape of projection weight is (D x P).
+        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
+                              weights, which contains two parts, input-hidden
+                              bias weights and peephole connections weights if
+                              setting `use_peepholes` to `True`.
+
+                              1. `use_peepholes = False`
+                                - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                - The shape is (1 x 4D).
+                              2. `use_peepholes = True`
+                                - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                                 W_{fc}, W_{oc}`}.
+                                - The shape is (1 x 7D).
+        use_peepholes(bool): Whether to enable diagonal/peephole connections,
+                             default `True`.
+        is_reverse(bool): Whether to compute reversed LSTM, default `False`.
+        gate_activation(str): The activation for input gate, forget gate and
+                              output gate. Choices = ["sigmoid", "tanh", "relu",
+                              "identity"], default "sigmoid".
+        cell_activation(str): The activation for cell output. Choices = ["sigmoid",
+                              "tanh", "relu", "identity"], default "tanh".
+        candidate_activation(str): The activation for candidate hidden state.
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              default "tanh".
+        proj_activation(str): The activation for projection output.
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              default "tanh".
+        dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        tuple: The projection of hidden state, and cell state of LSTMP. The \
+               shape of projection is (T x P), for the cell state which is \
+               (T x D), and both LoD is the same with the `input`.
+
+    Examples:
+        .. code-block:: python
+
+            hidden_dim, proj_dim = 512, 256
+            fc_out = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+                                     act=None, bias_attr=None)
+            proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out, 
+                                                     size=hidden_dim * 4, 
+                                                     proj_size=proj_dim, 
+                                                     use_peepholes=False,
+                                                     is_reverse=True,
+                                                     cell_activation="tanh",
+                                                     proj_activation="tanh")
+    """
+
+    helper = LayerHelper('lstmp', **locals())
+    size = size / 4
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[proj_size, 4 * size], dtype=dtype)
+    proj_weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, proj_size], dtype=dtype)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    projection = helper.create_tmp_variable(dtype)
+    cell = helper.create_tmp_variable(dtype)
+    ordered_proj0 = helper.create_tmp_variable(dtype)
+    batch_hidden = helper.create_tmp_variable(dtype)
+    batch_gate = helper.create_tmp_variable(dtype)
+    batch_cell_pre_act = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='lstmp',
+        inputs={
+            'Input': input,
+            'Weight': weight,
+            'ProjWeight': proj_weight,
+            'Bias': bias
+        },
+        outputs={
+            'Projection': projection,
+            'Cell': cell,
+            'OrderedP0': ordered_proj0,
+            'BatchHidden': batch_hidden,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act
+        },
+        attrs={
+            'use_peepholes': use_peepholes,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation,
+            'proj_activation': proj_activation
+        })
+    return projection, cell
 
 
 def dynamic_gru(input,
@@ -530,8 +724,10 @@ def gru_unit(input,
         size (integer): The input dimension value.
         weight (ParamAttr): The weight parameters for gru unit. Default: None
         bias (ParamAttr): The bias parameters for gru unit. Default: None
-        activation (string): The activation type for cell (actNode). Default: 'tanh'
-        gate_activation (string): The activation type for gates (actGate). Default: 'sigmoid'
+        activation (string): The activation type for cell (actNode).
+                             Default: 'tanh'
+        gate_activation (string): The activation type for gates (actGate).
+                                  Default: 'sigmoid'
 
     Returns:
         tuple: The hidden value, reset-hidden value and gate values.
@@ -670,8 +866,9 @@ def cross_entropy(input, label, **kwargs):
     """
     **Cross Entropy Layer**
 
-    This layer computes the cross entropy between `input` and `label`. It supports
-    both standard cross-entropy and soft-label cross-entropy loss computation.
+    This layer computes the cross entropy between `input` and `label`. It
+    supports both standard cross-entropy and soft-label cross-entropy loss
+    computation.
 
     1) One-hot cross-entropy:
 	`soft_label = False`, `Label[i, 0]` indicates the class index for sample i:
@@ -698,23 +895,28 @@ def cross_entropy(input, label, **kwargs):
 
     Args:
         input (Variable|list):  a 2-D tensor with shape [N x D], where N is the
-            batch size and D is the number of classes. This input is a probability
-            computed by the previous operator, which is almost always the result
-            of a softmax operator.
+                                batch size and D is the number of classes. This
+                                input is a probability computed by the previous
+                                operator, which is almost always the result of
+                                a softmax operator.
         label (Variable|list): the ground truth which is a 2-D tensor. When
-              `soft_label` is set to `False`, `label` is a tensor<int64> with shape
-              [N x 1]. When `soft_label` is set to `True`, `label` is a
-              tensor<float/double> with shape [N x D].
-        soft_label (bool, via `**kwargs`): a flag indicating whether to interpretate
-              the given labels as soft labels, default `False`.
+                               `soft_label` is set to `False`, `label` is a
+                               tensor<int64> with shape [N x 1]. When
+                               `soft_label` is set to `True`, `label` is a
+                               tensor<float/double> with shape [N x D].
+        soft_label (bool, via `**kwargs`): a flag indicating whether to
+                                           interpretate the given labels as soft
+                                           labels, default `False`.
 
     Returns:
          A 2-D tensor with shape [N x 1], the cross entropy loss.
 
     Raises:
-        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal; 2) when \
-              `soft_label == True`, and the 2nd dimension of `input` and `label` are not \
-               equal; 3) when `soft_label == False`, and the 2nd dimension of `label` is not 1.
+        `ValueError`: 1) the 1st dimension of `input` and `label` are not equal.
+                      2) when `soft_label == True`, and the 2nd dimension of
+                         `input` and `label` are not equal.
+                      3) when `soft_label == False`, and the 2nd dimension of
+                         `label` is not 1.
 
     Examples:
         .. code-block:: python
@@ -737,7 +939,9 @@ def square_error_cost(input, label, **kwargs):
     """
     **Square error cost layer**
 
-    This layer accepts input predictions and target label and returns the squared error cost.
+    This layer accepts input predictions and target label and returns the
+    squared error cost.
+
     For predictions, :math:`X`, and target labels, :math:`Y`, the equation is:
 
     .. math::
@@ -755,8 +959,8 @@ def square_error_cost(input, label, **kwargs):
        label(Variable): Label tensor, has target labels.
 
     Returns:
-        Variable: The tensor variable storing the element-wise squared error difference \
-                  of input and label.
+        Variable: The tensor variable storing the element-wise squared error
+                  difference of input and label.
 
     Examples:
         .. code-block:: python
@@ -852,7 +1056,8 @@ def chunk_eval(input,
             "chunk_scheme": chunk_scheme,
             "excluded_chunk_types": excluded_chunk_types or []
         })
-    return precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks
+    return (precision, recall, f1_score, num_infer_chunks, num_label_chunks,
+            num_correct_chunks)
 
 
 def sequence_conv(input,
@@ -910,13 +1115,14 @@ def conv2d(input,
     **Convlution2D Layer**
 
     The convolution2D layer calculates the output based on the input, filter
-    and strides, paddings, dilations, groups parameters. Input(Input) and Output(Output)
-    are in NCHW format. Where N is batch size, C is the number of channels, H is the height
-    of the feature, and W is the width of the feature.
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are in NCHW format. Where N is batch size, C is the number of
+    channels, H is the height of the feature, and W is the width of the feature.
     The details of convolution layer, please refer UFLDL's `convolution,
     <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_ .
-    If bias attribution and activation type are provided, bias is added to the output of the convolution,
-    and the corresponding activation function is applied to the final result.
+    If bias attribution and activation type are provided, bias is added to the
+    output of the convolution, and the corresponding activation function is
+    applied to the final result.
 
     For each input :math:`X`, the equation is:
 
@@ -931,7 +1137,8 @@ def conv2d(input,
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
     * :math:`\\sigma`: Activation function.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
+                   different.
 
     Example:
 
@@ -976,17 +1183,20 @@ def conv2d(input,
        act(str): Activation type. Default: None
 
     Returns:
-        Variable: The tensor variable storing the convolution and \
+        Variable: The tensor variable storing the convolution and
                   non-linearity activation result.
 
     Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and groups mismatch.
+        ValueError: If the shapes of input, filter_size, stride, padding and
+                    groups mismatch.
 
     Examples:
         .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d = fluid.layers.conv2d(
+              input=data, num_filters=2, filter_size=3, act="relu")
     """
     if stride is None:
         stride = [1, 1]
@@ -1349,7 +1559,8 @@ def conv2d_transpose(input,
     H is the height of the feature, and W is the width of the feature.
     Parameters(dilations, strides, paddings) are two elements. These two elements
     represent height and width, respectively. The details of convolution transpose
-    layer, please refer to the following explanation and references `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
+    layer, please refer to the following explanation and references
+    `therein <http://www.matthewzeiler.com/wp-content/uploads/2017/07/cvpr2010.pdf>`_.
 
     For each input :math:`X`, the equation is:
 
@@ -1362,7 +1573,8 @@ def conv2d_transpose(input,
     * :math:`X`: Input value, a tensor with NCHW format.
     * :math:`W`: Filter value, a tensor with MCHW format.
     * :math:`\\ast` : Convolution transpose operation.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be
+                   different.
 
     Example:
 
@@ -1403,7 +1615,8 @@ def conv2d_transpose(input,
        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
            contain two integers, (dilation_H, dilation_W). Otherwise, the
            dilation_H = dilation_W = dilation. Default: dilation = 1.
-       param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer. Default: None
+       param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
+                              Default: None
        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
            library is installed. Default: True
        name(str|None): A name for this layer(optional). If set None, the layer
@@ -1413,13 +1626,16 @@ def conv2d_transpose(input,
        Variable: The tensor variable storing the convolution transpose result.
 
     Raises:
-       ValueError: If the shapes of input, filter_size, stride, padding and groups mismatch.
+       ValueError: If the shapes of input, filter_size, stride, padding and
+                   groups mismatch.
 
     Examples:
        .. code-block:: python
 
-          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
-          conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+          data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+          conv2d_transpose = fluid.layers.conv2d_transpose(
+              input=data, num_filters=2, filter_size=3)
     """
     helper = LayerHelper("conv2d_transpose", **locals())
     if not isinstance(input, Variable):
@@ -1643,10 +1859,10 @@ def lstm_unit(x_t,
         tuple: The hidden value and cell value of lstm unit.
 
     Raises:
-        ValueError: The ranks of **x_t**, **hidden_t_prev** and **cell_t_prev**\
-                not be 2 or the 1st dimensions of **x_t**, **hidden_t_prev** \
-                and **cell_t_prev** not be the same or the 2nd dimensions of \
-                **hidden_t_prev** and **cell_t_prev** not be the same.
+        ValueError: The ranks of **x_t**, **hidden_t_prev** and **cell_t_prev**
+                    not be 2 or the 1st dimensions of **x_t**, **hidden_t_prev**
+                    and **cell_t_prev** not be the same or the 2nd dimensions of
+                    **hidden_t_prev** and **cell_t_prev** not be the same.
 
     Examples:
 
@@ -1978,7 +2194,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
           data = fluid.layers.data(name="data",
                                    shape=(3, 17, 13),
                                    dtype="float32")
-          fc = fluid.layers.l2_normalize(x=data, axis=1)
+          normed = fluid.layers.l2_normalize(x=data, axis=1)
     """
 
     if len(x.shape) == 1: axis = 0
@@ -2030,9 +2246,10 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
-    Applies matrix multiplication to two tensors. Currently, the input
-    tensors' rank can be any, but when the rank of anyone inputs is
-    bigger than 3, this two inputs' rank should be equal.
+    Applies matrix multiplication to two tensors.
+
+    Currently, the input tensors' rank can be any, but when the rank of any
+    inputs is bigger than 3, this two inputs' rank should be equal.
 
     The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
     flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
@@ -2073,25 +2290,56 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             # Examples to clarify shapes of the inputs and output
             # x: [B, ..., M, K], y: [B, ..., K, N]
             fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
+
             # x: [B, M, K], y: [B, K, N]
             fluid.layers.matmul(x, y)  # out: [B, M, N]
+
             # x: [B, M, K], y: [K, N]
             fluid.layers.matmul(x, y)  # out: [B, M, N]
-            # x: [B, M, K], y: [K]
-            fluid.layers.matmul(x, y)  # out: [B, M]
+
             # x: [M, K], y: [K, N]
             fluid.layers.matmul(x, y)  # out: [M, N]
+
+            # x: [B, M, K], y: [K]
+            fluid.layers.matmul(x, y)  # out: [B, M]
+
             # x: [K], y: [K]
             fluid.layers.matmul(x, y)  # out: [1]
-            # x: [M], y: [N]
 
+            # x: [M], y: [N]
             fluid.layers.matmul(x, y, True, True)  # out: [M, N]
     """
+
+    def __check_input(x, y):
+        if len(y.shape) > len(x.shape):
+            raise ValueError(
+                "Invalid inputs for matmul. "
+                "x's rank should be always greater than or equal to y'rank.")
+
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if len(x_shape) == 1:
+            x_shape = [1] + x_shape
+        if len(y_shape) == 1:
+            y_shape = y_shape + [1]
+
+        # check the inner 2 dimensions
+        if transpose_x:
+            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
+        if transpose_y:
+            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
+        if x_shape[-1] != y_shape[-2]:
+            raise ValueError("Invalid inputs for matmul.")
+
+        if len(y_shape) > 2:
+            for i, dim_x in enumerate(x_shape[:-2]):
+                if dim_x != y_shape[i]:
+                    raise ValueError("Invalid inputs for matmul.")
+
+    __check_input(x, y)
+
     helper = LayerHelper('matmul', **locals())
-    assert max(len(x.shape), len(y.shape)) <= 3 or len(x.shape) == len(
-        y.
-        shape), 'Inputs\' rank should be equal or their rank should be less 4.'
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type='matmul',
         inputs={'X': x,
@@ -2108,13 +2356,26 @@ def edit_distance(input,
                   ignored_tokens=None,
                   name=None):
     """
-    EditDistance operator computes the edit distances between a batch of hypothesis strings and their references. Edit distance, also called Levenshtein distance, measures how dissimilar two strings are by counting the minimum number of operations to transform one string into anthor. Here the operations include insertion, deletion, and substitution. For example, given hypothesis string A = "kitten" and reference B = "sitting", the edit distance is 3 for A will be transformed into B at least after two substitutions and one insertion:
+    EditDistance operator computes the edit distances between a batch of
+    hypothesis strings and their references. Edit distance, also called
+    Levenshtein distance, measures how dissimilar two strings are by counting
+    the minimum number of operations to transform one string into anthor.
+    Here the operations include insertion, deletion, and substitution.
 
-       "kitten" -> "sitten" -> "sittin" -> "sitting"
+    For example, given hypothesis string A = "kitten" and reference
+    B = "sitting", the edit distance is 3 for A will be transformed into B
+    at least after two substitutions and one insertion:
 
-    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with the total number denoted by `batch_size`, and the separation is specified by the LoD information. And the `batch_size` reference strings are arranged in order in the same way in the LoDTensor Input(Refs).
+    "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-    Output(Out) contains the `batch_size` results and each stands for the edit stance for a pair of strings respectively. If Attr(normalized) is true, the edit distance will be divided by the length of reference string.
+    Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with
+    the total number denoted by `batch_size`, and the separation is specified
+    by the LoD information. And the `batch_size` reference strings are arranged
+    in order in the same way in the LoDTensor Input(Refs).
+
+    Output(Out) contains the `batch_size` results and each stands for the edit
+    distance for a pair of strings respectively. If Attr(normalized) is true,
+    the edit distance will be divided by the length of reference string.
 
     Args:
 
@@ -2122,9 +2383,11 @@ def edit_distance(input,
 
         label(Variable): The indices for reference strings.
 
-        normalized(bool): Indicated whether to normalize the edit distance by the length of reference string.
+        normalized(bool): Indicated whether to normalize the edit distance by
+                          the length of reference string.
 
-        ignored_tokens(list of int): Tokens that should be removed before calculating edit distance.
+        ignored_tokens(list of int): Tokens that should be removed before
+                                     calculating edit distance.
 
     Returns:
         Variable: sequence-to-sequence edit distance in shape [batch_size, 1].
@@ -2175,8 +2438,10 @@ def edit_distance(input,
 def ctc_greedy_decoder(input, blank, name=None):
     """
     This op is used to decode sequences by greedy policy by below steps:
-    1. Get the indexes of max value for each row in input. a.k.a. numpy.argmax(input, axis=0).
-    2. For each sequence in result of step1, merge repeated tokens between two blanks and delete all blanks.
+    1. Get the indexes of max value for each row in input. a.k.a.
+       numpy.argmax(input, axis=0).
+    2. For each sequence in result of step1, merge repeated tokens between two
+       blanks and delete all blanks.
 
     A simple example as below:
 
@@ -2206,9 +2471,16 @@ def ctc_greedy_decoder(input, blank, name=None):
 
     Args:
 
-        input(Variable): (LoDTensor<float>), the probabilities of variable-length sequences, which is a 2-D Tensor with LoD information. It's shape is [Lp, num_classes + 1], where Lp is the sum of all input sequences' length and num_classes is the true number of classes. (not including the blank label).
+        input(Variable): (LoDTensor<float>), the probabilities of
+                         variable-length sequences, which is a 2-D Tensor with
+                         LoD information. It's shape is [Lp, num_classes + 1],
+                         where Lp is the sum of all input sequences' length and
+                         num_classes is the true number of classes. (not
+                         including the blank label).
 
-        blank(int): the blank label index of Connectionist Temporal Classification (CTC) loss, which is in thehalf-opened interval [0, num_classes + 1).
+        blank(int): the blank label index of Connectionist Temporal
+                    Classification (CTC) loss, which is in thehalf-opened
+                    interval [0, num_classes + 1).
 
     Returns:
         Variable: CTC greedy decode result.
@@ -2276,8 +2548,10 @@ def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
 
     Examples:
         .. code-block:: python
-            y = layers.data(name='y', shape=[11, 8], dtype='float32', lod_level=1)
-            y_predict = layers.data(name='y_predict', shape=[11, 1], dtype='float32')
+            y = layers.data(
+                name='y', shape=[11, 8], dtype='float32', lod_level=1)
+            y_predict = layers.data(
+                name='y_predict', shape=[11, 1], dtype='float32')
             cost = layers.warpctc(input=y_predict, label=y)
 
     """
@@ -2431,6 +2705,12 @@ def transpose(x, perm, name=None):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(input). "
             "It's length shoud be equal to Input(input)'s rank.")
+    for idx, dim in enumerate(perm):
+        if dim >= len(x.shape):
+            raise ValueError(
+                "Each element in perm should be less than x's rank. "
+                "%d-th element in perm is %d which accesses x's rank %d." %
+                (idx, perm[idx], len(x.shape)))
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_tmp_variable(x.dtype)
@@ -2539,7 +2819,8 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
 
         .. code-block:: python
 
-            output = fluid.layers.im2sequence(input=layer, stride=[1, 1], filter_size=[2, 2])
+            output = fluid.layers.im2sequence(
+                input=layer, stride=[1, 1], filter_size=[2, 2])
 
     """
 
@@ -2618,3 +2899,55 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
                 'Filter': [filter_param]},
         outputs={'Out': [out]})
     return helper.append_activation(out)
+
+
+def multiplex(inputs, index):
+    """
+    **Multiplex Layer**
+
+    Referring to the given index variable, this layer selects rows from the
+    input variables to construct a multiplex variable. Assuming that there are
+    :math:`m` input variables and :math:`I_i` represents the i-th input
+    variable and :math:`i` is in [0, :math:`m`). All input variables are
+    tensors with same shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`].
+    Please note that rank of the input tensor should be at least 2. Each input
+    variable will be treated as a 2-D matrix with shape [:math:`M`, :math:`N`]
+    where :math:`M` for :math:`d_0` and :math:`N` for :math:`d_1` * :math:`d_2`
+    * ... * :math:`d_R`. Let :math:`I_i[j]` be the j-th row of the i-th input
+    variable. The given index variable should be a 2-D tensor with shape
+    [:math:`M`, 1]. Let `ID[i]` be the i-th index value of the index variable.
+    Then the output variable will be a tensor with shape [:math:`d_0`,
+    :math:`d_1`, ..., :math:`d_R`]. If we treat the output tensor as a 2-D
+    matrix with shape [:math:`M`, :math:`N`] and let :math:`O[i]` be the i-th
+    row of the matrix, then `O[i]` is equal to :math:`I_{ID[i]}[i]`.
+
+    Args:
+       inputs (list): A list of variables to gather from. All variables have the
+                same shape and the rank is at least 2.
+       index (Variable): Tensor<int32>, index variable which is a 2-D tensor
+                with shape [M, 1] where M is the batch size.
+
+    Returns:
+        Variable: Multiplex variable gathered from input variables.
+
+    Examples:
+        .. code-block:: python
+
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+            index = fluid.layers.data(name='index', shape=[1], dtype='int32')
+            out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+    """
+    helper = LayerHelper('multiplex', **locals())
+
+    if not isinstance(inputs, list) and len(inputs) < 2:
+        raise ValueError("inputs should be a list object and contains at least "
+                         "2 elements.")
+
+    out = helper.create_tmp_variable(inputs[0].dtype)
+    helper.append_op(
+        type='multiplex',
+        inputs={'X': inputs,
+                'Ids': index},
+        outputs={'Out': [out]})
+    return out
