@@ -59,6 +59,9 @@ class Optimizer(object):
                 initializer=Constant(self._learning_rate))
         elif isinstance(self._learning_rate, framework.Variable):
             self._global_lr_var = self._learning_rate
+        else:
+            raise ValueError("learning rate should be a float or a Variable, "
+                             "actual type is %s", type(self._global_lr_var))
 
     @property
     def learning_rate(self):
