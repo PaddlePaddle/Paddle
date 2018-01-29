@@ -2004,7 +2004,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else 0,
+            'dim': dim if dim is not None else 0,
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         })
@@ -2951,3 +2951,227 @@ def multiplex(inputs, index):
                 'Ids': index},
         outputs={'Out': [out]})
     return out
+
+
+class SequenceDecoder:
+    class StepInput:
+        dic = {'train': {}, 'generate': {}}
+
+        def __init__(self, id, var, rnn=None, dtype='float32'):
+            '''
+            id: identification for this step input.
+            var: outside variable that need to partitioned and boot this StepInput.
+            '''
+            if rnn:
+                self.input = rnn.step_input(var)
+                dic['train'][id] = self.input
+            else:
+                self.input = pd.create_array(dtype)
+                dic['generate'][id] = self.input
+
+        def set_mode(self, mode):
+            self.mode = mode
+
+        @staticmethod
+        def get(mode, id, counter=None):
+            '''
+            counter: var
+            '''
+            if counter is None:
+                return StepInput.dic[mode][id]
+            else:
+                return pd.array_read(array=StepInput.dic[mode][id], i=counter)
+
+    class State:
+        modes = (
+            'train',
+            'generate', )
+        dic = {'train': {}, 'generate': {}}
+
+        def __init__(self,
+                     id,
+                     init_var,
+                     rnn=None,
+                     dtype='float32',
+                     zero=pd.zeros(
+                         shape=[1], dtype='int64')):
+            self.id = id
+            self.init_var = init_var
+            self.rnn = rnn
+            self.updater = None
+            self.dtype = dtype
+            assert id not in State.dic, "duplicate add State called '{}'".format(
+                self.id)
+            self.zero = zero
+
+        def set_mode(self, mode):
+            assert mode in State.modes, "get unknown mode '{}', only {} are valid".format(
+                mode, str(State.modes))
+            self.mode = mode
+
+            if self.mode == 'train':
+                assert self.rnn, "rnn should be passed in train mode"
+
+        def create(self):
+            if self.rnn is not None:
+                self.state = rnn.memory(init=self.init_var)
+                State.dic['train'][self.id] = self.state
+            else:
+                self.state = pd.create_array(self.dtype)
+                pd.array_write(self.init_var, array=self.state, i=self.zero)
+                State.dic['generate'][self.id] = self.state
+            return self.state
+
+        def update(self):
+            assert self.updater, 'updater should be set by `set_updater`'
+            return self.updater()
+
+        def set_updater(self, updater):
+            self.updater = updater
+
+        @staticmethod
+        def get(mode, id, counter=None):
+            '''
+            get a state variable in train mode; or get a TensorArray in generate mode.
+            '''
+            if counter:
+                return State.dic[mode][id]
+            else:
+                return pd.array_read(array=State.dic[mode][id], i=counter)
+
+    def __init__(self, item_id, item_score):
+        '''
+        item_id: StepInput
+        item_score: StepInput
+        '''
+        # NOTE need to set name?
+        self.counter = pd.zeros(shape=[1], dtype='int64')
+        self.item_id = None
+        self.item_score = None
+
+    def train(self, step_inputs, static_inputs, states, scorer):
+        '''
+        step_inputs: inputs that need to partition for each time step.
+        static_inputs: similar to `step_inputs` but do not need backward.
+        states_updates: state and updater.
+        scorer: score calculator callback.
+                will be called like `scorer(self)`
+        '''
+        rnn = pd.DynamicRNN()
+        with rnn.block():
+            for x in step_inputs:
+                x.create()
+            # TODO add configuration for static
+            for x in static_inputs:
+                x.create()
+            for state in states:
+                state.set_mode('train')
+                state.create()
+
+            # TODO hidden the score generation.
+            # current_score = pd.fc(input=current_state,
+            #                       size=self.target_dim,
+            #                     act='softmax')
+            score = scorer()
+
+            for state in states:
+                current_state = state.update()
+                rnn.update_memory(pre_state, current_state)
+            rnn.output(score)
+        return rnn()
+
+    def decode(self, max_length, states):
+        '''
+        The decode phase of a decoder.
+
+        The decode phase just shared a little with train phase, so it is
+        a single method, and it do not need to split step input and rearrange
+        the state, so it do not reuse the dynamic rnn.
+        And it's more intuitive to write all the process of decoding, user can
+        use this default decode, or just write their own logic according to the
+        `decode` logic without the need to read a lot of framework codes.
+
+        max_length: the max length the decoder can generate.
+        '''
+        array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
+
+        for state in states:
+            state.set_mode('generate')
+            state.create()
+
+        # fill the first element with init_state
+        # state_array = pd.create_array('float32')
+        # pd.array_write(self.initial_state, array=state_array, i=counter)
+
+        # ids, scores as memory
+        ids_array = pd.create_array('int64')
+        scores_array = pd.create_array('float32')
+
+        init_ids = pd.data(
+            name="init_ids", shape=[1], dtype="int64", lod_level=2)
+        init_scores = pd.data(
+            name="init_scores", shape=[1], dtype="float32", lod_level=2)
+
+        pd.array_write(init_ids, array=ids_array, i=counter)
+        pd.array_write(init_scores, array=scores_array, i=counter)
+
+        # TODO there is an empty op that can prune the generation of the early stopped prefix.
+        cond = pd.less_than(x=counter, y=array_len)
+
+        while_op = pd.While(cond=cond)
+        with while_op.block():
+            # pre_ids = pd.array_read(array=ids_array, i=counter)
+            # pre_score = pd.array_read(array=scores_array, i=counter) 
+            # expand the lod of pre_state to be the same with pre_score
+            # pre_state = pd.array_read(array=state_array, i=counter)
+            # pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
+            ids_array = self.item_id.input
+            scores_array = self.item_score.input
+            pre_ids = pd.array_read(self.item_id.input, i=counter)
+            pre_scores = pd.array_read(self.item_score.input, i=counter)
+
+            # pre_ids_emb = pd.embedding(
+            #     input=pre_ids,
+            #     size=[dict_size, word_dim],
+            #     dtype='float32',
+            #     is_sparse=IS_SPARSE)
+
+            # use rnn unit to update rnn
+            updated_states = []
+            for state in states:
+                current_state = state.update()
+                updated_states.append(current_state)
+            # current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
+            #                     size=decoder_size,
+            #                     act='tanh')
+
+            # use score to do beam search
+            # current_score = pd.fc(input=current_state,
+            #                     size=target_dict_dim,
+            #                     act='softmax')
+            current_score = scorer()
+
+            topk_scores, topk_indices = pd.topk(current_score, k=50)
+            selected_ids, selected_scores = pd.beam_search(
+                pre_ids,
+                topk_indices,
+                topk_scores,
+                beam_size,
+                end_id=10,
+                level=0)
+
+            pd.increment(x=counter, value=1, in_place=True)
+
+            # update the memories
+            pd.array_write(selected_ids, array=ids_array, i=counter)
+            pd.array_write(selected_scores, array=scores_array, i=counter)
+
+            for no, state in enumerate(states):
+                current_state = updated_states[no]
+                pd.array_write(current_state, array=state.state, i=counter)
+
+            pd.less_than(x=counter, y=array_len, cond=cond)
+
+        translation_ids, translation_scores = pd.beam_search_decode(
+            ids=ids_array, scores=scores_array)
+        return translation_ids, translation_scores
