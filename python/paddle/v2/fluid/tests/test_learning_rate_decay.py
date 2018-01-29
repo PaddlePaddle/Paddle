@@ -76,5 +76,61 @@ class TestExponentialDecay(unittest.TestCase):
             self.check_exponential_decay(False)
 
 
+class TestInverseTimeDecay(unittest.TestCase):
+    def check_inverse_time_decay(self, staircase):
+        init_lr = 1.0
+        decay_steps = 5
+        decay_rate = 0.5
+
+        def inverse_time_decay(learning_rate,
+                               global_step,
+                               decay_steps,
+                               decay_rate,
+                               staircase=False):
+            temp = float(global_step) / float(decay_steps)
+            if staircase:
+                temp = math.floor(temp)
+            return learning_rate / (1 + decay_rate * temp)
+
+        global_step = layers.create_global_var(
+            shape=[1], value=0.0, dtype='float32')
+
+        decaied_lr = fluid.learning_rate_decay.inverse_time_decay(
+            learning_rate=init_lr,
+            global_step=global_step,
+            decay_steps=decay_steps,
+            decay_rate=decay_rate,
+            staircase=staircase)
+        layers.increment(global_step, 1.0)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        exe.run(fluid.default_startup_program())
+        for step in range(10):
+            step_val, lr_val = exe.run(fluid.default_main_program(),
+                                       feed=[],
+                                       fetch_list=[global_step, decaied_lr])
+            python_decaied_lr = inverse_time_decay(
+                learning_rate=init_lr,
+                global_step=step,
+                decay_steps=decay_steps,
+                decay_rate=decay_rate,
+                staircase=staircase)
+            self.assertAlmostEqual(python_decaied_lr, lr_val[0])
+
+    def test_staircase_true(self):
+        main_program = framework.Program()
+        startup_program = framework.Program()
+        with framework.program_guard(main_program, startup_program):
+            self.check_inverse_time_decay(True)
+
+    def test_staircase_false(self):
+        main_program = framework.Program()
+        startup_program = framework.Program()
+        with framework.program_guard(main_program, startup_program):
+            self.check_inverse_time_decay(False)
+
+
 if __name__ == '__main__':
     unittest.main()
