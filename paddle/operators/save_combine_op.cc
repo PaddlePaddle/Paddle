@@ -82,6 +82,8 @@ class SaveCombineOp : public framework::OperatorBase {
 
     auto inames = Inputs("X");
 
+    PADDLE_ENFORCE_GT(static_cast<int>(inames.size()), 0, "The number of output variables should be greater than 0");
+
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
@@ -98,18 +100,21 @@ class SaveCombineOp : public framework::OperatorBase {
       auto &tensor = var->Get<framework::LoDTensor>();
 
       // Create "output string stream" to get the serialized LodTensor
-      std::ostringstream str_stream;
-      framework::SerializeToStream(str_stream, tensor, dev_ctx);
-      std::string current_serialized_data = str_stream.str();
+      //std::ostringstream str_stream;
+      //framework::SerializeToStream(str_stream, tensor, dev_ctx);
+      //std::string current_serialized_data = str_stream.str();
+
+      // Use fin instead of str_stream
+      framework::SerializeToStream(fin, tensor, dev_ctx);
 
       // Save 'current_size' information as a fixed width integer, and
       // further save the serialized data using 'current_size' bytes
-      uint64_t current_size = current_serialized_data.size();
-      fout.write(reinterpret_cast<const char *>(&current_size),
-                 sizeof(current_size));
-      fout.write(
-          reinterpret_cast<const char *>(current_serialized_data.c_str()),
-          static_cast<std::streamsize>(current_size));
+      //uint64_t current_size = current_serialized_data.size();
+      //fout.write(reinterpret_cast<const char *>(&current_size),
+      //           sizeof(current_size));
+      //fout.write(
+      //    reinterpret_cast<const char *>(current_serialized_data.c_str()),
+      //    static_cast<std::streamsize>(current_size));
     }
     fout.close();
   }
