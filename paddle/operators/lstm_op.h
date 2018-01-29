@@ -84,7 +84,14 @@ class LSTMKernel : public framework::OpKernel<T> {
     }
     lstm_value.prev_state_value = nullptr;
     Tensor ordered_c0;
-    const size_t* order = batch_gate->lod()[2].data();
+
+    const size_t* order = nullptr;
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      order = batch_gate->lod()[2].cuda_data();
+    } else {
+      order = batch_gate->lod()[2].data();
+    }
+
     if (cell_t0) {
       // Since the batch computing for LSTM reorders the input sequence
       // according to their length. The initialized cell state also needs
@@ -202,7 +209,13 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     // ordered_h0_g/c0_g is the reordered gradient of hidden/cell
     // initialization.
     Tensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
-    const size_t* order = batch_gate->lod()[2].data();
+    const size_t* order = nullptr;
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      order = batch_gate->lod()[2].cuda_data();
+    } else {
+      order = batch_gate->lod()[2].data();
+    }
+
     if (c0) {
       ReorderInitState<DeviceContext, T>(device_ctx, *c0, order, &ordered_c0,
                                          true);

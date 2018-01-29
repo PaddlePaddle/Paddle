@@ -258,6 +258,12 @@ class TestSparseAdamOp(unittest.TestCase):
         grad_tensor = grad_selected_rows.get_tensor()
         grad_tensor.set(np_array, place)
 
+        key = "Grad"
+        out_var = scope.var(key).get_tensor()
+        print("before crash", key, out_var)
+        actual = np.array(out_var)
+        print("NB")
+
         self.sparse_inputs = ["Grad"]
 
         param_out, mom1, mom2 = adam_step_sparse(
@@ -271,28 +277,47 @@ class TestSparseAdamOp(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
         self.setup(scope, place)
+        print("after setup")
 
         op_args = dict()
         for key, np_array in self.dense_inputs.iteritems():
             var = scope.var(key).get_tensor()
             var.set(np_array, place)
+
+            out_var = scope.var(key).get_tensor()
+            actual = np.array(out_var)
+            print("NB")
+            print(actual)
+
             op_args[key] = key
         for s in self.sparse_inputs:
             op_args[s] = s
         for s in self.outputs:
             var = scope.var(s).get_tensor()
-            var.set(self.outputs[s], place)
+            # var.set(self.outputs[s], place)
             op_args[s] = s
         for k in self.attrs:
             op_args[k] = self.attrs[k]
+        print("before run")
 
         # create and run sgd operator
         adam_op = Operator("adam", **op_args)
         adam_op.run(scope, place)
 
-        for key, np_array in self.outputs.iteritems():
+        print("after run")
+        for key, np_array in self.sparse_inputs.iteritems():
+            print("key", key)
             out_var = scope.var(key).get_tensor()
+            print("before crash", key, out_var)
             actual = np.array(out_var)
+            print("NB")
+
+        for key, np_array in self.outputs.iteritems():
+            print("key", key)
+            out_var = scope.var(key).get_tensor()
+            print("before crash", key, out_var)
+            actual = np.array(out_var)
+            print("NB")
             actual = actual.reshape([actual.size])
             np_array = np_array.reshape([np_array.size])
             for idx, row_id in enumerate(self.rows):
