@@ -89,7 +89,7 @@ def __bootstrap__():
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'do_memory_benchmark'
     ]
-    if core.is_compile_gpu():
+    if core.is_compiled_with_cuda():
         read_env_flags += ['fraction_of_gpu_memory_to_use', 'op_sync']
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

@@ -18,6 +18,11 @@ dynamic_lstm
 ..  autofunction:: paddle.v2.fluid.layers.dynamic_lstm
     :noindex:
 
+dynamic_lstmp
+-------------
+..  autofunction:: paddle.v2.fluid.layers.dynamic_lstmp
+    :noindex:
+
 dynamic_gru
 -----------
 ..  autofunction:: paddle.v2.fluid.layers.dynamic_gru
@@ -528,4 +533,14 @@ l2_normalize
 sequence_reshape
 ----------------
 ..  autofunction:: paddle.v2.fluid.layers.sequence_reshape
+    :noindex:
+
+row_conv
+--------
+..  autofunction:: paddle.v2.fluid.layers.row_conv
+    :noindex:
+
+multiplex
+---------
+..  autofunction:: paddle.v2.fluid.layers.multiplex
     :noindex:

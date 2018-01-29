@@ -74,7 +74,10 @@ cc_library(backward SRCS backward.cc DEPS net_op)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context fill_constant_op)
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
-cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto backward glog lod_rank_table)
+cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
+
+cc_library(executor SRCS executor.cc DEPS op_registry device_context scope
+framework_proto backward glog lod_rank_table profiler feed_fetch_method)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
@@ -95,3 +98,5 @@ if(NOT WITH_C_API AND WITH_FLUID)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/framework.pb.h DESTINATION include/paddle/framework)
   install(FILES details/cow_ptr.h details/op_registry.h DESTINATION include/paddle/framework/details)
 endif()
+
+cc_test(channel_test SRCS channel_test.cc)
