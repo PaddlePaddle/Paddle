@@ -474,8 +474,7 @@ class DistributeTranspiler:
         # Append the recv op
         pserver_program.global_block().append_op(
             type="recv",
-            inputs={"RX": self.param_grad_ep_mapping[endpoint]["grads"]
-                    },  # grads to recv
+            inputs={},
             outputs={},
             attrs={
                 "OptimizeBlock": optimize_sub_program.global_block(),
