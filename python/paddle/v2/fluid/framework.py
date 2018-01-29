@@ -240,20 +240,30 @@ class Variable(object):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
+    def to_string(self, throw_on_error, with_details=False):
         """
         Get debug string.
 
         Args:
             throw_on_error(bool): True if raise an exception when self is not
                 intialized.
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
 
         Returns(str): The debug string.
 
         """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.VarDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+        res_str = _debug_string_(proto, throw_on_error)
+        if with_details:
+            additional_attr = ("error_clip", "stop_gradient")
+            for attr_name in additional_attr:
+                res_str += "%s: %s\n" % (attr_name,
+                                         str(getattr(self, attr_name)))
+        return res_str
 
     __repr__ = __str__
 
@@ -636,7 +646,8 @@ class Block(object):
         Args:
             throw_on_error(bool): raise exception when self is not initialized
                 when throw_on_error is True
-            with_details(bool): more details about paramters(e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
 
         Returns(str): The debug string.
 
@@ -649,7 +660,7 @@ class Block(object):
                 self.idx, self.parent_idx)
             for var in self.vars.itervalues():
                 res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
-                    r"\n    \1", var.to_string(throw_on_error))
+                    r"\n    \1", var.to_string(throw_on_error, with_details))
             for op in self.ops:
                 res_str += "\n  ops {\n    %s  }" % re_add_indent.sub(
                     r"\n    \1", op.to_string(throw_on_error))
@@ -828,7 +839,8 @@ class Program(object):
         Args:
             throw_on_error(bool): raise exception when self is not initialized
                 when throw_on_error is True
-            with_details(bool): more details about paramters(e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
 
         Returns(str): The debug string.
 
@@ -997,12 +1009,29 @@ class Parameter(Variable):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
-        res_str = Variable.to_string(self, throw_on_error)
-        additional_attr = ("trainable", "optimize_attr", "regularizer",
-                           "gradient_clip_attr")
-        for attr_name in additional_attr:
-            res_str += "%s: %s\n" % (attr_name, str(getattr(self, attr_name)))
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            res_str = Variable.to_string(self, throw_on_error, True)
+            additional_attr = ("trainable", "optimize_attr", "regularizer",
+                               "gradient_clip_attr")
+            for attr_name in additional_attr:
+                res_str += "%s: %s\n" % (attr_name,
+                                         str(getattr(self, attr_name)))
+        else:
+            res_str = Variable.to_string(self, throw_on_error, False)
         return res_str
 
     __repr__ = __str__
