@@ -202,6 +202,18 @@ class TestBook(unittest.TestCase):
                     x_t=x_t, hidden_t_prev=prev_hidden, cell_t_prev=prev_cell))
         print(str(program))
 
+    def test_dynamic_lstmp(self):
+        program = Program()
+        with program_guard(program):
+            hidden_dim, proj_dim = 16, 8
+            seq_data = layers.data(
+                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
+            fc_out = layers.fc(input=seq_data, size=4 * hidden_dim)
+            self.assertIsNotNone(
+                layers.dynamic_lstmp(
+                    input=fc_out, size=4 * hidden_dim, proj_size=proj_dim))
+        print(str(program))
+
     def test_sequence_softmax(self):
         program = Program()
         with program_guard(program):

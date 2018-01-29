@@ -132,7 +132,7 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"GradList", std::vector<std::string>({"x1"})});
   attrs.insert({"OptimizeBlock", block});
   listen_and_serv_op =
-      f::OpRegistry::CreateOp("listen_and_serv", {{"RX", {"x1"}}}, {}, attrs);
+      f::OpRegistry::CreateOp("listen_and_serv", {}, {}, attrs);
   listen_and_serv_op->Run(scope, place);
 }
 

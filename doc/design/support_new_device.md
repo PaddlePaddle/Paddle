@@ -174,7 +174,7 @@ class MaxOutFunctor {
 };
 ```
 
-CPU implemention is in .cc file
+CPU implementation is in .cc file
 
 ```
 template <typename T>
@@ -188,7 +188,7 @@ class MaxOutFunctor<platform::CPUDeviceContext, T> {
 };
 ```
 
-CUDA implemention is in .cu file
+CUDA implementation is in .cu file
 
 ```
 template <typename T>
@@ -203,9 +203,9 @@ class MaxOutFunctor<platform::CUDADeviceContext, T> {
 ```
 
 
-We first obtain the computing handle from a concrete DeviceContext, and then compute on tensors.
+We first obtain the computing handle from a concrete DeviceContext and then compute on tensors.
 
-The implemention of `OpKernel` is similar to math functors, the extra thing we need to do is to register the OpKernel in a global map.
+The implementation of `OpKernel` is similar to math functors, the extra thing we need to do is to register the OpKernel in a global map.
 
 Fluid provides different register interfaces in op_registry.h
 
