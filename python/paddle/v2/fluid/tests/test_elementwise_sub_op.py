@@ -40,7 +40,7 @@ class TestElementwiseSubOp(OpTest):
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
-class TestElementwiseSubSubOp_scalar(TestElementwiseSubOp):
+class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -50,7 +50,7 @@ class TestElementwiseSubSubOp_scalar(TestElementwiseSubOp):
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
-class TestElementwiseSubSubOp_Vector(TestElementwiseSubOp):
+class TestElementwiseSubOp_Vector(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -60,7 +60,7 @@ class TestElementwiseSubSubOp_Vector(TestElementwiseSubOp):
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
-class TestElementwiseSubSubOp_broadcast_0(TestElementwiseSubOp):
+class TestElementwiseSubOp_broadcast_0(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -74,7 +74,7 @@ class TestElementwiseSubSubOp_broadcast_0(TestElementwiseSubOp):
         }
 
 
-class TestElementwiseSubSubOp_broadcast_1(TestElementwiseSubOp):
+class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -88,7 +88,7 @@ class TestElementwiseSubSubOp_broadcast_1(TestElementwiseSubOp):
         }
 
 
-class TestElementwiseSubSubOp_broadcast_2(TestElementwiseSubOp):
+class TestElementwiseSubOp_broadcast_2(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -101,7 +101,7 @@ class TestElementwiseSubSubOp_broadcast_2(TestElementwiseSubOp):
         }
 
 
-class TestElementwiseSubSubOp_broadcast_3(TestElementwiseSubOp):
+class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {

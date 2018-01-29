@@ -44,7 +44,7 @@ class TestElementwiseMinOp(OpTest):
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
-class TestElementwiseMinMinOp_scalar(TestElementwiseMinOp):
+class TestElementwiseMinOp_scalar(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.random_integers(-5, 5, [2, 3, 4]).astype("float32")
@@ -53,7 +53,7 @@ class TestElementwiseMinMinOp_scalar(TestElementwiseMinOp):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseMaxMinOp_Vector(TestElementwiseMinOp):
+class TestElementwiseMinOp_Vector(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.random((32, )).astype("float32")
@@ -63,7 +63,7 @@ class TestElementwiseMaxMinOp_Vector(TestElementwiseMinOp):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseMaxMinOp_broadcast_0(TestElementwiseMinOp):
+class TestElementwiseMinOp_broadcast_0(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -79,7 +79,7 @@ class TestElementwiseMaxMinOp_broadcast_0(TestElementwiseMinOp):
         }
 
 
-class TestElementwiseMaxMinOp_broadcast_1(TestElementwiseMinOp):
+class TestElementwiseMinOp_broadcast_1(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -95,7 +95,7 @@ class TestElementwiseMaxMinOp_broadcast_1(TestElementwiseMinOp):
         }
 
 
-class TestElementwiseMaxMinOp_broadcast_2(TestElementwiseMinOp):
+class TestElementwiseMinOp_broadcast_2(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -110,7 +110,7 @@ class TestElementwiseMaxMinOp_broadcast_2(TestElementwiseMinOp):
         }
 
 
-class TestElementwiseMaxMinOp_broadcast_3(TestElementwiseMinOp):
+class TestElementwiseMinOp_broadcast_3(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)
