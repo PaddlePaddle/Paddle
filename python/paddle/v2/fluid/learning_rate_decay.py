@@ -52,9 +52,14 @@ def exponential_decay(learning_rate,
         raise ValueError("global_step is required for exponential_decay.")
 
     lr = learning_rate
-    if not isinstance(lr, Variable):
+    if isinstance(lr, float):
         lr = layers.create_global_var(
             shape=[1], value=learning_rate, dtype='float32')
+    elif isinstance(lr, Variable):
+        lr = learning_rate
+    else:
+        raise ValueError("unsupported learning rate type : %s",
+                         type(learning_rate))
 
     decay_steps_var = layers.fill_constant(
         shape=[1], dtype='float32', value=decay_steps)

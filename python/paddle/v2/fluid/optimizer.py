@@ -92,6 +92,9 @@ class Optimizer(object):
             inputs={"X": self._global_lr_var},
             outputs={"Out": param_lr_var},
             attrs={"scale": param_lr})
+        # give param learning rate a default value 0.0
+        self.helper.set_variable_initializer(
+            var=param_lr_var, initializer=Constant(0.0))
 
         return param_lr_var
 
