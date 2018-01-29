@@ -17,7 +17,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestElementwiseMaxOp(OpTest):
+class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_max"
         # If x and y have the same value, the max() is not differentiable.
