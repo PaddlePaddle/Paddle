@@ -197,7 +197,8 @@ class NCEGradKernel : public framework::OpKernel<T> {
     // get d_x
     auto d_x = context.Output<Tensor>(framework::GradVarName("Input"));
     if (d_x != nullptr) {
-      d_x->mutable_data<T>(context.GetPlace());
+      auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
+      std::fill(d_x_data, d_x_data + d_x->numel(), 0.0);
       auto d_x_matrix = EigenMatrix<T>::From(*d_x);
       auto w_matrix = EigenMatrix<T>::From(*(context.Input<Tensor>("Weight")));
       for (int64_t i = 0; i < sample_labels->numel(); ++i) {

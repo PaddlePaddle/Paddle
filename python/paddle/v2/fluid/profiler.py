@@ -63,3 +63,58 @@ def cuda_profiler(output_file, output_mode=None, config=None):
     # Disables profiler collection.
     core.nvprof_stop()
     os.remove(config_file)
+
+
+def reset_profiler():
+    """The profiler clear interface.
+    reset_profiler will clear the previous time record.
+    """
+    core.reset_profiler()
+
+
+@contextmanager
+def profiler(state, sorted_key=None):
+    """The profiler interface.
+    Different from cuda_profiler, this profiler can be used to profile both CPU
+    and GPU program. By defalut, it records the CPU and GPU operator kernels,
+    if you want to profile other program, you can refer the profiling tutorial
+    to add more records.
+
+    Args:
+        state (string) : The profiling state, which should be 'CPU' or 'GPU',
+            telling the profiler to use CPU timer or GPU timer for profiling.
+            Although users may have already specified the execution place
+            (CPUPlace/CUDAPlace) in the begining, for flexibility the profiler
+            would not inherit this place.
+        sorted_key (string) : If None, the profiling results will be printed
+            in the order of first end time of events. Otherwise, the profiling
+            results will be sorted by the this flag. This flag should be one
+            of 'calls', 'total', 'max', 'min' or 'ave'.
+            The `calls` means sorting by the number of calls.
+            The `total` means sorting by the total execution time.
+            The `max` means sorting by the maximum execution time.
+            The `min` means sorting by the minimum execution time.
+            The `ave` means sorting by the average execution time.
+    """
+
+    if state not in ['CPU', 'GPU']:
+        raise ValueError("The state must be 'CPU' or 'GPU'.")
+    prof_state = core.ProfilerState.kCUDA if state == "GPU" else core.ProfilerState.kCPU
+    core.enable_profiler(prof_state)
+    yield
+
+    if sorted_key not in ['calls', 'total', 'max', 'min', 'ave']:
+        raise ValueError("The state must be in 'calls', 'total', "
+                         "'max', 'min', 'ave'")
+    sorted_key = 'default' if sorted_key is None else sorted_key
+    key_map = {
+        'default': core.EventSortingKey.kDefault,
+        'calls': core.EventSortingKey.kCalls,
+        'total': core.EventSortingKey.kTotal,
+        'max': core.EventSortingKey.kMax,
+        'min': core.EventSortingKey.kMin,
+        'ave': core.EventSortingKey.kAve,
+    }
+    # TODO(qingqing) : redirect C++ ostream to Python stream.
+    # with core.ostream_redirect(stdout=True, stderr=True):
+    core.disable_profiler(key_map[sorted_key])
