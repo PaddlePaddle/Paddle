@@ -37,13 +37,12 @@ class MulticlassNMSOp : public framework::OperatorWithKernel {
     auto box_dims = ctx->GetInputDim("Bboxes");
     auto score_dims = ctx->GetInputDim("Scores");
 
-    PADDLE_ENFORCE_EQ(box_dims.size(), 3,
+    PADDLE_ENFORCE_EQ(box_dims.size(), 2,
                       "The rank of Input(Bboxes) must be 3.");
     PADDLE_ENFORCE_EQ(score_dims.size(), 3,
                       "The rank of Input(Scores) must be 3.");
-    PADDLE_ENFORCE_EQ(box_dims[0], score_dims[0]);
     PADDLE_ENFORCE_EQ(box_dims[2], 4);
-    PADDLE_ENFORCE_EQ(box_dims[1], score_dims[2]);
+    PADDLE_ENFORCE_EQ(box_dims[0], score_dims[2]);
 
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
@@ -308,17 +307,19 @@ class MulticlassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.3);
     AddAttr<int64_t>("nms_top_k",
                      "(int64_t) "
-                     " .");
+                     "Maximum number of results to be kept.");
     AddAttr<float>("nms_eta",
                    "(float) "
                    "The parameter for adaptive nms.")
         .SetDefault(1.0);
     AddAttr<int64_t>("keep_top_k",
                      "(int64_t) "
-                     ".");
+                     "Number of total bboxes to be kept per image after nms "
+                     "step. -1 means keeping all bboxes after nms step.");
     AddAttr<float>("confidence_threshold",
                    "(float) "
-                   ".");
+                   "Only consider detections whose confidences are larger than "
+                   "a threshold. If not provided, consider all boxes.");
     AddOutput("Out",
               "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "
@@ -328,15 +329,14 @@ class MulticlassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
               "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
               "no detected bbox.");
     AddComment(R"DOC(
-This operators is to do multi-class non maximum suppression (nms) on a batched
+This operators is to do multi-class non maximum suppression (NMS) on a batched
 of boxes and scores.
 
 This op greedily selects a subset of detection bounding boxes, pruning
 away boxes that have high IOU (intersection over union) overlap (> thresh)
 with already selected boxes.  It operates independently for each class for
-which scores are provided (via the scores field of the input box_list),
-pruning boxes with score less than a provided threshold prior to
-applying NMS.
+which scores are provided, pruning boxes with score less than a provided
+threshold prior to applying NMS.
 
 )DOC");
   }
