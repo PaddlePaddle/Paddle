@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import print_function
 
-import functools
 import unittest
 
 import numpy
@@ -56,6 +55,9 @@ def conv_net(img, label):
 
 
 def main(parallel, nn_type, use_cuda):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
@@ -128,14 +130,21 @@ class TestRecognizeDigits(unittest.TestCase):
     pass
 
 
+def patch_method(parallel, use_cuda, nn_type):
+    def __impl__(self):
+        main(parallel=parallel, use_cuda=use_cuda, nn_type=nn_type)
+
+    fname = "test_{0}_{1}_{2}".format(nn_type, "cuda"
+                                      if use_cuda else "cpu", "parallel"
+                                      if parallel else "normal")
+    __impl__.__name__ = fname
+    setattr(TestRecognizeDigits, fname, __impl__)
+
+
 for parallel in (True, False):
     for use_cuda in (True, False):
         for nn_type in ('mlp', 'conv'):
-            test_method = functools.partial(
-                main, parallel=parallel, use_cuda=use_cuda, nn_type=nn_type)
-            setattr(TestRecognizeDigits, "test_{0}_{1}_{2}".format(
-                nn_type, "cuda" if use_cuda else "cpu", "parallel"
-                if parallel else "normal"), test_method)
+            patch_method(parallel, use_cuda, nn_type)
 
 if __name__ == '__main__':
     unittest.main()
