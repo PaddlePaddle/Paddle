@@ -174,7 +174,7 @@ class MaxOutFunctor {
 };
 ```
 
-CPU implemention is in .cc file
+CPU implementation is in .cc file
 
 ```
 template <typename T>
