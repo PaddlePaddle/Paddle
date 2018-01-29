@@ -66,9 +66,10 @@ TEST(inference, recognize_digits) {
   }
 
   LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
+  std::string dirname = FLAGS_dirname;
 
-  // 0. Initialize all the devices
-  paddle::framework::InitDevices();
+  // 0. Call `paddle::framework::InitDevices()` initialize all the devices
+  // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
   paddle::framework::LoDTensor input;
   srand(time(0));
@@ -86,7 +87,7 @@ TEST(inference, recognize_digits) {
 
   // Run inference on CPU
   TestInference<paddle::platform::CPUPlace, float>(
-      FLAGS_dirname, cpu_feeds, cpu_fetchs1);
+      dirname, cpu_feeds, cpu_fetchs1);
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -96,7 +97,7 @@ TEST(inference, recognize_digits) {
 
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace, float>(
-      FLAGS_dirname, cpu_feeds, cpu_fetchs2);
+      dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
   EXPECT_EQ(output1.dims(), output2.dims());
@@ -111,10 +112,4 @@ TEST(inference, recognize_digits) {
   }
   EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
 #endif
-}
-
-int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, false);
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

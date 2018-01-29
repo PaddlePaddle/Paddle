@@ -163,10 +163,8 @@ def infer(args, save_dirname=None):
     [inference_program, feed_target_names,
      fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    if args.nn_type == 'mlp':
-        tensor_img = numpy.random.rand(1, 28, 28).astype("float32")
-    else:
-        tensor_img = numpy.random.rand(1, 1, 28, 28).astype("float32")
+    # The input's dimension of conv should be 4-D or 5-D.
+    tensor_img = numpy.random.rand(1, 1, 28, 28).astype("float32")
 
     # Construct feed as a dictionary of {feed_target_name: feed_target_data}
     # and results will contain a list of data corresponding to fetch_targets.
