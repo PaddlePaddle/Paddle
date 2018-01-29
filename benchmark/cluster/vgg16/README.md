@@ -2,15 +2,13 @@
 
 ## Test Result
 
-### Single node single thread
+### Hardware Infomation
 
-| Batch Size | 32 | 64 | 128 | 256 |
-| -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | - | - | 16.74 | - |
-| PaddlePaddle v2 | - | - | 17.60 | - |
-| TensorFlow | - | - | - | - |
+- CPU: Intel(R) Xeon(R) CPU E5-2620 v4 @ 2.10GHz
+- cpu MHz		: 2101.000
+- cache size	: 20480 KB
 
-### different batch size
+### Single Node Single Thread
 
 - PServer Count: 10
 - Trainer Count: 20
@@ -18,25 +16,43 @@
 
 | Batch Size | 32 | 64 | 128 | 256 |
 | -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | - | 247.40 | - | - |
-| PaddlePaddle v2 | - | - | 256.14 | - |
+| PaddlePaddle Fluid | 15.44 | 16.32 | 16.74 | 16.79 |
+| PaddlePaddle v2 | 15.97 | 17.04 | 17.60 | 17.83 |
+| TensorFlow | - | - | - | - |
+
+### different batch size
+
+- PServer Count: 10
+- Trainer Count: 20
+- Per trainer CPU Core: 1
+- Metrics: samples / sec
+
+| Batch Size | 32 | 64 | 128 | 256 |
+| -- | -- | -- | -- | -- |
+| PaddlePaddle Fluid | 190.20 | 222.15 | 247.40 | 258.18 |
+| PaddlePaddle v2 | 170.96 | 233.71 | 256.14 | 329.23 |
+| TensorFlow | - | - | - | - |
+
+
+### Accelerate rate
+
+- Pserver Count: 20
+- Batch Size: 128
+- Metrics: samples / sec
+
+| Trainer Counter | 20 | 40 | 80 | 100 |
+| -- | -- | -- | -- | -- |
+| PaddlePaddle Fluid | 291.06 | 518.80 | 836.26 | 1019.29 |
+| PaddlePaddle v2 | 356.28 | - | - | 1041.99 |
 | TensorFlow | - | - | - | - |
 
 ### different pserver number
 
 - Trainer Count: 100
-- Batch Size: 64
+- Batch Size: 128
 - Metrics: mini-batch / sec
 
 | PServer Count | 10 | 20 | 40 | 60 |
-| -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | - | - | - | - |
-| PaddlePaddle v2 | - | - | - | - |
-| TensorFlow | - | - | - | - |
-
-### Accelerate rate
-
-| Trainer Counter | 20 | 40 | 80 | 100 |
 | -- | -- | -- | -- | -- |
 | PaddlePaddle Fluid | - | - | - | - |
 | PaddlePaddle v2 | - | - | - | - |

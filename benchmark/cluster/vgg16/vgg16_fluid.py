@@ -20,6 +20,7 @@ import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
+import paddle.v2.fluid.profiler as profiler
 import argparse
 import functools
 import os
@@ -160,24 +161,25 @@ def main():
             start_time = time.time()
             num_samples = 0
             accuracy.reset(exe)
-            for batch_id, data in enumerate(train_reader()):
-                ts = time.time()
-                img_data = np.array(
-                    map(lambda x: x[0].reshape(data_shape), data)).astype(
-                        "float32")
-                y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-                y_data = y_data.reshape([-1, 1])
+            with profiler.profiler("CPU", 'total') as prof:
+                for batch_id, data in enumerate(train_reader()):
+                    ts = time.time()
+                    img_data = np.array(
+                        map(lambda x: x[0].reshape(data_shape), data)).astype(
+                            "float32")
+                    y_data = np.array(map(lambda x: x[1], data)).astype("int64")
+                    y_data = y_data.reshape([-1, 1])
 
-                loss, acc = exe.run(trainer_prog,
-                                    feed={"pixel": img_data,
-                                          "label": y_data},
-                                    fetch_list=[avg_cost] + accuracy.metrics)
-                iters += 1
-                num_samples += len(data)
-                print(
-                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, spent %f"
-                    % (pass_id, iters, loss, acc, time.time() - ts)
-                )  # The accuracy is the accumulation of batches, but not the current batch.
+                    loss, acc = exe.run(trainer_prog,
+                                        feed={"pixel": img_data,
+                                            "label": y_data},
+                                        fetch_list=[avg_cost] + accuracy.metrics)
+                    iters += 1
+                    num_samples += len(data)
+                    print(
+                        "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, spent %f"
+                        % (pass_id, iters, loss, acc, time.time() - ts)
+                    )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
             pass_train_acc = accuracy.eval(exe)
@@ -211,6 +213,7 @@ def main():
         pserver_endpoints = ",".join(eplist)
         print("pserver endpoints: ", pserver_endpoints)
         trainers = int(os.getenv("TRAINERS"))  # total trainer count
+        print("trainers total: ", trainers)
         current_endpoint = os.getenv(
             "POD_IP") + ":6174"  # current pserver endpoint
         training_role = os.getenv(
