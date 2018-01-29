@@ -39,8 +39,9 @@ def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
     x.shape = [N, D]
     mean = np.mean(x, axis=1)
     var = np.var(x, axis=1) + epsilon
-    output = scale * np.divide((x - mean.reshape([N, 1])),
-                               (np.sqrt(var)).reshape([N, 1])) + beta
+    output = scale.reshape([1, D]) * np.divide(
+        (x - mean.reshape([N, 1])),
+        (np.sqrt(var)).reshape([N, 1])) + beta.reshape([1, D])
     output.shape = old_shape
     x.shape = old_shape
     return output, mean, var
@@ -55,8 +56,10 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
     mean.shape = [N, 1]
     var.shape = [N, 1]
 
-    d_scale = np.sum(grad_y).reshape([1, ])
-    d_bias = np.sum(((x - mean) * np.sqrt(1 / var)) * grad_y).reshape([1, ])
+    d_scale = np.sum(grad_y, axis=1).reshape([1, D])
+    d_bias = scale.reshape([1, D]) * np.sum((
+        (x - mean) * np.sqrt(1 / var)) * grad_y,
+                                            axis=1).reshape([1, D])
 
     dx_end = np.sqrt(1.0 / var) * grad_y
 
@@ -69,7 +72,7 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
     d_std = np.sum(-1.0 / var * (x - mean) * grad_y, axis=1).reshape([N, 1]) * (
         1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) * (x - mean))
 
-    grad_x = scale * (dx_end + d_mean + d_std)
+    grad_x = scale.reshape([1, D]) * (dx_end + d_mean + d_std)
 
     grad_y.shape = x_shape
     x.shape = x_shape
@@ -146,7 +149,8 @@ class TestLayerNormdOp(OpTest):
             # attr
             epsilon = 0.00001
             x_shape = shape
-            scale_shape = [1]
+            D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
+            scale_shape = [D]
             np.random.random(123)
             x_val = np.random.random_sample(x_shape).astype(np.float32)
             scale_val = np.random.random_sample(scale_shape).astype(np.float32)
