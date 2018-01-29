@@ -14,6 +14,7 @@
 
 import collections
 import contextlib
+import re
 
 import numpy as np
 
@@ -643,14 +644,15 @@ class Block(object):
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
         if with_details:
+            re_add_indent = re.compile(r"\n(.)")
             res_str = "blocks {\n  idx: %d\n  parent_idx: %d" % (
                 self.idx, self.parent_idx)
             for var in self.vars.itervalues():
-                res_str += "\n  vars {\n    %s  }" % var.to_string(
-                    throw_on_error).replace("\n", "\n    ")
+                res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
+                    r"\n    \1", var.to_string(throw_on_error))
             for op in self.ops:
-                res_str += "\n  ops {\n    %s  }" % op.to_string(
-                    throw_on_error).replace("\n", "\n    ")
+                res_str += "\n  ops {\n    %s  }" % re_add_indent.sub(
+                    r"\n    \1", op.to_string(throw_on_error))
             res_str += "\n}"
         else:
             protostr = self.desc.serialize_to_string()
