@@ -37,17 +37,25 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+    std::vector<std::string> endpoints =
+        Attr<std::vector<std::string>>("endpoints");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
     for (size_t i = 0; i < ins.size(); i++) {
-      VLOG(3) << "sending " << ins[i];
+      VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
       client_.AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
     }
     PADDLE_ENFORCE(client_.Wait());
 
+    for (auto& ep : endpoints) {
+      VLOG(3) << "batch barrier, ep: " << ep;
+      client_.AsyncSendBatchBarrier(ep);
+    }
+    PADDLE_ENFORCE(client_.Wait());
+
     for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting " << outs[i];
+      VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
       client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
 
