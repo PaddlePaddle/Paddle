@@ -151,7 +151,8 @@ class RPCClient {
                         const std::string& var_name,
                         int64_t time_out = 600 * 1000);
 
-  bool AsyncBatchBarrier(const std::string& ep, int64_t time_out = 600 * 1000);
+  bool AsyncSendBatchBarrier(const std::string& ep,
+                             int64_t time_out = 600 * 1000);
 
   bool Wait();
 

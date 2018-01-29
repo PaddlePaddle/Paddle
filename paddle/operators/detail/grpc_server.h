@@ -70,7 +70,6 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   volatile bool is_shut_down_ = false;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_send_;
   std::unique_ptr<grpc::ServerCompletionQueue> cq_get_;
-  std::unique_ptr<grpc::ServerCompletionQueue> cq_batch_barrier_;
 
   sendrecv::SendRecvService::AsyncService service_;
   std::unique_ptr<grpc::Server> server_;

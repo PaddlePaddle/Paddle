@@ -132,7 +132,6 @@ void AsyncGRPCServer::RunSyncUpdate() {
 
   cq_send_ = builder.AddCompletionQueue();
   cq_get_ = builder.AddCompletionQueue();
-  cq_batch_barrier_ = builder.AddCompletionQueue();
 
   server_ = builder.BuildAndStart();
   LOG(INFO) << "Server listening on " << address_ << std::endl;
