@@ -18,6 +18,7 @@ limitations under the License. */
 #include <mutex>
 
 #include "paddle/framework/channel.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -40,7 +41,7 @@ class Buffered : public paddle::framework::Channel<T> {
   std::condition_variable full_cond_var_;
   std::deque<T> channel_;
 
-  Buffered(size_t cap) : cap_(cap) {}
+ Buffered(size_t cap) : cap_(cap) { PADDLE_ENFORCE_GT(cap, 0); }
   virtual ~Buffered();
 
   void NotifyAllSenders(std::unique_lock<std::mutex>*);
