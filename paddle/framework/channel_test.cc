@@ -32,8 +32,8 @@ TEST(Channel, Buffered) {
     ch->Send(&i);
   }
 
+  int temp = -1;
   for (int j = 0; j < 10; ++j) {
-    int temp = -1;
     ch->Receive(&temp);
     EXPECT_EQ(temp, j);
   }
@@ -49,7 +49,7 @@ TEST(Channel, MultiThread) {
   framework::ThreadPool* pool;
   pool = framework::ThreadPool::GetInstance();
 
-  // Receiver
+  // Consumer
   for (int i = 0; i < capacity; ++i) {
     framework::Async([&ch]() {
       int temp = -1;
@@ -58,7 +58,7 @@ TEST(Channel, MultiThread) {
     });
   }
 
-  // Sender
+  // Producer
   for (int i = 0; i < capacity; ++i) {
     framework::Async([&ch, &i]() { ch->Send(&i); });
   }
