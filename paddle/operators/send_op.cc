@@ -49,7 +49,7 @@ class SendOp : public framework::OperatorBase {
     std::set<std::string> epset(epmap.begin(), epmap.end());
     for (auto& ep : epset) {
       VLOG(3) << "batch barrier, ep: " << ep;
-      client_.AsyncBatchBarrier(ep);
+      client_.AsyncSendBatchBarrier(ep);
     }
     PADDLE_ENFORCE(client_.Wait());
 
