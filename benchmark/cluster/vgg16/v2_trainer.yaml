@@ -22,7 +22,7 @@ spec:
         - name: PADDLE_JOB_NAME
           value: vgg16v2job
         - name: BATCH_SIZE
-          value: "128"
+          value: "256"
         - name: TRAINERS
           value: "20"
         - name: PSERVERS

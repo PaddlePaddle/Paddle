@@ -26,6 +26,7 @@ if BATCH_SIZE:
     BATCH_SIZE = int(BATCH_SIZE)
 else:
     BATCH_SIZE = 128
+print "batch_size", BATCH_SIZE
 NODE_COUNT = int(os.getenv("TRAINERS"))
 ts = 0
 
