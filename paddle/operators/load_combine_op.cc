@@ -35,7 +35,9 @@ class LoadCombineOp : public framework::OperatorBase {
                    "Cannot open file %s for load_combine op", filename);
 
     auto out_var_names = Outputs("Out");
-    PADDLE_ENFORCE_GT(static_cast<int>(out_var_names.size()), 0, "The number of output variables should be greater than 0");
+    PADDLE_ENFORCE_GT(
+        static_cast<int>(out_var_names.size()), 0,
+        "The number of output variables should be greater than 0");
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
@@ -48,37 +50,12 @@ class LoadCombineOp : public framework::OperatorBase {
 
       auto *tensor = out_var->GetMutable<framework::LoDTensor>();
 
-      //uint64_t data_length;
-      //char *buffer = NULL;
-
-      // Error checking
-      //PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot read more from file %s",
-      //               filename);
-
-      // Read a fixed-width int, to get the number of bytes
-      // for the serialized data.
-      //fin.read(reinterpret_cast<char *>(&data_length), sizeof(data_length));
-
       // Error checking
       PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot read more from file %s",
                      filename);
 
-      //buffer = new char[data_length];
-
-      // Read the serialized data into the buffer
-      //fin.read(buffer, data_length);
-
-      //std::string current_serialized_data;
-      //current_serialized_data.assign(buffer, data_length);
-
-      // Create an input string stream
-      //std::istringstream ist(current_serialized_data);
-      //DeserializeFromStream(ist, tensor, dev_ctx);
-
-      // Using fin instead of ist
+      // Get data from fin to tensor
       DeserializeFromStream(fin, tensor, dev_ctx);
-
-      //delete[] buffer;  // delete the allocated memory
 
       if (platform::is_gpu_place(place)) {
         // copy CPU to GPU
