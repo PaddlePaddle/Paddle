@@ -80,9 +80,10 @@ class TestOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 1)
+        self.assertEqual(len(init_ops), 2)
         self.assertEqual(init_ops[0].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
+        self.assertAlmostEqual(init_ops[len(init_ops) - 1].attr('value'),
+                               learning_rate)
 
 
 class TestMomentumOptimizer(unittest.TestCase):
@@ -136,11 +137,12 @@ class TestMomentumOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 2)
+        self.assertEqual(len(init_ops), 3)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), 0.0)
         self.assertEqual(init_ops[1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[1].attr('value'), learning_rate)
+        self.assertAlmostEqual(init_ops[len(init_ops) - 1].attr('value'),
+                               learning_rate)
 
     def test_nesterov_momentum_optimizer(self):
         init_program = framework.Program()
@@ -185,11 +187,12 @@ class TestMomentumOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 2)
+        self.assertEqual(len(init_ops), 3)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), 0.0)
         self.assertEqual(init_ops[1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[1].attr('value'), learning_rate)
+        self.assertAlmostEqual(init_ops[len(init_ops) - 1].attr('value'),
+                               learning_rate)
 
 
 class TestAdagradOptimizer(unittest.TestCase):
@@ -242,11 +245,12 @@ class TestAdagradOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 2)
+        self.assertEqual(len(init_ops), 3)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), 0.0)
         self.assertEqual(init_ops[1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[1].attr('value'), learning_rate)
+        self.assertAlmostEqual(init_ops[len(init_ops) - 1].attr('value'),
+                               learning_rate)
 
 
 class TestAdamOptimizer(unittest.TestCase):
@@ -306,7 +310,7 @@ class TestAdamOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 5)
+        self.assertEqual(len(init_ops), 6)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[len(init_ops) - 1].attr('value'),
                                learning_rate)
@@ -369,7 +373,7 @@ class TestAdamaxOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 4)
+        self.assertEqual(len(init_ops), 5)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[len(init_ops) - 1].attr('value'),
                                learning_rate)
@@ -426,11 +430,12 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 2)
+        self.assertEqual(len(init_ops), 3)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), 0.0)
         self.assertEqual(init_ops[1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[1].attr('value'), learning_rate)
+        self.assertAlmostEqual(init_ops[len(init_ops) - 1].attr('value'),
+                               learning_rate)
 
 
 if __name__ == '__main__':
