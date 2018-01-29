@@ -15,6 +15,7 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import unittest
 
 
 def stacked_lstm_net(data,
@@ -105,9 +106,14 @@ def main():
             print("cost=" + str(cost_val) + " acc=" + str(acc_val) +
                   " pass_acc=" + str(pass_acc))
             if cost_val < 1.0 and acc_val > 0.8:
-                exit(0)
-    exit(1)
+                return
+            raise AssertionError("understand_sentiment_conv is divergent")
+
+
+class TestUnderstandSentiment(unittest.TestCase):
+    def test_main(self):
+        main()
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()

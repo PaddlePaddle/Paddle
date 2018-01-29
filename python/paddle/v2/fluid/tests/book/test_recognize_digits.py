@@ -12,32 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-import argparse
-import paddle.v2.fluid as fluid
-import paddle.v2 as paddle
-import sys
+
+import functools
+import unittest
+
 import numpy
 
-
-def parse_arg():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "nn_type",
-        help="The neural network type, in ['mlp', 'conv']",
-        type=str,
-        choices=['mlp', 'conv'])
-    parser.add_argument(
-        "--parallel",
-        help='Run in parallel or not',
-        default=False,
-        action="store_true")
-    parser.add_argument(
-        "--use_cuda",
-        help="Run the program by using CUDA",
-        default=False,
-        action="store_true")
-    return parser.parse_args()
-
+import paddle.v2 as paddle
+import paddle.v2.fluid as fluid
 
 BATCH_SIZE = 64
 
@@ -73,19 +55,16 @@ def conv_net(img, label):
     return loss_net(conv_pool_2, label)
 
 
-def main():
-    args = parse_arg()
-    print("recognize digits with args: {0}".format(" ".join(sys.argv[1:])))
-
+def main(parallel, nn_type, use_cuda):
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    if args.nn_type == 'mlp':
+    if nn_type == 'mlp':
         net_conf = mlp
     else:
         net_conf = conv_net
 
-    if args.parallel:
+    if parallel:
         places = fluid.layers.get_places()
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
@@ -105,8 +84,7 @@ def main():
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_loss)
-
-    place = fluid.CUDAPlace(0) if args.use_cuda else fluid.CPUPlace()
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
@@ -137,13 +115,27 @@ def main():
                 acc_val = numpy.array(acc_set).mean()
                 avg_loss_val = numpy.array(avg_loss_set).mean()
                 if float(acc_val) > 0.85:  # test acc > 85%
-                    exit(0)
+                    return
                 else:
                     print(
                         'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
                         format(pass_id, batch_id + 1,
                                float(avg_loss_val), float(acc_val)))
+    assert AssertionError("Recognize Digits model is divergent")
 
+
+class TestRecognizeDigits(unittest.TestCase):
+    pass
+
+
+for parallel in (True, False):
+    for use_cuda in (True, False):
+        for nn_type in ('mlp', 'conv'):
+            test_method = functools.partial(
+                main, parallel=parallel, use_cuda=use_cuda, nn_type=nn_type)
+            setattr(TestRecognizeDigits, "test_{0}_{1}_{2}".format(
+                nn_type, "cuda" if use_cuda else "cpu", "parallel"
+                if parallel else "normal"), test_method)
 
 if __name__ == '__main__':
-    main()
+    unittest.main()

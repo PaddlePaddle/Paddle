@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import numpy as np
+import paddle.v2.fluid.core as core
+
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.executor import Executor
+import unittest
 
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
@@ -196,9 +197,14 @@ def main():
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
                   " avg_cost=" + str(avg_cost_val))
             if batch_id > 3:
-                exit(0)
+                return
             batch_id += 1
 
 
+class TestRNNEncoderDecoder(unittest.TestCase):
+    def test_main(self):
+        main()
+
+
 if __name__ == '__main__':
-    main()
+    unittest.main()
