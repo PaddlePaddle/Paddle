@@ -125,7 +125,6 @@ class ReadFromArrayOp : public ArrayOp {
       : ArrayOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
-    std::cout << "into read array op" << std::endl;
     auto *x = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x != nullptr, "X must be set");
     auto &x_array = x->Get<framework::LoDTensorArray>();
