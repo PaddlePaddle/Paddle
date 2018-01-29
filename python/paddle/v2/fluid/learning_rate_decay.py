@@ -16,6 +16,14 @@ import layers
 from framework import Variable
 
 __all__ = ['exponential_decay', ]
+"""
+When training a model, it's often useful to decay the
+learning rate during training process, this is called
+learning_rate_decay. There are many strategies to do
+this, this module will provide some classic method.
+User can also implement their own learning_rate_decay
+strategy according to this module.
+"""
 
 
 def exponential_decay(learning_rate,
@@ -23,11 +31,22 @@ def exponential_decay(learning_rate,
                       decay_steps,
                       decay_rate,
                       staircase=False):
-    """
+    """Applies exponential decay to the learning rate.
+
     ```python
     decayed_learning_rate = learning_rate *
             decay_rate ^ (global_step / decay_steps)
     ```
+    Args:
+        learning_rate: A scalar float32 value or a Variable. This
+          will be the initial learning rate during training
+        global_step: A Variable that record the training step.
+        decay_steps: A Python `int32` number.
+        decay_rate: A Python `float` number.
+        staircase: Boolean. If set true, decay the learning rate every decay_steps.
+
+    Returns:
+        The decayed learning rate
     """
     if global_step is None or not isinstance(global_step, Variable):
         raise ValueError("global_step is required for exponential_decay.")
