@@ -79,8 +79,7 @@ it is not guaranteed to generalize. Second, it encourages the differences
 between the largest logit and all others to become large, reducing the ability 
 of the model to adapt. Label smoothing is proposed to encourage the model to 
 be less confident, which replaces the ground-truth label $y$ with the weighted 
-sum of itselft and some fixed distribution $\mu$, 
-i.e.
+sum of itself and some fixed distribution $\mu$, i.e.
 
 $$
     \tilde{y} = (1 - \epsilon) * y + \epsilon * \mu,
