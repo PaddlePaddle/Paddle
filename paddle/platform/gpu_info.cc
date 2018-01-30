@@ -24,9 +24,6 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
 namespace paddle {
 namespace platform {
 
-static constexpr char kEnvFractionGpuMemoryToUse[] =
-    "fraction_of_gpu_memory_to_use";
-
 int GetCUDADeviceCount() {
   int count;
   PADDLE_ENFORCE(
@@ -83,11 +80,11 @@ size_t GpuMaxChunkSize() {
       std::min(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
                total - reserving);
 
-  if (std::getenv(kEnvFractionGpuMemoryToUse)) {
-    *FLAG_fraction_of_gpu_memory_to_use =
-        std::strtod(std::getenv(kEnvFractionGpuMemoryToUse), nullptr);
-    PADDLE_ENFORCE_GT(FLAG_fraction_of_gpu_memory_to_use, 0.0);
-    PADDLE_ENFORCE_LE(FLAG_fraction_of_gpu_memory_to_use, 1.0);
+  if (std::getenv(kEnvFractionGpuMemoryToUse.c_str())) {
+    FLAGS_fraction_of_gpu_memory_to_use =
+        std::strtod(std::getenv(kEnvFractionGpuMemoryToUse.c_str()), nullptr);
+    PADDLE_ENFORCE_GT(FLAGS_fraction_of_gpu_memory_to_use, 0.0);
+    PADDLE_ENFORCE_LE(FLAGS_fraction_of_gpu_memory_to_use, 1.0);
   }
   // Reserving the rest memory for page tables, etc.
 
