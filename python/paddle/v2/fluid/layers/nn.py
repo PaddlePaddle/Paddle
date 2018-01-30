@@ -2954,102 +2954,132 @@ def multiplex(inputs, index):
 
 
 class SequenceDecoder:
-    class StepInput:
-        dic = {'train': {}, 'generate': {}}
+    class Cell:
+        modes = ('train', 'generate')
+        kinds = ('step_input', 'state', 'other_shared')
+        dic = {
+            'train': {
+                'step_input': {},
+                'state': {},
+                'other_shared': {}
+            },
+            'generate': {
+                'step_input': {},
+                'state': {},
+                'other_shared': {}
+            }
+        }
 
-        def __init__(self, id, var, rnn=None, dtype='float32'):
+        def __init__(self, kind, id, init_var, seqdec, dtype='float32'):
             '''
-            id: identification for this step input.
-            var: outside variable that need to partitioned and boot this StepInput.
+            kind: state_input, state or other_shared
+            id: identification of this cell.
+            init_var: variable to initialize this cell.
+                init_var can be an Variable or a dic like {'train': var0, 'generate': var1}
+                so that different initialization can be porformed in different mode, this is
+                important when defining states.
+            seqdec: instance of SequenceDecoder.
+            rnn: Dynamic rnn instance.
             '''
-            if rnn:
-                self.input = rnn.step_input(var)
-                dic['train'][id] = self.input
-            else:
-                self.input = pd.create_array(dtype)
-                dic['generate'][id] = self.input
-
-        def set_mode(self, mode):
-            self.mode = mode
-
-        @staticmethod
-        def get(mode, id, counter=None):
-            '''
-            counter: var
-            '''
-            if counter is None:
-                return StepInput.dic[mode][id]
-            else:
-                return pd.array_read(array=StepInput.dic[mode][id], i=counter)
-
-    class State:
-        modes = (
-            'train',
-            'generate', )
-        dic = {'train': {}, 'generate': {}}
-
-        def __init__(self,
-                     id,
-                     init_var,
-                     rnn=None,
-                     dtype='float32',
-                     zero=pd.zeros(
-                         shape=[1], dtype='int64')):
+            self.kind = kind
             self.id = id
             self.init_var = init_var
-            self.rnn = rnn
-            self.updater = None
+            self.rnn = seqdec.train_rnn
             self.dtype = dtype
-            assert id not in State.dic, "duplicate add State called '{}'".format(
-                self.id)
-            self.zero = zero
+            self.mode = None
+
+            assert kind in SequenceDecoder.Cell.kinds
 
         def set_mode(self, mode):
-            assert mode in State.modes, "get unknown mode '{}', only {} are valid".format(
-                mode, str(State.modes))
             self.mode = mode
-
-            if self.mode == 'train':
-                assert self.rnn, "rnn should be passed in train mode"
+            assert self.mode in SequenceDecoder.Cell.modes, \
+            "invalid mode: {}, only {} are valid.".format(
+                self.mode, SequenceDecoder.Cell.modes,)
 
         def create(self):
-            if self.rnn is not None:
-                self.state = rnn.memory(init=self.init_var)
-                State.dic['train'][self.id] = self.state
+            assert self.mode is not None, "mode should be set first by calling `set_mode`"
+            if self.mode == 'train':
+                return self._create_train()
             else:
-                self.state = pd.create_array(self.dtype)
-                pd.array_write(self.init_var, array=self.state, i=self.zero)
-                State.dic['generate'][self.id] = self.state
-            return self.state
-
-        def update(self):
-            assert self.updater, 'updater should be set by `set_updater`'
-            return self.updater()
+                return self._create_generate()
 
         def set_updater(self, updater):
+            '''
+            set update handler for state, the `updater` will be called like `updater(seq_decoder)`,
+            the `seq_decoder` is an instance of `SequenceDecoder`.
+            '''
+            assert self.kind == 'state', 'updater is only needed in train mode'
             self.updater = updater
 
-        @staticmethod
-        def get(mode, id, counter=None):
-            '''
-            get a state variable in train mode; or get a TensorArray in generate mode.
-            '''
-            if counter:
-                return State.dic[mode][id]
-            else:
-                return pd.array_read(array=State.dic[mode][id], i=counter)
+        def update(self):
+            self.updater()
 
-    def __init__(self, item_id, item_score):
+        @staticmethod
+        def get(mode, kind, id):
+            return SequenceDecoder.Cell.dic[mode][kind][id]
+
+        def _create_train(self):
+            dic = SequenceDecoder.Cell.dic
+            if self.kind == 'step_input':
+                self.input_array = None
+                self.input = self.rnn.step_input(self.init_var)
+                dic['train']['step_input'][id] = self.input
+                return self.input
+            else:
+                self.state_array = None
+                self.state = self.rnn.memory(init=self.init_var)
+                dic['train']['state'][self.id] = self.state
+                return self.state
+
+        def _create_generate(self):
+            dic = SequenceDecoder.Cell.dic
+            if self.kind == 'step_input':
+                self.input = None
+                self.input_array = pd.create_array(self.dtype)
+                dic['generate']['step_input'][id] = self.input
+                return self.input_array
+            else:
+                self.state = None
+                self.state_array = pd.create_array(self.dtype)
+                pd.array_write(
+                    self.init_var, array=self.state_array, i=self.zero)
+                dic['generate']['state'][self.id] = self.state_array
+                return self.state_array
+
+    class InputCell(SequenceDecoder.Cell):
+        def __init__(self, id, init_var, seqdec, dtype='float32'):
+            super(SequenceDecoder.InputCell).__init__('step_input', id,
+                                                      init_var, seqdec, dtype)
+
+        @staticmethod
+        def get(mode, id):
+            return SequenceDecoder.Cell.get(mode, 'step_input', id)
+
+    class StateCell(SequenceDecoder.Cell):
+        def __init__(self, id, init_var, seqdec, dtype='float32'):
+            super(SequenceDecoder.InputCell).__init__('state', id, init_var,
+                                                      seqdec, dtype)
+
+        @staticmethod
+        def get(mode, id):
+            return SequenceDecoder.Cell.get(mode, 'state', id)
+
+    def __init__(self, item_id, states, scorer, other_step_inputs):
         '''
         item_id: StepInput
         item_score: StepInput
         '''
+        self.item_id = item_id
+        self.states = states
+        self.scorer = scorer
+        self.other_step_inputs = other_step_inputs
+
         # NOTE need to set name?
         self.counter = pd.zeros(shape=[1], dtype='int64')
-        self.item_id = None
-        self.item_score = None
+        # dynamic rnn is only used in train mode.
+        self.train_rnn = pd.DynamicRNN()
 
-    def train(self, step_inputs, static_inputs, states, scorer):
+    def train(self):
         '''
         step_inputs: inputs that need to partition for each time step.
         static_inputs: similar to `step_inputs` but do not need backward.
@@ -3057,30 +3087,27 @@ class SequenceDecoder:
         scorer: score calculator callback.
                 will be called like `scorer(self)`
         '''
-        rnn = pd.DynamicRNN()
-        with rnn.block():
-            for x in step_inputs:
+        with self.train_rnn.block():
+            # create item_id
+            self.item_id.set_mode('train')
+            self.item_id.create()
+            # create step_inputs and states
+            for x in self.other_step_inputs:
+                x.set_mode('train')
                 x.create()
-            # TODO add configuration for static
-            for x in static_inputs:
-                x.create()
-            for state in states:
+            for state in self.states:
                 state.set_mode('train')
                 state.create()
 
-            # TODO hidden the score generation.
-            # current_score = pd.fc(input=current_state,
-            #                       size=self.target_dim,
-            #                     act='softmax')
-            score = scorer()
+            score = self.scorer()
 
-            for state in states:
+            for state in self.states:
                 current_state = state.update()
-                rnn.update_memory(pre_state, current_state)
-            rnn.output(score)
-        return rnn()
+                self.train_rnn.update_memory(state.state, current_state)
+            self.train_rnn.output(score)
+        return self.train_rnn()
 
-    def decode(self, max_length, states):
+    def decode(self, max_length):
         '''
         The decode phase of a decoder.
 
@@ -3093,63 +3120,48 @@ class SequenceDecoder:
 
         max_length: the max length the decoder can generate.
         '''
+        # update mode
+        self.item_id.set_mode('generate')
+        self.item_id.create()  # create a tensor array
+        for x in self.states:
+            x.set_mode('generate')
+        # step input are not needed in generation.
+
         array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
 
-        for state in states:
-            state.set_mode('generate')
+        for state in self.states:
             state.create()
 
         # fill the first element with init_state
         # state_array = pd.create_array('float32')
         # pd.array_write(self.initial_state, array=state_array, i=counter)
 
-        # ids, scores as memory
-        ids_array = pd.create_array('int64')
+        # ids_array = pd.create_array('int64')
+        ids_array = self.item_id.input_array
         scores_array = pd.create_array('float32')
 
+        # TODO(Superjomn) make initialization more convenient.
         init_ids = pd.data(
             name="init_ids", shape=[1], dtype="int64", lod_level=2)
         init_scores = pd.data(
             name="init_scores", shape=[1], dtype="float32", lod_level=2)
 
-        pd.array_write(init_ids, array=ids_array, i=counter)
-        pd.array_write(init_scores, array=scores_array, i=counter)
+        pd.array_write(init_ids, array=ids_array, i=self.counter)
+        pd.array_write(init_scores, array=scores_array, i=self.counter)
 
         # TODO there is an empty op that can prune the generation of the early stopped prefix.
-        cond = pd.less_than(x=counter, y=array_len)
+        cond = pd.less_than(x=self.counter, y=array_len)
 
         while_op = pd.While(cond=cond)
         with while_op.block():
-            # pre_ids = pd.array_read(array=ids_array, i=counter)
-            # pre_score = pd.array_read(array=scores_array, i=counter) 
-            # expand the lod of pre_state to be the same with pre_score
-            # pre_state = pd.array_read(array=state_array, i=counter)
-            # pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
-            ids_array = self.item_id.input
-            scores_array = self.item_score.input
-            pre_ids = pd.array_read(self.item_id.input, i=counter)
-            pre_scores = pd.array_read(self.item_score.input, i=counter)
-
-            # pre_ids_emb = pd.embedding(
-            #     input=pre_ids,
-            #     size=[dict_size, word_dim],
-            #     dtype='float32',
-            #     is_sparse=IS_SPARSE)
-
-            # use rnn unit to update rnn
+            pre_ids = pd.array_read(ids_array, i=self.counter)
+            # use rnn cell to update rnn
             updated_states = []
-            for state in states:
+            for state in self.states:
                 current_state = state.update()
                 updated_states.append(current_state)
-            # current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
-            #                     size=decoder_size,
-            #                     act='tanh')
 
-            # use score to do beam search
-            # current_score = pd.fc(input=current_state,
-            #                     size=target_dict_dim,
-            #                     act='softmax')
-            current_score = scorer()
+            current_score = self.scorer()
 
             topk_scores, topk_indices = pd.topk(current_score, k=50)
             selected_ids, selected_scores = pd.beam_search(
@@ -3160,17 +3172,16 @@ class SequenceDecoder:
                 end_id=10,
                 level=0)
 
-            pd.increment(x=counter, value=1, in_place=True)
-
+            pd.increment(x=self.counter, value=1, in_place=True)
             # update the memories
-            pd.array_write(selected_ids, array=ids_array, i=counter)
-            pd.array_write(selected_scores, array=scores_array, i=counter)
+            pd.array_write(selected_ids, array=ids_array, i=self.counter)
+            pd.array_write(selected_scores, array=scores_array, i=self.counter)
 
-            for no, state in enumerate(states):
+            for no, state in enumerate(self.states):
                 current_state = updated_states[no]
-                pd.array_write(current_state, array=state.state, i=counter)
+                pd.array_write(current_state, array=state.state, i=self.counter)
 
-            pd.less_than(x=counter, y=array_len, cond=cond)
+            pd.less_than(x=self.counter, y=array_len, cond=cond)
 
         translation_ids, translation_scores = pd.beam_search_decode(
             ids=ids_array, scores=scores_array)
