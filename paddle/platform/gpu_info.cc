@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/platform/gpu_info.h"
-
+#include <cstdlib>
 #include "gflags/gflags.h"
-
 #include "paddle/platform/enforce.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
@@ -24,6 +23,9 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
 
 namespace paddle {
 namespace platform {
+
+static constexpr char kEnvFractionGpuMemoryToUse[] =
+    "fraction_of_gpu_memory_to_use";
 
 int GetCUDADeviceCount() {
   int count;
@@ -81,6 +83,12 @@ size_t GpuMaxChunkSize() {
       std::min(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
                total - reserving);
 
+  if (std::getenv(kEnvFractionGpuMemoryToUse)) {
+    *FLAG_fraction_of_gpu_memory_to_use =
+        std::strtod(std::getenv(kEnvFractionGpuMemoryToUse), nullptr);
+    PADDLE_ENFORCE_GT(FLAG_fraction_of_gpu_memory_to_use, 0.0);
+    PADDLE_ENFORCE_LE(FLAG_fraction_of_gpu_memory_to_use, 1.0);
+  }
   // Reserving the rest memory for page tables, etc.
 
   size_t allocating = static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
