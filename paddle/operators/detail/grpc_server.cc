@@ -132,6 +132,7 @@ void AsyncGRPCServer::RunSyncUpdate() {
 
   cq_send_ = builder.AddCompletionQueue();
   cq_get_ = builder.AddCompletionQueue();
+
   server_ = builder.BuildAndStart();
   LOG(INFO) << "Server listening on " << address_ << std::endl;
 
@@ -141,11 +142,11 @@ void AsyncGRPCServer::RunSyncUpdate() {
       std::bind(&AsyncGRPCServer::TryToRegisterNewGetOne, this);
 
   t_send_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this, false,
+      new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
                                 cq_send_.get(), "cq_send", send_register)));
 
   t_get_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this, true,
+      new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
                                 cq_get_.get(), "cq_get", get_register)));
 
   // wait server
@@ -174,7 +175,7 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
   }
   RequestSend* send =
       new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
-  VLOG(4) << "create RequestSend status:" << send->Status();
+  VLOG(4) << "Create RequestSend status:" << send->Status();
 }
 
 void AsyncGRPCServer::TryToRegisterNewGetOne() {
@@ -184,11 +185,11 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
   }
   RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_, dev_ctx_,
                                    &var_get_queue_);
-  VLOG(4) << "create Requestget status:" << get->Status();
+  VLOG(4) << "Create RequestGet status:" << get->Status();
 }
 
-// FIXME(typhoonzero): remove wait argument and change cq_name to enum.
-void AsyncGRPCServer::HandleRequest(bool wait, grpc::ServerCompletionQueue* cq,
+// FIXME(typhoonzero): change cq_name to enum.
+void AsyncGRPCServer::HandleRequest(grpc::ServerCompletionQueue* cq,
                                     std::string cq_name,
                                     std::function<void()> TryToRegisterNewOne) {
   TryToRegisterNewOne();

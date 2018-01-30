@@ -97,12 +97,27 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   return true;
 }
 
+bool RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
+  const auto ch = GetChannel(ep);
+
+  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  s->Prepare(time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(BATCH_BARRIER_MESSAGE);
+  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, (void*)s);
+  req_count_++;
+
+  return true;
+}
+
 bool RPCClient::Wait() {
   if (req_count_ <= 0) {
     return true;
   }
-
-  bool a[req_count_];
+  const size_t kReqCnt = req_count_;
+  bool a[kReqCnt];
   std::vector<std::future<void>> waits(req_count_);
 
   for (int i = 0; i < req_count_; i++) {
