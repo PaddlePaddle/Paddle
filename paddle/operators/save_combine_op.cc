@@ -79,23 +79,23 @@ class SaveCombineOp : public framework::OperatorBase {
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
 
-    auto inames = Inputs("X");
-    PADDLE_ENFORCE_GT(
-        static_cast<int>(inames.size()), 0,
-        "The number of output variables should be greater than 0");
+    auto inp_var_names = Inputs("X");
+    PADDLE_ENFORCE_GT(static_cast<int>(inp_var_names.size()), 0,
+                      "The number of input variables should be greater than 0");
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
-    for (size_t i = 0; i < inames.size(); i++) {
-      auto *var = scope.FindVar(inames[i]);
+    for (size_t i = 0; i < inp_var_names.size(); i++) {
+      auto *var = scope.FindVar(inp_var_names[i]);
 
       PADDLE_ENFORCE(var != nullptr,
-                     "Cannot find variable %s for save_combine_op", inames[i]);
+                     "Cannot find variable %s for save_combine_op",
+                     inp_var_names[i]);
       PADDLE_ENFORCE(var->IsType<framework::LoDTensor>(),
-                     "SaveCombineOp only support LoDTensor, %s has wrong type",
-                     inames[i]);
+                     "SaveCombineOp only supports LoDTensor, %s has wrong type",
+                     inp_var_names[i]);
 
       auto &tensor = var->Get<framework::LoDTensor>();
       // Serialize tensor
@@ -109,21 +109,24 @@ class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SaveCombineOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) Input tensors to be save_combined").AsDuplicable();
+    AddInput(
+        "X",
+        "(vector) Input LoDTensors that need to be saved together in a file.")
+        .AsDuplicable();
     AddComment(R"DOC(
-Save_combine operator
+SaveCombine operator
 
-This operator will serialize and write a list of input tensor variables 
+This operator will serialize and write a list of input LoDTensor variables 
 to a file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
                   "(boolean, default true)"
-                  "Overwrite the output file if exist")
+                  "Overwrite the output file if it exists.")
         .SetDefault(true);
     AddAttr<std::string>(
         "file_path",
         "(string)"
-        "The \"file_path\" where the variable will be save_combined.")
+        "The \"file_path\" where the LoDTensor variables will be saved.")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
   }

@@ -37,7 +37,7 @@ class LoadCombineOp : public framework::OperatorBase {
     auto out_var_names = Outputs("Out");
     PADDLE_ENFORCE_GT(
         static_cast<int>(out_var_names.size()), 0,
-        "The number of output variables should be greater than 0");
+        "The number of output variables should be greater than 0.");
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
@@ -77,17 +77,25 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   LoadCombineOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddOutput("Out", "(LoDTensor) The tensor need to be load_combined")
+    AddOutput(
+        "Out",
+        "(vector) The output LoDTensors that will be read from the input file.")
         .AsDuplicable();
     AddAttr<std::string>("file_path",
                          "(string) "
-                         "Variable will be load_combined from \"file_path\".")
+                         "LoDTensors will be loaded from \"file_path\".")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
     AddComment(R"DOC(
 LoadCombine Operator.
 
-LoadCombine operator loads tensor variables from a file.
+LoadCombine operator loads LoDTensor variables from a file. The file should 
+contain one or more LoDTensors serialized using the SaveCombine operator. The 
+LoadCombine operator applies a deserialization strategy to appropriately load 
+the LodTensors, and this strategy complements the serialization strategy used 
+in the SaveCombine operator. Hence, the LoadCombine operator is tightly coupled
+with the SaveCombine operator, and can only deserialize one or more LoDTensors 
+that were saved using the SaveCombine operator.
 
 )DOC");
   }
