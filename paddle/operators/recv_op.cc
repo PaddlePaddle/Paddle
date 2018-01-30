@@ -55,19 +55,12 @@ class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   RecvOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) Input tensor to be sent").AsDuplicable();
-    AddOutput("Out", "(Tensor) Output tensor to be received from server")
-        .AsDuplicable();
+    AddOutput("Out", "(Tensor) Variables to get from server.").AsDuplicable();
     AddComment(R"DOC(
 Recv operator
 
 This operator can get variables from server side.
 )DOC");
-    AddAttr<std::vector<std::string>>("endpoints",
-                                      "(string vector, default 127.0.0.1:6164)"
-                                      "Server endpoints to recv variables"
-                                      "from.")
-        .SetDefault({});
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints in the order of input "
