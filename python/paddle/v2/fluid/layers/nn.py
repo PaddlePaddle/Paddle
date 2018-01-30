@@ -65,6 +65,7 @@ __all__ = [
     'beam_search',
     'row_conv',
     'multiplex',
+    'SequenceDecoder',
 ]
 
 
@@ -2953,29 +2954,32 @@ def multiplex(inputs, index):
     return out
 
 
+import __init__ as pd
+
+
 class SequenceDecoder:
     class Cell:
-        modes = ('train', 'generate')
+        modes = ('train', 'decode')
         kinds = ('step_input', 'state', 'other_shared')
         dic = {
             'train': {
                 'step_input': {},
                 'state': {},
-                'other_shared': {}
+                'others': {},
             },
-            'generate': {
+            'decode': {
                 'step_input': {},
                 'state': {},
-                'other_shared': {}
+                'others': {},
             }
         }
 
-        def __init__(self, kind, id, init_var, seqdec, dtype='float32'):
+        def __init__(self, kind, id, init_var, dtype='float32'):
             '''
             kind: state_input, state or other_shared
             id: identification of this cell.
             init_var: variable to initialize this cell.
-                init_var can be an Variable or a dic like {'train': var0, 'generate': var1}
+                init_var can be an Variable or a dic like {'train': var0, 'decode': var1}
                 so that different initialization can be porformed in different mode, this is
                 important when defining states.
             seqdec: instance of SequenceDecoder.
@@ -2984,24 +2988,26 @@ class SequenceDecoder:
             self.kind = kind
             self.id = id
             self.init_var = init_var
-            self.rnn = seqdec.train_rnn
+            self.rnn = None
             self.dtype = dtype
             self.mode = None
 
             assert kind in SequenceDecoder.Cell.kinds
 
-        def set_mode(self, mode):
+        def set_mode(self, mode, seqdec):
             self.mode = mode
             assert self.mode in SequenceDecoder.Cell.modes, \
             "invalid mode: {}, only {} are valid.".format(
                 self.mode, SequenceDecoder.Cell.modes,)
+            if self.mode == 'train':
+                self.rnn = seqdec.train_rnn
 
         def create(self):
             assert self.mode is not None, "mode should be set first by calling `set_mode`"
             if self.mode == 'train':
                 return self._create_train()
             else:
-                return self._create_generate()
+                return self._create_decode()
 
         def set_updater(self, updater):
             '''
@@ -3015,8 +3021,11 @@ class SequenceDecoder:
             self.updater()
 
         @staticmethod
-        def get(mode, kind, id):
-            return SequenceDecoder.Cell.dic[mode][kind][id]
+        def get(mode, kind, id, counter=None):
+            item = SequenceDecoder.Cell.dic[mode][kind][id]
+            if counter is None:
+                return item
+            return pd.array_read(array=item, i=counter)
 
         def _create_train(self):
             dic = SequenceDecoder.Cell.dic
@@ -3031,40 +3040,51 @@ class SequenceDecoder:
                 dic['train']['state'][self.id] = self.state
                 return self.state
 
-        def _create_generate(self):
+        @staticmethod
+        def add_temp_var(mode, id, var):
+            dic = SequenceDecoder.Cell.dic
+            assert id not in dic[mode][
+                'others'], 'already a temporary var called %s there, change to another name' % id
+            dic[mode]['others'][id] = var
+
+        @staticmethod
+        def get_temp_var(mode, id):
+            return dic[mode]['others'][id]
+
+        def _create_decode(self):
             dic = SequenceDecoder.Cell.dic
             if self.kind == 'step_input':
                 self.input = None
                 self.input_array = pd.create_array(self.dtype)
-                dic['generate']['step_input'][id] = self.input
+                dic['decode']['step_input'][id] = self.input
                 return self.input_array
             else:
                 self.state = None
                 self.state_array = pd.create_array(self.dtype)
                 pd.array_write(
                     self.init_var, array=self.state_array, i=self.zero)
-                dic['generate']['state'][self.id] = self.state_array
+                dic['decode']['state'][self.id] = self.state_array
                 return self.state_array
 
     class InputCell(SequenceDecoder.Cell):
-        def __init__(self, id, init_var, seqdec, dtype='float32'):
+        def __init__(self, id, init_var, dtype='float32'):
             super(SequenceDecoder.InputCell).__init__('step_input', id,
-                                                      init_var, seqdec, dtype)
+                                                      init_var, dtype)
 
         @staticmethod
         def get(mode, id):
             return SequenceDecoder.Cell.get(mode, 'step_input', id)
 
     class StateCell(SequenceDecoder.Cell):
-        def __init__(self, id, init_var, seqdec, dtype='float32'):
+        def __init__(self, id, init_var, dtype='float32'):
             super(SequenceDecoder.InputCell).__init__('state', id, init_var,
-                                                      seqdec, dtype)
+                                                      dtype)
 
         @staticmethod
-        def get(mode, id):
-            return SequenceDecoder.Cell.get(mode, 'state', id)
+        def get(mode, id, counter=None):
+            return SequenceDecoder.Cell.get(mode, 'state', id, counter)
 
-    def __init__(self, item_id, states, scorer, other_step_inputs):
+    def __init__(self, item_id, states, scorer, other_step_inputs=[]):
         '''
         item_id: StepInput
         item_score: StepInput
@@ -3118,13 +3138,13 @@ class SequenceDecoder:
         use this default decode, or just write their own logic according to the
         `decode` logic without the need to read a lot of framework codes.
 
-        max_length: the max length the decoder can generate.
+        max_length: the max length the decoder can decode.
         '''
         # update mode
-        self.item_id.set_mode('generate')
+        self.item_id.set_mode('decode')
         self.item_id.create()  # create a tensor array
         for x in self.states:
-            x.set_mode('generate')
+            x.set_mode('decode')
         # step input are not needed in generation.
 
         array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
