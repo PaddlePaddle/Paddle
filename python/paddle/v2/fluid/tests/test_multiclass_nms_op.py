@@ -69,7 +69,7 @@ def nms(boxes, scores, score_threshold, nms_threshold, top_k=200, eta=1.0):
 
     sorted_indices = np.argsort(-all_scores, axis=0)
     sorted_scores = all_scores[sorted_indices]
-    if top_k < -1 and top_k < sorted_indices.shape[0]:
+    if top_k > -1 and top_k < sorted_indices.shape[0]:
         sorted_indices = sorted_indices[:top_k]
         sorted_scores = sorted_scores[:top_k]
 
@@ -82,7 +82,7 @@ def nms(boxes, scores, score_threshold, nms_threshold, top_k=200, eta=1.0):
             if keep:
                 kept_idx = selected_indices[k]
                 overlap = iou(boxes[idx], boxes[kept_idx])
-                keep = overlap <= adaptive_threshold
+                keep = True if overlap <= adaptive_threshold else False
             else:
                 break
         if keep:
@@ -103,14 +103,14 @@ def multiclass_nms(boxes, scores, background, score_threshold, nms_threshold,
         if c == background: continue
         indices = nms(boxes, scores[c], score_threshold, nms_threshold,
                       nms_top_k)
-        selected_indices.append((c, indices))
+        for idx in indices:
+            selected_indices.append((c, idx))
         num_det += len(indices)
 
     if keep_top_k > -1 and num_det > keep_top_k:
         score_index = []
-        for c, indices in selected_indices:
-            for idx in indices:
-                score_index.append((scores[c][idx], c, idx))
+        for c, idx in selected_indices:
+            score_index.append((scores[c][idx], c, idx))
 
         sorted_score_index = sorted(
             score_index, key=lambda tup: tup[0], reverse=True)
@@ -134,19 +134,16 @@ def batched_multiclass_nms(boxes, scores, background, score_threshold,
                                     keep_top_k)
         lod.append(lod[-1] + len(nmsed_outs))
         if len(nmsed_outs) == 0: continue
-        for c, indices in nmsed_outs:
-            for idx in indices:
-                xmin, ymin, xmax, ymax = boxes[idx][:]
-                det_outs.append(
-                    (c, scores[n][c][idx], c, xmin, ymin, xmax, ymax))
+        for c, idx in nmsed_outs:
+            xmin, ymin, xmax, ymax = boxes[idx][:]
+            det_outs.append([c, scores[n][c][idx], xmin, ymin, xmax, ymax])
     return det_outs, lod
 
 
 class TestMulticlassNMSOp(OpTest):
     def setUp(self):
-        self.op_type = 'multiclass_nms'
         N = 7
-        M = 1230
+        M = 1240
         C = 21
         BOX_SIZE = 4
         background = 0
@@ -155,7 +152,17 @@ class TestMulticlassNMSOp(OpTest):
         keep_top_k = 200
         score_threshold = 0.01
 
-        scores = np.random.random((N, C, M)).astype('float32')
+        scores = np.random.random((N * M, C)).astype('float32')
+
+        def softmax(x):
+            shiftx = x - np.max(x).clip(-64.)
+            exps = np.exp(shiftx)
+            return exps / np.sum(exps)
+
+        scores = np.apply_along_axis(softmax, 1, scores)
+        scores = np.reshape(scores, (N, M, C))
+        scores = np.transpose(scores, (0, 2, 1))
+
         boxes = np.random.random((M, BOX_SIZE)).astype('float32')
         boxes[:, 0:2] = boxes[:, 0:2] * 0.5
         boxes[:, 2:4] = boxes[:, 0:2] * 0.5 + 0.5
@@ -163,8 +170,19 @@ class TestMulticlassNMSOp(OpTest):
         nmsed_outs, lod = batched_multiclass_nms(boxes, scores, background,
                                                  score_threshold, nms_threshold,
                                                  nms_top_k, keep_top_k)
+        nmsed_outs = np.array(nmsed_outs).astype('float32')
+
+        self.op_type = 'multiclass_nms'
         self.inputs = {'Bboxes': boxes, 'Scores': scores}
         self.outputs = {'Out': (nmsed_outs, [lod])}
+        self.attrs = {
+            'background_label': 0,
+            'nms_threshold': nms_threshold,
+            'nms_top_k': nms_top_k,
+            'keep_top_k': keep_top_k,
+            'score_threshold': score_threshold,
+            'nms_eta': 1.0,
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -182,18 +200,3 @@ class TestIOU(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    # N = 7
-    # M = 8
-    # C = 5
-    # BOX_SIZE = 4
-    # background = 0
-    # nms_threshold = 0.3
-    # nms_top_k = 400
-    # keep_top_k = 200
-    # score_threshold = 0.5
-
-    # scores = np.random.random((N, C, M)).astype('float32')
-    # boxes = np.random.random((M, BOX_SIZE)).astype('float32')
-    # boxes[:, 0 : 2] = boxes[:, 0 : 2] * 0.5
-    # boxes[:, 2 : 4] = boxes[:, 0 : 2] * 0.5 + 0.5
-    # print nmsed_outs, lod

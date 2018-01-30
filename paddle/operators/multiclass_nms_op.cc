@@ -41,12 +41,21 @@ class MulticlassNMSOp : public framework::OperatorWithKernel {
                       "The rank of Input(Bboxes) must be 3.");
     PADDLE_ENFORCE_EQ(score_dims.size(), 3,
                       "The rank of Input(Scores) must be 3.");
-    PADDLE_ENFORCE_EQ(box_dims[2], 4);
+    PADDLE_ENFORCE_EQ(box_dims[1], 4);
     PADDLE_ENFORCE_EQ(box_dims[0], score_dims[2]);
 
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
     ctx->SetOutputDim("Out", {box_dims[0], 6});
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(
+            ctx.Input<framework::LoDTensor>("Scores")->type()),
+        ctx.device_context());
   }
 };
 
@@ -158,12 +167,12 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
                      const Tensor& scores, const Tensor& bboxes,
                      std::map<int, std::vector<int>>* indices,
                      int* num_nmsed_out) const {
-    int64_t background_label = ctx.Attr<int64_t>("background_label");
-    int64_t nms_top_k = ctx.Attr<int64_t>("nms_top_k");
-    int64_t keep_top_k = ctx.Attr<int64_t>("keep_top_k");
+    int64_t background_label = ctx.Attr<int>("background_label");
+    int64_t nms_top_k = ctx.Attr<int>("nms_top_k");
+    int64_t keep_top_k = ctx.Attr<int>("keep_top_k");
     T nms_threshold = static_cast<T>(ctx.Attr<float>("nms_threshold"));
     T nms_eta = static_cast<T>(ctx.Attr<float>("nms_eta"));
-    T score_threshold = static_cast<T>(ctx.Attr<float>("confidence_threshold"));
+    T score_threshold = static_cast<T>(ctx.Attr<float>("score_threshold"));
 
     int64_t class_num = scores.dims()[0];
     int64_t predict_dim = scores.dims()[1];
@@ -173,7 +182,7 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
       Tensor score = scores.Slice(c, c + 1);
       NMSFast(bboxes, score, score_threshold, nms_threshold, nms_eta, nms_top_k,
               &((*indices)[c]));
-      num_det += indices[c].size();
+      num_det += (*indices)[c].size();
     }
 
     *num_nmsed_out = num_det;
@@ -230,8 +239,8 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
         odata[count * kOutputDim + 3] = bdata[1];    // ymin
         odata[count * kOutputDim + 4] = bdata[2];    // xmax
         odata[count * kOutputDim + 5] = bdata[3];    // ymax
+        count++;
       }
-      count++;
     }
   }
 
@@ -240,10 +249,9 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
     auto* scores = ctx.Input<Tensor>("Scores");
     auto* outs = ctx.Output<LoDTensor>("Out");
 
-    auto box_dims = boxes->dims();
     auto score_dims = scores->dims();
 
-    int64_t batch_size = box_dims[0];
+    int64_t batch_size = score_dims[0];
     int64_t class_num = score_dims[1];
     int64_t predict_dim = score_dims[2];
 
@@ -291,35 +299,37 @@ class MulticlassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) A 2-D Tensor with shape [M, 4] represents the location "
              "predictions with M bboxes. 4 is the number of "
              "each location coordinates.");
-    AddOutput("Scores",
-              "(Tensor) A 3-D Tensor with shape [N, C, M] represents the "
-              "confidence predictions. N is the batch size, C is the class "
-              "number, M is number of predictions for each class, which is "
-              "the same with Bboxes.");
-    AddAttr<int64_t>(
+    AddInput("Scores",
+             "(Tensor) A 3-D Tensor with shape [N, C, M] represents the "
+             "confidence predictions. N is the batch size, C is the class "
+             "number, M is number of predictions for each class, which is "
+             "the same with Bboxes.");
+    AddAttr<int>(
         "background_label",
         "(int64_t, defalut: 0) "
         "The index of background label, the background label will be ignored.")
         .SetDefault(0);
-    AddAttr<float>("nms_threshold",
-                   "(float, defalut: 0.3) "
-                   "The threshold to be used in nms.")
-        .SetDefault(0.3);
-    AddAttr<int64_t>("nms_top_k",
-                     "(int64_t) "
-                     "Maximum number of results to be kept.");
-    AddAttr<float>("nms_eta",
-                   "(float) "
-                   "The parameter for adaptive nms.")
-        .SetDefault(1.0);
-    AddAttr<int64_t>("keep_top_k",
-                     "(int64_t) "
-                     "Number of total bboxes to be kept per image after nms "
-                     "step. -1 means keeping all bboxes after nms step.");
-    AddAttr<float>("confidence_threshold",
+    AddAttr<float>("score_threshold",
                    "(float) "
                    "Only consider detections whose confidences are larger than "
                    "a threshold. If not provided, consider all boxes.");
+    AddAttr<int>("nms_top_k",
+                 "(int64_t) "
+                 "Maximum number of detections to be kept according to the "
+                 "confidences aftern the filtering detections based on "
+                 "score_threshold");
+    AddAttr<float>("nms_threshold",
+                   "(float, defalut: 0.3) "
+                   "The threshold to be used in NMS.")
+        .SetDefault(0.3);
+    AddAttr<float>("nms_eta",
+                   "(float) "
+                   "The parameter for adaptive NMS.")
+        .SetDefault(1.0);
+    AddAttr<int>("keep_top_k",
+                 "(int64_t) "
+                 "Number of total bboxes to be kept per image after NMS "
+                 "step. -1 means keeping all bboxes after NMS step.");
     AddOutput("Out",
               "(LoDTensor) A 2-D LoDTensor with shape [No, 6] represents the "
               "detections. Each row has 6 values: "
@@ -329,15 +339,21 @@ class MulticlassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
               "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
               "no detected bbox.");
     AddComment(R"DOC(
-This operators is to do multi-class non maximum suppression (NMS) on a batched
+This operator is to do multi-class non maximum suppression (NMS) on a batched
 of boxes and scores.
 
-This op greedily selects a subset of detection bounding boxes, pruning
-away boxes that have high IOU (intersection over union) overlap (> thresh)
-with already selected boxes.  It operates independently for each class for
-which scores are provided, pruning boxes with score less than a provided
-threshold prior to applying NMS.
+In the NMS step, this operator greedily selects a subset of detection bounding
+boxes that have high scores larger than score_threshold, if providing this
+threshold, then selects the largest nms_top_k confidences scores if nms_top_k
+is larger than -1. Then this operator pruns away boxes that have high IOU
+(intersection over union) overlap with already selected boxes by adaptive
+threshold NMS based on parameters of nms_threshold and nms_eta.
 
+Aftern NMS step, only at most keep_top_k number of total bboxes are to be kept
+per image if keep_top_k is larger than -1.
+
+This operator support multi-class and batched inputs. It applying NMS
+independently for each class.
 )DOC");
   }
 };
