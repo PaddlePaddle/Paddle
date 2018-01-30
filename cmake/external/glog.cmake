@@ -68,7 +68,7 @@ LINK_LIBRARIES(glog gflags)
 
 LIST(APPEND external_project_dependencies glog)
 
-IF(WITH_C_API OR WITH_FLUID)
+IF(WITH_C_API)
   INSTALL(DIRECTORY ${GLOG_INCLUDE_DIR} DESTINATION third_party/glog)
   IF(ANDROID)
     INSTALL(FILES ${GLOG_LIBRARIES} DESTINATION third_party/glog/lib/${ANDROID_ABI})
@@ -76,3 +76,10 @@ IF(WITH_C_API OR WITH_FLUID)
     INSTALL(FILES ${GLOG_LIBRARIES} DESTINATION third_party/glog/lib)
   ENDIF()
 ENDIF()
+
+set(lib_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/glog")
+add_custom_target(glog_lib
+    COMMAND mkdir -p "${lib_dir}/lib"
+    COMMAND cp -r "${GLOG_INCLUDE_DIR}" "${lib_dir}"
+    COMMAND cp "${GLOG_LIBRARIES}" "${lib_dir}/lib"
+)

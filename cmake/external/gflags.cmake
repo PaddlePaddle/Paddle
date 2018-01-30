@@ -52,7 +52,7 @@ ADD_DEPENDENCIES(gflags extern_gflags)
 
 LIST(APPEND external_project_dependencies gflags)
 
-IF(WITH_C_API OR WITH_FLUID)
+IF(WITH_C_API)
   INSTALL(DIRECTORY ${GFLAGS_INCLUDE_DIR} DESTINATION third_party/gflags)
   IF(ANDROID)
     INSTALL(FILES ${GFLAGS_LIBRARIES} DESTINATION third_party/gflags/lib/${ANDROID_ABI})
@@ -60,3 +60,10 @@ IF(WITH_C_API OR WITH_FLUID)
     INSTALL(FILES ${GFLAGS_LIBRARIES} DESTINATION third_party/gflags/lib)
   ENDIF()
 ENDIF()
+
+set(lib_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/gflags")
+add_custom_target(gflags_lib
+    COMMAND mkdir -p "${lib_dir}/lib"
+    COMMAND cp -r "${GFLAGS_INCLUDE_DIR}" "${lib_dir}"
+    COMMAND cp "${GFLAGS_LIBRARIES}" "${lib_dir}/lib"
+)
