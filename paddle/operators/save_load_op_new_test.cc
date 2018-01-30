@@ -15,10 +15,10 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/framework/op_registry.h"
 
-USE_NO_KERNEL_OP(save);
-USE_NO_KERNEL_OP(load);
+USE_NO_KERNEL_OP(save_combine);
+USE_NO_KERNEL_OP(load_combine);
 
-TEST(SaveLoadOp, CPU) {
+TEST(SaveLoadNewOp, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
 
@@ -38,7 +38,7 @@ TEST(SaveLoadOp, CPU) {
     expect[i] = static_cast<int>(i);
   }
   paddle::framework::AttributeMap attrs;
-  attrs.insert({"file_path", std::string("tensor_n.save")});
+  attrs.insert({"file_path", std::string("tensor_ntry.save")});
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "save_combine", {{"X", {"test_var"}}}, {}, attrs);

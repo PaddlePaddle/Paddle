@@ -87,7 +87,7 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LoadCombine Operator.
 
-LoadCombine operator combines together various tensor variable into a file.
+LoadCombine operator loads tensor variables from a file.
 
 )DOC");
   }
