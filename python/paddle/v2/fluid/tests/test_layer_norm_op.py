@@ -21,6 +21,56 @@ from paddle.v2.fluid.op import Operator
 from paddle.v2.fluid.framework import grad_var_name
 
 
+def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
+    x_shape = x.shape
+    N = reduce(mul, x_shape[0:begin_norm_axis], 1)
+    D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
+    x.shape = [N, D]
+
+    mean = np.mean(x, axis=1)
+    var = np.var(x, axis=1) + epsilon
+    output = scale.reshape([1, D]) * np.divide(
+        (x - mean.reshape([N, 1])),
+        (np.sqrt(var)).reshape([N, 1])) + beta.reshape([1, D])
+
+    x.shape, output.shape = x_shape, x_shape
+    return output, mean, var
+
+
+def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
+    x_shape = x.shape
+    scale_shape = scale.shape
+    N = reduce(mul, x_shape[0:begin_norm_axis], 1)
+    D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
+    x.shape, grad_y.shape = [N, D], [N, D]
+    var.shape, mean.shape = [N, 1], [N, 1]
+    scale.shape = [1, D]
+
+    # d_bias
+    d_bias = np.sum(grad_y, axis=0).reshape([1, D])
+    # d_scale
+    d_scale = np.sum(((x - mean) * np.sqrt(1 / var)) * grad_y,
+                     axis=0).reshape([1, D])
+    # dx
+    dx_end = scale * np.sqrt(1.0 / var) * grad_y
+    d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y * scale, axis=1).reshape(
+        [N, 1])
+    # d_mean_1 = np.sum(-1.0 / var * (x - mean) * grad_y, axis=1).reshape(
+    #     [N, 1]) * (-1.0 / D * np.sqrt(1.0 / var) *
+    #                np.sum(x - mean, axis=1).reshape([N, 1])).reshape([N, 1])
+    d_mean = 1.0 / D * d_mean_0
+    d_std = np.sum(
+        -(1.0 / var) * (x - mean) * grad_y * scale, axis=1).reshape([N, 1]) * (
+            1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) * (x - mean))
+
+    grad_x = dx_end + d_mean + d_std
+
+    grad_y.shape = x_shape
+    x.shape = x_shape
+    scale.shape = scale_shape
+    return grad_x, d_scale, d_bias
+
+
 def get_backward_op(scope, op, no_grad_set):
     backward_op = core.Operator.backward(op, no_grad_set)
     for input in backward_op.input_vars():
@@ -30,57 +80,6 @@ def get_backward_op(scope, op, no_grad_set):
         var = scope.var(output)
         var.get_tensor()
     return backward_op
-
-
-def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
-    old_shape = x.shape
-    N = reduce(mul, old_shape[0:begin_norm_axis], 1)
-    D = reduce(mul, old_shape[begin_norm_axis:len(old_shape)], 1)
-    x.shape = [N, D]
-    mean = np.mean(x, axis=1)
-    var = np.var(x, axis=1) + epsilon
-    output = scale.reshape([1, D]) * np.divide(
-        (x - mean.reshape([N, 1])),
-        (np.sqrt(var)).reshape([N, 1])) + beta.reshape([1, D])
-    output.shape = old_shape
-    x.shape = old_shape
-    return output, mean, var
-
-
-def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
-    x_shape = x.shape
-    scale_shape = scale.shape
-    N = reduce(mul, x_shape[0:begin_norm_axis], 1)
-    D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
-    grad_y.shape = [N, D]
-    x.shape = [N, D]
-    mean.shape = [N, 1]
-    var.shape = [N, 1]
-    scale.shape = [1, D]
-
-    d_bias = np.sum(grad_y, axis=0).reshape([1, D])
-    d_scale = np.sum(((x - mean) * np.sqrt(1 / var)) * grad_y,
-                     axis=0).reshape([1, D])
-
-    dx_end = scale * np.sqrt(1.0 / var) * grad_y
-
-    d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y * scale, axis=1).reshape(
-        [N, 1])
-    # d_mean_1 = np.sum(-1.0 / var * (x - mean) * grad_y, axis=1).reshape(
-    #     [N, 1]) * (-1.0 / D * np.sqrt(1.0 / var) *
-    #                np.sum(x - mean, axis=1).reshape([N, 1])).reshape([N, 1])
-    d_mean = 1.0 / D * d_mean_0
-
-    d_std = np.sum(
-        -1.0 / var * (x - mean) * grad_y * scale, axis=1).reshape([N, 1]) * (
-            1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) * (x - mean))
-
-    grad_x = dx_end + d_mean + d_std
-
-    grad_y.shape = x_shape
-    x.shape = x_shape
-    scale.shape = scale_shape
-    return grad_x, d_scale, d_bias
 
 
 def create_or_get_tensor(scope, var_name, var, place):
@@ -145,8 +144,9 @@ class TestLayerNormdOp(OpTest):
 
         self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
-    def test_forward_backward(self):
+    def check_forward_backward(self, shape, begin_norm_axis):
         def test_with_place(place, shape, begin_norm_axis=1):
+            # setUp
             assert begin_norm_axis > 0 and begin_norm_axis < len(
                 shape), 'begin_norm_axis must be between 0 and len(shape)-1.'
             # attr
@@ -158,30 +158,35 @@ class TestLayerNormdOp(OpTest):
             x_val = np.random.random_sample(x_shape).astype(np.float32)
             scale_val = np.random.random_sample(scale_shape).astype(np.float32)
             bias_val = np.random.random_sample(scale_shape).astype(np.float32)
+            y_grad = np.random.random_sample(x_shape).astype(np.float32)
 
             # run forward
             y_out, saved_mean, var_ref = _reference_layer_norm_naive(
                 x_val, scale_val, bias_val, epsilon, begin_norm_axis)
+            naive_fw = {"Y": y_out, "Mean": saved_mean, "Variance": var_ref}
 
-            #  for gradient test
-            y_grad = np.random.random_sample(x_shape).astype(np.float32)
-
+            # get gradient
             x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_layer_norm_grad(
                 x_val, y_grad, scale_val, saved_mean, var_ref, begin_norm_axis)
+            naive_grad = {
+                "X": x_grad_ref,
+                "Scale": scale_grad_ref,
+                "Bias": bias_grad_ref
+            }
 
             scope = core.Scope()
 
             # create input
-            x_tensor = create_or_get_tensor(scope, "X", x_val, place)
-            scale_tensor = create_or_get_tensor(scope, "Scale", scale_val,
-                                                place)
-            bias_tensor = create_or_get_tensor(scope, "Bias", bias_val, place)
+            input_map = {"X": x_val, "Scale": scale_val, "Bias": bias_val}
+            for i_name in input_map:
+                create_or_get_tensor(scope, i_name, input_map[i_name], place)
 
             # create output
-            y_tensor = create_or_get_tensor(scope, "Y", None, place)
-            mean_tensor = create_or_get_tensor(scope, "Mean", None, place)
-            variance_tensor = create_or_get_tensor(scope, "Variance", None,
-                                                   place)
+            output_map = {"Y": None, "Mean": None, "Variance": None}
+            output_tensor = {}
+            for o_name in output_map:
+                output_tensor[o_name] = create_or_get_tensor(
+                    scope, o_name, output_map[o_name], place)
 
             layer_norm_op = Operator(
                 "layer_norm",
@@ -200,13 +205,10 @@ class TestLayerNormdOp(OpTest):
             layer_norm_op.run(scope, place)
 
             # check forward result
-            if isinstance(place, core.CUDAPlace):
-                atol = 5e-2
-            else:
-                atol = 1e-4
-            self.__assert_close(y_tensor, y_out, "Y", atol)
-            self.__assert_close(mean_tensor, saved_mean, "Mean", atol)
-            self.__assert_close(variance_tensor, var_ref, "Variance", atol)
+            atol = 5e-2 if isinstance(place, core.CUDAPlace) else 1e-4
+            for o_tensor in output_tensor:
+                self.__assert_close(output_tensor[o_tensor], naive_fw[o_tensor],
+                                    o_tensor, atol)
 
             # run backward
             layer_norm_op_grad = get_backward_op(scope, layer_norm_op, set())
@@ -216,30 +218,28 @@ class TestLayerNormdOp(OpTest):
                 feed_dict={"Y": y_grad})
             layer_norm_op_grad.run(scope, place)
 
-            x_grad_tensor = create_or_get_tensor(scope,
-                                                 grad_var_name("X"), None,
-                                                 place)
-            scale_grad_tensor = create_or_get_tensor(scope,
-                                                     grad_var_name("Scale"),
-                                                     None, place)
-            bias_grad_tensor = create_or_get_tensor(scope,
-                                                    grad_var_name("Bias"), None,
-                                                    place)
+            # get output
+            grad_tensor = {}
+            for o_name in naive_grad:
+                grad_tensor[o_name] = x_ = create_or_get_tensor(
+                    scope, grad_var_name(o_name), None, place)
 
             # check gradient output
-            self.__assert_grad_close(x_grad_tensor, x_grad_ref, "x_grad", place)
-            self.__assert_grad_close(scale_grad_tensor, scale_grad_ref,
-                                     "scale_grad", place)
-            self.__assert_grad_close(bias_grad_tensor, bias_grad_ref,
-                                     "bias_grad", place)
+            for o_grad in naive_grad:
+                self.__assert_grad_close(grad_tensor[o_grad],
+                                         naive_grad[o_grad], o_grad + "@GRAD",
+                                         place)
 
         places = [core.CPUPlace()]
         if core.is_compile_gpu() and core.op_support_gpu("layer_norm"):
             places.append(core.CUDAPlace(0))
 
         for place in places:
-            test_with_place(place, [2, 3, 4, 5], begin_norm_axis=1)
-            test_with_place(place, [2, 3, 4, 5], begin_norm_axis=3)
+            test_with_place(place, shape, begin_norm_axis)
+
+    def test_check_forward_backward(self):
+        self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
+        self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
 
 
 if __name__ == '__main__':
