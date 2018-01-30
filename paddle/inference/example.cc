@@ -40,15 +40,15 @@ int main(int argc, char** argv) {
   std::string dirname = FLAGS_dirname;
 
   // 2. Initialize the inference program
-  auto* inference_program = paddle::inference::Load(*executor, *scope, dirname);
+  auto inference_program = paddle::inference::Load(*executor, *scope, dirname);
 
   // 3. Optional: perform optimization on the inference_program
 
-  // 4. Get the feed_var_names and fetch_var_names
-  const std::vector<std::string>& feed_var_names =
-      inference_program->GetFeedVarNames();
-  const std::vector<std::string>& fetch_var_names =
-      inference_program->GetFetchVarNames();
+  // 4. Get the feed_target_names and fetch_target_names
+  const std::vector<std::string>& feed_target_names =
+      inference_program->GetFeedTargetNames();
+  const std::vector<std::string>& fetch_target_names =
+      inference_program->GetFetchTargetNames();
 
   // 5. Generate input
   paddle::framework::LoDTensor input;
@@ -68,14 +68,14 @@ int main(int argc, char** argv) {
   std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
 
   // set_feed_variable
-  for (size_t i = 0; i < feed_var_names.size(); ++i) {
-    feed_targets[feed_var_names[i]] = &feeds[i];
+  for (size_t i = 0; i < feed_target_names.size(); ++i) {
+    feed_targets[feed_target_names[i]] = &feeds[i];
   }
 
   // get_fetch_variable
-  fetchs.resize(fetch_var_names.size());
-  for (size_t i = 0; i < fetch_var_names.size(); ++i) {
-    fetch_targets[fetch_var_names[i]] = &fetchs[i];
+  fetchs.resize(fetch_target_names.size());
+  for (size_t i = 0; i < fetch_target_names.size(); ++i) {
+    fetch_targets[fetch_target_names[i]] = &fetchs[i];
   }
 
   // Run the inference program
@@ -97,7 +97,6 @@ int main(int argc, char** argv) {
     std::cout << std::endl;
   }
 
-  delete inference_program;
   delete scope;
   delete executor;
 
