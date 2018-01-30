@@ -252,6 +252,11 @@ first_seq
 ..  autoclass:: paddle.v2.layer.first_seq
     :noindex:
 
+sub_seq
+---------
+..  autoclass:: paddle.v2.layer.sub_seq
+    :noindex:
+
 concat
 ------
 ..  autoclass:: paddle.v2.layer.concat
@@ -467,7 +472,7 @@ lambda_cost
     :noindex:
 
 square_error_cost
---------
+-----------------
 ..  autoclass:: paddle.v2.layer.square_error_cost
     :noindex:
 
@@ -533,7 +538,7 @@ Miscs
 =====
 
 dropout
---------------
+--------
 ..  autoclass:: paddle.v2.layer.dropout
     :noindex:
 

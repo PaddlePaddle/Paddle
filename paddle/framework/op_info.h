@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include <functional>
@@ -34,7 +34,7 @@ class InferShapeBase {
 struct OpInfo {
   OpCreator creator_;
   GradOpMakerFN grad_op_maker_;
-  OpProto* proto_{nullptr};
+  proto::OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
@@ -43,7 +43,7 @@ struct OpInfo {
     return proto_ != nullptr && checker_ != nullptr;
   }
 
-  const OpProto& Proto() const {
+  const proto::OpProto& Proto() const {
     PADDLE_ENFORCE_NOT_NULL(proto_, "Operator Proto has not been registered");
     PADDLE_ENFORCE(proto_->IsInitialized(),
                    "Operator Proto must be initialized in op info");

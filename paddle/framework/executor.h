@@ -18,15 +18,18 @@ limitations under the License. */
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/tensor.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 
 class Executor {
  public:
-  explicit Executor(const std::vector<platform::Place>& places);
-  explicit Executor(const platform::DeviceContext& devices);
-  ~Executor();
+  // TODO(dzhwinter) : Do not rely on this function, it will be removed
+  explicit Executor(const platform::DeviceContext& device)
+      : Executor(device.GetPlace()) {}
+
+  explicit Executor(const platform::Place& place);
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
@@ -35,11 +38,17 @@ class Executor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDescBind&, Scope*, int, bool create_local_scope = true);
+  void Run(const ProgramDesc&, Scope*, int, bool create_local_scope = true,
+           bool create_vars = true);
+
+  void Run(const ProgramDesc& program, Scope* scope,
+           std::map<std::string, const LoDTensor*>& feed_targets,
+           std::map<std::string, LoDTensor*>& fetch_targets,
+           const std::string& feed_holder_name = "feed",
+           const std::string& fetch_holder_name = "fetch");
 
  private:
-  std::vector<const platform::DeviceContext*> device_contexts_;
-  bool own_;
+  const platform::Place place_;
 };
 
 }  // namespace framework

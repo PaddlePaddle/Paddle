@@ -28,9 +28,6 @@ template <typename DeviceContext, typename T>
 class CRFDecodingOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
-                   "The crf_decoding operator can only run on CPU.");
-
     auto* emission_weights = ctx.Input<LoDTensor>("Emission");
     auto* transition_weights = ctx.Input<Tensor>("Transition");
     auto* label = ctx.Input<LoDTensor>("Label");

@@ -79,7 +79,7 @@ public:
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline explicit float16(const half& h) {
 #if CUDA_VERSION >= 9000
-    x = reinterpret_cast<__half_raw*>(&h)->x;
+    x = reinterpret_cast<__half_raw*>(const_cast<half*>(&h))->x;
 #else
     x = h.x;
 #endif  // CUDA_VERSION >= 9000
@@ -145,7 +145,7 @@ public:
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline float16& operator=(const half& rhs) {
 #if CUDA_VERSION >= 9000
-    x = reinterpret_cast<__half_raw*>(&rhs)->x;
+    x = reinterpret_cast<__half_raw*>(const_cast<half*>(&rhs))->x;
 #else
     x = rhs.x;
 #endif

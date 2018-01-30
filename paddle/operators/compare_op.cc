@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/compare_op.h"
 #include "paddle/framework/op_registry.h"
@@ -20,8 +20,7 @@ namespace operators {
 template <typename OpComment>
 class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CompareOpProtoMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  CompareOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     OpComment comment;
     AddInput("X",
@@ -40,6 +39,11 @@ N-dim tensor. X and Y could be any type.  The each element of the Out tensor is
 calculated by %s
 )DOC",
                                comment.type, comment.equation));
+    AddAttr<int>("axis",
+                 "(int, default -1). The start dimension index "
+                 "for broadcasting Y onto X.")
+        .SetDefault(-1)
+        .EqualGreaterThan(-1);
   }
 };
 
@@ -67,9 +71,9 @@ class CompareOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetKernelType(ctx);
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
     kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
     return kt;
@@ -96,11 +100,5 @@ REGISTER_LOGICAL_OP(less_than, "Out = X < Y");
 REGISTER_LOGICAL_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor);
 REGISTER_LOGICAL_OP(less_equal, "Out = X <= Y");
 REGISTER_LOGICAL_KERNEL(less_equal, CPU, paddle::operators::LessEqualFunctor);
-REGISTER_LOGICAL_OP(greater_than, "Out = X > Y");
-REGISTER_LOGICAL_KERNEL(greater_than, CPU,
-                        paddle::operators::GreaterThanFunctor);
-REGISTER_LOGICAL_OP(greater_equal, "Out = X >= Y");
-REGISTER_LOGICAL_KERNEL(greater_equal, CPU,
-                        paddle::operators::GreaterEqualFunctor);
 REGISTER_LOGICAL_OP(equal, "Out = X == Y");
 REGISTER_LOGICAL_KERNEL(equal, CPU, paddle::operators::EqualFunctor);

@@ -1,16 +1,49 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import collections
+import contextlib
+import re
 
 import numpy as np
-from . import core
+
 import proto.framework_pb2 as framework_pb2
-import google.protobuf.message
-import contextlib
+from . import core
 
 __all__ = [
-    'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
-    'default_main_program', 'program_guard', 'switch_startup_program',
-    'switch_main_program'
+    'Block',
+    'Variable',
+    'Program',
+    'Operator',
+    'default_startup_program',
+    'default_main_program',
+    'program_guard',
+    'switch_startup_program',
+    'switch_main_program',
 ]
+
+EMPTY_VAR_NAME = core.kEmptyVarName()
+TEMP_VAR_NAME = core.kTempVarName()
+GRAD_VAR_SUFFIX = core.kGradVarSuffix()
+ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+
+
+def grad_var_name(var_name):
+    """
+    return gradient name for a certain var name
+    """
+    return var_name + GRAD_VAR_SUFFIX
 
 
 def unique_name(prefix):
@@ -85,8 +118,8 @@ def _debug_string_(proto, throw_on_error=True):
     """
     error_fields = list()
     if not proto.IsInitialized(error_fields) and throw_on_error:
-        raise ValueError("{0} are not initialized\nThe message is {1}".format(
-            error_fields, proto))
+        raise ValueError("{0} are not initialized.\nThe message is {1}:\n".
+                         format(error_fields, proto))
     return proto.__str__()
 
 
@@ -131,9 +164,11 @@ class Variable(object):
                  dtype=None,
                  lod_level=None,
                  persistable=None,
+                 error_clip=None,
                  stop_gradient=False,
                  **kwargs):
         self.block = block
+        self.error_clip = error_clip
 
         if name is None:
             name = Variable._unique_var_name_()
@@ -205,22 +240,35 @@ class Variable(object):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
+    def to_string(self, throw_on_error, with_details=False):
         """
         Get debug string.
 
         Args:
             throw_on_error(bool): True if raise an exception when self is not
                 intialized.
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
 
         Returns(str): The debug string.
 
         """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.VarDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+        res_str = _debug_string_(proto, throw_on_error)
+        if with_details:
+            additional_attr = ("error_clip", "stop_gradient")
+            for attr_name in additional_attr:
+                res_str += "%s: %s\n" % (attr_name,
+                                         str(getattr(self, attr_name)))
+        return res_str
 
     __repr__ = __str__
+
+    def set_desc(self, input):
+        self.desc = input
 
     @property
     def persistable(self):
@@ -256,6 +304,9 @@ class Variable(object):
         prefix = "_generated_var"
         uid = core.unique_integer(prefix)  # unique during whole process.
         return "_".join([prefix, str(uid)])
+
+    def set_error_clip(self, error_clip):
+        self.error_clip = error_clip
 
 
 def get_all_op_protos():
@@ -335,18 +386,23 @@ class Operator(object):
         >>>                     outputs={"Out": [var1]})
 
         Args:
-            block(Block): The block has the current operator
-            desc(core.OpDesc): The protobuf description
+            block(Block): The block has the current operator.
+            desc(core.OpDesc): The protobuf description.
             type(str): The type of operator.
             inputs(dict): The input dictionary. Key is the input parameter name.
                 Value is a list of variables.
-            outputs(dict): The output dictionary. Has same format with inputs
+            outputs(dict): The output dictionary which has the same format with
+                           inputs.
             attrs(dict): The attributes dictionary. Key is attribute name. Value
                 is the attribute value. The attribute type should be as same as
                 the type registered in C++
         """
         self.block = block
         self.desc = desc
+        # for clone a new operator
+        self.inputs = inputs
+        self.outputs = outputs
+        self.attrs = attrs
         if len(self.desc.type()) != 0:
             return
         if type is None:
@@ -377,7 +433,10 @@ class Operator(object):
                             % (in_proto.name, len(in_args)))
                     in_arg_names = []
                     for arg in in_args:
-                        in_arg_names.append(arg.name)
+                        if isinstance(arg, basestring):
+                            in_arg_names.append(arg)
+                        else:
+                            in_arg_names.append(arg.name)
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -390,10 +449,11 @@ class Operator(object):
             for m in proto.outputs:
                 need.add(m.name)
             if not given == need:
-                raise ValueError(
-                    "Incorrect setting for output(s) of operator \"%s\". Need: [%s] Given: [%s]"
-                    % (type, ", ".join(str(e) for e in need), ", ".join(
-                        str(e) for e in given)))
+                raise ValueError(("Incorrect setting for output(s) of "
+                                  "operator \"%s\". Need: [%s] Given: [%s]") %
+                                 (type, ", ".join(str(e)
+                                                  for e in need), ", ".join(
+                                                      str(e) for e in given)))
 
             for out_proto in proto.outputs:
                 out_args = outputs[out_proto.name]
@@ -418,13 +478,18 @@ class Operator(object):
                     continue
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
+                elif isinstance(attrs[attr_name], core.BlockDesc) or \
+                   isinstance(attrs[attr_name], core.ProgramDesc):
+                    self.desc.set_serialized_attr(
+                        attr_name, attrs[attr_name].serialize_to_string())
                 else:
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
         self.desc.check_attrs()
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent',
-            'rnn_memory_helper_grad', 'conditional_block', 'while'
+            'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
+            'recv', 'parallel_do'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -570,14 +635,41 @@ class Block(object):
         self.vars = dict()  # var_name --> var
         self.ops = collections.deque()  # operator list
         self.program = program
+        self.removed_vars = dict()
 
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
-        protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.BlockDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            re_add_indent = re.compile(r"\n(.)")
+            res_str = "blocks {\n  idx: %d\n  parent_idx: %d" % (
+                self.idx, self.parent_idx)
+            for var in self.vars.itervalues():
+                res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
+                    r"\n    \1", var.to_string(throw_on_error, with_details))
+            for op in self.ops:
+                res_str += "\n  ops {\n    %s  }" % re_add_indent.sub(
+                    r"\n    \1", op.to_string(throw_on_error))
+            res_str += "\n}"
+        else:
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.BlockDesc.FromString(str(protostr))
+            res_str = _debug_string_(proto, throw_on_error)
+        return res_str
 
     __repr__ = __str__
 
@@ -596,6 +688,17 @@ class Block(object):
         if v is None:
             raise ValueError("var %s not in this block" % name)
         return v
+
+    def var_recursive(self, name):
+        if self.has_var(name):
+            return self.var(name)
+        else:
+            if self.idx == 0:
+                raise ValueError("var %s is not in block(%d) nor its parents." %
+                                 name, self.idx)
+            else:
+                parent_block = self.program.block(self.parent_idx)
+                return parent_block.var_recursive(name)
 
     def all_parameters(self):
         return list(self.iter_parameters())
@@ -625,6 +728,16 @@ class Block(object):
         op = Operator(self, op_desc, *args, **kwargs)
         self.ops.append(op)
         return op
+
+    def delete_ops(self, ops):
+        # remove from cpp
+        # FIXME(typhoonzero): remove only the first occuracy.
+        try:
+            start = list(self.ops).index(ops[0])
+            end = list(self.ops).index(ops[-1])
+        except Exception, e:
+            raise e
+        self.desc.remove_op(start, end + 1)
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
@@ -704,6 +817,8 @@ class Block(object):
                 trainable=p.trainable,
                 optimize_attr=p.optimize_attr,
                 regularizer=p.regularizer,
+                gradient_clip_attr=p.gradient_clip_attr,
+                error_clip=p.error_clip,
                 name=v.name)
             self.vars[new_p.name] = new_p
 
@@ -718,10 +833,32 @@ class Program(object):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
-        protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.ProgramDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            res_str = ""
+            for block in self.blocks:
+                res_str += block.to_string(throw_on_error, with_details)
+        else:
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+            res_str = _debug_string_(proto, throw_on_error)
+        return res_str
+
+    def get_desc(self):
+        return self.desc
 
     def clone(self):
         p = Program()
@@ -740,9 +877,8 @@ class Program(object):
                 if isinstance(t, Variable):
                     t = t.op
                 else:
-                    raise ValueError(
-                        "All targets of prune() can only be Variable or Operator."
-                    )
+                    raise ValueError(("All targets of prune() can only be "
+                                      "Variable or Operator."))
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
@@ -806,9 +942,11 @@ class Program(object):
         self.sync_with_cpp()
         return param_to_grad_info
 
-    def create_block(self):
+    def create_block(self, parent_idx=None):
         new_block_idx = len(self.blocks)
-        self.desc.append_block(self.current_block().desc)
+        parent = self.current_block() if parent_idx is None else self.block(
+            parent_idx)
+        self.desc.append_block(parent.desc)
         self.current_block_idx = new_block_idx
         self.blocks.append(Block(self, self.current_block_idx))
         return self.current_block()
@@ -865,6 +1003,38 @@ class Parameter(Variable):
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
         self.regularizer = kwargs.get('regularizer', None)
+
+        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
+
+    def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            res_str = Variable.to_string(self, throw_on_error, True)
+            additional_attr = ("trainable", "optimize_attr", "regularizer",
+                               "gradient_clip_attr")
+            for attr_name in additional_attr:
+                res_str += "%s: %s\n" % (attr_name,
+                                         str(getattr(self, attr_name)))
+        else:
+            res_str = Variable.to_string(self, throw_on_error, False)
+        return res_str
+
+    __repr__ = __str__
 
 
 # program is a global instance.

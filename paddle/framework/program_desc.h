@@ -23,32 +23,35 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class BlockDescBind;
+class BlockDesc;
 
-class ProgramDescBind {
+class ProgramDesc {
  public:
-  ProgramDescBind();
+  ProgramDesc();
 
-  explicit ProgramDescBind(const ProgramDesc &desc);
+  explicit ProgramDesc(const proto::ProgramDesc &desc);
 
-  ProgramDescBind(const ProgramDescBind &o);
+  ProgramDesc(const ProgramDesc &o);
 
-  explicit ProgramDescBind(const std::string &binary_str);
+  explicit ProgramDesc(const std::string &binary_str);
 
-  BlockDescBind *AppendBlock(const BlockDescBind &parent);
+  BlockDesc *AppendBlock(const BlockDesc &parent);
 
-  BlockDescBind *MutableBlock(size_t idx) { return blocks_[idx].get(); }
+  BlockDesc *MutableBlock(size_t idx) { return blocks_[idx].get(); }
 
-  const BlockDescBind &Block(size_t idx) const { return *blocks_[idx]; }
+  const BlockDesc &Block(size_t idx) const { return *blocks_[idx]; }
 
   size_t Size() const { return blocks_.size(); }
 
-  ProgramDesc *Proto();
+  proto::ProgramDesc *Proto();
+
+  const std::vector<std::string> GetFeedTargetNames();
+  const std::vector<std::string> GetFetchTargetNames();
 
  private:
-  ProgramDesc desc_;
+  proto::ProgramDesc desc_;
 
-  std::vector<std::unique_ptr<BlockDescBind>> blocks_;
+  std::vector<std::unique_ptr<BlockDesc>> blocks_;
 };
 }  // namespace framework
 }  // namespace paddle

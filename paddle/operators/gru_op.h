@@ -1,19 +1,20 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
+#include "paddle/operators/math/detail/activation_functions.h"
 #include "paddle/operators/math/gru_compute.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/sequence2batch.h"
@@ -70,7 +71,7 @@ class GRUKernel : public framework::OpKernel<T> {
     }
 
     int frame_size = hidden_dims[1];
-    math::hl_gru_value<T> gru_value;
+    math::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
@@ -89,6 +90,10 @@ class GRUKernel : public framework::OpKernel<T> {
     }
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
+    auto active_node = math::detail::GetActivationType(
+        context.Attr<std::string>("activation"));
+    auto active_gate = math::detail::GetActivationType(
+        context.Attr<std::string>("gate_activation"));
     for (size_t n = 0; n < num_batch; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -101,9 +106,8 @@ class GRUKernel : public framework::OpKernel<T> {
       gru_value.gate_value = gate_t.data<T>();
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
       math::GRUUnitFunctor<DeviceContext, T>::compute(
-          dev_ctx, gru_value, frame_size, cur_batch_size,
-          math::ActiveType(context.Attr<std::string>("activation")),
-          math::ActiveType(context.Attr<std::string>("gate_activation")));
+          dev_ctx, gru_value, frame_size, cur_batch_size, active_node,
+          active_gate);
       gru_value.prev_out_value = gru_value.output_value;
     }
 
@@ -170,12 +174,12 @@ class GRUGradKernel : public framework::OpKernel<T> {
     batch_hidden_grad.set_lod(batch_hidden->lod());
     to_batch(dev_ctx, *hidden_grad, batch_hidden_grad, false, is_reverse);
 
-    math::hl_gru_value<T> gru_value;
+    math::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
 
-    math::hl_gru_grad<T> gru_grad;
+    math::GRUMetaGrad<T> gru_grad;
     if (weight_grad) {
       gru_grad.gate_weight_grad =
           weight_grad->mutable_data<T>(context.GetPlace());
@@ -189,6 +193,10 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
     auto batch_starts = batch_hidden_grad.lod()[0];
     size_t num_batch = batch_starts.size() - 1;
+    auto active_node = math::detail::GetActivationType(
+        context.Attr<std::string>("activation"));
+    auto active_gate = math::detail::GetActivationType(
+        context.Attr<std::string>("gate_activation"));
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -219,9 +227,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
       }
 
       math::GRUUnitGradFunctor<DeviceContext, T>::compute(
-          dev_ctx, gru_value, gru_grad, frame_size, cur_batch_size,
-          math::ActiveType(context.Attr<std::string>("activation")),
-          math::ActiveType(context.Attr<std::string>("gate_activation")));
+          dev_ctx, gru_value, gru_grad, frame_size, cur_batch_size, active_node,
+          active_gate);
     }
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());

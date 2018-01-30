@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -10,13 +24,13 @@ class TestExp(OpTest):
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [11, 17]).astype("float32")
         }
-        self.outputs = {'Y': np.exp(self.inputs['X'])}
+        self.outputs = {'Out': np.exp(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestSigmoid(OpTest):
@@ -25,13 +39,13 @@ class TestSigmoid(OpTest):
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [11, 17]).astype("float32")
         }
-        self.outputs = {'Y': 1 / (1 + np.exp(-self.inputs['X']))}
+        self.outputs = {'Out': 1 / (1 + np.exp(-self.inputs['X']))}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
 class TestLogSigmoid(OpTest):
@@ -40,13 +54,13 @@ class TestLogSigmoid(OpTest):
         self.inputs = {
             'X': np.random.uniform(-1, 1, [11, 17]).astype("float32")
         }
-        self.outputs = {'Y': np.log(1 / (1 + np.exp(-self.inputs['X'])))}
+        self.outputs = {'Out': np.log(1 / (1 + np.exp(-self.inputs['X'])))}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
 class TestTanh(OpTest):
@@ -55,13 +69,13 @@ class TestTanh(OpTest):
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [11, 17]).astype("float32")
         }
-        self.outputs = {'Y': np.tanh(self.inputs['X'])}
+        self.outputs = {'Out': np.tanh(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestTanhShrink(OpTest):
@@ -70,13 +84,13 @@ class TestTanhShrink(OpTest):
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [10, 17]).astype("float32")
         }
-        self.outputs = {'Y': self.inputs['X'] - np.tanh(self.inputs['X'])}
+        self.outputs = {'Out': self.inputs['X'] - np.tanh(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
 class TestHardShrink(OpTest):
@@ -90,13 +104,13 @@ class TestHardShrink(OpTest):
 
         t = np.copy(x)
         t[(t >= -threshold) & (t <= threshold)] = 0
-        self.outputs = {'Y': t}
+        self.outputs = {'Out': t}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.005)
+        self.check_grad(['X'], 'Out', max_relative_error=0.005)
 
 
 class TestSoftShrink(OpTest):
@@ -110,13 +124,13 @@ class TestSoftShrink(OpTest):
         y = np.copy(self.inputs['X'])
         y = (y < -lambda_val) * (y + lambda_val) + (y > lambda_val) * (
             y - lambda_val)
-        self.outputs = {'Y': y}
+        self.outputs = {'Out': y}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestSqrt(OpTest):
@@ -125,13 +139,13 @@ class TestSqrt(OpTest):
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [11, 17]).astype("float32")
         }
-        self.outputs = {'Y': np.sqrt(self.inputs['X'])}
+        self.outputs = {'Out': np.sqrt(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestAbs(OpTest):
@@ -144,13 +158,13 @@ class TestAbs(OpTest):
         # we should avoid this
         x[np.abs(x) < 0.005] = 0.02
         self.inputs = {'X': x}
-        self.outputs = {'Y': np.abs(self.inputs['X'])}
+        self.outputs = {'Out': np.abs(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestCeil(OpTest):
@@ -158,13 +172,13 @@ class TestCeil(OpTest):
         self.op_type = "ceil"
         x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
         self.inputs = {'X': x}
-        self.outputs = {'Y': np.ceil(self.inputs['X'])}
+        self.outputs = {'Out': np.ceil(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestFloor(OpTest):
@@ -172,14 +186,13 @@ class TestFloor(OpTest):
         self.op_type = "floor"
         x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
         self.inputs = {'X': x}
-        # numpy floor need +1
-        self.outputs = {'Y': np.floor(self.inputs['X']) + 1.0}
+        self.outputs = {'Out': np.floor(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestRound(OpTest):
@@ -187,13 +200,13 @@ class TestRound(OpTest):
         self.op_type = "round"
         x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
         self.inputs = {'X': x}
-        self.outputs = {'Y': np.round(self.inputs['X'])}
+        self.outputs = {'Out': np.round(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestRelu(OpTest):
@@ -203,13 +216,13 @@ class TestRelu(OpTest):
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.02
         self.inputs = {'X': x}
-        self.outputs = {'Y': np.maximum(self.inputs['X'], 0)}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], 0)}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestBRelu(OpTest):
@@ -227,13 +240,13 @@ class TestBRelu(OpTest):
         t = np.copy(x)
         t[t < t_min] = t_min
         t[t > t_max] = t_max
-        self.outputs = {'Y': t}
+        self.outputs = {'Out': t}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
 class TestRelu6(OpTest):
@@ -248,14 +261,14 @@ class TestRelu6(OpTest):
         self.inputs = {'X': x}
         self.attrs = {'threshold': threshold}
         self.outputs = {
-            'Y': np.minimum(np.maximum(self.inputs['X'], 0), threshold)
+            'Out': np.minimum(np.maximum(self.inputs['X'], 0), threshold)
         }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
 class TestSoftRelu(OpTest):
@@ -271,13 +284,13 @@ class TestSoftRelu(OpTest):
         t = np.copy(x)
         t[t < -threshold] = -threshold
         t[t > threshold] = threshold
-        self.outputs = {'Y': np.log((np.exp(t) + 1))}
+        self.outputs = {'Out': np.log((np.exp(t) + 1))}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
 class TestELU(OpTest):
@@ -290,27 +303,27 @@ class TestELU(OpTest):
         self.inputs = {'X': x}
         self.attrs = {'alpha': alpha}
         self.outputs = {
-            'Y': np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
+            'Out': np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
         }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
 class TestReciprocal(OpTest):
     def setUp(self):
         self.op_type = "reciprocal"
         self.inputs = {'X': np.random.uniform(1, 2, [11, 17]).astype("float32")}
-        self.outputs = {'Y': np.reciprocal(self.inputs['X'])}
+        self.outputs = {'Out': np.reciprocal(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
 class TestLog(OpTest):
@@ -319,13 +332,13 @@ class TestLog(OpTest):
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [11, 17]).astype("float32")
         }
-        self.outputs = {'Y': np.log(self.inputs['X'])}
+        self.outputs = {'Out': np.log(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestSquare(OpTest):
@@ -334,13 +347,13 @@ class TestSquare(OpTest):
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [11, 17]).astype("float32")
         }
-        self.outputs = {'Y': np.square(self.inputs['X'])}
+        self.outputs = {'Out': np.square(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestPow(OpTest):
@@ -348,13 +361,13 @@ class TestPow(OpTest):
         self.op_type = "pow"
         self.inputs = {'X': np.random.uniform(1, 2, [11, 17]).astype("float32")}
         self.attrs = {'factor': 3.0}
-        self.outputs = {'Y': np.power(self.inputs['X'], 3)}
+        self.outputs = {'Out': np.power(self.inputs['X'], 3)}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
 class TestSTanh(OpTest):
@@ -366,13 +379,13 @@ class TestSTanh(OpTest):
         scale_a = 2.0 / 3.0
         scale_b = 1.7159
         self.attrs = {'scale_a': scale_a, 'scale_b': scale_b}
-        self.outputs = {'Y': scale_b * np.tanh(self.inputs['X'] * scale_a)}
+        self.outputs = {'Out': scale_b * np.tanh(self.inputs['X'] * scale_a)}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestSoftplus(OpTest):
@@ -381,13 +394,13 @@ class TestSoftplus(OpTest):
         self.inputs = {
             'X': np.random.uniform(-1, 1, [11, 17]).astype("float64")
         }
-        self.outputs = {'Y': np.log(1 + np.exp(self.inputs['X']))}
+        self.outputs = {'Out': np.log(1 + np.exp(self.inputs['X']))}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestSoftsign(OpTest):
@@ -397,14 +410,14 @@ class TestSoftsign(OpTest):
             'X': np.random.uniform(-1, 1, [11, 17]).astype("float32")
         }
         self.outputs = {
-            'Y': np.divide(self.inputs['X'], 1 + np.abs(self.inputs['X']))
+            'Out': np.divide(self.inputs['X'], 1 + np.abs(self.inputs['X']))
         }
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestThresholdedRelu(OpTest):
@@ -419,13 +432,13 @@ class TestThresholdedRelu(OpTest):
 
         self.inputs = {'X': X}
         self.attrs = {'threshold': threshold}
-        self.outputs = {'Y': (X > threshold) * X}
+        self.outputs = {'Out': (X > threshold) * X}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=self.relative_error)
+        self.check_grad(['X'], 'Out', max_relative_error=self.relative_error)
 
 
 class TestHardSigmoid(OpTest):
@@ -447,13 +460,13 @@ class TestHardSigmoid(OpTest):
             upper_threshold - 0.2
 
         temp = X * slope + offset
-        self.outputs = {'Y': np.maximum(0.0, np.minimum(1.0, temp))}
+        self.outputs = {'Out': np.maximum(0.0, np.minimum(1.0, temp))}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.002)
+        self.check_grad(['X'], 'Out', max_relative_error=0.002)
 
 
 class TestSwish(OpTest):
@@ -462,13 +475,13 @@ class TestSwish(OpTest):
         X = np.random.uniform(0.1, 1, [11, 17]).astype("float32")
         self.inputs = {'X': X}
         self.attrs = {'beta': 2.3}
-        self.outputs = {'Y': X * expit(self.attrs['beta'] * X)}
+        self.outputs = {'Out': X * expit(self.attrs['beta'] * X)}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
 if __name__ == "__main__":

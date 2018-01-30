@@ -1,9 +1,23 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import print_function
 import core
 import numpy
 import six.moves as six
 
-from framework import Variable
+from framework import Variable, default_main_program
 
 __all__ = ['DataFeeder']
 
@@ -53,12 +67,16 @@ class DataToLoDTensorConverter(object):
 
 
 class DataFeeder(object):
-    def __init__(self, feed_list, place):
+    def __init__(self, feed_list, place, program=None):
         self.feed_dtypes = []
         self.feed_names = []
         self.feed_shapes = []
         self.feed_lod_level = []
+        if program is None:
+            program = default_main_program()
         for each_var in feed_list:
+            if isinstance(each_var, basestring):
+                each_var = program.block(0).var(each_var)
             if not isinstance(each_var, Variable):
                 raise TypeError("Feed list should contain a list of variable")
             self.feed_dtypes.append(each_var.dtype)

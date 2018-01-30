@@ -1,13 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-   http://www.apache.org/licenses/LICENSE-2.0
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -29,16 +32,30 @@ class LookupTableKernel : public framework::OpKernel<T> {
     auto* table_t = context.Input<LoDTensor>("W");      // float tensor
     auto* ids_t = context.Input<LoDTensor>("Ids");      // int tensor
     auto* output_t = context.Output<LoDTensor>("Out");  // float tensor
+    int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
     int N = table_t->dims()[0];
     int D = table_t->dims()[1];
     auto* ids = ids_t->data<int64_t>();
     auto* table = table_t->data<T>();
     auto* output = output_t->mutable_data<T>(context.GetPlace());
-    for (int64_t i = 0; i < ids_t->numel(); ++i) {
-      PADDLE_ENFORCE_LT(ids[i], N);
-      PADDLE_ENFORCE_GE(ids[i], 0);
-      memcpy(output + i * D, table + ids[i] * D, D * sizeof(T));
+
+    if (padding_idx == -1) {
+      for (int64_t i = 0; i < ids_t->numel(); ++i) {
+        PADDLE_ENFORCE_LT(ids[i], N);
+        PADDLE_ENFORCE_GE(ids[i], 0);
+        memcpy(output + i * D, table + ids[i] * D, D * sizeof(T));
+      }
+    } else {
+      for (int64_t i = 0; i < ids_t->numel(); ++i) {
+        if (ids[i] == padding_idx) {
+          memset(output + i * D, 0, D * sizeof(T));
+        } else {
+          PADDLE_ENFORCE_LT(ids[i], N);
+          PADDLE_ENFORCE_GE(ids[i], 0);
+          memcpy(output + i * D, table + ids[i] * D, D * sizeof(T));
+        }
+      }
     }
   }
 };
@@ -48,6 +65,8 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     bool is_sparse = context.Attr<bool>("is_sparse");
+    // Since paddings are not trainable and fixed in forward, the gradient of
+    // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
       auto* ids = context.Input<LoDTensor>("Ids");
       auto* table = context.Input<LoDTensor>("W");

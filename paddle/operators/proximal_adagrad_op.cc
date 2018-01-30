@@ -59,8 +59,7 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
 
 class ProximalAdagradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ProximalAdagradOpMaker(framework::OpProto *proto,
-                         framework::OpAttrChecker *op_checker)
+  ProximalAdagradOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "

@@ -19,8 +19,7 @@ namespace operators {
 
 class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LinearChainCRFOpMaker(framework::OpProto* proto,
-                        framework::OpAttrChecker* op_checker)
+  LinearChainCRFOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Emission",
              "(LoDTensor, default LoDTensor<float>) "
@@ -184,11 +183,11 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of linear_chain_crf
   // is determined by its input "Emission".
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<LoDTensor>("Emission")->type()),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 
@@ -243,13 +242,13 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of output of the linear_chain_crf_grad
   // operator is determined by its input: gradients of LogLikelihood.
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(
             ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))
                 ->type()),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 

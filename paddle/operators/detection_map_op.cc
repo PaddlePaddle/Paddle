@@ -52,7 +52,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("Label")->type()),
@@ -62,8 +62,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
 
 class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DetectionMAPOpMaker(framework::OpProto* proto,
-                      framework::OpAttrChecker* op_checker)
+  DetectionMAPOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Label",
              "(LoDTensor) A 2-D LoDTensor with shape[N, 6] represents the"
@@ -120,5 +119,5 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(detection_map, ops::DetectionMAPOp,
                              ops::DetectionMAPOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    detection_map, ops::DetectionMAPOpKernel<paddle::platform::GPUPlace, float>,
-    ops::DetectionMAPOpKernel<paddle::platform::GPUPlace, double>);
+    detection_map, ops::DetectionMAPOpKernel<paddle::platform::CPUPlace, float>,
+    ops::DetectionMAPOpKernel<paddle::platform::CPUPlace, double>);

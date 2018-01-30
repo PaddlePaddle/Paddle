@@ -31,9 +31,9 @@ namespace detail {
  */
 template <class T, class Op, bool is_batch>
 __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
-                              int batch_size, activation_mode_t active_node,
-                              activation_mode_t active_gate,
-                              activation_mode_t active_state) {
+                              int batch_size, ActivationType active_node,
+                              ActivationType active_gate,
+                              ActivationType active_state) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
 
@@ -91,9 +91,9 @@ __global__ void KeLstmForward(Op op, LstmMetaValue<T> value, int frame_size,
 template <class T, class Op, bool is_batch>
 __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
                                LstmMetaGrad<T> grad, int frame_size,
-                               int batch_size, activation_mode_t active_node,
-                               activation_mode_t active_gate,
-                               activation_mode_t active_state) {
+                               int batch_size, ActivationType active_node,
+                               ActivationType active_gate,
+                               ActivationType active_state) {
   const int frame_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (frame_idx >= frame_size) return;
 
@@ -185,9 +185,8 @@ __global__ void KeLstmBackward(Op op, LstmMetaValue<T> value,
 template <class T, class Op>
 void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate,
-                      activation_mode_t active_state) {
+                      ActivationType active_node, ActivationType active_gate,
+                      ActivationType active_state) {
   dim3 threads;
   dim3 grid;
   if (batch_size == 1) {
@@ -220,9 +219,8 @@ template <class T, class Op>
 void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
                        LstmMetaValue<T> value, LstmMetaGrad<T> grad,
                        int frame_size, int batch_size,
-                       activation_mode_t active_node,
-                       activation_mode_t active_gate,
-                       activation_mode_t active_state) {
+                       ActivationType active_node, ActivationType active_gate,
+                       ActivationType active_state) {
   dim3 threads;
   dim3 grid;
   if (batch_size == 1) {

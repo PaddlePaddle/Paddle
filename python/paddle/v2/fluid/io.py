@@ -1,16 +1,47 @@
-import os
-import cPickle as pickle
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
+import os
+
+from paddle.v2.fluid.evaluator import Evaluator
 from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable
+from . import core
 
 __all__ = [
-    'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', "save_inference_model", "load_inference_model",
-    "get_inference_program"
+    'save_vars',
+    'save_params',
+    'save_persistables',
+    'load_vars',
+    'load_params',
+    'load_persistables',
+    'save_inference_model',
+    'load_inference_model',
+    'get_inference_program',
 ]
 
 
 def is_parameter(var):
+    """Check whether the variable is a Parameter.
+
+    This function checks whether the input variable is a Parameter.
+
+    Args:
+        var : The input variable.
+
+    Returns:
+        boolean result whether the variable is a Parameter.
+    """
     return isinstance(var, Parameter)
 
 
@@ -36,7 +67,7 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     :param executor: executor that save variable
     :param dirname: directory path
     :param main_program: program. If vars is None, then filter all variables in this
-    program which fit `predicate`. Default g_program.
+    program which fit `predicate`. Default default_main_program.
     :param predicate: The Predicate describes a callable that returns a variable
     as a bool. If it returns true, the variables will be saved.
     :param vars: variables need to be saved. If specify vars, program & predicate
@@ -156,10 +187,51 @@ def get_inference_program(target_vars, main_program=None):
         main_program = default_main_program()
     if not isinstance(target_vars, list):
         target_vars = [target_vars]
-
-    pruned_program = main_program.prune(targets=target_vars)
+    vars = []
+    for var in target_vars:
+        if isinstance(var, Evaluator):
+            vars.extend(var.states)
+            vars.extend(var.metrics)
+        else:
+            vars.append(var)
+    pruned_program = main_program.prune(targets=vars)
     inference_program = pruned_program.inference_optimize()
     return inference_program
+
+
+def prepend_feed_ops(inference_program,
+                     feed_target_names,
+                     feed_holder_name='feed'):
+    global_block = inference_program.global_block()
+    feed_var = global_block.create_var(
+        name=feed_holder_name,
+        type=core.VarDesc.VarType.FEED_MINIBATCH,
+        persistable=True)
+
+    for i, name in enumerate(feed_target_names):
+        out = global_block.var(name)
+        global_block.prepend_op(
+            type='feed',
+            inputs={'X': [feed_var]},
+            outputs={'Out': [out]},
+            attrs={'col': i})
+
+
+def append_fetch_ops(inference_program,
+                     fetch_target_names,
+                     fetch_holder_name='fetch'):
+    global_block = inference_program.global_block()
+    fetch_var = global_block.create_var(
+        name=fetch_holder_name,
+        type=core.VarDesc.VarType.FETCH_LIST,
+        persistable=True)
+
+    for i, name in enumerate(fetch_target_names):
+        global_block.append_op(
+            type='fetch',
+            inputs={'X': [name]},
+            outputs={'Out': [fetch_var]},
+            attrs={'col': i})
 
 
 def save_inference_model(dirname,
@@ -180,10 +252,22 @@ def save_inference_model(dirname,
 
     :return: None
     """
+    if isinstance(feeded_var_names, basestring):
+        feeded_var_names = [feeded_var_names]
+    else:
+        if not (bool(feeded_var_names) and all(
+                isinstance(name, basestring) for name in feeded_var_names)):
+            raise ValueError("'feed_var_names' should be a list of str.")
+
+    if isinstance(target_vars, Variable):
+        target_vars = [target_vars]
+    else:
+        if not (bool(target_vars) and all(
+                isinstance(var, Variable) for var in target_vars)):
+            raise ValueError("'target_vars' should be a list of Variable.")
+
     if main_program is None:
         main_program = default_main_program()
-    if not isinstance(target_vars, list):
-        target_vars = [target_vars]
 
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
@@ -192,13 +276,12 @@ def save_inference_model(dirname,
     inference_program = pruned_program.inference_optimize()
     fetch_var_names = [v.name for v in target_vars]
 
+    prepend_feed_ops(inference_program, feeded_var_names)
+    append_fetch_ops(inference_program, fetch_var_names)
+
     model_file_name = dirname + "/__model__"
-    with open(model_file_name, "w") as f:
-        pickle.dump({
-            "program_desc_str": inference_program.desc.serialize_to_string(),
-            "feed_var_names": feeded_var_names,
-            "fetch_var_names": fetch_var_names
-        }, f, -1)
+    with open(model_file_name, "wb") as f:
+        f.write(inference_program.desc.serialize_to_string())
 
     save_params(executor, dirname, main_program)
 
@@ -221,6 +304,24 @@ def load_persistables_if_exist(executor, dirname, main_program=None):
         predicate=_is_presistable_and_exist_)
 
 
+def get_feed_targets_names(program):
+    feed_targets_names = []
+    global_block = program.global_block()
+    for op in global_block.ops:
+        if op.desc.type() == 'feed':
+            feed_targets_names.insert(0, op.desc.output('Out')[0])
+    return feed_targets_names
+
+
+def get_fetch_targets_names(program):
+    fetch_targets_names = []
+    global_block = program.global_block()
+    for op in global_block.ops:
+        if op.desc.type() == 'fetch':
+            fetch_targets_names.append(op.desc.input('X')[0])
+    return fetch_targets_names
+
+
 def load_inference_model(dirname, executor):
     """
     Load inference model from a directory
@@ -228,24 +329,28 @@ def load_inference_model(dirname, executor):
     :param dirname: directory path
     :param executor: executor that load inference model
 
-    :return: [program, feed_var_names, fetch_var_names]
+    :return: [program, feed_target_names, fetch_targets]
              program: program especially for inference.
-             feeded_var_names: Names of variables that need to feed data
-             fetch_vars: Variables from which we can get inference results.
+             feed_target_names: Names of variables that need to feed data
+             fetch_targets: Variables from which we can get inference results.
     """
     if not os.path.isdir(dirname):
         raise ValueError("There is no directory named '%s'", dirname)
 
     model_file_name = dirname + "/__model__"
-    model = pickle.load(open(model_file_name, "r"))
-    program_desc_str = model["program_desc_str"]
-    feed_var_names = model["feed_var_names"]
-    fetch_var_names = model["fetch_var_names"]
+    with open(model_file_name, "rb") as f:
+        program_desc_str = f.read()
+
     program = Program.parse_from_string(program_desc_str)
     load_persistables_if_exist(executor, dirname, program)
-    fetch_vars = [program.global_block().var(name) for name in fetch_var_names]
 
-    return [program, feed_var_names, fetch_vars]
+    feed_target_names = get_feed_targets_names(program)
+    fetch_target_names = get_fetch_targets_names(program)
+    fetch_targets = [
+        program.global_block().var(name) for name in fetch_target_names
+    ]
+
+    return [program, feed_target_names, fetch_targets]
 
 
 def get_parameter_value(para, executor):

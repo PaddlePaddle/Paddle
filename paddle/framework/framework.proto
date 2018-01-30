@@ -14,7 +14,7 @@ limitations under the License. */
 
 syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
-package paddle.framework;
+package paddle.framework.proto;
 
 enum AttrType {
   INT = 0;
@@ -26,6 +26,7 @@ enum AttrType {
   BOOLEAN = 6;
   BOOLEANS = 7;
   BLOCK = 8;
+  LONG = 9;
 }
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
@@ -44,6 +45,7 @@ message OpDesc {
     optional bool b = 10;
     repeated bool bools = 11;
     optional int32 block_idx = 12;
+    optional int64 l = 13;
   };
 
   message Var {
@@ -123,6 +125,7 @@ message VarDesc {
     STEP_SCOPES = 5;
     LOD_RANK_TABLE = 6;
     LOD_TENSOR_ARRAY = 7;
+    PLACE_LIST = 8;
   }
   required string name = 1;
   required VarType type = 2;

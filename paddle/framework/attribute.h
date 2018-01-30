@@ -27,12 +27,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 template <typename T>
-inline AttrType AttrTypeID() {
+inline proto::AttrType AttrTypeID() {
   Attribute tmp = T();
-  return static_cast<AttrType>(tmp.which() - 1);
+  return static_cast<proto::AttrType>(tmp.which() - 1);
 }
 
-Attribute GetAttrValue(const OpDesc::Attr& attr_desc);
+Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 
 class AttrReader {
  public:
@@ -160,6 +160,32 @@ struct ExtractAttribute<bool> {
       attr_value = &boost::get<bool>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type bool, its type is %s",
+                   attr_name_, attr.type().name());
+    }
+    return attr_value;
+  }
+
+  const std::string& attr_name_;
+};
+
+template <>
+struct ExtractAttribute<int64_t> {
+  explicit ExtractAttribute(const std::string& attr_name)
+      : attr_name_(attr_name) {}
+
+  int64_t* operator()(Attribute& attr) const {
+    if (attr.type() == typeid(int)) {  // NOLINT
+      int val = boost::get<int>(attr);
+      attr = static_cast<int64_t>(val);
+    } else if (attr.type() == typeid(float)) {  // NOLINT
+      int val = boost::get<float>(attr);
+      attr = static_cast<int64_t>(val);
+    }
+    int64_t* attr_value = nullptr;
+    try {
+      attr_value = &boost::get<int64_t>(attr);
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
                    attr_name_, attr.type().name());
     }
     return attr_value;

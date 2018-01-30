@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/transpose_op.h"
 
@@ -55,36 +55,43 @@ class TransposeOp : public framework::OperatorWithKernel {
 
 class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  TransposeOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  TransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "X",
-        "(Tensor)The input tensor, tensors with rank at most 6 are supported");
-    AddOutput("Out", "(Tensor)The output tensor");
+        "(Tensor) The input tensor, tensors with rank up to 6 are supported.");
+    AddOutput("Out", "(Tensor)The output tensor.");
     AddAttr<std::vector<int>>(
         "axis",
-        "(vector<int>)A list of values, and the size of the list should be "
-        "the same with the input tensor rank, the tensor will "
-        "permute the axes according the the values given");
+        "(vector<int>) A list of values, and the size of the list should be "
+        "the same with the input tensor rank. This operator permutes the input "
+        "tensor's axes according to the values given.");
     AddComment(R"DOC(
 Transpose Operator.
 
-The input tensor will be permuted according to the axis values given.
-The op functions similar to how numpy.transpose works in python.
-For example:
- >> input = numpy.arange(6).reshape((2,3))
- >> input
- array([[0, 1, 2],
-        [3, 4, 5]])
- >> axis = [1, 0]
- >> output = input.transpose(axis)
- >> output
- array([[0, 3],
-        [1, 4],
-		[2, 5]])
-So, given a input tensor of shape(N, C, H, W) and the axis is {0, 2, 3, 1},
-the output tensor shape will be (N, H, W, C)
+The input tensor will be permuted according to the axes given.
+The behavior of this operator is similar to how `numpy.transpose` works.
+
+- suppose the input `X` is a 2-D tensor:
+    $$
+    X = \begin{pmatrix}
+    0 &1 &2 \\
+    3 &4 &5
+    \end{pmatrix}$$
+
+    the given `axes` is: $[1, 0]$, and $Y$ = transpose($X$, axis)
+
+    then the output $Y$ is:
+
+    $$
+    Y = \begin{pmatrix}
+         0 &3 \\
+         1 &4  \\
+         2 &5
+    \end{pmatrix}$$
+
+- Given a input tensor with shape $(N, C, H, W)$ and the `axes` is 
+$[0, 2, 3, 1]$, then shape of the output tensor will be: $(N, H, W, C)$.
 
 )DOC");
   }

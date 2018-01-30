@@ -1,9 +1,24 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import math
 
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
 import paddle.v2.fluid as fluid
+import time
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -19,7 +34,7 @@ mix_hidden_lr = 1e-3
 
 IS_SPARSE = True
 PASS_NUM = 10
-BATCH_SIZE = 20
+BATCH_SIZE = 10
 
 embedding_name = 'emb'
 
@@ -150,7 +165,7 @@ def main():
     crf_decode = fluid.layers.crf_decoding(
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
 
-    precision, recall, f1_score = fluid.layers.chunk_eval(
+    chunk_evaluator = fluid.evaluator.ChunkEvaluator(
         input=crf_decode,
         label=target,
         chunk_scheme="IOB",
@@ -160,7 +175,8 @@ def main():
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    place = fluid.CPUPlace()
+    #place = fluid.CPUPlace()
+    place = fluid.CUDAPlace(0)
     feeder = fluid.DataFeeder(
         feed_list=[
             word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
@@ -170,26 +186,31 @@ def main():
 
     exe.run(fluid.default_startup_program())
 
-    embedding_param = fluid.g_scope.find_var(embedding_name).get_tensor()
+    embedding_param = fluid.global_scope().find_var(embedding_name).get_tensor()
     embedding_param.set(
         load_parameter(conll05.get_embedding(), word_dict_len, word_dim), place)
 
+    start_time = time.time()
     batch_id = 0
     for pass_id in xrange(PASS_NUM):
+        chunk_evaluator.reset(exe)
         for data in train_data():
-            outs = exe.run(fluid.default_main_program(),
-                           feed=feeder.feed(data),
-                           fetch_list=[avg_cost, precision, recall, f1_score])
-            avg_cost_val = np.array(outs[0])
-            precision_val = np.array(outs[1])
-            recall_val = np.array(outs[2])
-            f1_score_val = np.array(outs[3])
+            cost, precision, recall, f1_score = exe.run(
+                fluid.default_main_program(),
+                feed=feeder.feed(data),
+                fetch_list=[avg_cost] + chunk_evaluator.metrics)
+            pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
+                exe)
 
             if batch_id % 10 == 0:
-                print("avg_cost=" + str(avg_cost_val))
-                print("precision_val=" + str(precision_val))
-                print("recall_val:" + str(recall_val))
-                print("f1_score_val:" + str(f1_score_val))
+                print("avg_cost:" + str(cost) + " precision:" + str(
+                    precision) + " recall:" + str(recall) + " f1_score:" + str(
+                        f1_score) + " pass_precision:" + str(
+                            pass_precision) + " pass_recall:" + str(pass_recall)
+                      + " pass_f1_score:" + str(pass_f1_score))
+                if batch_id != 0:
+                    print("second per batch: " + str((time.time() - start_time)
+                                                     / batch_id))
 
             # exit early for CI
             exit(0)

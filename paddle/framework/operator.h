@@ -17,21 +17,21 @@ limitations under the License. */
 #include <algorithm>
 #include <atomic>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/block_desc.h"
-#include "paddle/framework/data_type.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_info.h"
+#include "paddle/framework/op_kernel_type.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/platform/device_context.h"
-#include "paddle/platform/place.h"
 #include "paddle/platform/variant.h"
 #include "paddle/utils/Error.h"
 
@@ -52,6 +52,10 @@ constexpr char kGradVarSuffix[] = "@GRAD";
 
 /// Variables with this suffix are supposed to be filled up with zeros.
 constexpr char kZeroVarSuffix[] = "@ZERO";
+
+// define some kernel priority
+/* Define multiple kernel type fallback order*/
+extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
@@ -80,11 +84,16 @@ class OperatorBase {
     return boost::get<T>(attrs_.at(name));
   }
 
-  virtual std::string DebugString() const;
+  /// if scope is not null, also show dimensions of arguments
+  virtual std::string DebugStringEx(const Scope* scope) const;
+
+  std::string DebugString() const { return DebugStringEx(nullptr); }
 
   /// Net will call this function to Run an op.
-  virtual void Run(const Scope& scope,
-                   const platform::DeviceContext& dev_ctx) const = 0;
+  virtual void Run(const Scope& scope, const platform::Place& place) const = 0;
+
+  // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
+  virtual void Stop() {}
 
   virtual bool IsNetOp() const { return false; }
 
@@ -159,8 +168,7 @@ class OperatorBase {
 class NOP : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {}
+  void Run(const Scope& scope, const platform::Place& place) const override {}
   std::unique_ptr<OperatorBase> Clone() const override {
     return std::unique_ptr<OperatorBase>(new NOP(*this));
   }
@@ -345,33 +353,6 @@ class OpKernel : public OpKernelBase {
   using ELEMENT_TYPE = T;
 };
 
-struct OpKernelType {
-  struct Hash {
-    std::hash<int> hash_;
-    size_t operator()(const OpKernelType& key) const {
-      int place = key.place_.which();
-      int data_type = static_cast<int>(key.data_type_);
-      int pre_hash = data_type << NUM_PLACE_TYPE_LIMIT_IN_BIT |
-                     (place & ((1 << NUM_PLACE_TYPE_LIMIT_IN_BIT) - 1));
-      return hash_(pre_hash);
-    }
-  };
-
-  platform::Place place_;
-  DataType data_type_;
-
-  OpKernelType(DataType data_type, platform::Place place)
-      : place_(place), data_type_(data_type) {}
-
-  OpKernelType(DataType data_type, const platform::DeviceContext& dev_ctx)
-      : place_(dev_ctx.GetPlace()), data_type_(data_type) {}
-
-  bool operator==(const OpKernelType& o) const {
-    return platform::places_are_same_class(place_, o.place_) &&
-           data_type_ == o.data_type_;
-  }
-};
-
 class OperatorWithKernel : public OperatorBase {
  public:
   using OpKernelMap =
@@ -382,8 +363,7 @@ class OperatorWithKernel : public OperatorBase {
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const Scope& scope,
-           const platform::DeviceContext& dev_ctx) const final;
+  void Run(const Scope& scope, const platform::Place& place) const final;
 
   static std::unordered_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -404,15 +384,16 @@ class OperatorWithKernel : public OperatorBase {
   }
 
  protected:
-  virtual OpKernelType GetKernelType(const ExecutionContext& ctx) const;
+  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+  virtual OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const OpKernelType& expected_kernel_type) const;
 
  private:
   // indicate kernel DataType by input data. Defaultly all input data must be
   // same.
-  DataType IndicateDataType(const ExecutionContext& ctx) const;
+  proto::DataType IndicateDataType(const ExecutionContext& ctx) const;
 };
-
-std::ostream& operator<<(std::ostream& os, const OpKernelType& kernel_key);
 
 extern bool OpSupportGPU(const std::string& op_type);
 

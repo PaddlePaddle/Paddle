@@ -24,11 +24,12 @@ template <class T>
 struct LstmUnitFunctor<platform::CUDADeviceContext, T> {
   static void compute(const platform::CUDADeviceContext& context,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
-                      const std::string& gate_act, const std::string& cell_act,
-                      const std::string& cand_act) {
+                      const detail::ActivationType& gate_act,
+                      const detail::ActivationType& cell_act,
+                      const detail::ActivationType& cand_act) {
     detail::gpu_lstm_forward<T>(context, detail::forward::lstm<T>(), value,
-                                frame_size, batch_size, ActiveType(cand_act),
-                                ActiveType(gate_act), ActiveType(cell_act));
+                                frame_size, batch_size, cand_act, gate_act,
+                                cell_act);
   }
 };
 
@@ -37,11 +38,12 @@ struct LstmUnitGradFunctor<platform::CUDADeviceContext, T> {
   static void compute(const platform::CUDADeviceContext& context,
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
                       int frame_size, int batch_size,
-                      const std::string& gate_act, const std::string& cell_act,
-                      const std::string& cand_act) {
+                      const detail::ActivationType& gate_act,
+                      const detail::ActivationType& cell_act,
+                      const detail::ActivationType& cand_act) {
     detail::gpu_lstm_backward(context, detail::backward::lstm<T>(), value, grad,
-                              frame_size, batch_size, ActiveType(cand_act),
-                              ActiveType(gate_act), ActiveType(cell_act));
+                              frame_size, batch_size, cand_act, gate_act,
+                              cell_act);
   }
 };
 

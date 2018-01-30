@@ -20,7 +20,7 @@ binaries.
 
 ## Run The Build
 
-### Build Evironments
+### Build Environments
 
 The pre-built build environment images are:
 

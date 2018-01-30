@@ -53,7 +53,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Out")->type()),
@@ -63,8 +63,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
 
 class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AccuracyOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  AccuracyOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     // TODO(typhoonzero): support both inference value and indices.
     AddInput("Out", "The network output of topk (inferences)");

@@ -21,9 +21,9 @@ namespace math {
 template <typename T>
 struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
   static void compute(const platform::CUDADeviceContext &context,
-                      hl_gru_value<T> value, int frame_size, int batch_size,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate) {
+                      GRUMetaValue<T> value, int frame_size, int batch_size,
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate) {
     auto stream = context.stream();
     dim3 threads;
     dim3 grid;
@@ -88,10 +88,10 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
 template <typename T>
 struct GRUUnitGradFunctor<platform::CUDADeviceContext, T> {
   static void compute(const platform::CUDADeviceContext &context,
-                      hl_gru_value<T> value, hl_gru_grad<T> grad,
+                      GRUMetaValue<T> value, GRUMetaGrad<T> grad,
                       int frame_size, int batch_size,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate) {
+                      const detail::ActivationType active_node,
+                      const detail::ActivationType active_gate) {
     auto stream = context.stream();
     dim3 threads;
     dim3 grid;

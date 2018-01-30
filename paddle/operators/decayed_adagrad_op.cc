@@ -55,8 +55,7 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
 
 class DecayedAdagradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DecayedAdagradOpMaker(framework::OpProto *proto,
-                        framework::OpAttrChecker *op_checker)
+  DecayedAdagradOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");

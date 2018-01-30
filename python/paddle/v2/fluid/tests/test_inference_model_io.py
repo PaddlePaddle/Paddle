@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 
 import numpy as np
@@ -6,7 +20,7 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.executor as executor
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.optimizer as optimizer
-from paddle.v2.fluid.framework import Program
+from paddle.v2.fluid.framework import Program, program_guard
 from paddle.v2.fluid.io import save_inference_model, load_inference_model
 
 
@@ -16,35 +30,18 @@ class TestBook(unittest.TestCase):
 
         init_program = Program()
         program = Program()
-        x = layers.data(
-            name='x',
-            shape=[2],
-            dtype='float32',
-            main_program=program,
-            startup_program=init_program)
-        y = layers.data(
-            name='y',
-            shape=[1],
-            dtype='float32',
-            main_program=program,
-            startup_program=init_program)
 
-        y_predict = layers.fc(input=x,
-                              size=1,
-                              act=None,
-                              main_program=program,
-                              startup_program=init_program)
+        with program_guard(program, init_program):
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
 
-        cost = layers.square_error_cost(
-            input=y_predict,
-            label=y,
-            main_program=program,
-            startup_program=init_program)
-        avg_cost = layers.mean(
-            x=cost, main_program=program, startup_program=init_program)
+            y_predict = layers.fc(input=x, size=1, act=None)
 
-        sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
-        sgd_optimizer.minimize(avg_cost, init_program)
+            cost = layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = layers.mean(x=cost)
+
+            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+            sgd_optimizer.minimize(avg_cost, init_program)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)

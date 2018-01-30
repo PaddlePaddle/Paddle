@@ -26,10 +26,9 @@ namespace detail {
 
 template <class T, class Op>
 void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
-                                     int frame_size,
-                                     activation_mode_t active_node,
-                                     activation_mode_t active_gate,
-                                     activation_mode_t active_state) {
+                                     int frame_size, ActivationType active_node,
+                                     ActivationType active_gate,
+                                     ActivationType active_state) {
   T r_value_in;
   T r_value_ig;
   T r_value_fg;
@@ -77,9 +76,9 @@ void naive_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 template <class T, class Op>
 void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
                                       LstmMetaGrad<T> grad, int frame_size,
-                                      activation_mode_t active_node,
-                                      activation_mode_t active_gate,
-                                      activation_mode_t active_state) {
+                                      ActivationType active_node,
+                                      ActivationType active_gate,
+                                      ActivationType active_state) {
   T r_value_in;
   T r_value_ig;
   T r_value_fg;
@@ -149,10 +148,9 @@ void naive_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
 
 template <class T, class Op>
 void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
-                                   int frame_size,
-                                   activation_mode_t active_node,
-                                   activation_mode_t active_gate,
-                                   activation_mode_t active_state) {
+                                   int frame_size, ActivationType active_node,
+                                   ActivationType active_gate,
+                                   ActivationType active_state) {
 #ifdef __AVX__
   __m256 r_value_in;
   __m256 r_value_ig;
@@ -204,9 +202,9 @@ void avx_lstm_forward_one_sequence(Op op, LstmMetaValue<T> value,
 template <class T, class Op>
 void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
                                     LstmMetaGrad<T> grad, int frame_size,
-                                    activation_mode_t active_node,
-                                    activation_mode_t active_gate,
-                                    activation_mode_t active_state) {
+                                    ActivationType active_node,
+                                    ActivationType active_gate,
+                                    ActivationType active_state) {
 #ifdef __AVX__
   __m256 r_value_in;
   __m256 r_value_ig;
@@ -281,9 +279,8 @@ void avx_lstm_backward_one_sequence(Op op, LstmMetaValue<T> value,
 
 template <class T, class Op>
 void cpu_lstm_forward(Op op, LstmMetaValue<T> value, int frame_size,
-                      activation_mode_t active_node,
-                      activation_mode_t active_gate,
-                      activation_mode_t active_state) {
+                      ActivationType active_node, ActivationType active_gate,
+                      ActivationType active_state) {
   if (Op::avx && !(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
     avx_lstm_forward_one_sequence<T>(op, value, frame_size, active_node,
                                      active_gate, active_state);
@@ -295,9 +292,9 @@ void cpu_lstm_forward(Op op, LstmMetaValue<T> value, int frame_size,
 
 template <class T, class Op>
 void cpu_lstm_backward(Op op, LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                       int frame_size, activation_mode_t active_node,
-                       activation_mode_t active_gate,
-                       activation_mode_t active_state) {
+                       int frame_size, ActivationType active_node,
+                       ActivationType active_gate,
+                       ActivationType active_state) {
   if (Op::avx && !(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
     avx_lstm_backward_one_sequence<T>(op, value, grad, frame_size, active_node,
                                       active_gate, active_state);

@@ -245,9 +245,12 @@ template struct SetConstant<platform::CPUDeviceContext, int>;
 template struct SetConstant<platform::CPUDeviceContext, int64_t>;
 template struct SetConstant<platform::CPUDeviceContext, bool>;
 
-#define DEFINE_CPU_TRANS(RANK)                                        \
-  template struct Transpose<platform::CPUDeviceContext, float, RANK>; \
-  template struct Transpose<platform::CPUDeviceContext, double, RANK>;
+#define DEFINE_CPU_TRANS(RANK)                                          \
+  template struct Transpose<platform::CPUDeviceContext, float, RANK>;   \
+  template struct Transpose<platform::CPUDeviceContext, double, RANK>;  \
+  template struct Transpose<platform::CPUDeviceContext, int, RANK>;     \
+  template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>; \
+  template struct Transpose<platform::CPUDeviceContext, bool, RANK>;
 
 DEFINE_CPU_TRANS(1);
 DEFINE_CPU_TRANS(2);
@@ -302,8 +305,29 @@ void set_constant(const platform::DeviceContext& context,
 #endif
 }
 
+template <typename T>
+struct RowwiseAdd<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& input,
+                  const framework::Tensor& vector, framework::Tensor* output) {
+    auto in_dims = input.dims();
+    auto size = input.numel() / in_dims[0];
+    PADDLE_ENFORCE_EQ(vector.numel(), size);
+    PADDLE_ENFORCE_EQ(output->dims(), in_dims);
+
+    auto in = framework::EigenMatrix<T>::From(input);
+    auto vec = framework::EigenVector<T>::Flatten(vector);
+    auto out = framework::EigenMatrix<T>::From(*output);
+
+    for (int64_t i = 0; i < in_dims[0]; ++i) {
+      out.chip(i, 0) = in.chip(i, 0) + vec;
+    }
+  }
+};
+
 template struct RowwiseAdd<platform::CPUDeviceContext, float>;
 template struct RowwiseAdd<platform::CPUDeviceContext, double>;
+
 template struct ColwiseSum<platform::CPUDeviceContext, float>;
 template struct ColwiseSum<platform::CPUDeviceContext, double>;
 

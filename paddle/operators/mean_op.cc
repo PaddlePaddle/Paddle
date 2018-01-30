@@ -32,7 +32,7 @@ class MeanOp : public framework::OperatorWithKernel {
 
 class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MeanOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  MeanOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input of mean op");
     AddOutput("Out", "The output of mean op");
@@ -60,13 +60,13 @@ class MeanGradMaker : public framework::SingleGradOpDescMaker {
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<framework::OpDescBind> Apply() const override {
-    auto* grad_op = new framework::OpDescBind();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad_op = new framework::OpDesc();
     grad_op->SetType("mean_grad");
     grad_op->SetInput("X", Input("X"));
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDescBind>(grad_op);
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/framework/data_type.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/math/math_function.h"
+#include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -33,8 +34,9 @@ class FillConstantOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope &scope,
-           const platform::DeviceContext &dev_ctx) const override {
-    auto data_type = static_cast<framework::DataType>(Attr<int>("dtype"));
+           const platform::Place &dev_place) const override {
+    auto data_type =
+        static_cast<framework::proto::DataType>(Attr<int>("dtype"));
     auto value = Attr<float>("value");
     auto force_cpu = Attr<bool>("force_cpu");
     auto &out =
@@ -44,21 +46,23 @@ class FillConstantOp : public framework::OperatorBase {
       auto cpu = platform::CPUPlace();
       out.mutable_data(cpu, framework::ToTypeIndex(data_type));
     } else {
-      out.mutable_data(dev_ctx.GetPlace(), framework::ToTypeIndex(data_type));
+      out.mutable_data(dev_place, framework::ToTypeIndex(data_type));
     }
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
     math::set_constant(dev_ctx, &out, value);
   }
 };
 
 class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FillConstantOpMaker(framework::OpProto *proto,
-                      framework::OpAttrChecker *op_checker)
+  FillConstantOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::DataType::FP32);
+        .SetDefault(framework::proto::DataType::FP32);
     AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);

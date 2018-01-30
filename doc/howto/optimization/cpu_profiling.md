@@ -60,8 +60,7 @@ each column is as follows:
 | column | meaning |
 | --- | --- |
 | ncalls | the number of calls into a function |
-| tottime | the total execution time of the function, not including the
- execution time of other functions called by the function |
+| tottime | the total execution time of the function, not including the execution time of other functions called by the function |
 | percall | tottime divided by ncalls |
 | cumtime | the total execution time of the function, including the execution time of other functions being called |
 | percall | cumtime divided by ncalls |

@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/multiplex_op.h"
 
@@ -51,7 +51,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
@@ -61,8 +61,7 @@ class MultiplexOp : public framework::OperatorWithKernel {
 
 class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MultiplexOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  MultiplexOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Ids", "The index tensor of multiplex operator.");
     AddInput("X", "The candidate tensors of multiplex operator.")
@@ -103,7 +102,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.MultiInput<Tensor>("X")[0]->type()),
@@ -120,7 +119,13 @@ REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
 REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
 REGISTER_OP_CPU_KERNEL(
     multiplex,
-    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::MultiplexCPUKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     multiplex_grad,
-    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::MultiplexGradCPUKernel<paddle::platform::CPUDeviceContext, int64_t>);

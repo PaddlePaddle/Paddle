@@ -202,8 +202,8 @@ This `OpDesc` value is in the `ops` field of the `BlockDesc` value representing 
 
 During the generation of the Protobuf message, the Block should store VarDesc (the Protobuf message which describes Variable) and OpDesc (the Protobuf message which describes Operator).
 
-VarDesc in a block should have its name scope to avoid local variables affect parent block's name scope.
-Child block's name scopes should inherit the parent's so that OpDesc in child block can reference a VarDesc that stored in parent block. For example:
+VarDesc in a block should have its name scope to avoid local variables affecting parent block's name scope.
+Child block's name scopes should inherit the parent's so that OpDesc in child block can reference a VarDesc that is stored in the parent block. For example:
 
 ```python
 a = pd.Variable(shape=[20, 20])
@@ -291,10 +291,10 @@ public:
   }
 
   void Run(const framework::Scope& scope,
-           const platform::DeviceContext& dev_ctx) const override {
+           const platform::Place& place) const override {
     PADDLE_ENFORCE(symbols_ready_, "operators and variables should be created first.");
     for (auto& op : runtime_table_.ops()) {
-      op->Run(scope, dev_ctx);
+      op->Run(scope, place);
     }
   }
 
