@@ -22,6 +22,7 @@ limitations under the License. */
 using paddle::framework::Channel;
 using paddle::framework::MakeChannel;
 using paddle::framework::CloseChannel;
+using paddle::framework::DeleteChannel;
 
 TEST(Channel, MakeAndClose) {
   using paddle::framework::details::Buffered;
@@ -32,6 +33,7 @@ TEST(Channel, MakeAndClose) {
     EXPECT_NE(dynamic_cast<Buffered<int>*>(ch), nullptr);
     EXPECT_EQ(dynamic_cast<UnBuffered<int>*>(ch), nullptr);
     CloseChannel(ch);
+    DeleteChannel(ch);
   }
   {
     // MakeChannel should return an un-buffered channel is buffer_size = 0.
@@ -39,6 +41,7 @@ TEST(Channel, MakeAndClose) {
     EXPECT_EQ(dynamic_cast<Buffered<int>*>(ch), nullptr);
     EXPECT_NE(dynamic_cast<UnBuffered<int>*>(ch), nullptr);
     CloseChannel(ch);
+    DeleteChannel(ch);
   }
 }
 
@@ -55,6 +58,7 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
     EXPECT_EQ(out, i);
   }
   CloseChannel(ch);
+  DeleteChannel(ch);
 }
 
 TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
@@ -71,6 +75,8 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   });
   std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
   EXPECT_EQ(sum, 45U);
+
   CloseChannel(ch);
   t.join();
+  DeleteChannel(ch);
 }

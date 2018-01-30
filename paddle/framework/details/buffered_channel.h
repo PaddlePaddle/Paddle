@@ -28,6 +28,7 @@ template <typename T>
 class Buffered : public paddle::framework::Channel<T> {
   friend Channel<T>* paddle::framework::MakeChannel<T>(size_t);
   friend void paddle::framework::CloseChannel<T>(Channel<T>*);
+  friend void paddle::framework::DeleteChannel<T>(Channel<T>*);
 
  public:
   virtual void Send(T*);
@@ -41,9 +42,9 @@ class Buffered : public paddle::framework::Channel<T> {
   std::condition_variable empty_cond_var_;
   std::condition_variable full_cond_var_;
   std::deque<T> channel_;
-  bool close;
+  bool close_;
 
-  Buffered(size_t cap) : cap_(cap), close(false) { PADDLE_ENFORCE_GT(cap, 0); }
+  Buffered(size_t cap) : cap_(cap), close_(false) { PADDLE_ENFORCE_GT(cap, 0); }
   virtual ~Buffered();
 
   void NotifyAllSenders(std::unique_lock<std::mutex>*);
@@ -53,8 +54,8 @@ template <typename T>
 void Buffered<T>::Send(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
   full_cond_var_.wait(lock,
-                      [this]() { return channel_.size() < cap_ || close; });
-  if (!close) {
+                      [this]() { return channel_.size() < cap_ || close_; });
+  if (!close_) {
     channel_.push_back(std::move(*item));
     lock.unlock();
     empty_cond_var_.notify_one();
@@ -73,14 +74,14 @@ void Buffered<T>::Receive(T* item) {
 template <typename T>
 void Buffered<T>::Close() {
   std::unique_lock<std::mutex> lock(mu_);
-  close = true;
+  close_ = true;
   NotifyAllSenders(&lock);
 }
 
 template <typename T>
 Buffered<T>::~Buffered() {
   std::unique_lock<std::mutex> lock(mu_);
-  close = true;
+  close_ = true;
   channel_.clear();
   NotifyAllSenders(&lock);
 }
