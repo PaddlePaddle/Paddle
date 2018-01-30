@@ -25,6 +25,7 @@ import collections
 import tarfile
 import re
 import string
+import random
 
 __all__ = ['build_dict', 'train', 'test', 'convert']
 
@@ -82,6 +83,7 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
 
     load(pos_pattern, INS, 0)
     load(neg_pattern, INS, 1)
+    random.shuffle(INS)
 
     def reader():
         for doc, label in INS:
