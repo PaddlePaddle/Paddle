@@ -201,8 +201,8 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
         }
       }
       // Keep top k results per image.
-      std::sort(score_index_pairs.begin(), score_index_pairs.end(),
-                SortScorePairDescend<std::pair<int, int>>);
+      std::stable_sort(score_index_pairs.begin(), score_index_pairs.end(),
+                       SortScorePairDescend<std::pair<int, int>>);
       score_index_pairs.resize(keep_top_k);
 
       // Store the new indices.
@@ -269,7 +269,8 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
 
     int num_kept = batch_starts.back();
     if (num_kept == 0) {
-      outs->Resize({0, 0});
+      T* od = outs->mutable_data<T>({1}, ctx.GetPlace());
+      od[0] = -1;
     } else {
       outs->mutable_data<T>({num_kept, kOutputDim}, ctx.GetPlace());
       for (int64_t i = 0; i < batch_size; ++i) {
@@ -349,11 +350,16 @@ is larger than -1. Then this operator pruns away boxes that have high IOU
 (intersection over union) overlap with already selected boxes by adaptive
 threshold NMS based on parameters of nms_threshold and nms_eta.
 
-Aftern NMS step, only at most keep_top_k number of total bboxes are to be kept
+Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 
 This operator support multi-class and batched inputs. It applying NMS
-independently for each class.
+independently for each class. The outputs is a 2-D LoDTenosr, for each
+image, the offsets in first dimension of LoDTensor are called LoD, the number
+of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
+means there is no detected bbox for this image. If there is no detected boxes
+for all images, all the elements in LoD are 0, and the Out only contains one
+value which is -1.
 )DOC");
   }
 };
