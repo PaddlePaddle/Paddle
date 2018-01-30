@@ -15,7 +15,10 @@
 from initializer import Initializer, Xavier, Constant
 from regularizer import WeightDecayRegularizer
 
-__all__ = ['ParamAttr']
+__all__ = [
+    'ParamAttr',
+    'WeightNormParamAttr',
+]
 
 
 class ParamAttr(object):
@@ -82,3 +85,20 @@ class ParamAttr(object):
         if with_initializer:
             kwargs['initializer'] = self.initializer
         return kwargs
+
+
+class WeightNormParamAttr(ParamAttr):
+    """
+    Used for weight normalization. Any field in ParamAttr can also be set here.
+    Besides, an extra field dim can be set to indicate the dimension except 
+    which to normalize.
+    """
+    # List to record the parameters reparameterized by weight normalization.
+    # If these parameters are treated as Variable rather than Parameter,
+    # it can be used to discriminate these parameters and help to serialize
+    # these paramters for inference.
+    params_with_weight_norm = []
+
+    def __init__(self, dim=None, **kwargs):
+        super(WeightNormParamAttr, self).__init__(**kwargs)
+        self.dim = dim
