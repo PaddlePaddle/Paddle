@@ -51,7 +51,8 @@ class Optimizer(object):
             self._global_learning_rate = layers.create_global_var(
                 shape=[1],
                 value=float(self._global_learning_rate),
-                dtype='float32')
+                dtype='float32',
+                persistable=True)
 
         if not isinstance(self._global_learning_rate, framework.Variable):
             raise ValueError("learning rate should be a Variable, "

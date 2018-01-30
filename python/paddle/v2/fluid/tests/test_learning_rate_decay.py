@@ -61,7 +61,7 @@ class TestLearningRateDecay(unittest.TestCase):
         decay_rate = 0.5
 
         global_step = layers.create_global_var(
-            shape=[1], value=0.0, dtype='float32')
+            shape=[1], value=0.0, dtype='float32', persistable=True)
 
         decayed_lr = fluid_decay_fn(
             learning_rate=init_lr,
