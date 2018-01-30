@@ -13,8 +13,8 @@ add_library(paddle_fluid_shared SHARED io.cc)
 target_circle_link_libraries(paddle_fluid_shared
   ARCHIVE_START
   ${GLOB_OP_LIB}
-  ARCHIVE_END
-  ${FLUID_CORE_MODULES})
+  ${FLUID_CORE_MODULES}
+  ARCHIVE_END)
 
 SET_TARGET_PROPERTIES(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 
