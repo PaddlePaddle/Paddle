@@ -26,7 +26,7 @@ nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
 cc_test(variable_test SRCS variable_test.cc)
 
-cc_library(threadpool SRCS threadpool.cc)
+cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool)
