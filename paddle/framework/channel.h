@@ -13,75 +13,52 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <condition_variable>
-#include <mutex>
-#include <queue>
+
+#include <stddef.h>  // for size_t
 
 namespace paddle {
 namespace framework {
 
+// Channel is the abstract class of buffered and un-buffered channels.
 template <typename T>
 class Channel {
  public:
-  explicit Channel(std::size_t capacity) : capacity_(capacity) {}
+  virtual void Send(T*) = 0;
+  virtual void Receive(T*) = 0;
+  virtual size_t Cap() = 0;
 
-  void Send(T* channel_element) {
-    std::unique_lock<std::mutex> lock(mu_);
-
-    if (IsBounded()) {
-      full_cond_var_.wait(lock, [this]() {
-        bool capacity_valid = capacity_ > 0 ? !IsCapacityFull() : true;
-        return capacity_valid;
-      });
-    }
-    channel_.push_back(std::move(*channel_element));
-
-    lock.unlock();
-    empty_cond_var_.notify_one();
-  }
-
-  T* Receive() {
-    std::unique_lock<std::mutex> lock(mu_);
-    empty_cond_var_.wait(lock, [this]() { return !channel_.empty(); });
-
-    T* channel_element = std::move(channel_.front());
-    channel_.pop_front();
-
-    NotifyAllSenders(&lock);
-    return channel_element;
-  }
-
-  size_t Size() {
-    std::unique_lock<std::mutex> lock(mu_);
-    return channel_.size();
-  }
-
-  void Clear() {
-    std::unique_lock<std::mutex> lock(mu_);
-    channel_.clear();
-
-    NotifyAllSenders(&lock);
-  }
-
- private:
-  std::size_t capacity_;
-  std::mutex mu_;
-  std::condition_variable empty_cond_var_;
-  std::condition_variable full_cond_var_;
-  std::deque<T> channel_;
-
- private:
-  void NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
-    if (IsBounded()) {
-      lock->unlock();
-      full_cond_var_.notify_one();
-    }
-  }
-
-  bool IsBounded() const { return capacity_ > 0; }
-
-  bool IsCapacityFull() const { return channel_.size() >= capacity_; }
+  // Don't delete channels; instead, call Channel::Close.
+ protected:
+  virtual ~Channel() {}
 };
 
-}  // namespace operator
+// Forward declaration of channel implementations.
+namespace details {
+template <typename T>
+class Buffered;
+template <typename T>
+class UnBuffered;
+}  // namespace details
+
+template <typename T>
+Channel<T>* MakeChannel(size_t buffer_size) {
+  if (buffer_size > 0) {
+    return new details::Buffered<T>(buffer_size);
+  }
+  return new details::UnBuffered<T>();
+}
+
+template <typename T>
+void CloseChannel(Channel<T>* ch) {
+  if (ch->Cap() > 0) {
+    delete dynamic_cast<details::Buffered<T>*>(ch);
+  } else {
+    delete dynamic_cast<details::UnBuffered<T>*>(ch);
+  }
+}
+
+}  // namespace framework
 }  // namespace paddle
+
+#include "paddle/framework/details/buffered_channel.h"
+#include "paddle/framework/details/unbuffered_channel.h"
