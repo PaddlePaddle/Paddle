@@ -16,8 +16,8 @@ limitations under the License. */
 #include <time.h>
 #include <sstream>
 #include "gflags/gflags.h"
-#include "paddle/framework/init.h"
-#include "paddle/inference/inference.h"
+#include "paddle/framework/lod_tensor.h"
+#include "paddle/inference/io.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
@@ -31,14 +31,13 @@ void TestInference(const std::string& dirname,
   auto* scope = new paddle::framework::Scope();
 
   // 2. Initialize the inference_program and load all parameters from file
-  paddle::InferenceEngine* engine = new paddle::InferenceEngine();
-  paddle::framework::ProgramDesc* inference_program =
-      engine->LoadInferenceModel(executor, scope, dirname);
+  auto* inference_program = paddle::inference::Load(executor, *scope, dirname);
 
   // 3. Get the feed_var_names and fetch_var_names
-  const std::vector<std::string>& feed_target_names = engine->GetFeedVarNames();
+  const std::vector<std::string>& feed_target_names =
+      inference_program->GetFeedVarNames();
   const std::vector<std::string>& fetch_target_names =
-      engine->GetFetchVarNames();
+      inference_program->GetFetchVarNames();
 
   // 4. Prepare inputs
   std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
@@ -56,8 +55,8 @@ void TestInference(const std::string& dirname,
   // 6. Run the inference program
   executor.Run(*inference_program, scope, feed_targets, fetch_targets);
 
+  delete inference_program;
   delete scope;
-  delete engine;
 }
 
 TEST(inference, recognize_digits) {
