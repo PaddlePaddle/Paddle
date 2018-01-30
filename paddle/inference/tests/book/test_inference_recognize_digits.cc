@@ -33,11 +33,11 @@ void TestInference(const std::string& dirname,
   // 2. Initialize the inference_program and load all parameters from file
   auto* inference_program = paddle::inference::Load(executor, *scope, dirname);
 
-  // 3. Get the feed_var_names and fetch_var_names
+  // 3. Get the feed_target_names and fetch_target_names
   const std::vector<std::string>& feed_target_names =
-      inference_program->GetFeedVarNames();
+      inference_program->GetFeedTargetNames();
   const std::vector<std::string>& fetch_target_names =
-      inference_program->GetFetchVarNames();
+      inference_program->GetFetchTargetNames();
 
   // 4. Prepare inputs
   std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
