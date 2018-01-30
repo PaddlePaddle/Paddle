@@ -37,7 +37,6 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    bool do_get = Attr<bool>("DoGet");
     std::vector<std::string> endpoints =
         Attr<std::vector<std::string>>("endpoints");
 
@@ -55,7 +54,7 @@ class SendOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE(client_.Wait());
 
-    if (do_get) {
+    if (outs.size() > 0) {
       for (size_t i = 0; i < outs.size(); i++) {
         VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
         client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
@@ -65,7 +64,8 @@ class SendOp : public framework::OperatorBase {
   }
 
  private:
-  // TODO(typhoonzero): put RPCClient in a Variable.
+  // TODO(typhoonzero): put RPCClient in a Variable, so that
+  // send and recv can use the same connection.
   mutable detail::RPCClient client_;
 };
 
@@ -81,6 +81,8 @@ Send operator
 
 This operator will send tensor to recv_op at the parameter server.
 )DOC");
+    // TODO(typhoonzero): remove this attr generate de-duplicated vector from
+    // epmap when initializing.
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
@@ -90,10 +92,6 @@ This operator will send tensor to recv_op at the parameter server.
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
         .SetDefault({});
-    AddAttr<bool>("DoGet",
-                  "(bool, default true)"
-                  "Whether do GetVariable call after send")
-        .SetDefault(true);
   }
 };
 

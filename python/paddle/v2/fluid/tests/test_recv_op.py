@@ -29,7 +29,7 @@ class TestRecvOp(unittest.TestCase):
         p = Process(target=self.init_serv, args=(place, ))
         p.daemon = True
         p.start()
-        time.sleep(5)
+        time.sleep(1)
         self.init_client(place)
         # FIXME(typhoonzero): find a way to gracefully shutdown the server.
         os.system("kill -9 %d" % p.pid)
