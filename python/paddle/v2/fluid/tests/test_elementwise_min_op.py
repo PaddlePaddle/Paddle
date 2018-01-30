@@ -17,7 +17,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestElementwiseOp(OpTest):
+class TestElementwiseMinOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_min"
         # If x and y have the same value, the min() is not differentiable.
@@ -44,7 +44,7 @@ class TestElementwiseOp(OpTest):
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
-class TestElementwiseMinOp_scalar(TestElementwiseOp):
+class TestElementwiseMinOp_scalar(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.random_integers(-5, 5, [2, 3, 4]).astype("float32")
@@ -53,7 +53,7 @@ class TestElementwiseMinOp_scalar(TestElementwiseOp):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseMaxOp_Vector(TestElementwiseOp):
+class TestElementwiseMinOp_Vector(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.random((32, )).astype("float32")
@@ -63,7 +63,7 @@ class TestElementwiseMaxOp_Vector(TestElementwiseOp):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
+class TestElementwiseMinOp_broadcast_0(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -79,7 +79,7 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
+class TestElementwiseMinOp_broadcast_1(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -95,7 +95,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
+class TestElementwiseMinOp_broadcast_2(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
@@ -110,7 +110,7 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
+class TestElementwiseMinOp_broadcast_3(TestElementwiseMinOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)

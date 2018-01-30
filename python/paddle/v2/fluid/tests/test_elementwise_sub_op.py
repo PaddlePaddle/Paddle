@@ -16,7 +16,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestElementwiseOp(OpTest):
+class TestElementwiseSubOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -40,7 +40,7 @@ class TestElementwiseOp(OpTest):
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
-class TestElementwiseSubOp_scalar(TestElementwiseOp):
+class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -50,7 +50,7 @@ class TestElementwiseSubOp_scalar(TestElementwiseOp):
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
-class TestElementwiseSubOp_Vector(TestElementwiseOp):
+class TestElementwiseSubOp_Vector(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -60,7 +60,7 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
-class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
+class TestElementwiseSubOp_broadcast_0(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -74,7 +74,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
         }
 
 
-class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
+class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -88,7 +88,7 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
         }
 
 
-class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
+class TestElementwiseSubOp_broadcast_2(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
@@ -101,7 +101,7 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
         }
 
 
-class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
+class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {

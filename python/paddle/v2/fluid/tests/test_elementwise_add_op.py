@@ -16,7 +16,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestElementwiseOp(OpTest):
+class TestElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -40,7 +40,7 @@ class TestElementwiseOp(OpTest):
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
 
-class TestElementwiseAddOp_scalar(TestElementwiseOp):
+class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -50,7 +50,7 @@ class TestElementwiseAddOp_scalar(TestElementwiseOp):
         self.outputs = {'Out': self.inputs['X'] + self.inputs['Y']}
 
 
-class TestElementwiseAddOp_Vector(TestElementwiseOp):
+class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -60,7 +60,7 @@ class TestElementwiseAddOp_Vector(TestElementwiseOp):
         self.outputs = {'Out': np.add(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseAddOp_broadcast_0(TestElementwiseOp):
+class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -74,7 +74,7 @@ class TestElementwiseAddOp_broadcast_0(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_broadcast_1(TestElementwiseOp):
+class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -88,7 +88,7 @@ class TestElementwiseAddOp_broadcast_1(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_broadcast_2(TestElementwiseOp):
+class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -101,7 +101,7 @@ class TestElementwiseAddOp_broadcast_2(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_broadcast_3(TestElementwiseOp):
+class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -115,7 +115,7 @@ class TestElementwiseAddOp_broadcast_3(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_rowwise_add_0(TestElementwiseOp):
+class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -129,7 +129,7 @@ class TestElementwiseAddOp_rowwise_add_0(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_rowwise_add_1(TestElementwiseOp):
+class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
