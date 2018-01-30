@@ -27,17 +27,16 @@ template <typename T>
 class UnBuffered : public paddle::framework::Channel<T> {
   friend Channel<T>* paddle::framework::MakeChannel<T>(size_t);
   friend void paddle::framework::CloseChannel<T>(Channel<T>*);
-  friend void paddle::framework::DeleteChannel<T>(Channel<T>*);
 
  public:
   virtual void Send(T*);
   virtual void Receive(T*);
   virtual size_t Cap() { return 0; }
   virtual void Close();
+  virtual ~UnBuffered();
 
  private:
   UnBuffered() {}
-  virtual ~UnBuffered();
 };
 
 template <typename T>

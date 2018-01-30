@@ -28,13 +28,13 @@ template <typename T>
 class Buffered : public paddle::framework::Channel<T> {
   friend Channel<T>* paddle::framework::MakeChannel<T>(size_t);
   friend void paddle::framework::CloseChannel<T>(Channel<T>*);
-  friend void paddle::framework::DeleteChannel<T>(Channel<T>*);
 
  public:
   virtual void Send(T*);
   virtual void Receive(T*);
   virtual size_t Cap() { return cap_; }
   virtual void Close();
+  virtual ~Buffered();
 
  private:
   size_t cap_;
@@ -42,10 +42,11 @@ class Buffered : public paddle::framework::Channel<T> {
   std::condition_variable empty_cond_var_;
   std::condition_variable full_cond_var_;
   std::deque<T> channel_;
-  bool close_;
+  bool closed_;
 
-  Buffered(size_t cap) : cap_(cap), close_(false) { PADDLE_ENFORCE_GT(cap, 0); }
-  virtual ~Buffered();
+  Buffered(size_t cap) : cap_(cap), closed_(false) {
+    PADDLE_ENFORCE_GT(cap, 0);
+  }
 
   void NotifyAllSenders(std::unique_lock<std::mutex>*);
 };
@@ -54,8 +55,8 @@ template <typename T>
 void Buffered<T>::Send(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
   full_cond_var_.wait(lock,
-                      [this]() { return channel_.size() < cap_ || close_; });
-  if (!close_) {
+                      [this]() { return channel_.size() < cap_ || closed_; });
+  if (!closed_) {
     channel_.push_back(std::move(*item));
     lock.unlock();
     empty_cond_var_.notify_one();
@@ -65,23 +66,27 @@ void Buffered<T>::Send(T* item) {
 template <typename T>
 void Buffered<T>::Receive(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
-  empty_cond_var_.wait(lock, [this]() { return !channel_.empty(); });
-  *item = std::move(channel_.front());
-  channel_.pop_front();
-  NotifyAllSenders(&lock);
+  empty_cond_var_.wait(lock, [this]() { return !channel_.empty() || closed_; });
+  if (!closed_) {
+    *item = std::move(channel_.front());
+    channel_.pop_front();
+    NotifyAllSenders(&lock);
+  } else {
+    item = nullptr;
+  }
 }
 
 template <typename T>
 void Buffered<T>::Close() {
   std::unique_lock<std::mutex> lock(mu_);
-  close_ = true;
+  closed_ = true;
   NotifyAllSenders(&lock);
 }
 
 template <typename T>
 Buffered<T>::~Buffered() {
   std::unique_lock<std::mutex> lock(mu_);
-  close_ = true;
+  closed_ = true;
   channel_.clear();
   NotifyAllSenders(&lock);
 }
