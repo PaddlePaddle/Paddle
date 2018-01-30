@@ -20,7 +20,7 @@ __all__ = ['exponential_decay', 'natural_exp_decay', 'inverse_time_decay']
 When training a model, it's often useful to decay the
 learning rate during training process, this is called
 learning_rate_decay. There are many strategies to do
-this, this module will provide some classic method.
+this, this module will provide some classical method.
 User can also implement their own learning_rate_decay
 strategy according to this module.
 """

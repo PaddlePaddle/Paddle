@@ -15,6 +15,7 @@
 from collections import defaultdict
 
 import framework
+import layers
 from backward import append_backward
 from framework import unique_name, program_guard
 from initializer import Constant
@@ -47,15 +48,10 @@ class Optimizer(object):
 
     def _create_global_learning_rate(self):
         if isinstance(self._global_learning_rate, float):
-            lr_value = self._global_learning_rate
-            self._global_learning_rate = self.helper.create_global_variable(
-                name=unique_name("learning_rate"),
-                dtype='float32',
+            self._global_learning_rate = layers.create_global_var(
                 shape=[1],
-                lod_level=1,
-                persistable=True)
-            self.helper.set_variable_initializer(
-                var=self._global_learning_rate, initializer=Constant(lr_value))
+                value=float(self._global_learning_rate),
+                dtype='float32')
 
         if not isinstance(self._global_learning_rate, framework.Variable):
             raise ValueError("learning rate should be a Variable, "

@@ -63,7 +63,7 @@ class TestLearningRateDecay(unittest.TestCase):
         global_step = layers.create_global_var(
             shape=[1], value=0.0, dtype='float32')
 
-        decaied_lr = fluid_decay_fn(
+        decayed_lr = fluid_decay_fn(
             learning_rate=init_lr,
             global_step=global_step,
             decay_steps=decay_steps,
@@ -78,14 +78,14 @@ class TestLearningRateDecay(unittest.TestCase):
         for step in range(10):
             step_val, lr_val = exe.run(fluid.default_main_program(),
                                        feed=[],
-                                       fetch_list=[global_step, decaied_lr])
-            python_decaied_lr = python_decay_fn(
+                                       fetch_list=[global_step, decayed_lr])
+            python_decayed_lr = python_decay_fn(
                 learning_rate=init_lr,
                 global_step=step,
                 decay_steps=decay_steps,
                 decay_rate=decay_rate,
                 staircase=staircase)
-            self.assertAlmostEqual(python_decaied_lr, lr_val[0])
+            self.assertAlmostEqual(python_decayed_lr, lr_val[0])
 
     def test_decay(self):
         decay_fns = [
