@@ -21,11 +21,11 @@ namespace inference {
 const std::string kFeedOpType = "feed";
 
 bool IsParameter(const framework::VarDesc* var,
-                 const framework::ProgramDesc* main_program) {
+                 const framework::ProgramDesc& main_program) {
   if (var->Persistable()) {
     // There are many unreachable variables in the program
-    for (size_t i = 0; i < main_program->Size(); ++i) {
-      const framework::BlockDesc& block = main_program->Block(i);
+    for (size_t i = 0; i < main_program.Size(); ++i) {
+      const framework::BlockDesc& block = main_program.Block(i);
       for (auto* op : block.AllOps()) {
         if (op->Type() == kFeedOpType) {
           continue;
@@ -44,12 +44,12 @@ bool IsParameter(const framework::VarDesc* var,
 void LoadPersistables(framework::Executor& executor,
                       framework::Scope& scope,
                       const std::string& dirname,
-                      framework::ProgramDesc* main_program) {
-  framework::BlockDesc* global_block = main_program->MutableBlock(0);
+                      const framework::ProgramDesc& main_program) {
+  const framework::BlockDesc& global_block = main_program.Block(0);
 
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
   framework::BlockDesc* load_block = load_program->MutableBlock(0);
-  for (auto* var : global_block->AllVars()) {
+  for (auto* var : global_block.AllVars()) {
     if (IsParameter(var, main_program)) {
       LOG(INFO) << "parameter's name: " << var->Name();
 
@@ -72,9 +72,9 @@ void LoadPersistables(framework::Executor& executor,
   delete load_program;
 }
 
-framework::ProgramDesc* Load(framework::Executor& executor,
-                             framework::Scope& scope,
-                             const std::string& dirname) {
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
+                                             framework::Scope& scope,
+                                             const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
   LOG(INFO) << "loading model from " << model_filename;
   std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
@@ -86,10 +86,10 @@ framework::ProgramDesc* Load(framework::Executor& executor,
   inputfs.read(&program_desc_str[0], program_desc_str.size());
   inputfs.close();
 
-  framework::ProgramDesc* main_program =
-      new framework::ProgramDesc(program_desc_str);
+  std::unique_ptr<framework::ProgramDesc> main_program(
+      new framework::ProgramDesc(program_desc_str));
 
-  LoadPersistables(executor, scope, dirname, main_program);
+  LoadPersistables(executor, scope, dirname, *main_program);
   return main_program;
 }
 
