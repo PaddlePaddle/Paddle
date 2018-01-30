@@ -24,6 +24,29 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Detection"),
+                   "Input(Detection) of DetectionMAPOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"),
+                   "Input(Label) of DetectionMAPOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("MAP"),
+                   "Output(MAP) of DetectionMAPOp should not be null.");
+
+    auto det_dims = ctx->GetInputDim("Detection");
+    PADDLE_ENFORCE_EQ(det_dims.size(), 2UL,
+                      "The rank of Input(Detection) must be 2, "
+                      "the shape is [N, 6].");
+    PADDLE_ENFORCE_EQ(det_dims[1], 6UL,
+                      "The shape is of Input(Detection) [N, 6].");
+    auto label_dims = ctx->GetInputDim("Label");
+    PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
+                      "The rank of Input(Label) must be 2, "
+                      "the shape is [N, 6].");
+    PADDLE_ENFORCE_EQ(label_dims[1], 6UL,
+                      "The shape is of Input(Label) [N, 6].");
+
+    auto ap_type = GetAPType(ctx->Attrs().Get<std::string>("ap_type"));
+    PADDLE_ENFORCE_NE(ap_type, APType::kNone,
+                      "The ap_type should be 'integral' or '11point.");
     auto map_dim = framework::make_ddim({1});
     ctx->SetOutputDim("MAP", map_dim);
   }
@@ -42,25 +65,49 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
   DetectionMAPOpMaker(framework::OpProto* proto,
                       framework::OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Detect", "The detection output.");
-    AddInput("Label", "The label data.");
-    AddOutput("MAP", "The MAP evaluate result of the detection.");
+    AddInput("Label",
+             "(LoDTensor) A 2-D LoDTensor with shape[N, 6] represents the"
+             "Labeled ground-truth data. Each row has 6 values: "
+             "[label, is_difficult, xmin, ymin, xmax, ymax], N is the total "
+             "number of ground-truth data in this mini-batch. For each "
+             "instance, the offsets in first dimension are called LoD, "
+             "the number of offset is N + 1, if LoD[i + 1] - LoD[i] == 0, "
+             "means there is no ground-truth data.");
+    AddInput("Detection",
+             "(LoDTensor) A 2-D LoDTensor with shape [M, 6] represents the "
+             "detections. Each row has 6 values: "
+             "[label, confidence, xmin, ymin, xmax, ymax], M is the total "
+             "number of detections in this mini-batch. For each instance, "
+             "the offsets in first dimension are called LoD, the number of "
+             "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
+             "no detected data.");
+    AddOutput("MAP",
+              "(Tensor) A tensor with shape [1], store the mAP evaluate "
+              "result of the detection.");
 
-    AddAttr<float>("overlap_threshold", "The overlap threshold.")
+    AddAttr<float>("overlap_threshold",
+                   "(float) "
+                   "The jaccard overlap threshold of detection output and "
+                   "ground-truth data.")
         .SetDefault(.3f);
     AddAttr<bool>("evaluate_difficult",
+                  "(bool, default true) "
                   "Switch to control whether the difficult data is evaluated.")
         .SetDefault(true);
     AddAttr<std::string>("ap_type",
-                         "The AP algorithm type, 'Integral' or '11point'.")
-        .SetDefault("Integral");
-
+                         "(string, default 'integral') "
+                         "The AP algorithm type, 'integral' or '11point'.")
+        .SetDefault("integral")
+        .InEnum({"integral", "11point"});
     AddComment(R"DOC(
-Detection MAP Operator.
-
-Detection MAP evaluator for SSD(Single Shot MultiBox Detector) algorithm.
-Please get more information from the following papers:
-https://arxiv.org/abs/1512.02325.
+Detection mAP evaluate operator.
+The general steps are as follows. First, calculate the true positive and
+ false positive according to the input of detection and labels, then
+ calculate the mAP evaluate value.
+ Supporting '11 point' and 'integral' mAP algorithm. Please get more information
+ from the following articles:
+ https://sanchom.wordpress.com/tag/average-precision/
+ https://arxiv.org/abs/1512.02325
 
 )DOC");
   }

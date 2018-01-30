@@ -10,14 +10,14 @@ class TestDetectionMAPOp(OpTest):
     def set_data(self):
         self.init_test_case()
 
-        self.mAP = [self.calc_map(self.tf_pos)]
+        self.mAP = [self.calc_map(self.tf_pos, self.tf_pos_lod)]
         self.label = np.array(self.label).astype('float32')
         self.detect = np.array(self.detect).astype('float32')
         self.mAP = np.array(self.mAP).astype('float32')
 
         self.inputs = {
             'Label': (self.label, self.label_lod),
-            'Detect': self.detect
+            'Detection': (self.detect, self.detect_lod)
         }
 
         self.attrs = {
@@ -31,29 +31,29 @@ class TestDetectionMAPOp(OpTest):
     def init_test_case(self):
         self.overlap_threshold = 0.3
         self.evaluate_difficult = True
-        self.ap_type = "Integral"
+        self.ap_type = "integral"
 
         self.label_lod = [[0, 2, 4]]
-        # label xmin ymin xmax ymax difficult
-        self.label = [[1, 0.1, 0.1, 0.3, 0.3, 0], [1, 0.6, 0.6, 0.8, 0.8, 1],
-                      [2, 0.3, 0.3, 0.6, 0.5, 0], [1, 0.7, 0.1, 0.9, 0.3, 0]]
+        # label difficult xmin ymin xmax ymax
+        self.label = [[1, 0, 0.1, 0.1, 0.3, 0.3], [1, 1, 0.6, 0.6, 0.8, 0.8],
+                      [2, 0, 0.3, 0.3, 0.6, 0.5], [1, 0, 0.7, 0.1, 0.9, 0.3]]
 
-        # image_id label score xmin ymin xmax ymax difficult
+        # label score xmin ymin xmax ymax difficult
+        self.detect_lod = [[0, 3, 7]]
         self.detect = [
-            [0, 1, 0.3, 0.1, 0.0, 0.4, 0.3], [0, 1, 0.7, 0.0, 0.1, 0.2, 0.3],
-            [0, 1, 0.9, 0.7, 0.6, 0.8, 0.8], [1, 2, 0.8, 0.2, 0.1, 0.4, 0.4],
-            [1, 2, 0.1, 0.4, 0.3, 0.7, 0.5], [1, 1, 0.2, 0.8, 0.1, 1.0, 0.3],
-            [1, 3, 0.2, 0.8, 0.1, 1.0, 0.3]
+            [1, 0.3, 0.1, 0.0, 0.4, 0.3], [1, 0.7, 0.0, 0.1, 0.2, 0.3],
+            [1, 0.9, 0.7, 0.6, 0.8, 0.8], [2, 0.8, 0.2, 0.1, 0.4, 0.4],
+            [2, 0.1, 0.4, 0.3, 0.7, 0.5], [1, 0.2, 0.8, 0.1, 1.0, 0.3],
+            [3, 0.2, 0.8, 0.1, 1.0, 0.3]
         ]
 
-        # image_id label score false_pos false_pos
-        # [-1, 1, 3, -1, -1],
-        # [-1, 2, 1, -1, -1]
-        self.tf_pos = [[0, 1, 0.9, 1, 0], [0, 1, 0.7, 1, 0], [0, 1, 0.3, 0, 1],
-                       [1, 1, 0.2, 1, 0], [1, 2, 0.8, 0, 1], [1, 2, 0.1, 1, 0],
-                       [1, 3, 0.2, 0, 1]]
+        # label score true_pos false_pos
+        self.tf_pos_lod = [[0, 3, 7]]
+        self.tf_pos = [[1, 0.9, 1, 0], [1, 0.7, 1, 0], [1, 0.3, 0, 1],
+                       [1, 0.2, 1, 0], [2, 0.8, 0, 1], [2, 0.1, 1, 0],
+                       [3, 0.2, 0, 1]]
 
-    def calc_map(self, tf_pos):
+    def calc_map(self, tf_pos, tf_pos_lod):
         mAP = 0.0
         count = 0
 
@@ -71,7 +71,7 @@ class TestDetectionMAPOp(OpTest):
             return accu_list
 
         label_count = collections.Counter()
-        for (label, xmin, ymin, xmax, ymax, difficult) in self.label:
+        for (label, difficult, xmin, ymin, xmax, ymax) in self.label:
             if self.evaluate_difficult:
                 label_count[label] += 1
             elif not difficult:
@@ -79,7 +79,7 @@ class TestDetectionMAPOp(OpTest):
 
         true_pos = collections.defaultdict(list)
         false_pos = collections.defaultdict(list)
-        for (image_id, label, score, tp, fp) in tf_pos:
+        for (label, score, tp, fp) in tf_pos:
             true_pos[label].append([score, tp])
             false_pos[label].append([score, fp])
 
@@ -103,22 +103,22 @@ class TestDetectionMAPOp(OpTest):
                 recall.append(float(accu_tp_sum[i]) / label_pos_num)
 
             if self.ap_type == "11point":
-                max_precisions = [11.0, 0.0]
+                max_precisions = [0.0] * 11
                 start_idx = len(accu_tp_sum) - 1
-                for j in range(10, 0, -1):
-                    for i in range(start_idx, 0, -1):
-                        if recall[i] < j / 10.0:
+                for j in range(10, -1, -1):
+                    for i in range(start_idx, -1, -1):
+                        if recall[i] < float(j) / 10.0:
                             start_idx = i
                             if j > 0:
                                 max_precisions[j - 1] = max_precisions[j]
                                 break
-                            else:
-                                if max_precisions[j] < accu_precision[i]:
-                                    max_precisions[j] = accu_precision[i]
-                for j in range(10, 0, -1):
+                        else:
+                            if max_precisions[j] < precision[i]:
+                                max_precisions[j] = precision[i]
+                for j in range(10, -1, -1):
                     mAP += max_precisions[j] / 11
                 count += 1
-            elif self.ap_type == "Integral":
+            elif self.ap_type == "integral":
                 average_precisions = 0.0
                 prev_recall = 0.0
                 for i in range(len(accu_tp_sum)):
@@ -147,8 +147,17 @@ class TestDetectionMAPOpSkipDiff(TestDetectionMAPOp):
 
         self.evaluate_difficult = False
 
-        self.tf_pos = [[0, 1, 0.7, 1, 0], [0, 1, 0.3, 0, 1], [1, 1, 0.2, 1, 0],
-                       [1, 2, 0.8, 0, 1], [1, 2, 0.1, 1, 0], [1, 3, 0.2, 0, 1]]
+        self.tf_pos_lod = [[0, 2, 6]]
+        # label score true_pos false_pos
+        self.tf_pos = [[1, 0.7, 1, 0], [1, 0.3, 0, 1], [1, 0.2, 1, 0],
+                       [2, 0.8, 0, 1], [2, 0.1, 1, 0], [3, 0.2, 0, 1]]
+
+
+class TestDetectionMAPOp11Point(TestDetectionMAPOp):
+    def init_test_case(self):
+        super(TestDetectionMAPOp11Point, self).init_test_case()
+
+        self.ap_type = "11point"
 
 
 if __name__ == '__main__':
