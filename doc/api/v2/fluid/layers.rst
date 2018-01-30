@@ -18,6 +18,11 @@ dynamic_lstm
 ..  autofunction:: paddle.v2.fluid.layers.dynamic_lstm
     :noindex:
 
+dynamic_lstmp
+-------------
+..  autofunction:: paddle.v2.fluid.layers.dynamic_lstmp
+    :noindex:
+
 dynamic_gru
 -----------
 ..  autofunction:: paddle.v2.fluid.layers.dynamic_gru

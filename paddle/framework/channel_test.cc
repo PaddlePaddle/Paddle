@@ -12,19 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/framework/channel.h"
 
-#include "paddle/framework/feed_fetch_type.h"
-#include "paddle/framework/scope.h"
+#include "gtest/gtest.h"
 
-namespace paddle {
-namespace framework {
+TEST(Channel, MakeAndClose) {
+  using paddle::framework::Channel;
+  using paddle::framework::MakeChannel;
+  using paddle::framework::CloseChannel;
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index);
-
-LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
-                            size_t index);
-
-}  // namespace framework
-}  // namespace paddle
+  Channel<int>* ch = MakeChannel<int>(10);
+  CloseChannel(ch);
+}

@@ -13,18 +13,40 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <condition_variable>
+#include <deque>
+#include <mutex>
 
-#include "paddle/framework/feed_fetch_type.h"
-#include "paddle/framework/scope.h"
+#include "paddle/framework/channel.h"
 
 namespace paddle {
 namespace framework {
+namespace details {
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index);
+template <typename T>
+class UnBuffered : public paddle::framework::Channel<T> {
+  friend Channel<T>* paddle::framework::MakeChannel<T>(size_t);
+  friend void paddle::framework::CloseChannel<T>(Channel<T>*);
 
-LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
-                            size_t index);
+ public:
+  virtual void Send(T*);
+  virtual void Receive(T*);
+  virtual size_t Cap() { return 0; }
 
+ private:
+  UnBuffered() {}
+  virtual ~UnBuffered();
+};
+
+template <typename T>
+void UnBuffered<T>::Send(T* channel_element) {}
+
+template <typename T>
+void UnBuffered<T>::Receive(T*) {}
+
+template <typename T>
+UnBuffered<T>::~UnBuffered() {}
+
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle
