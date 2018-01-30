@@ -40,16 +40,15 @@ int main(int argc, char** argv) {
   std::string dirname = FLAGS_dirname;
 
   // 2. Initialize the inference program
-  paddle::framework::ProgramDesc* inference_program =
-      paddle::inference::Load(*executor, *scope, dirname);
+  auto inference_program = paddle::inference::Load(*executor, *scope, dirname);
 
   // 3. Optional: perform optimization on the inference_program
 
   // 4. Get the feed_var_names and fetch_var_names
-  std::vector<std::string> feed_var_names =
-      paddle::inference::GetFeedVarNames(inference_program);
-  std::vector<std::string> fetch_var_names =
-      paddle::inference::GetFetchVarNames(inference_program);
+  const std::vector<std::string>& feed_var_names =
+      inference_program->GetFeedVarNames();
+  const std::vector<std::string>& fetch_var_names =
+      inference_program->GetFetchVarNames();
 
   // 5. Generate input
   paddle::framework::LoDTensor input;

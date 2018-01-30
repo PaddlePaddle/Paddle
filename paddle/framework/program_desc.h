@@ -45,6 +45,10 @@ class ProgramDesc {
 
   proto::ProgramDesc *Proto();
 
+  const std::vector<std::string> GetFeedVarNames();
+
+  const std::vector<std::string> GetFetchVarNames();
+
  private:
   proto::ProgramDesc desc_;
 

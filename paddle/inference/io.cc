@@ -18,6 +18,9 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
+const std::string kFeedOpType = "feed";
+// const std::string kFetchOpType = "fetch";
+
 bool IsParameter(const framework::VarDesc* var,
                  const framework::ProgramDesc* main_program) {
   if (var->Persistable()) {
@@ -25,7 +28,7 @@ bool IsParameter(const framework::VarDesc* var,
     for (size_t i = 0; i < main_program->Size(); ++i) {
       const framework::BlockDesc& block = main_program->Block(i);
       for (auto* op : block.AllOps()) {
-        if (op->Type() == "feed") {
+        if (op->Type() == kFeedOpType) {
           continue;
         }
         for (auto input_argument_name : op->InputArgumentNames()) {
@@ -91,11 +94,12 @@ framework::ProgramDesc* Load(framework::Executor& executor,
   return main_program;
 }
 
-std::vector<std::string> GetFeedVarNames(framework::ProgramDesc* main_program) {
+/*std::vector<std::string> GetFeedVarNames(framework::ProgramDesc* main_program)
+{
   framework::BlockDesc* global_block = main_program->MutableBlock(0);
   std::vector<std::string> feed_var_names;
   for (auto* op : global_block->AllOps()) {
-    if (op->Type() == "feed") {
+    if (op->Type() == kFeedOpType) {
       feed_var_names.insert(feed_var_names.begin(), op->Output("Out")[0]);
     }
   }
@@ -108,12 +112,12 @@ std::vector<std::string> GetFetchVarNames(
   std::vector<std::string> fetch_var_names;
 
   for (auto* op : global_block->AllOps()) {
-    if (op->Type() == "fetch") {
+    if (op->Type() == kFetchOpType) {
       fetch_var_names.push_back(op->Input("X")[0]);
     }
   }
   return fetch_var_names;
-}
+}*/
 
 }  // namespace inference
 }  // namespace paddle

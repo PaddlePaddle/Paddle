@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/framework/block_desc.h"
 #include "paddle/framework/executor.h"
-#include "paddle/framework/init.h"
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"
 #include "paddle/framework/var_desc.h"
@@ -38,8 +37,10 @@ framework::ProgramDesc* Load(framework::Executor& executor,
                              framework::Scope& scope,
                              const std::string& dirname);
 
-std::vector<std::string> GetFeedVarNames(framework::ProgramDesc* main_program);
-std::vector<std::string> GetFetchVarNames(framework::ProgramDesc* main_program);
+// std::vector<std::string> GetFeedVarNames(framework::ProgramDesc*
+// main_program);
+// std::vector<std::string> GetFetchVarNames(framework::ProgramDesc*
+// main_program);
 
 }  // namespace inference
 }  // namespace paddle
