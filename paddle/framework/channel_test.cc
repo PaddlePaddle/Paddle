@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-
 using paddle::framework::Channel;
 using paddle::framework::MakeChannel;
 using paddle::framework::CloseChannel;
@@ -47,12 +46,12 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
   for (size_t i = 0; i < buffer_size; ++i) {
-    ch->Send(&i); // should not block
+    ch->Send(&i);  // should not block
   }
 
   size_t out;
   for (size_t i = 0; i < buffer_size; ++i) {
-    ch->Receive(&out); // should not block
+    ch->Receive(&out);  // should not block
     EXPECT_EQ(out, i);
   }
   CloseChannel(ch);
@@ -63,15 +62,14 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   auto ch = MakeChannel<size_t>(buffer_size);
 
   size_t sum = 0;
-  std::thread t([&](){
-      // Try to write more than buffer size.
-      for (size_t i = 0; i < 2*buffer_size; ++i) {
-	ch->Send(&i); // should not block
-	sum += i;
-      }
-    });
-  
-  std::this_thread::sleep_for(std::chrono::milliseconds(100)); // wait 0.5 sec
+  std::thread t([&]() {
+    // Try to write more than buffer size.
+    for (size_t i = 0; i < 2 * buffer_size; ++i) {
+      ch->Send(&i);  // should not block
+      sum += i;
+    }
+  });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
   EXPECT_EQ(sum, 45U);
   CloseChannel(ch);
 }
