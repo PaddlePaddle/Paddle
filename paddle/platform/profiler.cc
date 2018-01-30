@@ -337,9 +337,13 @@ void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
                    std::string& sorted_domain, const size_t name_width,
                    const size_t data_width) {
   double app_total_time = .0, app_total_memory = .0;
-  for (auto& event_item : events_table) {
-    app_total_time += event_item[2];    // event.total_time
-    app_total_memory += event_item[6];  // event.total_memory_used
+  for (size_t i = 0; i < events_table.size(); ++i) {
+    for (size_t j = 0; j < events_table[i].size(); ++j) {
+      EventItem& event_item = events_table[i][j];
+
+      app_total_time += event_item.total_time;
+      app_total_memory += event_item.total_memory_used;
+    }
   }
 
   // Output header information
@@ -375,6 +379,8 @@ void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       EventItem& event_item = events_table[i][j];
+
+      // clang-format off
       std::cout << std::setw(name_width) << event_item.name
                 << std::setw(data_width) << event_item.calls
                 << std::setw(data_width) << event_item.total_time
@@ -386,6 +392,7 @@ void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
                 << std::setw(data_width) << event_item.max_memory_used
                 << std::setw(data_width) << event_item.ave_memory_used
                 << std::endl;
+      // clang-format on
     }
   }
   std::cout << std::endl;
