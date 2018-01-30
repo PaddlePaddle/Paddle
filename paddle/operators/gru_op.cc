@@ -135,14 +135,14 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 GRU Operator implements part calculations of the complete GRU as following:
 
-\f[
-update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
-reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
-output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
+$$
+update\_gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
+reset\_gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
+output\_candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
 output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
-\f]
+$$
 
-@note To implement the complete GRU, fully-connected operator must be used  
+@note To implement the complete GRU, fully-connected operator must be used
 before to feed xu, xr and xc as the Input of GRU operator.
 )DOC");
   }
