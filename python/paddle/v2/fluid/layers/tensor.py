@@ -67,10 +67,10 @@ def create_parameter(shape,
                                    default_initializer)
 
 
-def create_global_var(shape, value, dtype, persistable=False, name=""):
-    helper = LayerHelper("global_var_" + name, **locals())
+def create_global_var(shape, value, dtype, persistable=False, name=None):
+    helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
-        dtype=dtype, shape=shape, persistable=persistable)
+        dtype=dtype, shape=shape, persistable=persistable, name=name)
     helper.set_variable_initializer(
         var, initializer=Constant(value=float(value)))
     return var

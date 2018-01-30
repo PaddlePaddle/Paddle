@@ -49,6 +49,7 @@ class Optimizer(object):
     def _create_global_learning_rate(self):
         if isinstance(self._global_learning_rate, float):
             self._global_learning_rate = layers.create_global_var(
+                name=unique_name("learning_rate"),
                 shape=[1],
                 value=float(self._global_learning_rate),
                 dtype='float32',
@@ -76,11 +77,7 @@ class Optimizer(object):
         # create learning rate variable for every parameter
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
-        param_lr_var = self._global_learning_rate * param_lr
-        self.helper.set_variable_initializer(
-            var=param_lr_var, initializer=Constant(0.0))
-
-        return param_lr_var
+        return self._global_learning_rate * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
