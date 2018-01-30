@@ -56,8 +56,8 @@ int* GetValuesAfterLoadCombineOp(paddle::framework::LoDTensor* target,
   return actual;
 }
 
-void check_values(int* expect, int* actual, paddle::framework::LoD expect_lod,
-                  paddle::framework::LoD actual_lod, const int& numel) {
+void CheckValues(int* expect, int* actual, paddle::framework::LoD expect_lod,
+                 paddle::framework::LoD actual_lod, const int& numel) {
   for (int64_t i = 0; i < numel; ++i) {
     EXPECT_EQ(expect[i], actual[i]);
   }
@@ -128,10 +128,10 @@ TEST(SaveLoadCombineOp, CPU) {
   int* actual3 = GetValuesAfterLoadCombineOp(target3, scope, actual_lod3);
   int* actual4 = GetValuesAfterLoadCombineOp(target4, scope, actual_lod4);
 
-  check_values(expect1, actual1, expect_lod1, actual_lod1, numel1);
-  check_values(expect2, actual2, expect_lod2, actual_lod2, numel2);
-  check_values(expect3, actual3, expect_lod3, actual_lod3, numel3);
-  check_values(expect4, actual4, expect_lod4, actual_lod4, numel4);
+  CheckValues(expect1, actual1, expect_lod1, actual_lod1, numel1);
+  CheckValues(expect2, actual2, expect_lod2, actual_lod2, numel2);
+  CheckValues(expect3, actual3, expect_lod3, actual_lod3, numel3);
+  CheckValues(expect4, actual4, expect_lod4, actual_lod4, numel4);
 }
 
 // Test with original SaveLoadTest
