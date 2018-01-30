@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/op_registry.h"
 
-#include <sys/time.h>
 #include <future>
 #include "paddle/operators/detail/grpc_client.h"
 
@@ -69,9 +68,6 @@ class SendOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE(rpc_client->Wait());
   }
-
- private:
-  // mutable detail::RPCClient client_;
 };
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {
