@@ -37,7 +37,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
                       "Rank of first input must >= rank of second input.");
     int axis = ctx->Attrs().Get<int>("axis");
-    PADDLE_ENFORCE(axis >= -1 && axis < x_dims.size(),
+    PADDLE_ENFORCE(axis >= -1 && axis < x_dim.size(),
                    "Axis should be in range [-1, x_dims)");
 
     ctx->SetOutputDim("Out", x_dim);
