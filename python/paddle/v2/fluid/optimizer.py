@@ -37,8 +37,7 @@ class Optimizer(object):
         assert learning_rate is not None
         self._global_step = global_step
         self.regularization = regularization
-        self._learning_rate = learning_rate
-        self._global_lr_var = None
+        self._global_learning_rate = learning_rate
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
@@ -47,21 +46,21 @@ class Optimizer(object):
         self.helper = None
 
     def _create_global_learning_rate(self):
-        if isinstance(self._learning_rate, float):
-            self._global_lr_var = self.helper.create_global_variable(
+        if isinstance(self._global_learning_rate, float):
+            lr_value = self._global_learning_rate
+            self._global_learning_rate = self.helper.create_global_variable(
                 name=unique_name("learning_rate"),
                 dtype='float32',
                 shape=[1],
                 lod_level=1,
                 persistable=True)
             self.helper.set_variable_initializer(
-                var=self._global_lr_var,
-                initializer=Constant(self._learning_rate))
-        elif isinstance(self._learning_rate, framework.Variable):
-            self._global_lr_var = self._learning_rate
-        else:
-            raise ValueError("learning rate should be a float or a Variable, "
-                             "actual type is %s", type(self._global_lr_var))
+                var=self._global_learning_rate, initializer=Constant(lr_value))
+
+        if not isinstance(self._global_learning_rate, framework.Variable):
+            raise ValueError("learning rate should be a Variable, "
+                             "actual type is %s",
+                             type(self._global_learning_rate))
 
     @property
     def global_learning_rate(self):
@@ -69,7 +68,7 @@ class Optimizer(object):
         get global decayed learning rate
         :return:
         """
-        return self._global_lr_var
+        return self._global_learning_rate
 
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
@@ -80,19 +79,7 @@ class Optimizer(object):
         # create learning rate variable for every parameter
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
-        param_lr_shape = [1]
-        param_lr_var = self.helper.create_global_variable(
-            name=unique_name("learning_rate_" + param.name),
-            dtype='float32',
-            shape=param_lr_shape,
-            lod_level=1,
-            persistable=True)
-        param.block.program.global_block().append_op(
-            type="scale",
-            inputs={"X": self._global_lr_var},
-            outputs={"Out": param_lr_var},
-            attrs={"scale": param_lr})
-        # give param learning rate a default value 0.0
+        param_lr_var = self._global_learning_rate * param_lr
         self.helper.set_variable_initializer(
             var=param_lr_var, initializer=Constant(0.0))
 

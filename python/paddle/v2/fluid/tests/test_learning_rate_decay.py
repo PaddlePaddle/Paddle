@@ -18,28 +18,52 @@ import math
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.layers as layers
+import paddle.v2.fluid.learning_rate_decay as lr_decay
 
 
-class TestExponentialDecay(unittest.TestCase):
-    def check_exponential_decay(self, staircase):
+def exponential_decay(learning_rate,
+                      global_step,
+                      decay_steps,
+                      decay_rate,
+                      staircase=False):
+    exponent = float(global_step) / float(decay_steps)
+    if staircase:
+        exponent = math.floor(exponent)
+    return learning_rate * decay_rate**exponent
+
+
+def natural_exp_decay(learning_rate,
+                      global_step,
+                      decay_steps,
+                      decay_rate,
+                      staircase=False):
+    exponent = float(global_step) / float(decay_steps)
+    if staircase:
+        exponent = math.floor(exponent)
+    return learning_rate * math.exp(-1 * decay_rate * exponent)
+
+
+def inverse_time_decay(learning_rate,
+                       global_step,
+                       decay_steps,
+                       decay_rate,
+                       staircase=False):
+    temp = float(global_step) / float(decay_steps)
+    if staircase:
+        temp = math.floor(temp)
+    return learning_rate / (1 + decay_rate * temp)
+
+
+class TestLearningRateDecay(unittest.TestCase):
+    def check_decay(self, python_decay_fn, fluid_decay_fn, staircase):
         init_lr = 1.0
         decay_steps = 5
         decay_rate = 0.5
 
-        def exponential_decay(learning_rate,
-                              global_step,
-                              decay_steps,
-                              decay_rate,
-                              staircase=False):
-            exponent = float(global_step) / float(decay_steps)
-            if staircase:
-                exponent = math.floor(exponent)
-            return learning_rate * decay_rate**exponent
-
         global_step = layers.create_global_var(
             shape=[1], value=0.0, dtype='float32')
 
-        decaied_lr = fluid.learning_rate_decay.exponential_decay(
+        decaied_lr = fluid_decay_fn(
             learning_rate=init_lr,
             global_step=global_step,
             decay_steps=decay_steps,
@@ -55,7 +79,7 @@ class TestExponentialDecay(unittest.TestCase):
             step_val, lr_val = exe.run(fluid.default_main_program(),
                                        feed=[],
                                        fetch_list=[global_step, decaied_lr])
-            python_decaied_lr = exponential_decay(
+            python_decaied_lr = python_decay_fn(
                 learning_rate=init_lr,
                 global_step=step,
                 decay_steps=decay_steps,
@@ -63,73 +87,23 @@ class TestExponentialDecay(unittest.TestCase):
                 staircase=staircase)
             self.assertAlmostEqual(python_decaied_lr, lr_val[0])
 
-    def test_exponential_decay_staircase_true(self):
-        main_program = framework.Program()
-        startup_program = framework.Program()
-        with framework.program_guard(main_program, startup_program):
-            self.check_exponential_decay(True)
+    def test_decay(self):
+        decay_fns = [
+            (exponential_decay, lr_decay.exponential_decay, True),
+            (exponential_decay, lr_decay.exponential_decay, False),
+            (natural_exp_decay, lr_decay.natural_exp_decay, True),
+            (natural_exp_decay, lr_decay.natural_exp_decay, False),
+            (inverse_time_decay, lr_decay.inverse_time_decay, True),
+            (inverse_time_decay, lr_decay.inverse_time_decay, False),
+        ]
 
-    def test_exponential_decay_staircase_false(self):
-        main_program = framework.Program()
-        startup_program = framework.Program()
-        with framework.program_guard(main_program, startup_program):
-            self.check_exponential_decay(False)
-
-
-class TestInverseTimeDecay(unittest.TestCase):
-    def check_inverse_time_decay(self, staircase):
-        init_lr = 1.0
-        decay_steps = 5
-        decay_rate = 0.5
-
-        def inverse_time_decay(learning_rate,
-                               global_step,
-                               decay_steps,
-                               decay_rate,
-                               staircase=False):
-            temp = float(global_step) / float(decay_steps)
-            if staircase:
-                temp = math.floor(temp)
-            return learning_rate / (1 + decay_rate * temp)
-
-        global_step = layers.create_global_var(
-            shape=[1], value=0.0, dtype='float32')
-
-        decaied_lr = fluid.learning_rate_decay.inverse_time_decay(
-            learning_rate=init_lr,
-            global_step=global_step,
-            decay_steps=decay_steps,
-            decay_rate=decay_rate,
-            staircase=staircase)
-        layers.increment(global_step, 1.0)
-
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        exe.run(fluid.default_startup_program())
-        for step in range(10):
-            step_val, lr_val = exe.run(fluid.default_main_program(),
-                                       feed=[],
-                                       fetch_list=[global_step, decaied_lr])
-            python_decaied_lr = inverse_time_decay(
-                learning_rate=init_lr,
-                global_step=step,
-                decay_steps=decay_steps,
-                decay_rate=decay_rate,
-                staircase=staircase)
-            self.assertAlmostEqual(python_decaied_lr, lr_val[0])
-
-    def test_staircase_true(self):
-        main_program = framework.Program()
-        startup_program = framework.Program()
-        with framework.program_guard(main_program, startup_program):
-            self.check_inverse_time_decay(True)
-
-    def test_staircase_false(self):
-        main_program = framework.Program()
-        startup_program = framework.Program()
-        with framework.program_guard(main_program, startup_program):
-            self.check_inverse_time_decay(False)
+        for py_decay_fn, fluid_decay_fn, staircase in decay_fns:
+            print("decay_fn=" + str(py_decay_fn) + " staircase=" + str(
+                staircase))
+            main_program = framework.Program()
+            startup_program = framework.Program()
+            with framework.program_guard(main_program, startup_program):
+                self.check_decay(py_decay_fn, fluid_decay_fn, staircase)
 
 
 if __name__ == '__main__':

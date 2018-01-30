@@ -208,7 +208,7 @@ def main():
                 fluid.default_main_program(),
                 feed=feeder.feed(data),
                 fetch_list=[avg_cost] + chunk_evaluator.metrics +
-                [global_step, sgd_optimizer.learning_rate])
+                [global_step, sgd_optimizer.global_learning_rate])
             pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
                 exe)
 
