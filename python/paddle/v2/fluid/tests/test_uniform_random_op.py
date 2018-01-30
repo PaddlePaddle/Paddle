@@ -36,7 +36,7 @@ class TestUniformRandomOp(unittest.TestCase):
         self.uniform_random_test(place=core.CPUPlace())
 
     def test_gpu(self):
-        if core.is_compile_gpu():
+        if core.is_compiled_with_cuda():
             self.uniform_random_test(place=core.CUDAPlace(0))
 
     def uniform_random_test(self, place):

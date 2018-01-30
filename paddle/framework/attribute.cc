@@ -61,6 +61,9 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
       }
       return val;
     }
+    case proto::AttrType::LONG: {
+      return attr_desc.l();
+    }
     default:
       PADDLE_THROW("Unsupport attr type %d", attr_desc.type());
   }

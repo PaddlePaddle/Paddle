@@ -45,6 +45,9 @@ class ProgramDesc {
 
   proto::ProgramDesc *Proto();
 
+  const std::vector<std::string> GetFeedTargetNames();
+  const std::vector<std::string> GetFetchTargetNames();
+
  private:
   proto::ProgramDesc desc_;
 
