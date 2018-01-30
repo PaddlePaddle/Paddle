@@ -26,6 +26,7 @@ class LabelSmoothKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_t = ctx.Output<framework::LoDTensor>("Out");
     auto* in_t = ctx.Input<framework::LoDTensor>("X");
+    auto* dist_t = ctx.Input<framework::Tensor>("PriorDist");
     auto label_dim = in_t->dims()[1];
     out_t->mutable_data<T>(ctx.GetPlace());
 
@@ -33,8 +34,15 @@ class LabelSmoothKernel : public framework::OpKernel<T> {
     auto out = framework::EigenVector<T>::Flatten(*out_t);
     auto in = framework::EigenVector<T>::Flatten(*in_t);
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    out.device(dev) =
-        static_cast<T>(1 - epsilon) * in + static_cast<T>(epsilon / label_dim);
+    if (dist_t) {
+      auto dist = framework::EigenVector<T>::Flatten(*dist_t);
+      out.device(dev) =
+          static_cast<T>(1 - epsilon) * in +
+          epsilon * dist.broadcast(Eigen::DSizes<int, 1>(in_t->numel()));
+    } else {
+      out.device(dev) = static_cast<T>(1 - epsilon) * in +
+                        static_cast<T>(epsilon / label_dim);
+    }
   }
 };
 

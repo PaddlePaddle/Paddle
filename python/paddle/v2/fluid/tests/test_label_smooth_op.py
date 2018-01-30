@@ -18,16 +18,20 @@ from op_test import OpTest
 
 
 class TestLabelSmoothOp(OpTest):
-    def setUp(self):
+    def config(self):
         self.op_type = "label_smooth"
-        epsilon = 0.1
-        batch_size, label_dim = 5, 10
-        label = np.zeros((batch_size, label_dim)).astype("float64")
-        nonzero_index = np.random.randint(label_dim, size=(batch_size))
-        label[np.arange(batch_size), nonzero_index] = 1
-        smoothed_label = (1 - epsilon) * label + epsilon / label_dim
-        self.inputs = {'X': label}
-        self.attrs = {'epsilon': epsilon}
+        self.epsilon = 0.1
+        batch_size, self.label_dim = 5, 10
+        self.label = np.zeros((batch_size, self.label_dim)).astype("float64")
+        nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
+        self.label[np.arange(batch_size), nonzero_index] = 1
+
+    def setUp(self):
+        self.config()
+        smoothed_label = (1 - self.epsilon
+                          ) * self.label + self.epsilon / self.label_dim
+        self.inputs = {'X': self.label}
+        self.attrs = {'epsilon': self.epsilon}
         self.outputs = {'Out': smoothed_label}
 
     def test_check_output(self):
@@ -35,6 +39,16 @@ class TestLabelSmoothOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
+
+
+class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
+    def setUp(self):
+        self.config()
+        dist = np.random.random((1, self.label_dim))
+        smoothed_label = (1 - self.epsilon) * self.label + self.epsilon * dist
+        self.inputs = {'X': self.label, 'PriorDist': dist}
+        self.attrs = {'epsilon': self.epsilon}
+        self.outputs = {'Out': smoothed_label}
 
 
 if __name__ == '__main__':
