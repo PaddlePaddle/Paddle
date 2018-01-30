@@ -64,7 +64,7 @@ class Optimizer(object):
                              "actual type is %s", type(self._global_lr_var))
 
     @property
-    def learning_rate(self):
+    def global_learning_rate(self):
         """
         get global decayed learning rate
         :return:
