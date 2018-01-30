@@ -60,7 +60,12 @@ Event::Event(EventKind kind, std::string name, uint32_t thread_id,
   }
 #endif
   cpu_ns_ = GetTimeInNsec();
-  memory_used_chars_ = memory::memory_usage(dev_ctx->GetPlace());
+
+  if (has_cuda_) {
+    memory_used_chars_ = memory::memory_usage(dev_ctx->GetPlace());
+  } else {
+    memory_used_chars_ = memory::memory_usage(platform::CPUPlace());
+  }
 }
 
 std::string Event::kind() const {
@@ -352,9 +357,9 @@ void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
             << "<-------------------------\n\n";
 
   // clang-format off
-  std::cout << "Place: " << g_profiler_place
-            << "Total Time:" << app_total_time << "ms"
-            << "Total Memory:" << app_total_time << "MB"
+  std::cout << "Place: " << g_profiler_place << "\t"
+            << "Total Time:" << app_total_time << "ms" << "\t"
+            << "Total Memory:" << app_total_time << "MB" << "\t"
             << "Sorted by " << sorted_domain
             << " in descending order in the same thread\n"
             << std::endl;

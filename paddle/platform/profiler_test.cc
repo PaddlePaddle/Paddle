@@ -18,15 +18,20 @@ limitations under the License. */
 TEST(Event, CpuElapsedTime) {
   using paddle::platform::Event;
   using paddle::platform::EventKind;
+  using namespace paddle::platform;
 
-  Event start_event(EventKind::kPushRange, "test", 0, nullptr);
+  DeviceContext* dev_ctx = new CPUDeviceContext();
+
+  Event start_event(EventKind::kPushRange, "test", 0, dev_ctx);
   EXPECT_TRUE(start_event.has_cuda() == false);
   int counter = 0;
   while (counter != 1000) {
     counter++;
   }
-  Event stop_event(EventKind::kPopRange, "test", 0, nullptr);
+  Event stop_event(EventKind::kPopRange, "test", 0, dev_ctx);
   EXPECT_GT(start_event.CpuElapsedMs(stop_event), 0);
+
+  delete dev_ctx;
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -46,27 +51,26 @@ TEST(Event, CudaElapsedTime) {
   }
   Event stop_event(EventKind::kPopRange, "test", 0, dev_ctx);
   EXPECT_GT(start_event.CudaElapsedMs(stop_event), 0);
+
+  delete dev_ctx;
 }
 #endif
 
 TEST(RecordEvent, RecordEvent) {
-  using paddle::platform::DeviceContext;
-  using paddle::platform::Event;
-  using paddle::platform::EventKind;
-  using paddle::platform::RecordEvent;
-  using paddle::platform::ProfilerState;
-  using paddle::platform::EventSortingKey;
+  using namespace paddle::platform;
 
   ProfilerState state = ProfilerState::kCPU;
   DeviceContext* dev_ctx = nullptr;
 #ifdef PADDLE_WITH_CUDA
-  using paddle::platform::CUDADeviceContext;
-  using paddle::platform::CUDAPlace;
   state = ProfilerState::kCUDA;
   dev_ctx =
       new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace(0));
+#else
+  dev_ctx = new CPUDeviceContext();
 #endif
+
   EnableProfiler(state);
+  PADDLE_ENFORCE_NOT_NULL(dev_ctx);
 
   /* Usage 1:
   *  PushEvent(evt_name, dev_ctx);
@@ -75,6 +79,7 @@ TEST(RecordEvent, RecordEvent) {
   *  ...
   * PopEvent(evt_name, dev_ctx);
   */
+
   for (int loop = 0; loop < 3; ++loop) {
     for (int i = 1; i < 5; ++i) {
       std::string name = "op_" + std::to_string(i);
@@ -121,6 +126,8 @@ TEST(RecordEvent, RecordEvent) {
       }
     }
   }
+
+  delete dev_ctx;
   EXPECT_EQ(cuda_startup_count % 5, 0);
   EXPECT_EQ(start_profiler_count, 1);
 
