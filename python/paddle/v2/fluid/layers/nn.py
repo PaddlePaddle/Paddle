@@ -3098,6 +3098,7 @@ class SequenceDecoder:
         self.counter = pd.zeros(shape=[1], dtype='int64')
         # dynamic rnn is only used in train mode.
         self.train_rnn = pd.DynamicRNN()
+        self.mode = None
 
     def train(self):
         '''
@@ -3107,6 +3108,7 @@ class SequenceDecoder:
         scorer: score calculator callback.
                 will be called like `scorer(self)`
         '''
+        self.mode = 'train'
         with self.train_rnn.block():
             # create item_id
             self.item_id.set_mode('train')
@@ -3140,6 +3142,7 @@ class SequenceDecoder:
 
         max_length: the max length the decoder can decode.
         '''
+        self.mode = 'decode'
         # update mode
         self.item_id.set_mode('decode')
         self.item_id.create()  # create a tensor array
