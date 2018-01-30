@@ -191,9 +191,9 @@ class Optimizer(object):
         program = loss.block.program
         with program_guard(program, startup_program):
             self.helper = LayerHelper(self.__class__.__name__)
-            self._create_global_learning_rate()
             self._create_accumulators(loss.block,
                                       [p[0] for p in parameters_and_grads])
+            self._create_global_learning_rate()
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
