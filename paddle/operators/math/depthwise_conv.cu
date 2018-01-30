@@ -46,16 +46,18 @@ __global__ void KernelDepthwiseConv(
         -padding_height + h_out * stride_height + filter_height - 1;
     const int w_in_end =
         -padding_width + w_out * stride_width + filter_width - 1;
+
+    const int in_offset =
+        ((batch * input_channels + c_in) * input_height) * input_width;
+
     if ((h_in_start >= 0) && (h_in_end < input_height) && (w_in_start >= 0) &&
         (w_in_end < input_width)) {
       for (int kh = 0; kh < filter_height; ++kh) {
         for (int kw = 0; kw < filter_width; ++kw) {
-          const int h_in = -padding_height + h_out * stride_height + kh;
-          const int w_in = -padding_width + w_out * stride_width + kw;
-          const int offset =
-              ((batch * input_channels + c_in) * input_height + h_in) *
-                  input_width +
-              w_in;
+          const int h_in = h_in_start + kh;
+          const int w_in = w_in_start + kw;
+          const int offset = in_offset + h_in * input_width + w_in;
+
           value += (*weight) * input_data[offset];
           ++weight;
         }
@@ -63,14 +65,11 @@ __global__ void KernelDepthwiseConv(
     } else {
       for (int kh = 0; kh < filter_height; ++kh) {
         for (int kw = 0; kw < filter_width; ++kw) {
-          const int h_in = -padding_height + h_out * stride_height + kh;
-          const int w_in = -padding_width + w_out * stride_width + kw;
+          const int h_in = h_in_start + kh;
+          const int w_in = w_in_start + kw;
           if ((h_in >= 0) && (h_in < input_height) && (w_in >= 0) &&
               (w_in < input_width)) {
-            const int offset =
-                ((batch * input_channels + c_in) * input_height + h_in) *
-                    input_width +
-                w_in;
+            const int offset = in_offset + h_in * input_width + w_in;
             value += (*weight) * input_data[offset];
           }
           ++weight;
@@ -159,36 +158,33 @@ __global__ void KernelDepthwiseConvFilterGrad(
     const int h_in_end =
         -padding_height + h_out * stride_height + filter_height;
     const int w_in_end = -padding_width + w_out * stride_width + filter_width;
+    const int in_offset =
+        (batch * input_channels + c_in) * input_height * input_width;
+
+    T* addr_offset = filter_grad_data + c_out * filter_height * filter_width;
+
     if ((h_in_start >= 0) && (h_in_end < input_height) && (w_in_start >= 0) &&
         (w_in_end < input_width)) {
       for (int kw = 0; kw < filter_width; kw++) {
         for (int kh = 0; kh < filter_height; kh++) {
-          const int h_in = -padding_height + h_out * stride_height + kh;
-          const int w_in = -padding_width + w_out * stride_width + kw;
-          const int offset =
-              ((batch * input_channels + c_in) * input_height + h_in) *
-                  input_width +
-              w_in;
+          const int h_in = h_in_start + kh;
+          const int w_in = w_in_start + kw;
+          const int offset = in_offset + h_in * input_width + w_in;
           const T diff_temp = output_grad_data[index] * input_data[offset];
-          T* addr = filter_grad_data + c_out * filter_height * filter_width +
-                    kh * filter_width + kw;
+          T* addr = addr_offset + kh * filter_width + kw;
           paddle::platform::CudaAtomicAdd(addr, diff_temp);
         }
       }
     } else {
       for (int kw = 0; kw < filter_width; kw++) {
         for (int kh = 0; kh < filter_height; kh++) {
-          const int h_in = -padding_height + h_out * stride_height + kh;
-          const int w_in = -padding_width + w_out * stride_width + kw;
+          const int h_in = h_in_start + kh;
+          const int w_in = w_in_start + kw;
           if ((h_in >= 0) && (h_in < input_height) && (w_in >= 0) &&
               (w_in < input_width)) {
-            const int offset =
-                ((batch * input_channels + c_in) * input_height + h_in) *
-                    input_width +
-                w_in;
+            const int offset = in_offset + h_in * input_width + w_in;
             const T diff_temp = output_grad_data[index] * input_data[offset];
-            T* addr = filter_grad_data + c_out * filter_height * filter_width +
-                      kh * filter_width + kw;
+            T* addr = addr_offset + kh * filter_width + kw;
             paddle::platform::CudaAtomicAdd(addr, diff_temp);
           }
         }
