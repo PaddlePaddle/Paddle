@@ -37,10 +37,5 @@ framework::ProgramDesc* Load(framework::Executor& executor,
                              framework::Scope& scope,
                              const std::string& dirname);
 
-// std::vector<std::string> GetFeedVarNames(framework::ProgramDesc*
-// main_program);
-// std::vector<std::string> GetFetchVarNames(framework::ProgramDesc*
-// main_program);
-
 }  // namespace inference
 }  // namespace paddle
