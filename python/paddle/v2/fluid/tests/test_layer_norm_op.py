@@ -54,10 +54,7 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
     # dx
     dx_end = scale * np.sqrt(1.0 / var) * grad_y
     d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y * scale, axis=1).reshape(
-        [N, 1])
-    # d_mean_1 = np.sum(-1.0 / var * (x - mean) * grad_y, axis=1).reshape(
-    #     [N, 1]) * (-1.0 / D * np.sqrt(1.0 / var) *
-    #                np.sum(x - mean, axis=1).reshape([N, 1])).reshape([N, 1])
+        [N, 1])  # the second part equals to zero.
     d_mean = 1.0 / D * d_mean_0
     d_std = np.sum(
         -(1.0 / var) * (x - mean) * grad_y * scale, axis=1).reshape([N, 1]) * (
@@ -237,9 +234,18 @@ class TestLayerNormdOp(OpTest):
         for place in places:
             test_with_place(place, shape, begin_norm_axis)
 
-    def test_check_forward_backward(self):
+    def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
+
+    def test_check_forward_backward_with_scale(self):
+        pass  # TODO(zcd)
+
+    def test_check_forward_backward_with_bias(self):
+        pass  # TODO(zcd)
+
+    def test_check_forward_backward(self):
+        pass  # TODO(zcd)
 
 
 if __name__ == '__main__':
