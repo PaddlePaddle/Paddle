@@ -21,12 +21,11 @@ limitations under the License. */
 #include <vector>
 
 #include <glog/logging.h>
+#include "paddle/framework/feed_fetch_type.h"
 
 namespace paddle {
 namespace framework {
 
-const std::string kFeedOpType = "feed";
-const std::string kFetchOpType = "fetch";
 const std::string kDropOutOpType = "dropout";
 const std::string kBatchNormOpType = "batch_norm";
 

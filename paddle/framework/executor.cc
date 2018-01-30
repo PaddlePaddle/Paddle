@@ -33,9 +33,6 @@ DEFINE_bool(check_nan_inf, false,
 namespace paddle {
 namespace framework {
 
-const std::string kFeedOpType = "feed";
-const std::string kFetchOpType = "fetch";
-
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
 static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {

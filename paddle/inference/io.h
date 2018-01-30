@@ -16,17 +16,12 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
-#include "paddle/framework/block_desc.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"
-#include "paddle/framework/var_desc.h"
 
 namespace paddle {
 namespace inference {
-
-bool IsParameter(const framework::VarDesc* var,
-                 const framework::ProgramDesc* main_program);
 
 void LoadPersistables(framework::Executor& executor,
                       framework::Scope& scope,

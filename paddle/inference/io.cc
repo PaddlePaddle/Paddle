@@ -13,12 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/inference/io.h"
+
 #include <fstream>
+#include "paddle/framework/block_desc.h"
+#include "paddle/framework/feed_fetch_type.h"
 
 namespace paddle {
 namespace inference {
-
-const std::string kFeedOpType = "feed";
 
 bool IsParameter(const framework::VarDesc* var,
                  const framework::ProgramDesc* main_program) {
@@ -27,7 +28,7 @@ bool IsParameter(const framework::VarDesc* var,
     for (size_t i = 0; i < main_program->Size(); ++i) {
       const framework::BlockDesc& block = main_program->Block(i);
       for (auto* op : block.AllOps()) {
-        if (op->Type() == kFeedOpType) {
+        if (op->Type() == framework::kFeedOpType) {
           continue;
         }
         for (auto input_argument_name : op->InputArgumentNames()) {
