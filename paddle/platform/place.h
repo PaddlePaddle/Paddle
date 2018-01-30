@@ -32,10 +32,15 @@ struct CPUPlace {
 };
 
 struct CUDAPlace {
+  enum StreamType { kCOMPUTATION, kCOMMUNICATION, kLast };
+
   CUDAPlace() : CUDAPlace(0) {}
   explicit CUDAPlace(int d) : device(d) {}
+  explicit CUDAPlace(int d, StreamType st) : device(d), stream_type(st) {}
 
   inline int GetDeviceId() const { return device; }
+  inline StreamType GetDeviceStreamType() const { return stream_type; }
+
   // needed for variant equality comparison
   inline bool operator==(const CUDAPlace &o) const {
     return device == o.device;
@@ -43,6 +48,7 @@ struct CUDAPlace {
   inline bool operator!=(const CUDAPlace &o) const { return !(*this == o); }
 
   int device;
+  StreamType stream_type;  // default is kCOMPUTATION
 };
 
 struct IsCUDAPlace : public boost::static_visitor<bool> {

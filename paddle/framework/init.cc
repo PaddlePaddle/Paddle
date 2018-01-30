@@ -50,7 +50,10 @@ void InitDevices() {
 #ifdef PADDLE_WITH_CUDA
   int count = platform::GetCUDADeviceCount();
   for (int i = 0; i < count; ++i) {
-    places.emplace_back(platform::CUDAPlace(i));
+    for (int j = 0; j != platform::CUDAPlace::StreamType::kLast; ++j) {
+      places.emplace_back(
+          platform::CUDAPlace(i, platform::CUDAPlace::StreamType(j)));
+    }
   }
 #else
   LOG(WARNING)
