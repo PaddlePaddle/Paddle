@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/framework/executor.h"
@@ -26,11 +27,11 @@ namespace inference {
 void LoadPersistables(framework::Executor& executor,
                       framework::Scope& scope,
                       const std::string& dirname,
-                      framework::ProgramDesc* main_program);
+                      const framework::ProgramDesc& main_program);
 
-framework::ProgramDesc* Load(framework::Executor& executor,
-                             framework::Scope& scope,
-                             const std::string& dirname);
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
+                                             framework::Scope& scope,
+                                             const std::string& dirname);
 
 }  // namespace inference
 }  // namespace paddle

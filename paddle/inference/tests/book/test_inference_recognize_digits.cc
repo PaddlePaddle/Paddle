@@ -31,7 +31,7 @@ void TestInference(const std::string& dirname,
   auto* scope = new paddle::framework::Scope();
 
   // 2. Initialize the inference_program and load all parameters from file
-  auto* inference_program = paddle::inference::Load(executor, *scope, dirname);
+  auto inference_program = paddle::inference::Load(executor, *scope, dirname);
 
   // 3. Get the feed_target_names and fetch_target_names
   const std::vector<std::string>& feed_target_names =
@@ -39,14 +39,14 @@ void TestInference(const std::string& dirname,
   const std::vector<std::string>& fetch_target_names =
       inference_program->GetFetchTargetNames();
 
-  // 4. Prepare inputs
+  // 4. Prepare inputs: set up maps for feed targets
   std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
   for (size_t i = 0; i < feed_target_names.size(); ++i) {
     // Please make sure that cpu_feeds[i] is right for feed_target_names[i]
     feed_targets[feed_target_names[i]] = cpu_feeds[i];
   }
 
-  // 5. Define Tensor to get the outputs
+  // 5. Define Tensor to get the outputs: set up maps for fetch targets
   std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
   for (size_t i = 0; i < fetch_target_names.size(); ++i) {
     fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
@@ -55,7 +55,6 @@ void TestInference(const std::string& dirname,
   // 6. Run the inference program
   executor.Run(*inference_program, scope, feed_targets, fetch_targets);
 
-  delete inference_program;
   delete scope;
 }
 
