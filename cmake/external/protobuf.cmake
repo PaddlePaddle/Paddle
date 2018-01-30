@@ -250,7 +250,7 @@ IF(NOT PROTOBUF_FOUND)
     SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
         CACHE FILEPATH "protoc library." FORCE)
 
-    IF(WITH_C_API OR WITH_FLUID)
+    IF(WITH_C_API)
         INSTALL(DIRECTORY ${PROTOBUF_INCLUDE_DIR} DESTINATION third_party/protobuf)
         IF(ANDROID)
             INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
@@ -258,6 +258,13 @@ IF(NOT PROTOBUF_FOUND)
             INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib)
         ENDIF()
     ENDIF()
+
+    set(lib_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/protobuf")
+    add_custom_target(protobuf_lib
+        COMMAND mkdir -p "${lib_dir}/lib"
+        COMMAND cp -r "${PROTOBUF_INCLUDE_DIR}" "${lib_dir}"
+        COMMAND cp "${PROTOBUF_LITE_LIBRARY}" "${lib_dir}/lib"
+    )
 
     IF(CMAKE_CROSSCOMPILING)
         PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)

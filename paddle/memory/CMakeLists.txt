@@ -15,9 +15,9 @@ cc_library(paddle_memory
 
 cc_test(memory_test SRCS memory_test.cc DEPS place paddle_memory)
 
-if(NOT WITH_C_API AND WITH_FLUID)
-  file(GLOB MEMORY_HEADERS *.h)
-  file(GLOB MEMORY_DETAIL_HEADERS detail/*.h)
-  install(FILES ${MEMORY_HEADERS} DESTINATION include/paddle/memory)
-  install(FILES ${MEMORY_DETAIL_HEADERS} DESTINATION include/paddle/memory/detail)
-endif()
+set(lib_dir "${CMAKE_INSTALL_PREFIX}/paddle/memory")
+add_custom_target(memory_lib
+    COMMAND mkdir -p "${lib_dir}/detail"
+    COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${lib_dir}"
+    COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/detail/*.h" "${lib_dir}/detail"
+)
