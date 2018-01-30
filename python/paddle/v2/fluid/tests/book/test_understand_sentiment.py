@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import print_function
 import unittest
 import paddle.v2.fluid as fluid
 import paddle.v2 as paddle
@@ -20,7 +20,8 @@ import contextlib
 
 def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
                     hid_dim=32):
-    emb = fluid.layers.embedding(input=data, size=[input_dim, emb_dim])
+    emb = fluid.layers.embedding(
+        input=data, size=[input_dim, emb_dim], is_sparse=True)
     conv_3 = fluid.nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
@@ -38,8 +39,6 @@ def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
                                  act="softmax")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = fluid.layers.mean(x=cost)
-    adam_optimizer = fluid.optimizer.Adam(learning_rate=0.002)
-    adam_optimizer.minimize(avg_cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
     return avg_cost, accuracy
 
@@ -53,7 +52,8 @@ def stacked_lstm_net(data,
                      stacked_num=3):
     assert stacked_num % 2 == 1
 
-    emb = fluid.layers.embedding(input=data, size=[input_dim, emb_dim])
+    emb = fluid.layers.embedding(
+        input=data, size=[input_dim, emb_dim], is_sparse=True)
     # add bias attr
 
     # TODO(qijun) linear act
@@ -76,13 +76,11 @@ def stacked_lstm_net(data,
                                  act='softmax')
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = fluid.layers.mean(x=cost)
-    adam_optimizer = fluid.optimizer.Adam(learning_rate=0.002)
-    adam_optimizer.minimize(avg_cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
     return avg_cost, accuracy
 
 
-def main(word_dict, net_method, use_cuda):
+def main(word_dict, net_method, use_cuda, parallel=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
@@ -94,8 +92,28 @@ def main(word_dict, net_method, use_cuda):
     data = fluid.layers.data(
         name="words", shape=[1], dtype="int64", lod_level=1)
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-    cost, acc_out = net_method(
-        data, label, input_dim=dict_dim, class_dim=class_dim)
+
+    if not parallel:
+        cost, acc_out = net_method(
+            data, label, input_dim=dict_dim, class_dim=class_dim)
+    else:
+        places = fluid.layers.get_places()
+        pd = fluid.layers.ParallelDo(places)
+        with pd.do():
+            cost, acc = net_method(
+                pd.read_input(data),
+                pd.read_input(label),
+                input_dim=dict_dim,
+                class_dim=class_dim)
+            pd.write_output(cost)
+            pd.write_output(acc)
+
+        cost, acc = pd()
+        cost = fluid.layers.mean(x=cost)
+        acc_out = fluid.layers.mean(x=acc)
+
+    adagrad = fluid.optimizer.Adagrad(learning_rate=0.002)
+    adagrad.minimize(cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -131,23 +149,63 @@ class TestUnderstandSentiment(unittest.TestCase):
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
-                yield
+                try:
+                    yield
+                except:
+                    print(prog)
+                    raise
 
+    @unittest.skip(reason="make CI faster")
     def test_conv_cpu(self):
         with self.new_program_scope():
             main(self.word_dict, net_method=convolution_net, use_cuda=False)
 
+    def test_conv_cpu_parallel(self):
+        with self.new_program_scope():
+            main(
+                self.word_dict,
+                net_method=convolution_net,
+                use_cuda=False,
+                parallel=True)
+
+    @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_cpu(self):
         with self.new_program_scope():
             main(self.word_dict, net_method=stacked_lstm_net, use_cuda=False)
 
+    def test_stacked_lstm_cpu_parallel(self):
+        with self.new_program_scope():
+            main(
+                self.word_dict,
+                net_method=stacked_lstm_net,
+                use_cuda=False,
+                parallel=True)
+
+    @unittest.skip(reason="make CI faster")
     def test_conv_gpu(self):
         with self.new_program_scope():
             main(self.word_dict, net_method=convolution_net, use_cuda=True)
 
+    def test_conv_gpu_parallel(self):
+        with self.new_program_scope():
+            main(
+                self.word_dict,
+                net_method=convolution_net,
+                use_cuda=True,
+                parallel=True)
+
+    @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_gpu(self):
         with self.new_program_scope():
             main(self.word_dict, net_method=stacked_lstm_net, use_cuda=True)
+
+    def test_stacked_lstm_gpu_parallel(self):
+        with self.new_program_scope():
+            main(
+                self.word_dict,
+                net_method=stacked_lstm_net,
+                use_cuda=True,
+                parallel=True)
 
 
 if __name__ == '__main__':
