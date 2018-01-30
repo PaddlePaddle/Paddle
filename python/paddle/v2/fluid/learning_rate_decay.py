@@ -121,6 +121,5 @@ def inverse_time_decay(learning_rate,
     div_res = global_step / decay_steps
     if staircase:
         div_res = layers.floor(x=div_res)
-    const_one = layers.fill_constant(shape=[1], dtype='float32', value=float(1))
 
-    return learning_rate / (const_one + decay_rate * div_res)
+    return learning_rate / (1 + decay_rate * div_res)
