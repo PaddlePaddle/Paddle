@@ -170,8 +170,6 @@ static bool has_feed_operators(
           feed_targets.find(feed_target_name) != feed_targets.end(),
           "Feed operator output name '%s' cannot be found in 'feed_targets'",
           feed_target_name);
-    } else {
-      break;
     }
   }
 
@@ -270,8 +268,6 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
       int idx = boost::get<int>(op->GetAttr("col"));
       SetFeedVariable(scope, *feed_targets[feed_target_name], feed_holder_name,
                       idx);
-    } else {
-      break;
     }
   }
 
