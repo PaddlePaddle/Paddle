@@ -75,28 +75,28 @@ TEST(SaveLoadCombineOp, CPU) {
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace place;
 
-  std::vector<int> lod1 = {0, 1, 2, 3};
+  std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
   paddle::framework::LoD expect_lod1;
   int* expect1 = CreateForSaveCombineOp(10, 10, lod1, "test_var1", place, scope,
                                         expect_lod1);
 
-  std::vector<int> lod2 = {0, 2, 5};
+  std::vector<int> lod2 = {0, 2, 5, 10};
   int numel2 = 200;
   paddle::framework::LoD expect_lod2;
   int* expect2 = CreateForSaveCombineOp(10, 20, lod2, "test_var2", place, scope,
                                         expect_lod2);
 
-  std::vector<int> lod3 = {0, 2, 3};
+  std::vector<int> lod3 = {0, 2, 3, 20};
   int numel3 = 4000;
   paddle::framework::LoD expect_lod3;
-  int* expect3 = CreateForSaveCombineOp(200, 20, lod3, "test_var3", place,
+  int* expect3 = CreateForSaveCombineOp(20, 200, lod3, "test_var3", place,
                                         scope, expect_lod3);
 
-  std::vector<int> lod4 = {0, 1};
+  std::vector<int> lod4 = {0, 1, 20};
   int numel4 = 1000;
   paddle::framework::LoD expect_lod4;
-  int* expect4 = CreateForSaveCombineOp(50, 20, lod4, "test_var4", place, scope,
+  int* expect4 = CreateForSaveCombineOp(20, 50, lod4, "test_var4", place, scope,
                                         expect_lod4);
 
   // Set attributes
@@ -141,7 +141,7 @@ TEST(SaveLoadTestWithCombineOp, CPU) {
 
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor->Resize({10, 10});
+  tensor->Resize({3, 10});
   paddle::framework::LoD expect_lod;
   expect_lod.resize(1);
   expect_lod[0].push_back(0);
