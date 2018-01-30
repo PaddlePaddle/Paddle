@@ -37,7 +37,7 @@ nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
 nv_test(transform_test SRCS transform_test.cu DEPS paddle_memory place device_context)
 nv_test(nccl_test SRCS nccl_test.cu DEPS dynload_cuda gpu_info device_context)
 
-cc_library(profiler SRCS profiler.cc DEPS device_context)
+cc_library(profiler SRCS profiler.cc DEPS device_context paddle_memory)
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 if(NOT WITH_C_API AND WITH_FLUID)

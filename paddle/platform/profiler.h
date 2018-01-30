@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <forward_list>
 #include <list>
 #include <mutex>
 #include <vector>
+
+#include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
@@ -43,12 +46,14 @@ class Event {
 
   double CpuElapsedMs(const Event& e) const;
   double CudaElapsedMs(const Event& e) const;
+  double MemoryUsed(const Event& e) const;
 
  private:
   EventKind kind_;
   std::string name_;
   uint32_t thread_id_;
   int64_t cpu_ns_;
+  int64_t memory_used_chars_;
   bool has_cuda_;
 #ifdef PADDLE_WITH_CUDA
   cudaEvent_t event_ = nullptr;
@@ -124,6 +129,10 @@ struct EventItem {
   double min_time;
   double max_time;
   double ave_time;
+  double total_memory_used;
+  double min_memory_used;
+  double max_memory_used;
+  double ave_memory_used;
 };
 
 // Candidate keys to sort the profiling report

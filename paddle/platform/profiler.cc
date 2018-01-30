@@ -60,6 +60,7 @@ Event::Event(EventKind kind, std::string name, uint32_t thread_id,
   }
 #endif
   cpu_ns_ = GetTimeInNsec();
+  memory_used_chars_ = memory::memory_usage(dev_ctx->GetPlace());
 }
 
 std::string Event::kind() const {
@@ -90,6 +91,10 @@ double Event::CudaElapsedMs(const Event& e) const {
 #else
   PADDLE_THROW("CUDA is not enabled");
 #endif
+}
+
+double Event::MemoryUsed(const Event& e) const {
+  return (e.memory_used_chars_ - memory_used_chars_) / (1024 * 1024);
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -257,14 +262,19 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
           double event_time = (g_profiler_place == "CUDA")
                                   ? rit->CudaElapsedMs(events[i][j])
                                   : rit->CpuElapsedMs(events[i][j]);
+
+          double event_memory_used = rit->MemoryUsed(events[i][j]);
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
           max_name_width = std::max(max_name_width, event_name.size());
 
           if (event_idx.find(event_name) == event_idx.end()) {
             event_idx[event_name] = event_items.size();
-            EventItem event_item = {event_name, 1,          event_time,
-                                    event_time, event_time, event_time};
+            EventItem event_item = {event_name,        1,
+                                    event_time,        event_time,
+                                    event_time,        event_time,
+                                    event_memory_used, event_memory_used,
+                                    event_memory_used, event_memory_used};
             event_items.push_back(event_item);
           } else {
             int index = event_idx[event_name];
@@ -277,6 +287,17 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
             // max time
             event_items[index].max_time =
                 std::max(event_time, event_items[index].max_time);
+
+            // total memory used
+            event_items[index].total_time += event_memory_used;
+
+            // min memory used
+            event_items[index].min_memory_used =
+                std::min(event_memory_used, event_items[index].min_memory_used);
+
+            // max memory used
+            event_items[index].max_memory_used =
+                std::max(event_memory_used, event_items[index].max_memory_used);
           }
 
           // remove the push marker from the list
@@ -288,9 +309,10 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
         }
       }
     }
-    // average time
+    // average time and memory used
     for (auto& item : event_items) {
       item.ave_time = item.total_time / item.calls;
+      item.ave_memory_used = item.total_memory_used / item.calls;
     }
     // sort
     if (sorted_by != EventSortingKey::kDefault) {
@@ -314,20 +336,42 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
 void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
                    std::string& sorted_domain, const size_t name_width,
                    const size_t data_width) {
+  double app_total_time = .0, app_total_memory = .0;
+  for (auto& event_item : events_table) {
+    app_total_time += event_item[2];    // event.total_time
+    app_total_memory += event_item[6];  // event.total_memory_used
+  }
+
   // Output header information
   std::cout << "\n------------------------->"
             << "     Profiling Report     "
             << "<-------------------------\n\n";
-  std::cout << "Place: " << g_profiler_place << std::endl;
-  std::cout << "Time unit: ms" << std::endl;
-  std::cout << "Sorted by " << sorted_domain
-            << " in descending order in the same thread\n\n";
+
+  // clang-format off
+  std::cout << "Place: " << g_profiler_place
+            << "Total Time:" << app_total_time << "ms"
+            << "Total Memory:" << app_total_time << "MB"
+            << "Sorted by " << sorted_domain
+            << " in descending order in the same thread\n"
+            << std::endl;
+  // clang-format on
+
   // Output events table
+  // clang-format off
   std::cout.setf(std::ios::left);
-  std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
-            << "Calls" << std::setw(data_width) << "Total"
-            << std::setw(data_width) << "Min." << std::setw(data_width)
-            << "Max." << std::setw(data_width) << "Ave." << std::endl;
+  std::cout << std::setw(name_width) << "Event"
+            << std::setw(data_width) << "Calls"
+            << std::setw(data_width) << "Total"
+            << std::setw(data_width) << "Min."
+            << std::setw(data_width) << "Max."
+            << std::setw(data_width) << "Ave."
+            << std::setw(data_width) << "Total Memory."
+            << std::setw(data_width) << "Min Memory."
+            << std::setw(data_width) << "Max Memory."
+            << std::setw(data_width) << "Ave Memory."
+            << std::endl;
+  // clang-format on
+
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       EventItem& event_item = events_table[i][j];
@@ -336,7 +380,12 @@ void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
                 << std::setw(data_width) << event_item.total_time
                 << std::setw(data_width) << event_item.min_time
                 << std::setw(data_width) << event_item.max_time
-                << std::setw(data_width) << event_item.ave_time << std::endl;
+                << std::setw(data_width) << event_item.ave_time
+                << std::setw(data_width) << event_item.total_memory_used
+                << std::setw(data_width) << event_item.min_memory_used
+                << std::setw(data_width) << event_item.max_memory_used
+                << std::setw(data_width) << event_item.ave_memory_used
+                << std::endl;
     }
   }
   std::cout << std::endl;
