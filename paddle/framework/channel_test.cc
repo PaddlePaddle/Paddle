@@ -72,4 +72,5 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
   EXPECT_EQ(sum, 45U);
   CloseChannel(ch);
+  t.join();
 }
