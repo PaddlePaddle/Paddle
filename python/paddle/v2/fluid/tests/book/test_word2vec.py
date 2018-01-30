@@ -15,9 +15,10 @@
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import unittest
+import os
 
 
-def main_impl(use_cuda):
+def main(use_cuda, is_sparse, parallel):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
@@ -26,7 +27,45 @@ def main_impl(use_cuda):
     HIDDEN_SIZE = 256
     N = 5
     BATCH_SIZE = 32
-    IS_SPARSE = True
+    IS_SPARSE = is_sparse
+
+    def __network__(words):
+        embed_first = fluid.layers.embedding(
+            input=words[0],
+            size=[dict_size, EMBED_SIZE],
+            dtype='float32',
+            is_sparse=IS_SPARSE,
+            param_attr='shared_w')
+        embed_second = fluid.layers.embedding(
+            input=words[1],
+            size=[dict_size, EMBED_SIZE],
+            dtype='float32',
+            is_sparse=IS_SPARSE,
+            param_attr='shared_w')
+        embed_third = fluid.layers.embedding(
+            input=words[2],
+            size=[dict_size, EMBED_SIZE],
+            dtype='float32',
+            is_sparse=IS_SPARSE,
+            param_attr='shared_w')
+        embed_forth = fluid.layers.embedding(
+            input=words[3],
+            size=[dict_size, EMBED_SIZE],
+            dtype='float32',
+            is_sparse=IS_SPARSE,
+            param_attr='shared_w')
+
+        concat_embed = fluid.layers.concat(
+            input=[embed_first, embed_second, embed_third, embed_forth], axis=1)
+        hidden1 = fluid.layers.fc(input=concat_embed,
+                                  size=HIDDEN_SIZE,
+                                  act='sigmoid')
+        predict_word = fluid.layers.fc(input=hidden1,
+                                       size=dict_size,
+                                       act='softmax')
+        cost = fluid.layers.cross_entropy(input=predict_word, label=words[4])
+        avg_cost = fluid.layers.mean(x=cost)
+        return avg_cost
 
     word_dict = paddle.dataset.imikolov.build_dict()
     dict_size = len(word_dict)
@@ -37,39 +76,21 @@ def main_impl(use_cuda):
     forth_word = fluid.layers.data(name='forthw', shape=[1], dtype='int64')
     next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
 
-    embed_first = fluid.layers.embedding(
-        input=first_word,
-        size=[dict_size, EMBED_SIZE],
-        dtype='float32',
-        is_sparse=IS_SPARSE,
-        param_attr='shared_w')
-    embed_second = fluid.layers.embedding(
-        input=second_word,
-        size=[dict_size, EMBED_SIZE],
-        dtype='float32',
-        is_sparse=IS_SPARSE,
-        param_attr='shared_w')
-    embed_third = fluid.layers.embedding(
-        input=third_word,
-        size=[dict_size, EMBED_SIZE],
-        dtype='float32',
-        is_sparse=IS_SPARSE,
-        param_attr='shared_w')
-    embed_forth = fluid.layers.embedding(
-        input=forth_word,
-        size=[dict_size, EMBED_SIZE],
-        dtype='float32',
-        is_sparse=IS_SPARSE,
-        param_attr='shared_w')
+    if not parallel:
+        avg_cost = __network__(
+            [first_word, second_word, third_word, forth_word, next_word])
+    else:
+        places = fluid.layers.get_places()
+        pd = fluid.layers.ParallelDo(places)
+        with pd.do():
+            avg_cost = __network__(
+                map(pd.read_input, [
+                    first_word, second_word, third_word, forth_word, next_word
+                ]))
+            pd.write_output(avg_cost)
 
-    concat_embed = fluid.layers.concat(
-        input=[embed_first, embed_second, embed_third, embed_forth], axis=1)
-    hidden1 = fluid.layers.fc(input=concat_embed,
-                              size=HIDDEN_SIZE,
-                              act='sigmoid')
-    predict_word = fluid.layers.fc(input=hidden1, size=dict_size, act='softmax')
-    cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
-    avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = fluid.layers.mean(x=pd())
+
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
 
@@ -94,22 +115,42 @@ def main_impl(use_cuda):
     raise AssertionError("Cost is too large {0:2.2}".format(avg_cost_np[0]))
 
 
-def main(*args, **kwargs):
-    prog = fluid.Program()
-    startup_prog = fluid.Program()
-    scope = fluid.core.Scope()
-    with fluid.scope_guard(scope):
-        with fluid.program_guard(prog, startup_prog):
-            main_impl(*args, **kwargs)
+FULL_TEST = os.getenv('FULL_TEST',
+                      '1').lower() in ['true', '1', 't', 'y', 'yes', 'on']
+SKIP_REASON = "Only run minimum number of tests in CI server, to make CI faster"
 
 
 class W2VTest(unittest.TestCase):
-    def test_cpu_normal(self):
-        main(use_cuda=False)
+    pass
 
-    def test_gpu_normal(self):
-        main(use_cuda=True)
 
+def inject_test_method(use_cuda, is_sparse, parallel):
+    fn_name = "test_{0}_{1}_{2}".format("cuda" if use_cuda else "cpu", "sparse"
+                                        if is_sparse else "dense", "parallel"
+                                        if parallel else "normal")
+
+    def __impl__(*args, **kwargs):
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        scope = fluid.core.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(prog, startup_prog):
+                main(use_cuda=use_cuda, is_sparse=is_sparse, parallel=parallel)
+
+    if use_cuda and is_sparse and parallel:
+        fn = __impl__
+    else:
+        # skip the other test when on CI server
+        fn = unittest.skipUnless(
+            condition=FULL_TEST, reason=SKIP_REASON)(__impl__)
+
+    setattr(W2VTest, fn_name, fn)
+
+
+for use_cuda in (False, True):
+    for is_sparse in (False, True):
+        for parallel in (False, True):
+            inject_test_method(use_cuda, is_sparse, parallel)
 
 if __name__ == '__main__':
     unittest.main()
