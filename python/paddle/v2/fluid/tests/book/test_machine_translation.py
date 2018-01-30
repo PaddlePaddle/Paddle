@@ -19,6 +19,7 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as pd
 from paddle.v2.fluid.executor import Executor
+import unittest
 
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
@@ -250,6 +251,13 @@ def decode_main():
         break
 
 
+class TestMachineTranslation(unittest.TestCase):
+    def test_train_main(self):
+        train_main()
+
+    def test_decode_main(self):
+        decode_main()
+
+
 if __name__ == '__main__':
-    # train_main()
-    decode_main()
+    unittest.main()

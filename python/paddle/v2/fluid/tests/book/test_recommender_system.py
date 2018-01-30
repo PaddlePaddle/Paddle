@@ -20,6 +20,7 @@ import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.executor import Executor
 from paddle.v2.fluid.optimizer import SGDOptimizer
+import unittest
 
 IS_SPARSE = True
 USE_GPU = False
@@ -86,7 +87,6 @@ def get_usr_combined_features():
 
 
 def get_mov_combined_features():
-
     MOV_DICT_SIZE = paddle.dataset.movielens.max_movie_id() + 1
 
     mov_id = layers.data(name='movie_id', shape=[1], dtype='int64')
@@ -216,7 +216,14 @@ def main():
             out = np.array(outs[0])
             if out[0] < 6.0:
                 # if avg cost less than 6.0, we think our code is good.
-                exit(0)
+                return
+    raise AssertionError("recommender system is divergent")
 
 
-main()
+class TestRecommenderSys(unittest.TestCase):
+    def test_main(self):
+        main()
+
+
+if __name__ == '__main__':
+    unittest.main()

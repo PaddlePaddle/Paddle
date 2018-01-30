@@ -19,6 +19,7 @@ import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
 import paddle.v2.fluid as fluid
 import time
+import unittest
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -175,7 +176,7 @@ def main():
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    #place = fluid.CPUPlace()
+    # place = fluid.CPUPlace()
     place = fluid.CUDAPlace(0)
     feeder = fluid.DataFeeder(
         feed_list=[
@@ -191,10 +192,9 @@ def main():
         load_parameter(conll05.get_embedding(), word_dict_len, word_dim), place)
 
     start_time = time.time()
-    batch_id = 0
     for pass_id in xrange(PASS_NUM):
         chunk_evaluator.reset(exe)
-        for data in train_data():
+        for batch_id, data in enumerate(train_data()):
             cost, precision, recall, f1_score = exe.run(
                 fluid.default_main_program(),
                 feed=feeder.feed(data),
@@ -213,10 +213,13 @@ def main():
                                                      / batch_id))
 
             # exit early for CI
-            exit(0)
+            return
 
-            batch_id = batch_id + 1
+
+class TestSRL(unittest.TestCase):
+    def test_label_semantic_rols(self):
+        main()
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()
