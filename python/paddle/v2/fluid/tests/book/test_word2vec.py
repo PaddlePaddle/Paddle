@@ -116,7 +116,7 @@ def main(use_cuda, is_sparse, parallel):
 
 
 FULL_TEST = os.getenv('FULL_TEST',
-                      '1').lower() in ['true', '1', 't', 'y', 'yes', 'on']
+                      '0').lower() in ['true', '1', 't', 'y', 'yes', 'on']
 SKIP_REASON = "Only run minimum number of tests in CI server, to make CI faster"
 
 
