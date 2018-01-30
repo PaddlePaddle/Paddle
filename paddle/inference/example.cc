@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
   std::string dirname = FLAGS_dirname;
 
   // 2. Initialize the inference program
-  auto inference_program = paddle::inference::Load(*executor, *scope, dirname);
+  auto* inference_program = paddle::inference::Load(*executor, *scope, dirname);
 
   // 3. Optional: perform optimization on the inference_program
 
@@ -97,6 +97,7 @@ int main(int argc, char** argv) {
     std::cout << std::endl;
   }
 
+  delete inference_program;
   delete scope;
   delete executor;
 
