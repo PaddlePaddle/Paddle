@@ -80,7 +80,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("MaxProbs")->type()),
@@ -90,8 +90,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
 
 class PrecisionRecallOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PrecisionRecallOpMaker(framework::OpProto *proto,
-                         framework::OpAttrChecker *op_checker)
+  PrecisionRecallOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("MaxProbs",
              "(Tensor, default Tensor<float>) A 2-D tensor with shape N x 1, "

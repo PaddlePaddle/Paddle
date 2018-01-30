@@ -63,7 +63,7 @@ class NCEOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
@@ -73,7 +73,7 @@ class NCEOp : public framework::OperatorWithKernel {
 
 class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  NCEOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  NCEOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input", "(Tensor) A tensor of shape [batch_size, dim].");
     AddInput(
@@ -124,7 +124,8 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
                               "This attribute only be used in unitest. Classes "
                               "in this list wiil be used as negative classes "
                               "for every samples. Under normal conditions, "
-                              "user should avoid setting this attribute.");
+                              "user should avoid setting this attribute.")
+        .SetDefault({});
     AddComment(R"DOC(
 Compute and return the noise-contrastive estimation training loss.
 See [Noise-contrastive estimation: A new estimation principle for unnormalized statistical models](http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf).
@@ -166,7 +167,7 @@ class NCEOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Input")->type()),

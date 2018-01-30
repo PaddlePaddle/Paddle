@@ -32,6 +32,16 @@ PaddlePaddle主要使用 `CMake <https://cmake.org>`_ 以及GCC, G++作为编译
 
    pip install build/python/dist/*.whl
 
+如果机器中已经安装过PaddlePaddle，有两种方法：
+
+.. code-block:: bash
+
+   1. 先卸载之前的版本，再重新安装
+   pip uninstall paddlepaddle
+   pip install build/python/dist/*.whl
+
+   2. 直接升级到更新的版本
+   pip install build/python/dist/*.whl -U
 
 .. _run_test:
 
@@ -70,13 +80,13 @@ PaddlePaddle编译需要使用到下面的依赖（包含但不限于），其�
    :header: "依赖", "版本", "说明"
    :widths: 10, 15, 30
 
-   "CMake", ">=3.5", ""
+   "CMake", ">=3.2", ""
    "GCC", "4.8.2", "推荐使用CentOS的devtools2"
-   "Python", "2.7.x", "依赖libpython2.7.so"
-   "pip", ">=9.0", ""
-   "numpy", "", ""
+   "Python", "2.7.x", "依赖libpython2.7.so"
+   "pip", ">=9.0", ""
+   "numpy", "", ""
    "SWIG", ">=2.0", ""
-   "Go", ">=1.8", "可选"
+   "Go", ">=1.8", "可选"
 
 
 .. _build_options:

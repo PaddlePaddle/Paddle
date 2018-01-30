@@ -15,7 +15,7 @@
 获取PaddlePaddle的Docker镜像
 ------------------------------
 
-执行下面的命令获取最新的PaddlePaddle Docker镜像
+执行下面的命令获取最新的PaddlePaddle Docker镜像，版本为cpu_avx_mkl：
 
   .. code-block:: bash
 
@@ -25,14 +25,14 @@
 
   .. code-block:: bash
 
-     docker pull docker.paddlepaddle.org/paddle
+     docker pull docker.paddlepaddlehub.com/paddle
 
-下载GPU版本的Docker镜像：
+下载GPU版本（cuda8.0_cudnn5_avx_mkl）的Docker镜像：
 
   .. code-block:: bash
 
      docker pull paddlepaddle/paddle:latest-gpu
-     docker pull docker.paddlepaddle.org/paddle:latest-gpu
+     docker pull docker.paddlepaddlehub.com/paddle:latest-gpu
 
 选择下载使用不同的BLAS库的Docker镜像：
 
@@ -49,12 +49,12 @@
 
      docker pull paddlepaddle/paddle:[tag]
      # 比如：
-     docker pull docker.paddlepaddle.org/paddle:0.10.0-gpu
+     docker pull docker.paddlepaddlehub.com/paddle:0.11.0-gpu
 
 .. _docker_run:
 
 在Docker中执行PaddlePaddle训练程序
-------------------------------
+----------------------------------
 
 假设您已经在当前目录（比如在/home/work）编写了一个PaddlePaddle的程序 :code:`train.py` （可以参考
 `PaddlePaddleBook <http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.cn.html>`_ 
@@ -82,7 +82,7 @@
 .. _docker_run_book:
 
 使用Docker启动PaddlePaddle Book教程
-------------------------------
+-----------------------------------
 
 使用Docker可以快速在本地启动一个包含了PaddlePaddle官方Book教程的Jupyter Notebook，可以通过网页浏览。
 PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Notebook。
@@ -114,7 +114,7 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 
   .. code-block:: bash
 
-     nvidia-docker run -it -v $PWD:/work paddledev/paddle:latest-gpu /bin/bash
+     nvidia-docker run -it -v $PWD:/work paddlepaddle/paddle:latest-gpu /bin/bash
 
 **注: 如果没有安装nvidia-docker，可以尝试以下的方法，将CUDA库和Linux设备挂载到Docker容器内：**
 
@@ -122,13 +122,13 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 
      export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
      export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-     docker run ${CUDA_SO} ${DEVICES} -it paddledev/paddle:latest-gpu
+     docker run ${CUDA_SO} ${DEVICES} -it paddlepaddle/paddle:latest-gpu
 
 **关于AVX：**
 
 AVX是一种CPU指令集，可以加速PaddlePaddle的计算。最新的PaddlePaddle Docker镜像默认
 是开启AVX编译的，所以，如果您的电脑不支持AVX，需要单独
-`编译 <./build_from_source_cn.rst>`_ PaddlePaddle为no-avx版本。
+`编译 <./build_from_source_cn.html>`_ PaddlePaddle为no-avx版本。
 
 以下指令能检查Linux电脑是否支持AVX：
 

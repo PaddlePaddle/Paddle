@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <glog/logging.h>
@@ -29,7 +30,7 @@ const std::string kFetchOpType = "fetch";
 const std::string kDropOutOpType = "dropout";
 const std::string kBatchNormOpType = "batch_norm";
 
-bool HasDependentVar(const OpDesc& op_desc,
+bool HasDependentVar(const proto::OpDesc& op_desc,
                      const std::set<std::string>& dependent_vars) {
   for (auto& var : op_desc.outputs()) {
     for (auto& argu : var.arguments()) {
@@ -41,14 +42,15 @@ bool HasDependentVar(const OpDesc& op_desc,
   return false;
 }
 
-bool IsTarget(const OpDesc& op_desc) {
+bool IsTarget(const proto::OpDesc& op_desc) {
   if (op_desc.has_is_target()) {
     return op_desc.is_target();
   }
   return false;
 }
 
-void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
+void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
+                int block_id) {
   // TODO(tonyyang-svail):
   //    - will change to use multiple blocks for RNN op and Cond Op
 
@@ -101,15 +103,41 @@ void prune_impl(const ProgramDesc& input, ProgramDesc* output, int block_id) {
       *op_field->Add() = input.blocks(block_id).ops(i);
     }
   }
+
+  // remove the VarDescs in BlockDesc that are not referenced in
+  // the pruned OpDescs
+  std::unordered_map<std::string, proto::VarDesc> var_map;
+  auto* var_field = output->mutable_blocks(block_id)->mutable_vars();
+  for (const auto& var : *var_field) {
+    var_map[var.name()] = var;
+  }
+
+  var_field->Clear();
+  for (const auto& op : *op_field) {
+    // add VarDescs of all input arguments for each OpDesc
+    auto& input_field = op.inputs();
+    for (auto& input_var : input_field) {
+      for (auto& arg : input_var.arguments()) {
+        *var_field->Add() = var_map[arg];
+      }
+    }
+    // add VarDescs of all output arguments for each OpDesc
+    auto& output_field = op.outputs();
+    for (auto& output_var : output_field) {
+      for (auto& arg : output_var.arguments()) {
+        *var_field->Add() = var_map[arg];
+      }
+    }
+  }
 }
 
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
-void Prune(const ProgramDesc& input, ProgramDesc* output) {
+void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output) {
   prune_impl(input, output, 0);
 }
 
-void inference_optimize_impl(const ProgramDesc& input, ProgramDesc* output,
-                             int block_id) {
+void inference_optimize_impl(const proto::ProgramDesc& input,
+                             proto::ProgramDesc* output, int block_id) {
   *output = input;
   auto* op_field = output->mutable_blocks(block_id)->mutable_ops();
   for (auto& op_desc : *op_field) {
@@ -125,7 +153,8 @@ void inference_optimize_impl(const ProgramDesc& input, ProgramDesc* output,
   }
 }
 
-void InferenceOptimize(const ProgramDesc& input, ProgramDesc* output) {
+void InferenceOptimize(const proto::ProgramDesc& input,
+                       proto::ProgramDesc* output) {
   inference_optimize_impl(input, output, 0);
 }
 

@@ -29,9 +29,17 @@ typedef enum {
   kPD_UNDEFINED_ERROR = -1,
 } paddle_error;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Error string for Paddle API.
  */
 PD_API const char* paddle_error_string(paddle_error err);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

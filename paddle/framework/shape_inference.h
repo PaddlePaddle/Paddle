@@ -27,8 +27,9 @@ class InferShapeContext {
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
 
-  std::vector<VarDesc::VarType> GetInputsVarType(const std::string &name) const;
-  std::vector<VarDesc::VarType> GetOutputsVarType(
+  std::vector<proto::VarDesc::VarType> GetInputsVarType(
+      const std::string &name) const;
+  std::vector<proto::VarDesc::VarType> GetOutputsVarType(
       const std::string &name) const;
 
   virtual bool HasInputs(const std::string &name) const = 0;
@@ -65,10 +66,10 @@ class InferShapeContext {
   std::vector<framework::DDim> GetDims(
       const std::vector<std::string> &names) const;
 
-  std::vector<VarDesc::VarType> GetVarTypes(
+  std::vector<proto::VarDesc::VarType> GetVarTypes(
       const std::vector<std::string> &names) const;
 
-  virtual VarDesc::VarType GetVarType(const std::string &name) const = 0;
+  virtual proto::VarDesc::VarType GetVarType(const std::string &name) const = 0;
 };
 
 }  // namespace framework

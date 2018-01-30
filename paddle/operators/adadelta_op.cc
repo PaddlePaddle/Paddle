@@ -59,8 +59,7 @@ class AdadeltaOp : public framework::OperatorWithKernel {
 
 class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdadeltaOpMaker(framework::OpProto *proto,
-                  framework::OpAttrChecker *op_checker)
+  AdadeltaOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");

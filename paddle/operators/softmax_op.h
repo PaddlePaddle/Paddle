@@ -26,13 +26,13 @@ class SoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* X = context.Input<Tensor>("X");
-    auto* Y = context.Output<Tensor>("Y");
+    auto* Out = context.Output<Tensor>("Out");
 
     // allocate memory on device.
-    Y->mutable_data<T>(context.GetPlace());
+    Out->mutable_data<T>(context.GetPlace());
 
     math::SoftmaxFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), X, Y);
+        context.template device_context<DeviceContext>(), X, Out);
   }
 };
 
@@ -40,15 +40,15 @@ template <typename DeviceContext, typename T>
 class SoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* Y = context.Input<Tensor>("Y");
-    auto* dY = context.Input<Tensor>(framework::GradVarName("Y"));
+    auto* Out = context.Input<Tensor>("Out");
+    auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
 
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
     math::SoftmaxGradFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), Y, dY, dX);
+        context.template device_context<DeviceContext>(), Out, dOut, dX);
   }
 };
 

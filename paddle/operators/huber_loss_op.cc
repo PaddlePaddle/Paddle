@@ -45,8 +45,7 @@ class HuberLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class HuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HuberLossOpMaker(framework::OpProto* proto,
-                   framework::OpAttrChecker* op_checker)
+  HuberLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X",
              "The input value of huber loss op."

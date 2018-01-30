@@ -30,26 +30,32 @@ using DDim = framework::DDim;
 // operator implementations can reuse the code.
 class Conv2DTransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv2DTransposeOpMaker(framework::OpProto* proto,
-                         framework::OpAttrChecker* op_checker);
+  Conv2DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker);
 };
 
 class Conv3DTransposeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv3DTransposeOpMaker(framework::OpProto* proto,
-                         framework::OpAttrChecker* op_checker);
+  Conv3DTransposeOpMaker(OpProto* proto, OpAttrChecker* op_checker);
 };
 
 class ConvTransposeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
 };
 
 class ConvTransposeOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
 };
 
 template <typename DeviceContext, typename T>
@@ -63,6 +69,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
     // groups will alway be disabled in conv2dtranspose.
 
     const int batch_size = static_cast<int>(input->dims()[0]);
@@ -115,7 +122,6 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
 
     math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
     math::Col2VolFunctor<DeviceContext, T> col2vol;
-    std::vector<int> dilations({1, 1, 1});
 
     // convolution transpose: gemm + col2im or col2vol (similar to conv-backward
     // on input)
@@ -135,9 +141,9 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
       if (data_dim == 2U) {
         // col2im: col_matrix -> dy
         // from (c * k_h * k_w, h * w) to (c, o_h, o_w)
-        col2im(dev_ctx, col, std::vector<int>{dilations[0], dilations[1]},
-               strides, std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                         paddings[1]},
+        col2im(dev_ctx, col, dilations, strides,
+               std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                paddings[1]},
                &output_batch);
       } else if (data_dim == 3U) {
         // col2vol: col_matrix -> dy
@@ -167,6 +173,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
 
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
 
     const int batch_size = static_cast<int>(input->dims()[0]);
 
@@ -221,11 +228,9 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
 
       math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
       math::Vol2ColFunctor<DeviceContext, T> vol2col;
-      std::vector<int> dilations({1, 1, 1});
 
       if (input_grad) {
         input_grad->mutable_data<T>(context.GetPlace());
-        set_zero(dev_ctx, input_grad, static_cast<T>(0));
       }
       if (filter_grad) {  // filter size (m, c, k_h, k_w)
         filter_grad->mutable_data<T>(context.GetPlace());
@@ -242,8 +247,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
         if (data_dim == 2U) {
           // im2col: dy -> col matrix
           // from (c, o_h, o_w) to (c * k_h * k_w, h * w)
-          im2col(dev_ctx, output_grad_batch,
-                 std::vector<int>{dilations[0], dilations[1]}, strides,
+          im2col(dev_ctx, output_grad_batch, dilations, strides,
                  std::vector<int>{paddings[0], paddings[1], paddings[0],
                                   paddings[1]},
                  &col);

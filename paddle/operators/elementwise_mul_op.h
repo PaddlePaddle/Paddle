@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 #include "paddle/operators/elementwise_op_function.h"
@@ -18,11 +18,16 @@
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct MulFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const { return a * b; }
+};
+
 template <typename DeviceContext, typename T>
 class ElementwiseMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseCompute<EigenMulFunctor, DeviceContext, T>(ctx);
+    ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx);
   }
 };
 
@@ -106,7 +111,6 @@ class ElementwiseMulGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElementwiseGradCompute<DeviceContext, T, ElementwiseMulGradFunctor<T>,
-                           ElementwiseMulGradFunctor<T>,
                            ElementwiseMulBroadCastGradFunctor<T>,
                            ElementwiseMulBroadCast2GradFunctor<T>>(ctx);
   }

@@ -98,6 +98,8 @@ protected:
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
+        ih_(0),
+        iw_(0),
         condition_(0),
         needResetBwd_(true),
         outputOnlyMKLDNN_(false),

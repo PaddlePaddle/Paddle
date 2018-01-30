@@ -19,47 +19,50 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-Attribute GetAttrValue(const OpDesc::Attr& attr_desc) {
+Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
   switch (attr_desc.type()) {
-    case framework::AttrType::BOOLEAN: {
+    case proto::AttrType::BOOLEAN: {
       return attr_desc.b();
     }
-    case framework::AttrType::INT: {
+    case proto::AttrType::INT: {
       return attr_desc.i();
     }
-    case framework::AttrType::FLOAT: {
+    case proto::AttrType::FLOAT: {
       return attr_desc.f();
     }
-    case framework::AttrType::STRING: {
+    case proto::AttrType::STRING: {
       return attr_desc.s();
     }
-    case framework::AttrType::BOOLEANS: {
+    case proto::AttrType::BOOLEANS: {
       std::vector<bool> val(attr_desc.bools_size());
       for (int i = 0; i < attr_desc.bools_size(); ++i) {
         val[i] = attr_desc.bools(i);
       }
       return val;
     }
-    case framework::AttrType::INTS: {
+    case proto::AttrType::INTS: {
       std::vector<int> val(attr_desc.ints_size());
       for (int i = 0; i < attr_desc.ints_size(); ++i) {
         val[i] = attr_desc.ints(i);
       }
       return val;
     }
-    case framework::AttrType::FLOATS: {
+    case proto::AttrType::FLOATS: {
       std::vector<float> val(attr_desc.floats_size());
       for (int i = 0; i < attr_desc.floats_size(); ++i) {
         val[i] = attr_desc.floats(i);
       }
       return val;
     }
-    case framework::AttrType::STRINGS: {
+    case proto::AttrType::STRINGS: {
       std::vector<std::string> val(attr_desc.strings_size());
       for (int i = 0; i < attr_desc.strings_size(); ++i) {
         val[i] = attr_desc.strings(i);
       }
       return val;
+    }
+    case proto::AttrType::LONG: {
+      return attr_desc.l();
     }
     default:
       PADDLE_THROW("Unsupport attr type %d", attr_desc.type());

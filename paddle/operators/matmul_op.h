@@ -1,16 +1,16 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   You may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -137,6 +137,13 @@ class MatMulGradKernel : public framework::OpKernel<T> {
       y_dims.push_back(1);
     }
 
+    int batch_count = 0;
+    // The first rank-2 dimensions are accumulated on the batch_count, and the
+    // last two dimensions are used for matrix multiplication.
+    if (x_dims.size() > 3) {
+      batch_count = accumulate(x_dims.begin(), x_dims.end() - 2, 1,
+                               std::multiplies<int>());
+    }
     // Fix the dOut dimensions.
     int M = 0, N = 0, batchCountX = 0, batchCountY = 0;
 
@@ -149,7 +156,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
         M = transpose_x ? x_dims[2] : x_dims[1];
         break;
       default:
-        assert(false);
+        batchCountX = batch_count;
+        size_t mat_s = x_dims.size() - 2;
+        M = transpose_x ? x_dims[mat_s + 1] : x_dims[mat_s];
     }
 
     switch (y_dims.size()) {
@@ -161,7 +170,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
         N = transpose_y ? y_dims[1] : y_dims[2];
         break;
       default:
-        assert(false);
+        batchCountY = batch_count;
+        size_t mat_s = y_dims.size() - 2;
+        N = transpose_y ? y_dims[mat_s] : y_dims[mat_s + 1];
     }
     if (batchCountX && batchCountY) {
       PADDLE_ENFORCE_EQ(
@@ -172,7 +183,11 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     int batchCount = std::max(batchCountX, batchCountY);
     std::vector<int64_t> dout_dims = {M, N};
     if (batchCount) {
-      dout_dims.insert(dout_dims.begin(), batchCount);
+      if (x_dims.size() > 3) {
+        dout_dims.insert(dout_dims.begin(), x_dims.begin(), x_dims.end() - 2);
+      } else {
+        dout_dims.insert(dout_dims.begin(), batchCount);
+      }
     }
     Tensor X = Reshape<T>(x, make_ddim(x_dims));
     Tensor Y = Reshape<T>(y, make_ddim(y_dims));

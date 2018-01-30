@@ -250,12 +250,12 @@ IF(NOT PROTOBUF_FOUND)
     SET(PROTOBUF_PROTOC_LIBRARY ${extern_protobuf_PROTOC_LIBRARY}
         CACHE FILEPATH "protoc library." FORCE)
 
-    IF(WITH_C_API)
+    IF(WITH_C_API OR WITH_FLUID)
         INSTALL(DIRECTORY ${PROTOBUF_INCLUDE_DIR} DESTINATION third_party/protobuf)
         IF(ANDROID)
-            INSTALL(FILES ${PROTOBUF_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
+            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib/${ANDROID_ABI})
         ELSE()
-            INSTALL(FILES ${PROTOBUF_LIBRARY} DESTINATION third_party/protobuf/lib)
+            INSTALL(FILES ${PROTOBUF_LITE_LIBRARY} DESTINATION third_party/protobuf/lib)
         ENDIF()
     ENDIF()
 

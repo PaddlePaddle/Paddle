@@ -63,8 +63,7 @@ class RmspropOp : public framework::OperatorWithKernel {
 
 class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RmspropOpMaker(framework::OpProto *proto,
-                 framework::OpAttrChecker *op_checker)
+  RmspropOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "

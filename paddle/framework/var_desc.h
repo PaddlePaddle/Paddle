@@ -53,44 +53,46 @@ inline void VectorToRepeated(const std::vector<bool> &vec,
   }
 }
 
-class VarDescBind {
+class VarDesc {
  public:
-  explicit VarDescBind(const std::string &name) {
+  explicit VarDesc(const std::string &name) {
     desc_.set_name(name);
-    desc_.set_type(VarDesc::LOD_TENSOR);
+    desc_.set_type(proto::VarDesc::LOD_TENSOR);
   }
 
-  explicit VarDescBind(const VarDesc &desc) : desc_(desc) {}
+  explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
 
-  VarDesc *Proto() { return &desc_; }
+  proto::VarDesc *Proto() { return &desc_; }
 
   std::string Name() const { return desc_.name(); }
 
+  void SetName(std::string name) { desc_.set_name(name); }
+
   void SetShape(const std::vector<int64_t> &dims);
 
-  void SetDataType(DataType data_type);
+  void SetDataType(proto::DataType data_type);
 
   std::vector<int64_t> Shape() const;
 
-  DataType GetDataType() const;
+  proto::DataType GetDataType() const;
 
   void SetLoDLevel(int32_t lod_level);
 
-  int32_t GetLodLevel() const;
+  int32_t GetLoDLevel() const;
 
-  VarDesc::VarType GetType() const;
+  proto::VarDesc::VarType GetType() const;
 
-  void SetType(VarDesc::VarType type);
+  void SetType(proto::VarDesc::VarType type);
 
   bool Persistable() const { return desc_.persistable(); }
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
  private:
-  const TensorDesc &tensor_desc() const;
-  TensorDesc *mutable_tensor_desc();
+  const proto::TensorDesc &tensor_desc() const;
+  proto::TensorDesc *mutable_tensor_desc();
 
-  VarDesc desc_;
+  proto::VarDesc desc_;
 };
 }  // namespace framework
 }  // namespace paddle

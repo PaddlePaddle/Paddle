@@ -22,23 +22,7 @@ namespace paddle {
 namespace platform {
 
 void CudaProfilerInit(std::string output_file, std::string output_mode,
-                      std::vector<std::string> config_flags) {
-  std::array<char, 128> buf;
-  std::string tmpl = "/tmp/cuda_profile_config.XXXXXX";
-  PADDLE_ENFORCE_LT(tmpl.size(), buf.size());
-  memcpy(buf.data(), tmpl.data(), tmpl.size());
-  auto result = mktemp(buf.data());
-  PADDLE_ENFORCE(strlen(result) != 0);
-  std::string config_file = result;
-
-  {
-    std::ofstream ofs(config_file, std::ios::out | std::ios::trunc);
-    PADDLE_ENFORCE(ofs.is_open(), "ofstream: ", ofs.rdstate());
-    for (const auto& line : config_flags) {
-      ofs << line << std::endl;
-    }
-  }
-
+                      std::string config_file) {
   PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv");
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
   PADDLE_ENFORCE(

@@ -59,8 +59,7 @@ class AdagradOp : public framework::OperatorWithKernel {
 
 class AdagradOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AdagradOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  AdagradOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Param", "(Tensor) Input parameter");
     AddInput("Grad", "(Tensor) Input gradient");
@@ -106,48 +105,18 @@ struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::Tensor* moment, framework::Tensor* param) {
     // 1. g_m.rows = set(g.rows)
-    auto grad_rows = grad.rows();
-    std::set<int64_t> row_set(grad_rows.begin(), grad_rows.end());
-    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
-
     auto grad_width = grad.value().dims()[1];
-    std::unique_ptr<framework::SelectedRows> grad_merge{
-        new framework::SelectedRows()};
-    grad_merge->set_rows(merge_rows);
-    grad_merge->set_height(grad.height());
-    grad_merge->mutable_value()->mutable_data<T>(
-        framework::make_ddim(
-            {static_cast<int64_t>(merge_rows.size()), grad_width}),
-        context.GetPlace());
-
-    math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
-    constant_functor(context, grad_merge->mutable_value(), 0.0);
-
-    auto* grad_merge_data = grad_merge->mutable_value()->data<T>();
-    auto* grad_data = grad.value().data<T>();
-
-    for (size_t i = 0; i < grad_rows.size(); i++) {
-      size_t grad_merge_i = FindPos(merge_rows, grad_rows[i]);
-      for (int64_t j = 0; j < grad_width; j++) {
-        grad_merge_data[grad_merge_i * grad_width + j] +=
-            grad_data[i * grad_width + j];
-      }
-    }
+    math::scatter::MergeAdd<platform::CPUDeviceContext, T> merge_func;
+    auto grad_merge = merge_func(context, grad);
+    auto& merge_rows = grad_merge.rows();
+    auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
 
     // 2. m += g_m * g_m
-    std::unique_ptr<framework::SelectedRows> grad_square{
-        new framework::SelectedRows()};
-    grad_square->set_rows(grad_merge->rows());
-    grad_square->set_height(grad_merge->height());
-    grad_square->mutable_value()->mutable_data<T>(grad_merge->value().dims(),
-                                                  context.GetPlace());
-    auto gs =
-        framework::EigenVector<T>::Flatten(*(grad_square->mutable_value()));
-    auto gm = framework::EigenVector<T>::Flatten(grad_merge->value());
-    gs.device(*context.eigen_device()) = gm * gm;
+    math::scatter::Mul<platform::CPUDeviceContext, T> sqare_func;
+    auto grad_square = sqare_func(context, grad_merge, grad_merge);
 
     math::SelectedRowsAddToTensor<platform::CPUDeviceContext, T> functor;
-    functor(context, *grad_square, moment);
+    functor(context, grad_square, moment);
 
     // 3. update parameter
     auto* lr = learning_rate.data<T>();

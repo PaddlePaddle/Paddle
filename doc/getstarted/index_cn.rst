@@ -7,13 +7,13 @@
 ++++++++
 
 PaddlePaddle支持使用pip快速安装，目前支持CentOS 6以上, Ubuntu 14.04以及MacOS 10.12，并安装有Python2.7。
-执行下面的命令完成快速安装：
+执行下面的命令完成快速安装，版本为cpu_avx_openblas：
 
   .. code-block:: bash
 
      pip install paddlepaddle
 
-如果需要安装支持GPU的版本，需要执行：
+如果需要安装支持GPU的版本（cuda7.5_cudnn5_avx_openblas），需要执行：
 
   .. code-block:: bash
 

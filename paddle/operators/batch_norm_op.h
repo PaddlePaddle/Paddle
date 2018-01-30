@@ -19,21 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-enum TensorFormat {
-  NHWC = 0,
-  NCHW = 1,
-};
-
-inline TensorFormat StringToTensorFormat(const std::string& str) {
-  if (str == "NHWC" || str == "nhwc") {
-    return TensorFormat::NHWC;
-  } else if (str == "NCHW" || str == "nchw") {
-    return TensorFormat::NCHW;
-  } else {
-    PADDLE_THROW("Unknown storage order string: %s", str);
-  }
-}
-
 template <typename DeviceContext, typename T>
 class BatchNormKernel : public framework::OpKernel<T> {
  public:

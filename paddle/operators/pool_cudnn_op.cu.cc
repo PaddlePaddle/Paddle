@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/pool_cudnn_op.h"
+#include "paddle/framework/op_registry.h"
+#include "paddle/operators/pool_op.h"
 #include "paddle/platform/cudnn_helper.h"
 
 namespace paddle {
@@ -25,11 +26,11 @@ using DataLayout = platform::DataLayout;
 using PoolingMode = platform::PoolingMode;
 
 template <typename T>
-class PoolCudnnOpKernel : public framework::OpKernel<T> {
+class PoolCUDNNOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
 
     const Tensor *input = ctx.Input<Tensor>("X");
     Tensor *output = ctx.Output<Tensor>("Out");
@@ -86,11 +87,11 @@ class PoolCudnnOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
+class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use GPUPlace.");
+                   "It must use CUDAPlace.");
 
     const Tensor *input = ctx.Input<Tensor>("X");
     const Tensor *output = ctx.Input<Tensor>("Out");
@@ -162,12 +163,16 @@ class PoolCudnnGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(pool2d_cudnn, ops::PoolCudnnOpKernel<float>,
-                        ops::PoolCudnnOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(pool2d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
-                        ops::PoolCudnnGradOpKernel<double>);
+REGISTER_OP_KERNEL(pool2d, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::PoolCUDNNOpKernel<float>,
+                   ops::PoolCUDNNOpKernel<double>);
+REGISTER_OP_KERNEL(pool2d_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::PoolCUDNNGradOpKernel<float>,
+                   ops::PoolCUDNNGradOpKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(pool3d_cudnn, ops::PoolCudnnOpKernel<float>,
-                        ops::PoolCudnnOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(pool3d_cudnn_grad, ops::PoolCudnnGradOpKernel<float>,
-                        ops::PoolCudnnGradOpKernel<double>);
+REGISTER_OP_KERNEL(pool3d, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::PoolCUDNNOpKernel<float>,
+                   ops::PoolCUDNNOpKernel<double>);
+REGISTER_OP_KERNEL(pool3d_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::PoolCUDNNGradOpKernel<float>,
+                   ops::PoolCUDNNGradOpKernel<double>);

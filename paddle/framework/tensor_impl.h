@@ -84,6 +84,8 @@ inline const T* Tensor::data() const {
       reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
 }
 
+inline bool Tensor::IsInitialized() const { return holder_ != nullptr; }
+
 template <typename T>
 inline T* Tensor::data() {
   check_memory_size();
@@ -125,11 +127,11 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
           boost::get<platform::CPUPlace>(place), size, type));
     } else if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-      PADDLE_THROW("'GPUPlace' is not supported in CPU only device.");
+      PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
     }
 #else
-      holder_.reset(new PlaceholderImpl<platform::GPUPlace>(
-          boost::get<platform::GPUPlace>(place), size, type));
+      holder_.reset(new PlaceholderImpl<platform::CUDAPlace>(
+          boost::get<platform::CUDAPlace>(place), size, type));
     }
 #endif
     offset_ = 0;
@@ -165,6 +167,7 @@ inline Tensor Tensor::Slice(int begin_idx, int end_idx) const {
     size_t base = numel() / dims_[0];
     Tensor dst;
     dst.holder_ = holder_;
+    dst.set_layout(layout_);
     DDim dst_dims = dims_;
     dst_dims[0] = end_idx - begin_idx;
     dst.Resize(dst_dims);

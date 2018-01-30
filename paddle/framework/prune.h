@@ -20,9 +20,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void Prune(const ProgramDesc& input, ProgramDesc* output);
+void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output);
 
-void InferenceOptimize(const ProgramDesc& input, ProgramDesc* output);
+void InferenceOptimize(const proto::ProgramDesc& input,
+                       proto::ProgramDesc* output);
 
 }  // namespace framework
 }  // namespace paddle

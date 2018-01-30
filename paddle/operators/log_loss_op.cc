@@ -46,8 +46,7 @@ class LogLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class LogLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LogLossOpMaker(framework::OpProto* proto,
-                 framework::OpAttrChecker* op_checker)
+  LogLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Predicted",
              "The input value (Predicted) of Log loss op."

@@ -1,13 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-   http://www.apache.org/licenses/LICENSE-2.0
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #include "paddle/operators/gru_op.h"
 
@@ -67,7 +70,7 @@ class GRUOp : public framework::OperatorWithKernel {
 
 class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GRUOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  GRUOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
              "(LoDTensor) The first input is a LodTensor, which supports "
@@ -132,14 +135,14 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 GRU Operator implements part calculations of the complete GRU as following:
 
-\f[
-update \ gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
-reset \ gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
-output \ candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
+$$
+update\_gate: u_t = actGate(xu_t + W_u * h_{t-1} + b_u) \\
+reset\_gate: r_t = actGate(xr_t + W_r * h_{t-1} + b_r)  \\
+output\_candidate: {h}_t = actNode(xc_t + W_c * dot(r_t, h_{t-1}) + b_c) \\
 output: h_t = dot((1 - u_t), h_{t-1}) + dot(u_t, {h}_t)
-\f]
+$$
 
-@note To implement the complete GRU, fully-connected operator must be used  
+@note To implement the complete GRU, fully-connected operator must be used
 before to feed xu, xr and xc as the Input of GRU operator.
 )DOC");
   }

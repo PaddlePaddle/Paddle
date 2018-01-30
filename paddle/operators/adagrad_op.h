@@ -47,8 +47,7 @@ class AdagradOpKernel : public framework::OpKernel<T> {
           *ctx.Input<framework::Tensor>("Grad"));
       auto moment = framework::EigenVector<T>::Flatten(
           *ctx.Input<framework::Tensor>("Moment"));
-      auto lr = framework::EigenVector<T>::Flatten(
-          *ctx.Input<framework::Tensor>("LearningRate"));
+      auto* learning_rate = ctx.Input<framework::Tensor>("LearningRate");
 
       auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
       auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);
@@ -56,8 +55,16 @@ class AdagradOpKernel : public framework::OpKernel<T> {
 
       moment_out.device(*place) = moment + grad * grad;
       Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
-      param_out.device(*place) =
-          param - lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        auto* lr = learning_rate->data<T>();
+        param_out.device(*place) =
+            param - lr[0] * grad / (moment_out.sqrt() + epsilon);
+      } else {
+        auto lr = framework::EigenVector<T>::Flatten(*learning_rate);
+        param_out.device(*place) =
+            param -
+            lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
+      }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto* param_tensor = ctx.Input<framework::Tensor>("Param");
       PADDLE_ENFORCE_EQ(param_tensor, param_out_tensor);

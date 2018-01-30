@@ -233,6 +233,13 @@ public:
     (void)numProcessed;
   }
 
+  /**
+   * @brief   Release the middle layer's output memory.
+   *
+   * @note    This function is used for memory optimization in inference.
+   */
+  virtual void releaseOutput() {}
+
 protected:
   virtual void onLoadParameter() {}
 

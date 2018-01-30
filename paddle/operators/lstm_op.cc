@@ -92,7 +92,7 @@ class LSTMOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),
@@ -102,7 +102,7 @@ class LSTMOp : public framework::OperatorWithKernel {
 
 class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LSTMOpMaker(framework::OpProto* proto, framework::OpAttrChecker* op_checker)
+  LSTMOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("Input",
              "(LoDTensor) the first input is a LodTensor, which support "
@@ -117,7 +117,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("C0",
              "(Tensor, optional) the initial cell state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
-             "batch size. `H0` and `C0` can be NULL but only at the same time")
+             "batch size. `H0` and `C0` can be NULL but only at the same time.")
         .AsDispensable();
     AddInput("Weight",
              "(Tensor) the learnable hidden-hidden weights."
@@ -260,7 +260,7 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelType(
+  framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),
