@@ -49,35 +49,38 @@ def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
 
 def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
     x_shape = x.shape
+    scale_shape = scale.shape
     N = reduce(mul, x_shape[0:begin_norm_axis], 1)
     D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
     grad_y.shape = [N, D]
     x.shape = [N, D]
     mean.shape = [N, 1]
     var.shape = [N, 1]
+    scale.shape = [1, D]
 
-    d_scale = np.sum(grad_y, axis=1).reshape([1, D])
-    d_bias = scale.reshape([1, D]) * np.sum((
-        (x - mean) * np.sqrt(1 / var)) * grad_y,
-                                            axis=1).reshape([1, D])
+    d_bias = np.sum(grad_y, axis=0).reshape([1, D])
+    d_scale = np.sum(((x - mean) * np.sqrt(1 / var)) * grad_y,
+                     axis=0).reshape([1, D])
 
-    dx_end = np.sqrt(1.0 / var) * grad_y
+    dx_end = scale * np.sqrt(1.0 / var) * grad_y
 
-    d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y, axis=1).reshape([N, 1])
+    d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y * scale, axis=1).reshape(
+        [N, 1])
     # d_mean_1 = np.sum(-1.0 / var * (x - mean) * grad_y, axis=1).reshape(
     #     [N, 1]) * (-1.0 / D * np.sqrt(1.0 / var) *
     #                np.sum(x - mean, axis=1).reshape([N, 1])).reshape([N, 1])
-    d_mean = 1.0 / D * (d_mean_0)
+    d_mean = 1.0 / D * d_mean_0
 
-    d_std = np.sum(-1.0 / var * (x - mean) * grad_y, axis=1).reshape([N, 1]) * (
-        1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) * (x - mean))
+    d_std = np.sum(
+        -1.0 / var * (x - mean) * grad_y * scale, axis=1).reshape([N, 1]) * (
+            1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) * (x - mean))
 
-    grad_x = scale.reshape([1, D]) * (dx_end + d_mean + d_std)
+    grad_x = dx_end + d_mean + d_std
 
     grad_y.shape = x_shape
     x.shape = x_shape
-
-    return grad_x, d_bias, d_scale
+    scale.shape = scale_shape
+    return grad_x, d_scale, d_bias
 
 
 def create_or_get_tensor(scope, var_name, var, place):
