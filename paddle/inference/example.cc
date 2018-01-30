@@ -15,9 +15,9 @@ limitations under the License. */
 #include <time.h>
 #include <iostream>
 #include "gflags/gflags.h"
-#include "io.h"
 #include "paddle/framework/init.h"
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/inference/io.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
@@ -31,26 +31,25 @@ int main(int argc, char** argv) {
   }
 
   // 1. Define place, executor, scope
-  auto* place = new paddle::platform::CPUPlace();
+  auto place = paddle::platform::CPUPlace();
   paddle::framework::InitDevices();
-  paddle::framework::Executor* executor =
-      new paddle::framework::Executor(*place);
-  paddle::framework::Scope* scope = new paddle::framework::Scope();
+  auto* executor = new paddle::framework::Executor(place);
+  auto* scope = new paddle::framework::Scope();
 
   std::cout << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
   std::string dirname = FLAGS_dirname;
 
   // 2. Initialize the inference program
   paddle::framework::ProgramDesc* inference_program =
-      paddle::io::Load(*executor, *scope, dirname);
+      paddle::inference::Load(*executor, *scope, dirname);
 
   // 3. Optional: perform optimization on the inference_program
 
   // 4. Get the feed_var_names and fetch_var_names
   std::vector<std::string> feed_var_names =
-      paddle::io::GetFeedVarNames(inference_program);
+      paddle::inference::GetFeedVarNames(inference_program);
   std::vector<std::string> fetch_var_names =
-      paddle::io::GetFetchVarNames(inference_program);
+      paddle::inference::GetFetchVarNames(inference_program);
 
   // 5. Generate input
   paddle::framework::LoDTensor input;
@@ -99,7 +98,6 @@ int main(int argc, char** argv) {
     std::cout << std::endl;
   }
 
-  delete place;
   delete scope;
   delete executor;
 

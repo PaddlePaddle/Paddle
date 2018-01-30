@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/framework/var_desc.h"
 
 namespace paddle {
-
-namespace io {
+namespace inference {
 
 bool IsParameter(const framework::VarDesc* var,
                  const framework::ProgramDesc* main_program);
@@ -42,5 +41,5 @@ framework::ProgramDesc* Load(framework::Executor& executor,
 std::vector<std::string> GetFeedVarNames(framework::ProgramDesc* main_program);
 std::vector<std::string> GetFetchVarNames(framework::ProgramDesc* main_program);
 
-}  // namespace io
+}  // namespace inference
 }  // namespace paddle

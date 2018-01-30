@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "io.h"
+#include "paddle/inference/io.h"
 #include <fstream>
 
 namespace paddle {
-
-namespace io {
+namespace inference {
 
 bool IsParameter(const framework::VarDesc* var,
                  const framework::ProgramDesc* main_program) {
@@ -68,6 +67,7 @@ void LoadPersistables(framework::Executor& executor,
     }
   }
   executor.Run(*load_program, &scope, 0, true, true);
+  delete load_program;
 }
 
 framework::ProgramDesc* Load(framework::Executor& executor,
@@ -115,5 +115,5 @@ std::vector<std::string> GetFetchVarNames(
   return fetch_var_names;
 }
 
-}  // namespace io
+}  // namespace inference
 }  // namespace paddle
