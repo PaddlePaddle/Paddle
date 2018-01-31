@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -108,7 +108,7 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     auto* output_box = context.Output<Tensor>("OutputBox");
 
     if (target_box->lod().size()) {
-      PADDLE_ENFORCE_EQ(target_box->lod().size(), 1UL,
+      PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
                         "Only support 1 level of LoD.");
     }
     auto row = target_box->dims()[0];
