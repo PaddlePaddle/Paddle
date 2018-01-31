@@ -108,9 +108,31 @@ class TestTensor(unittest.TestCase):
         scope = core.Scope()
         place = core.CPUPlace()
         lod_py = [[0, 2, 5], [0, 2, 4, 5]]
-        lod_tensor = core.LoDTensor(lod_py)
+        lod_tensor = core.LoDTensor()
 
         lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor.set_lod(lod_py)
+        lod_tensor.alloc_float(place)
+        tensor_array = numpy.array(lod_tensor)
+        tensor_array[0, 0, 0, 0] = 1.0
+        tensor_array[0, 0, 0, 1] = 2.0
+        lod_tensor.set(tensor_array, place)
+
+        lod_v = numpy.array(lod_tensor)
+        self.assertAlmostEqual(1.0, lod_v[0, 0, 0, 0])
+        self.assertAlmostEqual(2.0, lod_v[0, 0, 0, 1])
+        self.assertListEqual(lod_py, lod_tensor.lod())
+
+    def test_lod_tensor_gpu_init(self):
+        if not core.is_compiled_with_cuda():
+            return
+        scope = core.Scope()
+        place = core.CUDAPlace(0)
+        lod_py = [[0, 2, 5], [0, 2, 4, 5]]
+        lod_tensor = core.LoDTensor()
+
+        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor.set_lod(lod_py)
         lod_tensor.alloc_float(place)
         tensor_array = numpy.array(lod_tensor)
         tensor_array[0, 0, 0, 0] = 1.0
