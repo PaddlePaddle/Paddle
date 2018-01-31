@@ -14,13 +14,12 @@ limitations under the License. */
 
 #include "CudnnBatchNormLayer.h"
 #include "Layer.h"
+#include "paddle/cuda/include/hl_batch_norm.h"
 #include "paddle/utils/Stat.h"
 
 namespace paddle {
 
 REGISTER_LAYER(cudnn_batch_norm, CudnnBatchNormLayer);
-
-const double CudnnBatchNormLayer::EPS = 1E-5;
 
 bool CudnnBatchNormLayer::init(const LayerMap& layerMap,
                                const ParameterMap& parameterMap) {
@@ -36,7 +35,7 @@ bool CudnnBatchNormLayer::init(const LayerMap& layerMap,
 }
 
 void CudnnBatchNormLayer::reshape(int batchSize) {
-  hl_tensor_reshape(ioDesc_, batchSize, channels_, imageH_, imageW_);
+  hl_tensor_reshape(ioDesc_, batchSize, channels_, imageH_ * imageD_, imageW_);
 }
 
 void CudnnBatchNormLayer::forward(PassType passType) {
@@ -60,6 +59,9 @@ void CudnnBatchNormLayer::forward(PassType passType) {
   real* movingMean = movingMean_->getW()->getData();
   real* movingVar = movingVar_->getW()->getData();
 
+  // cuDNN does not allow an epsilon value less than CUDNN_BN_MIN_EPSILON.
+  eps_ = std::max(CUDNN_BN_MIN_EPSILON, static_cast<double>(epsilon_));
+
   if (!useGlobalStats_) {
     REGISTER_TIMER_INFO("CudnnBatchFwTimer", getName().c_str());
     real* savedMean = savedMean_->getData();
@@ -74,21 +76,38 @@ void CudnnBatchNormLayer::forward(PassType passType) {
                                    1.0 - movingAvgFraction_,
                                    movingMean,
                                    movingVar,
-                                   EPS,
+                                   eps_,
                                    savedMean,
                                    savedInvVar);
   } else {
     // used movingMean and movingVar in testing
-    hl_batch_norm_forward_inference(ioDesc_,
-                                    input,
-                                    ioDesc_,
-                                    output,
-                                    bnParamDesc_,
-                                    gamma,
-                                    beta,
-                                    movingMean,
-                                    movingVar,
-                                    EPS);
+    if (batchSize <= 1024) {
+      hl_batch_norm_forward_inference(ioDesc_,
+                                      input,
+                                      ioDesc_,
+                                      output,
+                                      bnParamDesc_,
+                                      gamma,
+                                      beta,
+                                      movingMean,
+                                      movingVar,
+                                      eps_);
+    } else {
+      // There is a limitation in cudnn library.
+      // When the batch size is larger than 1024 in cuDNN v5.1,
+      // the cudnnBatchNormalizationForwardInference will fail.
+      hl_batch_norm_cuda_inference(input,
+                                   output,
+                                   gamma,
+                                   beta,
+                                   movingMean,
+                                   movingVar,
+                                   eps_,
+                                   batchSize,
+                                   channels_,
+                                   imageH_ * imageD_,
+                                   imageW_);
+    }
   }
 
   /* activation */ {
@@ -109,6 +128,9 @@ void CudnnBatchNormLayer::backward(const UpdateCallback& callback) {
   real* gamma = weight_->getW()->getData();
   real* savedMean = savedMean_->getData();
   real* savedInvVar = savedInvVar_->getData();
+
+  // cuDNN does not allow an epsilon value less than CUDNN_BN_MIN_EPSILON.
+  eps_ = std::max(CUDNN_BN_MIN_EPSILON, static_cast<double>(epsilon_));
 
   auto create = [](MatrixPtr& m, size_t h, size_t w, real** p) {
     Matrix::resizeOrCreate(m, h, w, false, true);
@@ -139,7 +161,7 @@ void CudnnBatchNormLayer::backward(const UpdateCallback& callback) {
                          gamma,
                          gammaGrad,
                          betaGrad,
-                         EPS,
+                         eps_,
                          savedMean,
                          savedInvVar);
 

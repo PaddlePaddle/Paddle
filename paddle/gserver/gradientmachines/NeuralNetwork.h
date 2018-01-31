@@ -97,9 +97,12 @@ public:
 
   virtual void onPassEnd();
 
+#ifndef PADDLE_MOBILE_INFERENCE
   virtual Evaluator* makeEvaluator() const;
 
   virtual void eval(Evaluator* evaluator) const;
+#endif
+
   virtual void resetState();
   virtual void setOutputGrad(const std::vector<Argument>& args);
 
@@ -129,6 +132,18 @@ public:
   static NeuralNetwork* newNeuralNetwork(const std::string& name = "",
                                          NeuralNetwork* rootNetwork = nullptr);
 
+  const std::string& getName() const { return subModelName_; }
+
+  /// some finish work, like convert the weight format of MKLDNNLayers
+  void finish();
+
+  /**
+   * @brief   Release the middle layer's output memory.
+   *
+   * @note    This function is used for memory optimization in inference.
+   */
+  void releaseOutput();
+
 protected:
   /**
    * The constructor of NeuralNetwork.
@@ -150,6 +165,7 @@ protected:
 
   std::vector<DataLayerPtr> dataLayers_;
   std::vector<LayerPtr> outputLayers_;
+  std::vector<LayerPtr> middleLayers_;
 
   static std::map<std::string, bool> dllInitMap;
 

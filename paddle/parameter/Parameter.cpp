@@ -48,7 +48,8 @@ Parameter::Parameter(const ParameterConfig& config, bool useGpu, bool doInit)
       deviceId_(-1),
       sharedCount_(0),
       updateCounter_(0),
-      updated_(false) {
+      updated_(false),
+      headerFormat_(PARAM_FORMAT_ORIGINAL) {
   setID(-1); /* capture uninitialized id */
   if (useGpu_ && FLAGS_parallel_nn) {
     /* gpu environment is specified by device property */
@@ -199,7 +200,10 @@ void Parameter::setMat(ParameterType pType, int matType) {
                                      false,
                                      useGpu_);
     }
-  } else if (matType == MAT_NORMAL_SHARED) {
+  }
+#ifndef PADDLE_MOBILE_INFERENCE
+  // NOLINTNEXTLINE
+  else if (matType == MAT_NORMAL_SHARED) {
     CHECK_EQ(height * width, bufs_[pType]->getSize());
     size_t blockNum = 0;
     CHECK(isGradShared(&blockNum));
@@ -258,7 +262,10 @@ void Parameter::setMat(ParameterType pType, int matType) {
   } else if (matType == MAT_SPARSE_ROW_AUTO_GROW) {
     CHECK(isGradSparseUpdate());
     mats_[pType] = std::make_shared<SparseAutoGrowRowCpuMatrix>(height, width);
-  } else {
+  }
+#endif
+  // NOLINTNEXTLINE
+  else {
     LOG(FATAL) << "Unsupported mat type" << matType;
   }
 }
@@ -285,7 +292,7 @@ bool Parameter::save(const std::string& filename) const {
 bool Parameter::save(std::ostream& s) const {
   CpuVector vec(*bufs_[PARAMETER_VALUE].get());
   Header header;
-  header.version = kFormatVersion;
+  header.format = headerFormat_;
   header.valueSize = sizeof(real);
   header.size = getSize();
 
@@ -344,8 +351,9 @@ bool Parameter::load(std::istream& s) {
   Header header;
   CHECK(s.read(reinterpret_cast<char*>(&header), sizeof(header)))
       << "Fail to read parameter " << getName();
-  CHECK_EQ(header.version, kFormatVersion) << "Incorrect format version: "
-                                           << header.version;
+  CHECK(isHeaderFormatSupported(header.format)) << "Incorrect format version: "
+                                                << header.format;
+  headerFormat_ = header.format;
   CHECK_EQ(header.size, getSize())
       << "The size (" << header.size << ") in the file does not match the size "
       << "(" << getSize() << ") of the parameter: " << getName();

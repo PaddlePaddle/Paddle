@@ -1,4 +1,4 @@
-# Copyright PaddlePaddle contributors. All Rights Reserved
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import time
 import unittest
 
@@ -119,6 +120,58 @@ class TestShuffle(unittest.TestCase):
                     self.assertEqual(idx, e)
                 total += 1
             self.assertEqual(total, 10)
+
+
+class TestXmap(unittest.TestCase):
+    def test_xmap(self):
+        def mapper(x):
+            return (x + 1)
+
+        orders = (True, False)
+        thread_nums = (1, 2, 4, 8, 16)
+        buffered_size = (1, 2, 4, 8, 16)
+        for order in orders:
+            for tNum in thread_nums:
+                for size in buffered_size:
+                    reader = paddle.v2.reader.xmap_readers(mapper,
+                                                           reader_creator_10(0),
+                                                           tNum, size, order)
+                    for n in xrange(3):
+                        result = []
+                        for i in reader():
+                            result.append(i)
+                        if not order:
+                            result.sort()
+                        for idx, e in enumerate(result):
+                            self.assertEqual(e, mapper(idx))
+
+
+class TestPipeReader(unittest.TestCase):
+    def test_pipe_reader(self):
+        def example_reader(myfiles):
+            for f in myfiles:
+                pr = paddle.v2.reader.PipeReader("cat %s" % f, bufsize=128)
+                for l in pr.get_line():
+                    yield l
+
+        import tempfile
+
+        records = [str(i) for i in xrange(5)]
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            with open(temp.name, 'w') as f:
+                for r in records:
+                    f.write('%s\n' % r)
+
+            result = []
+            for r in example_reader([temp.name]):
+                result.append(r)
+
+            for idx, e in enumerate(records):
+                self.assertEqual(e, result[idx])
+        finally:
+            # delete the temporary file
+            temp.close()
 
 
 if __name__ == '__main__':

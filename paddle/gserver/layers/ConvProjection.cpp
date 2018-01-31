@@ -25,12 +25,12 @@ size_t ConvProjection::calOutputSize() {
   if (imageH_ == 0) imageH_ = configImgH_;
   if (imageW_ == 0) imageW_ = configImgW_;
   outputH_ = outputSize(imageH_,
-                        filterH_,
+                        (filterH_ - 1) * dilationH_ + 1,
                         paddingH_,
                         strideH_,
                         /* caffeMode */ true);
   outputW_ = outputSize(imageW_,
-                        filterW_,
+                        (filterW_ - 1) * dilationW_ + 1,
                         paddingW_,
                         strideW_,
                         /* caffeMode */ true);

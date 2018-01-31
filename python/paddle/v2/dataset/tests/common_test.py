@@ -57,6 +57,38 @@ class TestCommon(unittest.TestCase):
         for idx, e in enumerate(reader()):
             self.assertEqual(e, str("0"))
 
+    def test_convert(self):
+        record_num = 10
+        num_shards = 4
+
+        def test_reader():
+            def reader():
+                for x in xrange(record_num):
+                    yield x
+
+            return reader
+
+        path = tempfile.mkdtemp()
+        paddle.v2.dataset.common.convert(path,
+                                         test_reader(), num_shards,
+                                         'random_images')
+
+        files = glob.glob(path + '/random_images-*')
+        self.assertEqual(len(files), num_shards)
+
+        recs = []
+        for i in range(0, num_shards):
+            n = "%s/random_images-%05d-of-%05d" % (path, i, num_shards - 1)
+            r = recordio.reader(n)
+            while True:
+                d = r.read()
+                if d is None:
+                    break
+                recs.append(d)
+
+        recs.sort()
+        self.assertEqual(total, record_num)
+
 
 if __name__ == '__main__':
     unittest.main()

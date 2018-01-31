@@ -125,11 +125,8 @@ simple_attention
     :members: simple_attention
     :noindex:
 
-Miscs
-=====
-
-dropout_layer
---------------
+dot_product_attention
+---------------------
 ..  automodule:: paddle.v2.networks
-    :members: dropout_layer
+    :members: dot_product_attention
     :noindex:

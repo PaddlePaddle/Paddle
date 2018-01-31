@@ -1,3 +1,34 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+This file contains some common interfaces for image preprocess.
+Many users are confused about the image layout. We introduce
+the image layout as follows.
+
+- CHW Layout
+
+  - The abbreviations: C=channel, H=Height, W=Width
+  - The default layout of image opened by cv2 or PIL is HWC.
+    PaddlePaddle only supports the CHW layout. And CHW is simply
+    a transpose of HWC. It must transpose the input image.
+
+- Color format: RGB or BGR
+
+  OpenCV use BGR color format. PIL use RGB color format. Both
+  formats can be used for training. Noted that, the format should
+  be keep consistent between the training and inference peroid.
+"""
 import numpy as np
 try:
     import cv2
@@ -12,22 +43,6 @@ __all__ = [
     "random_crop", "left_right_flip", "simple_transform", "load_and_transform",
     "batch_images_from_tar"
 ]
-"""
-This file contains some common interfaces for image preprocess.
-Many users are confused about the image layout. We introduce
-the image layout as follows.
-
-- CHW Layout
-  - The abbreviations: C=channel, H=Height, W=Width
-  - The default layout of image opened by cv2 or PIL is HWC.
-    PaddlePaddle only supports the CHW layout. And CHW is simply
-    a transpose of HWC. It must transpose the input image.
-
-- Color format: RGB or BGR
-  OpenCV use BGR color format. PIL use RGB color format. Both
-  formats can be used for training. Noted that, the format should
-  be keep consistent between the training and inference peroid.
-"""
 
 
 def batch_images_from_tar(data_file,
@@ -36,17 +51,18 @@ def batch_images_from_tar(data_file,
                           num_per_batch=1024):
     """
     Read images from tar file and batch them into batch file.
-    param data_file: path of image tar file
-    type data_file: string
-    param dataset_name: 'train','test' or 'valid'
-    type dataset_name: string
-    param img2label: a dic with image file name as key 
+
+    :param data_file: path of image tar file
+    :type data_file: string
+    :param dataset_name: 'train','test' or 'valid'
+    :type dataset_name: string
+    :param img2label: a dic with image file name as key 
                     and image's label as value
-    type img2label: dic
-    param num_per_batch: image number per batch file
-    type num_per_batch: int
-    return: path of list file containing paths of batch file
-    rtype: string
+    :type img2label: dic
+    :param num_per_batch: image number per batch file
+    :type num_per_batch: int
+    :return: path of list file containing paths of batch file
+    :rtype: string
     """
     batch_dir = data_file + "_batch"
     out_path = "%s/%s" % (batch_dir, dataset_name)
@@ -99,14 +115,16 @@ def load_image_bytes(bytes, is_color=True):
     Example usage:
     
     .. code-block:: python
+
         with open('cat.jpg') as f:
             im = load_image_bytes(f.read())
 
     :param bytes: the input image bytes array.
-    :type file: str
+    :type bytes: str
     :param is_color: If set is_color True, it will load and
                      return a color image. Otherwise, it will
                      load and return a gray image.
+    :type is_color: bool
     """
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
@@ -121,6 +139,7 @@ def load_image(file, is_color=True):
     Example usage:
     
     .. code-block:: python
+
         im = load_image('cat.jpg')
 
     :param file: the input image path.
@@ -128,6 +147,7 @@ def load_image(file, is_color=True):
     :param is_color: If set is_color True, it will load and
                      return a color image. Otherwise, it will
                      load and return a gray image.
+    :type is_color: bool
     """
     # cv2.IMAGE_COLOR for OpenCV3
     # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
@@ -147,6 +167,7 @@ def resize_short(im, size):
     Example usage:
     
     .. code-block:: python
+
         im = load_image('cat.jpg')
         im = resize_short(im, 256)
     
@@ -155,7 +176,6 @@ def resize_short(im, size):
     :param size: the shorter edge size of image after resizing.
     :type size: int
     """
-    assert im.shape[-1] == 1 or im.shape[-1] == 3
     h, w = im.shape[:2]
     h_new, w_new = size, size
     if h > w:
@@ -175,6 +195,7 @@ def to_chw(im, order=(2, 0, 1)):
     Example usage:
     
     .. code-block:: python
+
         im = load_image('cat.jpg')
         im = resize_short(im, 256)
         im = to_chw(im)
@@ -196,6 +217,7 @@ def center_crop(im, size, is_color=True):
     Example usage:
     
     .. code-block:: python
+
         im = center_crop(im, 224)
     
     :param im: the input image with HWC layout.
@@ -223,6 +245,7 @@ def random_crop(im, size, is_color=True):
     Example usage:
     
     .. code-block:: python
+
         im = random_crop(im, 224)
     
     :param im: the input image with HWC layout.
@@ -243,7 +266,7 @@ def random_crop(im, size, is_color=True):
     return im
 
 
-def left_right_flip(im):
+def left_right_flip(im, is_color=True):
     """
     Flip an image along the horizontal direction.
     Return the flipped image.
@@ -251,18 +274,26 @@ def left_right_flip(im):
     Example usage:
     
     .. code-block:: python
+
         im = left_right_flip(im)
     
-    :paam im: input image with HWC layout
+    :param im: input image with HWC layout or HW layout for gray image
     :type im: ndarray
+    :param is_color: whether input image is color or not
+    :type is_color: bool
     """
-    if len(im.shape) == 3:
+    if len(im.shape) == 3 and is_color:
         return im[:, ::-1, :]
     else:
-        return im[:, ::-1, :]
+        return im[:, ::-1]
 
 
-def simple_transform(im, resize_size, crop_size, is_train, is_color=True):
+def simple_transform(im,
+                     resize_size,
+                     crop_size,
+                     is_train,
+                     is_color=True,
+                     mean=None):
     """
     Simply data argumentation for training. These operations include
     resizing, croping and flipping.
@@ -270,6 +301,7 @@ def simple_transform(im, resize_size, crop_size, is_train, is_color=True):
     Example usage:
     
     .. code-block:: python
+
         im = simple_transform(im, 256, 224, True)
 
     :param im: The input image with HWC layout.
@@ -280,15 +312,35 @@ def simple_transform(im, resize_size, crop_size, is_train, is_color=True):
     :type crop_size: int
     :param is_train: Whether it is training or not.
     :type is_train: bool
+    :param is_color: whether the image is color or not.
+    :type is_color: bool
+    :param mean: the mean values, which can be element-wise mean values or 
+                 mean values per channel.
+    :type mean: numpy array | list
     """
     im = resize_short(im, resize_size)
     if is_train:
-        im = random_crop(im, crop_size)
+        im = random_crop(im, crop_size, is_color=is_color)
         if np.random.randint(2) == 0:
-            im = left_right_flip(im)
+            im = left_right_flip(im, is_color)
     else:
-        im = center_crop(im, crop_size)
-    im = to_chw(im)
+        im = center_crop(im, crop_size, is_color)
+        im = center_crop(im, crop_size, is_color=is_color)
+    if len(im.shape) == 3:
+        im = to_chw(im)
+
+    im = im.astype('float32')
+    if mean is not None:
+        mean = np.array(mean, dtype=np.float32)
+        # mean value, may be one value per channel 
+        if mean.ndim == 1 and is_color:
+            mean = mean[:, np.newaxis, np.newaxis]
+        elif mean.ndim == 1:
+            mean = mean
+        else:
+            # elementwise mean
+            assert len(mean.shape) == len(im)
+        im -= mean
 
     return im
 
@@ -297,7 +349,8 @@ def load_and_transform(filename,
                        resize_size,
                        crop_size,
                        is_train,
-                       is_color=True):
+                       is_color=True,
+                       mean=None):
     """
     Load image from the input file `filename` and transform image for
     data argumentation. Please refer to the `simple_transform` interface
@@ -306,6 +359,7 @@ def load_and_transform(filename,
     Example usage:
     
     .. code-block:: python
+
         im = load_and_transform('cat.jpg', 256, 224, True)
 
     :param filename: The file name of input image.
@@ -316,7 +370,12 @@ def load_and_transform(filename,
     :type crop_size: int
     :param is_train: Whether it is training or not.
     :type is_train: bool
+    :param is_color: whether the image is color or not.
+    :type is_color: bool
+    :param mean: the mean values, which can be element-wise mean values or 
+                 mean values per channel.
+    :type mean: numpy array | list
     """
-    im = load_image(filename)
-    im = simple_transform(im, resize_size, crop_size, is_train, is_color)
+    im = load_image(filename, is_color)
+    im = simple_transform(im, resize_size, crop_size, is_train, is_color, mean)
     return im

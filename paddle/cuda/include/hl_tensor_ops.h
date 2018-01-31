@@ -461,7 +461,7 @@ class add<float32x4_t> {
 public:
   INLINE float32x4_t operator()(const float32x4_t a,
                                 const float32x4_t b) const {
-    return vmulq_f32(a, b);
+    return vaddq_f32(a, b);
   }
 };
 

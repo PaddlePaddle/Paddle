@@ -45,3 +45,49 @@ TEST(CAPIMatrix, createNone) {
   paddle_matrix mat = paddle_matrix_create_none();
   ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_destroy(mat));
 }
+
+TEST(CAPIMatrix, cpu_get_set_value) {
+  paddle_matrix mat = paddle_matrix_create(128, 32, false);
+  std::vector<paddle_real> sample;
+  std::vector<paddle_real> result;
+  sample.resize(128 * 32);
+  result.resize(128 * 32);
+  for (size_t i = 0; i < sample.size(); ++i) {
+    sample[i] = 1.0 / (i + 1.0);
+  }
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_set_value(mat, sample.data()));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_value(mat, result.data()));
+  for (size_t i = 0; i < sample.size(); ++i) {
+    ASSERT_NEAR(sample[i], result[i], 1e-5);
+  }
+
+  uint64_t height, width;
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_shape(mat, &height, &width));
+  ASSERT_EQ(128UL, height);
+  ASSERT_EQ(32UL, width);
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_destroy(mat));
+}
+
+#ifdef PADDLE_WITH_CUDA
+TEST(CAPIMatrix, gpu_get_set_value) {
+  paddle_matrix mat = paddle_matrix_create(128, 32, true);
+  std::vector<paddle_real> sample;
+  std::vector<paddle_real> result;
+  sample.resize(128 * 32);
+  result.resize(128 * 32);
+  for (size_t i = 0; i < sample.size(); ++i) {
+    sample[i] = 1.0 / (i + 1.0);
+  }
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_set_value(mat, sample.data()));
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_value(mat, result.data()));
+  for (size_t i = 0; i < sample.size(); ++i) {
+    ASSERT_NEAR(sample[i], result[i], 1e-5);
+  }
+
+  uint64_t height, width;
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_get_shape(mat, &height, &width));
+  ASSERT_EQ(128UL, height);
+  ASSERT_EQ(32UL, width);
+  ASSERT_EQ(kPD_NO_ERROR, paddle_matrix_destroy(mat));
+}
+#endif

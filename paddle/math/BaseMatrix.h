@@ -489,6 +489,13 @@ public:
   void clip(T p1, T p2);
 
   /**
+   * this = b < low ? 0 : 1
+   *
+   * this = b > high ? 0 : 1
+   */
+  void clipDerivative(BaseMatrixT& b, T p1, T p2);
+
+  /**
    * @code
    * a = a > p ? 1.0f : 0.0f
    * @endcode

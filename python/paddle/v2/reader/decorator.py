@@ -14,13 +14,16 @@
 
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn', 'xmap_readers'
+    'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader'
 ]
 
+from threading import Thread
+import subprocess
+
+from Queue import Queue
 import itertools
 import random
-from Queue import Queue
-from threading import Thread
+import zlib
 
 
 def map_readers(func, *readers):
@@ -166,12 +169,12 @@ def buffered(reader, size):
     The buffered data reader will read and save data entries into a
     buffer. Reading from the buffered data reader will proceed as long
     as the buffer is not empty.
-    
+
     :param reader: the data reader to read from.
     :type reader: callable
     :param size: max buffer size.
     :type size: int
-    
+
     :returns: the buffered data reader.
     """
 
@@ -230,7 +233,7 @@ class XmapEndSignal():
     pass
 
 
-def xmap_readers(mapper, reader, process_num, buffer_size):
+def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     """
     Use multiprocess to map samples from reader by a mapper defined by user.
     And this function contains a buffered decorator.
@@ -238,16 +241,16 @@ def xmap_readers(mapper, reader, process_num, buffer_size):
     :type mapper: callable
     :param reader: the data reader to read from
     :type reader: callable
-    :param process_num: process number to handle original sample 
+    :param process_num: process number to handle original sample
     :type process_num: int
     :param buffer_size: max buffer size
     :type buffer_size: int
+    :param order: keep the order of reader
+    :type order: bool
     :return: the decarated reader
     :rtype: callable
     """
     end = XmapEndSignal()
-    in_queue = Queue(buffer_size)
-    out_queue = Queue(buffer_size)
 
     # define a worker to read samples from reader to in_queue
     def read_worker(reader, in_queue):
@@ -255,10 +258,13 @@ def xmap_readers(mapper, reader, process_num, buffer_size):
             in_queue.put(i)
         in_queue.put(end)
 
-    # start a read worker in a thread
-    t = Thread(target=read_worker, args=(reader, in_queue))
-    t.daemon = True
-    t.start()
+    # define a worker to read samples from reader to in_queue with order flag
+    def order_read_worker(reader, in_queue):
+        in_order = 0
+        for i in reader():
+            in_queue.put((in_order, i))
+            in_order += 1
+        in_queue.put(end)
 
     # define a worker to handle samples from in_queue by mapper
     # and put mapped samples into out_queue
@@ -271,17 +277,42 @@ def xmap_readers(mapper, reader, process_num, buffer_size):
         in_queue.put(end)
         out_queue.put(end)
 
-    # start several handle_workers
-    workers = []
-    for i in xrange(process_num):
-        worker = Thread(
-            target=handle_worker, args=(in_queue, out_queue, mapper))
-        worker.daemon = True
-        workers.append(worker)
-    for w in workers:
-        w.start()
+    # define a worker to handle samples from in_queue by mapper
+    # and put mapped samples into out_queue by order
+    def order_handle_worker(in_queue, out_queue, mapper, out_order):
+        ins = in_queue.get()
+        while not isinstance(ins, XmapEndSignal):
+            order, sample = ins
+            r = mapper(sample)
+            while order != out_order[0]:
+                pass
+            out_queue.put(r)
+            out_order[0] += 1
+            ins = in_queue.get()
+        in_queue.put(end)
+        out_queue.put(end)
 
     def xreader():
+        in_queue = Queue(buffer_size)
+        out_queue = Queue(buffer_size)
+        out_order = [0]
+        # start a read worker in a thread
+        target = order_read_worker if order else read_worker
+        t = Thread(target=target, args=(reader, in_queue))
+        t.daemon = True
+        t.start()
+        # start several handle_workers
+        target = order_handle_worker if order else handle_worker
+        args = (in_queue, out_queue, mapper, out_order) if order else (
+            in_queue, out_queue, mapper)
+        workers = []
+        for i in xrange(process_num):
+            worker = Thread(target=target, args=args)
+            worker.daemon = True
+            workers.append(worker)
+        for w in workers:
+            w.start()
+
         sample = out_queue.get()
         while not isinstance(sample, XmapEndSignal):
             yield sample
@@ -295,3 +326,80 @@ def xmap_readers(mapper, reader, process_num, buffer_size):
                 yield sample
 
     return xreader
+
+
+def _buf2lines(buf, line_break="\n"):
+    # FIXME: line_break should be automatically configured.
+    lines = buf.split(line_break)
+    return lines[:-1], lines[-1]
+
+
+class PipeReader:
+    """
+        PipeReader read data by stream from a command, take it's 
+        stdout into a pipe buffer and redirect it to the parser to
+        parse, then yield data as your desired format.
+
+        You can using standard linux command or call another program
+        to read data, from HDFS, Ceph, URL, AWS S3 etc:
+
+        .. code-block:: python
+           cmd = "hadoop fs -cat /path/to/some/file"
+           cmd = "cat sample_file.tar.gz"
+           cmd = "curl http://someurl"
+           cmd = "python print_s3_bucket.py"
+
+        An example:
+
+        .. code-block:: python
+    
+           def example_reader():
+               for f in myfiles:
+                   pr = PipeReader("cat %s"%f)
+                   for l in pr.get_line():
+                       sample = l.split(" ")
+                       yield sample
+    """
+
+    def __init__(self, command, bufsize=8192, file_type="plain"):
+        if not isinstance(command, str):
+            raise TypeError("left_cmd must be a string")
+        if file_type == "gzip":
+            self.dec = zlib.decompressobj(
+                32 + zlib.MAX_WBITS)  # offset 32 to skip the header
+        self.file_type = file_type
+        self.bufsize = bufsize
+        self.process = subprocess.Popen(
+            command.split(" "), bufsize=bufsize, stdout=subprocess.PIPE)
+
+    def get_line(self, cut_lines=True, line_break="\n"):
+        """
+        :param cut_lines: cut buffer to lines
+        :type cut_lines: bool
+        :param line_break: line break of the file, like \n or \r
+        :type line_break: string
+
+        :return: one line or a buffer of bytes
+        :rtype: string
+        """
+        remained = ""
+        while True:
+            buff = self.process.stdout.read(self.bufsize)
+            if buff:
+                if self.file_type == "gzip":
+                    decomp_buff = self.dec.decompress(buff)
+                elif self.file_type == "plain":
+                    decomp_buff = buff
+                else:
+                    raise TypeError("file_type %s is not allowed" %
+                                    self.file_type)
+
+                if cut_lines:
+                    lines, remained = _buf2lines(''.join(
+                        [remained, decomp_buff]), line_break)
+                    for line in lines:
+                        yield line
+                else:
+                    yield decomp_buff
+            else:
+                break

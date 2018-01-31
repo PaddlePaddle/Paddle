@@ -123,7 +123,7 @@ layers {
   name: "__last_seq_0__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__simple_gru_0__"
   }
@@ -134,7 +134,7 @@ layers {
   name: "__last_seq_1__"
   type: "seqlastins"
   size: 200
-  active_type: "linear"
+  active_type: ""
   inputs {
     input_layer_name: "__simple_gru_1__"
   }
@@ -256,19 +256,15 @@ sub_models {
   memories {
     layer_name: "__simple_gru_0__@__simple_gru_0___recurrent_group"
     link_name: "__simple_gru_0__+delay1@__simple_gru_0___recurrent_group"
-    is_sequence: false
   }
   in_links {
     layer_name: "__simple_gru_0___transform"
     link_name: "__simple_gru_0___transform@__simple_gru_0___recurrent_group"
-    has_subseq: false
   }
   out_links {
     layer_name: "__simple_gru_0__@__simple_gru_0___recurrent_group"
     link_name: "__simple_gru_0__"
-    has_subseq: false
   }
-  target_inlinkid: -1
 }
 sub_models {
   name: "__simple_gru_1___recurrent_group"
@@ -280,18 +276,14 @@ sub_models {
   memories {
     layer_name: "__simple_gru_1__@__simple_gru_1___recurrent_group"
     link_name: "__simple_gru_1__+delay1@__simple_gru_1___recurrent_group"
-    is_sequence: false
   }
   in_links {
     layer_name: "__simple_gru_1___transform"
     link_name: "__simple_gru_1___transform@__simple_gru_1___recurrent_group"
-    has_subseq: false
   }
   out_links {
     layer_name: "__simple_gru_1__@__simple_gru_1___recurrent_group"
     link_name: "__simple_gru_1__"
-    has_subseq: false
   }
-  target_inlinkid: -1
 }
 
