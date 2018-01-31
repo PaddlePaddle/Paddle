@@ -113,3 +113,9 @@ TEST(inference, recognize_digits) {
   EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
 #endif
 }
+
+int main(int argc, char** argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
