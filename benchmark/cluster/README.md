@@ -44,14 +44,14 @@
 
 ### Measure the Performance for Different PServer Count
 
-- Trainer Count: 60
-- Batch Size: 128
+- Trainer Count: 100
+- Batch Size: 64
 - Metrics: mini-batch / sec
 
-| PServer Count | 3 | 6 | 10 | 20 |
+| PServer Count | 10 | 20 | 40 | 60 |
 | -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | 589.1 | 592.6 | 656.4 | 655.8 |
-| PaddlePaddle v2 | 412.2 | 368.4 | 346.8 | 283.2 |
+| PaddlePaddle Fluid | - | - | - | - |
+| PaddlePaddle v2 | - | - | - | - |
 | TensorFlow | - | - | - | - |
 
 ### Measure Parallel Efficiency By Increasing Trainer Count

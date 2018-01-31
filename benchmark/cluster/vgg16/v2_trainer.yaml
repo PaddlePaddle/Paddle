@@ -3,8 +3,8 @@ kind: Job
 metadata:
   name: vgg16v2job-trainer
 spec:
-  parallelism: 60
-  completions: 60
+  parallelism: 20
+  completions: 20
   template:
     metadata:
       labels:
@@ -24,7 +24,7 @@ spec:
         - name: BATCH_SIZE
           value: "256"
         - name: TRAINERS
-          value: "60"
+          value: "20"
         - name: PSERVERS
           value: "10"
         - name: TOPOLOGY
