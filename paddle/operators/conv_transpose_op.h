@@ -141,9 +141,9 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
       if (data_dim == 2U) {
         // col2im: col_matrix -> dy
         // from (c * k_h * k_w, h * w) to (c, o_h, o_w)
-        col2im(dev_ctx, col, std::vector<int>{dilations[0], dilations[1]},
-               strides, std::vector<int>{paddings[0], paddings[1], paddings[0],
-                                         paddings[1]},
+        col2im(dev_ctx, col, dilations, strides,
+               std::vector<int>{paddings[0], paddings[1], paddings[0],
+                                paddings[1]},
                &output_batch);
       } else if (data_dim == 3U) {
         // col2vol: col_matrix -> dy
@@ -247,8 +247,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
         if (data_dim == 2U) {
           // im2col: dy -> col matrix
           // from (c, o_h, o_w) to (c * k_h * k_w, h * w)
-          im2col(dev_ctx, output_grad_batch,
-                 std::vector<int>{dilations[0], dilations[1]}, strides,
+          im2col(dev_ctx, output_grad_batch, dilations, strides,
                  std::vector<int>{paddings[0], paddings[1], paddings[0],
                                   paddings[1]},
                  &col);
