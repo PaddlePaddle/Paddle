@@ -18,11 +18,11 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
-#include <thrust/system/cuda/experimental/pinned_allocator.h>
 #endif
 
 #include <glog/logging.h>
 #include "paddle/framework/ddim.h"
+#include "paddle/framework/mixed_vector.h"
 #include "paddle/framework/tensor.h"
 #include "paddle/framework/tensor_util.h"
 #include "paddle/platform/enforce.h"
@@ -30,15 +30,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
-#ifndef PADDLE_WITH_CUDA
-template <typename T>
-using Vector = std::vector<T>;
-#else
-template <typename T>
-using Vector = thrust::host_vector<
-    T, thrust::system::cuda::experimental::pinned_allocator<T>>;
-#endif
 
 /*
  * LoD is short for Level of Details.
@@ -55,7 +46,15 @@ using Vector = thrust::host_vector<
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-using LoD = std::vector<Vector<size_t>>;
+struct LoD : public std::vector<Vector<size_t>> {
+  using std::vector<Vector<size_t>>::vector;
+
+  void CopyFromCUDA() {
+    for (auto it = this->begin(); it != this->end(); ++it) {
+      it->CopyFromCUDA();
+    }
+  }
+};
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
@@ -109,7 +108,10 @@ bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
  */
 class LoDTensor : public Tensor {
  public:
-  LoDTensor() {}
+  LoDTensor() : Tensor() {}
+
+  /* Constructor with place should only be used in pybind */
+  explicit LoDTensor(const platform::Place& place) : Tensor(place) {}
 
   explicit LoDTensor(const LoD& lod) : lod_(lod) {}
 

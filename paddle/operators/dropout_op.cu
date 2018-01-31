@@ -62,7 +62,11 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
       int size = framework::product(mask->dims());
-      int seed = context.Attr<int>("seed");
+
+      std::random_device rnd;
+      int seed =
+          context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+
       thrust::counting_iterator<unsigned int> index_sequence_begin(0);
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(mask_data),

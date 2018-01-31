@@ -82,7 +82,7 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
     math::scatter::MergeAdd<platform::CUDADeviceContext, T> merge_func;
     auto grad_merge = merge_func(context, grad);
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
-    auto& merge_rows = grad_merge.rows();
+    framework::Vector<int64_t> merge_rows(grad_merge.rows());
     // 2. m += g_m * g_m
     math::scatter::Mul<platform::CUDADeviceContext, T> sqare_func;
     auto grad_square = sqare_func(context, grad_merge, grad_merge);
@@ -101,8 +101,8 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
     SparseAdagradFunctorKernel<
         T, 256><<<grid2, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(grad_merge_data, grad_merge.rows().data(),
-                                   lr, param_data, moment_data, grad_width,
+                      .stream()>>>(grad_merge_data, merge_rows.cuda_data(), lr,
+                                   param_data, moment_data, grad_width,
                                    epsilon);
   }
 };

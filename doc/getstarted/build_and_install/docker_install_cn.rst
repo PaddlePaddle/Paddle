@@ -95,6 +95,12 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 
      docker run -p 8888:8888 paddlepaddle/book
 
+国内用户可以使用下面的镜像源来加速访问：
+
+  .. code-block: bash
+
+    docker run -p 8888:8888 docker.paddlepaddlehub.com/book
+
 然后在浏览器中输入以下网址：
 
   .. code-block:: text
