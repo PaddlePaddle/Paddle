@@ -119,6 +119,12 @@ class ControlFlowGraph(object):
         else:
             return block_desc.find_var_recursive(str(var_name))
 
+    def _shape_compare(self, x_shape, cache_shape, level):
+        if level == 0:
+            return x_shape == cache_shape
+        else:
+            return True
+
     def memory_optimize(self):
         def check_var_validity(block_desc, x, is_forward):
             if str(x) == "@EMPTY@":
@@ -142,60 +148,68 @@ class ControlFlowGraph(object):
         # print self._defs
         # print self._live_in
         self.pool = []
-        for i in range(self.op_size):
-            op = self._ops[i]
-            if op.type() == "while" or op.type() == "while_grad":
-                continue
-            block_desc = op.block()
-            is_forward = i < self._forward_num
-            if self.pool:
-                defs_can_optimize = filter(
-                    lambda x: check_var_validity(block_desc, x, is_forward),
-                    self._defs[i])
-                out_pair = [
-                    (x, self._find_var(block_desc, x, is_forward).shape())
-                    for x in defs_can_optimize
-                ]
-                for x, x_shape in out_pair:
-                    for index, cache_pair in enumerate(self.pool):
-                        cache_var = cache_pair[0]
-                        cache_shape = cache_pair[1]
-                        if x_shape == cache_shape:
-                            if self._has_var(block_desc, cache_var, is_forward):
-                                x_dtype = self._find_var(block_desc, x,
-                                                         is_forward).dtype()
-                                cache_dtype = self._find_var(
-                                    block_desc, cache_var, is_forward).dtype()
-                                # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
-                                # and dtype_to_size[cache_dtype]
-                                if x_dtype == cache_dtype:
-                                    print(("Hit Cache !!!! cache pool index "
-                                           "is %d, var name is %s, "
-                                           "cached var name is %s, "
-                                           "var shape is %s ") %
-                                          (index, x, cache_var,
-                                           str(cache_shape)))
-                                    self.pool.pop(index)
-                                    if x == cache_var:
+        for level in range(2):
+            for i in range(self.op_size):
+                op = self._ops[i]
+                if op.type() == "while" or op.type() == "while_grad":
+                    continue
+                block_desc = op.block()
+                is_forward = i < self._forward_num
+                if self.pool:
+                    defs_can_optimize = filter(
+                        lambda x: check_var_validity(block_desc, x, is_forward),
+                        self._defs[i])
+                    out_pair = [
+                        (x, self._find_var(block_desc, x, is_forward).shape())
+                        for x in defs_can_optimize
+                    ]
+                    for x, x_shape in out_pair:
+                        for index, cache_pair in enumerate(self.pool):
+                            cache_var = cache_pair[0]
+                            cache_shape = cache_pair[1]
+                            if self._shape_compare(x_shape, cache_shape, level):
+                                if self._has_var(block_desc, cache_var,
+                                                 is_forward):
+                                    x_dtype = self._find_var(block_desc, x,
+                                                             is_forward).dtype()
+                                    cache_dtype = self._find_var(
+                                        block_desc, cache_var,
+                                        is_forward).dtype()
+                                    # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
+                                    # and dtype_to_size[cache_dtype]
+                                    if x_dtype == cache_dtype:
+                                        print(
+                                            ("Hit Cache !!!! cache pool index "
+                                             "is %d, var name is %s, "
+                                             "cached var name is %s, "
+                                             "var shape is %s ") %
+                                            (index, x, cache_var,
+                                             str(cache_shape)))
+                                        self.pool.pop(index)
+                                        if x == cache_var:
+                                            break
+                                        _rename_arg_(
+                                            self._ops,
+                                            x,
+                                            cache_var,
+                                            begin_idx=i)
+                                        self._program.block(block_desc.id).var(
+                                            str(x)).desc = self._find_var(
+                                                block_desc, cache_var,
+                                                is_forward)
+                                        self._update_graph(
+                                            x, cache_var, begin_idx=i)
                                         break
-                                    _rename_arg_(
-                                        self._ops, x, cache_var, begin_idx=i)
-                                    self._program.block(block_desc.id).var(
-                                        str(x)).desc = self._find_var(
-                                            block_desc, cache_var, is_forward)
-                                    self._update_graph(
-                                        x, cache_var, begin_idx=i)
-                                    break
 
-            in_diff, out_diff = self._get_diff(self._live_in[i],
-                                               self._live_out[i])
-            can_optimize = filter(
-                lambda x: check_var_validity(block_desc, x, is_forward),
-                in_diff)
-            if can_optimize:
-                for var_name in can_optimize:
-                    self.pool.append((var_name, self._find_var(
-                        block_desc, var_name, is_forward).shape()))
+                in_diff, out_diff = self._get_diff(self._live_in[i],
+                                                   self._live_out[i])
+                can_optimize = filter(
+                    lambda x: check_var_validity(block_desc, x, is_forward),
+                    in_diff)
+                if can_optimize:
+                    for var_name in can_optimize:
+                        self.pool.append((var_name, self._find_var(
+                            block_desc, var_name, is_forward).shape()))
 
 
 def get_cfgs(input_program):
