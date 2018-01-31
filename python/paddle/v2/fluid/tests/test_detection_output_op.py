@@ -17,7 +17,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestUnpoolOp(OpTest):
+class TestDetectionOutputOp(OpTest):
     def setUp(self):
         self.op_type = "detection_output"
         self.init_test_case()
