@@ -72,7 +72,6 @@ TEST(CustomStackTrace, normalTrain) {
       for (size_t i = 0; i < layerSize; ++i) {
         tracer.push("layer_" + paddle::str::to_string(i));
       }
-      tracer.pop("");
       for (size_t i = 0; i < layerSize; ++i) {
         tracer.pop("layer_" + paddle::str::to_string(layerSize - 1 - i));
       }

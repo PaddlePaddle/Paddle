@@ -90,6 +90,18 @@ paddle_error paddle_arguments_set_ids(paddle_arguments args,
   return kPD_NO_ERROR;
 }
 
+paddle_error paddle_arguments_set_frame_shape(paddle_arguments args,
+                                              uint64_t ID,
+                                              uint64_t frameHeight,
+                                              uint64_t frameWidth) {
+  if (args == nullptr) return kPD_NULLPTR;
+  auto a = castArg(args);
+  if (ID >= a->args.size()) return kPD_OUT_OF_RANGE;
+  a->args[ID].setFrameHeight(frameHeight);
+  a->args[ID].setFrameWidth(frameWidth);
+  return kPD_NO_ERROR;
+}
+
 paddle_error paddle_arguments_set_sequence_start_pos(paddle_arguments args,
                                                      uint64_t ID,
                                                      uint32_t nestedLevel,

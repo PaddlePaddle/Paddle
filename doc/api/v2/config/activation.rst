@@ -99,3 +99,10 @@ STanh
 ..  automodule:: paddle.v2.activation
     :members: STanh
     :noindex:
+    
+SoftSign
+========
+
+..  automodule:: paddle.v2.activation
+    :members: SoftSign
+    :noindex:

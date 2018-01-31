@@ -12,8 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef DYNAMIC_LOAD_H_
-#define DYNAMIC_LOAD_H_
+#pragma once
 
 #include <dlfcn.h>
 #include <memory>
@@ -59,5 +58,3 @@ void GetWarpCTCDsoHandle(void** dso_handle);
  *
  */
 void GetLapackDsoHandle(void** dso_handle);
-
-#endif  // DYNAMIC_LOAD_H_

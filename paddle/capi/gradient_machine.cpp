@@ -54,6 +54,37 @@ paddle_error paddle_gradient_machine_create_for_inference(
   return kPD_NO_ERROR;
 }
 
+paddle_error paddle_gradient_machine_create_for_inference_with_parameters(
+    paddle_gradient_machine* machine, void* mergedModel, uint64_t size) {
+  if (mergedModel == nullptr) return kPD_NULLPTR;
+  std::istringstream is(std::string(static_cast<char*>(mergedModel), size));
+  int64_t modelConfigSize = 0;
+  is.read((char*)(&modelConfigSize), sizeof(modelConfigSize));
+  std::string modelConfigProtobuf;
+  modelConfigProtobuf.resize(modelConfigSize);
+  is.read(&modelConfigProtobuf[0], modelConfigSize);
+  paddle::TrainerConfig config;
+  paddle::ModelConfig modelConfig;
+  if (!config.ParseFromString(modelConfigProtobuf) || !config.IsInitialized()) {
+    if (!modelConfig.ParseFromString(modelConfigProtobuf) ||
+        !modelConfig.IsInitialized()) {
+      return kPD_PROTOBUF_ERROR;
+    }
+  } else {
+    modelConfig = config.model_config();
+  }
+  auto ptr = new paddle::capi::CGradientMachine();
+  ptr->machine.reset(paddle::GradientMachine::create(
+      modelConfig, CREATE_MODE_TESTING, {paddle::PARAMETER_VALUE}));
+  std::vector<paddle::ParameterPtr>& parameters = ptr->machine->getParameters();
+  for (auto& para : parameters) {
+    para->load(is);
+  }
+
+  *machine = ptr;
+  return kPD_NO_ERROR;
+}
+
 paddle_error paddle_gradient_machine_destroy(paddle_gradient_machine machine) {
   delete cast(machine);
   return kPD_NO_ERROR;
@@ -119,5 +150,31 @@ paddle_error paddle_gradient_machine_randomize_param(
   auto m = cast(machine);
   if (m == nullptr || m->machine == nullptr) return kPD_NULLPTR;
   m->machine->randParameters();
+  return kPD_NO_ERROR;
+}
+
+paddle_error paddle_gradient_machine_get_layer_output(
+    paddle_gradient_machine machine,
+    const char* layerName,
+    paddle_arguments args) {
+  auto m = cast(machine);
+  auto out = paddle::capi::cast<paddle::capi::CArguments>(args);
+  if (m == nullptr || layerName == nullptr || out == nullptr ||
+      m->machine == nullptr) {
+    return kPD_NULLPTR;
+  }
+
+  auto layerOutput = m->machine->getLayerOutput(layerName);
+  out->args.push_back(layerOutput);
+  return kPD_NO_ERROR;
+}
+
+paddle_error paddle_gradient_machine_release_layer_output(
+    paddle_gradient_machine machine) {
+  auto m = cast(machine);
+  if (m == nullptr || m->machine == nullptr) {
+    return kPD_NULLPTR;
+  }
+  m->machine->releaseOutput();
   return kPD_NO_ERROR;
 }

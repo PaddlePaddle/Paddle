@@ -40,6 +40,7 @@ namespace paddle {
 class FeatureMapExpandLayer : public Layer {
 private:
   int numFilters_;
+  bool asRowVector_;
 
 public:
   explicit FeatureMapExpandLayer(const LayerConfig& config) : Layer(config) {}
@@ -62,6 +63,7 @@ bool FeatureMapExpandLayer::init(const LayerMap& layerMap,
 
   CHECK_EQ(inputLayers_.size(), 1UL);
   numFilters_ = config_.num_filters();
+  asRowVector_ = config_.user_arg() != "as_col_vec";
   return true;
 }
 
@@ -76,16 +78,30 @@ void FeatureMapExpandLayer::forward(PassType passType) {
 
   {
     AsyncGpuBlock asyncGpuBlock;
-    for (size_t i = 0; i < batchSize; i++) {
-      MatrixPtr outVTmp =
-          Matrix::create(outputV->getData() + i * imgSize * numFilters_,
-                         numFilters_,
-                         imgSize,
-                         false,
-                         useGpu_);
-      MatrixPtr inVTmp = Matrix::create(
-          inputV->getData() + i * imgSize, 1, imgSize, false, useGpu_);
-      outVTmp->addRowVector(*inVTmp);
+    if (asRowVector_) {
+      for (size_t i = 0; i < batchSize; i++) {
+        MatrixPtr outVTmp =
+            Matrix::create(outputV->getData() + i * imgSize * numFilters_,
+                           numFilters_,
+                           imgSize,
+                           false,
+                           useGpu_);
+        MatrixPtr inVTmp = Matrix::create(
+            inputV->getData() + i * imgSize, 1, imgSize, false, useGpu_);
+        outVTmp->addRowVector(*inVTmp);
+      }
+    } else {
+      for (size_t i = 0; i < batchSize; i++) {
+        MatrixPtr outVTmp =
+            Matrix::create(outputV->getData() + i * imgSize * numFilters_,
+                           imgSize,
+                           numFilters_,
+                           false,
+                           useGpu_);
+        MatrixPtr inVTmp = Matrix::create(
+            inputV->getData() + i * imgSize, imgSize, 1, false, useGpu_);
+        outVTmp->addColVector(*inVTmp);
+      }
     }
   }
   /* activation */ {
@@ -102,23 +118,37 @@ void FeatureMapExpandLayer::backward(const UpdateCallback& callback) {
   MatrixPtr outGrad = getOutputGrad();
   size_t batchSize = getInput(0).getBatchSize();
   int imgSize = inGrad->getWidth();
-  {
-    AsyncGpuBlock asyncGpuBlock;
-    for (size_t i = 0; i < batchSize; i++) {
-      MatrixPtr outGradTmp =
-          Matrix::create(outGrad->getData() + i * imgSize * numFilters_,
-                         numFilters_,
-                         imgSize,
-                         false,
-                         useGpu_);
-      MatrixPtr inGradTmp = Matrix::create(
-          inGrad->getData() + i * imgSize, 1, imgSize, false, useGpu_);
-      inGradTmp->collectBias(*outGradTmp, 1);
-    }
-  }
-  /* Do derivation */ {
+  /* Do activation */ {
     REGISTER_TIMER_INFO("BpAvtTimer", getName().c_str());
     backwardActivation();
+  }
+  {
+    AsyncGpuBlock asyncGpuBlock;
+    if (asRowVector_) {
+      for (size_t i = 0; i < batchSize; i++) {
+        MatrixPtr outGradTmp =
+            Matrix::create(outGrad->getData() + i * imgSize * numFilters_,
+                           numFilters_,
+                           imgSize,
+                           false,
+                           useGpu_);
+        MatrixPtr inGradTmp = Matrix::create(
+            inGrad->getData() + i * imgSize, 1, imgSize, false, useGpu_);
+        inGradTmp->collectBias(*outGradTmp, 1);
+      }
+    } else {
+      for (size_t i = 0; i < batchSize; i++) {
+        MatrixPtr outGradTmp =
+            Matrix::create(outGrad->getData() + i * imgSize * numFilters_,
+                           imgSize,
+                           numFilters_,
+                           false,
+                           useGpu_);
+        MatrixPtr inGradTmp = Matrix::create(
+            inGrad->getData() + i * imgSize, imgSize, 1, false, useGpu_);
+        inGradTmp->sumRows(*outGradTmp, 1, 1);
+      }
+    }
   }
 }
 

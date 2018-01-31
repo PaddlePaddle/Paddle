@@ -16,7 +16,7 @@ limitations under the License. */
 #include "BatchNormalizationLayer.h"
 #include "Layer.h"
 #include "paddle/utils/Stat.h"
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 #include "CudnnBatchNormLayer.h"
 #endif
 
@@ -41,6 +41,7 @@ bool BatchNormBaseLayer::init(const LayerMap& layerMap,
     useGlobalStats_ = config_.use_global_stats();
   }
   movingAvgFraction_ = config_.moving_average_fraction();
+  epsilon_ = config_.epsilon();
 
   weight_.reset(new Weight(1, channels_, parameters_[0]));
   movingMean_.reset(new Weight(1, channels_, parameters_[1]));
@@ -62,14 +63,18 @@ void BatchNormBaseLayer::calFeatureMapSize() {
   const ImageConfig& conf = config_.inputs(0).image_conf();
   imageH_ = inputLayers_[0]->getOutput().getFrameHeight();
   imageW_ = inputLayers_[0]->getOutput().getFrameWidth();
+  imageD_ = inputLayers_[0]->getOutput().getFrameDepth();
+
+  if (0 == imageD_) imageD_ = conf.img_size_z();
   if (imageH_ == 0 && imageW_ == 0) {
     imageH_ = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
     imageW_ = conf.img_size();
   } else {
     getOutput().setFrameHeight(imageH_);
     getOutput().setFrameWidth(imageW_);
+    getOutput().setFrameDepth(imageD_);
   }
-  imgPixels_ = imageH_ * imageW_;
+  imgPixels_ = imageH_ * imageW_ * imageD_;
 }
 
 }  // namespace paddle

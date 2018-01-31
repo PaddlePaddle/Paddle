@@ -97,7 +97,7 @@ class DataFeederTest(unittest.TestCase):
             each_sample.append(zip(a, b))
             data.append(each_sample)
 
-        feeder = DataFeeder([('input', data_type.sparse_vector(dim))],
+        feeder = DataFeeder([('input', data_type.sparse_float_vector(dim))],
                             {'input': 0})
         arg = feeder(data)
         output = arg.getSlotValue(0)

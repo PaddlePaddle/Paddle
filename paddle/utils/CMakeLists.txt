@@ -17,7 +17,7 @@ add_library(paddle_utils STATIC
 add_style_check_target(paddle_utils ${UTIL_HEADERS})
 add_style_check_target(paddle_utils ${UTIL_SOURCES}
     ${UTIL_ARCH_SOURCES})
-add_dependencies(paddle_utils gen_proto_cpp)
+add_dependencies(paddle_utils paddle_proto ${external_project_dependencies})
 if(WITH_TESTING)
     add_subdirectory(tests)
 endif()

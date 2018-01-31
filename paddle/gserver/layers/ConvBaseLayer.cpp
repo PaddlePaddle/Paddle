@@ -32,11 +32,12 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     const ConvConfig& conf = inputConfig.conv_conf();
     padding_.push_back(conf.padding());
     stride_.push_back(conf.stride());
+    dilation_.push_back(conf.dilation());
     filterSize_.push_back(conf.filter_size());
     paddingY_.push_back(conf.padding_y());
     strideY_.push_back(conf.stride_y());
+    dilationY_.push_back(conf.dilation_y());
     filterSizeY_.push_back(conf.filter_size_y());
-    filterPixels_.push_back(filterSize_.back() * filterSizeY_.back());
     channels_.push_back(conf.channels());
     imgSizeH_.push_back(conf.has_img_size_y() ? conf.img_size_y()
                                               : conf.img_size());
@@ -45,31 +46,20 @@ bool ConvBaseLayer::init(const LayerMap& layerMap,
     filterChannels_.push_back(conf.filter_channels());
     outputH_.push_back(conf.has_output_y() ? conf.output_y() : conf.output_x());
     outputW_.push_back(conf.output_x());
+
+    paddingZ_.push_back(conf.padding_z());
+    strideZ_.push_back(conf.stride_z());
+    filterSizeZ_.push_back(conf.filter_size_z());
+    imgSizeD_.push_back(conf.img_size_z());
+    outputD_.push_back(conf.output_z());
+    filterPixels_.push_back(filterSize_.back() * filterSizeY_.back() *
+                            filterSizeZ_.back());
   }
 
   CHECK(inputLayers_.size() == parameters_.size());
-  for (size_t i = 0; i < inputLayers_.size(); i++) {
-    size_t height, width;
-    height = filterPixels_[i] * filterChannels_[i];
-    width = (!isDeconv_) ? numFilters_ : channels_[i];
 
-    // create a new weight
-    CHECK_EQ(parameters_[i]->getSize(), width * height);
-    Weight* w = new Weight(height, width, parameters_[i]);
-    weights_.emplace_back(w);
-  }
-
-  /* initialize the biases_ */
-  if (biasParameter_.get()) {
-    if (sharedBiases_) {
-      CHECK_EQ((size_t)numFilters_, biasParameter_->getSize());
-      biases_ =
-          std::unique_ptr<Weight>(new Weight(numFilters_, 1, biasParameter_));
-    } else {
-      biases_ =
-          std::unique_ptr<Weight>(new Weight(getSize(), 1, biasParameter_));
-    }
-  }
+  // create new weights_ in derived class
+  // create new biases_ in derived class
 
   // default caffe model
   caffeMode_ = true;
@@ -89,7 +79,11 @@ size_t ConvBaseLayer::calOutputSize() {
   size_t layerSize = 0;
 
   auto setLayerSize = [&](IntV& inH, IntV& inW, IntV& outH, IntV& outW) {
+    size_t filterSizeY;
+    size_t filterSize;
     for (size_t i = 0; i < inputLayers_.size(); i++) {
+      filterSizeY = (filterSizeY_[i] - 1) * dilationY_[i] + 1;
+      filterSize = (filterSize_[i] - 1) * dilation_[i] + 1;
       inH.push_back(inputLayers_[i]->getOutput().getFrameHeight());
       inW.push_back(inputLayers_[i]->getOutput().getFrameWidth());
       const ConvConfig& conf = config_.inputs(i).conv_conf();
@@ -98,17 +92,17 @@ size_t ConvBaseLayer::calOutputSize() {
           inH[i] = conf.has_output_y() ? conf.output_y() : conf.output_x();
         if (inW[i] == 0) inW[i] = conf.output_x();
         outH.push_back(imageSize(
-            inH[i], filterSizeY_[i], paddingY_[i], strideY_[i], caffeMode_));
-        outW.push_back(imageSize(
-            inW[i], filterSize_[i], padding_[i], stride_[i], caffeMode_));
+            inH[i], filterSizeY, paddingY_[i], strideY_[i], caffeMode_));
+        outW.push_back(
+            imageSize(inW[i], filterSize, padding_[i], stride_[i], caffeMode_));
       } else {
         if (inH[i] == 0)
           inH[i] = conf.has_img_size_y() ? conf.img_size_y() : conf.img_size();
         if (inW[i] == 0) inW[i] = conf.img_size();
         outH.push_back(outputSize(
-            inH[i], filterSizeY_[i], paddingY_[i], strideY_[i], caffeMode_));
+            inH[i], filterSizeY, paddingY_[i], strideY_[i], caffeMode_));
         outW.push_back(outputSize(
-            inW[i], filterSize_[i], padding_[i], stride_[i], caffeMode_));
+            inW[i], filterSize, padding_[i], stride_[i], caffeMode_));
       }
       CHECK_EQ(outH[i], outH[0]);
       CHECK_EQ(outW[i], outW[0]);
@@ -118,11 +112,7 @@ size_t ConvBaseLayer::calOutputSize() {
     layerSize = outH[0] * outW[0] * size_t(numFilters_);
   };
 
-  if (isDeconv_) {
-    setLayerSize(outputH_, outputW_, imgSizeH_, imgSizeW_);
-  } else {
-    setLayerSize(imgSizeH_, imgSizeW_, outputH_, outputW_);
-  }
+  setLayerSize(imgSizeH_, imgSizeW_, outputH_, outputW_);
 
   return layerSize;
 }

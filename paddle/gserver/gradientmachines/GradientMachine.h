@@ -20,12 +20,15 @@ limitations under the License. */
 #include "ModelConfig.pb.h"
 #include "TrainerConfig.pb.h"
 #include "paddle/gserver/dataproviders/DataProvider.h"
-#include "paddle/gserver/evaluators/Evaluator.h"
 #include "paddle/gserver/layers/Layer.h"
 #include "paddle/math/Matrix.h"
 #include "paddle/parameter/Parameter.h"
 #include "paddle/parameter/ParameterUpdaterBase.h"
 #include "paddle/utils/Thread.h"
+
+#ifndef PADDLE_MOBILE_INFERENCE
+#include "paddle/gserver/evaluators/Evaluator.h"
+#endif
 
 namespace paddle {
 /**
@@ -147,6 +150,7 @@ public:
 
   virtual void onPassEnd() = 0;
 
+#ifndef PADDLE_MOBILE_INFERENCE
   /**
    * Create an evaluator which can be used for eval()
    */
@@ -156,6 +160,7 @@ public:
    * evaluate using the given evaluator
    */
   virtual void eval(Evaluator* evaluator) const = 0;
+#endif
 
   std::vector<ParameterPtr>& getParameters() { return parameters_; }
 
@@ -227,6 +232,13 @@ public:
     (void)cost;
     (void)numProcessed;
   }
+
+  /**
+   * @brief   Release the middle layer's output memory.
+   *
+   * @note    This function is used for memory optimization in inference.
+   */
+  virtual void releaseOutput() {}
 
 protected:
   virtual void onLoadParameter() {}

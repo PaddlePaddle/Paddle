@@ -47,7 +47,7 @@ bool isUsingGpu() { return FLAGS_use_gpu; }
 void setUseGpu(bool useGpu) { FLAGS_use_gpu = useGpu; }
 
 bool isGpuVersion() {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   return false;
 #else
   return true;

@@ -31,10 +31,10 @@ images per class.
 import cPickle
 import itertools
 import numpy
-from common import download
+import paddle.v2.dataset.common
 import tarfile
 
-__all__ = ['train100', 'test100', 'train10', 'test10']
+__all__ = ['train100', 'test100', 'train10', 'test10', 'convert']
 
 URL_PREFIX = 'https://www.cs.toronto.edu/~kriz/'
 CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'
@@ -75,7 +75,8 @@ def train100():
     :rtype: callable
     """
     return reader_creator(
-        download(CIFAR100_URL, 'cifar', CIFAR100_MD5), 'train')
+        paddle.v2.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
+        'train')
 
 
 def test100():
@@ -88,7 +89,9 @@ def test100():
     :return: Test reader creator.
     :rtype: callable
     """
-    return reader_creator(download(CIFAR100_URL, 'cifar', CIFAR100_MD5), 'test')
+    return reader_creator(
+        paddle.v2.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
+        'test')
 
 
 def train10():
@@ -102,7 +105,8 @@ def train10():
     :rtype: callable
     """
     return reader_creator(
-        download(CIFAR10_URL, 'cifar', CIFAR10_MD5), 'data_batch')
+        paddle.v2.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        'data_batch')
 
 
 def test10():
@@ -116,9 +120,20 @@ def test10():
     :rtype: callable
     """
     return reader_creator(
-        download(CIFAR10_URL, 'cifar', CIFAR10_MD5), 'test_batch')
+        paddle.v2.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        'test_batch')
 
 
 def fetch():
-    download(CIFAR10_URL, 'cifar', CIFAR10_MD5)
-    download(CIFAR100_URL, 'cifar', CIFAR100_MD5)
+    paddle.v2.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5)
+    paddle.v2.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5)
+
+
+def convert(path):
+    """
+    Converts dataset to recordio format
+    """
+    paddle.v2.dataset.common.convert(path, train100(), 1000, "cifar_train100")
+    paddle.v2.dataset.common.convert(path, test100(), 1000, "cifar_test100")
+    paddle.v2.dataset.common.convert(path, train10(), 1000, "cifar_train10")
+    paddle.v2.dataset.common.convert(path, test10(), 1000, "cifar_test10")

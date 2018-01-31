@@ -29,6 +29,9 @@ static void initPaddle(int argc, char** argv) {
 
 extern "C" {
 paddle_error paddle_init(int argc, char** argv) {
+  static bool isInit = false;
+  if (isInit) return kPD_NO_ERROR;
+
   std::vector<char*> realArgv;
   realArgv.reserve(argc + 1);
   realArgv.push_back(strdup(""));
@@ -37,6 +40,14 @@ paddle_error paddle_init(int argc, char** argv) {
   }
   initPaddle(argc + 1, realArgv.data());
   free(realArgv[0]);
+  isInit = true;
+  return kPD_NO_ERROR;
+}
+
+paddle_error paddle_init_thread() {
+  if (FLAGS_use_gpu) {
+    hl_init(FLAGS_gpu_id);
+  }
   return kPD_NO_ERROR;
 }
 }

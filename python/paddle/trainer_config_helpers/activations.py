@@ -17,7 +17,8 @@ __all__ = [
     "IdentityActivation", "LinearActivation", 'SequenceSoftmaxActivation',
     'ExpActivation', "ReluActivation", "BReluActivation", "SoftReluActivation",
     "STanhActivation", "AbsActivation", "SquareActivation", "BaseActivation",
-    "LogActivation", "SqrtActivation", "ReciprocalActivation"
+    "LogActivation", "SqrtActivation", "ReciprocalActivation",
+    "SoftSignActivation"
 ]
 
 
@@ -243,8 +244,20 @@ class ReciprocalActivation(BaseActivation):
     Reciprocal Activation.
 
     .. math::
-       f(z) = 1/z
+       f(z)=\\frac{1}{z}
     """
 
     def __init__(self):
         BaseActivation.__init__(self, 'reciprocal', False)
+
+
+class SoftSignActivation(BaseActivation):
+    """
+    SoftSign Activation.
+
+    .. math::
+       f(z)=\\frac{z}{1 + |z|}
+    """
+
+    def __init__(self):
+        BaseActivation.__init__(self, 'softsign', False)

@@ -28,6 +28,7 @@ protected:
   int confPaddingY_, confPadding_;
   size_t channels_;
   std::string poolType_;
+  bool excludeMode_;
 
 public:
   PoolProjection(const ProjectionConfig& config,

@@ -1,2 +1,0 @@
-./test_ProtoDataProvider/data1.bin
-./test_ProtoDataProvider/data2.bin

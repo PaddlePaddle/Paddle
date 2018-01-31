@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from paddle.trainer_config_helpers import *
 
 settings(learning_rate=1e-4, batch_size=1000)
@@ -33,7 +47,9 @@ outputs(
         input=probs, label=xe_label),
     cross_entropy_with_selfnorm(
         input=probs, label=xe_label),
-    huber_cost(
+    huber_regression_cost(
+        input=seq_in, label=labels),
+    huber_classification_cost(
         input=data_layer(
             name='huber_probs', size=1),
         label=data_layer(

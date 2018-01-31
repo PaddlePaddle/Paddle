@@ -80,6 +80,7 @@ protected:
 
   /// Height or width of input image feature.
   /// Both of them are 1 if the input is fully-connected layer.
+  int imageD_;
   int imageH_;
   int imageW_;
   /// Height * Width.
@@ -93,6 +94,8 @@ protected:
   bool useGlobalStats_;
   // use to compute moving mean and variance.
   real movingAvgFraction_;
+  // Epsilon is a small random noise used in batch normalization for stability.
+  real epsilon_;
 };
 
 }  // namespace paddle

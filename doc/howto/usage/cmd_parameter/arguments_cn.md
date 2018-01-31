@@ -63,7 +63,7 @@
 </tr>
 
 <tr>
-<td class="left" rowspan="15">训练</td><td class="left">dot_period</td>
+<td class="left" rowspan="14">训练</td><td class="left">dot_period</td>
 <td class="left">√</td><td class="left">√</td><td class="left"></td><td class="left"></td>
 </tr>
 
