@@ -14,12 +14,10 @@ limitations under the License. */
 
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/block_desc.h"
+#include "paddle/framework/feed_fetch_type.h"
 
 namespace paddle {
 namespace framework {
-
-const std::string kFeedOpType = "feed";
-const std::string kFetchOpType = "fetch";
 
 BlockDesc *ProgramDesc::AppendBlock(const BlockDesc &parent) {
   auto *b = desc_.add_blocks();
