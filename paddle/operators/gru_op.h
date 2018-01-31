@@ -30,11 +30,12 @@ using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
-                             const framework::Tensor& src, const size_t* index,
+                             const framework::Tensor& src,
+                             framework::Vector<size_t> index_lod,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
-  row_shuffle(ctx, src, index, *dst, indexed_src);
+  row_shuffle(ctx, src, index_lod, *dst, indexed_src);
 }
 
 template <typename DeviceContext, typename T>
@@ -76,7 +77,9 @@ class GRUKernel : public framework::OpKernel<T> {
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
     Tensor ordered_h0;
-    const size_t* order = batch_gate->lod()[2].data();
+
+    framework::Vector<size_t> order(batch_gate->lod()[2]);
+
     if (h0) {
       // Since the batch computing for GRU reorders the input sequences
       // according to their length. The initialized cell state also needs
@@ -159,7 +162,9 @@ class GRUGradKernel : public framework::OpKernel<T> {
     zero(dev_ctx, &batch_reset_hidden_prev_grad, static_cast<T>(0.0));
 
     Tensor ordered_h0, ordered_h0_grad;
-    const size_t* order = batch_gate->lod()[2].data();
+
+    framework::Vector<size_t> order(batch_gate->lod()[2]);
+
     if (h0) {
       ReorderInitState<DeviceContext, T>(dev_ctx, *h0, order, &ordered_h0,
                                          true);

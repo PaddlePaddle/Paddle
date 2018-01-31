@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle.v2 as paddle
+import unittest
 import paddle.v2.fluid as fluid
+import paddle.v2 as paddle
+import contextlib
+
+
+def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
+                    hid_dim=32):
+    emb = fluid.layers.embedding(input=data, size=[input_dim, emb_dim])
+    conv_3 = fluid.nets.sequence_conv_pool(
+        input=emb,
+        num_filters=hid_dim,
+        filter_size=3,
+        act="tanh",
+        pool_type="sqrt")
+    conv_4 = fluid.nets.sequence_conv_pool(
+        input=emb,
+        num_filters=hid_dim,
+        filter_size=4,
+        act="tanh",
+        pool_type="sqrt")
+    prediction = fluid.layers.fc(input=[conv_3, conv_4],
+                                 size=class_dim,
+                                 act="softmax")
+    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    avg_cost = fluid.layers.mean(x=cost)
+    adam_optimizer = fluid.optimizer.Adam(learning_rate=0.002)
+    adam_optimizer.minimize(avg_cost)
+    accuracy = fluid.layers.accuracy(input=prediction, label=label)
+    return avg_cost, accuracy
 
 
 def stacked_lstm_net(data,
@@ -51,63 +78,77 @@ def stacked_lstm_net(data,
     avg_cost = fluid.layers.mean(x=cost)
     adam_optimizer = fluid.optimizer.Adam(learning_rate=0.002)
     adam_optimizer.minimize(avg_cost)
-    accuracy = fluid.evaluator.Accuracy(input=prediction, label=label)
-    return avg_cost, accuracy, accuracy.metrics[0]
+    accuracy = fluid.layers.accuracy(input=prediction, label=label)
+    return avg_cost, accuracy
 
 
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = fluid.LoDTensor()
-    res.set(flattened_data, place)
-    res.set_lod([lod])
-    return res
+def main(word_dict, net_method, use_cuda):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
 
-
-def main():
-    BATCH_SIZE = 100
+    BATCH_SIZE = 128
     PASS_NUM = 5
-
-    word_dict = paddle.dataset.imdb.word_dict()
-    print "load word dict successfully"
     dict_dim = len(word_dict)
     class_dim = 2
 
     data = fluid.layers.data(
         name="words", shape=[1], dtype="int64", lod_level=1)
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-    cost, accuracy, acc_out = stacked_lstm_net(
+    cost, acc_out = net_method(
         data, label, input_dim=dict_dim, class_dim=class_dim)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.imdb.train(word_dict), buf_size=1000),
         batch_size=BATCH_SIZE)
-    place = fluid.CPUPlace()
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
 
     exe.run(fluid.default_startup_program())
 
     for pass_id in xrange(PASS_NUM):
-        accuracy.reset(exe)
         for data in train_data():
             cost_val, acc_val = exe.run(fluid.default_main_program(),
                                         feed=feeder.feed(data),
                                         fetch_list=[cost, acc_out])
-            pass_acc = accuracy.eval(exe)
-            print("cost=" + str(cost_val) + " acc=" + str(acc_val) +
-                  " pass_acc=" + str(pass_acc))
-            if cost_val < 1.0 and acc_val > 0.8:
-                exit(0)
-    exit(1)
+            print("cost=" + str(cost_val) + " acc=" + str(acc_val))
+            if cost_val < 0.4 and acc_val > 0.8:
+                return
+    raise AssertionError("Cost is too large for {0}".format(
+        net_method.__name__))
+
+
+class TestUnderstandSentiment(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.word_dict = paddle.dataset.imdb.word_dict()
+
+    @contextlib.contextmanager
+    def new_program_scope(self):
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        scope = fluid.core.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(prog, startup_prog):
+                yield
+
+    def test_conv_cpu(self):
+        with self.new_program_scope():
+            main(self.word_dict, net_method=convolution_net, use_cuda=False)
+
+    def test_stacked_lstm_cpu(self):
+        with self.new_program_scope():
+            main(self.word_dict, net_method=stacked_lstm_net, use_cuda=False)
+
+    def test_conv_gpu(self):
+        with self.new_program_scope():
+            main(self.word_dict, net_method=convolution_net, use_cuda=True)
+
+    def test_stacked_lstm_gpu(self):
+        with self.new_program_scope():
+            main(self.word_dict, net_method=stacked_lstm_net, use_cuda=True)
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()
