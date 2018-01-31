@@ -65,7 +65,7 @@ def save_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              save_file_name='parameters'):
+              save_file_name='__parameters__'):
     """
     Save variables to directory by executor.
 
@@ -93,10 +93,14 @@ def save_vars(executor,
     else:
         save_program = Program()
         save_block = save_program.global_block()
-        save_var_list = []
+        save_var_map = {}
         for each_var in vars:
             new_var = _clone_var_in_block_(save_block, each_var)
-            save_var_list.append(new_var)
+            save_var_map[new_var.name] = new_var
+
+        save_var_list = []
+        for name in sorted(save_var_map.keys()):
+            save_var_list.append(save_var_map[name])
 
         save_block.append_op(
             type='save_combine',
@@ -136,7 +140,7 @@ def load_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              load_file_name='parameters'):
+              load_file_name='__parameters__'):
     """
     Load variables from directory by executor.
 
@@ -164,11 +168,15 @@ def load_vars(executor,
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
-        load_var_list = []
+        load_var_map = {}
         for each_var in vars:
             assert isinstance(each_var, Variable)
             new_var = _clone_var_in_block_(load_block, each_var)
-            load_var_list.append(new_var)
+            load_var_map[new_var.name] = new_var
+
+        load_var_list = []
+        for name in sorted(load_var_map.keys()):
+            load_var_list.append(load_var_map[name])
 
         load_block.append_op(
             type='load_combine',
@@ -255,22 +263,16 @@ def append_fetch_ops(inference_program,
 
 def get_parameters(program):
     parameter_list = []
+    input_args = set()
+    for block in program.blocks:
+        for op in block.ops:
+            if op.desc.type() != 'feed':
+                input_args.update(op.desc.input_arg_names())
+
     for var in program.list_vars():
-        if not is_persistable(var):
-            continue
-        for block in program.blocks:
-            for op in block.ops:
-                if op.desc.type() == 'feed':
-                    continue
-                for in_args in op.inputs.values():
-                    if not isinstance(in_args, list):
-                        in_args = [in_args]
-                    for arg in in_args:
-                        if not isinstance(arg, basestring):
-                            arg = arg.name
-                        if var.name == arg:
-                            parameter_list.append(var)
-    print([var.name for var in parameter_list])
+        if is_persistable(var) and var.name in input_args:
+            parameter_list.append(var)
+
     return parameter_list
 
 
@@ -325,24 +327,6 @@ def save_inference_model(dirname,
 
     parameter_list = get_parameters(inference_program)
     save_vars(executor, dirname, main_program, parameter_list)
-
-
-def load_persistables_if_exist(executor, dirname, main_program=None):
-    filenames = next(os.walk(dirname))[2]
-    filenames = set(filenames)
-
-    def _is_presistable_and_exist_(var):
-        if not is_persistable(var):
-            return False
-        else:
-            return var.name in filenames
-
-    load_vars(
-        executor,
-        dirname,
-        main_program=main_program,
-        vars=None,
-        predicate=_is_presistable_and_exist_)
 
 
 def get_feed_targets_names(program):
