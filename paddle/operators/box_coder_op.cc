@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -31,23 +31,21 @@ class BoxCoderOp : public framework::OperatorWithKernel {
     auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
     auto target_box_dims = ctx->GetInputDim("TargetBox");
 
-    PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2UL,
-                      "The shape of PriorBox is [N, 4]");
-    PADDLE_ENFORCE_EQ(prior_box_dims[1], 4UL,
-                      "The shape of PriorBox is [N, 4]");
-    PADDLE_ENFORCE_EQ(prior_box_var_dims.size(), 2UL,
-                      "The shape of PriorBoxVar is [N, 4]");
-    PADDLE_ENFORCE_EQ(prior_box_var_dims[1], 4UL,
-                      "The shape of PriorBoxVar is [N, 4]");
-    PADDLE_ENFORCE_EQ(target_box_dims.size(), 2UL,
-                      "The shape of TargetBox is [M, 4]");
-    PADDLE_ENFORCE_EQ(target_box_dims[1], 4UL,
+    PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
+                      "The rank of Input of PriorBoxVar must be 2");
+    PADDLE_ENFORCE_EQ(prior_box_dims[1], 4, "The shape of PriorBox is [N, 4]");
+    PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
+    PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
+                      "The rank of Input of TargetBox must be 2");
+    PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
                       "The shape of TargetBox is [M, 4]");
 
     GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
 
-    ctx->SetOutputDim("OutputBox", framework::make_ddim({target_box_dims[0],
-                                                         target_box_dims[1]}));
+    ctx->SetOutputDim(
+        "OutputBox",
+        framework::make_ddim({target_box_dims[0], prior_box_dims[0], 4}));
+    ctx->ShareLoD("TargetBox", /*->*/ "OutputBox");
   }
 };
 
@@ -58,7 +56,7 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(
         "PriorBox",
         "(Tensor, default Tensor<float>) "
-        "Box list PriorBox is a 2-D Tensor with shape [M, 4] holds N boxes, "
+        "Box list PriorBox is a 2-D Tensor with shape [M, 4] holds M boxes, "
         "each box is represented as [xmin, ymin, xmax, ymax], "
         "[xmin, ymin] is the left top coordinate of the anchor box, "
         "if the input is image feature map, they are close to the origin "
@@ -66,7 +64,7 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         "coordinate of the anchor box.");
     AddInput("PriorBoxVar",
              "(Tensor, default Tensor<float>) "
-             "PriorBoxVar is a 2-D Tensor with shape [M, 4] holds N group "
+             "PriorBoxVar is a 2-D Tensor with shape [M, 4] holds M group "
              "of variance.");
     AddInput(
         "TargetBox",
@@ -85,14 +83,29 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"encode_center_size", "decode_center_size"});
     AddOutput(
         "OutputBox",
-        "(Tensor, default Tensor<float>)"
+        "(LoDTensor or Tensor) "
         "(Tensor) The output of box_coder_op, a tensor with shape [N, M, 4] "
         "representing the result of N target boxes encoded/decoded with "
         "M Prior boxes and variances.");
 
     AddComment(R"DOC(
 Bounding Box Coder Operator.
-Encode/Decode the priorbox information with the target bounding box.
+Encode/Decode the target bounding box with the priorbox information.
+The Encoding schema described below:
+ox = (tx - px) / pw / pxv
+oy = (ty - py) / ph / pyv
+ow = log(abs(tw / pw)) / pwv 
+oh = log(abs(th / ph)) / phv 
+The Decoding schema described below:
+ox = (pw * pxv * tx * + px) - tw / 2
+oy = (ph * pyv * ty * + py) - th / 2
+ow = exp(pwv * tw) * pw + tw / 2
+oh = exp(phv * th) * ph + th / 2
+where tx, ty, tw, th denote the target box's center coordinates, width and
+height respectively. Similarly, px, py, pw, ph denote the priorbox's(anchor)
+center coordinates, width and height. pxv, pyv, pwv, phv denote the variance
+of the priorbox and ox, oy, ow, oh denote the encoded/decoded coordinates,
+width and height.
 )DOC");
   }
 };
