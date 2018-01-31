@@ -69,11 +69,8 @@ def polynomial_decay(learning_rate,
         decay_steps = decay_steps * div
     else:
         global_step = min(global_step, decay_steps)
-    res = (learning_rate - end_learning_rate) * \
-          ((1 - float(global_step) / float(decay_steps)) ** power) + end_learning_rate
-    print("global_step=" + str(global_step) + " decay_steps=" + str(decay_steps)
-          + " res=" + str(res))
-    return res
+    return (learning_rate - end_learning_rate) * \
+           ((1 - float(global_step) / float(decay_steps)) ** power) + end_learning_rate
 
 
 class TestLearningRateDecay(unittest.TestCase):
@@ -93,8 +90,7 @@ class TestLearningRateDecay(unittest.TestCase):
                                        feed=[],
                                        fetch_list=[global_step, decayed_lr])
             python_decayed_lr = python_decay_fn(global_step=step, **kwargs)
-            print(str(python_decayed_lr) + ":" + str(lr_val[0]))
-            # self.assertAlmostEqual(python_decayed_lr, lr_val[0])
+            self.assertAlmostEqual(python_decayed_lr, lr_val[0])
 
     def test_decay(self):
         common_kwargs_true = {
@@ -107,26 +103,26 @@ class TestLearningRateDecay(unittest.TestCase):
         common_kwargs_false["staircase"] = False
 
         decay_fns = [
-            # (exponential_decay, lr_decay.exponential_decay, common_kwargs_true),
-            # (exponential_decay, lr_decay.exponential_decay,
-            #  common_kwargs_false),
-            # (natural_exp_decay, lr_decay.natural_exp_decay, common_kwargs_true),
-            # (natural_exp_decay, lr_decay.natural_exp_decay,
-            #  common_kwargs_false),
-            # (inverse_time_decay, lr_decay.inverse_time_decay,
-            #  common_kwargs_true),
-            # (inverse_time_decay, lr_decay.inverse_time_decay,
-            #  common_kwargs_false),
+            (exponential_decay, lr_decay.exponential_decay, common_kwargs_true),
+            (exponential_decay, lr_decay.exponential_decay,
+             common_kwargs_false),
+            (natural_exp_decay, lr_decay.natural_exp_decay, common_kwargs_true),
+            (natural_exp_decay, lr_decay.natural_exp_decay,
+             common_kwargs_false),
+            (inverse_time_decay, lr_decay.inverse_time_decay,
+             common_kwargs_true),
+            (inverse_time_decay, lr_decay.inverse_time_decay,
+             common_kwargs_false),
             (polynomial_decay, lr_decay.polynomial_decay, {
                 "learning_rate": 1.0,
                 "decay_steps": 5,
                 "cycle": True
             }),
-            # (polynomial_decay, lr_decay.polynomial_decay, {
-            #     "learning_rate": 1.0,
-            #     "decay_steps": 5,
-            #     "cycle": False
-            # }),
+            (polynomial_decay, lr_decay.polynomial_decay, {
+                "learning_rate": 1.0,
+                "decay_steps": 5,
+                "cycle": False
+            }),
         ]
 
         for py_decay_fn, fluid_decay_fn, kwargs in decay_fns:

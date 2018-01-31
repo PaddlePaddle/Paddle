@@ -159,15 +159,13 @@ def polynomial_decay(learning_rate,
 
     if cycle:
         div_res = layers.ceil(x=(global_step / decay_steps))
-        zero_var = layers.fill_constant(
-            shape=[1, 1], dtype='float32', value=0.0)
-        one_var = layers.fill_constant(shape=[1, 1], dtype='float32', value=1.0)
+        zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
+        one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
 
-        cond = layers.equal(x=zero_var, y=global_step)
+        cond = layers.equal(x=global_step, y=zero_var)
         true_cond = layers.ConditionalBlock([cond])
         with true_cond.block():
             layers.assign(input=one_var, output=div_res)
-        return div_res
         decay_steps = decay_steps * div_res
     else:
         decay_steps_var = layers.fill_constant(
