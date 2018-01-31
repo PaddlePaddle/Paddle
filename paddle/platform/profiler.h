@@ -47,6 +47,7 @@ class Event {
   double CpuElapsedMs(const Event& e) const;
   double CudaElapsedMs(const Event& e) const;
   double MemoryUsed(const Event& e) const;
+  double MaxMemoryUsed(const Event& e) const;
 
  private:
   EventKind kind_;

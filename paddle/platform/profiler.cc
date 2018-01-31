@@ -20,6 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+/* start profiler event name */
+constexpr char kStartProfiler[] = "_start_profiler_";
+
+/* stop profiler event name */
+constexpr char kStopProfiler[] = "_stop_profiler_";
+
+/* start cuda profiler on every device event name */
+
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
 // To record which timer the profiler used, CUDA or CPU.
@@ -66,6 +74,7 @@ Event::Event(EventKind kind, std::string name, uint32_t thread_id,
   } else {
     memory_used_chars_ = memory::memory_usage(platform::CPUPlace());
   }
+  VLOG(3) << "create event : " << memory_used_chars_;
 }
 
 std::string Event::kind() const {
@@ -99,7 +108,14 @@ double Event::CudaElapsedMs(const Event& e) const {
 }
 
 double Event::MemoryUsed(const Event& e) const {
-  return (e.memory_used_chars_ - memory_used_chars_) / (1024 * 1024);
+  return static_cast<double>(e.memory_used_chars_ - memory_used_chars_) /
+         (1024 * 1024);
+}
+
+double Event::MaxMemoryUsed(const Event& e) const {
+  return static_cast<double>(
+             std::max(e.memory_used_chars_, memory_used_chars_)) /
+         (1024 * 1024);
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -172,7 +188,7 @@ void EnableProfiler(ProfilerState state) {
   }
 #endif
   // Mark the profiling start.
-  Mark("_start_profiler_", nullptr);
+  Mark(kStartProfiler, nullptr);
 }
 
 void ResetProfiler() {
@@ -197,7 +213,7 @@ void DisableProfiler(EventSortingKey sorted_key) {
   PADDLE_ENFORCE(g_state != ProfilerState::kDisabled,
                  "Can't disable profiling, since it's not starting.");
   // Mark the profiling stop.
-  Mark("_stop_profiler_", nullptr);
+  Mark(kStopProfiler, nullptr);
   g_state = ProfilerState::kDisabled;
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
@@ -269,6 +285,7 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
                                   : rit->CpuElapsedMs(events[i][j]);
 
           double event_memory_used = rit->MemoryUsed(events[i][j]);
+          double total_memory_used = rit->MaxMemoryUsed(events[i][j]);
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
           max_name_width = std::max(max_name_width, event_name.size());
@@ -278,7 +295,7 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
             EventItem event_item = {event_name,        1,
                                     event_time,        event_time,
                                     event_time,        event_time,
-                                    event_memory_used, event_memory_used,
+                                    total_memory_used, event_memory_used,
                                     event_memory_used, event_memory_used};
             event_items.push_back(event_item);
           } else {
@@ -292,9 +309,6 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
             // max time
             event_items[index].max_time =
                 std::max(event_time, event_items[index].max_time);
-
-            // total memory used
-            event_items[index].total_time += event_memory_used;
 
             // min memory used
             event_items[index].min_memory_used =
@@ -341,13 +355,20 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
 void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
                    std::string& sorted_domain, const size_t name_width,
                    const size_t data_width) {
-  double app_total_time = .0, app_total_memory = .0;
+  double app_total_memory = .0, app_total_time = .0;
+
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       EventItem& event_item = events_table[i][j];
+      if (event_item.name == kStartProfiler) {
+        app_total_time -= event_item.total_time;
+      }
+      if (event_item.name == kStopProfiler) {
+        app_total_time += event_item.total_time;
+      }
 
-      app_total_time += event_item.total_time;
-      app_total_memory += event_item.total_memory_used;
+      app_total_memory =
+          std::max(event_item.total_memory_used, app_total_memory);
     }
   }
 
@@ -359,7 +380,7 @@ void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
   // clang-format off
   std::cout << "Place: " << g_profiler_place << "\t"
             << "Total Time:" << app_total_time << "ms" << "\t"
-            << "Total Memory:" << app_total_time << "MB" << "\t"
+            << "Total Memory:" << app_total_memory << "MB" << "\t"
             << "Sorted by " << sorted_domain
             << " in descending order in the same thread\n"
             << std::endl;
