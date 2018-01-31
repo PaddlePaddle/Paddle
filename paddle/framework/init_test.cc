@@ -31,13 +31,8 @@ TEST(InitDevices, CUDA) {
   using paddle::framework::InitDevices;
   using paddle::platform::DeviceContextPool;
 
-  int count = 0;
-  try {
-    count = paddle::platform::GetCUDADeviceCount();
-  } catch (const std::exception& exp) {
-  }
-
 #ifdef PADDLE_WITH_CUDA
+  int count = paddle::platform::GetCUDADeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
   ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));
