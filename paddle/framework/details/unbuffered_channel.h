@@ -32,10 +32,11 @@ class UnBuffered : public paddle::framework::Channel<T> {
   virtual void Send(T*);
   virtual void Receive(T*);
   virtual size_t Cap() { return 0; }
+  virtual void Close();
+  virtual ~UnBuffered();
 
  private:
   UnBuffered() {}
-  virtual ~UnBuffered();
 };
 
 template <typename T>
@@ -43,6 +44,9 @@ void UnBuffered<T>::Send(T* channel_element) {}
 
 template <typename T>
 void UnBuffered<T>::Receive(T*) {}
+
+template <typename T>
+void UnBuffered<T>::Close() {}
 
 template <typename T>
 UnBuffered<T>::~UnBuffered() {}
