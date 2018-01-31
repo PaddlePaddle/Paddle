@@ -195,7 +195,9 @@ class DeviceContextPool {
     size_t operator()(const platform::Place& place) const {
       int pre_hash = place.which() << LEFT_SHIFT;
       if (platform::is_gpu_place(place)) {
-        pre_hash += boost::get<platform::CUDAPlace>(place).GetDeviceId();
+        auto& gpu_place = boost::get<platform::CUDAPlace>(place);
+        pre_hash += (gpu_place.GetDeviceId() << LEFT_SHIFT) +
+                    static_cast<int>(gpu_place.GetDeviceStreamType());
       }
       return hash_(pre_hash);
     }
