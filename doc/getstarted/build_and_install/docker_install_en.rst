@@ -26,14 +26,14 @@ For users in China, we provide a faster mirror:
 
   .. code-block:: bash
 
-     docker pull docker.paddlepaddle.org/paddle
+     docker pull docker.paddlepaddlehub.com/paddle
 
 Download GPU version (cuda8.0_cudnn5_avx_mkl) images:
 
   .. code-block:: bash
 
      docker pull paddlepaddle/paddle:latest-gpu
-     docker pull docker.paddlepaddle.org/paddle:latest-gpu
+     docker pull docker.paddlepaddlehub.com/paddle:latest-gpu
 
 Choose between different BLAS version:
 
@@ -53,7 +53,7 @@ and run:
 
      docker pull paddlepaddle/paddle:[tag]
      # i.e.
-     docker pull docker.paddlepaddle.org/paddle:0.10.0-gpu
+     docker pull docker.paddlepaddlehub.com/paddle:0.11.0-gpu
 
 .. _docker_run:
 
@@ -101,6 +101,12 @@ We provide a packaged book image, simply issue the command:
   .. code-block:: bash
 
      docker run -p 8888:8888 paddlepaddle/book
+
+For users in China, we provide a faster mirror:
+
+  .. code-block: bash
+
+    docker run -p 8888:8888 docker.paddlepaddlehub.com/book
 
 Then, you would back and paste the address into the local browser:
 

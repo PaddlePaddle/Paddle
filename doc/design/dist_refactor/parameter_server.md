@@ -9,16 +9,16 @@ different purposes.
 
 ## Background
 
-The previous implementations of the parameter server does not run a
+The previous implementations of the parameter server do not run a
 fluid sub-program. Parameter initialization, optimizer computation, network
 communication and checkpointing are implemented twice on both the
-trainer and the parameter server.
+trainer as well as the parameter server.
 
-It would be great if we can write code once and use them on both the
-trainer and the parameter server: reduces code duplication and
-improves extensibility. Given that after the current refactor, we are
-representing everything as a computing graph on the
-trainer. Representing everything as a computing graph on the parameter
+It would be great if we can write code once and use them on both: the
+trainer and the parameter server, since this reduces code duplication and
+improves extensibility. Given that after the current refactoring, we are
+representing everything as a computation graph on the
+trainer. Representing everything as a computation graph on the parameter
 server becomes a natural extension.
 
 ## Design
@@ -30,9 +30,9 @@ into sub-programs to be scheduled on different nodes with the following
 steps:
 
 1. OP placement: the OPs will be placed on different nodes according
-   to heuristic that minimizes estimated total computation
+   to a heuristic that minimizes the estimated total computation
    time. Currently we will use a simple heuristic that puts parameter
-   varable on parameter server workers and everything else on trainer
+   variable on parameter server workers and everything else on trainer
    workers.
 1. Add communication OPs to enable the communication between nodes.
 
@@ -47,22 +47,22 @@ After converting:
 
 <img src="src/dist-graph.png" width="700"/>
 
-1. The parameter variable W and it's optimizer program are placed on the parameter server.
+1. The parameter variable W and its optimizer program are placed on the parameter server.
 1. Operators are added to the program.
    - *Send* sends data to the connected *Recv* operator.  The
 	 scheduler on the receive node will only schedule *Recv* operator
 	 to run when the *Send* operator has ran (the *Send* OP will mark
 	 the *Recv* OP runnable automatically).
-   - *Enueue* enqueues the input variable, it can block until space
+   - *Enqueue* enqueues the input variable, it can block until space
      become available in the queue.
    - *Dequeue* outputs configurable numbers of tensors from the
-     queue. It will block until the queue have the required number of
+     queue. It will block until the queue has the required number of
      tensors.
 
 
 ### Benefits
 
-- Model parallelism become easier to implement: it's an extension to
+- Model parallelism becomes easier to implement: it is an extension to
   the trainer - parameter server approach. We can have several "Transpilers"
   to achieve different goals.
 - User-defined optimizer is easier to add - user can now express it as
@@ -72,22 +72,22 @@ After converting:
 
 ### Challenges
 
-- It's important to balance the parameter shards of on multiple
-  parameter server. If a single parameter is very big (some
+- It is important to balance the parameter shards on multiple
+  parameter servers. If a single parameter is very big (for example: some
   word-embedding, fully connected, softmax layer), we need to
   automatically partition the single parameter onto different
   parameter servers when possible (only element-wise optimizer depends
   on the parameter variable).
-- In the "Aync SGD" figure, the "W" variable on the parameter server
-  could be read and wrote concurrently. See
+- In the "Async SGD" figure, the "W" variable on the parameter server
+  could be read and written concurrently. See
   [here](https://github.com/PaddlePaddle/Paddle/pull/6394) for more
-  details about concurrent program in fluid.
+  details about concurrent program in Fluid.
 
 ### Discussion
 
 - Can the Enqueue OP be implemented under our current tensor design
-  (puts the input tensor into the queue tensor)?
-- *Dequeue* OP will have variable numbers of output (depends on the
+  (put the input tensor into the queue tensor)?
+- *Dequeue* OP will have variable numbers of output (depending on the
   `min_count` attribute), does our current design support it? (similar
   question for the *Add* OP)
 

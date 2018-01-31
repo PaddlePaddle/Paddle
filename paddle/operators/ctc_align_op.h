@@ -51,7 +51,7 @@ class CTCAlignKernel : public framework::OpKernel<T> {
       T prev_token = -1;
       for (size_t i = input_lod[level][seq_idx];
            i < input_lod[level][seq_idx + 1]; ++i) {
-        if (input_data[i] != blank &&
+        if ((unsigned)input_data[i] != blank &&
             !(merge_repeated && input_data[i] == prev_token)) {
           output_data[output_idx] = input_data[i];
           ++output_idx;

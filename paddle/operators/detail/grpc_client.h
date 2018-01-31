@@ -71,6 +71,15 @@ class ClientBase {
     context_->set_deadline(deadline);
   }
 
+  virtual void Prepare(int64_t time_out) {
+    context_.reset(new grpc::ClientContext());
+
+    std::chrono::system_clock::time_point deadline =
+        std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);
+
+    context_->set_deadline(deadline);
+  }
+
   virtual void Process() = 0;
 
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
@@ -117,6 +126,17 @@ class GetProcessor : public ClientBase {
   RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 
+class BatchBarrierProcessor : public ClientBase {
+ public:
+  explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
+      : ClientBase(ch) {}
+
+  virtual ~BatchBarrierProcessor() {}
+
+  virtual void Process() {}
+  sendrecv::VoidMessage reply_;
+};
+
 class RPCClient {
  public:
   bool AsyncSendVariable(const std::string& ep,
@@ -130,6 +150,10 @@ class RPCClient {
                         const framework::Scope& scope,
                         const std::string& var_name,
                         int64_t time_out = 600 * 1000);
+
+  bool AsyncSendBatchBarrier(const std::string& ep,
+                             int64_t time_out = 600 * 1000);
+
   bool Wait();
 
  private:
