@@ -158,7 +158,17 @@ def polynomial_decay(learning_rate,
         raise ValueError("global_step is required for inverse_time_decay.")
 
     if cycle:
-        pass
+        div_res = layers.ceil(x=(global_step / decay_steps))
+        zero_var = layers.fill_constant(
+            shape=[1, 1], dtype='float32', value=0.0)
+        one_var = layers.fill_constant(shape=[1, 1], dtype='float32', value=1.0)
+
+        cond = layers.equal(x=zero_var, y=global_step)
+        true_cond = layers.ConditionalBlock([cond])
+        with true_cond.block():
+            layers.assign(input=one_var, output=div_res)
+        return div_res
+        decay_steps = decay_steps * div_res
     else:
         decay_steps_var = layers.fill_constant(
             shape=[1], dtype='float32', value=float(decay_steps))

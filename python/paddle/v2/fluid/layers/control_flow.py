@@ -36,6 +36,7 @@ __all__ = [
     'array_write',
     'create_array',
     'less_than',
+    'equal',
     'array_read',
     'shrink_memory',
     'array_length',
