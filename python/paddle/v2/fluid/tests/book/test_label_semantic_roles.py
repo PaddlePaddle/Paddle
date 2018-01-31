@@ -155,18 +155,9 @@ def main():
             name='crfw', learning_rate=mix_hidden_lr))
     avg_cost = fluid.layers.mean(x=crf_cost)
 
-    global_step = fluid.layers.create_global_var(
-        shape=[1], value=0, dtype='float32', persistable=True)
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
-    sgd_optimizer = fluid.optimizer.SGD(
-        learning_rate=fluid.learning_rate_decay.exponential_decay(
-            learning_rate=0.0001,
-            global_step=global_step,
-            decay_steps=100000,
-            decay_rate=0.5,
-            staircase=True),
-        global_step=global_step)
+    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
     sgd_optimizer.minimize(avg_cost)
 
     # TODO(qiao)
@@ -204,11 +195,10 @@ def main():
     for pass_id in xrange(PASS_NUM):
         chunk_evaluator.reset(exe)
         for data in train_data():
-            cost, precision, recall, f1_score, global_step_val, global_lr_val = exe.run(
+            cost, precision, recall, f1_score = exe.run(
                 fluid.default_main_program(),
                 feed=feeder.feed(data),
-                fetch_list=[avg_cost] + chunk_evaluator.metrics +
-                [global_step, sgd_optimizer.global_learning_rate])
+                fetch_list=[avg_cost] + chunk_evaluator.metrics)
             pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
                 exe)
 
