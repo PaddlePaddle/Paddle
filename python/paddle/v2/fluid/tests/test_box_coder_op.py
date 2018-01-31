@@ -20,41 +20,51 @@ from op_test import OpTest
 
 
 def box_coder(target_box, prior_box, prior_box_var, output_box, code_type):
-    prior_box_x = (prior_box[:, 2] + prior_box[:, 0]) / 2
-    prior_box_y = (prior_box[:, 3] + prior_box[:, 1]) / 2
-    prior_box_width = (prior_box[:, 2] - prior_box[:, 0])
-    prior_box_height = (prior_box[:, 3] - prior_box[:, 1])
+    prior_box_x = (
+        (prior_box[:, 2] + prior_box[:, 0]) / 2).reshape(1, prior_box.shape[0])
+    prior_box_y = (
+        (prior_box[:, 3] + prior_box[:, 1]) / 2).reshape(1, prior_box.shape[0])
+    prior_box_width = (
+        (prior_box[:, 2] - prior_box[:, 0])).reshape(1, prior_box.shape[0])
+    prior_box_height = (
+        (prior_box[:, 3] - prior_box[:, 1])).reshape(1, prior_box.shape[0])
+    prior_box_var = prior_box_var.reshape(1, prior_box_var.shape[0],
+                                          prior_box_var.shape[1])
 
     if (code_type == "EncodeCenterSize"):
-        target_box_x = (target_box[:, 2] + target_box[:, 0]) / 2
-        target_box_y = (target_box[:, 3] + target_box[:, 1]) / 2
-        target_box_width = (target_box[:, 2] - target_box[:, 0])
-        target_box_height = (target_box[:, 3] - target_box[:, 1])
+        target_box_x = ((target_box[:, 2] + target_box[:, 0]) / 2).reshape(
+            target_box.shape[0], 1)
+        target_box_y = ((target_box[:, 3] + target_box[:, 1]) / 2).reshape(
+            target_box.shape[0], 1)
+        target_box_width = ((target_box[:, 2] - target_box[:, 0])).reshape(
+            target_box.shape[0], 1)
+        target_box_height = ((target_box[:, 3] - target_box[:, 1])).reshape(
+            target_box.shape[0], 1)
 
-        for i in range(target_box.shape[0]):
-            output_box[i,:,0] = (target_box_x[i] - prior_box_x) / prior_box_width / \
-                                prior_box_var[:,0]
-            output_box[i,:,1] = (target_box_y[i] - prior_box_y) / prior_box_height / \
-                                prior_box_var[:,1]
-            output_box[i,:,2] = np.log(np.fabs(target_box_width[i] / prior_box_width)) / \
-                                prior_box_var[:,2]
-            output_box[i,:,3] = np.log(np.fabs(target_box_height[i] / prior_box_height)) / \
-                                prior_box_var[:,3]
+        output_box[:,:,0] = (target_box_x - prior_box_x) / prior_box_width / \
+                prior_box_var[:,:,0]
+        output_box[:,:,1] = (target_box_y - prior_box_y) / prior_box_height / \
+                prior_box_var[:,:,1]
+        output_box[:,:,2] = np.log(np.fabs(target_box_width / prior_box_width)) / \
+                prior_box_var[:,:,2]
+        output_box[:,:,3] = np.log(np.fabs(target_box_height / prior_box_height)) / \
+                prior_box_var[:,:,3]
 
     elif (code_type == "DecodeCenterSize"):
-        for i in range(target_box.shape[0]):
-            target_box_x = prior_box_var[:,0] * target_box[i][0] * \
-                           prior_box_width[:] + prior_box_x[:]
-            target_box_y = prior_box_var[:,1] * target_box[i][1] * \
-                           prior_box_height[:] + prior_box_y[:]
-            target_box_width = np.exp(prior_box_var[:,2] * target_box[i][2]) * \
-                               prior_box_width[:]
-            target_box_height = np.exp(prior_box_var[:,3] * target_box[i][3]) * \
-                                prior_box_height[:]
-            output_box[i, :, 0] = target_box_x - target_box_width / 2
-            output_box[i, :, 1] = target_box_y - target_box_height / 2
-            output_box[i, :, 2] = target_box_x + target_box_width / 2
-            output_box[i, :, 3] = target_box_y + target_box_height / 2
+        target_box = target_box.reshape(target_box.shape[0], 1,
+                                        target_box.shape[1])
+        target_box_x = prior_box_var[:,:,0] * target_box[:,:,0] * \
+                       prior_box_width + prior_box_x
+        target_box_y = prior_box_var[:,:,1] * target_box[:,:,1] * \
+                       prior_box_height + prior_box_y
+        target_box_width = np.exp(prior_box_var[:,:,2] * target_box[:,:,2]) * \
+                           prior_box_width
+        target_box_height = np.exp(prior_box_var[:,:,3] * target_box[:,:,3]) * \
+                            prior_box_height
+        output_box[:, :, 0] = target_box_x - target_box_width / 2
+        output_box[:, :, 1] = target_box_y - target_box_height / 2
+        output_box[:, :, 2] = target_box_x + target_box_width / 2
+        output_box[:, :, 3] = target_box_y + target_box_height / 2
 
 
 def batch_box_coder(prior_box, prior_box_var, target_box, lod, code_type):

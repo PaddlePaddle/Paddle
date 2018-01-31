@@ -15,8 +15,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T>
 __global__ void EncodeCenterSizeKernel(const T* prior_box_data,
                                        const T* prior_box_var_data,
