@@ -152,12 +152,12 @@ for data in train_reader():
 `JobDesc` object describe the distributed job resource specification to run on
 Cluster environment.
 
-<img src="src/remote_executor.png"/>
+<img src="src/remote_executor.png" width="500" align="center" />
 
 `RemoteExecutor.run` sends the `ProgramDesc` and
 [TrainingJob](https://github.com/PaddlePaddle/cloud/blob/develop/doc/autoscale/README.md#training-job-resource)
 to a server in the cluster which executes `RemoteExecutor.listen`. This server is responsible
-to start the final Kubernetes Jobs to run the different role of `ProgramDesc`.
+to start the final Kubernetes Jobs to run the different role of `ProgramDesc` from `ConfigMap`.
 
 
 ### Placement Algorithm

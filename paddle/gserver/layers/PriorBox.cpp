@@ -69,7 +69,7 @@ bool PriorBoxLayer::init(const LayerMap& layerMap,
   if (maxSize_.size() > 0) CHECK_EQ(minSize_.size(), maxSize_.size());
 
   // flip aspect ratios
-  for (int index = 0; index < tmp.size(); index++) {
+  for (unsigned index = 0; index < tmp.size(); index++) {
     real ar = tmp[index];
     if (fabs(ar - 1.) < 1e-6) continue;
     aspectRatio_.push_back(ar);

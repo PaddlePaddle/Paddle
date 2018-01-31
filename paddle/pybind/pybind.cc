@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/operators/net_op.h"
 #include "paddle/platform/enforce.h"
 #include "paddle/platform/place.h"
+#include "paddle/platform/profiler.h"
 #include "paddle/pybind/const_value.h"
 #include "paddle/pybind/exception.h"
 #include "paddle/pybind/pybind.h"
@@ -52,7 +53,7 @@ static size_t UniqueIntegerGenerator(const std::string &prefix) {
   return generators[prefix].fetch_add(1);
 }
 
-bool IsCompileGPU() {
+bool IsCompiledWithCUDA() {
 #ifndef PADDLE_WITH_CUDA
   return false;
 #else
@@ -123,44 +124,25 @@ PYBIND11_PLUGIN(core) {
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
-#ifndef PADDLE_WITH_CUDA
-            new (&instance) LoDTensor(lod);
-#else
-             LoD new_lod;
-             new_lod.reserve(lod.size());
-             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             new (&instance) LoDTensor(new_lod);
-#endif
+            LoD new_lod;
+            new_lod.reserve(lod.size());
+            std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+            new (&instance) LoDTensor(new_lod);
           })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-#ifndef PADDLE_WITH_CUDA
-             self.set_lod(lod);
-#else
              LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              self.set_lod(new_lod);
-#endif
            })
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-#ifndef PADDLE_WITH_CUDA
-        return self.lod();
-#else
-           auto lod = self.lod();
-           std::vector<std::vector<size_t>> new_lod;
-           new_lod.reserve(lod.size());
-           std::transform(lod.begin(), lod.end(), std::back_inserter(new_lod),
-               [](Vector<size_t> item) ->
-                   std::vector<size_t> {
-                 std::vector<size_t> v;
-                 v.reserve(item.size());
-                 std::copy(item.begin(), item.end(), std::back_inserter(v));
-                 return v;
-               });
-           return new_lod;
-#endif
+        auto lod = self.lod();
+        std::vector<std::vector<size_t>> new_lod;
+        new_lod.reserve(lod.size());
+        std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+        return new_lod;
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")
@@ -423,14 +405,16 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
-      .def("run", &Executor::Run);
+      .def("run",
+           (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
+               Executor::Run);
 
   m.def("unique_integer", UniqueIntegerGenerator);
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_devices", &framework::InitDevices);
 
-  m.def("is_compile_gpu", IsCompileGPU);
+  m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
@@ -476,6 +460,24 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_stop", platform::CudaProfilerStop);
 #endif
 
+  py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
+      .value("kDisabled", platform::ProfilerState::kDisabled)
+      .value("kCPU", platform::ProfilerState::kCPU)
+      .value("kCUDA", platform::ProfilerState::kCUDA)
+      .export_values();
+
+  py::enum_<platform::EventSortingKey>(m, "EventSortingKey", py::arithmetic())
+      .value("kDefault", platform::EventSortingKey::kDefault)
+      .value("kCalls", platform::EventSortingKey::kCalls)
+      .value("kTotal", platform::EventSortingKey::kTotal)
+      .value("kMin", platform::EventSortingKey::kMin)
+      .value("kMax", platform::EventSortingKey::kMax)
+      .value("kAve", platform::EventSortingKey::kAve)
+      .export_values();
+
+  m.def("enable_profiler", platform::EnableProfiler);
+  m.def("disable_profiler", platform::DisableProfiler);
+  m.def("reset_profiler", platform::ResetProfiler);
   return m.ptr();
 }
 }  // namespace pybind

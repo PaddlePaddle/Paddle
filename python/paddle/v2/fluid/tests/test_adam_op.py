@@ -305,7 +305,7 @@ class TestSparseAdamOp(unittest.TestCase):
 
     def test_sparse_sgd(self):
         places = [core.CPUPlace()]
-        if core.is_compile_gpu():
+        if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place)
