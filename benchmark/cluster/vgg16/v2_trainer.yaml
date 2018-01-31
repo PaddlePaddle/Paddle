@@ -3,8 +3,8 @@ kind: Job
 metadata:
   name: vgg16v2job-trainer
 spec:
-  parallelism: 20
-  completions: 20
+  parallelism: 60
+  completions: 60
   template:
     metadata:
       labels:
@@ -24,13 +24,13 @@ spec:
         - name: BATCH_SIZE
           value: "256"
         - name: TRAINERS
-          value: "20"
+          value: "60"
         - name: PSERVERS
           value: "10"
         - name: TOPOLOGY
           value: ""
         - name: ENTRY
-          value: "cd /workspace && MKL_NUM_THREADS=1 python /workspace/vgg16_v2.py"
+          value: "cd /workspace && MKL_NUM_THREADS=1 python -u /workspace/vgg16_v2.py"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: PADDLE_INIT_PORT

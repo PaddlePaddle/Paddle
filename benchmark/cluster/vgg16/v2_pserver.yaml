@@ -23,13 +23,13 @@ spec:
         - name: PADDLE_JOB_NAME
           value: vgg16v2job
         - name: TRAINERS
-          value: "20"
+          value: "60"
         - name: PSERVERS
           value: "10"
         - name: TOPOLOGY
           value: ""
         - name: ENTRY
-          value: "python train.py"
+          value: "python -u train.py"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: PADDLE_INIT_PORT
