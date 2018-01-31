@@ -60,7 +60,12 @@ def _clone_var_in_block_(block, var):
         persistable=True)
 
 
-def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
+def save_vars(executor,
+              dirname,
+              main_program=None,
+              vars=None,
+              predicate=None,
+              save_file_name='parameters'):
     """
     Save variables to directory by executor.
 
@@ -69,9 +74,10 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     :param main_program: program. If vars is None, then filter all variables in this
     program which fit `predicate`. Default default_main_program.
     :param predicate: The Predicate describes a callable that returns a variable
-    as a bool. If it returns true, the variables will be saved.
-    :param vars: variables need to be saved. If specify vars, program & predicate
+    as a bool. If it returns true, the corresponding input variable will be saved.
+    :param vars: variables need to be saved. If vars is specified, program & predicate
     will be ignored
+    :param save_file_name: the name of a single file that all vars are saved to
     :return: None
     """
     if vars is None:
@@ -87,13 +93,17 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     else:
         save_program = Program()
         save_block = save_program.global_block()
+        save_var_list = []
         for each_var in vars:
             new_var = _clone_var_in_block_(save_block, each_var)
-            save_block.append_op(
-                type='save',
-                inputs={'X': [new_var]},
-                outputs={},
-                attrs={'file_path': os.path.join(dirname, new_var.name)})
+            save_var_list.append(new_var)
+
+        save_block.append_op(
+            type='save_combine',
+            inputs={'X': save_var_list},
+            outputs={},
+            attrs={'file_path': os.path.join(dirname, save_file_name)})
+
         executor.run(save_program)
 
 
@@ -121,18 +131,24 @@ def save_persistables(executor, dirname, main_program=None):
         predicate=is_persistable)
 
 
-def load_vars(executor, dirname, main_program=None, vars=None, predicate=None):
+def load_vars(executor,
+              dirname,
+              main_program=None,
+              vars=None,
+              predicate=None,
+              load_file_name='parameters'):
     """
     Load variables from directory by executor.
 
-    :param executor: executor that save variable
+    :param executor: executor that load variable
     :param dirname: directory path
     :param main_program: program. If vars is None, then filter all variables in this
     program which fit `predicate`. Default default_main_program().
     :param predicate: The Predicate describes a callable that returns a variable
-    as a bool. If it returns true, the variables will be loaded.
-    :param vars: variables need to be loaded. If specify vars, program &
+    as a bool. If it returns true, the corresponding input variable will be loaded.
+    :param vars: variables need to be loaded. If vars is specified, program &
     predicate will be ignored
+    :param load_file_name: the name of the single file that all vars are loaded from   
     :return: None
     """
     if vars is None:
@@ -148,14 +164,17 @@ def load_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
+        load_var_list = []
         for each_var in vars:
             assert isinstance(each_var, Variable)
             new_var = _clone_var_in_block_(load_block, each_var)
-            load_block.append_op(
-                type='load',
-                inputs={},
-                outputs={"Out": [new_var]},
-                attrs={'file_path': os.path.join(dirname, new_var.name)})
+            load_var_list.append(new_var)
+
+        load_block.append_op(
+            type='load_combine',
+            inputs={},
+            outputs={"Out": load_var_list},
+            attrs={'file_path': os.path.join(dirname, load_file_name)})
 
         executor.run(load_prog)
 
@@ -342,7 +361,7 @@ def load_inference_model(dirname, executor):
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
-    load_persistables_if_exist(executor, dirname, program)
+    load_params(executor, dirname, program)
 
     feed_target_names = get_feed_targets_names(program)
     fetch_target_names = get_fetch_targets_names(program)
