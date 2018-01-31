@@ -12,17 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-#include <string>
-#include <vector>
-#include "paddle/framework/lod_tensor.h"
+#include "paddle/operators/label_smooth_op.h"
 
-namespace paddle {
-namespace framework {
-using FeedFetchType = LoDTensor;
-using FeedFetchList = std::vector<FeedFetchType>;
+namespace ops = paddle::operators;
 
-static const std::string kFeedOpType = "feed";
-static const std::string kFetchOpType = "fetch";
-}  // namespace framework
-}  // namespace paddle
+REGISTER_OP_CUDA_KERNEL(
+    label_smooth,
+    ops::LabelSmoothKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LabelSmoothKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    label_smooth_grad,
+    ops::LabelSmoothGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LabelSmoothGradKernel<paddle::platform::CUDADeviceContext, double>);
