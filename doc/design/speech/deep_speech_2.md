@@ -141,7 +141,7 @@ TODO by Assignees
 ### Beam Search with CTC and LM
 
 <div align="center">
-<img src="image/beam_search.png" width=400><br/>
+<img src="image/beam_search.png" width=600><br/>
 Figure 2. Algorithm for CTC Beam Search Decoder.
 </div>
 
