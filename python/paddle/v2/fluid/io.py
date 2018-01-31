@@ -88,10 +88,16 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
         save_program = Program()
         save_block = save_program.global_block()
 
-        varlist = []
+        varmap = {}
         for each_var in vars:
             new_var = _clone_var_in_block_(save_block, each_var)
-            varlist.append(new_var)
+            varmap[new_var.name] = new_var
+
+        print("From save_combine, the order is:", sorted(varmap.keys()))
+
+        varlist = []
+        for i in sorted(varmap.keys()):
+            varlist.append(varmap[i])
 
         save_block.append_op(
             type='save_combine',
@@ -347,6 +353,7 @@ def load_inference_model(dirname, executor):
     model_file_name = dirname + "/__model__"
     with open(model_file_name, "rb") as f:
         program_desc_str = f.read()
+        print(program_desc_str)
 
     program = Program.parse_from_string(program_desc_str)
     load_persistables_if_exist(executor, dirname, program)
