@@ -18,6 +18,7 @@ limitations under the License. */
 #include <mutex>
 
 #include "paddle/framework/channel.h"
+#include "paddle/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -32,6 +33,8 @@ class Buffered : public paddle::framework::Channel<T> {
   virtual void Send(T*);
   virtual void Receive(T*);
   virtual size_t Cap() { return cap_; }
+  virtual void Close();
+  virtual ~Buffered();
 
  private:
   size_t cap_;
@@ -39,9 +42,11 @@ class Buffered : public paddle::framework::Channel<T> {
   std::condition_variable empty_cond_var_;
   std::condition_variable full_cond_var_;
   std::deque<T> channel_;
+  bool closed_;
 
-  Buffered(size_t cap) : cap_(cap) {}
-  virtual ~Buffered();
+  Buffered(size_t cap) : cap_(cap), closed_(false) {
+    PADDLE_ENFORCE_GT(cap, 0);
+  }
 
   void NotifyAllSenders(std::unique_lock<std::mutex>*);
 };
@@ -49,24 +54,39 @@ class Buffered : public paddle::framework::Channel<T> {
 template <typename T>
 void Buffered<T>::Send(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
-  full_cond_var_.wait(lock, [this]() { return channel_.size() < cap_; });
-  channel_.push_back(std::move(*item));
-  lock.unlock();
-  empty_cond_var_.notify_one();
+  full_cond_var_.wait(lock,
+                      [this]() { return channel_.size() < cap_ || closed_; });
+  if (!closed_) {
+    channel_.push_back(std::move(*item));
+    lock.unlock();
+    empty_cond_var_.notify_one();
+  }
 }
 
 template <typename T>
 void Buffered<T>::Receive(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
-  empty_cond_var_.wait(lock, [this]() { return !channel_.empty(); });
-  *item = std::move(channel_.front());
-  channel_.pop_front();
+  empty_cond_var_.wait(lock, [this]() { return !channel_.empty() || closed_; });
+  if (!closed_) {
+    *item = std::move(channel_.front());
+    channel_.pop_front();
+    NotifyAllSenders(&lock);
+  } else {
+    item = nullptr;
+  }
+}
+
+template <typename T>
+void Buffered<T>::Close() {
+  std::unique_lock<std::mutex> lock(mu_);
+  closed_ = true;
   NotifyAllSenders(&lock);
 }
 
 template <typename T>
 Buffered<T>::~Buffered() {
   std::unique_lock<std::mutex> lock(mu_);
+  closed_ = true;
   channel_.clear();
   NotifyAllSenders(&lock);
 }
@@ -74,7 +94,7 @@ Buffered<T>::~Buffered() {
 template <typename T>
 void Buffered<T>::NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
   lock->unlock();
-  full_cond_var_.notify_one();
+  full_cond_var_.notify_all();
 }
 
 }  // namespace details

@@ -20,7 +20,21 @@ TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;
   using paddle::platform::DeviceContextPool;
 
+#ifndef PADDLE_WITH_CUDA
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_GE(pool.size(), 1U);
+  ASSERT_EQ(pool.size(), 1U);
+#endif
+}
+
+TEST(InitDevices, CUDA) {
+  using paddle::framework::InitDevices;
+  using paddle::platform::DeviceContextPool;
+
+#ifdef PADDLE_WITH_CUDA
+  int count = paddle::platform::GetCUDADeviceCount();
+  InitDevices();
+  DeviceContextPool& pool = DeviceContextPool::Instance();
+  ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));
+#endif
 }
