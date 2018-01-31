@@ -112,12 +112,6 @@ double Event::MemoryUsed(const Event& e) const {
          (1024 * 1024);
 }
 
-double Event::MaxMemoryUsed(const Event& e) const {
-  return static_cast<double>(
-             std::max(e.memory_used_chars_, memory_used_chars_)) /
-         (1024 * 1024);
-}
-
 #ifdef PADDLE_WITH_CUDA
 static void ForEachDevice(std::function<void(int)> func) {
   auto original_device = GetCurrentDeviceId();
@@ -285,7 +279,9 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
                                   : rit->CpuElapsedMs(events[i][j]);
 
           double event_memory_used = rit->MemoryUsed(events[i][j]);
-          double total_memory_used = rit->MaxMemoryUsed(events[i][j]);
+          double total_memory_used =
+              static_cast<double>(rit->GetMemoryUsed()) / (1024 * 1024);
+          int64_t mark_time = rit->GetCpuNs();
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
           max_name_width = std::max(max_name_width, event_name.size());
@@ -293,10 +289,11 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
           if (event_idx.find(event_name) == event_idx.end()) {
             event_idx[event_name] = event_items.size();
             EventItem event_item = {event_name,        1,
+                                    mark_time,         event_time,
                                     event_time,        event_time,
-                                    event_time,        event_time,
-                                    total_memory_used, event_memory_used,
-                                    event_memory_used, event_memory_used};
+                                    event_time,        total_memory_used,
+                                    event_memory_used, event_memory_used,
+                                    event_memory_used};
             event_items.push_back(event_item);
           } else {
             int index = event_idx[event_name];
@@ -361,10 +358,10 @@ void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       EventItem& event_item = events_table[i][j];
       if (event_item.name == kStartProfiler) {
-        app_total_time -= event_item.total_time;
+        app_total_time -= event_item.mark_time / 1000000.0;
       }
       if (event_item.name == kStopProfiler) {
-        app_total_time += event_item.total_time;
+        app_total_time += event_item.mark_time / 1000000.0;
       }
 
       app_total_memory =

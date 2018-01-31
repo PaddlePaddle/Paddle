@@ -47,7 +47,10 @@ class Event {
   double CpuElapsedMs(const Event& e) const;
   double CudaElapsedMs(const Event& e) const;
   double MemoryUsed(const Event& e) const;
-  double MaxMemoryUsed(const Event& e) const;
+  /* Get memory used attribute */
+  int64_t GetMemoryUsed() const { return memory_used_chars_; }
+  /* Get cpu time used attribute */
+  int64_t GetCpuNs() const { return cpu_ns_; }
 
  private:
   EventKind kind_;
@@ -126,6 +129,7 @@ std::vector<std::vector<Event>> GetAllEvents();
 struct EventItem {
   std::string name;
   int calls;
+  int64_t mark_time;
   double total_time;
   double min_time;
   double max_time;
