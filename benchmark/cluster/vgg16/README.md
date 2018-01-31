@@ -48,14 +48,14 @@
 
 ### different pserver number
 
-- Trainer Count: 100
+- Trainer Count: 60
 - Batch Size: 128
 - Metrics: mini-batch / sec
 
-| PServer Count | 10 | 20 | 40 | 60 |
+| PServer Count | 3 | 6 |10 | 20 |
 | -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | - | - | - | - |
-| PaddlePaddle v2 | - | - | - | - |
+| PaddlePaddle Fluid | 589.1 | 592.6 | 656.4 | 655.8 |
+| PaddlePaddle v2 | 412.2 | 368.4 | 346.8 | 283.2 |
 | TensorFlow | - | - | - | - |
 
 
