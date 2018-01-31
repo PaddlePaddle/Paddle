@@ -22,7 +22,9 @@ limitations under the License. */
 int main(int argc, char** argv) {
   std::vector<char*> new_argv;
   std::string gflags_env;
-  new_argv.push_back(argv[0]);
+  for (int i = 0; i < argc; ++i) {
+    new_argv.push_back(argv[i]);
+  }
 #ifdef PADDLE_WITH_CUDA
   new_argv.push_back(
       strdup("--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory"));

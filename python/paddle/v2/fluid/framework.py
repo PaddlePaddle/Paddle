@@ -14,6 +14,7 @@
 
 import collections
 import contextlib
+import re
 
 import numpy as np
 
@@ -239,20 +240,30 @@ class Variable(object):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
+    def to_string(self, throw_on_error, with_details=False):
         """
         Get debug string.
 
         Args:
             throw_on_error(bool): True if raise an exception when self is not
                 intialized.
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
 
         Returns(str): The debug string.
 
         """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.VarDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+        res_str = _debug_string_(proto, throw_on_error)
+        if with_details:
+            additional_attr = ("error_clip", "stop_gradient")
+            for attr_name in additional_attr:
+                res_str += "%s: %s\n" % (attr_name,
+                                         str(getattr(self, attr_name)))
+        return res_str
 
     __repr__ = __str__
 
@@ -629,10 +640,36 @@ class Block(object):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
-        protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.BlockDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            re_add_indent = re.compile(r"\n(.)")
+            res_str = "blocks {\n  idx: %d\n  parent_idx: %d" % (
+                self.idx, self.parent_idx)
+            for var in self.vars.itervalues():
+                res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
+                    r"\n    \1", var.to_string(throw_on_error, with_details))
+            for op in self.ops:
+                res_str += "\n  ops {\n    %s  }" % re_add_indent.sub(
+                    r"\n    \1", op.to_string(throw_on_error))
+            res_str += "\n}"
+        else:
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.BlockDesc.FromString(str(protostr))
+            res_str = _debug_string_(proto, throw_on_error)
+        return res_str
 
     __repr__ = __str__
 
@@ -796,10 +833,29 @@ class Program(object):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
-        protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.ProgramDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            res_str = ""
+            for block in self.blocks:
+                res_str += block.to_string(throw_on_error, with_details)
+        else:
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+            res_str = _debug_string_(proto, throw_on_error)
+        return res_str
 
     def get_desc(self):
         return self.desc
@@ -949,6 +1005,36 @@ class Parameter(Variable):
         self.regularizer = kwargs.get('regularizer', None)
 
         self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
+
+    def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            res_str = Variable.to_string(self, throw_on_error, True)
+            additional_attr = ("trainable", "optimize_attr", "regularizer",
+                               "gradient_clip_attr")
+            for attr_name in additional_attr:
+                res_str += "%s: %s\n" % (attr_name,
+                                         str(getattr(self, attr_name)))
+        else:
+            res_str = Variable.to_string(self, throw_on_error, False)
+        return res_str
+
+    __repr__ = __str__
 
 
 # program is a global instance.

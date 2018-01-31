@@ -89,7 +89,7 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(in_height, out_dims[0]);
 
       auto& in_value = grad->value();
-      auto& in_rows = grad->rows();
+      framework::Vector<int64_t> in_rows(grad->rows());
 
       int64_t in_row_numel = in_value.numel() / in_rows.size();
       PADDLE_ENFORCE_EQ(in_row_numel, param_out->numel() / in_height);
@@ -102,7 +102,7 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       dim3 grid(1, in_rows.size());
       SparseSGDFunctorKernel<
           T, 256><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
-          in_data, in_rows.data(), learning_rate->data<T>(), out_data,
+          in_data, in_rows.cuda_data(), learning_rate->data<T>(), out_data,
           in_row_numel);
 
     } else {
