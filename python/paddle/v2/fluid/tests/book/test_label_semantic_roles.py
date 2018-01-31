@@ -175,7 +175,7 @@ def main():
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    #place = fluid.CPUPlace()
+    # place = fluid.CPUPlace()
     place = fluid.CUDAPlace(0)
     feeder = fluid.DataFeeder(
         feed_list=[

@@ -13,16 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <string>
-#include <vector>
-#include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
-namespace framework {
-using FeedFetchType = LoDTensor;
-using FeedFetchList = std::vector<FeedFetchType>;
+namespace operators {
 
-static const std::string kFeedOpType = "feed";
-static const std::string kFetchOpType = "fetch";
-}  // namespace framework
+template <typename DeviceContext, typename T>
+class LayerNormKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override;
+};
+
+template <typename DeviceContext, typename T>
+class LayerNormGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override;
+};
+
+}  // namespace operators
 }  // namespace paddle

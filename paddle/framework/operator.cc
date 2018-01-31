@@ -22,9 +22,7 @@ limitations under the License. */
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
 
-DEFINE_bool(op_sync, false,
-            "Default cuda is asynchronous device, set to True will"
-            "force op run in synchronous mode.");
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace framework {
@@ -531,7 +529,7 @@ void OperatorWithKernel::Run(const Scope& scope,
       ExecutionContext(*this, new_scope, *new_dev_ctx));
 
   /*For profiling/benchmark only*/
-  if (FLAGS_op_sync) {
+  if (FLAGS_benchmark) {
     new_dev_ctx->Wait();
   }
 }
