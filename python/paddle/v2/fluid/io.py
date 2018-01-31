@@ -326,7 +326,7 @@ def save_inference_model(dirname,
         f.write(inference_program.desc.serialize_to_string())
 
     parameter_list = get_parameters(inference_program)
-    save_vars(executor, dirname, main_program, parameter_list)
+    save_vars(executor, dirname, inference_program, parameter_list)
 
 
 def get_feed_targets_names(program):
