@@ -149,7 +149,7 @@ Figure 2. Algorithm for CTC Beam Search Decoder.
    - 1) in the iterative computation of probabilities, the assignment operation is changed to accumulation for one prefix may comes from different paths; 
    - 2) the if condition ```if l^+ not in A_prev then``` after probabilities' computation is deprecated for it is hard to understand and seems unnecessary.
 - An **external scorer** would be passed into the decoder to evaluate a candidate prefix during decoding whenever a white space appended in English decoding and any character appended in Mandarin decoding.
-- Such external scorer consists of language model, word count or any other customed scorers.
+- Such external scorer consists of language model, word count or any other custom scorers.
 - The **language model** is built from Task 5, with parameters should be carefully tuned to achieve minimum WER/CER (c.f. Task 7)
 - This decoder needs to perform with **high efficiency** for the convenience of parameters tuning and speech recognition in reality. 
  
