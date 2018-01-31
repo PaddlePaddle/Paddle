@@ -13,13 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/data_type_transform.h"
+#include "paddle/framework/init.h"
 
 #include "gtest/gtest.h"
 
 TEST(DataTypeTransform, CPUTransform) {
   using namespace paddle::framework;
   using namespace paddle::platform;
-
+  paddle::framework::InitDevices();
   auto place = CPUPlace();
 
   Tensor in;

@@ -15,11 +15,13 @@
 #include "paddle/framework/data_layout_transform.h"
 
 #include "gtest/gtest.h"
+#include "paddle/framework/init.h"
 #include "paddle/platform/device_context.h"
 
 TEST(DataTransform, DataLayoutFunction) {
   using namespace paddle::framework;
   using namespace paddle::platform;
+  paddle::framework::InitDevices();
 
   auto place = CPUPlace();
   Tensor in = Tensor();

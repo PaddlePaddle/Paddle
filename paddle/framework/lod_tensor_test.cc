@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/init.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -101,6 +102,7 @@ TEST(LoD, ToAbsOffset) {
 }
 
 TEST(LoD, SplitLoDTensor) {
+  paddle::framework::InitDevices();
   LoD lod;
   lod.push_back(std::vector<size_t>({0, 2, 4, 5, 6}));
   lod.push_back(std::vector<size_t>({0, 1, 6, 8, 13, 15, 20}));
@@ -129,6 +131,7 @@ TEST(LoD, SplitLoDTensor) {
 }
 
 TEST(LoD, MergeLoDTensor) {
+  paddle::framework::InitDevices();
   LoD lod;
   lod.push_back(std::vector<size_t>({0, 2, 4, 5, 6}));
   lod.push_back(std::vector<size_t>({0, 1, 6, 8, 13, 15, 20}));

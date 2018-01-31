@@ -15,6 +15,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/framework/init.h"
 #include "paddle/framework/op_registry.h"
 
 namespace pd = paddle::framework;
@@ -245,6 +246,7 @@ REGISTER_OP_CUDA_KERNEL(op_with_kernel,
                             paddle::platform::CUDADeviceContext, float>);
 
 TEST(OperatorRegistrar, CPU) {
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
@@ -256,6 +258,7 @@ TEST(OperatorRegistrar, CPU) {
 }
 
 TEST(OperatorRegistrar, CUDA) {
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   paddle::platform::CUDAPlace cuda_place(0);
   paddle::framework::Scope scope;
@@ -358,6 +361,7 @@ REGISTER_OP_KERNEL(
     paddle::framework::OpMultiKernelTest2<CUDADeviceContext, float>);
 
 TEST(OperatorRegistrar, OpWithMultiKernel) {
+  paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
   paddle::platform::CUDAPlace cuda_place(0);
   paddle::platform::CPUPlace cpu_place;

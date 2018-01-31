@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "gtest/gtest.h"
+#include "paddle/framework/init.h"
 #include "paddle/framework/tensor_util.h"
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
@@ -32,6 +33,7 @@ static __global__ void FillInf(float* buf) {
 }
 
 TEST(HasNAN, GPU) {
+  paddle::framework::InitDevices();
   Tensor tensor;
   platform::CUDAPlace gpu(0);
   auto& pool = platform::DeviceContextPool::Instance();
@@ -43,6 +45,7 @@ TEST(HasNAN, GPU) {
 }
 
 TEST(HasInf, GPU) {
+  paddle::framework::InitDevices();
   Tensor tensor;
   platform::CUDAPlace gpu(0);
   auto& pool = platform::DeviceContextPool::Instance();

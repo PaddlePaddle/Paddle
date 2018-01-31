@@ -191,4 +191,4 @@ cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor paddle_memor
 if(WITH_GPU)
     cc_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
 endif()
-cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
+cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op init)

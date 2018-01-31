@@ -16,11 +16,13 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <string>
+#include "paddle/framework/init.h"
 
 namespace paddle {
 namespace framework {
 
 TEST(Copy, Tensor) {
+  paddle::framework::InitDevices();
   Tensor src_tensor;
   Tensor dst_tensor;
   platform::CPUDeviceContext cpu_ctx((platform::CPUPlace()));
@@ -233,6 +235,7 @@ TEST(CopyToVector, Tensor) {
 }
 
 TEST(HasNAN, CPU) {
+  paddle::framework::InitDevices();
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor src;
@@ -245,6 +248,7 @@ TEST(HasNAN, CPU) {
 }
 
 TEST(HasInf, CPU) {
+  paddle::framework::InitDevices();
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor src;
