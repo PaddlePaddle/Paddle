@@ -16,6 +16,7 @@ limitations under the License. */
 #include <time.h>
 #include <sstream>
 #include "gflags/gflags.h"
+#include "paddle/framework/init.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/inference/io.h"
 
@@ -26,6 +27,7 @@ void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
   // 1. Define place, executor and scope
+  paddle::framework::InitDevices();
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
