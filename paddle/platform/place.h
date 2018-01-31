@@ -43,7 +43,7 @@ struct CUDAPlace {
 
   // needed for variant equality comparison
   inline bool operator==(const CUDAPlace &o) const {
-    return device == o.device;
+    return device == o.device && stream_type == o.stream_type;
   }
   inline bool operator!=(const CUDAPlace &o) const { return !(*this == o); }
 
