@@ -38,7 +38,7 @@ spec:
         - name: PADDLE_INIT_NICS
           value: "xgbe0"
         - name: PADDLE_INIT_TRAINER_COUNT
-          value: "2"
+          value: "1"
         - name: PADDLE_INIT_PORTS_NUM
           value: "1"
         - name: PADDLE_INIT_PORTS_NUM_FOR_SPARSE

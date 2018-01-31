@@ -51,7 +51,7 @@ def vgg(input, nums, class_dim):
     conv4 = conv_block(conv3, 512, nums[3])
     conv5 = conv_block(conv4, 512, nums[4])
 
-    fc_dim = 4096
+    fc_dim = 512
     fc1 = paddle.layer.fc(input=conv5,
                           size=fc_dim,
                           act=paddle.activation.Relu(),

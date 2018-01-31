@@ -30,7 +30,7 @@ spec:
         - name: TOPOLOGY
           value: ""
         - name: ENTRY
-          value: "MKL_NUM_THREADS=1 python /workspace/vgg16_fluid.py --local 0 --batch_size 256"
+          value: "MKL_NUM_THREADS=1 python /workspace/vgg16_fluid.py --local 0 --batch_size 128"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: PADDLE_INIT_PORT
