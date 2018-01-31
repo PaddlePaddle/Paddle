@@ -155,7 +155,7 @@ class TestUnderstandSentiment(unittest.TestCase):
                     print(prog)
                     raise
 
-    @unittest.skip(reason="make CI faster")
+    # @unittest.skip(reason="make CI faster")
     def test_conv_cpu(self):
         with self.new_program_scope():
             main(self.word_dict, net_method=convolution_net, use_cuda=False)
@@ -168,7 +168,7 @@ class TestUnderstandSentiment(unittest.TestCase):
                 use_cuda=False,
                 parallel=True)
 
-    @unittest.skip(reason="make CI faster")
+    # @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_cpu(self):
         with self.new_program_scope():
             main(self.word_dict, net_method=stacked_lstm_net, use_cuda=False)
@@ -181,7 +181,7 @@ class TestUnderstandSentiment(unittest.TestCase):
                 use_cuda=False,
                 parallel=True)
 
-    @unittest.skip(reason="make CI faster")
+    # @unittest.skip(reason="make CI faster")
     def test_conv_gpu(self):
         with self.new_program_scope():
             main(self.word_dict, net_method=convolution_net, use_cuda=True)
@@ -194,7 +194,7 @@ class TestUnderstandSentiment(unittest.TestCase):
                 use_cuda=True,
                 parallel=True)
 
-    @unittest.skip(reason="make CI faster")
+    # @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_gpu(self):
         with self.new_program_scope():
             main(self.word_dict, net_method=stacked_lstm_net, use_cuda=True)
