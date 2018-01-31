@@ -65,7 +65,7 @@ def save_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              save_file_name='__parameters__'):
+              save_file_name=None):
     """
     Save variables to directory by executor.
 
@@ -89,29 +89,40 @@ def save_vars(executor,
         save_vars(
             executor,
             dirname=dirname,
-            vars=filter(predicate, main_program.list_vars()))
+            vars=filter(predicate, main_program.list_vars()),
+            save_file_name=save_file_name)
     else:
         save_program = Program()
         save_block = save_program.global_block()
-        save_var_map = {}
-        for each_var in vars:
-            new_var = _clone_var_in_block_(save_block, each_var)
-            save_var_map[new_var.name] = new_var
 
-        save_var_list = []
-        for name in sorted(save_var_map.keys()):
-            save_var_list.append(save_var_map[name])
+        if save_file_name is None:
+            for each_var in vars:
+                new_var = _clone_var_in_block_(save_block, each_var)
+                save_block.append_op(
+                    type='save',
+                    inputs={'X': [new_var]},
+                    outputs={},
+                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+        else:
+            save_var_map = {}
+            for each_var in vars:
+                new_var = _clone_var_in_block_(save_block, each_var)
+                save_var_map[new_var.name] = new_var
 
-        save_block.append_op(
-            type='save_combine',
-            inputs={'X': save_var_list},
-            outputs={},
-            attrs={'file_path': os.path.join(dirname, save_file_name)})
+            save_var_list = []
+            for name in sorted(save_var_map.keys()):
+                save_var_list.append(save_var_map[name])
+
+            save_block.append_op(
+                type='save_combine',
+                inputs={'X': save_var_list},
+                outputs={},
+                attrs={'file_path': os.path.join(dirname, save_file_name)})
 
         executor.run(save_program)
 
 
-def save_params(executor, dirname, main_program=None):
+def save_params(executor, dirname, main_program=None, save_file_name=None):
     """
     Save all parameters to directory with executor.
     """
@@ -120,10 +131,12 @@ def save_params(executor, dirname, main_program=None):
         dirname=dirname,
         main_program=main_program,
         vars=None,
-        predicate=is_parameter)
+        predicate=is_parameter,
+        save_file_name=save_file_name)
 
 
-def save_persistables(executor, dirname, main_program=None):
+def save_persistables(executor, dirname, main_program=None,
+                      save_file_name=None):
     """
     Save all persistables to directory with executor.
     """
@@ -132,7 +145,8 @@ def save_persistables(executor, dirname, main_program=None):
         dirname=dirname,
         main_program=main_program,
         vars=None,
-        predicate=is_persistable)
+        predicate=is_persistable,
+        save_file_name=save_file_name)
 
 
 def load_vars(executor,
@@ -140,7 +154,7 @@ def load_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              load_file_name='__parameters__'):
+              load_file_name=None):
     """
     Load variables from directory by executor.
 
@@ -164,30 +178,42 @@ def load_vars(executor,
         load_vars(
             executor,
             dirname=dirname,
-            vars=filter(predicate, main_program.list_vars()))
+            vars=filter(predicate, main_program.list_vars()),
+            load_file_name=load_file_name)
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
-        load_var_map = {}
-        for each_var in vars:
-            assert isinstance(each_var, Variable)
-            new_var = _clone_var_in_block_(load_block, each_var)
-            load_var_map[new_var.name] = new_var
 
-        load_var_list = []
-        for name in sorted(load_var_map.keys()):
-            load_var_list.append(load_var_map[name])
+        if load_file_name is None:
+            for each_var in vars:
+                assert isinstance(each_var, Variable)
+                new_var = _clone_var_in_block_(load_block, each_var)
+                load_block.append_op(
+                    type='load',
+                    inputs={},
+                    outputs={'Out': [new_var]},
+                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+        else:
+            load_var_map = {}
+            for each_var in vars:
+                assert isinstance(each_var, Variable)
+                new_var = _clone_var_in_block_(load_block, each_var)
+                load_var_map[new_var.name] = new_var
 
-        load_block.append_op(
-            type='load_combine',
-            inputs={},
-            outputs={"Out": load_var_list},
-            attrs={'file_path': os.path.join(dirname, load_file_name)})
+            load_var_list = []
+            for name in sorted(load_var_map.keys()):
+                load_var_list.append(load_var_map[name])
+
+            load_block.append_op(
+                type='load_combine',
+                inputs={},
+                outputs={"Out": load_var_list},
+                attrs={'file_path': os.path.join(dirname, load_file_name)})
 
         executor.run(load_prog)
 
 
-def load_params(executor, dirname, main_program=None):
+def load_params(executor, dirname, main_program=None, load_file_name=None):
     """
     load all parameters from directory by executor.
     """
@@ -195,10 +221,12 @@ def load_params(executor, dirname, main_program=None):
         executor,
         dirname=dirname,
         main_program=main_program,
-        predicate=is_parameter)
+        predicate=is_parameter,
+        load_file_name=load_file_name)
 
 
-def load_persistables(executor, dirname, main_program=None):
+def load_persistables(executor, dirname, main_program=None,
+                      load_file_name=None):
     """
     load all persistables from directory by executor.
     """
@@ -206,7 +234,8 @@ def load_persistables(executor, dirname, main_program=None):
         executor,
         dirname=dirname,
         main_program=main_program,
-        predicate=is_persistable)
+        predicate=is_persistable,
+        load_file_name=load_file_name)
 
 
 def get_inference_program(target_vars, main_program=None):
@@ -325,8 +354,7 @@ def save_inference_model(dirname,
     with open(model_file_name, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())
 
-    parameter_list = get_parameters(inference_program)
-    save_vars(executor, dirname, inference_program, parameter_list)
+    save_persistables(executor, dirname, inference_program)
 
 
 def get_feed_targets_names(program):
@@ -367,8 +395,7 @@ def load_inference_model(dirname, executor):
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
-    parameter_list = get_parameters(program)
-    load_vars(executor, dirname, program, parameter_list)
+    load_persistables(executor, dirname, program)
 
     feed_target_names = get_feed_targets_names(program)
     fetch_target_names = get_fetch_targets_names(program)
