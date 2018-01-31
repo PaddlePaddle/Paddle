@@ -23,7 +23,7 @@ spec:
         - name: PADDLE_JOB_NAME
           value: vgg16v2job
         - name: TRAINERS
-          value: "60"
+          value: "20"
         - name: PSERVERS
           value: "10"
         - name: TOPOLOGY
