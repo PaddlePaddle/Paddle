@@ -253,6 +253,27 @@ def append_fetch_ops(inference_program,
             attrs={'col': i})
 
 
+def get_parameters(program):
+    parameter_list = []
+    for var in program.list_vars():
+        if not is_persistable(var):
+            continue
+        for block in program.blocks:
+            for op in block.ops:
+                if op.desc.type() == 'feed':
+                    continue
+                for in_args in op.inputs.values():
+                    if not isinstance(in_args, list):
+                        in_args = [in_args]
+                    for arg in in_args:
+                        if not isinstance(arg, basestring):
+                            arg = arg.name
+                        if var.name == arg:
+                            parameter_list.append(var)
+    print([var.name for var in parameter_list])
+    return parameter_list
+
+
 def save_inference_model(dirname,
                          feeded_var_names,
                          target_vars,
@@ -302,7 +323,8 @@ def save_inference_model(dirname,
     with open(model_file_name, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())
 
-    save_params(executor, dirname, main_program)
+    parameter_list = get_parameters(inference_program)
+    save_vars(executor, dirname, main_program, parameter_list)
 
 
 def load_persistables_if_exist(executor, dirname, main_program=None):
@@ -361,7 +383,8 @@ def load_inference_model(dirname, executor):
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
-    load_params(executor, dirname, program)
+    parameter_list = get_parameters(program)
+    load_vars(executor, dirname, program, parameter_list)
 
     feed_target_names = get_feed_targets_names(program)
     fetch_target_names = get_fetch_targets_names(program)
