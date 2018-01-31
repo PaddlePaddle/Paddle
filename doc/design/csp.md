@@ -117,7 +117,7 @@ In Fluid, we should be able to do the same:
 ch1  = fluid.make_chan(dtype=INT)
 ch2 = fluid.make_chan(dtype=INT, 100)
 
-select = fluid.select()
+sel = fluid.select()
 
 with sel.case(ch1, 'w', X):
     fluid.layers.increment(X)
