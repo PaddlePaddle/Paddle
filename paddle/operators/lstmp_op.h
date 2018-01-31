@@ -34,7 +34,8 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
-                             const framework::Tensor& src, const size_t* index,
+                             const framework::Tensor& src,
+                             framework::Vector<size_t> index,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
@@ -110,13 +111,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     lstmp_value.prev_state_value = nullptr;
     Tensor ordered_c0;
 
-    size_t* order = nullptr;
-    framework::Vector<size_t> order_lod(batch_gate->lod()[2]);
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      order = order_lod.cuda_data();
-    } else {
-      order = order_lod.data();
-    }
+    framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (cell_t0) {
       // Since the batch computing for LSTMP reorders the input sequence
@@ -284,13 +279,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     // initialization.
     Tensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
 
-    size_t* order = nullptr;
-    framework::Vector<size_t> order_lod(batch_gate->lod()[2]);
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      order = order_lod.cuda_data();
-    } else {
-      order = order_lod.data();
-    }
+    framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (c0) {
       ReorderInitState<DeviceContext, T>(device_ctx, *c0, order, &ordered_c0,

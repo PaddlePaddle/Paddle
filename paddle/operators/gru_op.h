@@ -30,11 +30,12 @@ using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
-                             const framework::Tensor& src, const size_t* index,
+                             const framework::Tensor& src,
+                             framework::Vector<size_t> index_lod,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
-  row_shuffle(ctx, src, index, *dst, indexed_src);
+  row_shuffle(ctx, src, index_lod, *dst, indexed_src);
 }
 
 template <typename DeviceContext, typename T>
@@ -77,13 +78,7 @@ class GRUKernel : public framework::OpKernel<T> {
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
     Tensor ordered_h0;
 
-    size_t* order = nullptr;
-    framework::Vector<size_t> order_lod(batch_gate->lod()[2]);
-    if (platform::is_gpu_place(context.GetPlace())) {
-      order = order_lod.cuda_data();
-    } else {
-      order = order_lod.data();
-    }
+    framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
       // Since the batch computing for GRU reorders the input sequences
@@ -168,13 +163,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
     Tensor ordered_h0, ordered_h0_grad;
 
-    size_t* order = nullptr;
-    framework::Vector<size_t> order_lod(batch_gate->lod()[2]);
-    if (platform::is_gpu_place(context.GetPlace())) {
-      order = order_lod.cuda_data();
-    } else {
-      order = order_lod.data();
-    }
+    framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
       ReorderInitState<DeviceContext, T>(dev_ctx, *h0, order, &ordered_h0,
