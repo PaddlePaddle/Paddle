@@ -228,7 +228,7 @@ class TestLayerNormdOp(OpTest):
                                          place)
 
         places = [core.CPUPlace()]
-        if core.is_compile_gpu() and core.op_support_gpu("layer_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
             places.append(core.CUDAPlace(0))
 
         for place in places:
