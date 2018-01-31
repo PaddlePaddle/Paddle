@@ -40,6 +40,7 @@ function cmake_gen() {
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-ON}
+        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
         -DWITH_SWIG_PY=ON
         -DWITH_C_API=${WITH_C_API:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
@@ -62,6 +63,7 @@ EOF
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-ON} \
+        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
         -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
