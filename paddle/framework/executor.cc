@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/platform/place.h"
 #include "paddle/platform/profiler.h"
 
-DECLARE_bool(do_memory_benchmark);
+DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
@@ -125,7 +125,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 
     op->Run(*local_scope, place_);
     VLOG(3) << op->DebugStringEx(local_scope);
-    if (FLAGS_do_memory_benchmark) {
+    if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);
     }
@@ -142,7 +142,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
   }
-  if (FLAGS_do_memory_benchmark) {
+  if (FLAGS_benchmark) {
     VLOG(2) << "-------------------------------------------------------";
     VLOG(2) << "Memory used after deleting local scope: "
             << memory::memory_usage(place_);
