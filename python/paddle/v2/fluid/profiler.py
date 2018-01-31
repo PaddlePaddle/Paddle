@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.v2.fluid.core as core
+import core
 from contextlib import contextmanager
 import os
 
-__all__ = ['CudaProfiler']
+__all__ = ['cuda_profiler', 'reset_profiler', 'profiler']
 
 NVPROF_CONFIG = [
     "gpustarttimestamp",
