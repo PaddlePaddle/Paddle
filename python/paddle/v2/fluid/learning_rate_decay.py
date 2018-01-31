@@ -101,7 +101,7 @@ def inverse_time_decay(learning_rate,
     ```python
     if staircase:
       decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
-    else
+    else:
       decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
     ```
     Args:
@@ -123,3 +123,46 @@ def inverse_time_decay(learning_rate,
         div_res = layers.floor(x=div_res)
 
     return learning_rate / (1 + decay_rate * div_res)
+
+
+def polynomial_decay(learning_rate,
+                     global_step,
+                     decay_steps,
+                     end_learning_rate=0.0001,
+                     power=1.0,
+                     cycle=False):
+    """Applies inverse time decay to the initial learning rate.
+
+    ```python
+    if cycle:
+        decay_steps = decay_steps * ceil(global_step / decay_steps)
+    else:
+        global_step = min(global_step, decay_steps)
+    decayed_learning_rate = (learning_rate - end_learning_rate) *
+                      (1 - global_step / decay_steps) ^ power +
+                      end_learning_rate
+    ```
+    Args:
+        learning_rate: A scalar float32 value or a Variable. This
+          will be the initial learning rate during training
+        global_step: A Variable that record the training step.
+        decay_steps: A Python `int32` number.
+        end_learning_rate: A Python `float` number.
+        power: A Python `float` number
+        cycle: Boolean. If set true, decay the learning rate every decay_steps.
+
+    Returns:
+        The decayed learning rate
+    """
+    if not isinstance(global_step, Variable):
+        raise ValueError("global_step is required for inverse_time_decay.")
+
+    if cycle:
+        pass
+    else:
+        decay_steps_var = layers.fill_constant(
+            shape=[1], dtype='float32', value=float(decay_steps))
+        global_step = layers.elementwise_min(x=global_step, y=decay_steps_var)
+
+    return (learning_rate - end_learning_rate) * \
+           ((1 - global_step / decay_steps) ** power) + end_learning_rate
