@@ -1,20 +1,24 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from initializer import Initializer, Xavier, Constant
 from regularizer import WeightDecayRegularizer
 
-__all__ = ['ParamAttr']
+__all__ = [
+    'ParamAttr',
+    'WeightNormParamAttr',
+]
 
 
 class ParamAttr(object):
@@ -24,13 +28,13 @@ class ParamAttr(object):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 clip=None):
+                 gradient_clip=None):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
-        self.clip = clip
+        self.gradient_clip = gradient_clip
 
     def set_default_initializer(self, initializer):
         if initializer is None:
@@ -76,8 +80,25 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'clip_attr': self.clip
+            'gradient_clip_attr': self.gradient_clip
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
         return kwargs
+
+
+class WeightNormParamAttr(ParamAttr):
+    """
+    Used for weight normalization. Any field in ParamAttr can also be set here.
+    Besides, an extra field dim can be set to indicate the dimension except 
+    which to normalize.
+    """
+    # List to record the parameters reparameterized by weight normalization.
+    # If these parameters are treated as Variable rather than Parameter,
+    # it can be used to discriminate these parameters and help to serialize
+    # these paramters for inference.
+    params_with_weight_norm = []
+
+    def __init__(self, dim=None, **kwargs):
+        super(WeightNormParamAttr, self).__init__(**kwargs)
+        self.dim = dim

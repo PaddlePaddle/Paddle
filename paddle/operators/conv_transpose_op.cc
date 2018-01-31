@@ -61,6 +61,13 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  }
+#endif
   framework::LibraryType library_;
   if (use_cudnn) {
     library_ = framework::LibraryType::kCUDNN;
@@ -153,8 +160,8 @@ Example:
        Output shape: $(N, C_{out}, H_{out}, W_{out})$
   Where
   $$
-       H_{out} = (H_{in} - 1) * strides[0] - 2 * paddings[0] + H_f \\
-       W_{out} = (W_{in} - 1) * strides[1] - 2 * paddings[1] + W_f
+       H_{out} = (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\
+       W_{out} = (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1
   $$
 )DOC");
 }
@@ -242,9 +249,9 @@ Example:
        Output shape: $(N, C_{out}, D_{out}, H_{out}, W_{out})$
   Where
   $$
-       D_{out} = (D_{in} - 1) * strides[0] - 2 * paddings[0] + D_f \\
-       H_{out} = (H_{in} - 1) * strides[1] - 2 * paddings[1] + H_f \\
-       W_{out} = (W_{in} - 1) * strides[2] - 2 * paddings[2] + W_f
+       D_{out} = (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\
+       H_{out} = (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\
+       W_{out} = (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1
   $$
 )DOC");
 }
@@ -263,6 +270,13 @@ void ConvTransposeOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  }
+#endif
   framework::LibraryType library_;
   if (use_cudnn) {
     library_ = framework::LibraryType::kCUDNN;

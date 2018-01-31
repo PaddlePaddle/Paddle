@@ -22,9 +22,7 @@ limitations under the License. */
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
 
-DEFINE_bool(op_sync, false,
-            "Default cuda is asynchronous device, set to True will"
-            "force op run in synchronous mode.");
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace framework {
@@ -485,9 +483,15 @@ void OperatorWithKernel::Run(const Scope& scope,
   // }
 
   auto expected_kernel_key = this->GetExpectedKernelType(ctx);
-
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
+  auto kernel_iter = kernels.find(expected_kernel_key);
+  if (kernel_iter == kernels.end()) {
+    PADDLE_THROW("op %s does not have kernel for %s", type_,
+                 KernelTypeToString(expected_kernel_key));
+  }
+
+  // do data transform
   Scope& new_scope = scope.NewScope();
 
   for (auto& var_name_item : this->Inputs()) {
@@ -520,14 +524,12 @@ void OperatorWithKernel::Run(const Scope& scope,
     }
   }
 
-  auto kernel_iter = kernels.find(expected_kernel_key);
-
   auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
   kernel_iter->second->Compute(
       ExecutionContext(*this, new_scope, *new_dev_ctx));
 
   /*For profiling/benchmark only*/
-  if (FLAGS_op_sync) {
+  if (FLAGS_benchmark) {
     new_dev_ctx->Wait();
   }
 }

@@ -1,16 +1,17 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import print_function
 # import all class inside framework into fluid module
 import framework
@@ -25,6 +26,7 @@ import initializer
 import layers
 import nets
 import optimizer
+import learning_rate_decay
 import backward
 import regularizer
 from param_attr import ParamAttr
@@ -34,26 +36,16 @@ from distribute_transpiler import DistributeTranspiler
 from distribute_transpiler_simple import SimpleDistributeTranspiler
 import clip
 from memory_optimization_transpiler import memory_optimize
+import profiler
 
 Tensor = LoDTensor
+
 __all__ = framework.__all__ + executor.__all__ + [
-    'io',
-    'initializer',
-    'layers',
-    'nets',
-    'optimizer',
-    'backward',
-    'regularizer',
-    'LoDTensor',
-    'CPUPlace',
-    'CUDAPlace',
-    'Tensor',
+    'io', 'initializer', 'layers', 'nets', 'optimizer', 'learning_rate_decay',
+    'backward', 'regularizer', 'LoDTensor', 'CPUPlace', 'CUDAPlace', 'Tensor',
     'ParamAttr'
-    'DataFeeder',
-    'clip',
-    'SimpleDistributeTranspiler',
-    'DistributeTranspiler',
-    'memory_optimize',
+    'DataFeeder', 'clip', 'SimpleDistributeTranspiler', 'DistributeTranspiler',
+    'memory_optimize', 'profiler'
 ]
 
 
@@ -84,13 +76,14 @@ def __bootstrap__():
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
-    read_env_flags = ['use_pinned_memory', 'check_nan_inf']
-    if core.is_compile_gpu():
-        read_env_flags += ['fraction_of_gpu_memory_to_use', 'op_sync']
+    read_env_flags = ['use_pinned_memory', 'check_nan_inf', 'benchmark']
+    if core.is_compiled_with_cuda():
+        read_env_flags += ['fraction_of_gpu_memory_to_use']
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     core.init_devices()
 
 
+layers.monkey_patch_variable()
 __bootstrap__()

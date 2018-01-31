@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <glog/logging.h>
@@ -100,6 +101,32 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   for (size_t i = 0; i < should_run.size(); ++i) {
     if (should_run[i]) {
       *op_field->Add() = input.blocks(block_id).ops(i);
+    }
+  }
+
+  // remove the VarDescs in BlockDesc that are not referenced in
+  // the pruned OpDescs
+  std::unordered_map<std::string, proto::VarDesc> var_map;
+  auto* var_field = output->mutable_blocks(block_id)->mutable_vars();
+  for (const auto& var : *var_field) {
+    var_map[var.name()] = var;
+  }
+
+  var_field->Clear();
+  for (const auto& op : *op_field) {
+    // add VarDescs of all input arguments for each OpDesc
+    auto& input_field = op.inputs();
+    for (auto& input_var : input_field) {
+      for (auto& arg : input_var.arguments()) {
+        *var_field->Add() = var_map[arg];
+      }
+    }
+    // add VarDescs of all output arguments for each OpDesc
+    auto& output_field = op.outputs();
+    for (auto& output_var : output_field) {
+      for (auto& arg : output_var.arguments()) {
+        *var_field->Add() = var_map[arg];
+      }
     }
   }
 }

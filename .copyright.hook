@@ -9,7 +9,7 @@ import subprocess
 import platform
 
 COPYRIGHT = '''
-  Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+  Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,18 +49,25 @@ def generate_copyright(template, lang='C'):
         LANG_COMMENT_MARK = "//"
 
     lines = template.split(NEW_LINE_MARK)
-    ans = LANG_COMMENT_MARK + COPYRIGHT_HEADER + NEW_LINE_MARK
+    BLANK = " "
+    ans = LANG_COMMENT_MARK + BLANK + COPYRIGHT_HEADER + NEW_LINE_MARK
     for lino, line in enumerate(lines):
         if lino == 0 or lino == 1 or lino == len(lines) - 1: continue
-        ans += LANG_COMMENT_MARK + line + NEW_LINE_MARK
+        if len(line)  == 0:
+            BLANK = ""
+        else:
+            BLANK = " "
+        ans += LANG_COMMENT_MARK + BLANK + line + NEW_LINE_MARK
 
-    return ans
+    return ans + "\n"
 
 
 def lang_type(filename):
     if filename.endswith(".py"):
         return "Python"
     elif filename.endswith(".h"):
+        return "C"
+    elif filename.endswith(".c"):
         return "C"
     elif filename.endswith(".hpp"):
         return "C"
@@ -77,8 +84,11 @@ def lang_type(filename):
     elif filename.endswith(".proto"):
         return "C"
     else:
-        print("Unsupported filetype")
+        print("Unsupported filetype %s", filename)
         exit(0)
+
+
+PYTHON_ENCODE = re.compile("^[ \t\v]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)")
 
 
 def main(argv=None):
@@ -89,9 +99,14 @@ def main(argv=None):
 
     retv = 0
     for filename in args.filenames:
-        first_line = io.open(filename).readline()
-        if "COPYRIGHT" in first_line.upper() : continue
-        original_contents = io.open(filename).read()
+        fd = io.open(filename, encoding="utf-8")
+        first_line = fd.readline()
+        second_line = fd.readline()
+        if "COPYRIGHT (C)" in first_line.upper(): continue
+        if first_line.startswith("#!") or PYTHON_ENCODE.match(
+                second_line) != None or PYTHON_ENCODE.match(first_line) != None:
+            continue
+        original_contents = io.open(filename, encoding="utf-8").read()
         new_contents = generate_copyright(
             COPYRIGHT, lang_type(filename)) + original_contents
         print('Auto Insert Copyright Header {}'.format(filename))
