@@ -115,7 +115,7 @@ PaddlePaddle的编译选项，包括生成CPU/GPU二进制文件、链接何种B
     "WITH_AVX", "是否编译含有AVX指令集的PaddlePaddle二进制文件", "ON"
     "WITH_PYTHON", "是否内嵌PYTHON解释器", "ON"
     "WITH_STYLE_CHECK", "是否编译时进行代码风格检查", "ON"
-    "WITH_TESTING", "是否开启单元测试", "ON"
+    "WITH_TESTING", "是否开启单元测试", "OFF"
     "WITH_DOC", "是否编译中英文文档", "OFF"
     "WITH_SWIG_PY", "是否编译PYTHON的SWIG接口，该接口可用于预测和定制化训练", "Auto"
     "WITH_GOLANG", "是否编译go语言的可容错parameter server", "ON"
