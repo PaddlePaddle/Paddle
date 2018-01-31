@@ -47,6 +47,11 @@ class Tensor {
  public:
   Tensor() : offset_(0) {}
 
+  /*! Constructor with place should only be used in pybind. */
+  explicit Tensor(const platform::Place& place) : offset_(0) {
+    holder_->set_place(place);
+  }
+
   /*! Return a pointer to mutable memory block. */
   template <typename T>
   inline T* data();
@@ -137,6 +142,7 @@ class Tensor {
     virtual std::type_index type() const = 0;
     virtual platform::Place place() const = 0;
     virtual void set_type(std::type_index type) = 0;
+    virtual void set_place(platform::Place place) = 0;
   };
 
   template <typename Place>
@@ -156,6 +162,7 @@ class Tensor {
     virtual void* ptr() const { return static_cast<void*>(ptr_.get()); }
     virtual std::type_index type() const { return type_; }
     virtual void set_type(std::type_index type) { type_ = type; }
+    virtual void set_place(platform::Place place) { place_ = place; }
 
     /*! the pointer of memory block. */
     std::unique_ptr<uint8_t, memory::PODDeleter<uint8_t, Place>> ptr_;

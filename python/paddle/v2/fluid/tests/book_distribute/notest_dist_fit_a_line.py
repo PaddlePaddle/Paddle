@@ -1,16 +1,17 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
@@ -53,8 +54,9 @@ if training_role == "PSERVER":
     if not current_endpoint:
         print("need env SERVER_ENDPOINT")
         exit(1)
-    pserver_prog = t.get_pserver_program(current_endpoint, optimize_ops)
-    exe.run(fluid.default_startup_program())
+    pserver_prog = t.get_pserver_program(current_endpoint)
+    pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
+    exe.run(pserver_startup)
     exe.run(pserver_prog)
 else:
     trainer_prog = t.get_trainer_program()
@@ -66,10 +68,10 @@ else:
         fluid.io.save_persistables(exe, "./fit_a_line.model/")
         fluid.io.load_persistables(exe, "./fit_a_line.model/")
         for data in train_reader():
-            avg_loss_value, = exe.run(trainer_prog,
-                                      feed=feeder.feed(data),
-                                      fetch_list=[avg_cost])
-
+            avg_loss_value = exe.run(trainer_prog,
+                                     feed=feeder.feed(data),
+                                     fetch_list=[avg_cost])
+            print("loss:" + str(avg_loss_value))
             if avg_loss_value[0] < 10.0:
                 exit(0)
 exit(1)

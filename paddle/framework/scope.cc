@@ -20,6 +20,12 @@ limitations under the License. */
 #include "paddle/framework/threadpool.h"
 #include "paddle/string/printf.h"
 
+DEFINE_bool(benchmark, false,
+            "Doing memory benchmark. It will make deleting scope synchronized, "
+            "and add some memory usage logs."
+            "Default cuda is asynchronous device, set to True will"
+            "force op run in synchronous mode.");
+
 namespace paddle {
 namespace framework {
 
@@ -88,8 +94,12 @@ void Scope::DeleteScope(Scope* scope) {
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
   this->kids_.erase(it);
-  // Make delete async.
-  Async([scope] { delete scope; });
+  // When making memory benchmark on Fluid, we have to delete scope sync.
+  if (FLAGS_benchmark) {
+    delete scope;
+  } else {
+    Async([scope] { delete scope; });
+  }
 }
 
 void Scope::Rename(const std::string& origin_name,
