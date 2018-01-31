@@ -68,10 +68,10 @@ else:
         fluid.io.save_persistables(exe, "./fit_a_line.model/")
         fluid.io.load_persistables(exe, "./fit_a_line.model/")
         for data in train_reader():
-            avg_loss_value, = exe.run(trainer_prog,
-                                      feed=feeder.feed(data),
-                                      fetch_list=[avg_cost])
-
+            avg_loss_value = exe.run(trainer_prog,
+                                     feed=feeder.feed(data),
+                                     fetch_list=[avg_cost])
+            print("loss:" + str(avg_loss_value))
             if avg_loss_value[0] < 10.0:
                 exit(0)
 exit(1)

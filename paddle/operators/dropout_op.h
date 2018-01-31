@@ -38,9 +38,15 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
-      int seed = context.Attr<int>("seed");
+
+      // NOTE: fixed seed should only be used in unittest or for debug.
+      // Guarantee to use random seed in training.
+      std::random_device rnd;
       std::minstd_rand engine;
+      int seed =
+          context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
       engine.seed(seed);
+
       std::uniform_real_distribution<float> dist(0, 1);
       size_t size = framework::product(mask->dims());
       for (size_t i = 0; i < size; ++i) {

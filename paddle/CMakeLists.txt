@@ -18,7 +18,7 @@ else()
     add_subdirectory(capi)
   endif()
 
-  if(Boost_FOUND)
+  if(NOT ANDROID AND NOT IOS)
     add_subdirectory(memory)
     add_subdirectory(platform)
     add_subdirectory(framework)
