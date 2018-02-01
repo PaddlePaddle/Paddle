@@ -36,11 +36,11 @@ candition2 = pd.and(pd.less_then(100000, global_step), pd.less)
 
 switch = SwitchOp()
 with switch.case(candition1):
-	pd.assign(learning_rate, 1.0)
+  pd.assign(learning_rate, 1.0)
 with switch.case(candition2):
-	pd.assign(learning_rate, 0.5)
+  pd.assign(learning_rate, 0.5)
 with switch.default_case():
-   pd.assign(learning_rate, 0.1)
+  pd.assign(learning_rate, 0.1)
 ``` 
 
 For `scalar_switch_case_op` op, the candition var should be a scalar Variable, which means it's shape is `[1]`.
