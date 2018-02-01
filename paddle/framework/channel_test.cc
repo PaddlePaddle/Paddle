@@ -118,9 +118,10 @@ TEST(Channel, UnbufferedLessReceiveMoreSendTest) {
     ch->Receive(&recv);
     EXPECT_EQ(recv, i);
   }
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
+  EXPECT_EQ(sum_send, 3U);
 
   CloseChannel(ch);
   t.join();
-  EXPECT_EQ(sum_send, 3U);
   delete ch;
 }
