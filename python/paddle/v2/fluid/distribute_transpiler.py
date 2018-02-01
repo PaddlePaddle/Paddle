@@ -153,11 +153,18 @@ class DistributeTranspiler:
             self.param_grad_ep_mapping[ep]["params"].append(param)
             self.param_grad_ep_mapping[ep]["grads"].append(grad)
 
+        rpc_client_var = program.global_block().create_var(
+            name="RPC_CLIENT_VAR",
+            psersistable=True,
+            dtype='float32',  # dtype and shape is not used in fact
+            shape=[0])
+
         # create send_op
         send_op = program.global_block().append_op(
             type="send",
             inputs={"X": send_inputs},
-            outputs={"Out": send_outputs},
+            outputs={"Out": send_outputs,
+                     "RPCClient": rpc_client_var},
             attrs={"endpoints": pserver_endpoints,
                    "epmap": eplist})
         # step4
@@ -474,8 +481,7 @@ class DistributeTranspiler:
         # Append the recv op
         pserver_program.global_block().append_op(
             type="recv",
-            inputs={"RX": self.param_grad_ep_mapping[endpoint]["grads"]
-                    },  # grads to recv
+            inputs={},
             outputs={},
             attrs={
                 "OptimizeBlock": optimize_sub_program.global_block(),

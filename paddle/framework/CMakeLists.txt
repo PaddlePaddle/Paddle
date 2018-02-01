@@ -22,11 +22,11 @@ cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor paddle_memory)
-nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
+nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor init)
 
 cc_test(variable_test SRCS variable_test.cc)
 
-cc_library(threadpool SRCS threadpool.cc)
+cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool)
@@ -98,3 +98,5 @@ if(NOT WITH_C_API AND WITH_FLUID)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/framework.pb.h DESTINATION include/paddle/framework)
   install(FILES details/cow_ptr.h details/op_registry.h DESTINATION include/paddle/framework/details)
 endif()
+
+cc_test(channel_test SRCS channel_test.cc)

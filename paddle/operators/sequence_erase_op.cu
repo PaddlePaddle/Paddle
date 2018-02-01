@@ -96,9 +96,8 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     GetOutLod<<<(lod_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
                 PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         num_erased_ptr, dev_in_lod_ptr, lod_len, dev_out_lod_ptr);
-
     // Set LoD for output
-    thrust::host_vector<size_t> out_lod0 = dev_out_lod;
+    std::vector<size_t> out_lod0(dev_out_lod.begin(), dev_out_lod.end());
     framework::LoD out_lod;
     out_lod.push_back(out_lod0);
     out->set_lod(out_lod);
