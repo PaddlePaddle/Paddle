@@ -48,15 +48,17 @@
 
 ### Different Pserver Count
 
-- Trainer Count: 100
+- Trainer Count: 60
 - Batch Size: 128
 - Metrics: mini-batch / sec
 
-| PServer Count | 10 | 20 | 40 | 60 |
+| PServer Count | 3 | 6 |10 | 20 |
 | -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | - | - | - | - |
-| PaddlePaddle v2 | - | - | - | - |
+| PaddlePaddle Fluid(should fix in next PR) | 589.1 | 592.6 | 656.4 | 655.8 |
+| PaddlePaddle v2 | 593.4 | 791.3 | 729.7 | 821.7 |
 | TensorFlow | - | - | - | - |
+
+*The performance gap between Fuild and v2 comes from the network interference.*
 
 
 ## Steps to run the performance test
