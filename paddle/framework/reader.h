@@ -66,9 +66,8 @@ class RandomReader : public FileReader {
  public:
   RandomReader(const std::vector<DDim>& shapes, float min, float max)
       : FileReader(shapes), min_(min), max_(max) {
-    PADDLE_ENFORCE_LE(min, max,
-                      "'min' should be less than or equal to 'max'.(%f vs %f)",
-                      min, max);
+    PADDLE_ENFORCE_LE(
+        min, max, "'min' shouldn't be greater than 'max'.(%f vs %f)", min, max);
     unsigned int seed = std::random_device()();
     engine_.seed(seed);
     dist_ = std::uniform_real_distribution<float>(min_, max_);
@@ -103,7 +102,7 @@ class RandomReader : public FileReader {
   std::uniform_real_distribution<float> dist_;
 };
 
-// decorators
+// decorated readers
 
 class ShuffleReader : public DecoratedReader {
  public:
@@ -134,6 +133,8 @@ class BatchReader : public DecoratedReader {
   std::vector<std::vector<LoDTensor>> buffer_;
 };
 
+// The ReaderHolder is used as readers' unified wrapper,
+// making it easier to access different type readers in Variables.
 class ReaderHolder {
  public:
   void Reset(ReaderBase* reader) { reader_.reset(reader); }
