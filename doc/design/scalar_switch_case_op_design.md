@@ -32,7 +32,8 @@ global_step = pd.Var(shape=[1], value=...)
 learning_rate = pd.Var(shape=[1], value=...)
 
 candition1 = pd.less_equal(global_step, 100000)
-candition2 = pd.and(pd.less_then(100000, global_step), pd.less)
+candition2 = pd.and(pd.less_then(100000, global_step),
+                    pd.less_equal(global_step,110000))
 
 switch = SwitchOp()
 with switch.case(candition1):
