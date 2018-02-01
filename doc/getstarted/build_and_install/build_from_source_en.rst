@@ -126,7 +126,7 @@ You can add :code:`-D` argument to pass such options, like:
     "WITH_AVX", "Build with AVX support", "ON"
     "WITH_PYTHON", "Build with integrated Python interpreter", "ON"
     "WITH_STYLE_CHECK", "Check code style when building", "ON"
-    "WITH_TESTING", "Build unit tests", "ON"
+    "WITH_TESTING", "Build unit tests", "OFF"
     "WITH_DOC", "Build documentations", "OFF"
     "WITH_SWIG_PY", "Build Python SWIG interface for V2 API", "Auto"
     "WITH_GOLANG", "Build fault-tolerant parameter server written in go", "ON"
