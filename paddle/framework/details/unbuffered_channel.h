@@ -51,9 +51,11 @@ class UnBuffered : public paddle::framework::Channel<T> {
 
   UnBuffered() : closed_(false) {}
 
-  void NotifyAllSenders(std::unique_lock<std::mutex>*);
+  void NotifyAllParticipants(std::unique_lock<std::mutex>*);
 };
 
+// This function implements the concept of how data should
+// be sent from a writer to a reader.
 template <typename T>
 void UnBuffered<T>::Send(T* data) {
   // Prevent other writers from entering
@@ -76,6 +78,8 @@ void UnBuffered<T>::Send(T* data) {
   writer_found_ = false;
 }
 
+// This function implements the concept of how
+// data that was sent by a writer is read from a reader.
 template <typename T>
 void UnBuffered<T>::Receive(T* data) {
   // Prevent other readers from entering
@@ -100,24 +104,31 @@ void UnBuffered<T>::Receive(T* data) {
   reader_found_ = false;
 }
 
+// This function implements the sequence of events
+// that take place once the channel is closed.
 template <typename T>
 void UnBuffered<T>::Close() {
   std::unique_lock<std::mutex> lock(mu_ch_);
   item = nullptr;
   closed_ = true;
-  NotifyAllSenders(&lock);
+  NotifyAllParticipants(&lock);
 }
 
+// This function implements the sequence of events
+// that are executed once the object of an UnBuffered
+// channel is destroyed.
 template <typename T>
 UnBuffered<T>::~UnBuffered() {
   std::unique_lock<std::mutex> lock(mu_ch_);
   item = nullptr;
   closed_ = true;
-  NotifyAllSenders(&lock);
+  NotifyAllParticipants(&lock);
 }
 
+// This function notifies all the readers, writers and
+// the channel condition variables.
 template <typename T>
-void UnBuffered<T>::NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
+void UnBuffered<T>::NotifyAllParticipants(std::unique_lock<std::mutex>* lock) {
   lock->unlock();
   cv_writer_.notify_all();
   cv_channel_.notify_all();
