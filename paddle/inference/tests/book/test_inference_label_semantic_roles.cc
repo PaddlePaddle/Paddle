@@ -58,14 +58,19 @@ void TestInference(const std::string& dirname,
   delete scope;
 }
 
-void SetRandomData(paddle::framework::LoDTensor* input) {
-  srand(time(0)) int64_t* input_ptr =
+void SetupLoDTensor(paddle::framework::LoDTensor* input) {
+  // Setup data
+  srand(time(0));
+  int64_t* input_ptr =
       input.mutable_data<int64_t>({1, 10}, paddle::platform::CPUPlace());
   for (int i = 0; i < 10; ++i) {
     // For this label semantic role example, the valid integer should
     // be in the range of [0, 1] for some input tensor
     input_ptr[i] = rand() % 2;
   }
+
+  // Setup LoD info
+  input->set_lod(paddle::framework::LoD({0, 4, 10}));
 }
 
 TEST(inference, label_semantic_roles) {
@@ -79,15 +84,26 @@ TEST(inference, label_semantic_roles) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
-  paddle::framework::LoDTensor input;
-  srand(time(0));
-  float* input_ptr =
-      input.mutable_data<float>({1, 28, 28}, paddle::platform::CPUPlace());
-  for (int i = 0; i < 784; ++i) {
-    input_ptr[i] = rand() / (static_cast<float>(RAND_MAX));
-  }
+  paddle::framework::LoDTensor word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1,
+      ctx_p2, mark;
+  SetupLoDTensor(&word);
+  SetupLoDTensor(&predicate);
+  SetupLoDTensor(&ctx_n2);
+  SetupLoDTensor(&ctx_n1);
+  SetupLoDTensor(&ctx_0);
+  SetupLoDTensor(&ctx_p1);
+  SetupLoDTensor(&ctx_p2);
+  SetupLoDTensor(&mark);
+
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
-  cpu_feeds.push_back(&input);
+  cpu_feeds.push_back(&word);
+  cpu_feeds.push_back(&predicate);
+  cpu_feeds.push_back(&ctx_n2);
+  cpu_feeds.push_back(&ctx_n1);
+  cpu_feeds.push_back(&ctx_0);
+  cpu_feeds.push_back(&ctx_p1);
+  cpu_feeds.push_back(&ctx_p2);
+  cpu_feeds.push_back(&mark);
 
   paddle::framework::LoDTensor output1;
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;

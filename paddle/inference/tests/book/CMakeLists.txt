@@ -5,3 +5,9 @@ cc_test(test_inference_recognize_digits_mlp
     ARGS --dirname=${PYTHON_TESTS_DIR}/book/recognize_digits_mlp.inference.model)
 set_tests_properties(test_inference_recognize_digits_mlp
     PROPERTIES DEPENDS test_recognize_digits_mlp_cpu)
+cc_test(test_inference_label_semantic_roles
+    SRCS test_inference_label_semantic_roles.cc
+    DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
+    ARGS --dirname=${PYTHON_TESTS_DIR}/book/label_semantic_roles.inference.model)
+set_tests_properties(test_inference_label_semantic_roles
+    PROPERTIES DEPENDS test_label_semantic_roles) 
