@@ -20,7 +20,7 @@
 | PaddlePaddle v2 | 15.97 | 17.04 | 17.60 | 17.83 |
 | TensorFlow | - | - | - | - |
 
-### different batch size
+### Different Batch Size
 
 - PServer Count: 10
 - Trainer Count: 20
@@ -34,7 +34,7 @@
 | TensorFlow | - | - | - | - |
 
 
-### Accelerate rate
+### Accelerate Rate
 
 - Pserver Count: 20
 - Batch Size: 128
@@ -42,11 +42,11 @@
 
 | Trainer Counter | 20 | 40 | 80 | 100 |
 | -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | 263.29 | 518.80 | 836.26 | 1019.29 |
-| PaddlePaddle v2 (need more tests) | 326.85 | 534.58 | 853.30 | 1041.99 |
+| PaddlePaddle Fluid | 263.29 (78.64%) | 518.80 (77.47%) | 836.26 (62.44%) | 1019.29 (60.89%) |
+| PaddlePaddle v2 (need more tests) | 326.85 (92.85%) | 534.58 (75.93%) | 853.30 (60.60%) | 1041.99 (59.20%) |
 | TensorFlow | - | - | - | - |
 
-### different pserver number
+### Different Pserver Number
 
 - Trainer Count: 100
 - Batch Size: 128
