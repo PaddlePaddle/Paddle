@@ -43,14 +43,17 @@ class ConditionalOp : public framework::OperatorBase {
     return retv;
   }
 
-  bool IsScalarTrue(
+  bool IsScalarFalse(
       const std::vector<const framework::LoDTensor *> &ips) const {
-    if (ips.size() == 1UL && ips[0]->numel() == 1 &&
-        ips[0]->type().hash_code() == typeid(bool).hash_code()) {
-      return ips[0]->data<bool>()[0];
-    } else {
-      return false;
+    if (ips.size() == 1UL && ips[0]->IsInitialized()) {
+      if (ips[0]->type().hash_code() == typeid(bool).hash_code() &&
+          ips[0]->numel() == 1) {
+        if (ips[0]->data<bool>()[0] == false) {
+          return true;
+        }
+      }
     }
+    return false;
   }
 };
 
@@ -68,7 +71,7 @@ class ConditionalBlockOp : public ConditionalOp {
         xs.begin(), xs.end(),
         [](const framework::LoDTensor *t) { return t->numel() != 0; });
 
-    if (!IsScalarTrue(xs)) {
+    if (IsScalarFalse(xs)) {
       need_run = false;
     }
 
@@ -125,7 +128,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
         xs.begin(), xs.end(),
         [](const framework::LoDTensor *t) { return t->numel() != 0; });
 
-    if (!IsScalarTrue(xs)) {
+    if (IsScalarFalse(xs)) {
       need_run = false;
     }
 
