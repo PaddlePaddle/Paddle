@@ -70,3 +70,6 @@ with if_op.false_block()
 
 ```
 each block above can be ignored so it can be used as `if(cond)` or `if(!cond)`
+
+### About the backward
+Because `scalar_switch_case_op` does not need to split any input and merge output, it only decides which block of code it should run according to scalar condition, so the backward is also very simple, it just needs to run the backward block of the block it runs this time. One thing to notice is that the condition should not be changed before backward.
