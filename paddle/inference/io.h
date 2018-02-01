@@ -14,28 +14,24 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
-#include "paddle/framework/block_desc.h"
 #include "paddle/framework/executor.h"
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/scope.h"
-#include "paddle/framework/var_desc.h"
 
 namespace paddle {
 namespace inference {
 
-bool IsParameter(const framework::VarDesc* var,
-                 const framework::ProgramDesc* main_program);
-
 void LoadPersistables(framework::Executor& executor,
                       framework::Scope& scope,
                       const std::string& dirname,
-                      framework::ProgramDesc* main_program);
+                      const framework::ProgramDesc& main_program);
 
-framework::ProgramDesc* Load(framework::Executor& executor,
-                             framework::Scope& scope,
-                             const std::string& dirname);
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
+                                             framework::Scope& scope,
+                                             const std::string& dirname);
 
 }  // namespace inference
 }  // namespace paddle

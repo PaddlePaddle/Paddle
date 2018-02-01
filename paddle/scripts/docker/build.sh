@@ -32,7 +32,7 @@ function cmake_gen() {
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
-        -DCMAKE_BUILD_TYPE=${BUILD_TYPE:Release}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
@@ -40,6 +40,7 @@ function cmake_gen() {
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-ON}
+        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
         -DWITH_SWIG_PY=ON
         -DWITH_C_API=${WITH_C_API:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
@@ -54,7 +55,7 @@ EOF
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
     cmake .. \
-        -DCMAKE_BUILD_TYPE=${BUILD_TYPE:Release} \
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
@@ -62,6 +63,7 @@ EOF
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DWITH_GOLANG=${WITH_GOLANG:-ON} \
+        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
         -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \

@@ -23,6 +23,17 @@
 namespace paddle {
 namespace framework {
 
+TEST(LoD, data) {
+  LoD lod{{0, 1, 2}};
+  lod.push_back({0, 2, 4, 5});
+  lod.push_back(std::vector<size_t>({0, 1, 6, 8, 10, 11}));
+
+  auto& v = lod[0];
+  for (size_t i = 0; i < v.size(); ++i) {
+    EXPECT_EQ(v[i], i);
+  }
+}
+
 TEST(LodExpand, test) {
   LoD lod{{0, 2}};
   LoDTensor tensor;
