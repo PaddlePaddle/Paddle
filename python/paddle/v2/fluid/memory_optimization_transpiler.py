@@ -179,9 +179,9 @@ class ControlFlowGraph(object):
                                         break
                                     _rename_arg_(
                                         self._ops, x, cache_var, begin_idx=i)
-                                    # self._program.block(block_desc.id).var(
-                                    #     str(x)).desc = self._find_var(
-                                    #         block_desc, cache_var, is_forward)
+                                    self._program.block(block_desc.id).var(
+                                        str(x)).desc = self._find_var(
+                                            block_desc, cache_var, is_forward)
                                     self._update_graph(
                                         x, cache_var, begin_idx=i)
                                     break
@@ -195,7 +195,6 @@ class ControlFlowGraph(object):
                 for var_name in can_optimize:
                     self.pool.append((var_name, self._find_var(
                         block_desc, var_name, is_forward).shape()))
-        print self.pool
         var_names = [x[0] for x in self.pool]
         op_desc = self.current_block_desc.append_op()
         op_desc.set_type("delete_var")
