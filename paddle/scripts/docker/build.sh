@@ -90,7 +90,8 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
-        ctest --output-on-failure
+        script_full_path=$(dirname "$0")
+        source "$script_full_path/test.sh"
         # make install should also be test when unittest
         make install -j `nproc`
         pip install /usr/local/opt/paddle/share/wheels/*.whl
