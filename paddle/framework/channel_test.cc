@@ -122,8 +122,15 @@ TEST(Channel, UnbufferedMoreReceiveLessSendTest) {
   EXPECT_EQ(sum_send, 10U);
   EXPECT_EQ(sum_receive, 10U);
   EXPECT_EQ(sum_send, sum_receive);
+  for (int i = 5; i < 8; i++) {
+    ch->Send(&i);
+    sum_send += i;
+  }
 
   CloseChannel(ch);
   t.join();
+  EXPECT_EQ(sum_send, 28U);
+  EXPECT_EQ(sum_receive, 28U);
+  EXPECT_EQ(sum_send, sum_receive);
   delete ch;
 }
