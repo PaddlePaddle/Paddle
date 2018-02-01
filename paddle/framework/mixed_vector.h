@@ -58,15 +58,12 @@ class Vector : public std::vector<T> {
 
   /* Get host vector */
   T *data() { return std::vector<T>::data(); }
-
   const T *data() const { return std::vector<T>::data(); }
 
   /* Synchronize host vector to device vector */
   void CopyToCUDA();
-
   /* Synchronize device vector to host vector */
   void CopyFromCUDA();
-
   /* Switch device vector location */
   void CopyToPeer(platform::Place);
 
@@ -87,10 +84,8 @@ void Vector<T>::CopyToCUDA() {
         memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T));
   }
   cuda_size_ = this->size();
-
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *ctx = pool.GetByPlace(place_);
-
   memory::Copy(place_, cuda_ptr_, platform::CPUPlace(),
                static_cast<const void *>(this->data()),
                this->size() * sizeof(T), ctx->stream());
@@ -106,7 +101,6 @@ void Vector<T>::CopyFromCUDA() {
     return;
   }
   this->resize(cuda_size_);
-
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *ctx = pool.GetByPlace(place_);
   memory::Copy(platform::CPUPlace(), static_cast<void *>(this->data()), place_,
