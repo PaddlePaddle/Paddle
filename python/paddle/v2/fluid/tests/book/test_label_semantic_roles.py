@@ -211,7 +211,8 @@ def train(save_dirname=None):
                 if batch_id != 0:
                     print("second per batch: " + str((time.time() - start_time)
                                                      / batch_id))
-                if float(pass_precision) > 0.10 and save_dirname is not None:
+                # Set the threshold low to speed up the CI test
+                if float(pass_precision) > 0.05 and save_dirname is not None:
                     fluid.io.save_inference_model(save_dirname, [
                         'word_data', 'verb_data', 'ctx_n2_data', 'ctx_n1_data',
                         'ctx_0_data', 'ctx_p1_data', 'ctx_p2_data', 'mark_data'

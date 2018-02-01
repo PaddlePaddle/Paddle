@@ -62,7 +62,7 @@ void SetupLoDTensor(paddle::framework::LoDTensor* input) {
   // Setup data
   srand(time(0));
   int64_t* input_ptr =
-      input.mutable_data<int64_t>({1, 10}, paddle::platform::CPUPlace());
+      input->mutable_data<int64_t>({10, 1}, paddle::platform::CPUPlace());
   for (int i = 0; i < 10; ++i) {
     // For this label semantic role example, the valid integer should
     // be in the range of [0, 1] for some input tensor
@@ -70,7 +70,8 @@ void SetupLoDTensor(paddle::framework::LoDTensor* input) {
   }
 
   // Setup LoD info
-  input->set_lod(paddle::framework::LoD({0, 4, 10}));
+  paddle::framework::LoD lod{{0, 4, 10}};
+  input->set_lod(lod);
 }
 
 TEST(inference, label_semantic_roles) {
@@ -112,6 +113,7 @@ TEST(inference, label_semantic_roles) {
   // Run inference on CPU
   TestInference<paddle::platform::CPUPlace, float>(
       dirname, cpu_feeds, cpu_fetchs1);
+  LOG(INFO) << output1.lod();
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -122,6 +124,7 @@ TEST(inference, label_semantic_roles) {
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace, float>(
       dirname, cpu_feeds, cpu_fetchs2);
+  LOG(INFO) << output2.lod();
   LOG(INFO) << output2.dims();
 
   EXPECT_EQ(output1.dims(), output2.dims());
