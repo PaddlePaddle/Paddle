@@ -42,8 +42,8 @@
 
 | Trainer Counter | 20 | 40 | 80 | 100 |
 | -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | 291.06 | 518.80 | 836.26 | 1019.29 |
-| PaddlePaddle v2 (need more tests) | 356.28 | 785.39 | 853.30 | 1041.99 |
+| PaddlePaddle Fluid | 263.29 | 518.80 | 836.26 | 1019.29 |
+| PaddlePaddle v2 (need more tests) | 326.85 | 534.58 | 853.30 | 1041.99 |
 | TensorFlow | - | - | - | - |
 
 ### different pserver number
