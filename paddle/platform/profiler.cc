@@ -300,7 +300,7 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
                                     event_time,        event_time,
                                     event_time,        event_time,
                                     total_memory_used, event_memory_used,
-                                    event_memory_used, event_memory_used};
+                                    event_memory_used};
             event_items.push_back(event_item);
           } else {
             int index = event_idx[event_name];
