@@ -82,6 +82,7 @@ class DistributeTranspiler:
     def transpile(self,
                   optimize_ops,
                   params_grads,
+                  trainer_id,
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
@@ -98,10 +99,19 @@ class DistributeTranspiler:
             :param optimize_ops: op list of optimization, should be the
                                  return value of Optimizer.minimize
             :type optimize_ops: list
+            :param params_grads: list of tuple(weight, gradient)
+            :type params_grads: list
+            :param trainer_id: one unique id for each trainer in a job.
+            :type trainer_id: int
             :param program: program to optimize, default is default_main_program
+            :type program: Program
             :param pservers: parameter server endpoints like "m1:6174,m2:6174"
             :type pservers: string
-            :return: return a list of programs
+            :param trainers: total number of workers/trainers in the job
+            :type trainers: int
+            :param split_method: A function to determin how to split variables
+                to different servers equally.
+            :type split_method: function
         """
         assert (callable(split_method))
         if program is None:
@@ -109,6 +119,11 @@ class DistributeTranspiler:
         self.program = program
         self.trainers = trainers
         self.optimize_ops = optimize_ops
+        # TODO(typhoonzero): currently trainer_id is fetched from cluster system
+        # like Kubernetes, we should port this to use etcd later when developing
+        # fluid distributed training with fault-tolerance.
+        self.trainer_id = trainer_id
+
         # steps to transpile:
         # 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
         # 2. modify trainer program add split_op to each Grad.
@@ -189,10 +204,17 @@ class DistributeTranspiler:
             block_map[varname].append((long(offset), long(size)))
         for varname, splited in block_map.iteritems():
             orig_var = program.global_block().vars[varname]
-            var_mapping[varname] = []
+
             if len(splited) == 1:
-                var_mapping[varname] = [orig_var]
+                # rename var to the trainer_id var
+                new_var_name = "%s.trainer_%d" % \
+                    (orig_var.name, self.trainer_id)
+                program.global_block().rename_var(varname, new_var_name)
+                var_mapping[varname] = \
+                    [program.global_block().var(new_var_name)]
                 continue
+
+            var_mapping[varname] = []
             orig_shape = orig_var.shape
             orig_dim1_flatten = 1
             if len(orig_shape) >= 2:
@@ -205,11 +227,13 @@ class DistributeTranspiler:
                 if len(orig_shape) >= 2:
                     splited_shape.extend(orig_shape[1:])
                 var = program.global_block().create_var(
-                    name="%s.block%d" % (varname, i),
+                    name="%s.block%d.trainer_%d" %
+                    (varname, i, self.trainer_id),
                     psersistable=False,
                     dtype=orig_var.dtype,
                     shape=splited_shape)  # flattend splited var
                 var_mapping[varname].append(var)
+            program.global_block().sync_with_cpp()
         return var_mapping
 
     def _clone_var(self, block, var):
@@ -449,6 +473,7 @@ class DistributeTranspiler:
         """
         # step5
         pserver_program = Program()
+        recv_inputs = []
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
             self._clone_var(pserver_program.global_block(), v)
         for v in self.param_grad_ep_mapping[endpoint]["grads"]:
@@ -457,13 +482,19 @@ class DistributeTranspiler:
             pserver_program.global_block().create_var(
                 name=v.name, persistable=True, dtype=v.dtype, shape=v.shape)
             for trainer_id in xrange(self.trainers):
+                # change client side var name to origin name by
+                # removing ".trainer_%d" suffix
+                suff_idx = v.name.find(".trainer_")
+                if suff_idx >= 0:
+                    orig_var_name = v.name[:suff_idx]
                 print("create variable for program: %s.trainer_%d" %
-                      (v.name, trainer_id))
-                pserver_program.global_block().create_var(
-                    name="%s.trainer_%d" % (v.name, trainer_id),
+                      (orig_var_name, trainer_id))
+                var = pserver_program.global_block().create_var(
+                    name="%s.trainer_%d" % (orig_var_name, trainer_id),
                     persistable=True,
                     dtype=v.dtype,
                     shape=v.shape)
+                recv_inputs.append(var)
         # step6
         optimize_sub_program = Program()
         # Iterate through the ops and append ops as needed
@@ -481,20 +512,20 @@ class DistributeTranspiler:
         # Append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
-            inputs={},
+            inputs={'X': recv_inputs},
             outputs={},
             attrs={
                 "OptimizeBlock": optimize_sub_program.global_block(),
                 "endpoint": endpoint,
-                "ParamList": [
-                    p.name
-                    for p in self.param_grad_ep_mapping[endpoint]["params"]
-                ],
-                "GradList": [
-                    p.name
-                    for p in self.param_grad_ep_mapping[endpoint]["grads"]
-                ],
-                "Fanin": self.trainers
+                # "ParamList": [
+                #     p.name
+                #     for p in self.param_grad_ep_mapping[endpoint]["params"]
+                # ],
+                # "GradList": [
+                #     p.name
+                #     for p in self.param_grad_ep_mapping[endpoint]["grads"]
+                # ],
+                # "Fanin": self.trainers
             })
         pserver_program.sync_with_cpp()
         return pserver_program
