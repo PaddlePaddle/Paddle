@@ -48,6 +48,8 @@
 
 ### different pserver number
 
+*The performance gap between Fuild and v2 comes from the network interference.*
+
 - Trainer Count: 60
 - Batch Size: 128
 - Metrics: mini-batch / sec
@@ -55,7 +57,7 @@
 | PServer Count | 3 | 6 |10 | 20 |
 | -- | -- | -- | -- | -- |
 | PaddlePaddle Fluid | 589.1 | 592.6 | 656.4 | 655.8 |
-| PaddlePaddle v2 | - | - | 729.7 | - |
+| PaddlePaddle v2 | 593.4 | 791.3 | 729.7 | 821.7 |
 | TensorFlow | - | - | - | - |
 
 
