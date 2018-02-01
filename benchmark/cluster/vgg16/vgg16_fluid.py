@@ -170,10 +170,11 @@ def main():
                     y_data = np.array(map(lambda x: x[1], data)).astype("int64")
                     y_data = y_data.reshape([-1, 1])
 
-                    loss, acc = exe.run(trainer_prog,
-                                        feed={"pixel": img_data,
-                                            "label": y_data},
-                                        fetch_list=[avg_cost] + accuracy.metrics)
+                    loss, acc = exe.run(
+                        trainer_prog,
+                        feed={"pixel": img_data,
+                              "label": y_data},
+                        fetch_list=[avg_cost] + accuracy.metrics)
                     iters += 1
                     num_samples += len(data)
                     print(
