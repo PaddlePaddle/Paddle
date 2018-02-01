@@ -1123,3 +1123,43 @@ def program_guard(main_program, startup_program=None):
     switch_main_program(main_program)
     if startup_program is not None:
         switch_startup_program(startup_program)
+
+
+def debug_block_image(block):
+    from graphviz import GraphPreviewGenerator
+    graph = GraphPreviewGenerator("some graph")
+    params = set()
+    args = set()
+    # collect parameters and args
+    protostr = block.desc.serialize_to_string()
+    desc = framework_pb2.BlockDesc.FromString(str(protostr))
+
+    # draw parameters and args
+    vars = {}
+    for var in desc.vars:
+        shape = [str(i) for i in var.lod_tensor.tensor.dims]
+        if not shape:
+            shape = ['null']
+        # create var
+        if var.persistable:
+            varn = graph.add_param(var.name, var.type, shape)
+        else:
+            varn = graph.add_arg(var.name)
+        vars[var.name] = varn
+
+    def add_op_link_var(op, var, op2var=False):
+        for arg in var.arguments:
+            varn = vars[arg]
+            if op2var:
+                graph.add_edge(op, varn)
+            else:
+                graph.add_edge(varn, op)
+
+    for op in desc.ops:
+        opn = graph.add_op(op.type)
+        for var in op.inputs:
+            add_op_link_var(opn, var, False)
+        for var in op.outputs:
+            add_op_link_var(opn, var, True)
+
+    graph(show=True)
