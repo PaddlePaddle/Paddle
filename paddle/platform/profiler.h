@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <forward_list>
 #include <list>
 #include <mutex>
 #include <vector>
+
+#include "paddle/memory/memory.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
@@ -43,12 +46,18 @@ class Event {
 
   double CpuElapsedMs(const Event& e) const;
   double CudaElapsedMs(const Event& e) const;
+  double MemoryUsed(const Event& e) const;
+  /* Get memory used attribute */
+  int64_t GetMemoryUsed() const { return memory_used_chars_; }
+  /* Get cpu time used attribute */
+  int64_t GetCpuNs() const { return cpu_ns_; }
 
  private:
   EventKind kind_;
   std::string name_;
   uint32_t thread_id_;
   int64_t cpu_ns_;
+  int64_t memory_used_chars_;
   bool has_cuda_;
 #ifdef PADDLE_WITH_CUDA
   cudaEvent_t event_ = nullptr;
@@ -124,6 +133,9 @@ struct EventItem {
   double min_time;
   double max_time;
   double ave_time;
+  double total_memory_used;
+  double min_memory_used;
+  double max_memory_used;
 };
 
 // Candidate keys to sort the profiling report
@@ -144,7 +156,7 @@ void ParseEvents(std::vector<std::vector<Event>>&,
 // Print results
 void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
                    std::string& sorted_domain, const size_t name_width,
-                   const size_t data_width);
+                   const size_t data_width, double app_total_time);
 
 }  // namespace platform
 }  // namespace paddle
