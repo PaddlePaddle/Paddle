@@ -124,11 +124,18 @@ OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
   // restore attrs_
   for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
-    if (attr.type() != proto::AttrType::BLOCK) {
-      attrs_[attr_name] = GetAttrValue(attr);
-    } else {
+    if (attr.type() == proto::AttrType::BLOCK) {
       auto bid = attr.block_idx();
       attrs_[attr_name] = prog->MutableBlock(bid);
+    } else if (attr.type() == proto::AttrType::BLOCKS) {
+      auto block_idxs = attr.block_idxs();
+      std::vector<BlockDesc *> ret;
+      for (auto idx : block_idxs) {
+        ret.emplace_back(prog->MutableBlock(idx));
+      }
+      attrs_[attr_name] = ret;
+    } else {
+      attrs_[attr_name] = GetAttrValue(attr);
     }
   }
   this->block_ = block;
@@ -284,6 +291,14 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   }
   void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
   void operator()(int64_t v) const { attr_->set_l(v); }
+  void operator()(const std::vector<BlockDesc *> &v) const {
+    auto *repeated_field = attr_->mutable_block_idxs();
+    repeated_field->Clear();
+    repeated_field->Reserve(v.size());
+    for (auto elem : v) {
+      *repeated_field->Add() = elem->ID();
+    }
+  }
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 
