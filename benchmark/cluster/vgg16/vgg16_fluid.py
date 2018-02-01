@@ -50,11 +50,7 @@ parser.add_argument(
     default='CPU',
     choices=['CPU', 'GPU'],
     help="The device type.")
-parser.add_argument(
-    '--device_id',
-    type=int,
-    default=0,
-    help="The device id.")
+parser.add_argument('--device_id', type=int, default=0, help="The device id.")
 parser.add_argument(
     '--data_format',
     type=str,
@@ -140,7 +136,8 @@ def main():
     optimize_ops, params_grads = optimizer.minimize(avg_cost)
 
     # Initialize executor
-    place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(args.device_id)
+    place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(
+        args.device_id)
     exe = fluid.Executor(place)
 
     # test
