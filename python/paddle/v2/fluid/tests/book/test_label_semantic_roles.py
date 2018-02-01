@@ -127,7 +127,7 @@ def to_lodtensor(data, place):
     return res
 
 
-def main():
+def train(save_dirname=None):
     # define network topology
     word = fluid.layers.data(
         name='word_data', shape=[1], dtype='int64', lod_level=1)
@@ -175,8 +175,8 @@ def main():
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    # place = fluid.CPUPlace()
-    place = fluid.CUDAPlace(0)
+    place = fluid.CPUPlace()
+    # place = fluid.CUDAPlace(0)
     feeder = fluid.DataFeeder(
         feed_list=[
             word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
@@ -211,12 +211,58 @@ def main():
                 if batch_id != 0:
                     print("second per batch: " + str((time.time() - start_time)
                                                      / batch_id))
-
-            # exit early for CI
-            exit(0)
+                if float(pass_precision) > 0.10 and save_dirname is not None:
+                    fluid.io.save_inference_model(save_dirname, [
+                        word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2,
+                        mark
+                    ], [feature_out], exe)
+                    return
 
             batch_id = batch_id + 1
 
 
+def infer(save_dirname=None):
+    if save_dirname is None:
+        return
+
+    place = fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    data = [[1, 2, 3, 4], [5, 6, 7, 8, 9, 10]]
+    ts_word = to_lodtensor(data, place)
+    ts_pred = to_lodtensor(data, place)
+    ts_ctx_n2 = to_lodtensor(data, place)
+    ts_ctx_n1 = to_lodtensor(data, place)
+    ts_ctx_0 = to_lodtensor(data, place)
+    ts_ctx_p1 = to_lodtensor(data, place)
+    ts_ctx_p2 = to_lodtensor(data, place)
+    ts_mark = to_lodtensor(data, place)
+
+    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+    # and results will contain a list of data corresponding to fetch_targets.
+    results = exe.run(inference_program,
+                      feed={
+                          feed_target_names[0]: ts_word,
+                          feed_target_names[1]: ts_pred,
+                          feed_target_names[2]: ts_ctx_n2,
+                          feed_target_names[3]: ts_ctx_n1,
+                          feed_target_names[4]: ts_ctx_0,
+                          feed_target_names[5]: ts_ctx_p1,
+                          feed_target_names[6]: ts_ctx_p2,
+                          feed_target_names[7]: ts_mark
+                      },
+                      fetch_list=fetch_targets)
+    print("Inference results: ", results[0])
+
+
 if __name__ == '__main__':
-    main()
+    save_dirname = "label_semantic_roles.inference.model"
+    train(save_dirname)
+    infer(save_dirname)
