@@ -111,11 +111,11 @@ class WhileGradOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("original_output_grad");
 
     PADDLE_ENFORCE_EQ(outside_og_names.size(), inside_og_names.size());
-
+    LOG(INFO) << "total time step " << step_scopes->size();
     for (auto cur_scope_iter = step_scopes->rbegin();
          cur_scope_iter != step_scopes->rend(); ++cur_scope_iter) {
-      VLOG(3) << "Start backward at time_step "
-              << cur_scope_iter - step_scopes->rbegin();
+      LOG(INFO) << "Start backward at time_step "
+                << cur_scope_iter - step_scopes->rbegin();
       framework::Scope &cur_scope = **cur_scope_iter;
       // Link OG from outside to inside
       for (size_t i = 0; i < outside_og_names.size(); ++i) {
@@ -166,6 +166,7 @@ class WhileGradOp : public framework::OperatorBase {
           continue;  // parameter doesn't have gradient
         }
         auto inside_grad_name = framework::GradVarName(p_names[param_id]);
+        LOG(INFO) << inside_grad_name;
 
         //  // TODO(tonyyang-svail): Not sure we need the following
         //  // If does not compute gradient of that variable inside rnn,
@@ -206,6 +207,7 @@ class WhileGradOp : public framework::OperatorBase {
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
     }
+    LOG(INFO) << "while grad done";
   }
 };
 

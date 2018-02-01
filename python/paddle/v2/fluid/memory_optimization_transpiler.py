@@ -31,10 +31,11 @@ dtype_to_size = {
 
 
 class ControlFlowGraph(object):
-    def __init__(self, Program, ops, forward_num):
+    def __init__(self, Program, ops, forward_num, skip_opt):
         self._program = Program
         self._ops = ops
         self._forward_num = forward_num
+        self._skip_opt = skip_opt
         self._successors = defaultdict(set)
         self._presuccessors = defaultdict(set)
         self._uses = defaultdict(set)
@@ -118,6 +119,12 @@ class ControlFlowGraph(object):
         else:
             return block_desc.find_var_recursive(str(var_name))
 
+    def _shape_compare(self, x_shape, cache_shape, level):
+        if level == 0:
+            return x_shape == cache_shape
+        else:
+            return True
+
     def memory_optimize(self):
         def check_var_validity(block_desc, x, is_forward):
             if str(x) == "@EMPTY@":
@@ -130,65 +137,79 @@ class ControlFlowGraph(object):
                     block_desc, x,
                     is_forward).type() != core.VarDesc.VarType.LOD_TENSOR:
                 return False
+            if x in self._skip_opt:
+                return False
+            if not self._find_var(block_desc, x, is_forward).shape():
+                return False
             return True
 
         self._build_graph()
         self._dataflow_analyze()
+        # print self._defs
+        # print self._live_in
         self.pool = []
-        for i in range(self.op_size):
-            op = self._ops[i]
-            if op.type() == "while" or op.type() == "while_grad":
-                continue
-            block_desc = op.block()
-            is_forward = i < self._forward_num
-            if self.pool:
-                defs_can_optimize = filter(
-                    lambda x: check_var_validity(block_desc, x, is_forward),
-                    self._defs[i])
-                out_pair = [
-                    (x, self._find_var(block_desc, x, is_forward).shape())
-                    for x in defs_can_optimize
-                ]
-                for x, x_shape in out_pair:
-                    for index, cache_pair in enumerate(self.pool):
-                        cache_var = cache_pair[0]
-                        cache_shape = cache_pair[1]
-                        if x_shape == cache_shape:
-                            if self._has_var(block_desc, cache_var, is_forward):
-                                x_dtype = self._find_var(block_desc, x,
-                                                         is_forward).dtype()
-                                cache_dtype = self._find_var(
-                                    block_desc, cache_var, is_forward).dtype()
-                                # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
-                                # and dtype_to_size[cache_dtype]
-                                if x_dtype == cache_dtype:
-                                    print(("Hit Cache !!!! cache pool index "
-                                           "is %d, var name is %s, "
-                                           "cached var name is %s, "
-                                           "var shape is %s ") %
-                                          (index, x, cache_var,
-                                           str(cache_shape)))
-                                    self.pool.pop(index)
-                                    if x == cache_var:
+        for level in range(2):
+            for i in range(self.op_size):
+                op = self._ops[i]
+                if op.type() == "while" or op.type() == "while_grad":
+                    continue
+                block_desc = op.block()
+                is_forward = i < self._forward_num
+                if self.pool:
+                    defs_can_optimize = filter(
+                        lambda x: check_var_validity(block_desc, x, is_forward),
+                        self._defs[i])
+                    out_pair = [
+                        (x, self._find_var(block_desc, x, is_forward).shape())
+                        for x in defs_can_optimize
+                    ]
+                    for x, x_shape in out_pair:
+                        for index, cache_pair in enumerate(self.pool):
+                            cache_var = cache_pair[0]
+                            cache_shape = cache_pair[1]
+                            if self._shape_compare(x_shape, cache_shape, level):
+                                if self._has_var(block_desc, cache_var,
+                                                 is_forward):
+                                    x_dtype = self._find_var(block_desc, x,
+                                                             is_forward).dtype()
+                                    cache_dtype = self._find_var(
+                                        block_desc, cache_var,
+                                        is_forward).dtype()
+                                    # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
+                                    # and dtype_to_size[cache_dtype]
+                                    if x_dtype == cache_dtype:
+                                        print(
+                                            ("Hit Cache !!!! cache pool index "
+                                             "is %d, var name is %s, "
+                                             "cached var name is %s, "
+                                             "var shape is %s ") %
+                                            (index, x, cache_var,
+                                             str(cache_shape)))
+                                        self.pool.pop(index)
+                                        if x == cache_var:
+                                            break
+                                        _rename_arg_(
+                                            self._ops,
+                                            x,
+                                            cache_var,
+                                            begin_idx=i)
+                                        self._program.block(block_desc.id).var(
+                                            str(x)).desc = self._find_var(
+                                                block_desc, cache_var,
+                                                is_forward)
+                                        self._update_graph(
+                                            x, cache_var, begin_idx=i)
                                         break
-                                    _rename_arg_(
-                                        self._ops, x, cache_var, begin_idx=i)
-                                    self._program.block(block_desc.id).var(
-                                        str(x)).desc = self._find_var(
-                                            block_desc, cache_var, is_forward)
-                                    self._update_graph(
-                                        x, cache_var, begin_idx=i)
-                                    break
 
-            in_diff, out_diff = self._get_diff(self._live_in[i],
-                                               self._live_out[i])
-            can_optimize = filter(
-                lambda x: check_var_validity(block_desc, x, is_forward),
-                in_diff)
-            if can_optimize:
-                for var_name in can_optimize:
-                    self.pool.append((var_name, self._find_var(
-                        block_desc, var_name, is_forward).shape()))
+                in_diff, out_diff = self._get_diff(self._live_in[i],
+                                                   self._live_out[i])
+                can_optimize = filter(
+                    lambda x: check_var_validity(block_desc, x, is_forward),
+                    in_diff)
+                if can_optimize:
+                    for var_name in can_optimize:
+                        self.pool.append((var_name, self._find_var(
+                            block_desc, var_name, is_forward).shape()))
 
 
 def get_cfgs(input_program):
@@ -197,28 +218,32 @@ def get_cfgs(input_program):
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
     # Get global block ops
-    ops_list.append(([block_desc.op(i) for i in range(op_size)], op_size))
+    ops_list.append(
+        ([block_desc.op(i) for i in range(op_size)], op_size, set()))
 
     while_sub_block_ids = []
     while_grad_sub_block_ids = []
-    while_pair = []
+    while_op_output = set()
+    while_block_id_pair = []
 
     for i in range(op_size):
         op = block_desc.op(i)
         if op.type() == "while":
             while_sub_block_ids.append(op.attr("sub_block").id)
+            while_op_output.update(op.output_arg_names())
         elif op.type() == "while_grad":
             while_grad_sub_block_ids.append(op.attr("sub_block").id)
+            while_op_output.update(op.output_arg_names())
 
     # Find while/while_grad block pair
     for grad_id in while_grad_sub_block_ids:
         parent_id = pdesc.block(grad_id).parent
         if parent_id in while_sub_block_ids:
-            while_pair.append((parent_id, grad_id))
+            while_block_id_pair.append((parent_id, grad_id))
             while_sub_block_ids.remove(parent_id)
 
     # Get while/while_grad block ops
-    for parent_id, grad_id in while_pair:
+    for parent_id, grad_id in while_block_id_pair:
         while_block_ops = []
         while_block = pdesc.block(parent_id)
         while_block_op_size = while_block.op_size()
@@ -230,7 +255,9 @@ def get_cfgs(input_program):
         for i in range(while_grad_block_op_size):
             while_block_ops.append(while_grad_block.op(i))
 
-        ops_list.append((while_block_ops, while_block_op_size))
+        ops_list.append((while_block_ops, while_block_op_size, while_op_output))
+
+    # print while_op_output
 
     # Process rest while block ops
     for parent_id in while_sub_block_ids:
@@ -242,7 +269,7 @@ def get_cfgs(input_program):
 
         ops_list.append((while_block_ops, while_block_op_size))
 
-    cfgs = [ControlFlowGraph(input_program, i, j) for i, j in ops_list]
+    cfgs = [ControlFlowGraph(input_program, i, j, k) for i, j, k in ops_list]
     return cfgs
 
 
