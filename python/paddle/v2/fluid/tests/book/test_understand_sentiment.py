@@ -149,11 +149,7 @@ class TestUnderstandSentiment(unittest.TestCase):
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
-                try:
-                    yield
-                except:
-                    print(prog)
-                    raise
+                yield
 
     @unittest.skip(reason="make CI faster")
     def test_conv_cpu(self):
