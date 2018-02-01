@@ -46,6 +46,9 @@ def is_parameter(var):
 
 
 def is_persistable(var):
+    if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or var.desc.type(
+    ) == core.VarDesc.VarType.FETCH_LIST:
+        return False
     return var.persistable
 
 
@@ -97,20 +100,19 @@ def save_vars(executor,
         save_program = Program()
         save_block = save_program.global_block()
 
-        if save_file_name is None:
-            for each_var in vars:
-                new_var = _clone_var_in_block_(save_block, each_var)
+        save_var_map = {}
+        for each_var in vars:
+            new_var = _clone_var_in_block_(save_block, each_var)
+            if save_file_name is None:
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
                     attrs={'file_path': os.path.join(dirname, new_var.name)})
-        else:
-            save_var_map = {}
-            for each_var in vars:
-                new_var = _clone_var_in_block_(save_block, each_var)
+            else:
                 save_var_map[new_var.name] = new_var
 
+        if save_file_name is not None:
             save_var_list = []
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
@@ -188,22 +190,20 @@ def load_vars(executor,
         load_prog = Program()
         load_block = load_prog.global_block()
 
-        if load_file_name is None:
-            for each_var in vars:
-                assert isinstance(each_var, Variable)
-                new_var = _clone_var_in_block_(load_block, each_var)
+        load_var_map = {}
+        for each_var in vars:
+            assert isinstance(each_var, Variable)
+            new_var = _clone_var_in_block_(load_block, each_var)
+            if load_file_name is None:
                 load_block.append_op(
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
                     attrs={'file_path': os.path.join(dirname, new_var.name)})
-        else:
-            load_var_map = {}
-            for each_var in vars:
-                assert isinstance(each_var, Variable)
-                new_var = _clone_var_in_block_(load_block, each_var)
+            else:
                 load_var_map[new_var.name] = new_var
 
+        if load_file_name is not None:
             load_var_list = []
             for name in sorted(load_var_map.keys()):
                 load_var_list.append(load_var_map[name])
@@ -294,21 +294,6 @@ def append_fetch_ops(inference_program,
             attrs={'col': i})
 
 
-def get_parameters(program):
-    parameter_list = []
-    input_args = set()
-    for block in program.blocks:
-        for op in block.ops:
-            if op.desc.type() != 'feed':
-                input_args.update(op.desc.input_arg_names())
-
-    for var in program.list_vars():
-        if is_persistable(var) and var.name in input_args:
-            parameter_list.append(var)
-
-    return parameter_list
-
-
 def save_inference_model(dirname,
                          feeded_var_names,
                          target_vars,
@@ -361,13 +346,7 @@ def save_inference_model(dirname,
     with open(model_file_name, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())
 
-    parameter_list = get_parameters(inference_program)
-    save_vars(
-        executor,
-        dirname,
-        inference_program,
-        parameter_list,
-        save_file_name=save_file_name)
+    save_persistables(executor, dirname, inference_program, save_file_name)
 
 
 def get_feed_targets_names(program):
@@ -410,13 +389,7 @@ def load_inference_model(dirname, executor, load_file_name=None):
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
-    parameter_list = get_parameters(program)
-    load_vars(
-        executor,
-        dirname,
-        program,
-        parameter_list,
-        load_file_name=load_file_name)
+    load_persistables(executor, dirname, program, load_file_name)
 
     feed_target_names = get_feed_targets_names(program)
     fetch_target_names = get_fetch_targets_names(program)
