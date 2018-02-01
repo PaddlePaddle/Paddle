@@ -99,3 +99,30 @@ TEST(Channel, SimpleUnbufferedChannelTest) {
   EXPECT_EQ(sum_send, 10U);
   delete ch;
 }
+
+TEST(Channel, UnbufferedMoreReceiveLessSendTest) {
+  auto ch = MakeChannel<int>(0);
+  unsigned sum_send = 0;
+  unsigned sum_receive = 0;
+  // The receiver should block after 5
+  // iterations, since there are only 5 senders.
+  std::thread t_send([&]() {
+    for (int i = 0; i < 5; i++) {
+      ch->Send(&i);
+      sum_send += i;
+    }
+  });
+  for (int i = 0; i < 8; i++) {
+    int recv;
+    ch->Receive(&recv); // should block after the fifth iteration.
+    EXPECT_EQ(recv, i);
+    sum_receive += i;
+  }
+  
+  CloseChannel(ch);
+  t.join();
+  EXPECT_EQ(sum_send, 10U);
+  EXPECT_EQ(sum_receive, 10U);
+  EXPECT_EQ(sum_send, sum_receive);
+  delete ch;
+}
