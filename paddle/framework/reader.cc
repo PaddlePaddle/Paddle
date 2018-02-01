@@ -17,7 +17,7 @@
 namespace paddle {
 namespace framework {
 
-DDim Reader::shape(size_t idx) const {
+DDim FileReader::shape(size_t idx) const {
   PADDLE_ENFORCE_LT(
       idx, shapes_.size(),
       "Cannot get the %d'th shape, 'shapes_' only has %d elements.", idx,
