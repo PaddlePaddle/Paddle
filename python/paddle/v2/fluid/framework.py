@@ -1126,10 +1126,13 @@ def program_guard(main_program, startup_program=None):
 
 
 def debug_block_image(block):
+    '''
+    Generate a debug graph for block.
+    Args:
+        block(Block): a block.
+    '''
     from graphviz import GraphPreviewGenerator
     graph = GraphPreviewGenerator("some graph")
-    params = set()
-    args = set()
     # collect parameters and args
     protostr = block.desc.serialize_to_string()
     desc = framework_pb2.BlockDesc.FromString(str(protostr))
@@ -1162,4 +1165,4 @@ def debug_block_image(block):
         for var in op.outputs:
             add_op_link_var(opn, var, True)
 
-    graph(show=True)
+    graph(show=False)
