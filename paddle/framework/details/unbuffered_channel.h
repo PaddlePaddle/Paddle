@@ -63,12 +63,15 @@ void UnBuffered<T>::Send(T* data) {
   // If writer comes first, it should wait till a reader arrives
   cv_writer_.wait(cv_lock,
                   [this]() { return reader_found_ == true || closed_; });
+  cv_reader_.notify_one();
   if (!closed_) {
-    {
-      std::unique_lock<std::mutex> channel_lock(mu_ch_);
-      item = data;
-    }
+    std::unique_lock<std::mutex> channel_lock(mu_ch_);
+    item = data;
+    channel_lock.unlock();
     cv_channel_.notify_one();
+    channel_lock.lock();
+    cv_channel_.wait(channel_lock,
+                     [this]() { return item == nullptr || closed_; });
   }
   writer_found_ = false;
 }
@@ -82,6 +85,7 @@ void UnBuffered<T>::Receive(T* data) {
   // If reader comes first, it should wait till a writer arrives
   cv_reader_.wait(cv_lock,
                   [this]() { return writer_found_ == true || closed_; });
+  cv_writer_.notify_one();
   if (!closed_) {
     std::unique_lock<std::mutex> lock_ch{mu_ch_};
     // Reader should wait for the writer to first write its data
@@ -90,7 +94,6 @@ void UnBuffered<T>::Receive(T* data) {
       *data = std::move(*item);
       item = nullptr;
       lock_ch.unlock();
-      cv_writer_.notify_one();
     }
   }
   reader_found_ = false;
