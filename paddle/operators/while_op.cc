@@ -208,7 +208,7 @@ class WhileGradOp : public framework::OperatorBase {
       // get device context from pool
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
-      auto &dev_ctx = *pool.Get(place);
+      auto &dev_ctx = *pool.Get(dev_place);
       dev_ctx.Wait();
       const_cast<framework::Scope &>(scope).DeleteScope(&scope);
     }
