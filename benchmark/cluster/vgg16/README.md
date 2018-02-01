@@ -40,13 +40,13 @@
 - Batch Size: 128
 - Metrics: samples / sec
 
-| Trainer Counter | 20 | 40 | 80 | 100 |
+| Trainer Count | 20 | 40 | 80 | 100 |
 | -- | -- | -- | -- | -- |
 | PaddlePaddle Fluid | 263.29 (78.64%) | 518.80 (77.47%) | 836.26 (62.44%) | 1019.29 (60.89%) |
 | PaddlePaddle v2 (need more tests) | 326.85 (92.85%) | 534.58 (75.93%) | 853.30 (60.60%) | 1041.99 (59.20%) |
 | TensorFlow | - | - | - | - |
 
-### Different Pserver Number
+### Different Pserver Count
 
 - Trainer Count: 100
 - Batch Size: 128
