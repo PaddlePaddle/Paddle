@@ -29,7 +29,7 @@ spec:
         - name: TOPOLOGY
           value: ""
         - name: ENTRY
-          value: "python -u train.py"
+          value: "python train.py"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: PADDLE_INIT_PORT

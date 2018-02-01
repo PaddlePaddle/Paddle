@@ -30,7 +30,7 @@ spec:
         - name: TOPOLOGY
           value: ""
         - name: ENTRY
-          value: "cd /workspace && MKL_NUM_THREADS=1 python -u /workspace/vgg16_v2.py"
+          value: "cd /workspace && MKL_NUM_THREADS=1 python /workspace/vgg16_v2.py"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: PADDLE_INIT_PORT
