@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,25 +24,33 @@ using LoDTensor = framework::LoDTensor;
 constexpr int64_t kOutputDim = 6;
 constexpr int64_t kBBoxSize = 4;
 
-class MulticlassNMSOp : public framework::OperatorWithKernel {
+class MultiClassNMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Bboxes"),
-                   "Input(Bboxes) of MulticlassNMS should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("BBoxes"),
+                   "Input(BBoxes) of MultiClassNMS should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Scores"),
-                   "Input(Scores) of MulticlassNMS should not be null.");
+                   "Input(Scores) of MultiClassNMS should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of MultiClassNMS should not be null.");
 
-    auto box_dims = ctx->GetInputDim("Bboxes");
+    auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
 
     PADDLE_ENFORCE_EQ(box_dims.size(), 2,
-                      "The rank of Input(Bboxes) must be 3.");
+                      "The rank of Input(BBoxes) must be 2.");
     PADDLE_ENFORCE_EQ(score_dims.size(), 3,
                       "The rank of Input(Scores) must be 3.");
-    PADDLE_ENFORCE_EQ(box_dims[1], 4);
-    PADDLE_ENFORCE_EQ(box_dims[0], score_dims[2]);
+    PADDLE_ENFORCE_EQ(box_dims[1], 4,
+                      "The 2nd dimension of Input(BBoxes) must be 4, "
+                      "represents the layout of coordinate "
+                      "[xmin, ymin, xmax, ymax]");
+    PADDLE_ENFORCE_EQ(box_dims[0], score_dims[2],
+                      "The 1st dimensiong of Input(BBoxes) must be equal to "
+                      "3rd dimension of Input(Scores), which represents the "
+                      "predicted bboxes.");
 
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
@@ -86,15 +94,16 @@ static inline void GetMaxScoreIndex(
 template <class T>
 T BBoxArea(const T* box, const bool normalized) {
   if (box[2] < box[0] || box[3] < box[1]) {
-    // If bbox is invalid (e.g. xmax < xmin or ymax < ymin), return 0.
-    return T(0.);
+    // If coordinate values are is invalid
+    // (e.g. xmax < xmin or ymax < ymin), return 0.
+    return static_cast<T>(0.);
   } else {
     const T w = box[2] - box[0];
     const T h = box[3] - box[1];
     if (normalized) {
       return w * h;
     } else {
-      // If bbox is not within range [0, 1].
+      // If coordinate values are not within range [0, 1].
       return (w + 1) * (h + 1);
     }
   }
@@ -121,7 +130,7 @@ static inline T JaccardOverlap(const T* box1, const T* box2,
 }
 
 template <typename T>
-class MulticlassNMSKernel : public framework::OpKernel<T> {
+class MultiClassNMSKernel : public framework::OpKernel<T> {
  public:
   void NMSFast(const Tensor& bbox, const Tensor& scores,
                const T score_threshold, const T nms_threshold, const T eta,
@@ -163,10 +172,10 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
     }
   }
 
-  void MulticlassNMS(const framework::ExecutionContext& ctx,
+  void MultiClassNMS(const framework::ExecutionContext& ctx,
                      const Tensor& scores, const Tensor& bboxes,
-                     std::map<int, std::vector<int>>* indices,
-                     int* num_nmsed_out) const {
+                     std::map<int, std::vector<int>>& indices,
+                     int& num_nmsed_out) const {
     int64_t background_label = ctx.Attr<int>("background_label");
     int64_t nms_top_k = ctx.Attr<int>("nms_top_k");
     int64_t keep_top_k = ctx.Attr<int>("keep_top_k");
@@ -181,15 +190,15 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
       if (c == background_label) continue;
       Tensor score = scores.Slice(c, c + 1);
       NMSFast(bboxes, score, score_threshold, nms_threshold, nms_eta, nms_top_k,
-              &((*indices)[c]));
-      num_det += (*indices)[c].size();
+              &(indices[c]));
+      num_det += indices[c].size();
     }
 
-    *num_nmsed_out = num_det;
+    num_nmsed_out = num_det;
     const T* scores_data = scores.data<T>();
     if (keep_top_k > -1 && num_det > keep_top_k) {
       std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
-      for (const auto& it : *indices) {
+      for (const auto& it : indices) {
         int label = it.first;
         const T* sdata = scores_data + label * predict_dim;
         const std::vector<int>& label_indices = it.second;
@@ -212,12 +221,12 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
         int idx = score_index_pairs[j].second.second;
         new_indices[label].push_back(idx);
       }
-      new_indices.swap(*indices);
-      *num_nmsed_out = keep_top_k;
+      new_indices.swap(indices);
+      num_nmsed_out = keep_top_k;
     }
   }
 
-  void MulticlassOutput(const Tensor& scores, const Tensor& bboxes,
+  void MultiClassOutput(const Tensor& scores, const Tensor& bboxes,
                         std::map<int, std::vector<int>>& selected_indices,
                         Tensor* outs) const {
     int predict_dim = scores.dims()[1];
@@ -229,23 +238,21 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
     for (const auto& it : selected_indices) {
       int label = it.first;
       const T* sdata = scores_data + label * predict_dim;
-      std::vector<int> indices = it.second;
+      const std::vector<int>& indices = it.second;
       for (int j = 0; j < indices.size(); ++j) {
         int idx = indices[j];
         const T* bdata = bboxes_data + idx * kBBoxSize;
         odata[count * kOutputDim] = label;           // label
         odata[count * kOutputDim + 1] = sdata[idx];  // score
-        odata[count * kOutputDim + 2] = bdata[0];    // xmin
-        odata[count * kOutputDim + 3] = bdata[1];    // ymin
-        odata[count * kOutputDim + 4] = bdata[2];    // xmax
-        odata[count * kOutputDim + 5] = bdata[3];    // ymax
+        // xmin, ymin, xmax, ymax
+        std::memcpy(odata + count * kOutputDim + 2, bdata, 4 * sizeof(T));
         count++;
       }
     }
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* boxes = ctx.Input<Tensor>("Bboxes");
+    auto* boxes = ctx.Input<Tensor>("BBoxes");
     auto* scores = ctx.Input<Tensor>("Scores");
     auto* outs = ctx.Output<LoDTensor>("Out");
 
@@ -262,7 +269,7 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
       ins_score.Resize({class_num, predict_dim});
       std::map<int, std::vector<int>> indices;
       int num_nmsed_out = 0;
-      MulticlassNMS(ctx, ins_score, *boxes, &indices, &num_nmsed_out);
+      MultiClassNMS(ctx, ins_score, *boxes, indices, num_nmsed_out);
       all_indices.push_back(indices);
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
     }
@@ -280,7 +287,7 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
         int64_t e = batch_starts[i + 1];
         if (e > s) {
           Tensor out = outs->Slice(s, e);
-          MulticlassOutput(ins_score, *boxes, all_indices[i], &out);
+          MultiClassOutput(ins_score, *boxes, all_indices[i], &out);
         }
       }
     }
@@ -292,28 +299,31 @@ class MulticlassNMSKernel : public framework::OpKernel<T> {
   }
 };
 
-class MulticlassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
+class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulticlassNMSOpMaker(OpProto* proto, OpAttrChecker* op_checker)
+  MultiClassNMSOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Bboxes",
-             "(Tensor) A 2-D Tensor with shape [M, 4] represents the location "
-             "predictions with M bboxes. 4 is the number of "
-             "each location coordinates.");
+    AddInput("BBoxes",
+             "(Tensor) A 2-D Tensor with shape [M, 4] represents the "
+             "predicted locations of M bounding bboxes. Each bounding box "
+             "has four coordinate values and the layout is "
+             "[xmin, ymin, xmax, ymax].");
     AddInput("Scores",
              "(Tensor) A 3-D Tensor with shape [N, C, M] represents the "
-             "confidence predictions. N is the batch size, C is the class "
-             "number, M is number of predictions for each class, which is "
-             "the same with Bboxes.");
+             "predicted confidence predictions. N is the batch size, C is the "
+             "class number, M is number of bounding boxes. For each category "
+             "there are total M scores which corresponding M bounding boxes. "
+             " Please note, M is equal to the 1st dimension of BBoxes. ");
     AddAttr<int>(
         "background_label",
         "(int64_t, defalut: 0) "
-        "The index of background label, the background label will be ignored.")
+        "The index of background label, the background label will be ignored. "
+        "If set to -1, then all categories will be considered.")
         .SetDefault(0);
     AddAttr<float>("score_threshold",
                    "(float) "
-                   "Only consider detections whose confidences are larger than "
-                   "a threshold. If not provided, consider all boxes.");
+                   "Threshold to filter out bounding boxes with low "
+                   "confidence score. If not provided, consider all boxes.");
     AddAttr<int>("nms_top_k",
                  "(int64_t) "
                  "Maximum number of detections to be kept according to the "
@@ -368,8 +378,8 @@ value which is -1.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(multiclass_nms, ops::MulticlassNMSOp,
-                  ops::MulticlassNMSOpMaker,
+REGISTER_OPERATOR(multiclass_nms, ops::MultiClassNMSOp,
+                  ops::MultiClassNMSOpMaker,
                   paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(multiclass_nms, ops::MulticlassNMSKernel<float>,
-                       ops::MulticlassNMSKernel<double>);
+REGISTER_OP_CPU_KERNEL(multiclass_nms, ops::MultiClassNMSKernel<float>,
+                       ops::MultiClassNMSKernel<double>);

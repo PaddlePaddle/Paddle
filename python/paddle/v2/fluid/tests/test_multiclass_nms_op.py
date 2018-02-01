@@ -190,7 +190,7 @@ class TestMulticlassNMSOp(OpTest):
         nmsed_outs = np.array(nmsed_outs).astype('float32')
 
         self.op_type = 'multiclass_nms'
-        self.inputs = {'Bboxes': boxes, 'Scores': scores}
+        self.inputs = {'BBoxes': boxes, 'Scores': scores}
         self.outputs = {'Out': (nmsed_outs, [lod])}
         self.attrs = {
             'background_label': 0,

@@ -72,7 +72,7 @@ class TestBipartiteMatchOpWithLoD(OpTest):
         self.inputs = {'DistMat': (dist, lod)}
         self.outputs = {
             'ColToRowMatchIndices': (match_indices),
-            'ColToRowMatchDis': (match_dist),
+            'ColToRowMatchDist': (match_dist),
         }
 
     def test_check_output(self):
@@ -89,7 +89,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
         self.inputs = {'DistMat': dist}
         self.outputs = {
             'ColToRowMatchIndices': match_indices,
-            'ColToRowMatchDis': match_dist,
+            'ColToRowMatchDist': match_dist,
         }
 
     def test_check_output(self):
