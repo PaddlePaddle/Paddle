@@ -203,8 +203,9 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
-                  const framework::Tensor& filter, std::vector<int>& strides,
-                  std::vector<int>& paddings, framework::Tensor* output) {
+                  const framework::Tensor& filter,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings, framework::Tensor* output) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
     const int input_height = input.dims()[2];
@@ -244,7 +245,8 @@ class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& input,
                   const framework::Tensor& filter,
                   const framework::Tensor& output_grad,
-                  std::vector<int>& strides, std::vector<int>& paddings,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   framework::Tensor* input_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
@@ -284,7 +286,8 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const framework::Tensor& output_grad,
-                  std::vector<int>& strides, std::vector<int>& paddings,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   framework::Tensor* filter_grad) {
     const int batch_size = input.dims()[0];
     const int input_channels = input.dims()[1];
