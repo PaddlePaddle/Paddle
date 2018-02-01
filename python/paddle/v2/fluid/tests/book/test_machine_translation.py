@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
@@ -19,6 +20,7 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as pd
 from paddle.v2.fluid.executor import Executor
+from paddle.v2.fluid.nets import SequenceDecoder
 
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
@@ -54,17 +56,46 @@ def encoder():
     return encoder_out
 
 
+def decoder_train(context):
+    # decoder
+    trg_language_word = pd.data(
+        name="target_language_word", shape=[1], dtype='int64', lod_level=1)
+    trg_embedding = pd.embedding(
+        input=trg_language_word,
+        size=[dict_size, word_dim],
+        dtype='float32',
+        is_sparse=IS_SPARSE,
+        param_attr=fluid.ParamAttr(name='vemb'))
+
+    rnn = pd.DynamicRNN()
+    with rnn.block():
+        current_word = rnn.step_input(trg_embedding)
+        pre_state = rnn.memory(init=context)
+        current_state = pd.fc(input=[current_word, pre_state],
+                              size=decoder_size,
+                              act='tanh')
+
+        current_score = pd.fc(input=current_state,
+                              size=target_dict_dim,
+                              act='softmax')
+        rnn.update_memory(pre_state, current_state)
+        rnn.output(current_score)
+
+    return rnn()
+
+
 def decoder(context, mode='train'):
     '''
     mode: str
         should be train or decode.
     '''
-    Cell = pd.SequenceDecoder.Cell
-    InputCell = pd.SequenceDecoder.InputCell
-    StateCell = pd.SequenceDecoder.StateCell
+    Cell = SequenceDecoder.Cell
+    InputCell = SequenceDecoder.InputCell
+    StateCell = SequenceDecoder.StateCell
 
     trg_language_word = pd.data(
         name="target_language_word", shape=[1], dtype='int64', lod_level=1)
+    # this is only used in train
     trg_embedding = pd.embedding(
         input=trg_language_word,
         size=[dict_size, word_dim],
@@ -77,36 +108,45 @@ def decoder(context, mode='train'):
     item_id_init = {'train': trg_language_word, 'decode': init_ids}
     item_id = InputCell('word_id', item_id_init)
 
+    item_vec = InputCell('word_embs', trg_embedding)
+
     state0 = StateCell('state', context)
 
     def state0_updater(seqdec):
         rnn = seqdec.train_rnn
-        # TODO add counter
-        # TODO add mode into SequenceDecoder
-        current_word = InputCell.get(seqdec.mode, item_id.id)
-        pre_state = StateCell.get(seqdec.mode, state0.id)
+        # current_word = InputCell.get(seqdec.mode, item_id.id)
+        pre_state = StateCell.get(mode, state0.id, seqdec.counter
+                                  if seqdec.mode == 'decode' else None)
+        print 'pre_state', pre_state
+
+        if seqdec.mode == 'train':
+            current_word_embedding = InputCell.get('train', 'word_embs')
+            print 'current_word_embedding', current_word_embedding
+        else:
+            current_word_embedding = pd.embedding(input=Cell.get(
+                'decode', 'step_input', 'word_embs', counter=seqdec.counter))
 
         # TODO need to make sure fc in different mode share the same paraemters.
-        new_state = pd.fc(input=[current_word, pre_state],
+        new_state = pd.fc(input=[current_word_embedding, pre_state],
                           size=decoder_size,
                           act='tanh')
 
         Cell.add_temp_var(seqdec.mode, 'new_state', new_state)
         return new_state
 
-    state0.set_updater(state0_updater)
-
     def scorer(seqdec):
         new_state = Cell.get_temp_var(seqdec.mode, 'new_state')
         new_score = pd.fc(input=new_state, size=target_dict_dim, act='softmax')
         return new_score
 
-    seqdec = pd.SequenceDecoder(item_id, [state0], scorer)
+    state0.set_updater(state0_updater)
+    seqdec = SequenceDecoder(
+        item_id, [state0], scorer, other_step_inputs=[item_vec])
 
     if mode == 'train':
-        seqdec.train()
-    else:
-        seqdec.decode(max_length)
+        res = seqdec.train()
+        return res
+    # return seqdec.decode(beam_size, max_length, topk_size, end_id=10)
 
 
 def set_init_lod(data, lod, place):
@@ -133,7 +173,11 @@ def to_lodtensor(data, place):
 
 def train_main():
     context = encoder()
+    # rnn_out = decoder(context, 'train')
     rnn_out = decoder_train(context)
+    print(framework.default_main_program().block(0))
+    sys.exit(0)
+
     label = pd.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
     cost = pd.cross_entropy(input=rnn_out, label=label)
@@ -167,14 +211,14 @@ def train_main():
             avg_cost_val = np.array(outs[0])
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
                   " avg_cost=" + str(avg_cost_val))
-            if batch_id > 3:
+            if batch_id > 0:
                 break
             batch_id += 1
 
 
 def decode_main():
     context = encoder()
-    translation_ids, translation_scores = decoder_decode(context)
+    translation_ids, translation_scores = decoder(context, 'decode')
 
     exe = Executor(place)
     exe.run(framework.default_startup_program())
@@ -199,11 +243,8 @@ def decode_main():
 
         result_ids, result_scores = exe.run(
             framework.default_main_program(),
-            feed={
-                'src_word_id': src_word_data,
-                'init_ids': init_ids,
-                'init_scores': init_scores
-            },
+            feed={'init_ids': init_ids,
+                  'init_scores': init_scores},
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
         print result_ids.lod()
@@ -211,5 +252,5 @@ def decode_main():
 
 
 if __name__ == '__main__':
-    # train_main()
-    decode_main()
+    train_main()
+    # decode_main()

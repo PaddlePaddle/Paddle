@@ -195,6 +195,7 @@ class TensorPrintOp : public framework::OperatorBase {
     if (Attr<bool>("print_tensor_lod")) {
       formater.lod = printed_tensor.lod();
     }
+    formater.message = Attr<std::string>("message");
     formater.summarize = Attr<int>("summarize");
     formater.data = (void*)printed_tensor.data<void>();
     formater(printed_tensor.numel());
