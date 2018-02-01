@@ -54,8 +54,15 @@ def encoder():
     return encoder_out
 
 
-def decoder_train(context):
-    # decoder
+def decoder(context, mode='train'):
+    '''
+    mode: str
+        should be train or decode.
+    '''
+    Cell = pd.SequenceDecoder.Cell
+    InputCell = pd.SequenceDecoder.InputCell
+    StateCell = pd.SequenceDecoder.StateCell
+
     trg_language_word = pd.data(
         name="target_language_word", shape=[1], dtype='int64', lod_level=1)
     trg_embedding = pd.embedding(
@@ -65,88 +72,41 @@ def decoder_train(context):
         is_sparse=IS_SPARSE,
         param_attr=fluid.ParamAttr(name='vemb'))
 
-    rnn = pd.DynamicRNN()
-    with rnn.block():
-        current_word = rnn.step_input(trg_embedding)
-        pre_state = rnn.memory(init=context)
-        current_state = pd.fc(input=[current_word, pre_state],
-                              size=decoder_size,
-                              act='tanh')
-
-        current_score = pd.fc(input=current_state,
-                              size=target_dict_dim,
-                              act='softmax')
-        rnn.update_memory(pre_state, current_state)
-        rnn.output(current_score)
-
-    return rnn()
-
-
-def decoder_decode(context):
-    init_state = context
-    array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
-    counter = pd.zeros(shape=[1], dtype='int64')
-
-    # fill the first element with init_state
-    state_array = pd.create_array('float32')
-    pd.array_write(init_state, array=state_array, i=counter)
-
-    # ids, scores as memory
-    ids_array = pd.create_array('int64')
-    scores_array = pd.create_array('float32')
-
     init_ids = pd.data(name="init_ids", shape=[1], dtype="int64", lod_level=2)
-    init_scores = pd.data(
-        name="init_scores", shape=[1], dtype="float32", lod_level=2)
 
-    pd.array_write(init_ids, array=ids_array, i=counter)
-    pd.array_write(init_scores, array=scores_array, i=counter)
+    item_id_init = {'train': trg_language_word, 'decode': init_ids}
+    item_id = InputCell('word_id', item_id_init)
 
-    cond = pd.less_than(x=counter, y=array_len)
+    state0 = StateCell('state', context)
 
-    while_op = pd.While(cond=cond)
-    with while_op.block():
-        pre_ids = pd.array_read(array=ids_array, i=counter)
-        pre_state = pd.array_read(array=state_array, i=counter)
-        pre_score = pd.array_read(array=scores_array, i=counter)
+    def state0_updater(seqdec):
+        rnn = seqdec.train_rnn
+        # TODO add counter
+        # TODO add mode into SequenceDecoder
+        current_word = InputCell.get(seqdec.mode, item_id.id)
+        pre_state = StateCell.get(seqdec.mode, state0.id)
 
-        # expand the lod of pre_state to be the same with pre_score
-        pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
+        # TODO need to make sure fc in different mode share the same paraemters.
+        new_state = pd.fc(input=[current_word, pre_state],
+                          size=decoder_size,
+                          act='tanh')
 
-        pre_ids_emb = pd.embedding(
-            input=pre_ids,
-            size=[dict_size, word_dim],
-            dtype='float32',
-            is_sparse=IS_SPARSE)
+        Cell.add_temp_var(seqdec.mode, 'new_state', new_state)
+        return new_state
 
-        # use rnn unit to update rnn
-        current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
-                              size=decoder_size,
-                              act='tanh')
+    state0.set_updater(state0_updater)
 
-        # use score to do beam search
-        current_score = pd.fc(input=current_state,
-                              size=target_dict_dim,
-                              act='softmax')
-        topk_scores, topk_indices = pd.topk(current_score, k=50)
-        selected_ids, selected_scores = pd.beam_search(
-            pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
+    def scorer(seqdec):
+        new_state = Cell.get_temp_var(seqdec.mode, 'new_state')
+        new_score = pd.fc(input=new_state, size=target_dict_dim, act='softmax')
+        return new_score
 
-        pd.increment(x=counter, value=1, in_place=True)
+    seqdec = pd.SequenceDecoder(item_id, [state0], scorer)
 
-        # update the memories
-        pd.array_write(current_state, array=state_array, i=counter)
-        pd.array_write(selected_ids, array=ids_array, i=counter)
-        pd.array_write(selected_scores, array=scores_array, i=counter)
-
-        pd.less_than(x=counter, y=array_len, cond=cond)
-
-    translation_ids, translation_scores = pd.beam_search_decode(
-        ids=ids_array, scores=scores_array)
-
-    # return init_ids, init_scores
-
-    return translation_ids, translation_scores
+    if mode == 'train':
+        seqdec.train()
+    else:
+        seqdec.decode(max_length)
 
 
 def set_init_lod(data, lod, place):
