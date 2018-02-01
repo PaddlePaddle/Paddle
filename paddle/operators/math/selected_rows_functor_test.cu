@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
+#include "paddle/framework/init.h"
 #include "paddle/operators/math/math_function.h"
 #include "paddle/operators/math/selected_rows_functor.h"
 
@@ -20,6 +21,7 @@ TEST(selected_rows_functor, gpu_add) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   using namespace paddle::operators::math;
+  paddle::framework::InitDevices();
 
   CUDAPlace gpu_place(0);
   CPUPlace cpu_place;
@@ -118,6 +120,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   using namespace paddle::operators::math;
+  paddle::framework::InitDevices();
 
   CUDAPlace gpu_place(0);
   CPUPlace cpu_place;

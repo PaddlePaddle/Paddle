@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/operators/math/sequence_padding.h"
 #include <gtest/gtest.h>
+#include "paddle/framework/init.h"
 
 template <typename DeviceContext, typename Place, typename T>
 void TestSequencePadding(const paddle::framework::LoD& lod,
@@ -78,6 +79,7 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
 };
 
 TEST(Seq2BatchPadding, CPU) {
+  paddle::framework::InitDevices();
   paddle::framework::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
   TestSequencePadding<paddle::platform::CPUDeviceContext,
@@ -91,6 +93,7 @@ TEST(Seq2BatchPadding, CPU) {
 
 #ifdef PADDLE_WITH_CUDA
 TEST(SequencePadding, CUDA) {
+  paddle::framework::InitDevices();
   paddle::framework::LoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
   TestSequencePadding<paddle::platform::CUDADeviceContext,
