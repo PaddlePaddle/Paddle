@@ -33,8 +33,6 @@ class ReaderBase {
 
 class FileReader : public ReaderBase {
  public:
-  explicit FileReader(const std::vector<DDim>& shapes) : shapes_(shapes) {}
-
   DDim shape(size_t idx) const override;
   std::vector<DDim> shapes() const override { return shapes_; }
 
@@ -44,8 +42,6 @@ class FileReader : public ReaderBase {
 
 class ReaderDecorator : public ReaderBase {
  public:
-  explicit ReaderDecorator(ReaderBase* reader) : reader_(reader) {}
-
   bool HasNext() const override { return reader_->HasNext(); }
 
   DDim shape(size_t idx) const override { return reader_->shape(idx); }
@@ -60,19 +56,19 @@ class ReaderDecorator : public ReaderBase {
 template <typename T>
 class RandomReader : public FileReader {
  public:
-  RandomReader(const std::vector<DDim>& shapes, float min, float max)
-      : FileReader(shapes), min_(min), max_(max) {
+  void Initialize(const std::vector<DDim>& shapes, float min, float max) {
     PADDLE_ENFORCE_LE(min, max,
                       "'min' should be less than or equal to 'max'.(%f vs %f)",
                       min, max);
+    shapes_ = shapes;
+    min_ = min;
+    max_ = max;
+    unsigned int seed = std::random_device()();
+    engine_.seed(seed);
+    dist_ = std::uniform_real_distribution<float>(min_, max_);
   }
 
   std::vector<LoDTensor> ReadNext() override {
-    std::minstd_rand engine;
-    unsigned int seed = std::random_device()();
-    engine.seed(seed);
-    std::uniform_real_distribution<float> dist(min_, max_);
-
     std::vector<LoDTensor> res;
     res.reserve(shapes_.size());
     for (const DDim& shape : shapes_) {
@@ -85,7 +81,7 @@ class RandomReader : public FileReader {
       T* data = out.mutable_data<T>(platform::CPUPlace());
       int64_t numel = product(shape);
       for (int64_t i = 0; i < numel; ++i) {
-        data[i] = dist(engine);
+        data[i] = dist_(engine_);
       }
       res.push_back(out);
     }
@@ -97,16 +93,21 @@ class RandomReader : public FileReader {
  private:
   float min_;
   float max_;
+  std::minstd_rand engine_;
+  std::uniform_real_distribution<float> dist_;
 };
 
 // decorators
 
 class ShuffleReader : public ReaderDecorator {
  public:
-  ShuffleReader(ReaderBase* reader, int buffer_size)
-      : ReaderDecorator(reader), buffer_size_(buffer_size), iteration_pos_(0) {
+  void Initialize(ReaderBase* reader, int buffer_size) {
+    reader_ = reader;
+    buffer_size_ = buffer_size;
+    iteration_pos_ = 0;
     buffer_.reserve(buffer_size);
   }
+
   std::vector<LoDTensor> ReadNext() override;
 
  private:
@@ -117,8 +118,12 @@ class ShuffleReader : public ReaderDecorator {
 
 class BatchReader : public ReaderDecorator {
  public:
-  BatchReader(ReaderBase* reader, int batch_size)
-      : ReaderDecorator(reader), batch_size_(batch_size) {}
+  void Initialize(ReaderBase* reader, int batch_size) {
+    reader_ = reader;
+    batch_size_ = batch_size;
+    buffer_.reserve(batch_size_);
+  }
+
   std::vector<LoDTensor> ReadNext() override;
 
  private:
