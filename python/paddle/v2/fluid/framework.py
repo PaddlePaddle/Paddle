@@ -282,6 +282,10 @@ class Variable(object):
     def name(self):
         return self.desc.name()
 
+    @name.setter
+    def name(self, new_name):
+        self.desc.set_name(new_name)
+
     @property
     def shape(self):
         # convert to tuple, make it as same as numpy API.
@@ -530,6 +534,12 @@ class Operator(object):
         """
         return self.desc.input(name)
 
+    def rename_input(self, old_name, new_name):
+        self.desc.rename_input(old_name, new_name)
+
+    def rename_output(self, old_name, new_name):
+        self.desc.rename_output(old_name, new_name)
+
     @property
     def input_names(self):
         """
@@ -538,6 +548,14 @@ class Operator(object):
 
         """
         return self.desc.input_names()
+
+    @property
+    def input_arg_names(self):
+        return self.desc.input_arg_names()
+
+    @property
+    def output_arg_names(self):
+        return self.desc.output_arg_names()
 
     def output(self, name):
         """
@@ -716,6 +734,22 @@ class Block(object):
     def has_var(self, name):
         return name in self.vars
 
+    def rename_var(self, name, new_name):
+        """
+        Rename variable in vars and ops' inputs and outputs
+        """
+        if not self.has_var(name):
+            raise ValueError("var %s is not in current" % name)
+        orig_var = self.var(name)
+        del self.vars[name]
+        orig_var.name = new_name
+        self.vars[new_name] = orig_var
+        for op in self.ops:
+            if name in op.input_arg_names:
+                op.rename_input(name, new_name)
+            if name in op.output_arg_names:
+                op.rename_output(name, new_name)
+
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
@@ -803,6 +837,7 @@ class Block(object):
         for p in other.iter_parameters():
             assert isinstance(p, Parameter)
             v = self.vars.get(p.name, None)
+            print("var shape to copy", v)
             if v is None:
                 raise ValueError("copy_param_info_from should be invoked with "
                                  "same topology")

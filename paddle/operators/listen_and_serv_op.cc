@@ -75,13 +75,6 @@ class ListenAndServOp : public framework::OperatorBase {
     server_thread_->join();
   }
 
-  std::string GetGradVarNameForTrainer(const std::string &varname) const {
-    if (grads_counter_.find(varname) == grads_counter_.end()) {
-      grads_counter_[varname] = 0;
-    }
-    return string::Sprintf("%s.trainer_%d", varname, grads_counter_[varname]++);
-  }
-
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -91,9 +84,8 @@ class ListenAndServOp : public framework::OperatorBase {
     // FIXME(Yancey1989): initialize rpc server with lazy mode.
     rpc_service_->SetScope(&recv_scope);
     rpc_service_->SetDevCtx(&dev_ctx);
-    auto param_list = Attr<std::vector<std::string>>("ParamList");
-    auto grad_list = Attr<std::vector<std::string>>("GradList");
-    auto fan_in = Attr<int>("Fanin");
+    auto ins = Inputs("X");
+    auto fan_in = ins.size();
 
     auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
     auto *program = block->Program();
@@ -109,35 +101,21 @@ class ListenAndServOp : public framework::OperatorBase {
       int batch_barrier = 0;
       while (batch_barrier != fan_in) {
         const detail::MessageWithName &v = rpc_service_->Get();
-        auto grad_var_name = v.first;
-        if (grad_var_name == LISTEN_TERMINATE_MESSAGE) {
+        auto recv_var_name = v.first;
+        if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
           LOG(INFO) << "received terminate message and exit";
           exit_flag = true;
           break;
-        } else if (grad_var_name == BATCH_BARRIER_MESSAGE) {
+        } else if (recv_var_name == BATCH_BARRIER_MESSAGE) {
           VLOG(3) << "recv batch barrier message";
           batch_barrier++;
           continue;
         } else {
-          // receive a variable
+          VLOG(3) << "received grad: " << recv_var_name;
           recv_var_cnt++;
-          auto it =
-              std::find(grad_list.begin(), grad_list.end(), grad_var_name);
-          std::string param_var_name;
-          if (it != grad_list.end()) {
-            param_var_name = param_list[it - grad_list.begin()];
-          } else {
-            LOG(ERROR) << "grad has no paired param:" << grad_var_name;
-          }
-          VLOG(3) << "received grad: " << grad_var_name
-                  << " updating param: " << param_var_name;
-
-          if (fan_in > 1) {
-            grad_var_name = this->GetGradVarNameForTrainer(grad_var_name);
-          }
-          auto *var = recv_scope.FindVar(grad_var_name);
+          auto *var = recv_scope.FindVar(recv_var_name);
           if (var == nullptr) {
-            LOG(ERROR) << "Can not find server side var: " << grad_var_name;
+            LOG(ERROR) << "Can not find server side var: " << recv_var_name;
             PADDLE_THROW("Can not find server side var");
           }
           detail::DeserializeFromMessage(v.second, dev_ctx, var);
@@ -171,6 +149,7 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ListenAndServOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
     AddComment(R"DOC(
 ListenAndServ operator
 
@@ -184,17 +163,6 @@ from send_op and send back variables to recv_op.
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
     AddAttr<framework::BlockDesc *>(kOptimizeBlock,
                                     "BlockID to run on server side.");
-    AddAttr<std::vector<std::string>>(
-        "ParamList", "type list of string",
-        "grad->param name mapping to find which parameters to optimize.")
-        .SetDefault({});
-    AddAttr<std::vector<std::string>>(
-        "GradList", "type list of string",
-        "grad->param name mapping to find which parameters to optimize.")
-        .SetDefault({});
-    AddAttr<int>("Fanin", "type int",
-                 "Number of trainers in the current cluster job")
-        .SetDefault(1);
   }
 };
 
