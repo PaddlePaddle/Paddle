@@ -87,13 +87,23 @@ def save_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     else:
         save_program = Program()
         save_block = save_program.global_block()
+
+        varmap = {}
         for each_var in vars:
             new_var = _clone_var_in_block_(save_block, each_var)
-            save_block.append_op(
-                type='save',
-                inputs={'X': [new_var]},
-                outputs={},
-                attrs={'file_path': os.path.join(dirname, new_var.name)})
+            varmap[new_var.name] = new_var
+
+        print("From save_combine, the order is:", sorted(varmap.keys()))
+
+        varlist = []
+        for i in sorted(varmap.keys()):
+            varlist.append(varmap[i])
+
+        save_block.append_op(
+            type='save_combine',
+            inputs={'X': varlist},
+            outputs={},
+            attrs={'file_path': os.path.join(dirname, 'modelparams.save')})
         executor.run(save_program)
 
 
@@ -148,14 +158,17 @@ def load_vars(executor, dirname, main_program=None, vars=None, predicate=None):
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
+        varlist = []
         for each_var in vars:
             assert isinstance(each_var, Variable)
             new_var = _clone_var_in_block_(load_block, each_var)
-            load_block.append_op(
-                type='load',
-                inputs={},
-                outputs={"Out": [new_var]},
-                attrs={'file_path': os.path.join(dirname, new_var.name)})
+            varlist.append(new_var)
+
+        load_block.append_op(
+            type='load_combine',
+            inputs={},
+            outputs={"Out": varlist},
+            attrs={'file_path': os.path.join(dirname, 'modelparams.save')})
 
         executor.run(load_prog)
 
@@ -340,6 +353,7 @@ def load_inference_model(dirname, executor):
     model_file_name = dirname + "/__model__"
     with open(model_file_name, "rb") as f:
         program_desc_str = f.read()
+        print(program_desc_str)
 
     program = Program.parse_from_string(program_desc_str)
     load_persistables_if_exist(executor, dirname, program)

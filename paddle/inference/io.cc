@@ -50,6 +50,9 @@ void LoadPersistables(framework::Executor& executor,
 
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
   framework::BlockDesc* load_block = load_program->MutableBlock(0);
+
+  std::vector<std::string> paramlist;
+
   for (auto* var : global_block.AllVars()) {
     if (IsParameter(var, main_program)) {
       VLOG(3) << "parameter's name: " << var->Name();
@@ -61,15 +64,22 @@ void LoadPersistables(framework::Executor& executor,
       new_var->SetLoDLevel(var->GetLoDLevel());
       new_var->SetPersistable(true);
 
-      // append_op
-      framework::OpDesc* op = load_block->AppendOp();
-      op->SetType("load");
-      op->SetOutput("Out", {new_var->Name()});
-      op->SetAttr("file_path", {dirname + "/" + new_var->Name()});
-      op->CheckAttrs();
+      paramlist.push_back(new_var->Name());
     }
   }
+  
+  //sort paramlist to have consistent ordering 
+  std::sort(paramlist.begin(), paramlist.end());
+
+  // append_op
+  framework::OpDesc* op = load_block->AppendOp();
+  op->SetType("load_combine");
+  op->SetOutput("Out", paramlist);
+  op->SetAttr("file_path", {dirname + "/" + "modelparams.save"});
+  op->CheckAttrs();
   executor.Run(*load_program, &scope, 0, true, true);
+
+  LOG(INFO) << "Ran loading successfully";
   delete load_program;
 }
 
