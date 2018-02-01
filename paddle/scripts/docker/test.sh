@@ -11,6 +11,7 @@ export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
 # get the CUDA device count
 CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
 echo "run ctest in parallel: $NUM_PROC"
+pids=""
 for (( i = 0; i < $NUM_PROC; i++ )); do
     cuda_list=()
     for (( j = 0; j < $CUDA_DEVICE_COUNT; j++ )); do
@@ -26,5 +27,22 @@ for (( i = 0; i < $NUM_PROC; i++ )); do
     # CUDA_VISIBLE_DEVICES http://acceleware.com/blog/cudavisibledevices-masking-gpus
     # ctest -I https://cmake.org/cmake/help/v3.0/manual/ctest.1.html?highlight=ctest
     env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC --output-on-failure &
+    pids+=" $!"
 done
-wait
+
+failed_pids=""
+for p in $pids; do
+    if wait $p; then
+        echo "ctest passed in process $p"
+    else
+        echo "ctest failed in process $p"
+        failed_pids+=" $p"
+    fi
+done
+
+if [ -z "$failed_pids" ]; then
+    echo "all tests passed"
+else
+    echo "test(s) failed in process(es) $failed_pids"
+    has_test_failed=true
+fi

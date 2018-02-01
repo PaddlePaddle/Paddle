@@ -90,8 +90,12 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
+        has_test_failed=false
         script_full_path=$(dirname "$0")
         source "$script_full_path/test.sh"
+        if [ "$has_test_failed" = true ]; then
+            exit 2
+        fi
         # make install should also be test when unittest
         make install -j `nproc`
         pip install /usr/local/opt/paddle/share/wheels/*.whl
