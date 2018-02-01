@@ -190,7 +190,7 @@ def train_main():
     exe = Executor(place)
 
     exe.run(framework.default_startup_program())
-
+    save_dirname = "machine_translation" + ".inference.model"
     batch_id = 0
     for pass_id in xrange(1):
         for data in train_data():
@@ -251,5 +251,5 @@ def decode_main():
 
 
 if __name__ == '__main__':
-    # train_main()
+    #train_main()
     decode_main()
