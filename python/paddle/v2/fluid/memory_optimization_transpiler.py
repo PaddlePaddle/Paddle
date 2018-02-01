@@ -195,10 +195,6 @@ class ControlFlowGraph(object):
                 for var_name in can_optimize:
                     self.pool.append((var_name, self._find_var(
                         block_desc, var_name, is_forward).shape()))
-        var_names = [x[0] for x in self.pool]
-        op_desc = self.current_block_desc.append_op()
-        op_desc.set_type("delete_var")
-        op_desc.set_input("X", var_names)
 
 
 def get_cfgs(input_program):

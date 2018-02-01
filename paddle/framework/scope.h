@@ -65,8 +65,6 @@ class Scope {
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
 
-  void EraseVars(std::vector<std::string>& var_names);
-
   // enumerate all the variables current contains.
   std::vector<std::string> LocalVarNames() const;
 
