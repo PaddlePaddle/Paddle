@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>  // for unique_ptr
 #include <mutex>   // for call_once
+#include <set>
 #include "glog/logging.h"
 #include "paddle/framework/threadpool.h"
 #include "paddle/string/printf.h"
@@ -78,8 +79,17 @@ const Scope* Scope::FindScope(const Variable* var) const {
 }
 
 void Scope::EraseVars(std::vector<std::string>& var_names) {
-  for (auto& var : var_names) {
-    vars_.erase(var);
+  // for (auto& var : var_names) {
+  //   vars_.erase(var);
+  // }
+  std::set<std::string> var_set(var_names.begin(), var_names.end());
+  for (auto it = vars_.begin(); it != vars_.end();) {
+    if (var_set.find(it->first) != var_set.end()) {
+      delete it->second;
+      it = vars_.erase(it);
+    } else {
+      ++it;
+    }
   }
 }
 

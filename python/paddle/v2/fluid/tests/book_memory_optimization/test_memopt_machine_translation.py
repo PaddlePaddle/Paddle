@@ -104,6 +104,7 @@ def main():
     optimizer.minimize(avg_cost)
 
     fluid.memory_optimize(fluid.default_main_program())
+    # print(str(fluid.default_main_program()))
 
     # fix the order of training data
     train_data = paddle.batch(
@@ -135,8 +136,9 @@ def main():
             avg_cost_val = np.array(outs[0])
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
                   " avg_cost=" + str(avg_cost_val))
-            if batch_id > 2:
-                exit(0)
+            exit(0)
+            # if batch_id > 2:
+            #     exit(0)
             batch_id += 1
 
 
