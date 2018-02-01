@@ -56,6 +56,7 @@ __all__ = [
     'elementwise_mul',
     'elementwise_max',
     'elementwise_min',
+    'elementwise_pow',
     'clip',
     'clip_by_norm',
     'sequence_softmax',

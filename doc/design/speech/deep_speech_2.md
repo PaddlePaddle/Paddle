@@ -140,7 +140,19 @@ TODO by Assignees
 
 ### Beam Search with CTC and LM
 
-TODO by Assignees
+<div align="center">
+<img src="image/beam_search.png" width=600><br/>
+Figure 2. Algorithm for CTC Beam Search Decoder.
+</div>
+
+- The **Beam Search Decoder** for DS2 CTC-trained network follows the similar approach in \[[3](#references)\] as shown in Figure 2, with two important modifications for the ambiguous parts: 
+   - 1) in the iterative computation of probabilities, the assignment operation is changed to accumulation for one prefix may comes from different paths; 
+   - 2) the if condition ```if l^+ not in A_prev then``` after probabilities' computation is deprecated for it is hard to understand and seems unnecessary.
+- An **external scorer** would be passed into the decoder to evaluate a candidate prefix during decoding whenever a white space appended in English decoding and any character appended in Mandarin decoding.
+- Such external scorer consists of language model, word count or any other custom scorers.
+- The **language model** is built from Task 5, with parameters should be carefully tuned to achieve minimum WER/CER (c.f. Task 7)
+- This decoder needs to perform with **high efficiency** for the convenience of parameters tuning and speech recognition in reality. 
+ 
 
 ## Future Work
 
@@ -153,3 +165,4 @@ TODO by Assignees
 
 1. Dario Amodei, etc., [Deep Speech 2 : End-to-End Speech Recognition in English and Mandarin](http://proceedings.mlr.press/v48/amodei16.pdf). ICML 2016.
 2. Dario Amodei, etc., [Deep Speech 2 : End-to-End Speech Recognition in English and Mandarin](https://arxiv.org/abs/1512.02595). 	arXiv:1512.02595.
+3. Awni Y. Hannun, etc. [First-Pass Large Vocabulary Continuous Speech Recognition using Bi-Directional Recurrent DNNs](https://arxiv.org/abs/1408.2873). arXiv:1408.2873
