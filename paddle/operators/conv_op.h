@@ -361,6 +361,9 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     Tensor* output = context.Output<Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
 
+    PADDLE_ENFORCE_EQ(
+        output->dims()[1] % input->dims()[1], 0,
+        "The output channels must be a multiple of the input channels");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
