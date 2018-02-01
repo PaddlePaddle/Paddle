@@ -78,3 +78,19 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   t.join();
   delete ch;
 }
+
+TEST(Channel, SimpleUnbufferedChannelTest) {
+  auto ch = MakeChannel<int>(0);
+  std::thread t([&]() {
+    // Write one integer to channel
+    int send = 25;
+    ch->Send(&send);
+  });
+  int recv;
+  ch->Receive(&recv);
+  EXPECT_EQ(recv, 25U);
+
+  CloseChannel(ch);
+  t.join();
+  delete ch;
+}
