@@ -65,9 +65,9 @@ class SendOp : public framework::OperatorBase {
     if (outs.size() > 0) {
       for (size_t i = 0; i < outs.size(); i++) {
         VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
-        client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+        rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
       }
-      PADDLE_ENFORCE(client_.Wait());
+      PADDLE_ENFORCE(rpc_client->Wait());
     }
   }
 };
