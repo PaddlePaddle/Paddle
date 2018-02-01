@@ -18,6 +18,7 @@ import sys
 
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import numpy
 
 
 def resnet_cifar10(input, depth=32):
@@ -111,11 +112,13 @@ else:
 predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
 cost = fluid.layers.cross_entropy(input=predict, label=label)
 avg_cost = fluid.layers.mean(x=cost)
+acc = fluid.layers.accuracy(input=predict, label=label)
+
+# Test program 
+test_program = fluid.default_main_program().clone()
 
 optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 opts = optimizer.minimize(avg_cost)
-
-accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
 BATCH_SIZE = 128
 PASS_NUM = 1
@@ -125,20 +128,81 @@ train_reader = paddle.batch(
         paddle.dataset.cifar.train10(), buf_size=128 * 10),
     batch_size=BATCH_SIZE)
 
+test_reader = paddle.batch(paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
+
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
 feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
 exe.run(fluid.default_startup_program())
 
+# directory for saving model
+save_dirname = "image_classification_" + net_type + ".inference.model"
+tobreak = False
+
 for pass_id in range(PASS_NUM):
-    accuracy.reset(exe)
-    for data in train_reader():
-        loss, acc = exe.run(fluid.default_main_program(),
-                            feed=feeder.feed(data),
-                            fetch_list=[avg_cost] + accuracy.metrics)
-        pass_acc = accuracy.eval(exe)
-        print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
-            pass_acc))
-        # this model is slow, so if we can train two mini batch, we think it works properly.
-        exit(0)
-exit(1)
+    for batch_id, data in enumerate(train_reader()):
+        exe.run(feed=feeder.feed(data))
+        #loss, acc = exe.run(fluid.default_main_program(),
+        #                    feed=feeder.feed(data),
+        #                    fetch_list=[avg_cost] + accuracy.metrics)
+        #pass_acc = accuracy.eval(exe)
+        print(pass_id, batch_id)
+        if (batch_id % 10) == 0:
+            acc_list = []
+            avg_loss_list = []
+            for tid, test_data in enumerate(test_reader()):
+                loss_t, acc_t = exe.run(program=test_program,
+                                        feed=feeder.feed(test_data),
+                                        fetch_list=[avg_cost, acc])
+                acc_list.append(float(acc_t))
+                avg_loss_list.append(float(loss_t))
+                break
+            acc_value = numpy.array(acc_list).mean()
+            avg_loss_value = numpy.array(avg_loss_list).mean()
+
+            print("loss:" + str(avg_loss_value) + " acc:" + str(acc_value))
+            # this model is slow, so if we can train two mini batch, we think it works properly.
+            if acc_value > 0.01:
+                fluid.io.save_inference_model(save_dirname, ["pixel"],
+                                              [predict], exe)
+                tobreak = True
+                break
+
+    if tobreak == True:
+        break
+
+
+def infer(save_dirname=None):
+    if save_dirname is None:
+        return
+
+    #place = fluid.CUDAPlace(0) if args.use_cuda else fluid.CPUPlace()
+    place = fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    #save for checking
+    curstr = inference_program.to_string(True)
+    f = open("check_pd.txt", 'w')
+    f.write(curstr)
+    f.close()
+
+    # The input's dimension of conv should be 4-D or 5-D.
+    tensor_img = numpy.random.rand(1, 3, 32, 32).astype("float32")
+
+    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+    # and results will contain a list of data corresponding to fetch_targets.
+    results = exe.run(inference_program,
+                      feed={feed_target_names[0]: tensor_img},
+                      fetch_list=fetch_targets)
+    print("infer results: ", results[0])
+
+
+print("Calling infer")
+infer(save_dirname)

@@ -3,5 +3,11 @@ cc_test(test_inference_recognize_digits_mlp
     SRCS test_inference_recognize_digits.cc
     DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
     ARGS --dirname=${PYTHON_TESTS_DIR}/book/recognize_digits_mlp.inference.model)
+cc_test(test_inference_image_classification_vgg
+    SRCS test_inference_image_classification.cc
+    DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
+    ARGS --dirname=${PYTHON_TESTS_DIR}/book/image_classification_vgg.inference.model)
 set_tests_properties(test_inference_recognize_digits_mlp
     PROPERTIES DEPENDS test_recognize_digits_mlp_cpu)
+set_tests_properties(test_inference_image_classification_vgg
+    PROPERTIES DEPENDS test_image_classification_train_vgg)
