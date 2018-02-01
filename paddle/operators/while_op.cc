@@ -205,6 +205,12 @@ class WhileGradOp : public framework::OperatorBase {
         sum_op->Run(cur_scope, dev_place);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
+      // get device context from pool
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
+      dev_ctx.Wait();
+      const_cast<framework::Scope &>(scope).DeleteScope(&scope);
     }
   }
 };
