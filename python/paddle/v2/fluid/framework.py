@@ -451,9 +451,8 @@ class Operator(object):
             if not given == need:
                 raise ValueError(("Incorrect setting for output(s) of "
                                   "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type, ", ".join(str(e)
-                                                  for e in need), ", ".join(
-                                                      str(e) for e in given)))
+                                 (type, ", ".join(str(e) for e in need),
+                                  ", ".join(str(e) for e in given)))
 
             for out_proto in proto.outputs:
                 out_args = outputs[out_proto.name]
@@ -1125,7 +1124,7 @@ def program_guard(main_program, startup_program=None):
         switch_startup_program(startup_program)
 
 
-def debug_block_image(block):
+def debug_block_image(block, highlights=[], path="./temp.dot"):
     '''
     Generate a debug graph for block.
     Args:
@@ -1137,6 +1136,13 @@ def debug_block_image(block):
     protostr = block.desc.serialize_to_string()
     desc = framework_pb2.BlockDesc.FromString(str(protostr))
 
+    def need_highlight(name):
+        for pattern in highlights:
+            assert type(pattern) is str
+            if re.match(pattern, name):
+                return True
+        return False
+
     # draw parameters and args
     vars = {}
     for var in desc.vars:
@@ -1145,24 +1151,30 @@ def debug_block_image(block):
             shape = ['null']
         # create var
         if var.persistable:
-            varn = graph.add_param(var.name, var.type, shape)
+            varn = graph.add_param(
+                var.name, var.type, shape, highlight=need_highlight(var.name))
         else:
-            varn = graph.add_arg(var.name)
+            varn = graph.add_arg(var.name, highlight=need_highlight(var.name))
         vars[var.name] = varn
 
     def add_op_link_var(op, var, op2var=False):
         for arg in var.arguments:
+            if arg not in vars:
+                # add missing variables as argument
+                vars[arg] = graph.add_arg(arg, highlight=need_highlight(arg))
             varn = vars[arg]
+            highlight = need_highlight(op.description) or need_highlight(
+                varn.description)
             if op2var:
-                graph.add_edge(op, varn)
+                graph.add_edge(op, varn, highlight=highlight)
             else:
-                graph.add_edge(varn, op)
+                graph.add_edge(varn, op, highlight=highlight)
 
     for op in desc.ops:
-        opn = graph.add_op(op.type)
+        opn = graph.add_op(op.type, highlight=need_highlight(op.type))
         for var in op.inputs:
             add_op_link_var(opn, var, False)
         for var in op.outputs:
             add_op_link_var(opn, var, True)
 
-    graph(show=False)
+    graph(path, show=True)

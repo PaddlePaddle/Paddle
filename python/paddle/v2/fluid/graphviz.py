@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import subprocess
+import logging
 
 
 def crepr(v):
@@ -62,8 +64,8 @@ class Graph(object):
         self.rank_groups[name] = rank
         return name
 
-    def node(self, label, prefix, **attrs):
-        node = Node(label, prefix, **attrs)
+    def node(self, label, prefix, description="", **attrs):
+        node = Node(label, prefix, description, **attrs)
 
         if 'rank' in attrs:
             rank = self.rank_groups[attrs['rank']]
@@ -80,13 +82,15 @@ class Graph(object):
     def compile(self, dot_path):
         file = open(dot_path, 'w')
         file.write(self.__str__())
-        image_path = dot_path[:-3] + "pdf"
+        image_path = os.path.join(
+            os.path.dirname(__file__), dot_path[:-3] + "pdf")
         cmd = ["dot", "-Tpdf", dot_path, "-o", image_path]
         subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
+        logging.warning("write block debug graph to {}".format(image_path))
         return image_path
 
     def show(self, dot_path):
@@ -132,9 +136,10 @@ class Graph(object):
 class Node(object):
     counter = 1
 
-    def __init__(self, label, prefix, **attrs):
+    def __init__(self, label, prefix, description="", **attrs):
         self.label = label
         self.name = "%s_%d" % (prefix, Node.counter)
+        self.description = description
         self.attrs = attrs
         Node.counter += 1
 
@@ -171,34 +176,6 @@ class Edge(object):
         return repr
 
 
-g_graph = Graph(title="some model")
-
-
-def add_param(label, graph=None):
-    if not graph:
-        graph = g_graph
-    return graph.node(label=label, prefix='param', color='blue')
-
-
-def add_op(label, graph=None):
-    if not graph:
-        graph = g_graph
-    label = '\n'.join([
-        '<table border="0">',
-        '  <tr>',
-        '    <td>',
-        label,
-        '    </td>'
-        '  </tr>',
-        '</table>',
-    ])
-    return graph.node(label=label, prefix='op', shape="none")
-
-
-def add_edge(source, target):
-    return g_graph.edge(source, target)
-
-
 class GraphPreviewGenerator(object):
     '''
     Generate a graph image for ONNX proto.
@@ -215,7 +192,6 @@ class GraphPreviewGenerator(object):
         self.op_rank = self.graph.rank_group('same', 2)
         self.param_rank = self.graph.rank_group('same', 1)
         self.arg_rank = self.graph.rank_group('same', 0)
-        # self.nodes = {}
 
     def __call__(self, path='temp.dot', show=False):
         if not show:
@@ -223,7 +199,7 @@ class GraphPreviewGenerator(object):
         else:
             self.graph.show(path)
 
-    def add_param(self, name, data_type, shape):
+    def add_param(self, name, data_type, shape, highlight=False):
         label = '\n'.join([
             '<<table cellpadding="5">',
             '  <tr>',
@@ -248,49 +224,49 @@ class GraphPreviewGenerator(object):
         return self.graph.node(
             label,
             prefix="param",
+            description=name,
             shape="none",
             style="rounded,filled,bold",
             width="1.3",
-            color="#148b97",
+            color="#148b97" if not highlight else "orange",
             fontcolor="#ffffff",
             fontname="Arial")
 
     def add_op(self, opType, **kwargs):
+        highlight = False
+        if 'highlight' in kwargs:
+            highlight = kwargs['highlight']
+            del kwargs['highlight']
         return self.graph.node(
             "<<B>%s</B>>" % opType,
             prefix="op",
+            description=opType,
             shape="box",
             style="rounded, filled, bold",
-            color="#303A3A",
+            color="#303A3A" if not highlight else "orange",
             fontname="Arial",
             fontcolor="#ffffff",
             width="1.3",
             height="0.84", )
 
-    def add_arg(self, name):
+    def add_arg(self, name, highlight=False):
         return self.graph.node(
             crepr(name),
             prefix="arg",
+            description=name,
             shape="box",
             style="rounded,filled,bold",
             fontname="Arial",
             fontcolor="#999999",
-            color="#dddddd")
+            color="#dddddd" if not highlight else "orange")
 
     def add_edge(self, source, target, **kwargs):
-        # source = self.nodes[source]
-        # target = self.nodes[target]
-        return self.graph.edge(source, target, **kwargs)
-
-
-if __name__ == '__main__':
-    n0 = add_param(crepr("layer/W0.w"))
-    n1 = add_param(crepr("layer/W0.b"))
-
-    n2 = add_op("sum")
-
-    add_edge(n0, n2)
-    add_edge(n1, n2)
-
-    print g_graph.code()
-    g_graph.compile('./1.dot')
+        highlight = False
+        if 'highlight' in kwargs:
+            highlight = kwargs['highlight']
+            del kwargs['highlight']
+        return self.graph.edge(
+            source,
+            target,
+            color="#00000" if not highlight else "orange",
+            **kwargs)
