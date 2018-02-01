@@ -76,6 +76,13 @@ const Scope* Scope::FindScope(const Variable* var) const {
   }
   return (parent_ == nullptr) ? nullptr : parent_->FindScope(var);
 }
+
+void Scope::EraseVars(std::vector<std::string>& var_names) {
+  for (auto& var : var_names) {
+    vars_.erase(var);
+  }
+}
+
 void Scope::DropKids() {
   for (Scope* s : kids_) delete s;
   kids_.clear();

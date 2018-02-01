@@ -145,6 +145,7 @@ class ControlFlowGraph(object):
             if op.type() == "while" or op.type() == "while_grad":
                 continue
             block_desc = op.block()
+            self.current_block_desc = block_desc
             is_forward = i < self._forward_num
             if self.pool:
                 defs_can_optimize = filter(
@@ -195,6 +196,10 @@ class ControlFlowGraph(object):
                     self.pool.append((var_name, self._find_var(
                         block_desc, var_name, is_forward).shape()))
         print self.pool
+        var_names = [x[0] for x in self.pool]
+        op_desc = self.current_block_desc.append_op()
+        op_desc.set_type("delete_var")
+        op_desc.set_input("X", var_names)
 
 
 def get_cfgs(input_program):
