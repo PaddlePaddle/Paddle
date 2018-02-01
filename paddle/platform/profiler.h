@@ -129,7 +129,6 @@ std::vector<std::vector<Event>> GetAllEvents();
 struct EventItem {
   std::string name;
   int calls;
-  int64_t mark_time;
   double total_time;
   double min_time;
   double max_time;
@@ -137,7 +136,6 @@ struct EventItem {
   double total_memory_used;
   double min_memory_used;
   double max_memory_used;
-  double ave_memory_used;
 };
 
 // Candidate keys to sort the profiling report
@@ -158,7 +156,7 @@ void ParseEvents(std::vector<std::vector<Event>>&,
 // Print results
 void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
                    std::string& sorted_domain, const size_t name_width,
-                   const size_t data_width);
+                   const size_t data_width, double app_total_time);
 
 }  // namespace platform
 }  // namespace paddle

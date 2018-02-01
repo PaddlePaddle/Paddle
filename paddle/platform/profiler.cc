@@ -258,13 +258,22 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
 
   std::vector<std::vector<EventItem>> events_table;
   size_t max_name_width = 0;
+  double app_total_time = 0;
+
   for (size_t i = 0; i < events.size(); i++) {
     std::list<Event> pushed_events;
     std::vector<EventItem> event_items;
     std::unordered_map<std::string, int> event_idx;
 
     for (size_t j = 0; j < events[i].size(); j++) {
-      if (events[i][j].kind() == "push") {
+      if (events[i][j].kind() == "mark") {
+        if (events[i][j].name() == kStartProfiler) {
+          app_total_time -= events[i][j].GetCpuNs() / 1000000.0;
+        }
+        if (events[i][j].name() == kStopProfiler) {
+          app_total_time += events[i][j].GetCpuNs() / 1000000.0;
+        }
+      } else if (events[i][j].kind() == "push") {
         pushed_events.push_back(events[i][j]);
       } else if (events[i][j].kind() == "pop") {
         std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
@@ -281,7 +290,6 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
           double event_memory_used = rit->MemoryUsed(events[i][j]);
           double total_memory_used =
               static_cast<double>(rit->GetMemoryUsed()) / (1024 * 1024);
-          int64_t mark_time = rit->GetCpuNs();
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
           max_name_width = std::max(max_name_width, event_name.size());
@@ -289,11 +297,10 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
           if (event_idx.find(event_name) == event_idx.end()) {
             event_idx[event_name] = event_items.size();
             EventItem event_item = {event_name,        1,
-                                    mark_time,         event_time,
                                     event_time,        event_time,
-                                    event_time,        total_memory_used,
-                                    event_memory_used, event_memory_used,
-                                    event_memory_used};
+                                    event_time,        event_time,
+                                    total_memory_used, event_memory_used,
+                                    event_memory_used, event_memory_used};
             event_items.push_back(event_item);
           } else {
             int index = event_idx[event_name];
@@ -328,7 +335,6 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
     // average time and memory used
     for (auto& item : event_items) {
       item.ave_time = item.total_time / item.calls;
-      item.ave_memory_used = item.total_memory_used / item.calls;
     }
     // sort
     if (sorted_by != EventSortingKey::kDefault) {
@@ -346,24 +352,18 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
   }
 
   // Print report
-  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12);
+  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12,
+                app_total_time);
 }
 
 void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
                    std::string& sorted_domain, const size_t name_width,
-                   const size_t data_width) {
-  double app_total_memory = .0, app_total_time = .0;
+                   const size_t data_width, double app_total_time) {
+  double app_total_memory = .0;
 
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       EventItem& event_item = events_table[i][j];
-      if (event_item.name == kStartProfiler) {
-        app_total_time -= event_item.mark_time / 1000000.0;
-      }
-      if (event_item.name == kStopProfiler) {
-        app_total_time += event_item.mark_time / 1000000.0;
-      }
-
       app_total_memory =
           std::max(event_item.total_memory_used, app_total_memory);
     }
@@ -395,7 +395,6 @@ void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
             << std::setw(data_width) << "Total Memory."
             << std::setw(data_width) << "Min Memory."
             << std::setw(data_width) << "Max Memory."
-            << std::setw(data_width) << "Ave Memory."
             << std::endl;
   // clang-format on
 
@@ -413,7 +412,6 @@ void PrintProfiler(std::vector<std::vector<EventItem>>& events_table,
                 << std::setw(data_width) << event_item.total_memory_used
                 << std::setw(data_width) << event_item.min_memory_used
                 << std::setw(data_width) << event_item.max_memory_used
-                << std::setw(data_width) << event_item.ave_memory_used
                 << std::endl;
       // clang-format on
     }
