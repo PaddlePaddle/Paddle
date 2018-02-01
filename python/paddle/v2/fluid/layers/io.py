@@ -108,7 +108,7 @@ class ListenAndServ(object):
     """
 
     def __init__(self, endpoint, fan_in=1, optimizer_mode=True):
-        self.helper = LayerHelper("recv")
+        self.helper = LayerHelper("listen_and_serv")
         self.inputs = []
         self.outputs = []
         self.endpoint = endpoint
@@ -158,7 +158,7 @@ class ListenAndServ(object):
         param_names = [p.name for p in params]
         grad_names = [g.name for g in grads]
         parent_block.append_op(
-            type='recv',
+            type='listen_and_serv',
             inputs={},
             outputs={},
             attrs={
@@ -193,6 +193,34 @@ def Send(endpoints, send_vars, get_vars):
     helper.append_op(
         type="send",
         inputs={"X": send_vars},
+        outputs={"Out": get_vars},
+        attrs={"endpoints": endpoints,
+               "epmap": epmap})
+
+
+def Recv(endpoints, get_vars):
+    """
+    Recv layer
+
+    Args:
+        endpoints: comma seperated IP:PORT pairs in the order
+                   of send_vars to send
+        send_vars: vars to send
+        get_vars: vars to get from server after send completes.
+
+    Send variables to the server side, and get vars from server
+    side when server have finished running server side program.
+    """
+    assert (type(send_vars) == list)
+    assert (type(get_vars) == list)
+
+    epmap = endpoints.split(",")
+    endpoints = list(set(epmap))
+
+    helper = LayerHelper("Recv", **locals())
+    helper.append_op(
+        type="recv",
+        inputs={"X": get_vars},
         outputs={"Out": get_vars},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
