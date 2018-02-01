@@ -67,7 +67,7 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   std::thread t([&]() {
     // Try to write more than buffer size.
     for (size_t i = 0; i < 2 * buffer_size; ++i) {
-      ch->Send(&i);  // should not block
+      ch->Send(&i);  // should block after 10 iterations
       sum += i;
     }
   });
