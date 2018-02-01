@@ -19,11 +19,22 @@ namespace paddle {
 namespace operators {
 
 // general infershape for file readers
-class CreateReaderInferShape : public framework::InferShapeBase {
+class CreateFileReaderInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of CreateReaderOp should not be null.");
+                   "The output file reader should not be null.");
+  }
+};
+
+// general infershape for decorated readers
+class CreateDecoratedReaderInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Underlying_reader"),
+                   "Input(Underlying_reader) should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "The output decorated reader should not be null.");
   }
 };
 
@@ -83,17 +94,6 @@ class CreateRandomReaderOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class CreateShuffleReaderInferShape : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Underlying_reader"),
-                   "Input(Underlying_reader) of CreateShuffleReaderOp should "
-                   "not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of CreateShuffleReaderOp should not be null.");
-  }
-};
-
 class CreateShuffleReaderOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
@@ -121,7 +121,41 @@ class CreateShuffleReaderOpMaker : public framework::OpProtoAndCheckerMaker {
       CreateShuffleReader Operator
 
       A shuffle reader takes another reader as its 'underlying reader'
-      and output the underlying reader's outputs in a shuffled order. 
+      and yields the underlying reader's outputs in a shuffled order. 
+    )DOC");
+  }
+};
+
+class CreateBatchReaderOp : public framework::OperatorBase {
+ public:
+  using framework::OperatorBase::OperatorBase;
+  void Run(const framework::Scope& scope,
+           const platform::Place& dev_place) const override {
+    const auto& underlying_reader = scope.FindVar(Input("Underlying_reader"))
+                                        ->Get<framework::ReaderHolder>();
+    auto* out = scope.FindVar(Output("Out"))
+                    ->template GetMutable<framework::ReaderHolder>();
+    out->Reset(new framework::BatchReader(underlying_reader.Get(),
+                                          Attr<int>("batch_size")));
+  }
+};
+
+class CreateBatchReaderOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  CreateBatchReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(op_proto, op_checker) {
+    AddInput(
+        "Underlying_reader",
+        "(ReaderHolder) The underlying reader for creating a batch reader.");
+    AddOutput("Out", "(ReaderHolder) The created batch reader.");
+    AddAttr<int>("batch_size",
+                 "How many instances the batch reader yields each time.")
+        .GreaterThan(0);
+    AddComment(R"DOC(
+      CreateBatchReader Operator
+
+      A batch reader takes another reader as its 'underlying reader', 
+      gathers the underlying reader's outputs and then yields them in batches. 
     )DOC");
   }
 };
@@ -131,9 +165,14 @@ class CreateShuffleReaderOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(create_random_reader, ops::CreateRandomReaderOp<float>,
-                  ops::CreateReaderInferShape, ops::CreateRandomReaderOpMaker,
+                  ops::CreateFileReaderInferShape,
+                  ops::CreateRandomReaderOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 REGISTER_OPERATOR(create_shuffle_reader, ops::CreateShuffleReaderOp,
-                  ops::CreateShuffleReaderInferShape,
+                  ops::CreateDecoratedReaderInferShape,
                   ops::CreateShuffleReaderOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(create_batch_reader, ops::CreateBatchReaderOp,
+                  ops::CreateDecoratedReaderInferShape,
+                  ops::CreateBatchReaderOpMaker,
                   paddle::framework::EmptyGradOpMaker);

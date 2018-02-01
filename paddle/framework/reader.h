@@ -44,9 +44,9 @@ class FileReader : public ReaderBase {
   std::vector<DDim> shapes_;
 };
 
-class ReaderDecorator : public ReaderBase {
+class DecoratedReader : public ReaderBase {
  public:
-  explicit ReaderDecorator(ReaderBase* reader) : reader_(reader) {
+  explicit DecoratedReader(ReaderBase* reader) : reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
@@ -105,10 +105,10 @@ class RandomReader : public FileReader {
 
 // decorators
 
-class ShuffleReader : public ReaderDecorator {
+class ShuffleReader : public DecoratedReader {
  public:
   ShuffleReader(ReaderBase* reader, int buffer_size)
-      : ReaderDecorator(reader), buffer_size_(buffer_size), iteration_pos_(0) {
+      : DecoratedReader(reader), buffer_size_(buffer_size), iteration_pos_(0) {
     buffer_.reserve(buffer_size);
   }
 
@@ -120,10 +120,10 @@ class ShuffleReader : public ReaderDecorator {
   size_t iteration_pos_;
 };
 
-class BatchReader : public ReaderDecorator {
+class BatchReader : public DecoratedReader {
  public:
   BatchReader(ReaderBase* reader, int batch_size)
-      : ReaderDecorator(reader), batch_size_(batch_size) {
+      : DecoratedReader(reader), batch_size_(batch_size) {
     buffer_.reserve(batch_size_);
   }
 
