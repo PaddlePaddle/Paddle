@@ -62,11 +62,13 @@ class SendOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE(rpc_client->Wait());
 
-    for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
-      rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+    if (outs.size() > 0) {
+      for (size_t i = 0; i < outs.size(); i++) {
+        VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
+        rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+      }
+      PADDLE_ENFORCE(rpc_client->Wait());
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
   }
 };
 
@@ -85,6 +87,8 @@ Send operator
 
 This operator will send tensor to recv_op at the parameter server.
 )DOC");
+    // TODO(typhoonzero): remove this attr generate de-duplicated vector from
+    // epmap when initializing.
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
