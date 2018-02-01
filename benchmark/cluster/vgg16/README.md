@@ -55,7 +55,7 @@
 | PServer Count | 3 | 6 |10 | 20 |
 | -- | -- | -- | -- | -- |
 | PaddlePaddle Fluid | 589.1 | 592.6 | 656.4 | 655.8 |
-| PaddlePaddle v2 | 412.2 | 368.4 | 346.8 | 283.2 |
+| PaddlePaddle v2 | - | - | 729.7 | - |
 | TensorFlow | - | - | - | - |
 
 
