@@ -213,8 +213,8 @@ def train(save_dirname=None):
                                                      / batch_id))
                 if float(pass_precision) > 0.10 and save_dirname is not None:
                     fluid.io.save_inference_model(save_dirname, [
-                        word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2,
-                        mark
+                        'word_data', 'verb_data', 'ctx_n2_data', 'ctx_n1_data',
+                        'ctx_0_data', 'ctx_p1_data', 'ctx_p2_data', 'mark_data'
                     ], [feature_out], exe)
                     return
 
@@ -235,7 +235,7 @@ def infer(save_dirname=None):
     [inference_program, feed_target_names,
      fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    data = [[1, 2, 3, 4], [5, 6, 7, 8, 9, 10]]
+    data = [[0, 1, 0, 1], [0, 1, 1, 0, 0, 1]]
     ts_word = to_lodtensor(data, place)
     ts_pred = to_lodtensor(data, place)
     ts_ctx_n2 = to_lodtensor(data, place)
@@ -259,6 +259,7 @@ def infer(save_dirname=None):
                           feed_target_names[7]: ts_mark
                       },
                       fetch_list=fetch_targets)
+    print("Inference Shape: ", results[0].shape)
     print("Inference results: ", results[0])
 
 

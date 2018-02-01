@@ -46,10 +46,11 @@ def as_numpy(tensor):
     assert isinstance(tensor, core.LoDTensor)
     lod = tensor.lod()
     tensor_data = np.array(tensor)
-    if len(lod) == 0:
-        ans = tensor_data
-    else:
-        raise RuntimeError("LoD Calculate lacks unit tests and buggy")
+    ans = tensor_data
+    # if len(lod) == 0:
+    #    ans = tensor_data
+    # else:
+    #    raise RuntimeError("LoD Calculate lacks unit tests and buggy")
     # elif len(lod) == 1:
     #     ans = []
     #     idx = 0
