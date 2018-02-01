@@ -12,41 +12,178 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/mine_hard_examples_op.h"
+#include "paddle/framework/eigen.h"
+#include "paddle/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+
+enum MiningType { kNone = 0, kMaxNegative, kHardExample };
+
+template <typename T>
+bool SortScoreDescend(const std::pair<float, T>& pair1,
+                      const std::pair<float, T>& pair2) {
+  return pair1.first > pair2.first;
+}
+
+inline bool IsEligibleMining(const MiningType mining_type, const int match_idx,
+                             const float match_dist,
+                             const float neg_dist_threshold) {
+  if (mining_type == MiningType::kMaxNegative) {
+    return match_idx == -1 && match_dist < neg_dist_threshold;
+  } else if (mining_type == MiningType::kHardExample) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+MiningType GetMiningType(std::string str) {
+  if (str == "max_negative") {
+    return MiningType::kMaxNegative;
+  } else if (str == "hard_example") {
+    return MiningType::kHardExample;
+  } else {
+    return MiningType::kNone;
+  }
+}
+
+template <typename DeviceContext, typename T>
+class MineHardExamplesKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* in_cls_loss = ctx.Input<framework::Tensor>("ClsLoss");
+    auto* in_loc_loss = ctx.Input<framework::Tensor>("LocLoss");
+    auto* in_matched_indices = ctx.Input<framework::Tensor>("MatchIndices");
+    auto* in_match_dist = ctx.Input<framework::Tensor>("MatchDist");
+    float neg_pos_ratio = ctx.Attr<float>("neg_pos_ratio");
+    T neg_dist_threshold =
+        static_cast<T>(ctx.Attr<float>("neg_dist_threshold"));
+    int sample_size = ctx.Attr<int>("sample_size");
+    MiningType mining_type =
+        GetMiningType(ctx.Attr<std::string>("mining_type"));
+
+    auto out_neg_indices = ctx.Output<framework::LoDTensor>("NegIndices");
+    auto out_match_indices =
+        ctx.Output<framework::Tensor>("UpdatedMatchIndices");
+
+    framework::Copy(*in_matched_indices, ctx.GetPlace(), out_match_indices);
+
+    int batch_size = in_matched_indices->dims()[0];
+    int prior_num = in_matched_indices->dims()[1];
+
+    auto match_indices = framework::EigenMatrix<int>::From(*in_matched_indices);
+
+    auto match_indices_et =
+        framework::EigenMatrix<int>::From(*out_match_indices);
+
+    auto match_dist = framework::EigenMatrix<T>::From(*in_match_dist);
+
+    const T* cls_loss = in_cls_loss->data<T>();
+    const T* loc_loss = nullptr;
+    if (in_loc_loss) {
+      loc_loss = in_loc_loss->data<T>();
+    }
+
+    std::vector<std::vector<int>> all_neg_indices;
+    std::vector<size_t> batch_starts = {0};
+    for (int n = 0; n < batch_size; ++n) {
+      std::vector<std::pair<T, size_t>> loss_idx;
+      int neg_sel = 0;
+      for (int m = 0; m < prior_num; ++m) {
+        if (IsEligibleMining(mining_type, match_indices(n, m), match_dist(n, m),
+                             neg_dist_threshold)) {
+          T loss = cls_loss[n * prior_num + m];
+          if (mining_type == MiningType::kHardExample && loc_loss != nullptr) {
+            loss = cls_loss[n * prior_num + m] + loc_loss[n * prior_num + m];
+          }
+          loss_idx.push_back(std::make_pair(loss, m));
+          ++neg_sel;
+        }
+      }
+
+      if (mining_type == MiningType::kMaxNegative) {
+        int num_pos = 0;
+        for (int m = 0; m < prior_num; ++m) {
+          if (match_indices(n, m) != -1) ++num_pos;
+        }
+        neg_sel = std::min(static_cast<int>(num_pos * neg_pos_ratio), neg_sel);
+      } else if (mining_type == MiningType::kHardExample) {
+        neg_sel = std::min(sample_size, neg_sel);
+      }
+
+      std::sort(loss_idx.begin(), loss_idx.end(), SortScoreDescend<int>);
+      std::set<int> sel_indices;
+      std::vector<int> neg_indices;
+      std::transform(loss_idx.begin(), loss_idx.begin() + neg_sel,
+                     std::inserter(sel_indices, sel_indices.begin()),
+                     [](std::pair<T, size_t> l) -> int {
+                       return static_cast<int>(l.second);
+                     });
+
+      for (int m = 0; m < prior_num; ++m) {
+        if (match_indices(n, m) > -1) {
+          if (mining_type == MiningType::kHardExample &&
+              sel_indices.find(m) == sel_indices.end()) {
+            match_indices_et(n, m) = -1;
+          }
+        } else {
+          if (sel_indices.find(m) != sel_indices.end()) {
+            neg_indices.push_back(m);
+          }
+        }
+      }
+      all_neg_indices.push_back(neg_indices);
+      batch_starts.push_back(batch_starts.back() + neg_indices.size());
+    }
+
+    framework::LoD out_neg_indices_lod;
+    out_neg_indices_lod.emplace_back(batch_starts);
+    int neg_offset = 0;
+    auto neg_data = out_neg_indices->mutable_data<int>(
+        framework::make_ddim({static_cast<int>(batch_starts.back()), 1}),
+        ctx.GetPlace());
+
+    for (auto neg_indices : all_neg_indices) {
+      std::copy(neg_indices.begin(), neg_indices.end(), neg_data + neg_offset);
+      neg_offset += neg_indices.size();
+    }
+    out_neg_indices->set_lod(out_neg_indices_lod);
+    return;
+  }
+};
 
 class MineHardExamplesOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("ClsLoss"),
                    "Input(ClsLoss) of MineHardExamplesOp should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasInput("MatchIndics"),
-        "Input(MatchIndics) of MineHardExamplesOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("MatchDis"),
-                   "Input(MatchDis) of MineHardExamplesOp should not be null.");
+        ctx->HasInput("MatchIndices"),
+        "Input(MatchIndices) of MineHardExamplesOp should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasOutput("NegIndics"),
-        "Output(NegIndics) of MineHardExamplesOp should not be null.");
+        ctx->HasInput("MatchDist"),
+        "Input(MatchDist) of MineHardExamplesOp should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasOutput("UpdatedMatchIndics"),
-        "Output(UpdatedMatchIndics) of MineHardExamplesOp should not be null.");
+        ctx->HasOutput("NegIndices"),
+        "Output(NegIndices) of MineHardExamplesOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("UpdatedMatchIndices"),
+                   "Output(UpdatedMatchIndices) of MineHardExamplesOp should "
+                   "not be null.");
 
     auto cls_loss_dims = ctx->GetInputDim("ClsLoss");
-    auto idx_dims = ctx->GetInputDim("MatchIndics");
-    auto dis_dims = ctx->GetInputDim("MatchDis");
+    auto idx_dims = ctx->GetInputDim("MatchIndices");
+    auto dis_dims = ctx->GetInputDim("MatchDist");
 
     PADDLE_ENFORCE_EQ(cls_loss_dims.size(), 2UL,
                       "The shape of ClsLoss is [N, Np].");
     PADDLE_ENFORCE_EQ(idx_dims.size(), 2UL,
-                      "The shape of MatchIndics is [N, Np].");
+                      "The shape of MatchIndices is [N, Np].");
     PADDLE_ENFORCE_EQ(dis_dims.size(), 2UL,
-                      "The shape of MatchDis is [N, Np].");
+                      "The shape of MatchDist is [N, Np].");
 
     if (ctx->HasInput("LocLoss")) {
       auto loc_loss_dims = ctx->GetInputDim("LocLoss");
@@ -61,16 +198,16 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(
         cls_loss_dims[0], idx_dims[0],
-        "Batch size of ClsLoss and MatchIndics must be the same.");
+        "Batch size of ClsLoss and MatchIndices must be the same.");
     PADDLE_ENFORCE_EQ(
         cls_loss_dims[1], idx_dims[1],
-        "Prior box number of ClsLoss and MatchIndics must be the same.");
+        "Prior box number of ClsLoss and MatchIndices must be the same.");
 
     PADDLE_ENFORCE_EQ(cls_loss_dims[0], dis_dims[0],
-                      "Batch size of ClsLoss and MatchDis must be the same.");
+                      "Batch size of ClsLoss and MatchDist must be the same.");
     PADDLE_ENFORCE_EQ(
         cls_loss_dims[1], idx_dims[1],
-        "Prior box number of ClsLoss and MatchDis must be the same.");
+        "Prior box number of ClsLoss and MatchDist must be the same.");
 
     auto mining_type =
         GetMiningType(ctx->Attrs().Get<std::string>("mining_type"));
@@ -80,13 +217,13 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
 
     if (mining_type == MiningType::kMaxNegative) {
       auto neg_pos_ratio = ctx->Attrs().Get<float>("neg_pos_ratio");
-      auto neg_dis_threshold = ctx->Attrs().Get<float>("neg_dis_threshold");
+      auto neg_dist_threshold = ctx->Attrs().Get<float>("neg_dist_threshold");
       PADDLE_ENFORCE_GT(
           neg_pos_ratio, 0.0f,
           "neg_pos_ratio must greater than zero in max_negative mode");
       PADDLE_ENFORCE_GT(
-          neg_dis_threshold, 0.0f,
-          "neg_dis_threshold must greater than zero in max_negative mode");
+          neg_dist_threshold, 0.0f,
+          "neg_dist_threshold must greater than zero in max_negative mode");
     } else if (mining_type == MiningType::kHardExample) {
       auto sample_size = ctx->Attrs().Get<int>("sample_size");
       PADDLE_ENFORCE_GT(
@@ -94,12 +231,12 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
           "sample_size must greater than zero in hard_example mode");
     }
 
-    ctx->SetOutputDim("UpdatedMatchIndics", idx_dims);
+    ctx->SetOutputDim("UpdatedMatchIndices", idx_dims);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("ClsLoss")->type()),
         ctx.device_context());
@@ -108,30 +245,31 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
 
 class MineHardExamplesOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MineHardExamplesOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  MineHardExamplesOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(
         "ClsLoss",
-        "(Tensor, default Tensor<float>), The classification loss wit shape "
+        "(Tensor, default Tensor<float>), The classification loss with shape "
         "[N, Np], N is the batch size and Np is the number of prior box.");
     AddInput("LocLoss",
              "(Tensor, optional, default Tensor<float>), The localization loss "
              "wit shape [N, Np], N is the batch size and Np is the number of "
              "prior box.")
         .AsDispensable();
-    AddInput("MatchIndics",
+    AddInput("MatchIndices",
              "(Tensor, Tensor<int>), Matched indices with shape [N, Np], N is "
              "the batch size and Np is the number of prior box. "
-             "MatchIndics[i][j] equal -1 means box[j] does not match any "
-             "entity, otherwise means Box[j] is matched to row.");
-    AddInput("MatchDis",
+             "MatchIndices[i][j] equal -1 means the j-th prior box in i-th "
+             "instance does not match any entity, otherwise means it is "
+             "matched to row.");
+    AddInput("MatchDist",
              "(Tensor, default Tensor<float>) Matched indices with shape [N, "
              "Np], N is the batch size and Np is the number of prior box.");
     AddAttr<float>("neg_pos_ratio",
                    "(float) The ratio of the negative box to the positive "
                    "box. Use only when mining_type is equal to max_negative.")
         .SetDefault(1.0);
-    AddAttr<float>("neg_dis_threshold",
+    AddAttr<float>("neg_dist_threshold",
                    "(float) The negative box dis value threshold. "
                    "Use only when mining_type is equal to max_negative.")
         .SetDefault(0.5);
@@ -145,29 +283,31 @@ class MineHardExamplesOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("max_negative")
         .InEnum({"hard_example", "max_negative"});
 
-    AddOutput("NegIndics",
-              "(LoDTensor) The output of negative example indics.a lod tensor "
-              "with shape [Neg, 1]. The size of lod[0] is batch size, "
-              "and each element is the box index. "
-              "For example, the batch size is 2, the lod is [[0, 1, 2]], "
-              "the sample 0's box 1(MatchIndics[0][1]) is selected, "
-              "and sample 1's box 0 is selected. The output NegIndics is "
-              "[[1], [0]].");
+    AddOutput(
+        "NegIndices",
+        "(LoDTensor<int>) The output of negative example indices. a LoDTensor "
+        "with shape [Neg, 1]. The size of lod[0] minus 1 is batch size, "
+        "and each element is the prior box index. "
+        "For example, the batch size is 2, the lod is [[0, 1, 2]], "
+        "the sample 0's box 1(MatchIndices[0][1]) is selected, "
+        "and sample 1's box 0 is selected. The output NegIndices is "
+        "[[1], [0]].");
 
-    AddOutput("UpdatedMatchIndics",
-              "(Tensor) The output of updated MatchIndics, a tensor with "
-              "shape [N, M]. Only update when mining_type is equal to "
-              "hard_example. The input MatchIndics elements will be update to "
-              "-1 when it not in the highest loss list");
+    AddOutput("UpdatedMatchIndices",
+              "(Tensor<int>) The output of updated MatchIndices, a tensor with "
+              "shape [N, Np]. Only update when mining_type is equal to "
+              "hard_example. The input MatchIndices elements will be update to "
+              "-1 when it is not in the candidate high loss list of negative "
+              "examples.");
 
     AddComment(R"DOC(
 Mine hard examples Operator.
-This operator implements hard example mining to select a subset of negative box indics.
+This operator implements hard example mining to select a subset of negative box indices.
 For each image, selects the box with highest losses. subject to the condition that the box cannot have
-an MatchDis > neg_dis_threshold when mining_type is equals max_negative. The selected number is 
+an Matcht > neg_dist_threshold when mining_type is equals max_negative. The selected number is 
 min(sample_size, max_negative_box_number) when mining_type is equals hard_example,
 or min(neg_pos_ratio * positive_box_number, max_negative_box_number) when mining_type is 
-equals max_negative, where the max_negative_box_number is the count of MatchIndics elements with value -1.
+equals max_negative, where the max_negative_box_number is the count of MatchIndices elements with value -1.
 )DOC");
   }
 };
