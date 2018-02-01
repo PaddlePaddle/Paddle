@@ -295,7 +295,7 @@ def fill_constant_batch_size_like(input,
     return out
 
 
-def ones(shape, dtype):
+def ones(shape, dtype, force_cpu=False):
     """
     **ones**
 
@@ -319,7 +319,7 @@ def ones(shape, dtype):
     return fill_constant(value=1.0, **locals())
 
 
-def zeros(shape, dtype):
+def zeros(shape, dtype, force_cpu=False):
     """
     **zeros**
 
