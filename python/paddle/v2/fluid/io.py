@@ -46,8 +46,8 @@ def is_parameter(var):
 
 
 def is_persistable(var):
-    if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or var.desc.type(
-    ) == core.VarDesc.VarType.FETCH_LIST:
+    if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+       var.desc.type() == core.VarDesc.VarType.FETCH_LIST:
         return False
     return var.persistable
 
