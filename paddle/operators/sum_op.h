@@ -89,6 +89,10 @@ class SumKernel : public framework::OpKernel<T> {
 
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {
+        if (!in_vars[i]->Get<SelectedRows>().value().IsInitialized() ||
+            in_vars[i]->Get<SelectedRows>().rows().size() == 0) {
+          continue;
+        }
         PADDLE_ENFORCE_EQ(out->height(),
                           in_vars[i]->Get<SelectedRows>().height());
         functor(context.template device_context<DeviceContext>(),

@@ -24,6 +24,22 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+static bool IsVariableInitialized(const framework::Scope& scope,
+                                  const std::string& varname) {
+  auto* var = scope.FindVar(varname);
+  PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
+                          varname);
+  if (var->IsType<framework::LoDTensor>()) {
+    return var->Get<framework::LoDTensor>().IsInitialized();
+  } else if (var->IsType<framework::SelectedRows>()) {
+    return var->Get<framework::SelectedRows>().value().IsInitialized();
+  } else {
+    PADDLE_THROW(
+        "Variable type in send side should be in "
+        "[LodTensor, SelectedRows]");
+  }
+  return false;
+}
 
 class SendOp : public framework::OperatorBase {
  public:
@@ -51,8 +67,12 @@ class SendOp : public framework::OperatorBase {
     detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
 
     for (size_t i = 0; i < ins.size(); i++) {
-      VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-      rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+      if (IsVariableInitialized(scope, ins[i])) {
+        VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
+        rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+      } else {
+        VLOG(3) << "don't send no-initialied variable: " << ins[i];
+      }
     }
     PADDLE_ENFORCE(rpc_client->Wait());
 

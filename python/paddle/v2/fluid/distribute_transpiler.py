@@ -140,6 +140,7 @@ class DistributeTranspiler:
         for b in param_blocks:
             varname, block_id, _ = b.split(":")
             send_outputs.append(param_var_mapping[varname][int(block_id)])
+
         # let send_op know which endpoint to send which var to, eplist has the same
         # order as send_inputs.
         eplist = split_method(send_inputs, pserver_endpoints)
@@ -208,6 +209,7 @@ class DistributeTranspiler:
                     name="%s.block%d" % (varname, i),
                     psersistable=False,
                     dtype=orig_var.dtype,
+                    type=orig_var.type,
                     shape=splited_shape)  # flattend splited var
                 var_mapping[varname].append(var)
         return var_mapping
@@ -269,6 +271,7 @@ class DistributeTranspiler:
                 name="%s.trainer_%d" % (var.name, i),
                 psersistable=var.persistable,
                 dtype=var.dtype,
+                type=var.type,
                 shape=var.shape)
             var_list.append(var_each)
         return var_list
@@ -362,6 +365,7 @@ class DistributeTranspiler:
                 if self.trainers > 1:
                     vars2merge = self._create_var_for_trainers(
                         program.global_block(), grad_block, self.trainers)
+
                     program.global_block().append_op(
                         type="sum",
                         inputs={"X": vars2merge},
@@ -464,6 +468,7 @@ class DistributeTranspiler:
                     persistable=True,
                     dtype=v.dtype,
                     shape=v.shape)
+
         # step6
         optimize_sub_program = Program()
         # Iterate through the ops and append ops as needed

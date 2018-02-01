@@ -106,6 +106,7 @@ class RecvOp : public framework::OperatorBase {
       rpc_service_->SetCond(0);
       size_t recv_var_cnt = 0;
       int batch_barrier = 0;
+      std::vector<framework::Variable *> sparse_vars;
       while (batch_barrier != fan_in) {
         const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
@@ -114,8 +115,8 @@ class RecvOp : public framework::OperatorBase {
           exit_flag = true;
           break;
         } else if (grad_var_name == BATCH_BARRIER_MESSAGE) {
-          VLOG(3) << "recv batch barrier message";
           batch_barrier++;
+          VLOG(3) << "recv batch barrier message, become " << batch_barrier;
           continue;
         } else {
           // receive a variable
@@ -140,10 +141,13 @@ class RecvOp : public framework::OperatorBase {
             PADDLE_THROW("Can not find server side var");
           }
           detail::DeserializeFromMessage(v.second, dev_ctx, var);
+          if (var->IsType<framework::SelectedRows>()) {
+            sparse_vars.push_back(var);
+          }
         }
       }
       VLOG(3) << "recv " << recv_var_cnt << " parmeters for one barrier.";
-      // TODO(Yancey1989): merge SelectedRows variables here
+
       if (exit_flag) {
         break;
       }
@@ -153,6 +157,10 @@ class RecvOp : public framework::OperatorBase {
                      false /*create_local_scope*/, false /*create_vars*/);
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
+      }
+
+      for (auto &var : sparse_vars) {
+        var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
       }
       rpc_service_->SetCond(1);
       rpc_service_->WaitClientGet(recv_var_cnt);
