@@ -29,31 +29,38 @@ class UnBuffered : public paddle::framework::Channel<T> {
   friend void paddle::framework::CloseChannel<T>(Channel<T>*);
 
  public:
-   virtual void Send(T*);
-   virtual void Receive(T*);
-   virtual size_t Cap() { return 0; }
-   virtual void Close();
-   virtual ~UnBuffered();
+  virtual void Send(T*);
+  virtual void Receive(T*);
+  virtual size_t Cap() { return 0; }
+  virtual void Close();
+  virtual ~UnBuffered();
 
  private:
-   std::mutex mu_ch_;
-   std::recursive_mutex mu_read_, mu_write_;
-   std::atomic<bool> reader_found_{false}, writer_found_{false};
-   std::condition_variable cv_channel_;
-   std::condition_variable_any cv_reader_, cv_writer_;
-   T* item{nullptr};
-   std::atomic<bool> closed_{false};
+  std::mutex mu_ch_;
+  // Mutex for readers and writers who are waiting for other reader
+  // and writer to complete execution
+  std::recursive_mutex mu_read_, mu_write_;
+  // reader_found_ is set true when a reader is ready to accept data
+  // writer_found_ is set true when a writer is ready to send data
+  // A transaction occurs only when both are true
+  std::atomic<bool> reader_found_{false}, writer_found_{false};
+  std::condition_variable cv_channel_;
+  std::condition_variable_any cv_reader_, cv_writer_;
+  T* item{nullptr};
+  std::atomic<bool> closed_{false};
 
-   UnBuffered(): closed_(false) {}
+  UnBuffered() : closed_(false) {}
 
-   void NotifyAllSenders(std::unique_lock<std::mutex>*);
+  void NotifyAllSenders(std::unique_lock<std::mutex>*);
 };
 
 template <typename T>
 void UnBuffered<T>::Send(T* data) {
+  // Prevent other writers from entering
   std::unique_lock<std::recursive_mutex> writer_lock(mu_write_);
   writer_found_ = true;
   std::unique_lock<std::recursive_mutex> cv_lock(mu_write_);
+  // If writer comes first, it should wait till a reader arrives
   cv_writer_.wait(cv_lock,
                   [this]() { return reader_found_ == true || closed_; });
   if (!closed_) {
@@ -68,16 +75,18 @@ void UnBuffered<T>::Send(T* data) {
 
 template <typename T>
 void UnBuffered<T>::Receive(T* data) {
+  // Prevent other readers from entering
   std::unique_lock<std::recursive_mutex> read_lock{mu_read_};
   reader_found_ = true;
   std::unique_lock<std::recursive_mutex> cv_lock{mu_read_};
+  // If reader comes first, it should wait till a writer arrives
   cv_reader_.wait(cv_lock,
                   [this]() { return writer_found_ == true || closed_; });
-  if (!closed_){
+  if (!closed_) {
     std::unique_lock<std::mutex> lock_ch{mu_ch_};
-    cv_channel_.wait(lock_ch,
-                     [this]() { return item != nullptr || closed_; });
-    if (!closed_){
+    // Reader should wait for the writer to first write its data
+    cv_channel_.wait(lock_ch, [this]() { return item != nullptr || closed_; });
+    if (!closed_) {
       *data = std::move(*item);
       item = nullptr;
       lock_ch.unlock();
@@ -98,6 +107,7 @@ void UnBuffered<T>::Close() {
 template <typename T>
 UnBuffered<T>::~UnBuffered() {
   std::unique_lock<std::mutex> lock(mu_ch_);
+  item = nullptr;
   closed_ = true;
   NotifyAllSenders(&lock);
 }
