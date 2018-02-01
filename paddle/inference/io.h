@@ -29,9 +29,17 @@ void LoadPersistables(framework::Executor& executor,
                       const std::string& dirname,
                       const framework::ProgramDesc& main_program);
 
-std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
-                                             framework::Scope& scope,
-                                             const std::string& dirname);
+void LoadPersistables(framework::Executor& executor,
+                      framework::Scope& scope,
+                      const std::string& dirname,
+                      const framework::ProgramDesc& main_program,
+                      const std::string& param_filename);
+
+std::unique_ptr<framework::ProgramDesc> Load(
+    framework::Executor& executor,
+    framework::Scope& scope,
+    const std::string& dirname,
+    const std::string& param_filename = "");
 
 }  // namespace inference
 }  // namespace paddle
