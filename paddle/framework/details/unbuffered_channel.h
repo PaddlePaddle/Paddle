@@ -95,6 +95,7 @@ void UnBuffered<T>::Receive(T* data) {
       item = nullptr;
       lock_ch.unlock();
     }
+    cv_channel_.notify_one();
   }
   reader_found_ = false;
 }
