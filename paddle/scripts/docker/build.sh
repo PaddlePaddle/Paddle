@@ -32,7 +32,7 @@ function cmake_gen() {
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
-        -DCMAKE_BUILD_TYPE=${BUILD_TYPE:Release}
+        -DCMAKE_BUILD_TYPE=${BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
@@ -54,7 +54,7 @@ EOF
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
     cmake .. \
-        -DCMAKE_BUILD_TYPE=${BUILD_TYPE:Release} \
+        -DCMAKE_BUILD_TYPE=${BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
