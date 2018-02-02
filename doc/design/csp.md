@@ -71,14 +71,14 @@ ch1 := make(chan int, 100)  // a channel that can buffer 100 ints.
 In Fluid, we should be able to do the same:
 
 ```python
-ch  = fluid.make_chan(dtype=INT)
-ch1 = fluid.make_chan(dtype=INT, 100)
+ch  = fluid.make_channel(dtype=INT)
+ch1 = fluid.make_channel(dtype=INT, 100)
 ```
 
 In addition to that, we want channels that can hold more complex element types, e.g., Tensors of float16:
 
 ```python
-ch = fluid.make_chan(dtype=Tensor, etype=float16)
+ch = fluid.make_channel(dtype=Tensor, etype=float16)
 ```
 
 or Tensors of Tensors of float16 etc.
@@ -86,6 +86,62 @@ or Tensors of Tensors of float16 etc.
 The point here is that we need a consistent way to compose types, like in C++ we can have `Tensor<Tensor<...<float16>...> >`.
 
 ### Send and Recv
+
+In Go, we first create a channel as explained in the section above and then perform read and write operations on top of the channels.
+
+In Go, the `select` statement lets a goroutine wait on multiple communication operations. A `select` blocks untill one of its cases can run, then it executes that case. It chooses one at random if multiple are ready.
+
+```go
+ch1  := make(chan int)       
+ch2  := make(chan int, 100)
+```
+
+To write (or perform a `Send` operation) the value of a variable `x` to channel `ch1` above, we perform the following:
+
+```go
+ch1 <- x
+fmt.Println("Written to the channel")
+```
+Now to read (or perform a `Recv` operation) the value stored in `ch2` into a variable `y` we perform the following:
+
+```go
+y <- ch2
+fmt.Println("Received on channel")
+```
+
+In Fluid, we should be able to perform the above operations on the channels as well. As of now, we support two different kinds of channels : [Buffered Channel](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/details/buffered_channel.h) and [UnBuffered Channel](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/details/unbuffered_channel.h)
+
+Send and Receive can be performed as the following on a buffered channel:
+
+```python
+# Create a buffered channel of capacity 10
+buffer_size = 10;
+ch = fluid.make_channel(dtype=INT, 100)
+
+# Now write three elements to the channel
+for i in xrange(3):
+  ch.send(i)
+
+for i in xrange(3):
+  y = ch.recv()
+
+# Done receiving , now close the channel
+ch.close()
+```
+
+The send and receive operations will be similar for unbuffered channel as well, except for the fact that there is no buffer in the channel, so the operations are completely synchronized. For example:
+
+```python
+# Create an unbuffered channel
+ch = fluid.make_channel(dtype=INT)
+
+# Writes and Reads are synchronous otherwise the calls will block.
+ch.send(10)
+y = ch.recv()
+
+# Done receiving , now close the channel
+ch.close()
+```
 
 ### Select
 
