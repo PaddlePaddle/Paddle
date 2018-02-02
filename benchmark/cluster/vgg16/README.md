@@ -1,4 +1,4 @@
-# Performance for distributed vgg16
+# Performance for Distributed vgg16
 
 ## Test Result
 
@@ -50,7 +50,7 @@
 
 - Trainer Count: 60
 - Batch Size: 128
-- Metrics: mini-batch / sec
+- Metrics: samples/ sec
 
 | PServer Count | 3 | 6 |10 | 20 |
 | -- | -- | -- | -- | -- |
@@ -61,7 +61,7 @@
 *The performance gap between Fuild and v2 comes from the network interference.*
 
 
-## Steps to run the performance test
+## Steps to Run the Performance Test
 
 1. You must re-compile PaddlePaddle and enable `-DWITH_DISTRIBUTE` to build PaddlePaddle with distributed support.
 1. When the build finishes, copy the output `whl` package located under `build/python/dist` to current directory.
@@ -71,6 +71,6 @@
 
 Check the logs for the distributed training progress and analyze the performance.
 
-## Enable verbos logs
+## Enable Verbos Logs
 
-Edit `pserver.yaml` and `trainer.yaml` and add an environment variable `GLOG_v=3` to see what happend in detail.
+Edit `pserver.yaml` and `trainer.yaml` and add an environment variable `GLOG_v=3` and `GLOG_logtostderr=1` to see what happend in detail.
