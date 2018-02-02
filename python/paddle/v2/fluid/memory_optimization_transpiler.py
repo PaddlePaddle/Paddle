@@ -145,7 +145,6 @@ class ControlFlowGraph(object):
             if op.type() == "while" or op.type() == "while_grad":
                 continue
             block_desc = op.block()
-            self.current_block_desc = block_desc
             is_forward = i < self._forward_num
             if self.pool:
                 defs_can_optimize = filter(
