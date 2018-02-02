@@ -1237,7 +1237,7 @@ def conv2d(input,
     l_type = 'conv2d'
     if (num_channels == groups and num_filters % num_channels == 0 and
             not use_cudnn):
-        l_type = 'depthwise_conv'
+        l_type = 'depthwise_conv2d'
 
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()

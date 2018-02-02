@@ -250,7 +250,7 @@ class TestDepthwiseConv(TestConv2dOp):
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
-        self.op_type = "depthwise_conv"
+        self.op_type = "depthwise_conv2d"
 
 
 class TestDepthwiseConv2(TestConv2dOp):
@@ -262,7 +262,7 @@ class TestDepthwiseConv2(TestConv2dOp):
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
-        self.op_type = "depthwise_conv"
+        self.op_type = "depthwise_conv2d"
 
 
 #  cudnn v5 does not support dilation conv.
