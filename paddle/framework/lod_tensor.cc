@@ -24,8 +24,6 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 
-#include <glog/logging.h>
-
 namespace paddle {
 namespace framework {
 

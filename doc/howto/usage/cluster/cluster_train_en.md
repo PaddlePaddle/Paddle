@@ -95,11 +95,11 @@ paddle.init(
 Parameter Description
 
 - use_gpu: **optional, default False**, set to "True" to enable GPU training.
-- trainer_count: **required, default 1**, total count of trainers in the training job.
+- trainer_count: **required, default 1**, number of threads in current trainer.
 - port: **required, default 7164**, port to connect to parameter server.
 - ports_num: **required, default 1**, number of ports for communication.
 - ports_num_for_sparse: **required, default 0**, number of ports for sparse type caculation.
-- num_gradient_servers: **required, default 1**, total number of gradient server.
+- num_gradient_servers: **required, default 1**, number of trainers in current job.
 - trainer_id: **required, default 0**, ID for every trainer, start from 0.
 - pservers: **required, default 127.0.0.1**, list of IPs of parameter servers, separated by ",".
 

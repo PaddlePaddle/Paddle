@@ -124,44 +124,25 @@ PYBIND11_PLUGIN(core) {
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
-#ifndef PADDLE_WITH_CUDA
-            new (&instance) LoDTensor(lod);
-#else
-             LoD new_lod;
-             new_lod.reserve(lod.size());
-             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             new (&instance) LoDTensor(new_lod);
-#endif
+            LoD new_lod;
+            new_lod.reserve(lod.size());
+            std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+            new (&instance) LoDTensor(new_lod);
           })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-#ifndef PADDLE_WITH_CUDA
-             self.set_lod(lod);
-#else
              LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              self.set_lod(new_lod);
-#endif
            })
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-#ifndef PADDLE_WITH_CUDA
-        return self.lod();
-#else
-           auto lod = self.lod();
-           std::vector<std::vector<size_t>> new_lod;
-           new_lod.reserve(lod.size());
-           std::transform(lod.begin(), lod.end(), std::back_inserter(new_lod),
-               [](Vector<size_t> item) ->
-                   std::vector<size_t> {
-                 std::vector<size_t> v;
-                 v.reserve(item.size());
-                 std::copy(item.begin(), item.end(), std::back_inserter(v));
-                 return v;
-               });
-           return new_lod;
-#endif
+        auto lod = self.lod();
+        std::vector<std::vector<size_t>> new_lod;
+        new_lod.reserve(lod.size());
+        std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+        return new_lod;
       });
 
   py::class_<SelectedRows>(m, "SelectedRows")

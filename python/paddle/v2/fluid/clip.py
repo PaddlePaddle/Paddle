@@ -30,6 +30,9 @@ __all__ = [
 
 
 class BaseErrorClipAttr(object):
+    def __str__(self):
+        raise NotImplementedError()
+
     def append_clip_op(self, block, grad_name):
         raise NotImplementedError()
 
@@ -43,6 +46,9 @@ class ErrorClipByValue(BaseErrorClipAttr):
             min = float(min)
         self.max = max
         self.min = min
+
+    def __str__(self):
+        return "ByValue, min=%f, max=%f" % (self.min, self.max)
 
     def append_clip_op(self, block, grad_name):
         clip_op_desc = block.desc.append_op()
@@ -71,6 +77,9 @@ def error_clip_callback(block, context):
 
 
 class BaseGradientClipAttr(object):
+    def __str__(self):
+        raise NotImplementedError()
+
     def process_context(self, context, param, grad):
         raise NotImplementedError()
 
@@ -79,6 +88,9 @@ class BaseGradientClipAttr(object):
 
 
 class NullGradientClipAttr(BaseGradientClipAttr):
+    def __str__(self):
+        return "Null"
+
     def process_context(self, context, param, grad):
         pass
 
@@ -96,6 +108,9 @@ class GradientClipByValue(BaseGradientClipAttr):
         self.max = max
         self.min = min
 
+    def __str__(self):
+        return "ByValue, min=%f, max=%f" % (self.min, self.max)
+
     def process_context(self, context, param, grad):
         pass
 
@@ -107,6 +122,9 @@ class GradientClipByValue(BaseGradientClipAttr):
 class GradientClipByNorm(BaseGradientClipAttr):
     def __init__(self, clip_norm):
         self.clip_norm = clip_norm
+
+    def __str__(self):
+        return "ByNorm, clip_norm=%f" % self.clip_norm
 
     def process_context(self, context, param, grad):
         pass
@@ -123,6 +141,10 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
 
         self.clip_norm = clip_norm
         self.group_name = group_name
+
+    def __str__(self):
+        return "ByGlobalNorm, group_name=%s, clip_norm=%f" % (self.group_name,
+                                                              self.clip_norm)
 
     def process_context(self, context, param, grad):
         if self.group_name not in context:
@@ -210,3 +232,5 @@ def append_gradient_clip_ops(param_grad):
 
 
 ClipByValue = GradientClipByValue
+ClipByNorm = GradientClipByNorm
+ClipByGlobalNorm = GradientClipByGlobalNorm
