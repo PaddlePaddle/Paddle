@@ -119,7 +119,7 @@ TEST(Channel, UnbufferedChannelCloseUnblocksReceiversTest) {
         },
         &thread_ended[i]);
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
 
   // Verify that all the threads are blocked
   for (size_t i = 0; i < num_threads; i++) {
@@ -130,7 +130,7 @@ TEST(Channel, UnbufferedChannelCloseUnblocksReceiversTest) {
   // This should unblock all receivers
   CloseChannel(ch);
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
 
   // Verify that all threads got unblocked
   for (size_t i = 0; i < num_threads; i++) {
@@ -160,7 +160,7 @@ TEST(Channel, UnbufferedChannelCloseUnblocksSendersTest) {
         },
         &thread_ended[i]);
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
 
   // Verify that all the threads are blocked
   for (size_t i = 0; i < num_threads; i++) {
@@ -171,7 +171,7 @@ TEST(Channel, UnbufferedChannelCloseUnblocksSendersTest) {
   // This should unblock all receivers
   CloseChannel(ch);
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
 
   // Verify that all threads got unblocked
   for (size_t i = 0; i < num_threads; i++) {
