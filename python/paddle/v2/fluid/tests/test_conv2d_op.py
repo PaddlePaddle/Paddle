@@ -241,6 +241,30 @@ class TestCUDNNWith1x1(TestWith1x1):
         self.op_type = "conv2d"
 
 
+class TestDepthwiseConv(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConv2(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
 #  cudnn v5 does not support dilation conv.
 # class TestCUDNNWithDilation(TestWithDilation):
 #     def init_op_type(self):
