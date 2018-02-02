@@ -109,7 +109,7 @@ TEST(Channel, UnbufferedMoreReceiveLessSendTest) {
   std::thread t([&]() {
     for (int i = 0; i < 8; i++) {
       int recv;
-      ch->Receive(&recv); // should block after the fifth iteration.
+      ch->Receive(&recv);  // should block after the fifth iteration.
       EXPECT_EQ(recv, i);
       sum_receive += i;
     }
