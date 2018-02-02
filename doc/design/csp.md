@@ -89,8 +89,6 @@ The point here is that we need a consistent way to compose types, like in C++ we
 
 In Go, we first create a channel as explained in the section above and then perform read and write operations on top of the channels.
 
-In Go, the `select` statement lets a goroutine wait on multiple communication operations. A `select` blocks untill one of its cases can run, then it executes that case. It chooses one at random if multiple are ready.
-
 ```go
 ch1  := make(chan int)       
 ch2  := make(chan int, 100)
