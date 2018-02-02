@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/operators/layer_norm_op.h"
+#include "paddle/operators/elementwise_op_function.h"
+#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -353,8 +355,9 @@ namespace ops = paddle::operators;
 REGISTER_OP(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
             layer_norm_grad, ops::LayerNormGradOp);
 REGISTER_OP_CPU_KERNEL(
-    layer_norm,
-    ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>);
+    layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::LayerNormKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     layer_norm_grad,
-    ops::LayerNormGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::LayerNormGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::LayerNormGradKernel<paddle::platform::CPUDeviceContext, double>);
