@@ -94,32 +94,33 @@ ch1  := make(chan int)
 ch2  := make(chan int, 100)
 ```
 
-To write (or perform a `Send` operation) the value of a variable `x` to channel `ch1` above, we perform the following:
+To write (or perform a `Send` operation) the value of a variable `x`, to channel `ch1` above, we perform the following:
 
 ```go
 ch1 <- x
 fmt.Println("Written to the channel")
 ```
-Now to read (or perform a `Recv` operation) the value stored in `ch2` into a variable `y` we perform the following:
+Now to read (or perform a `Recv` operation) the value stored in `ch2` into a variable `y`, we perform the following:
 
 ```go
 y <- ch2
-fmt.Println("Received on channel")
+fmt.Println("Received from channel")
 ```
 
-In Fluid, we should be able to perform the above operations on the channels as well. As of now, we support two different kinds of channels : [Buffered Channel](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/details/buffered_channel.h) and [UnBuffered Channel](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/details/unbuffered_channel.h)
+In Fluid, we should be able to perform the above operations on the channel objects as well. As of now, we support two different kinds of channels : [Buffered Channel](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/details/buffered_channel.h) and [UnBuffered Channel](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/details/unbuffered_channel.h)
 
-Send and Receive can be performed as the following on a buffered channel:
+Send and Receive can be performed as following on a buffered channel:
 
 ```python
 # Create a buffered channel of capacity 10
 buffer_size = 10;
-ch = fluid.make_channel(dtype=INT, 100)
+ch = fluid.make_channel(dtype=INT, buffer_size)
 
 # Now write three elements to the channel
 for i in xrange(3):
   ch.send(i)
 
+# Read all the data from the channel
 for i in xrange(3):
   y = ch.recv()
 
@@ -127,7 +128,7 @@ for i in xrange(3):
 ch.close()
 ```
 
-The send and receive operations will be similar for unbuffered channel as well, except for the fact that there is no buffer in the channel, so the operations are completely synchronized. For example:
+The send and receive operations will be similar for unbuffered channel as well, except for the fact that there is no buffer in an unbuffered channel, so the operations are completely synchronized. For example:
 
 ```python
 # Create an unbuffered channel
