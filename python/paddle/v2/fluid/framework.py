@@ -451,9 +451,8 @@ class Operator(object):
             if not given == need:
                 raise ValueError(("Incorrect setting for output(s) of "
                                   "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type, ", ".join(str(e)
-                                                  for e in need), ", ".join(
-                                                      str(e) for e in given)))
+                                 (type, ", ".join(str(e) for e in need),
+                                  ", ".join(str(e) for e in given)))
 
             for out_proto in proto.outputs:
                 out_args = outputs[out_proto.name]
@@ -489,7 +488,8 @@ class Operator(object):
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
-            'recv', 'parallel_do'
+            'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
+            'load_combine'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
