@@ -26,7 +26,10 @@ struct AddFunctor {
 
 template <typename T>
 struct AddToFunctor {
-  inline HOSTDEVICE void operator()(T& a, T& b) const { a += b; }
+  inline HOSTDEVICE T operator()(T a, T b) const {
+    b += a;
+    return a + b;
+  }
 };
 
 template <typename DeviceContext, typename T>
@@ -100,7 +103,8 @@ class ElementwiseAddGradKernel : public framework::OpKernel<T> {
     // ElementwiseGradCompute<DeviceContext, T, ElementwiseAddGradFunctor<T>,
     //                        ElementwiseAddBroadCastGradFunctor<T>,
     //                        ElementwiseAddBroadCast2GradFunctor<T>>(ctx);
-    ElementwiseGradComputeEx<AddFunctor<T>, DeviceContext, T>(ctx);
+    // ElementwiseGradComputeEx<AddFunctor<T>, DeviceContext, T>(ctx);
+    ElementwiseGradComputeEx<AddToFunctor<T>, DeviceContext, T>(ctx);
   }
 };
 

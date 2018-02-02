@@ -19,7 +19,11 @@ limitations under the License. */
 #include "paddle/platform/transform.h"
 
 #ifdef __NVCC__
+#include <thrust/detail/internal_functional.h>
+#include <thrust/for_each.h>
 #include <thrust/iterator/iterator_adaptor.h>
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/tuple.h>
 #endif
 
 #include "paddle/operators/math/math_function.h"
@@ -146,7 +150,7 @@ class RowwiseTransformIterator<T, platform::CUDADeviceContext>
   typedef thrust::iterator_adaptor<
       RowwiseTransformIterator<T, platform::CUDADeviceContext>, const T*>
       super_t;
-  HOSTDEVICE RowwiseTransformIterator(const T* x, int n)
+  HOSTDEVICE RowwiseTransformIterator(T* x, int n)
       : super_t(x), begin_(x), n_(n){};
   friend class thrust::iterator_core_access;
 
@@ -166,14 +170,14 @@ class MidWiseTransformIterator<T, platform::CUDADeviceContext>
   typedef thrust::iterator_adaptor<
       MidWiseTransformIterator<T, platform::CUDADeviceContext>, const T*>
       super_t;
-  HOSTDEVICE MidWiseTransformIterator(const T* x, int n, int post)
+  HOSTDEVICE MidWiseTransformIterator(T* x, int n, int post)
       : super_t(x), begin_(x), n_(n), post_(post){};
   friend class thrust::iterator_core_access;
 
  private:
   unsigned int post_;
   unsigned int n_;
-  const T* begin_;
+  T* begin_;
   HOSTDEVICE typename super_t::reference dereference() const {
     return *(begin_ + (((this->base() - begin_) / post_) % n_));
   }
@@ -236,7 +240,8 @@ template <typename DeviceContext>
 struct Reduce {
   template <typename InputIter, typename OutIter, typename BinaryOperation>
   inline void operator()(const DeviceContext& ctx, InputIter first,
-                         InputIter last, OutIter output, BinaryOperation op);
+                         InputIter last, OutIter output, OutIter end,
+                         BinaryOperation op);
 };
 
 // template <>
@@ -252,26 +257,48 @@ template <>
 struct Reduce<platform::CPUDeviceContext> {
   template <typename InputIter, typename OutIter, typename BinaryOperation>
   inline void operator()(const platform::CPUDeviceContext& ctx, InputIter first,
-                         InputIter last, OutIter output, BinaryOperation op) {
+                         InputIter last, OutIter output, OutIter end,
+                         BinaryOperation op) {
+    // for (; first != last; ++first) {
+    //   *output = op(*output, *first);
+    //   ++output;
+    // }
     for (; first != last; ++first) {
-      *output = op(*output, *first);
+      op(*output, *first);
       ++output;
     }
   }
 };
 
 #ifdef __NVCC__
+// template<typename BinaryOperation>
+// class AddToFunctor {
+// public:
+//   inline HOSTDEVICE AddToFunctor(BinaryOperation o) : op(o){}
+
+//   template<typename Tuple>
+//   inline HOSTDEVICE void operator() (Tuple t) {
+//     thrust::get<1>(t) = op(thrust::get<0>(t), thrust::get<1>(t));
+//   }
+
+// private:
+//   BinaryOperation op;
+// };
+
 template <>
 struct Reduce<platform::CUDADeviceContext> {
   template <typename InputIter, typename OutIter, typename BinaryOperation>
-  inline HOSTDEVICE T operator()(const platform::CUDADeviceContext& ctx,
-                                 InputIter first, InputIter last,
-                                 OutIter output, BinaryOperation op) {
+  inline void operator()(const platform::CUDADeviceContext& ctx,
+                         InputIter first, InputIter last, OutIter output,
+                         OutIter end, BinaryOperation op) {
+    // typedef AddToFunctor<BinaryOperation> AddTo;
+    typedef thrust::detail::binary_transform_functor<BinaryOperation> Binary;
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
-    return thrust::transform(thrust::cuda::par.on(ctx.stream()),
-                             platform::details::DevPtrCast(first),
-                             platform::details::DevPtrCast(last), op, init);
+    thrust::for_each(
+        thrust::cuda::par.on(ctx.stream()),
+        thrust::make_zip_iterator(thrust::make_tuple(first, output)),
+        thrust::make_zip_iterator(thrust::make_tuple(last, end)), Binary(op));
   }
 };
 
@@ -291,18 +318,20 @@ class ReduceFunctor {
 
   inline void Run() const {
     Reduce<DeviceContext> reducer;
-    reducer(ctx_, x_, x_ + numel_, out_, func_);
+    reducer(ctx_, x_, x_ + numel_, out_, out_, func_);
   }
 
   inline void RunColWise(int n, int pre) const {
     Reduce<DeviceContext> reducer;
     reducer(ctx_, x_, x_ + numel_,
+            RowwiseTransformIterator<T, DeviceContext>(out_, n),
             RowwiseTransformIterator<T, DeviceContext>(out_, n), func_);
   }
 
   inline void RunMidWise(int n, int pre, int post) const {
     Reduce<DeviceContext> reducer;
     reducer(ctx_, x_, x_ + numel_,
+            MidWiseTransformIterator<T, DeviceContext>(out_, n, post),
             MidWiseTransformIterator<T, DeviceContext>(out_, n, post), func_);
   }
 
