@@ -270,10 +270,12 @@ def infer(save_dirname=None):
                           feed_target_names[6]: ts_ctx_p2,
                           feed_target_names[7]: ts_mark
                       },
-                      fetch_list=fetch_targets)
-
-    print("Inference Shape: ", results[0].shape)
-    print("Inference results: ", results[0])
+                      fetch_list=fetch_targets,
+                      return_numpy=False)
+    print(results[0].lod())
+    np_data = np.array(results[0])
+    print("Inference Shape: ", np_data.shape)
+    print("Inference results: ", np_data)
 
 
 if __name__ == '__main__':
