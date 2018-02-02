@@ -200,7 +200,7 @@ TEST(Channel, UnbufferedLessReceiveMoreSendTest) {
     ch->Receive(&recv);
     EXPECT_EQ(recv, i);
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
   EXPECT_EQ(sum_send, 3U);
 
   CloseChannel(ch);
@@ -217,11 +217,11 @@ TEST(Channel, UnbufferedEmptyReceiveSendReceiveTest) {
   // should successfully receive and update the sum
   std::thread t([&]() {
     int recv;
-    ch->Receive(&recv); //should block the first time
+    ch->Receive(&recv);  //should block the first time
     EXPECT_EQ(recv, i);
     sum_recv += recv;
   });
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
   EXPECT_EQ(sum_recv, 0U);
 
   ch->Send(&i);
