@@ -26,9 +26,7 @@ class Channel {
   virtual void Send(T*) = 0;
   virtual void Receive(T*) = 0;
   virtual size_t Cap() = 0;
-
-  // Don't delete channels; instead, call Channel::Close.
- protected:
+  virtual void Close() = 0;
   virtual ~Channel() {}
 };
 
@@ -50,11 +48,7 @@ Channel<T>* MakeChannel(size_t buffer_size) {
 
 template <typename T>
 void CloseChannel(Channel<T>* ch) {
-  if (ch->Cap() > 0) {
-    delete dynamic_cast<details::Buffered<T>*>(ch);
-  } else {
-    delete dynamic_cast<details::UnBuffered<T>*>(ch);
-  }
+  ch->Close();
 }
 
 }  // namespace framework
