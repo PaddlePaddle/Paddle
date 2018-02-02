@@ -48,8 +48,7 @@ class SwitchOpGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetType("switch_grad");
     grad_op->SetInput("X", Input("X"));
     grad_op->SetInput("Scope", Output("Scope"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
-    grad_op->SetBlockAttr("sub_blocks", *this->grad_block_[0]);
+    grad_op->SetBlocksAttr("sub_blocks", this->grad_block_);
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
@@ -89,11 +88,38 @@ class SwitchOp : public SwitchOpBase {
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
     auto xs = InputTensors(scope);
-    bool need_run = std::all_of(
-        xs.begin(), xs.end(),
-        [](const framework::LoDTensor *t) { return t->numel() != 0; });
+    auto blocks = Attr<std::vector<framework::BlockDesc *>>("sub_blocks");
 
-    if (need_run) {
+    size_t cond_num = xs.size();
+    size_t case_num = blocks.size();
+    PADDLE_ENFORCE(cond_num == case_num || cond_num + 1 == case_num,
+                   "cond_num %d and case_num %d does not meet requirement",
+                   cond_num, case_num);
+
+    int64_t match_cond_id = -1;
+    int64_t match_case_id = -1;
+
+    for (size_t i = 0; i < xs.size(); ++i) {
+      auto cond = xs[i];
+      PADDLE_ENFORCE(cond->IsInitialized() &&
+                         cond->dims() == framework::make_ddim({1}) &&
+                         cond->type().hash_code() == typeid(bool).hash_code(),
+                     "cond should be a scalar bool tensor");
+      if (cond->data<bool>()[0]) {
+        match_cond_id = static_cast<int64_t>(i);
+        break;
+      }
+    }
+
+    if (match_cond_id >= 0) {
+      match_case_id = match_cond_id;
+    } else if (cond_num + 1 == case_num) {
+      match_case_id = static_cast<int64_t>(case_num - 1);
+    }
+
+    if (match_case_id >= 0) {
+      auto block = blocks[match_case_id];
+
       auto *scope_var = scope.FindVar(Output("Scope"));
       PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
@@ -102,7 +128,7 @@ class SwitchOp : public SwitchOpBase {
       auto &cur_scope = *scopes->front();
 
       framework::Executor exec(dev_place);
-      auto *block = Attr<framework::BlockDesc *>("sub_blocks");
+
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
     }
   }

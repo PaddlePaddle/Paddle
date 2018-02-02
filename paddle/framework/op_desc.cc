@@ -214,7 +214,7 @@ void OpDesc::SetBlockAttr(const std::string &name, BlockDesc &block) {
 }
 
 void OpDesc::SetBlocksAttr(const std::string &name,
-                           std::vector<BlockDesc *> &blocks) {
+                           const std::vector<BlockDesc *> &blocks) {
   this->attrs_[name] = blocks;
   need_update_ = true;
 }
