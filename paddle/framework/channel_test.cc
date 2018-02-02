@@ -125,3 +125,27 @@ TEST(Channel, UnbufferedLessReceiveMoreSendTest) {
   t.join();
   delete ch;
 }
+
+TEST(Channel, UnbufferedEmptyReceiveSendReceiveTest) {
+  auto ch = MakeChannel<int>(0);
+  unsigned sum_recv = 0;
+  int i = 10;
+  // Receive should block initially since channel is
+  // empty. Once the main thread sends something, it
+  // should successfully receive and update the sum
+  std::thread t([&]() {
+    int recv;
+    ch->Receive(&recv); //should block the first time
+    EXPECT_EQ(recv, i);
+    sum_recv += recv;
+  });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
+  EXPECT_EQ(sum_recv, 0U);
+
+  ch->Send(&i);
+
+  CloseChannel(ch);
+  t.join();
+  EXPECT_EQ(sum_recv, 10U);
+  delete ch;
+}
