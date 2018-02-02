@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
+#include "paddle/framework/block_desc.h"
 #include "paddle/framework/framework.pb.h"
 #include "paddle/framework/proto_desc.h"
 #include "paddle/platform/macros.h"
@@ -45,9 +46,8 @@ class ProgramDesc {
 
   proto::ProgramDesc *Proto();
 
-  const std::vector<std::string> GetFeedVarNames();
-
-  const std::vector<std::string> GetFetchVarNames();
+  const std::vector<std::string> GetFeedTargetNames();
+  const std::vector<std::string> GetFetchTargetNames();
 
  private:
   proto::ProgramDesc desc_;
