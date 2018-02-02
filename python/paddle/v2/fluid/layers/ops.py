@@ -59,6 +59,7 @@ __all__ = [
     'elementwise_pow',
     'clip',
     'clip_by_norm',
+    'softmax',
     'sequence_softmax',
 ] + __activations__
 
