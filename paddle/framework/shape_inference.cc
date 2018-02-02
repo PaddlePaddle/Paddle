@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-framework::DDim InferShapeContext::GetInputDim(const std::string &name) const {
+DDim InferShapeContext::GetInputDim(const std::string &name) const {
   const std::vector<std::string> &arg_names = Inputs(name);
   PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
                     "Input(%s) should hold one element, but now it holds %d",
@@ -26,7 +26,7 @@ framework::DDim InferShapeContext::GetInputDim(const std::string &name) const {
   return this->GetDim(arg_names[0]);
 }
 
-std::vector<framework::DDim> InferShapeContext::GetInputsDim(
+std::vector<DDim> InferShapeContext::GetInputsDim(
     const std::string &name) const {
   const std::vector<std::string> &arg_names = Inputs(name);
   return GetDims(arg_names);
@@ -46,15 +46,15 @@ void InferShapeContext::SetOutputDim(const std::string &name, const DDim &dim) {
   SetDim(arg_names[0], dim);
 }
 
-void InferShapeContext::SetOutputsDim(
-    const std::string &name, const std::vector<framework::DDim> &dims) {
+void InferShapeContext::SetOutputsDim(const std::string &name,
+                                      const std::vector<DDim> &dims) {
   auto &names = Outputs(name);
   SetDims(names, dims);
 }
 
 std::vector<DDim> InferShapeContext::GetDims(
     const std::vector<std::string> &names) const {
-  std::vector<framework::DDim> ret;
+  std::vector<DDim> ret;
   ret.reserve(names.size());
   std::transform(
       names.begin(), names.end(), std::back_inserter(ret),
@@ -62,7 +62,7 @@ std::vector<DDim> InferShapeContext::GetDims(
   return ret;
 }
 void InferShapeContext::SetDims(const std::vector<std::string> &names,
-                                const std::vector<framework::DDim> &dims) {
+                                const std::vector<DDim> &dims) {
   size_t length = names.size();
   PADDLE_ENFORCE_EQ(length, dims.size());
   for (size_t i = 0; i < length; ++i) {
