@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -92,7 +91,7 @@ static inline void GetMaxScoreIndex(
 }
 
 template <class T>
-T BBoxArea(const T* box, const bool normalized) {
+static inline T BBoxArea(const T* box, const bool normalized) {
   if (box[2] < box[0] || box[3] < box[1]) {
     // If coordinate values are is invalid
     // (e.g. xmax < xmin or ymax < ymin), return 0.
