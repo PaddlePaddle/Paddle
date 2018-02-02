@@ -39,10 +39,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasOutputs(const std::string &name) const override;
 
-  DDim GetInputDim(const std::string &name) const override;
-
-  void SetOutputDim(const std::string &name, const DDim &dim) override;
-
   AttrReader Attrs() const override;
 
   const std::vector<std::string> &Inputs(
@@ -442,21 +438,6 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
     if (!block_.HasVarRecursive(output)) return false;
   }
   return true;
-}
-
-DDim CompileTimeInferShapeContext::GetInputDim(const std::string &name) const {
-  std::vector<DDim> ddims = GetInputsDim(name);
-  auto length = ddims.size();
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Input(%s) should have 1 value, "
-                    "but it has %d now",
-                    name, length);
-  return ddims[0];
-}
-
-void CompileTimeInferShapeContext::SetOutputDim(const std::string &name,
-                                                const DDim &dim) {
-  SetOutputsDim(name, {dim});
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {
