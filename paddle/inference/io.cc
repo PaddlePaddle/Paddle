@@ -153,10 +153,12 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
 std::unique_ptr<framework::ProgramDesc> Load(
     framework::Executor& executor,
     framework::Scope& scope,
+    const std::string& dirname,
     const std::string& prog_filename,
     const std::string& param_filename) {
-  VLOG(3) << "loading model from " << prog_filename;
-  std::ifstream inputfs(prog_filename, std::ios::in | std::ios::binary);
+  std::string model_filename = dirname + "/" + prog_filename;
+  VLOG(3) << "loading model from " << model_filename;
+  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
   std::string program_desc_str;
   inputfs.seekg(0, std::ios::end);
   program_desc_str.resize(inputfs.tellg());
@@ -168,7 +170,7 @@ std::unique_ptr<framework::ProgramDesc> Load(
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
 
-  LoadPersistables(executor, scope, *main_program, "", param_filename);
+  LoadPersistables(executor, scope, *main_program, dirname, param_filename);
   return main_program;
 }
 
