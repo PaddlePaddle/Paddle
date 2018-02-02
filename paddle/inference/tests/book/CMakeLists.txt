@@ -4,4 +4,4 @@ cc_test(test_inference_recognize_digits_mlp
     DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
     ARGS --dirname=${PYTHON_TESTS_DIR}/book/recognize_digits_mlp.inference.model)
 set_tests_properties(test_inference_recognize_digits_mlp
-    PROPERTIES DEPENDS test_recognize_digits_mlp_cpu)
+    PROPERTIES DEPENDS test_recognize_digits)
