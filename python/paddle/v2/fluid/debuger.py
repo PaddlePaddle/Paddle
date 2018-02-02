@@ -159,24 +159,29 @@ def repr_attr(desc):
     value = valgetter[desc.type](desc)
     if key == "dtype":
         value = repr_data_type(value)
-    if type(value) is bool and value:
-        return key
-    return tpl.format(key=key, value=str(value))
+    return tpl.format(key=key, value=str(value)), (key, value)
 
 
 def _repr_op_fill_constant(optype, inputs, outputs, attrs):
     if optype == "fill_constant":
-        return "{output} = {data}".format(output=','.join(outputs), )
+        return "{output} = {data} [shape={shape}]".format(
+            output=','.join(outputs),
+            data=attrs['value'],
+            shape=str(attrs['shape']))
+
+
+op_repr_handlers = [_repr_op_fill_constant, ]
 
 
 def repr_op(opdesc):
     optype = None
     attrs = []
+    attr_dict = {}
     is_target = None
     inputs = []
     outputs = []
 
-    tpl = "{outputs} = {optype}({inputs}, {attrs}, {is_target})"
+    tpl = "{outputs} = {optype}({inputs}{is_target}) [{attrs}]"
     args2value = lambda args: args[0] if len(args) == 1 else str(list(args))
     for var in opdesc.inputs:
         key = var.parameter
@@ -186,16 +191,22 @@ def repr_op(opdesc):
         value = args2value(var.arguments)
         outputs.append(value)
     for attr in opdesc.attrs:
-        attrs.append(repr_attr(attr))
+        attr_repr, attr_pair = repr_attr(attr)
+        attrs.append(attr_repr)
+        attr_dict[attr_pair[0]] = attr_pair[1]
 
     is_target = opdesc.is_target
+
+    for handler in op_repr_handlers:
+        res = handler(opdesc.type, inputs, outputs, attr_dict)
+        if res: return res
 
     return tpl.format(
         outputs=', '.join(outputs),
         optype=opdesc.type,
         inputs=', '.join(inputs),
         attrs="{%s}" % ','.join(attrs),
-        is_target="is_target" if is_target else "")
+        is_target=", is_target" if is_target else "")
 
 
 def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
