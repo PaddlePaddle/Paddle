@@ -87,6 +87,11 @@ roi_pool
 ..  autoclass:: paddle.v2.layer.roi_pool
     :noindex:
 
+pad
+----
+..  autoclass:: paddle.v2.layer.pad
+    :noindex:
+
 Norm Layer
 ==========
 
@@ -133,6 +138,11 @@ grumemory
 ..  autoclass:: paddle.v2.layer.grumemory
     :noindex:
 
+gated_unit
+-----------
+..  autoclass:: paddle.v2.layer.gated_unit
+    :noindex:
+    
 Recurrent Layer Group
 =====================
 
@@ -340,6 +350,11 @@ bilinear_interp
 ..  autoclass:: paddle.v2.layer.bilinear_interp
     :noindex:
 
+dropout
+--------
+..  autoclass:: paddle.v2.layer.dropout
+    :noindex:
+    
 dot_prod
 ---------
 .. autoclass:: paddle.v2.layer.dot_prod
@@ -402,6 +417,11 @@ scale_shift
 ..  autoclass:: paddle.v2.layer.scale_shift
     :noindex:
 
+factorization_machine
+---------------------
+..  autoclass:: paddle.v2.layer.factorization_machine
+    :noindex:
+
 Sampling Layers
 ===============
 
@@ -418,22 +438,6 @@ sampling_id
 multiplex
 ---------
 ..  autoclass:: paddle.v2.layer.multiplex
-    :noindex:
-
-Factorization Machine Layer
-============================
-
-factorization_machine
----------------------
-..  autoclass:: paddle.v2.layer.factorization_machine
-    :noindex:
-
-Slicing and Joining Layers
-==========================
-
-pad
-----
-..  autoclass:: paddle.v2.layer.pad
     :noindex:
 
 ..  _api_v2.layer_costs:
@@ -526,6 +530,11 @@ multibox_loss
 ..  autoclass:: paddle.v2.layer.multibox_loss
     :noindex:
 
+detection_output
+----------------
+..  autoclass:: paddle.v2.layer.detection_output
+    :noindex:
+    
 Check Layer
 ============
 
@@ -534,31 +543,10 @@ eos
 ..  autoclass:: paddle.v2.layer.eos
     :noindex:
 
-Miscs
-=====
-
-dropout
---------
-..  autoclass:: paddle.v2.layer.dropout
-    :noindex:
-
-Activation with learnable parameter
-===================================
+Activation
+==========
 
 prelu
 --------
 ..  autoclass:: paddle.v2.layer.prelu
-    :noindex:
-
-gated_unit
------------
-..  autoclass:: paddle.v2.layer.gated_unit
-    :noindex:
-
-Detection output Layer
-======================
-
-detection_output
-----------------
-..  autoclass:: paddle.v2.layer.detection_output
     :noindex:
