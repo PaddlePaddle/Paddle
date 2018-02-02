@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/platform/device_context.h"
 #include "paddle/platform/place.h"
 #include "paddle/string/piece.h"
-DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace framework {
@@ -40,9 +39,6 @@ void InitGflags(std::vector<std::string> &argv) {
     }
     google::ParseCommandLineFlags(&argc, &arr, true);
     VLOG(1) << "Init commandline: " << line;
-    if (FLAGS_benchmark) {
-      LOG(WARN) << "Enable benchmark mode";
-    }
   });
 }
 
