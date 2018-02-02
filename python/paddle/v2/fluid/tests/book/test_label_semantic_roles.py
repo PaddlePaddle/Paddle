@@ -175,8 +175,8 @@ def train(save_dirname=None):
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    place = fluid.CPUPlace()
-    # place = fluid.CUDAPlace(0)
+    # place = fluid.CPUPlace()
+    place = fluid.CUDAPlace(0)
     feeder = fluid.DataFeeder(
         feed_list=[
             word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
@@ -211,8 +211,10 @@ def train(save_dirname=None):
                 if batch_id != 0:
                     print("second per batch: " + str((time.time() - start_time)
                                                      / batch_id))
+                if save_dirname is None:
+                    exit(0)
                 # Set the threshold low to speed up the CI test
-                if float(pass_precision) > 0.05 and save_dirname is not None:
+                if float(pass_precision) > 0.1:
                     fluid.io.save_inference_model(save_dirname, [
                         'word_data', 'verb_data', 'ctx_n2_data', 'ctx_n1_data',
                         'ctx_0_data', 'ctx_p1_data', 'ctx_p2_data', 'mark_data'
@@ -248,6 +250,15 @@ def infer(save_dirname=None):
 
     # Construct feed as a dictionary of {feed_target_name: feed_target_data}
     # and results will contain a list of data corresponding to fetch_targets.
+    assert feed_target_names[0] == 'word_data'
+    assert feed_target_names[1] == 'verb_data'
+    assert feed_target_names[2] == 'ctx_n2_data'
+    assert feed_target_names[3] == 'ctx_n1_data'
+    assert feed_target_names[4] == 'ctx_0_data'
+    assert feed_target_names[5] == 'ctx_p1_data'
+    assert feed_target_names[6] == 'ctx_p2_data'
+    assert feed_target_names[7] == 'mark_data'
+
     results = exe.run(inference_program,
                       feed={
                           feed_target_names[0]: ts_word,
@@ -260,6 +271,7 @@ def infer(save_dirname=None):
                           feed_target_names[7]: ts_mark
                       },
                       fetch_list=fetch_targets)
+
     print("Inference Shape: ", results[0].shape)
     print("Inference results: ", results[0])
 
