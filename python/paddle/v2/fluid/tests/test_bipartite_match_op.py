@@ -62,7 +62,7 @@ def batch_bipartite_match(distance, lod):
     return match_indices, match_dist
 
 
-class TestBipartiteMatchOpForWithLoD(OpTest):
+class TestBipartiteMatchOpWithLoD(OpTest):
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[0, 5, 11, 23]]
@@ -72,7 +72,7 @@ class TestBipartiteMatchOpForWithLoD(OpTest):
         self.inputs = {'DistMat': (dist, lod)}
         self.outputs = {
             'ColToRowMatchIndices': (match_indices),
-            'ColToRowMatchDis': (match_dist),
+            'ColToRowMatchDist': (match_dist),
         }
 
     def test_check_output(self):
@@ -89,7 +89,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
         self.inputs = {'DistMat': dist}
         self.outputs = {
             'ColToRowMatchIndices': match_indices,
-            'ColToRowMatchDis': match_dist,
+            'ColToRowMatchDist': match_dist,
         }
 
     def test_check_output(self):
