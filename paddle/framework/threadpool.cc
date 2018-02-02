@@ -14,6 +14,8 @@
 
 #include "paddle/framework/threadpool.h"
 
+#include "paddle/platform/enforce.h"
+
 namespace paddle {
 namespace framework {
 

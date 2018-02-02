@@ -178,19 +178,22 @@ public:
     real* inputData = inputs[0].data<real>();
     real* filterData = inputs[1].data<real>();
     real* outputData = outputs[0].data<real>();
+    real* colData = NULL;
     bool needIm2col = isNeedIm2col(filter);
 
     TensorShape imShape =
         TensorShape({inputChannels / groups_, inputHeight, inputWidth});
-
     TensorShape colShape;
-    real* colData = NULL;
 
-    size_t colHeight = inputChannels / groups_ * filterHeight * filterWidth;
-    size_t colWidth = outputHeight * outputWidth;
-    // Max col matrix height 256, Max col matrix width 1024
-    size_t stepColHeight = std::min(colHeight, static_cast<size_t>(256));
-    size_t stepColWidth = std::min(colWidth, static_cast<size_t>(2048));
+    // Max col matrix width 4096, Max col matrix size 4M.
+    size_t outputHeightSteps =
+        std::min(std::max(4096 / outputWidth, (size_t)1), outputHeight);
+    size_t maxColWidth = outputHeightSteps * outputWidth;
+    size_t channelSteps =
+        std::min(std::max((1048576 / maxColWidth) / filterHeight * filterWidth,
+                          (size_t)1),
+                 inputChannels / groups_);
+    size_t maxColHeight = channelSteps * filterHeight * filterWidth;
 
     if (needIm2col) {
       colShape = TensorShape({inputChannels / groups_,
@@ -199,7 +202,7 @@ public:
                               outputHeight,
                               outputWidth});
 
-      resizeBuffer<Device>(stepColHeight * stepColWidth * sizeof(real));
+      resizeBuffer<Device>(maxColHeight * maxColWidth * sizeof(real));
       colData = reinterpret_cast<real*>(memory_->getBuf());
     }
 
@@ -209,20 +212,24 @@ public:
         (outputChannels / groups_) * outputHeight * outputWidth;
     size_t filterOffset = filter.getElements() / groups_;
 
-    int nStride = colWidth;
-    int kStride = colHeight;
+    int nStride = outputHeight * outputWidth;
+    int kStride = inputChannels / groups_ * filterHeight * filterWidth;
     for (size_t i = 0; i < batchSize; i++) {
+      filterData = inputs[1].data<real>();
       for (size_t g = 0; g < groups_; g++) {
         if (needIm2col) {
           real beta_ = beta;
-          for (size_t colHeightStart = 0; colHeightStart < colHeight;
-               colHeightStart += stepColHeight) {
-            for (size_t colWidthStart = 0; colWidthStart < colWidth;
-                 colWidthStart += stepColWidth) {
-              int N = std::min(colWidth - colWidthStart, stepColWidth);
-              int K = std::min(colHeight - colHeightStart, stepColHeight);
+          for (size_t ic = 0; ic < inputChannels / groups_;
+               ic += channelSteps) {
+            int channels = std::min(inputChannels / groups_ - ic, channelSteps);
+            for (size_t oh = 0; oh < outputHeight; oh += outputHeightSteps) {
+              int height = std::min(outputHeight - oh, outputHeightSteps);
+
+              int M = outputChannels / groups_;
+              int N = height * outputWidth;
+              int K = channels * filterHeight * filterWidth;
               // im2col
-              im2col(inputData + g * inputOffset,
+              im2col(inputData,
                      imShape,
                      colData,
                      colShape,
@@ -232,13 +239,12 @@ public:
                      paddingW(),
                      dilationH(),
                      dilationW(),
-                     colHeightStart,
-                     K,
-                     colWidthStart,
+                     channels,
+                     oh,
+                     height,
                      N);
 
               // gemm
-              int M = outputChannels / groups_;
               BlasGemm<Device, real>::compute(
                   false,
                   false,
@@ -246,12 +252,12 @@ public:
                   N,
                   K,
                   1.0f,
-                  filterData + g * filterOffset + colHeightStart,
+                  filterData + ic * filterHeight * filterWidth,
                   kStride,
                   colData,
                   N,
                   beta_,
-                  outputData + g * outputOffset + colWidthStart,
+                  outputData + oh * outputWidth,
                   nStride);
             }
             beta_ = 1.0;
@@ -266,17 +272,18 @@ public:
                                           N,
                                           K,
                                           1.0f,
-                                          filterData + g * filterOffset,
+                                          filterData,
                                           K,
-                                          inputData + g * inputOffset,
+                                          inputData,
                                           N,
                                           beta,
-                                          outputData + g * outputOffset,
+                                          outputData,
                                           N);
         }
+        inputData += inputOffset;
+        outputData += outputOffset;
+        filterData += filterOffset;
       }
-      inputData += inputChannels * inputHeight * inputWidth;
-      outputData += outputChannels * outputHeight * outputWidth;
     }
 
     memory_.reset();

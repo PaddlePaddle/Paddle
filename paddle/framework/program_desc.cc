@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/framework/program_desc.h"
 #include "paddle/framework/block_desc.h"
+#include "paddle/framework/feed_fetch_type.h"
 
 namespace paddle {
 namespace framework {
@@ -62,6 +63,28 @@ ProgramDesc::ProgramDesc(const std::string &binary_str) {
   for (auto &block_desc : *desc_.mutable_blocks()) {
     blocks_.emplace_back(new BlockDesc(this, &block_desc));
   }
+}
+
+const std::vector<std::string> ProgramDesc::GetFeedTargetNames() {
+  BlockDesc *global_block = blocks_[0].get();
+  std::vector<std::string> feed_target_names;
+  for (auto *op : global_block->AllOps()) {
+    if (op->Type() == kFeedOpType) {
+      feed_target_names.insert(feed_target_names.begin(), op->Output("Out")[0]);
+    }
+  }
+  return feed_target_names;
+}
+
+const std::vector<std::string> ProgramDesc::GetFetchTargetNames() {
+  BlockDesc *global_block = blocks_[0].get();
+  std::vector<std::string> fetch_target_names;
+  for (auto *op : global_block->AllOps()) {
+    if (op->Type() == kFetchOpType) {
+      fetch_target_names.push_back(op->Input("X")[0]);
+    }
+  }
+  return fetch_target_names;
 }
 
 }  // namespace framework
