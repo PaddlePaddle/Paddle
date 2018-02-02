@@ -10,13 +10,14 @@ The following example shows the usage of `fluid.switch`.
 a = fluid.Var(10)
 b = fluid.Var(0)
 
-cond = fluid.switch()
-with cond.case(fluid.less_equal(a, 10)):
-    fluid.print("Case 1")
-with cond.case(fluid.larger(a, 0)):
-    fluid.print("Case 2")
-with cond.default():
-    fluid.print("Case 3")
+switch = fluid.switch()
+with switch.block():
+    with switch.case(fluid.less_equal(a, 10)):
+        fluid.print("Case 1")
+    with switch.case(fluid.larger(a, 0)):
+        fluid.print("Case 2")
+    with switch.default():
+        fluid.print("Case 3")
 ```
 
 ### The Semantics
