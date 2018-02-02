@@ -226,10 +226,9 @@ TEST(Channel, UnbufferedMoreReceiveLessSendTest) {
     ch->Send(&i);
     sum_send += i;
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait 0.5 sec
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
   EXPECT_EQ(sum_send, 10U);
   EXPECT_EQ(sum_receive, 10U);
-  EXPECT_EQ(sum_send, sum_receive);
   // send three more elements
   for (int i = 5; i < 8; i++) {
     ch->Send(&i);
@@ -240,6 +239,5 @@ TEST(Channel, UnbufferedMoreReceiveLessSendTest) {
   t.join();
   EXPECT_EQ(sum_send, 28U);
   EXPECT_EQ(sum_receive, 28U);
-  EXPECT_EQ(sum_send, sum_receive);
   delete ch;
 }
