@@ -75,7 +75,7 @@ def conv_net(img, label):
     return loss_net(conv_pool_2, label)
 
 
-def train(nn_type, use_cuda, parallel, save_dirname):
+def train(nn_type, use_cuda, parallel, save_dirname, save_param_filename):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
@@ -140,8 +140,10 @@ def train(nn_type, use_cuda, parallel, save_dirname):
                 avg_loss_val = numpy.array(avg_loss_set).mean()
                 if float(acc_val) > 0.85:  # test acc > 85%
                     if save_dirname is not None:
-                        fluid.io.save_inference_model(save_dirname, ["img"],
-                                                      [prediction], exe)
+                        fluid.io.save_inference_model(
+                            save_dirname, ["img"], [prediction],
+                            exe,
+                            save_file_name=save_param_filename)
                     return
                 else:
                     print(
@@ -151,7 +153,7 @@ def train(nn_type, use_cuda, parallel, save_dirname):
     raise AssertionError("Loss of recognize digits is too large")
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(use_cuda, save_dirname=None, param_filename=None):
     if save_dirname is None:
         return
 
@@ -162,8 +164,8 @@ def infer(use_cuda, save_dirname=None):
     # the feed_target_names (the names of variables that will be feeded 
     # data using feed operators), and the fetch_targets (variables that 
     # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    [inference_program, feed_target_names, fetch_targets
+     ] = fluid.io.load_inference_model(save_dirname, exe, param_filename)
 
     # The input's dimension of conv should be 4-D or 5-D.
     tensor_img = numpy.random.rand(1, 1, 28, 28).astype("float32")
@@ -176,36 +178,46 @@ def infer(use_cuda, save_dirname=None):
     print("infer results: ", results[0])
 
 
-def main(use_cuda, parallel, nn_type):
+def main(use_cuda, parallel, nn_type, combine):
     if not use_cuda and not parallel:
         save_dirname = "recognize_digits_" + nn_type + ".inference.model"
+        save_filename = None
+        if combine == True:
+            save_dirname = "recognize_digits_" + nn_type + "_combine.inference.model"
+            save_filename = "params.dat"
     else:
         save_dirname = None
+        save_filename = None
 
     train(
         nn_type=nn_type,
         use_cuda=use_cuda,
         parallel=parallel,
-        save_dirname=save_dirname)
-    infer(use_cuda=use_cuda, save_dirname=save_dirname)
+        save_dirname=save_dirname,
+        save_param_filename=save_filename)
+    infer(
+        use_cuda=use_cuda,
+        save_dirname=save_dirname,
+        param_filename=save_filename)
 
 
 class TestRecognizeDigits(unittest.TestCase):
     pass
 
 
-def inject_test_method(use_cuda, parallel, nn_type):
+def inject_test_method(use_cuda, parallel, nn_type, combine):
     def __impl__(self):
         prog = fluid.Program()
         startup_prog = fluid.Program()
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
-                main(use_cuda, parallel, nn_type)
+                main(use_cuda, parallel, nn_type, combine)
 
-    fn = 'test_{0}_{1}_{2}'.format(nn_type, 'cuda'
-                                   if use_cuda else 'cpu', 'parallel'
-                                   if parallel else 'normal')
+    fn = 'test_{0}_{1}_{2}_{3}'.format(nn_type, 'cuda'
+                                       if use_cuda else 'cpu', 'parallel'
+                                       if parallel else 'normal', 'combine'
+                                       if combine else 'separate')
 
     setattr(TestRecognizeDigits, fn, __impl__)
 
@@ -214,7 +226,8 @@ def inject_all_tests():
     for use_cuda in (False, True):
         for parallel in (False, True):
             for nn_type in ('mlp', 'conv'):
-                inject_test_method(use_cuda, parallel, nn_type)
+                for combine in (False, True):
+                    inject_test_method(use_cuda, parallel, nn_type, combine)
 
 
 inject_all_tests()
