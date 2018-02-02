@@ -100,7 +100,7 @@ class RowwiseTransformIterator<T, platform::CPUDeviceContext> {
 template <typename T>
 class MidWiseTransformIterator<T, platform::CPUDeviceContext> {
  public:
-  MidWiseTransformIterator(const T* ptr, int n, int post)
+  MidWiseTransformIterator(T* ptr, int n, int post)
       : ptr_(ptr), i_(0), j_(0), n_(n), post_(post) {}
 
   MidWiseTransformIterator<T, platform::CPUDeviceContext>& operator++() {
@@ -125,10 +125,12 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext> {
     return (ptr_ + i_) != &(*rhs);
   }
 
-  const T& operator*() { return ptr_[i_]; }
+  const T& operator*() const { return ptr_[i_]; }
+
+  T& operator*() { return ptr_[i_]; }
 
  private:
-  const T* ptr_;
+  T* ptr_;
   int64_t i_;
   int64_t j_;
   int64_t n_;
@@ -205,8 +207,9 @@ class TransformFunctor {
 
   inline void RunMidWise(int n, int pre, int post) const {
     platform::Transform<DeviceContext> trans;
-    trans(ctx_, x_, x_ + numel_,
-          MidWiseTransformIterator<T, DeviceContext>(y_, n, post), z_, func_);
+    trans(ctx_, x_, x_ + numel_, MidWiseTransformIterator<T, DeviceContext>(
+                                     const_cast<T*>(y_), n, post),
+          z_, func_);
   }
 
  private:
@@ -231,8 +234,7 @@ class TransformFunctor {
 
 template <typename DeviceContext>
 struct Reduce {
-  template <typename InputIter, typename OutIter, typename BinaryOperation,
-            typename T>
+  template <typename InputIter, typename OutIter, typename BinaryOperation>
   inline void operator()(const DeviceContext& ctx, InputIter first,
                          InputIter last, OutIter output, BinaryOperation op);
 };
@@ -248,13 +250,12 @@ struct Reduce {
 
 template <>
 struct Reduce<platform::CPUDeviceContext> {
-  template <typename InputIter, typename OutIter, typename BinaryOperation,
-            typename T>
+  template <typename InputIter, typename OutIter, typename BinaryOperation>
   inline void operator()(const platform::CPUDeviceContext& ctx, InputIter first,
                          InputIter last, OutIter output, BinaryOperation op) {
     for (; first != last; ++first) {
       *output = op(*output, *first);
-      output++;
+      ++output;
     }
   }
 };
@@ -262,10 +263,10 @@ struct Reduce<platform::CPUDeviceContext> {
 #ifdef __NVCC__
 template <>
 struct Reduce<platform::CUDADeviceContext> {
-  template <typename InputIter, typename BinaryOperation, typename T>
+  template <typename InputIter, typename OutIter, typename BinaryOperation>
   inline HOSTDEVICE T operator()(const platform::CUDADeviceContext& ctx,
                                  InputIter first, InputIter last,
-                                 BinaryOperation op, T init) {
+                                 OutIter output, BinaryOperation op) {
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
     return thrust::transform(thrust::cuda::par.on(ctx.stream()),
@@ -277,33 +278,31 @@ struct Reduce<platform::CUDADeviceContext> {
 #endif
 
 template <typename Functor, typename DeviceContext, typename T,
-          typename OutType = T>
+          typename OutType>
 class ReduceFunctor {
  public:
   ReduceFunctor(const framework::Tensor* x, framework::Tensor* out,
                 const DeviceContext& ctx, Functor func)
       : x_(x->data<T>()),
-        numel_(x->numel()),
         out_(out->mutable_data<OutType>(ctx.GetPlace())),
+        numel_(x->numel()),
         ctx_(ctx),
         func_(func) {}
 
   inline void Run() const {
-    Reduce<DeviceContext> trans;
-    trans(ctx_, x_, x_ + numel_, out_, out_, func_);
+    Reduce<DeviceContext> reducer;
+    reducer(ctx_, x_, x_ + numel_, out_, func_);
   }
 
   inline void RunColWise(int n, int pre) const {
     Reduce<DeviceContext> reducer;
     reducer(ctx_, x_, x_ + numel_,
-            RowwiseTransformIterator<T, DeviceContext>(out_, n),
             RowwiseTransformIterator<T, DeviceContext>(out_, n), func_);
   }
 
   inline void RunMidWise(int n, int pre, int post) const {
     Reduce<DeviceContext> reducer;
     reducer(ctx_, x_, x_ + numel_,
-            MidWiseTransformIterator<T, DeviceContext>(out_, n, post),
             MidWiseTransformIterator<T, DeviceContext>(out_, n, post), func_);
   }
 
@@ -518,7 +517,7 @@ void ElementwiseGradComputeEx(const framework::ExecutionContext& ctx) {
   auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
   auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-  auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+  // auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
   auto x_dims = x->dims();
   auto y_dims = y->dims();
@@ -536,12 +535,14 @@ void ElementwiseGradComputeEx(const framework::ExecutionContext& ctx) {
   get_mid_dims(x_dims, y_dims, axis, pre, n, post);
 
   if (dx) {
+    dx->mutable_data<T>(ctx.GetPlace());
     auto dx_e = framework::EigenVector<T>::Flatten(*dx);
     auto dout_e = framework::EigenVector<T>::Flatten(*dout);
-    dx_e.device(ctx.template device_context<DeviceContext>()) = dout_e;
+    auto* place = ctx.template device_context<DeviceContext>().eigen_device();
+    dx_e.device(*place) = dout_e;
   }
   if (dy) {
-    ReduceFunctor<Functor, T, DeviceContext, OutType> functor(
+    ReduceFunctor<Functor, DeviceContext, T, OutType> functor(
         dout, dy, ctx.template device_context<DeviceContext>(), Functor());
     if (x_dims == y_dims) {
       functor.Run();
