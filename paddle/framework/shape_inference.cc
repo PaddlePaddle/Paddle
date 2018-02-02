@@ -21,7 +21,7 @@ namespace framework {
 framework::DDim InferShapeContext::GetInputDim(const std::string &name) const {
   const std::vector<std::string> &arg_names = Inputs(name);
   PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
-                    "Input(%s) shoudl holds one element, but now it holds %d",
+                    "Input(%s) should hold one element, but now it holds %d",
                     name, arg_names.size());
   return this->GetDim(arg_names[0]);
 }
@@ -41,7 +41,7 @@ DDim InferShapeContext::GetInputsElementDim(const std::string &name,
 void InferShapeContext::SetOutputDim(const std::string &name, const DDim &dim) {
   auto &arg_names = Outputs(name);
   PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
-                    "Output(%s) shoudl holds one element, but now it holds %d",
+                    "Output(%s) should hold one element, but now it holds %d",
                     name, arg_names.size());
   SetDim(arg_names[0], dim);
 }
