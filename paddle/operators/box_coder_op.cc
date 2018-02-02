@@ -26,6 +26,8 @@ class BoxCoderOp : public framework::OperatorWithKernel {
                    "Input(PriorBoxVar) of BoxCoderOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("PriorBox"),
                    "Input(TargetBox) of BoxCoderOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutputBox"),
+                   "Output(OutputBox) of BoxCoderOp should not be null.");
 
     auto prior_box_dims = ctx->GetInputDim("PriorBox");
     auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");

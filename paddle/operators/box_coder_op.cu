@@ -109,7 +109,7 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     auto* prior_box = context.Input<framework::Tensor>("PriorBox");
     auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
-    auto* output_box = context.Output<Tensor>("OutputBox");
+    auto* output_box = context.Output<framework::Tensor>("OutputBox");
 
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
