@@ -51,8 +51,10 @@ void InitDevices() {
   int count = platform::GetCUDADeviceCount();
   for (int i = 0; i < count; ++i) {
     for (int j = 0; j != platform::CUDAPlace::StreamType::kLast; ++j) {
-      places.emplace_back(
-          platform::CUDAPlace(i, platform::CUDAPlace::StreamType(j)));
+      auto cuda_place =
+          platform::CUDAPlace(i, platform::CUDAPlace::StreamType(j));
+      VLOG(3) << "Adding " << cuda_place;
+      places.emplace_back(cuda_place);
     }
   }
 #else

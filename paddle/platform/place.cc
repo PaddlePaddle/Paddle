@@ -24,7 +24,7 @@ class PlacePrinter : public boost::static_visitor<> {
   explicit PlacePrinter(std::ostream &os) : os_(os) {}
   void operator()(const CPUPlace &) { os_ << "CPUPlace"; }
   void operator()(const CUDAPlace &p) {
-    os_ << "CUDAPlace(" << p.device << ")";
+    os_ << "CUDAPlace(" << p.device << ")(" << p.stream_type << ")";
   }
 
  private:

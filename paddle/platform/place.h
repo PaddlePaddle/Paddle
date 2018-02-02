@@ -35,7 +35,7 @@ struct CUDAPlace {
   enum StreamType { kCOMPUTATION, kCOMMUNICATION, kLast };
 
   CUDAPlace() : CUDAPlace(0) {}
-  explicit CUDAPlace(int d) : device(d) {}
+  explicit CUDAPlace(int d) : device(d), stream_type(kCOMPUTATION) {}
   explicit CUDAPlace(int d, StreamType st) : device(d), stream_type(st) {}
 
   inline int GetDeviceId() const { return device; }
