@@ -17,7 +17,7 @@ from graphviz import GraphPreviewGenerator
 import proto.framework_pb2 as framework_pb2
 
 
-def draw_block_graphviz(block, highlights=[], path="./temp.dot"):
+def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
     '''
     Generate a debug graph for block.
     Args:
@@ -29,6 +29,7 @@ def draw_block_graphviz(block, highlights=[], path="./temp.dot"):
     desc = framework_pb2.BlockDesc.FromString(str(protostr))
 
     def need_highlight(name):
+        if highlights is None: return False
         for pattern in highlights:
             assert type(pattern) is str
             if re.match(pattern, name):
