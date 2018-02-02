@@ -104,7 +104,7 @@ TEST(inference, recognize_digits_combine) {
 
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace, float>(
-      dirname, cpu_feeds, cpu_fetchs2);
+      dirname, prog_filename, param_filename, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
   EXPECT_EQ(output1.dims(), output2.dims());
