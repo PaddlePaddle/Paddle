@@ -24,7 +24,7 @@ class BoxCoderOp : public framework::OperatorWithKernel {
                    "Input(PriorBox) of BoxCoderOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("PriorBoxVar"),
                    "Input(PriorBoxVar) of BoxCoderOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("PriorBox"),
+    PADDLE_ENFORCE(ctx->HasInput("TargetBox"),
                    "Input(TargetBox) of BoxCoderOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutputBox"),
                    "Output(OutputBox) of BoxCoderOp should not be null.");
