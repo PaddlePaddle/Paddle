@@ -41,7 +41,7 @@ bool IsParameter(const framework::VarDesc* var,
   }
   return false;
 }
-
+/*
 void LoadPersistables(framework::Executor& executor,
                       framework::Scope& scope,
                       const std::string& dirname,
@@ -72,14 +72,15 @@ void LoadPersistables(framework::Executor& executor,
   executor.Run(*load_program, &scope, 0, true, true);
   delete load_program;
 }
+*/
 
 // This is called when we have a filen named "param_filename"
 // which has all the persistable variables stored in a
 // combined manner.
 void LoadPersistables(framework::Executor& executor,
                       framework::Scope& scope,
-                      const std::string& dirname,
                       const framework::ProgramDesc& main_program,
+                      const std::string& dirname,
                       const std::string& param_filename) {
   const framework::BlockDesc& global_block = main_program.Block(0);
 
@@ -98,30 +99,39 @@ void LoadPersistables(framework::Executor& executor,
       new_var->SetLoDLevel(var->GetLoDLevel());
       new_var->SetPersistable(true);
 
-      paramlist.push_back(new_var->Name());
+      if (!param_filename.empty()) {
+        paramlist.push_back(new_var->Name());
+      } else {
+        // append_op
+        framework::OpDesc* op = load_block->AppendOp();
+        op->SetType("load");
+        op->SetOutput("Out", {new_var->Name()});
+        op->SetAttr("file_path", {dirname + "/" + new_var->Name()});
+        op->CheckAttrs();
+      }
     }
   }
 
-  // sort paramlist to have consistent ordering
-  std::sort(paramlist.begin(), paramlist.end());
+  if (!param_filename.empty()) {
+    // sort paramlist to have consistent ordering
+    std::sort(paramlist.begin(), paramlist.end());
+    // append just the load_combine op
+    framework::OpDesc* op = load_block->AppendOp();
+    op->SetType("load_combine");
+    op->SetOutput("Out", paramlist);
+    op->SetAttr("file_path", {dirname + "/" + param_filename});
+    op->CheckAttrs();
+  }
 
-  // append_op
-  framework::OpDesc* op = load_block->AppendOp();
-  op->SetType("load_combine");
-  op->SetOutput("Out", paramlist);
-  op->SetAttr("file_path", {dirname + "/" + param_filename});
-  op->CheckAttrs();
   executor.Run(*load_program, &scope, 0, true, true);
 
   VLOG(3) << "Ran loading successfully";
   delete load_program;
 }
 
-std::unique_ptr<framework::ProgramDesc> Load(
-    framework::Executor& executor,
-    framework::Scope& scope,
-    const std::string& dirname,
-    const std::string& param_filename) {
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
+                                             framework::Scope& scope,
+                                             const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
   VLOG(3) << "loading model from " << model_filename;
   std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
@@ -136,11 +146,29 @@ std::unique_ptr<framework::ProgramDesc> Load(
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
 
-  if (!param_filename.empty()) {
-    LoadPersistables(executor, scope, dirname, *main_program, param_filename);
-  } else {
-    LoadPersistables(executor, scope, dirname, *main_program);
-  }
+  LoadPersistables(executor, scope, *main_program, dirname, "");
+  return main_program;
+}
+
+std::unique_ptr<framework::ProgramDesc> Load(
+    framework::Executor& executor,
+    framework::Scope& scope,
+    const std::string& prog_filename,
+    const std::string& param_filename) {
+  VLOG(3) << "loading model from " << prog_filename;
+  std::ifstream inputfs(prog_filename, std::ios::in | std::ios::binary);
+  std::string program_desc_str;
+  inputfs.seekg(0, std::ios::end);
+  program_desc_str.resize(inputfs.tellg());
+  inputfs.seekg(0, std::ios::beg);
+  VLOG(3) << "program_desc_str's size: " << program_desc_str.size();
+  inputfs.read(&program_desc_str[0], program_desc_str.size());
+  inputfs.close();
+
+  std::unique_ptr<framework::ProgramDesc> main_program(
+      new framework::ProgramDesc(program_desc_str));
+
+  LoadPersistables(executor, scope, *main_program, "", param_filename);
   return main_program;
 }
 
