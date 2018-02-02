@@ -76,6 +76,35 @@ class SwitchOpBase : public framework::OperatorBase {
         });
     return retv;
   }
+
+  int GetMatchCaseIndex(
+      const std::vector<const framework::LoDTensor *> &conditions,
+      const std::vector<framework::BlockDesc *> &case_blocks) const {
+    size_t cond_num = conditions.size();
+    size_t case_num = case_blocks.size();
+
+    int match_cond_id = -1;
+
+    for (size_t i = 0; i < conditions.size(); ++i) {
+      auto cond = conditions[i];
+      PADDLE_ENFORCE(cond->IsInitialized() &&
+                         cond->dims() == framework::make_ddim({1}) &&
+                         cond->type().hash_code() == typeid(bool).hash_code(),
+                     "cond should be a scalar bool tensor");
+      if (cond->data<bool>()[0]) {
+        match_cond_id = static_cast<int>(i);
+        break;
+      }
+    }
+
+    if (match_cond_id >= 0) {
+      return match_cond_id;
+    } else if (cond_num + 1 == case_num) {
+      return case_num - 1;
+    } else {
+      return -1;
+    }
+  }
 };
 
 class SwitchOp : public SwitchOpBase {
@@ -95,29 +124,9 @@ class SwitchOp : public SwitchOpBase {
     PADDLE_ENFORCE(cond_num == case_num || cond_num + 1 == case_num,
                    "cond_num %d and case_num %d does not meet requirement",
                    cond_num, case_num);
-
-    int64_t match_cond_id = -1;
-    int64_t match_case_id = -1;
-
-    for (size_t i = 0; i < xs.size(); ++i) {
-      auto cond = xs[i];
-      PADDLE_ENFORCE(cond->IsInitialized() &&
-                         cond->dims() == framework::make_ddim({1}) &&
-                         cond->type().hash_code() == typeid(bool).hash_code(),
-                     "cond should be a scalar bool tensor");
-      if (cond->data<bool>()[0]) {
-        match_cond_id = static_cast<int64_t>(i);
-        break;
-      }
-    }
-
-    if (match_cond_id >= 0) {
-      match_case_id = match_cond_id;
-    } else if (cond_num + 1 == case_num) {
-      match_case_id = static_cast<int64_t>(case_num - 1);
-    }
-
+    int match_case_id = GetMatchCaseIndex(xs, blocks);
     if (match_case_id >= 0) {
+      VLOG(3) << "match case " << match_case_id;
       auto block = blocks[match_case_id];
 
       auto *scope_var = scope.FindVar(Output("Scope"));
@@ -130,6 +139,8 @@ class SwitchOp : public SwitchOpBase {
       framework::Executor exec(dev_place);
 
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
+    } else {
+      VLOG(3) << "no case is matched, do nothing";
     }
   }
 };
