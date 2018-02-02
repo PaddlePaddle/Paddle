@@ -41,42 +41,7 @@ bool IsParameter(const framework::VarDesc* var,
   }
   return false;
 }
-/*
-void LoadPersistables(framework::Executor& executor,
-                      framework::Scope& scope,
-                      const std::string& dirname,
-                      const framework::ProgramDesc& main_program) {
-  const framework::BlockDesc& global_block = main_program.Block(0);
 
-  framework::ProgramDesc* load_program = new framework::ProgramDesc();
-  framework::BlockDesc* load_block = load_program->MutableBlock(0);
-  for (auto* var : global_block.AllVars()) {
-    if (IsParameter(var, main_program)) {
-      VLOG(3) << "parameter's name: " << var->Name();
-
-      framework::VarDesc* new_var = load_block->Var(var->Name());
-      new_var->SetShape(var->Shape());
-      new_var->SetDataType(var->GetDataType());
-      new_var->SetType(var->GetType());
-      new_var->SetLoDLevel(var->GetLoDLevel());
-      new_var->SetPersistable(true);
-
-      // append_op
-      framework::OpDesc* op = load_block->AppendOp();
-      op->SetType("load");
-      op->SetOutput("Out", {new_var->Name()});
-      op->SetAttr("file_path", {dirname + "/" + new_var->Name()});
-      op->CheckAttrs();
-    }
-  }
-  executor.Run(*load_program, &scope, 0, true, true);
-  delete load_program;
-}
-*/
-
-// This is called when we have a filen named "param_filename"
-// which has all the persistable variables stored in a
-// combined manner.
 void LoadPersistables(framework::Executor& executor,
                       framework::Scope& scope,
                       const framework::ProgramDesc& main_program,
