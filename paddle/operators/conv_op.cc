@@ -320,20 +320,20 @@ REGISTER_OP(conv2d, ops::ConvOp, ops::Conv2DOpMaker, conv2d_grad,
             ops::ConvOpGrad);
 
 // depthwise convolution op
-REGISTER_OP(depthwise_conv, ops::ConvOp, ops::Conv2DOpMaker,
-            depthwise_conv_grad, ops::ConvOpGrad);
+REGISTER_OP(depthwise_conv2d, ops::ConvOp, ops::Conv2DOpMaker,
+            depthwise_conv2d_grad, ops::ConvOpGrad);
 REGISTER_OP(conv3d, ops::ConvOp, ops::Conv3DOpMaker, conv3d_grad,
             ops::ConvOpGrad);
 
 // depthwise conv kernel
 // TODO(xingzhaolong): neon kernel for mobile
 REGISTER_OP_CPU_KERNEL(
-    depthwise_conv,
+    depthwise_conv2d,
     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(
-    depthwise_conv_grad,
+    depthwise_conv2d_grad,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
 
