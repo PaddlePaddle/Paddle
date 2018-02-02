@@ -217,7 +217,7 @@ TEST(Channel, UnbufferedEmptyReceiveSendReceiveTest) {
   // should successfully receive and update the sum
   std::thread t([&]() {
     int recv;
-    ch->Receive(&recv);  //should block the first time
+    ch->Receive(&recv);  // should block the first time
     EXPECT_EQ(recv, i);
     sum_recv += recv;
   });
