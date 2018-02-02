@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/string/printf.h"
 
 USE_NO_KERNEL_OP(send);
-USE_NO_KERNEL_OP(recv);
+USE_NO_KERNEL_OP(listen_and_serv);
 USE_OP(sum);
 
 namespace f = paddle::framework;
@@ -33,7 +33,7 @@ namespace p = paddle::platform;
 namespace m = paddle::operators::math;
 
 // global for simplicity.
-std::unique_ptr<f::OperatorBase> recv_op;
+std::unique_ptr<f::OperatorBase> listen_and_serv_op;
 
 void InitTensorsInScope(f::Scope &scope, p::CPUPlace &place) {
   p::CPUDeviceContext ctx(place);
@@ -120,7 +120,7 @@ void StartServerNet(bool is_sparse) {
     InitTensorsInScope(scope, place);
   }
 
-  // sub program run in recv_op, for simple test we use sum
+  // sub program run in listen_and_serv_op, for simple test we use sum
   f::ProgramDesc program;
   f::BlockDesc *block = program.MutableBlock(0);
   // X for server side tensors, RX for received tensers, must be of same shape.
@@ -131,8 +131,9 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"ParamList", std::vector<std::string>({"Out"})});
   attrs.insert({"GradList", std::vector<std::string>({"x1"})});
   attrs.insert({"OptimizeBlock", block});
-  recv_op = f::OpRegistry::CreateOp("recv", {{"RX", {"x1"}}}, {}, attrs);
-  recv_op->Run(scope, place);
+  listen_and_serv_op =
+      f::OpRegistry::CreateOp("listen_and_serv", {}, {}, attrs);
+  listen_and_serv_op->Run(scope, place);
 }
 
 TEST(SendRecvOp, CPUDense) {
@@ -161,9 +162,9 @@ TEST(SendRecvOp, CPUDense) {
   for (int64_t i = 0; i < target->numel(); ++i) {
     EXPECT_EQ(expected[i] * 2, actual[i]);
   }
-  recv_op->Stop();
+  listen_and_serv_op->Stop();
   server_thread.join();
-  recv_op.reset(nullptr);
+  listen_and_serv_op.reset(nullptr);
 }
 
 TEST(SendRecvOp, CPUSparse) {
@@ -200,7 +201,7 @@ TEST(SendRecvOp, CPUSparse) {
     EXPECT_EQ(expect_value->mutable_data<float>(place)[i],
               actual->mutable_data<float>(place)[i]);
   }
-  recv_op->Stop();
+  listen_and_serv_op->Stop();
   server_thread.join();
-  recv_op.reset();
+  listen_and_serv_op.reset();
 }
