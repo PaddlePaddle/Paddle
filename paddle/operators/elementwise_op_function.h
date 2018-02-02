@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/platform/transform.h"
 
 #ifdef __NVCC__
+#include <thrust/detail/function.h>
 #include <thrust/detail/internal_functional.h>
 #include <thrust/for_each.h>
 #include <thrust/iterator/iterator_adaptor.h>
@@ -156,7 +157,7 @@ class RowwiseTransformIterator<T, platform::CUDADeviceContext>
 
  private:
   unsigned int n_;
-  const T* begin_;
+  T* begin_;
   HOSTDEVICE typename super_t::reference dereference() const {
     return *(begin_ + (this->base() - begin_) % n_);
   }
@@ -271,19 +272,19 @@ struct Reduce<platform::CPUDeviceContext> {
 };
 
 #ifdef __NVCC__
-// template<typename BinaryOperation>
-// class AddToFunctor {
-// public:
-//   inline HOSTDEVICE AddToFunctor(BinaryOperation o) : op(o){}
+template <typename BinaryOperation>
+class AddToFunctor {
+ public:
+  inline HOSTDEVICE AddToFunctor(BinaryOperation o) : op(o) {}
 
-//   template<typename Tuple>
-//   inline HOSTDEVICE void operator() (Tuple t) {
-//     thrust::get<1>(t) = op(thrust::get<0>(t), thrust::get<1>(t));
-//   }
+  template <typename Tuple>
+  inline HOSTDEVICE void operator()(Tuple t) {
+    thrust::get<1>(t) = op(thrust::get<0>(t), thrust::get<1>(t));
+  }
 
-// private:
-//   BinaryOperation op;
-// };
+ private:
+  BinaryOperation op;
+};
 
 template <>
 struct Reduce<platform::CUDADeviceContext> {
@@ -291,14 +292,14 @@ struct Reduce<platform::CUDADeviceContext> {
   inline void operator()(const platform::CUDADeviceContext& ctx,
                          InputIter first, InputIter last, OutIter output,
                          OutIter end, BinaryOperation op) {
-    // typedef AddToFunctor<BinaryOperation> AddTo;
-    typedef thrust::detail::binary_transform_functor<BinaryOperation> Binary;
+    typedef AddToFunctor<BinaryOperation> AddTo;
+    // typedef thrust::detail::binary_transform_functor<BinaryOperation> Binary;
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
     thrust::for_each(
         thrust::cuda::par.on(ctx.stream()),
         thrust::make_zip_iterator(thrust::make_tuple(first, output)),
-        thrust::make_zip_iterator(thrust::make_tuple(last, end)), Binary(op));
+        thrust::make_zip_iterator(thrust::make_tuple(last, end)), AddTo(op));
   }
 };
 
