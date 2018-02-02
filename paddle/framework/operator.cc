@@ -366,14 +366,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return true;
   }
 
-  DDim GetInputDim(const std::string& name) const override {
-    return GetDim(op_.Input(name));
-  }
-
-  void SetOutputDim(const std::string& name, const DDim& dim) override {
-    SetDim(op_.Output(name), dim);
-  }
-
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
 
   const std::vector<std::string>& Inputs(
