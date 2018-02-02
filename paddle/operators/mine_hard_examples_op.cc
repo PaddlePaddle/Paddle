@@ -117,7 +117,7 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
       std::vector<int> neg_indices;
       std::transform(loss_idx.begin(), loss_idx.begin() + neg_sel,
                      std::inserter(sel_indices, sel_indices.begin()),
-                     [](std::pair<T, size_t> l) -> int {
+                     [](std::pair<T, size_t>& l) -> int {
                        return static_cast<int>(l.second);
                      });
 
@@ -134,12 +134,8 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
           }
         }
       } else {
-        for (int m = 0; m < prior_num; ++m) {
-          if (match_indices(n, m) == -1 &&
-              sel_indices.find(m) != sel_indices.end()) {
-            neg_indices.push_back(m);
-          }
-        }
+        neg_indices.resize(sel_indices.size());
+        std::copy(sel_indices.begin(), sel_indices.end(), neg_indices.begin());
       }
 
       all_neg_indices.push_back(neg_indices);
