@@ -101,13 +101,15 @@ class ListenAndServOp : public framework::OperatorBase {
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
+    // Recored received sparse variables, so that
+    // we could reset those after each mini-batch
+    std::vector<framework::Variable *> sparse_vars;
     while (!exit_flag) {
       // Get from multiple trainers, we don't care about the order in which
       // the gradients arrives, just add suffix 0~n and merge the gradient.
       rpc_service_->SetCond(0);
       size_t recv_var_cnt = 0;
       int batch_barrier = 0;
-      std::vector<framework::Variable *> sparse_vars;
       while (batch_barrier != fan_in) {
         const detail::MessageWithName &v = rpc_service_->Get();
         auto grad_var_name = v.first;
@@ -159,13 +161,17 @@ class ListenAndServOp : public framework::OperatorBase {
         LOG(ERROR) << "run sub program error " << e.what();
       }
 
-      // TODO(Yancey1989): use an operator to reset sprase variable
+      // Reset the received sparse variables, the sum operator would not
+      // sum the input selectedrows variables which rows is empty.
+      // TOOD(Yancey1989): move the reset action into an operator, we couldn't
+      // have any hide logic in the operator.
       for (auto &var : sparse_vars) {
         var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
       }
       rpc_service_->SetCond(1);
       rpc_service_->WaitClientGet(recv_var_cnt);
       grads_counter_.clear();
+      sparse_vars.clear();
     }  // while(true)
   }
 
