@@ -155,22 +155,18 @@ class SwitchGradOp : public SwitchOpBase {
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
     auto xs = this->InputTensors(scope);
-    bool need_run = std::all_of(
-        xs.begin(), xs.end(),
-        [](const framework::LoDTensor *t) { return t->numel() != 0; });
+    auto blocks = Attr<std::vector<framework::BlockDesc *>>("sub_blocks");
 
-    if (need_run) {
+    int match_case_id = GetMatchCaseIndex(xs, blocks);
+    if (match_case_id >= 0) {
       auto *scope_var = scope.FindVar(Input("Scope"));
       PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       framework::Scope &cur_scope = *scopes[0];
 
       framework::Executor exec(dev_place);
-      auto *block = Attr<framework::BlockDesc *>("sub_blocks");
-      exec.Run(*block->Program(), &cur_scope, block->ID(), false);
-
-      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("Params"),
-                                  Outputs(framework::GradVarName("Params")));
+      exec.Run(*blocks[match_case_id]->Program(), &cur_scope,
+               blocks[match_case_id]->ID(), false);
 
       AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("X"),
                                   Outputs(framework::GradVarName("X")));
@@ -203,14 +199,6 @@ class SwitchGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInputs("X"));
-    if (context->HasInputs("Params")) {
-      PADDLE_ENFORCE(context->HasOutputs(framework::GradVarName("Params")));
-      context->SetOutputsDim(framework::GradVarName("Params"),
-                             context->GetInputsDim("Params"));
-    }
-    PADDLE_ENFORCE(context->HasOutputs(framework::GradVarName("X")));
-    context->SetOutputsDim(framework::GradVarName("X"),
-                           context->GetInputsDim("X"));
   }
 };
 
