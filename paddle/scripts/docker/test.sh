@@ -4,12 +4,17 @@ set -xe
 # the number of process to run tests
 NUM_PROC=${CTEST_PARALLEL_LEVEL:-6}
 
-# calculate and set the memory usage for each process
-MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
-export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
-
 # get the CUDA device count
 CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
+
+# calculate and set the memory usage for each process
+MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 * $CUDA_DEVICE_COUNT / $NUM_PROC" | bc`)
+if (( `echo "$MEM_USAGE > 1.0"|bc -l` )); then
+    MEM_USAGE=1.0
+fi
+
+export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
+
 echo "run ctest in parallel: $NUM_PROC"
 pids=""
 for (( i = 0; i < $NUM_PROC; i++ )); do
