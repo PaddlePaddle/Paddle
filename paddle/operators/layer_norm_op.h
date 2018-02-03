@@ -78,7 +78,7 @@ class LayerNormKernel : public framework::OpKernel<T> {
     auto *var = ctx.Output<Tensor>("Variance");
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
 
-    const auto &x_dims = x.dims();
+    const auto x_dims = x.dims();
 
     y->mutable_data<T>(ctx.GetPlace());
     mean->mutable_data<T>(ctx.GetPlace());
@@ -87,11 +87,12 @@ class LayerNormKernel : public framework::OpKernel<T> {
     auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
-
     framework::DDim matrix_shape({left, right});
 
     x.Resize(matrix_shape);
-    y->Resize(matrix_shape);
+    Tensor out;
+    out.ShareDataWith(*y);
+    out.Resize(matrix_shape);
 
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     math::RowwiseMean<DeviceContext, T> row_mean;
@@ -101,30 +102,24 @@ class LayerNormKernel : public framework::OpKernel<T> {
 
     // functor-> get variance
     ElementwiseComputeEx<SubAndSquareFunctor<T>, DeviceContext, T>(
-        ctx, &x, mean, /*axis*/ 0, SubAndSquareFunctor<T>(), y);
-    row_mean(dev_ctx, *y, var);
+        ctx, &x, mean, /*axis*/ 0, SubAndSquareFunctor<T>(), &out);
+    row_mean(dev_ctx, out, var);
 
     // functor-> get norm_out
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-        ctx, &x, mean, /*axis*/ 0, SubFunctor<T>(), y);
+        ctx, &x, mean, /*axis*/ 0, SubFunctor<T>(), &out);
     ElementwiseComputeEx<DivAndSqrtFunctor<T>, DeviceContext, T>(
-        ctx, y, var, /*axis*/ 0, DivAndSqrtFunctor<T>(static_cast<T>(epsilon)),
-        y);
+        ctx, &out, var, /*axis*/ 0,
+        DivAndSqrtFunctor<T>(static_cast<T>(epsilon)), &out);
 
-    framework::DDim scale_shape({right});
     if (scale) {
-      Tensor scale_matrix = *scale;
-      scale_matrix.Resize(scale_shape);
       ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(
-          ctx, y, &scale_matrix, /*axis*/ 1, MulFunctor<T>(), y);
+          ctx, &out, scale, /*axis*/ 1, MulFunctor<T>(), &out);
     }
     if (bias) {
-      Tensor bias_matrix = *bias;
-      bias_matrix.Resize(scale_shape);
       ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-          ctx, y, &bias_matrix, /*axis*/ 1, AddFunctor<T>(), y);
+          ctx, &out, bias, /*axis*/ 1, AddFunctor<T>(), &out);
     }
-    y->Resize(x_dims);
   }
 };
 
@@ -184,6 +179,7 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
     if (d_x) {
       framework::DDim vec_shape({left});
       d_x->mutable_data<T>(ctx.GetPlace());
+      auto dx_dim = d_x->dims();
       Tensor temp_vec;
       temp_vec.mutable_data<T>(vec_shape, ctx.GetPlace());
 
@@ -227,6 +223,7 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<DivAndSqrtFunctor<T>, DeviceContext, T>(
           ctx, d_x, &var, /*axis*/ 0,
           DivAndSqrtFunctor<T>(static_cast<T>(epsilon)), d_x);
+      d_x->Resize(dx_dim);
     }
   }
 };
