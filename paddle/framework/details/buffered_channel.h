@@ -48,12 +48,15 @@ class Buffered : public paddle::framework::Channel<T> {
     PADDLE_ENFORCE_GT(cap, 0);
   }
 
-  void NotifyAllSenders(std::unique_lock<std::mutex>*);
   void NotifyAllParticipants(std::unique_lock<std::mutex>*);
 };
 
 template <typename T>
 void Buffered<T>::Send(T* item) {
+  // TODO(zcd):  There are two possibilities for the return of `Receive`:
+  //    1. the `Channel` was closed.
+  //    2. the `Receive` of this `Channel` was called.
+  // Should we separate them?
   std::unique_lock<std::mutex> lock(mu_);
   full_cond_var_.wait(lock,
                       [this]() { return channel_.size() < cap_ || closed_; });
@@ -66,14 +69,16 @@ void Buffered<T>::Send(T* item) {
 
 template <typename T>
 void Buffered<T>::Receive(T* item) {
+  // TODO(zcd):  There are two possibilities for the return of `Receive`:
+  //    1. the `Channel` was closed.
+  //    2. the `Receive` of this `Channel` was called.
+  // Should we separate them?
   std::unique_lock<std::mutex> lock(mu_);
   empty_cond_var_.wait(lock, [this]() { return !channel_.empty() || closed_; });
   if (!closed_) {
     *item = std::move(channel_.front());
     channel_.pop_front();
-    NotifyAllSenders(&lock);
-  } else {
-    item = nullptr;
+    full_cond_var_.notify_one();
   }
 }
 
@@ -90,12 +95,6 @@ Buffered<T>::~Buffered() {
   closed_ = true;
   channel_.clear();
   NotifyAllParticipants(&lock);
-}
-
-template <typename T>
-void Buffered<T>::NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
-  lock->unlock();
-  full_cond_var_.notify_all();
 }
 
 template <typename T>
