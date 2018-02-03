@@ -112,13 +112,20 @@ In Fluid, we should be able to perform the above operations on the channel objec
 Send and Receive can be performed as following on a buffered channel:
 
 ```python
+import threading
+
+def send_to_channel(channel, num_time=1):
+  for i in xrange(num_time):
+    channel.send(i)
+
 # Create a buffered channel of capacity 10
 buffer_size = 10;
 ch = fluid.make_channel(dtype=INT, buffer_size)
 
 # Now write three elements to the channel
-for i in xrange(3):
-  ch.send(i)
+thread = threading.Thread(target=send_to_channel, args=(ch, 3, ))
+thread.daemon = True
+thread.start()
 
 # Read all the data from the channel
 for i in xrange(3):
@@ -131,11 +138,19 @@ ch.close()
 The send and receive operations will be similar for unbuffered channel as well, except for the fact that there is no buffer in an unbuffered channel, so the operations are completely synchronized. For example:
 
 ```python
+import threading
+
+def send_to_channel(channel, data):
+  channel.send(data)
+
 # Create an unbuffered channel
 ch = fluid.make_channel(dtype=INT)
 
 # Writes and Reads are synchronous otherwise the calls will block.
-ch.send(10)
+thread = threading.Thread(target=send_to_channel, args=(ch, 10, ))
+thread.daemon = True
+thread.start()
+
 y = ch.recv()
 
 # Done receiving , now close the channel
