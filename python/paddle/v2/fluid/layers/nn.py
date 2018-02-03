@@ -166,7 +166,9 @@ def fc(input,
 
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+
         tmp = matmul(input_var, w, False, False)
+
         mul_results.append(tmp)
 
     # sum
