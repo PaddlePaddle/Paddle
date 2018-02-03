@@ -67,7 +67,7 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   std::thread t([&]() {
     // Try to write more than buffer size.
     for (size_t i = 0; i < 2 * buffer_size; ++i) {
-      ch->Send(&i);  // should not block
+      ch->Send(&i);  // should block after 10 iterations
       sum += i;
     }
   });
@@ -205,5 +205,39 @@ TEST(Channel, UnbufferedLessReceiveMoreSendTest) {
 
   CloseChannel(ch);
   t.join();
+  delete ch;
+}
+
+TEST(Channel, UnbufferedMoreReceiveLessSendTest) {
+  auto ch = MakeChannel<int>(0);
+  unsigned sum_send = 0;
+  unsigned sum_receive = 0;
+  // The receiver should block after 5
+  // iterations, since there are only 5 senders.
+  std::thread t([&]() {
+    for (int i = 0; i < 8; i++) {
+      int recv;
+      ch->Receive(&recv);  // should block after the fifth iteration.
+      EXPECT_EQ(recv, i);
+      sum_receive += i;
+    }
+  });
+  for (int i = 0; i < 5; i++) {
+    ch->Send(&i);
+    sum_send += i;
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
+  EXPECT_EQ(sum_send, 10U);
+  EXPECT_EQ(sum_receive, 10U);
+  // send three more elements
+  for (int i = 5; i < 8; i++) {
+    ch->Send(&i);
+    sum_send += i;
+  }
+
+  CloseChannel(ch);
+  t.join();
+  EXPECT_EQ(sum_send, 28U);
+  EXPECT_EQ(sum_receive, 28U);
   delete ch;
 }
