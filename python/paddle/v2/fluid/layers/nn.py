@@ -166,14 +166,7 @@ def fc(input,
 
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-        tmp = helper.create_tmp_variable(dtype)
-        helper.append_op(
-            type="mul",
-            inputs={"X": input_var,
-                    "Y": w},
-            outputs={"Out": tmp},
-            attrs={"x_num_col_dims": num_flatten_dims,
-                   "y_num_col_dims": 1})
+        tmp = matmul(input_var, w, False, False)
         mul_results.append(tmp)
 
     # sum
