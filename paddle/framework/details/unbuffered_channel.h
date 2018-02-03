@@ -66,16 +66,19 @@ bool UnBuffered<T>::Send(T* data) {
   cv_writer_.wait(cv_lock,
                   [this]() { return reader_found_ == true || closed_; });
   cv_reader_.notify_one();
-  if (closed_) return false;
-  std::unique_lock<std::mutex> channel_lock(mu_ch_);
-  item = data;
-  channel_lock.unlock();
-  cv_channel_.notify_one();
-  channel_lock.lock();
-  cv_channel_.wait(channel_lock,
-                   [this]() { return item == nullptr || closed_; });
+  bool ret = false;
+  if (!closed_) {
+    std::unique_lock<std::mutex> channel_lock(mu_ch_);
+    item = data;
+    channel_lock.unlock();
+    cv_channel_.notify_one();
+    channel_lock.lock();
+    cv_channel_.wait(channel_lock,
+                     [this]() { return item == nullptr || closed_; });
+    ret = true;
+  }
   writer_found_ = false;
-  return true;
+  return ret;
 }
 
 // This function implements the concept of how
@@ -90,18 +93,21 @@ bool UnBuffered<T>::Receive(T* data) {
   cv_reader_.wait(cv_lock,
                   [this]() { return writer_found_ == true || closed_; });
   cv_writer_.notify_one();
-  if (closed_) return false;
-
-  std::unique_lock<std::mutex> lock_ch{mu_ch_};
-  // Reader should wait for the writer to first write its data
-  cv_channel_.wait(lock_ch, [this]() { return item != nullptr || closed_; });
-  if (closed_) return false;
-  *data = std::move(*item);
-  item = nullptr;
-  lock_ch.unlock();
-  cv_channel_.notify_one();
+  bool ret = false;
+  if (!closed_) {
+    std::unique_lock<std::mutex> lock_ch{mu_ch_};
+    // Reader should wait for the writer to first write its data
+    cv_channel_.wait(lock_ch, [this]() { return item != nullptr || closed_; });
+    if (!closed_) {
+      *data = std::move(*item);
+      item = nullptr;
+      lock_ch.unlock();
+      ret = true;
+    }
+    cv_channel_.notify_one();
+  }
   reader_found_ = false;
-  return true;
+  return ret;
 }
 
 // This function implements the sequence of events
