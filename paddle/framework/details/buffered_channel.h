@@ -49,6 +49,7 @@ class Buffered : public paddle::framework::Channel<T> {
   }
 
   void NotifyAllSenders(std::unique_lock<std::mutex>*);
+  void NotifyAllParticipants(std::unique_lock<std::mutex>*);
 };
 
 template <typename T>
@@ -80,7 +81,7 @@ template <typename T>
 void Buffered<T>::Close() {
   std::unique_lock<std::mutex> lock(mu_);
   closed_ = true;
-  NotifyAllSenders(&lock);
+  NotifyAllParticipants(&lock);
 }
 
 template <typename T>
@@ -88,13 +89,20 @@ Buffered<T>::~Buffered() {
   std::unique_lock<std::mutex> lock(mu_);
   closed_ = true;
   channel_.clear();
-  NotifyAllSenders(&lock);
+  NotifyAllParticipants(&lock);
 }
 
 template <typename T>
 void Buffered<T>::NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
   lock->unlock();
   full_cond_var_.notify_all();
+}
+
+template <typename T>
+void Buffered<T>::NotifyAllParticipants(std::unique_lock<std::mutex>* lock) {
+  lock->unlock();
+  full_cond_var_.notify_all();
+  empty_cond_var_.notify_all();
 }
 
 }  // namespace details
