@@ -30,8 +30,8 @@ class Buffered : public paddle::framework::Channel<T> {
   friend void paddle::framework::CloseChannel<T>(Channel<T>*);
 
  public:
-  virtual void Send(T*);
-  virtual void Receive(T*);
+  virtual bool Send(T*);
+  virtual bool Receive(T*);
   virtual size_t Cap() { return cap_; }
   virtual void Close();
   virtual ~Buffered();
@@ -52,34 +52,28 @@ class Buffered : public paddle::framework::Channel<T> {
 };
 
 template <typename T>
-void Buffered<T>::Send(T* item) {
-  // TODO(zcd):  There are two possibilities for the return of `Receive`:
-  //    1. the `Channel` was closed.
-  //    2. the `Receive` of this `Channel` was called.
-  // Should we separate them?
+bool Buffered<T>::Send(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
   full_cond_var_.wait(lock,
                       [this]() { return channel_.size() < cap_ || closed_; });
-  if (!closed_) {
-    channel_.push_back(std::move(*item));
-    lock.unlock();
-    empty_cond_var_.notify_one();
-  }
+  if (closed_) return false;
+
+  channel_.push_back(std::move(*item));
+  lock.unlock();
+  empty_cond_var_.notify_one();
+  return true;
 }
 
 template <typename T>
-void Buffered<T>::Receive(T* item) {
-  // TODO(zcd):  There are two possibilities for the return of `Receive`:
-  //    1. the `Channel` was closed.
-  //    2. the `Receive` of this `Channel` was called.
-  // Should we separate them?
+bool Buffered<T>::Receive(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
   empty_cond_var_.wait(lock, [this]() { return !channel_.empty() || closed_; });
-  if (!closed_) {
-    *item = std::move(channel_.front());
-    channel_.pop_front();
-    full_cond_var_.notify_one();
-  }
+  if (closed_) return false;
+
+  *item = std::move(channel_.front());
+  channel_.pop_front();
+  full_cond_var_.notify_one();
+  return true;
 }
 
 template <typename T>
