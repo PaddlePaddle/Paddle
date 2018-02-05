@@ -28,6 +28,7 @@ class TestSwitch(unittest.TestCase):
         zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
         one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
         two_var = layers.fill_constant(shape=[1], dtype='float32', value=2.0)
+        three_var = layers.fill_constant(shape=[1], dtype='float32', value=3.0)
 
         cond1 = layers.less_than(x, zero_var)
         cond2 = layers.less_than(x, one_var)
@@ -43,6 +44,8 @@ class TestSwitch(unittest.TestCase):
                 layers.assign(one_var, result)
             with switch.case(cond3):
                 layers.assign(two_var, result)
+            with switch.default():
+                layers.assign(three_var, result)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
@@ -52,7 +55,7 @@ class TestSwitch(unittest.TestCase):
         return out
 
     def test_switch(self):
-        test_data = {(-0.1, 0), (0.1, 1), (1.1, 2)}
+        test_data = {(-0.1, 0), (0.1, 1), (1.1, 2), (2.1, 3)}
         for x, expected_result in test_data:
             main_program = framework.Program()
             startup_program = framework.Program()

@@ -131,7 +131,11 @@ class SwitchOp : public SwitchOpBase {
                    cond_num, case_num);
     int match_case_id = GetMatchCaseIndex(xs, blocks);
     if (match_case_id >= 0) {
-      VLOG(3) << "match case " << match_case_id;
+      if (match_case_id == case_num - 1) {
+        VLOG(3) << "match default case " << match_case_id;
+      } else {
+        VLOG(3) << "match case " << match_case_id;
+      }
       auto block = blocks[match_case_id];
 
       auto *scope_var = scope.FindVar(Output("Scope"));
