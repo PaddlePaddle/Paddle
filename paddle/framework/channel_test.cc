@@ -60,7 +60,9 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   delete ch;
 }
 
-TEST(Channel, SufficientBufferSizeDoesntBlock) {
+// This test tests that CloseChannel returns a value of zero
+// immediately to all receivers that are trying to receive from the channel.
+TEST(Channel, ReceiverGetsZeroOnClosedChannel) {
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
   std::thread t([&]() {
