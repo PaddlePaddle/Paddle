@@ -43,21 +43,6 @@ Run one sub block according to condition list,
   }
 };
 
-class SwitchOpGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto grad_op = new framework::OpDesc();
-    grad_op->SetType("switch_grad");
-    grad_op->SetInput("X", Input("X"));
-    grad_op->SetInput("Scope", Output("Scope"));
-    grad_op->SetBlocksAttr("case_blocks", this->grad_block_);
-    return std::unique_ptr<framework::OpDesc>(grad_op);
-  }
-};
-
 class SwitchOpBase : public framework::OperatorBase {
  public:
   SwitchOpBase(const std::string &type,
@@ -158,5 +143,4 @@ class SwitchOp : public SwitchOpBase {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(switch, ops::SwitchOp, ops::SwitchOpProtoMaker,
-                  ops::SwitchOpGradMaker);
+REGISTER_OPERATOR(switch, ops::SwitchOp, ops::SwitchOpProtoMaker);
