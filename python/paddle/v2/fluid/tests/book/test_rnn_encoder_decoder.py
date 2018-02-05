@@ -197,14 +197,15 @@ def train(save_dirname=None):
                   " avg_cost=" + str(avg_cost_val))
             if batch_id > 3:
                 if save_dirname is not None:
-                    fluid.io.save_inference_model(save_dirname, [
-                        'source_sequence', 'target_sequence', 'label_sequence'
-                    ], [prediction], exe)
+                    fluid.io.save_inference_model(
+                        save_dirname, ['source_sequence',
+                                       'target_sequence'], [prediction], exe)
+                    return
                 exit(0)
             batch_id += 1
 
 
-def inference(save_dirname=None):
+def infer(save_dirname=None):
     if save_dirname is None:
         return
 
@@ -221,24 +222,32 @@ def inference(save_dirname=None):
     data = [[0, 1, 0, 1], [0, 1, 1, 0, 0, 1]]
     word_data = to_lodtensor(data, place)
     trg_word = to_lodtensor(data, place)
-    trg_word_next = to_lodtensor(data, place)
 
     # Construct feed as a dictionary of {feed_target_name: feed_target_data}
     # and results will contain a list of data corresponding to fetch_targets.
+    print("Print feed fetch target names as follows")
     print(feed_target_names)
     assert feed_target_names[0] == 'source_sequence'
     assert feed_target_names[1] == 'target_sequence'
-    assert feed_target_names[2] == 'label_sequence'
+    print([var.name for var in fetch_targets])
+
+    # save for checking
+    curstr = inference_program.to_string(True)
+    f = open("loaded_infer_prog.txt", 'w')
+    f.write(curstr)
+    f.close()
+
     results = exe.run(inference_program,
                       feed={
                           feed_target_names[0]: word_data,
                           feed_target_names[1]: trg_word,
-                          feed_target_names[2]: trg_word_next
                       },
-                      fetch_list=fetch_targets)
-
-    print("Inference Shape: ", results[0].shape)
-    print("infer results: ", results[0])
+                      fetch_list=fetch_targets,
+                      return_numpy=False)
+    print(results[0].lod())
+    np_data = np.array(results[0])
+    print("Inference shape: ", np_data.shape)
+    print("Inference results: ", np_data)
 
 
 if __name__ == '__main__':

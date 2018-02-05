@@ -124,11 +124,24 @@ OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
   // restore attrs_
   for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
+    // we use a trick to handle attr.type() is BLOCK here, because at this
+    // moment the sub_block hasn't beed added to ProgramDesc's vector<Block>
+    // so we cast the block_idx to a dummy BlockDesc pointer
     if (attr.type() != proto::AttrType::BLOCK) {
       attrs_[attr_name] = GetAttrValue(attr);
     } else {
-      auto bid = attr.block_idx();
-      attrs_[attr_name] = prog->MutableBlock(bid);
+      size_t blk_idx = attr.block_idx();
+      if (blk_idx < prog->Size()) {
+        attrs_[attr_name] = prog->MutableBlock(blk_idx);
+      } else {
+        std::cout << "Setting blockdesc attribute for id " << blk_idx
+                  << std::endl;
+        attrs_[attr_name] = reinterpret_cast<BlockDesc *>(blk_idx);
+        std::cout << "Testing reinterpret_cast result is "
+                  << reinterpret_cast<size_t>(
+                         boost::get<BlockDesc *>(attrs_[attr_name]))
+                  << std::endl;
+      }
     }
   }
   this->block_ = block;

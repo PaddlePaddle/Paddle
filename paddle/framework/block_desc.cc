@@ -155,6 +155,8 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
   for (const proto::OpDesc &op_desc : desc_->ops()) {
     ops_.emplace_back(new OpDesc(op_desc, prog, this));
   }
+  std::cout << "Constructed block idx " << desc->idx() << " from protobuf str"
+            << std::endl;
 }
 
 BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
