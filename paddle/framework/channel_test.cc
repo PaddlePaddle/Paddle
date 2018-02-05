@@ -82,7 +82,12 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   delete ch;
 }
 
-TEST(Channel, SimpleUnbufferedChannelTest) {
+// This test tests that send and receive operations are ordered,
+// as in , the sequence in which objects were sent will be the same
+// as the sequence in which they were received.
+TEST(Channel, OrderedSendReceiveChannelTest) {
+  // This is an unbuffered channel in this test, but the behavior
+  // should be the same for buffered channels as well.
   auto ch = MakeChannel<int>(0);
   unsigned sum_send = 0;
   std::thread t([&]() {
