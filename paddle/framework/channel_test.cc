@@ -60,6 +60,30 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   delete ch;
 }
 
+TEST(Channel, SufficientBufferSizeDoesntBlock) {
+  const size_t buffer_size = 10;
+  auto ch = MakeChannel<size_t>(buffer_size);
+  std::thread t([&]() {
+    // Try to write more than buffer size.
+    size_t out;
+    for (size_t i = 0; i < 12; ++i) {
+      ch->Receive(&out)
+      if (i < buffer_size)
+        EXPECT_EQ(out, i);  // should block after 10 iterations
+      else
+        EXPECT_EQ(out, 0U); // after close Channel is called, expected value is 0
+    }
+  });
+
+  for (size_t i = 0; i < buffer_size; ++i) {
+    EXPECT_EQ(ch->Send(&i), true);  // sending should not block
+  }
+
+  CloseChannel(ch);
+  t.join();
+  delete ch;
+}
+
 TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
