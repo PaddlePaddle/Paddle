@@ -53,6 +53,8 @@ class Buffered : public paddle::framework::Channel<T> {
 
 template <typename T>
 bool Buffered<T>::Send(T* item) {
+  if (closed_) return false;
+
   std::unique_lock<std::mutex> lock(mu_);
   full_cond_var_.wait(lock,
                       [this]() { return channel_.size() < cap_ || closed_; });
@@ -68,6 +70,8 @@ bool Buffered<T>::Send(T* item) {
 
 template <typename T>
 bool Buffered<T>::Receive(T* item) {
+  if (closed_) return false;
+
   std::unique_lock<std::mutex> lock(mu_);
   empty_cond_var_.wait(lock, [this]() { return !channel_.empty() || closed_; });
   bool ret = false;
@@ -82,6 +86,8 @@ bool Buffered<T>::Receive(T* item) {
 
 template <typename T>
 void Buffered<T>::Close() {
+  if (closed_) return;
+
   std::unique_lock<std::mutex> lock(mu_);
   closed_ = true;
   NotifyAllParticipants(&lock);
