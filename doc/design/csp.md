@@ -159,6 +159,55 @@ ch.close()
 
 ### Select
 
+In Go, the `select` statement lets a goroutine wait on multiple communication operations. A `select` blocks untill one of its cases can run, then it executes that case. It chooses one at random if multiple are ready.
+
+```go
+
+ch1  := make(chan int)       
+ch2  := make(chan int, 100)
+
+x := 0
+
+for {
+    select {
+    case ch1 <- x:
+      x := x + 1
+    case y <- ch2:
+      fmt.Println("Received on channel")
+    default:
+      fmt.Println("Default")
+    }
+  }
+
+```
+
+In Fluid, we should be able to do the same:
+
+```python
+ch1  = fluid.make_chan(dtype=INT)
+ch2 = fluid.make_chan(dtype=INT, 100)
+
+sel = fluid.select()
+
+with sel.case(ch1, 'w', X):
+    fluid.layers.increment(X)
+
+with sel.case(ch2, 'r', Y):
+    fluid.print("Received on Channel")
+
+with sel.default():
+    fluid.print("Default")
+
+```
+
+In the above code snippet, `X` and `Y` are variables. Now let us look at each of these statements one by one.
+
+- `sel.case(ch1, 'w', X)` : This specifies that we are writing to `ch1` and we want to write the integer in variable `X` to the channel. The character `w` is used here to make the syntax familar to write syntax in Python I/O.
+
+- `sel.case(ch2, 'r', Y)` : This specifies that we would like to read the result from `ch2` into variable `Y`. The character `r` is used here to make the syntax familar to read syntax in Python I/O.
+
+- `sel.default()` : This is equivalent to the default in Go `select`. If none of the channels are ready for read or write, then the fluid code in the default block will be executed.
+
 ## Example Programs
 
 ### 1. RPC between Trainers and Parameter Servers
