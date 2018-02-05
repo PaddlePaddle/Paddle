@@ -35,14 +35,13 @@ class InferShapeContext {
   virtual bool HasInputs(const std::string &name) const = 0;
   virtual bool HasOutputs(const std::string &name) const = 0;
 
-  virtual framework::DDim GetInputDim(const std::string &name) const = 0;
+  DDim GetInputDim(const std::string &name) const;
 
-  std::vector<framework::DDim> GetInputsDim(const std::string &name) const;
+  std::vector<DDim> GetInputsDim(const std::string &name) const;
   DDim GetInputsElementDim(const std::string &name, int idx) const;
 
-  virtual void SetOutputDim(const std::string &name, const DDim &dim) = 0;
-  void SetOutputsDim(const std::string &name,
-                     const std::vector<framework::DDim> &dims);
+  void SetOutputDim(const std::string &name, const DDim &dim);
+  void SetOutputsDim(const std::string &name, const std::vector<DDim> &dims);
 
   virtual AttrReader Attrs() const = 0;
   virtual const std::vector<std::string> &Inputs(
@@ -57,15 +56,13 @@ class InferShapeContext {
 
   // Note: In while op, we need this to be public
   void SetDims(const std::vector<std::string> &names,
-               const std::vector<framework::DDim> &dims);
+               const std::vector<DDim> &dims);
 
  protected:
-  virtual framework::DDim GetDim(const std::string &name) const = 0;
-  virtual void SetDim(const std::string &name, const framework::DDim &dim) = 0;
+  virtual DDim GetDim(const std::string &name) const = 0;
+  virtual void SetDim(const std::string &name, const DDim &dim) = 0;
 
-  std::vector<framework::DDim> GetDims(
-      const std::vector<std::string> &names) const;
-
+  std::vector<DDim> GetDims(const std::vector<std::string> &names) const;
   std::vector<proto::VarDesc::VarType> GetVarTypes(
       const std::vector<std::string> &names) const;
 
