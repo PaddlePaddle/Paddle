@@ -29,7 +29,7 @@ class SwitchOpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "the type of scope is std::vector<Scope*>")
         .AsIntermediate();
     AddAttr<std::vector<framework::BlockDesc *>>(
-        "sub_blocks",
+        "case_blocks",
         "The step block of conditional "
         "block operator, the length should be the same as X");
     AddComment(R"DOC(switch operator
@@ -49,7 +49,7 @@ class SwitchOpGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetType("switch_grad");
     grad_op->SetInput("X", Input("X"));
     grad_op->SetInput("Scope", Output("Scope"));
-    grad_op->SetBlocksAttr("sub_blocks", this->grad_block_);
+    grad_op->SetBlocksAttr("case_blocks", this->grad_block_);
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
@@ -118,7 +118,7 @@ class SwitchOp : public SwitchOpBase {
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
     auto xs = InputTensors(scope);
-    auto blocks = Attr<std::vector<framework::BlockDesc *>>("sub_blocks");
+    auto blocks = Attr<std::vector<framework::BlockDesc *>>("case_blocks");
 
     size_t cond_num = xs.size();
     size_t case_num = blocks.size();
@@ -156,7 +156,7 @@ class SwitchGradOp : public SwitchOpBase {
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
     auto xs = this->InputTensors(scope);
-    auto blocks = Attr<std::vector<framework::BlockDesc *>>("sub_blocks");
+    auto blocks = Attr<std::vector<framework::BlockDesc *>>("case_blocks");
 
     int match_case_id = GetMatchCaseIndex(xs, blocks);
     if (match_case_id >= 0) {

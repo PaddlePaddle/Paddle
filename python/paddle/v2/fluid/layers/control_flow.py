@@ -27,6 +27,7 @@ __all__ = [
     'StaticRNNMemoryLink',
     'WhileGuard',
     'While',
+    'Switch',
     'lod_rank_table',
     'max_sequence_len',
     'topk',
@@ -1122,7 +1123,7 @@ class SwitchScopeGuard(object):
     """
 
     def __init__(self, op):
-        if not isinstance(op, SwitchOp):
+        if not isinstance(op, Switch):
             raise TypeError("op should be switch")
         self.switch_op = op
 
@@ -1156,7 +1157,7 @@ class SwitchScopeGuard(object):
 
 class CaseBlockGuard(BlockGuard):
     def __init__(self, op, condition):
-        if not isinstance(op, SwitchOp):
+        if not isinstance(op, Switch):
             raise TypeError("op should be switch")
         if not op.inside_scope:
             raise ValueError(
@@ -1175,7 +1176,7 @@ class CaseBlockGuard(BlockGuard):
 
 class DefaultCaseBlockGuard(BlockGuard):
     def __init__(self, op):
-        if not isinstance(op, SwitchOp):
+        if not isinstance(op, Switch):
             raise TypeError("op should be switch")
         if not op.inside_scope:
             raise ValueError(
@@ -1193,7 +1194,7 @@ class DefaultCaseBlockGuard(BlockGuard):
                                                            exc_tb)
 
 
-class SwitchOp(object):
+class Switch(object):
     def __init__(self, name=None):
         self.helper = LayerHelper('switch', name=name)
         self.inside_scope = False
@@ -1214,6 +1215,34 @@ class SwitchOp(object):
         """create a default case for this switch
         """
         return DefaultCaseBlockGuard(self)
+
+    def __enter__(self):
+        """
+        set flag that now is inside switch.block {}
+        :return:
+        """
+        self.inside_scope = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.inside_scope = False
+        if exc_type is not None:
+            return False  # re-raise exception
+
+        cond_num = len(self.conditions)
+        case_block_num = len(self.case_blocks)
+
+        tmp = case_block_num - cond_num
+        if tmp != 0 and tmp != 1:
+            raise ValueError("case_num=%d, cond_num=%d not match",
+                             case_block_num, cond_num)
+
+        self.helper.append_op(
+            type='switch',
+            inputs={'X': self.conditions},
+            attrs={'case_blocks': self.case_blocks})
+
+        return True
 
 
 class IfElseBlockGuard(object):
