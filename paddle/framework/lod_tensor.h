@@ -132,7 +132,7 @@ class LoDTensor : public Tensor {
   void set_lod(const LoD& lod) {
     lod_ = lod;
     if (holder_ != nullptr &&
-        platform::is_same_place(holder_->place(), lod.place())) {
+        !platform::is_same_place(holder_->place(), lod.place())) {
       lod_.CopyToPeer(holder_->place());
     }
   }

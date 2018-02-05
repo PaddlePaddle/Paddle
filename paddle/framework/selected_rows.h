@@ -42,7 +42,13 @@ class SelectedRows {
 
   Vector<int64_t>* mutable_rows() { return &rows_; }
 
-  void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
+  void set_rows(const Vector<int64_t>& rows) {
+    rows_ = rows;
+    if (value_ != nullptr &&
+        !platform::is_same_place(value_->place(), rows.place())) {
+      rows_.mutable_data(value_->place());
+    }
+  }
 
   DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
