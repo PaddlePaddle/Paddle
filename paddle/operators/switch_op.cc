@@ -154,67 +154,9 @@ class SwitchOp : public SwitchOpBase {
   }
 };
 
-class SwitchGradOp : public SwitchOpBase {
- public:
-  SwitchGradOp(const std::string &type,
-               const framework::VariableNameMap &inputs,
-               const framework::VariableNameMap &outputs,
-               const framework::AttributeMap &attrs)
-      : SwitchOpBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
-    auto xs = this->InputTensors(scope);
-    auto blocks = Attr<std::vector<framework::BlockDesc *>>("case_blocks");
-
-    int match_case_id = GetMatchCaseIndex(xs, blocks);
-    if (match_case_id >= 0) {
-      auto *scope_var = scope.FindVar(Input("Scope"));
-      PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
-      auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
-      framework::Scope &cur_scope = *scopes[0];
-
-      framework::Executor exec(dev_place);
-      exec.Run(*blocks[match_case_id]->Program(), &cur_scope,
-               blocks[match_case_id]->ID(), false);
-
-      //      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("X"),
-      //                                  Outputs(framework::GradVarName("X")));
-    }
-  }
-
- private:
-  void AssignLocalGradientToGlobal(
-      const platform::Place &place, const framework::Scope &cur_scope,
-      const std::vector<std::string> &p_names,
-      const std::vector<std::string> &pg_names) const {
-    for (size_t i = 0; i < p_names.size(); ++i) {
-      auto out_grad_name = pg_names[i];
-      auto in_grad_name = framework::GradVarName(p_names[i]);
-      auto *in_var = cur_scope.FindVar(in_grad_name);
-      if (in_var == nullptr) {
-        continue;
-      }
-      auto new_in_grad_name = cur_scope.Rename(in_grad_name);
-      auto assign = framework::OpRegistry::CreateOp(
-          "assign", {{"X", {new_in_grad_name}}}, {{"Out", {out_grad_name}}},
-          framework::AttributeMap{});
-      assign->Run(cur_scope, place);
-      cur_scope.Rename(new_in_grad_name, in_grad_name);
-    }
-  }
-};
-
-class SwitchGradInferShape : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInputs("X"));
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(switch, ops::SwitchOp, ops::SwitchOpProtoMaker,
                   ops::SwitchOpGradMaker);
-REGISTER_OPERATOR(switch_grad, ops::SwitchGradOp, ops::SwitchGradInferShape);
