@@ -79,6 +79,7 @@ function run_build() {
     Building in /paddle/build ...
     ============================================
 EOF
+    make clean
     make -j `nproc`
 }
 
