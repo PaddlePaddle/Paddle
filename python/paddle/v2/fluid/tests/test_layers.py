@@ -202,6 +202,18 @@ class TestBook(unittest.TestCase):
                     x_t=x_t, hidden_t_prev=prev_hidden, cell_t_prev=prev_cell))
         print(str(program))
 
+    def test_dynamic_lstmp(self):
+        program = Program()
+        with program_guard(program):
+            hidden_dim, proj_dim = 16, 8
+            seq_data = layers.data(
+                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
+            fc_out = layers.fc(input=seq_data, size=4 * hidden_dim)
+            self.assertIsNotNone(
+                layers.dynamic_lstmp(
+                    input=fc_out, size=4 * hidden_dim, proj_size=proj_dim))
+        print(str(program))
+
     def test_sequence_softmax(self):
         program = Program()
         with program_guard(program):
@@ -209,6 +221,14 @@ class TestBook(unittest.TestCase):
                 name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
             seq = layers.fc(input=seq_data, size=20)
             self.assertIsNotNone(layers.sequence_softmax(x=seq))
+        print(str(program))
+
+    def test_softmax(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[10], dtype='float32')
+            hid = layers.fc(input=data, size=20)
+            self.assertIsNotNone(layers.softmax(x=hid))
         print(str(program))
 
     def test_get_places(self):
@@ -276,6 +296,16 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[16], dtype='float32', lod_level=1)
             out = layers.row_conv(input=x, future_context_size=2)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_multiplex(self):
+        program = Program()
+        with program_guard(program):
+            x1 = layers.data(name='x1', shape=[4], dtype='float32')
+            x2 = layers.data(name='x2', shape=[4], dtype='float32')
+            index = layers.data(name='index', shape=[1], dtype='int32')
+            out = layers.multiplex(inputs=[x1, x2], index=index)
             self.assertIsNotNone(out)
         print(str(program))
 
