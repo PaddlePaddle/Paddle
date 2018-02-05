@@ -20,6 +20,7 @@ endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
+nv_test(mixed_vector_test SRCS mixed_vector_test.cu DEPS place paddle_memory device_context init)
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor paddle_memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor init)
