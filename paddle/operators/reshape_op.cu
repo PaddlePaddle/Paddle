@@ -16,9 +16,7 @@ limitations under the License. */
 
 REGISTER_OP_CUDA_KERNEL(
     reshape,
-    paddle::operators::ReshapeKernel<paddle::platform::CUDAPlace, float>,
-    paddle::operators::ReshapeKernel<paddle::platform::CUDAPlace, bool>);
+    paddle::operators::ReshapeKernel<paddle::platform::CUDAPlace, float>);
 REGISTER_OP_CUDA_KERNEL(
     reshape_grad,
-    paddle::operators::ReshapeGradKernel<paddle::platform::CUDAPlace, float>,
-    paddle::operators::ReshapeGradKernel<paddle::platform::CUDAPlace, bool>);
+    paddle::operators::ReshapeGradKernel<paddle::platform::CUDAPlace, float>);

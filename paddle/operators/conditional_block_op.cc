@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <algorithm>
-
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
 
@@ -42,19 +41,6 @@ class ConditionalOp : public framework::OperatorBase {
         });
     return retv;
   }
-
-  bool IsScalarFalse(
-      const std::vector<const framework::LoDTensor *> &ips) const {
-    if (ips.size() == 1UL && ips[0]->IsInitialized()) {
-      if (ips[0]->type().hash_code() == typeid(bool).hash_code() &&
-          ips[0]->numel() == 1) {
-        if (ips[0]->data<bool>()[0] == false) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
 };
 
 class ConditionalBlockOp : public ConditionalOp {
@@ -70,10 +56,6 @@ class ConditionalBlockOp : public ConditionalOp {
     bool need_run = std::all_of(
         xs.begin(), xs.end(),
         [](const framework::LoDTensor *t) { return t->numel() != 0; });
-
-    if (IsScalarFalse(xs)) {
-      need_run = false;
-    }
 
     if (need_run) {
       auto *scope_var = scope.FindVar(Output("Scope"));
@@ -127,10 +109,6 @@ class ConditionalBlockGradOp : public ConditionalOp {
     bool need_run = std::all_of(
         xs.begin(), xs.end(),
         [](const framework::LoDTensor *t) { return t->numel() != 0; });
-
-    if (IsScalarFalse(xs)) {
-      need_run = false;
-    }
 
     if (need_run) {
       auto *scope_var = scope.FindVar(Input("Scope"));

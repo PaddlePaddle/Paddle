@@ -125,8 +125,6 @@ namespace ops = paddle::operators;
 REGISTER_OP(reshape, ops::ReshapeOp, ops::ReshapeOpMaker, reshape_grad,
             ops::ReshapeGradOp);
 REGISTER_OP_CPU_KERNEL(reshape,
-                       ops::ReshapeKernel<paddle::platform::CPUPlace, float>,
-                       ops::ReshapeKernel<paddle::platform::CPUPlace, bool>);
+                       ops::ReshapeKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(
-    reshape_grad, ops::ReshapeGradKernel<paddle::platform::CPUPlace, float>,
-    ops::ReshapeGradKernel<paddle::platform::CPUPlace, bool>);
+    reshape_grad, ops::ReshapeGradKernel<paddle::platform::CPUPlace, float>);
