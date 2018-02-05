@@ -72,7 +72,7 @@ TEST(inference, image_classification) {
   paddle::framework::LoDTensor input;
   srand(time(0));
   float* input_ptr =
-      input.mutable_data<float>({3, 32, 32}, paddle::platform::CPUPlace());
+      input.mutable_data<float>({1, 3, 32, 32}, paddle::platform::CPUPlace());
   for (int i = 0; i < 3072; ++i) {
     input_ptr[i] = rand() / (static_cast<float>(RAND_MAX));
   }
