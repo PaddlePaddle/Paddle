@@ -109,15 +109,14 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   // we reverse the should_run vector
   std::reverse(should_run.begin(), should_run.end());
 
-  //*output = input;
   // copy the current block from input to output
   auto* block_field = output->mutable_blocks();
   *block_field->Add() = input.blocks(block_id);
 
   int output_block_id = output->blocks_size() - 1;
   auto* output_block = output->mutable_blocks(output_block_id);
-  output_block->set_idx = output_block_id;
-  output_block->set_parent_idx = parent_block_id;
+  output_block->set_idx(output_block_id);
+  output_block->set_parent_idx(parent_block_id);
 
   auto* op_field = output_block->mutable_ops();
   op_field->Clear();
@@ -128,17 +127,18 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
       if (HasSubBlock(*op)) {
         // create sub_block_dependent_vars here to help prune the sub block
         std::set<std::string> sub_block_dependent_vars;
-        for (auto& var : op.inputs()) {
+        for (auto& var : op->inputs()) {
           for (auto& argu : var.arguments()) {
             sub_block_dependent_vars.insert(argu);
           }
         }
-        for (auto& var : op.outputs()) {
+        for (auto& var : op->outputs()) {
           for (auto& argu : var.arguments()) {
             sub_block_dependent_vars.insert(argu);
           }
         }
-
+        std::cout << "pruning the next block, the current output_block_id is "
+                  << output_block_id << std::endl;
         // GetSubBlockIndex(*op) is the idx of the sub_block in the input desc
         // output_block_id is the idx of the current block in the output desc
         prune_impl(input, output, GetSubBlockIndex(*op), output_block_id,
@@ -147,6 +147,8 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
     }
   }
 
+  std::cout << "Starting to remove unreferenced variables"
+            << " for block idx " << output_block_id << std::endl;
   // remove the VarDescs in BlockDesc that are not referenced in
   // the pruned OpDescs
   std::unordered_map<std::string, proto::VarDesc> var_map;
@@ -155,28 +157,38 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
     var_map[var.name()] = var;
   }
 
-  var_field->Clear();
+  std::set<std::string> var_names;
   for (const auto& op : *op_field) {
-    // add VarDescs of all input arguments for each OpDesc
     auto& input_field = op.inputs();
     for (auto& input_var : input_field) {
       for (auto& arg : input_var.arguments()) {
-        *var_field->Add() = var_map.at(arg);
+        if (var_map.count(arg) != 0) {
+          var_names.insert(arg);
+        }
       }
     }
-    // add VarDescs of all output arguments for each OpDesc
     auto& output_field = op.outputs();
     for (auto& output_var : output_field) {
       for (auto& arg : output_var.arguments()) {
-        *var_field->Add() = var_map.at(arg);
+        if (var_map.count(arg) != 0) {
+          var_names.insert(arg);
+        }
       }
     }
+  }
+
+  var_field->Clear();
+  for (const auto& name : var_names) {
+    *var_field->Add() = var_map[name];
   }
 }
 
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
 void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output) {
-  prune_impl(input, output, 0, -1, {});
+  std::set<std::string> dependent_vars;
+  std::cout << std::endl << "Start C++ framework::prune" << std::endl;
+  prune_impl(input, output, 0, -1, dependent_vars);
+  std::cout << "Finished C++ framework::prune" << std::endl << std::endl;
 }
 
 void inference_optimize_impl(const proto::ProgramDesc& input,

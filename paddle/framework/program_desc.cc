@@ -52,9 +52,27 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
 
 ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
   desc_ = desc;
+  std::cout << std::endl << "starting in ProgDesc constructor" << std::endl;
   for (auto &block_desc : *desc_.mutable_blocks()) {
     blocks_.emplace_back(new BlockDesc(this, &block_desc));
+    std::cout << "Done constructing block idx " << block_desc.idx()
+              << " parent idx " << block_desc.parent_idx() << std::endl;
   }
+  for (auto &block : blocks_) {
+    for (auto *op : block->AllOps()) {
+      for (auto &name : op->AttrNames()) {
+        if (op->GetAttrType(name) == proto::AttrType::BLOCK) {
+          auto attr = op->GetAttr(name);
+          size_t blk_idx =
+              reinterpret_cast<size_t>(boost::get<BlockDesc *>(attr));
+          op->SetBlockAttr(name, *this->MutableBlock(blk_idx));
+          std::cout << "Update attr name " << name << " for block idx "
+                    << blk_idx << std::endl;
+        }
+      }
+    }
+  }
+  std::cout << "Done ProgDesc construction" << std::endl << std::endl;
 }
 
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
