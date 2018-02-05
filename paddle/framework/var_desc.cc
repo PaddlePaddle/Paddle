@@ -56,7 +56,7 @@ size_t VarDesc::GetTensorDescNum() const {
 }
 
 void VarDesc::SetShapes(
-    const std::vector<const std::vector<int64_t>> &multiple_dims) {
+    const std::vector<std::vector<int64_t>> &multiple_dims) {
   PADDLE_ENFORCE_EQ(multiple_dims.size(), GetTensorDescNum(),
                     "The number of given shapes(%d) doesn't equal to the "
                     "number of sub tensor.",

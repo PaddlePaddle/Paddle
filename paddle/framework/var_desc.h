@@ -74,7 +74,7 @@ class VarDesc {
 
   void SetShape(const std::vector<int64_t> &dims);
 
-  void SetShapes(const std::vector<const std::vector<int64_t>> &multiple_dims);
+  void SetShapes(const std::vector<std::vector<int64_t>> &multiple_dims);
 
   std::vector<int64_t> GetShape() const;
 
