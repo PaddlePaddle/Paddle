@@ -31,7 +31,7 @@ template <typename T>
 struct DivAndSqrtFunctor {
   explicit DivAndSqrtFunctor(T epsilon) { epsilon_ = epsilon; }
   inline HOSTDEVICE T operator()(T a, T b) const {
-    return a / (sqrt(b) + epsilon_);
+    return a / (sqrt(b + epsilon_));
   }
 
  private:
