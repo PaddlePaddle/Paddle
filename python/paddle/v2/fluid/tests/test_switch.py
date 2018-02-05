@@ -30,19 +30,15 @@ class TestSwitch(unittest.TestCase):
         two_var = layers.fill_constant(shape=[1], dtype='float32', value=2.0)
         three_var = layers.fill_constant(shape=[1], dtype='float32', value=3.0)
 
-        cond1 = layers.less_than(x, zero_var)
-        cond2 = layers.less_than(x, one_var)
-        cond3 = layers.less_than(x, two_var)
-
         result = layers.create_global_var(
             shape=[1], value=-1.0, dtype='float32', persistable=True)
 
         with layers.Switch() as switch:
-            with switch.case(cond1):
+            with switch.case(layers.less_than(x, zero_var)):
                 layers.assign(zero_var, result)
-            with switch.case(cond2):
+            with switch.case(layers.less_than(x, one_var)):
                 layers.assign(one_var, result)
-            with switch.case(cond3):
+            with switch.case(layers.less_than(x, two_var)):
                 layers.assign(two_var, result)
             with switch.default():
                 layers.assign(three_var, result)
