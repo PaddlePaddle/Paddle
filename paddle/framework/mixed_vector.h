@@ -40,14 +40,15 @@ class Vector : public std::vector<T> {
   Vector() {}
   Vector(const std::vector<T> &v) : std::vector<T>(v) {}  // NOLINT
 
-  virtual ~Vector() {
-#ifdef PADDLE_WITH_CUDA
-    if (cuda_ptr_ != nullptr) {
-      memory::Free<platform::CUDAPlace>(place_, cuda_ptr_);
-    }
-#endif
-  }
+  inline platform::Place place() const { return place_; }
 
+  /*! Return a pointer to constant memory block. */
+  inline const T *data(platform::Place place) const;
+
+  /*! Return a pointer to mutable memory block. */
+  inline T *mutable_data(platform::Place place);
+
+  // TODO(dzhwinter): below interfaces should be removed
   /* Get device vector */
   T *cuda_data() {
     CopyToCUDA();
@@ -68,25 +69,71 @@ class Vector : public std::vector<T> {
   void CopyToPeer(platform::Place);
 
  private:
-  void *cuda_ptr_ = nullptr;
+  std::shared_ptr<void> cuda_ptr_;
   size_t cuda_size_ = 0;  // device vector numel
   platform::CUDAPlace place_;
 };
 
 template <typename T>
+inline const T *Vector<T>::data(platform::Place place) const {
+  if (platform::is_cpu_place(place)) {
+    return std::vector<T>::data();
+  } else if (platform::is_gpu_place(place)) {
+    if (cuda_ptr_ == nullptr) {
+      return nullptr;
+    }
+    if (platform::is_same_place(place, place_)) {
+      return static_cast<const T *>(cuda_ptr_.get());
+    } else {
+      PADDLE_THROW(
+          "Unmatched place. Please use `mutable_data` copy lod to the target "
+          "Place first.");
+    }
+  } else {
+    PADDLE_THROW("Unsupport Place.");
+  }
+}
+
+template <typename T>
+inline T *Vector<T>::mutable_data(platform::Place place) {
+  if (platform::is_cpu_place(place)) {
+    return std::vector<T>::data();
+  } else if (platform::is_gpu_place(place)) {
+    if (!platform::is_same_place(place, place_)) {
+      place_ = boost::get<platform::CUDAPlace>(place);
+    }
+#ifdef PADDLE_WITH_CUDA
+    if (cuda_size_ < this->size() || cuda_ptr_ == nullptr) {
+      cuda_ptr_.reset(
+          memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T)),
+          memory::PlainDeleter<void, platform::CUDAPlace>(place_));
+    }
+    cuda_size_ = this->size();
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto *ctx = pool.GetByPlace(place_);
+    memory::Copy(place_, cuda_ptr_.get(), platform::CPUPlace(),
+                 static_cast<const void *>(this->data()),
+                 this->size() * sizeof(T), ctx->stream());
+    ctx->Wait();
+    return static_cast<T *>(cuda_ptr_.get());
+#endif
+  } else {
+    PADDLE_THROW("Unsupport Place.");
+  }
+}
+
+template <typename T>
 void Vector<T>::CopyToCUDA() {
 #ifdef PADDLE_WITH_CUDA
-  if (cuda_size_ < this->size()) {
-    if (cuda_ptr_ != nullptr) {
-      memory::Free<platform::CUDAPlace>(place_, cuda_ptr_);
-    }
-    cuda_ptr_ =
-        memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T));
+  if (cuda_size_ < this->size() || cuda_ptr_ == nullptr) {
+    cuda_ptr_.reset(
+        memory::Alloc<platform::CUDAPlace>(this->size() * sizeof(T)),
+        memory::PlainDeleter<void, platform::CUDAPlace>(place_));
   }
   cuda_size_ = this->size();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *ctx = pool.GetByPlace(place_);
-  memory::Copy(place_, cuda_ptr_, platform::CPUPlace(),
+  memory::Copy(place_, cuda_ptr_.get(), platform::CPUPlace(),
                static_cast<const void *>(this->data()),
                this->size() * sizeof(T), ctx->stream());
   ctx->Wait();
@@ -104,32 +151,11 @@ void Vector<T>::CopyFromCUDA() {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *ctx = pool.GetByPlace(place_);
   memory::Copy(platform::CPUPlace(), static_cast<void *>(this->data()), place_,
-               static_cast<const void *>(cuda_ptr_), this->size() * sizeof(T),
-               ctx->stream());
+               static_cast<const void *>(cuda_ptr_.get()),
+               this->size() * sizeof(T), ctx->stream());
   ctx->Wait();
 #endif
 }
-
-template <typename T>
-void Vector<T>::CopyToPeer(platform::Place peer_place) {
-#ifdef PADDLE_WITH_CUDA
-  auto *ctx = platform::DeviceContextPool::Instance().GetByPlace(place_);
-  void *peer_cuda_ptr = memory::Alloc<platform::CUDAPlace>(
-      boost::get<platform::CUDAPlace>(peer_place), this->size() * sizeof(T));
-  memory::Copy(boost::get<platform::CUDAPlace>(peer_place), peer_cuda_ptr,
-               place_, cuda_ptr_, this->size() * sizeof(T), ctx->stream());
-  ctx->Wait();
-
-  memory::Free<platform::CUDAPlace>(place_, cuda_ptr_);
-  place_ = boost::get<platform::CUDAPlace>(peer_place);
-  cuda_ptr_ = peer_cuda_ptr;
-#endif
-}
-
-template class Vector<int>;
-template class Vector<unsigned>;
-template class Vector<size_t>;
-template class Vector<int64_t>;
 
 }  // namespace framework
 }  // namespace paddle
