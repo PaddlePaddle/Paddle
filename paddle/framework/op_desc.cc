@@ -133,13 +133,10 @@ OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
       size_t blk_idx = attr.block_idx();
       if (blk_idx < prog->Size()) {
         attrs_[attr_name] = prog->MutableBlock(blk_idx);
-      } else {
-        std::cout << "Setting blockdesc attribute for id " << blk_idx
+        std::cout << "In OpDesc: set up attr block idx " << blk_idx
                   << std::endl;
-        attrs_[attr_name] = reinterpret_cast<BlockDesc *>(blk_idx);
-        std::cout << "Testing reinterpret_cast result is "
-                  << reinterpret_cast<size_t>(
-                         boost::get<BlockDesc *>(attrs_[attr_name]))
+      } else {
+        std::cout << "In OpDesc: We don't have this block idx " << blk_idx
                   << std::endl;
       }
     }
