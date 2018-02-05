@@ -102,6 +102,12 @@ We provide a packaged book image, simply issue the command:
 
      docker run -p 8888:8888 paddlepaddle/book
 
+For users in China, we provide a faster mirror:
+
+  .. code-block: bash
+
+    docker run -p 8888:8888 docker.paddlepaddlehub.com/book
+
 Then, you would back and paste the address into the local browser:
 
   .. code-block:: text
