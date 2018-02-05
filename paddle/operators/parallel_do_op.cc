@@ -79,7 +79,7 @@ inline void CopyOrShare(const framework::Variable &src,
     } else {
       Copy(src.Get<LoDTensor>(), dst_place, dst->GetMutable<LoDTensor>());
     }
-    dst->set_lod(src.lod());
+    dst->GetMutable<LoDTensor>()->set_lod(src.Get<LoDTensor>().lod());
   } else if (src.IsType<SelectedRows>()) {
     auto &src_sr = src.Get<SelectedRows>();
     auto *dst_sr = dst->GetMutable<SelectedRows>();
