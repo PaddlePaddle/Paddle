@@ -16,6 +16,7 @@ limitations under the License. */
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+#include <stdexcept>
 
 #include "paddle/framework/channel.h"
 
@@ -58,6 +59,9 @@ class UnBuffered : public paddle::framework::Channel<T> {
 // be sent from a writer to a reader.
 template <typename T>
 bool UnBuffered<T>::Send(T* data) {
+  if (closed_) {
+    throw std::runtime_error("Channel is closed!");
+  }
   // Prevent other writers from entering
   std::unique_lock<std::recursive_mutex> writer_lock(mu_write_);
   writer_found_ = true;

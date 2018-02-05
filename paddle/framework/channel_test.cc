@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <chrono>
 #include <thread>
+#include <stdexcept>
 
 #include "gtest/gtest.h"
 
@@ -57,6 +58,31 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
     EXPECT_EQ(out, i);
   }
   CloseChannel(ch);
+  delete ch;
+}
+
+TEST(Channel, SendOnClosedChannelPanics){
+  const size_t buffer_size = 10;
+  auto ch = MakeChannel<size_t>(buffer_size);
+  size_t i = 5;
+  size_t error_found = 1U;
+  try {
+    EXPECT_EQ(ch->Send(&i), true); // should not block
+  } catch (std::runtime_error &error) {
+    error_found = 2U;
+  } catch(std::exception &error) {
+    error_found = 3U;
+  }
+  EXPECT_EQ(error_found, 1U); // should not have panicked
+  CloseChannel(ch);
+  try {
+    ch->Send(&i); // should throw an exception
+  } catch (std::runtime_error &error) {
+    error_found = 2U;
+  } catch(std::exception &error) {
+    error_found = 3U;
+  }
+  EXPECT_EQ(error_found, 2U); // should panic with runtime_error exception
   delete ch;
 }
 
