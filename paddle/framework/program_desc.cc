@@ -48,6 +48,18 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
     auto *block = desc_.mutable_blocks(i);
     blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
   }
+  for (auto &block : blocks_) {
+    for (auto *op : block->AllOps()) {
+      for (const auto &attr : op->Proto()->attrs()) {
+        if (attr.type() == proto::AttrType::BLOCK) {
+          size_t blk_idx = attr.block_idx();
+          op->SetBlockAttr(attr.name(), *this->MutableBlock(blk_idx));
+          std::cout << "In ProgramDesc 1: set block attr idx " << blk_idx
+                    << std::endl;
+        }
+      }
+    }
+  }
 }
 
 ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
@@ -60,14 +72,12 @@ ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
   }
   for (auto &block : blocks_) {
     for (auto *op : block->AllOps()) {
-      for (auto &name : op->AttrNames()) {
-        if (op->GetAttrType(name) == proto::AttrType::BLOCK) {
-          auto attr = op->GetAttr(name);
-          size_t blk_idx =
-              reinterpret_cast<size_t>(boost::get<BlockDesc *>(attr));
-          op->SetBlockAttr(name, *this->MutableBlock(blk_idx));
-          std::cout << "Update attr name " << name << " for block idx "
-                    << blk_idx << std::endl;
+      for (const auto &attr : op->Proto()->attrs()) {
+        if (attr.type() == proto::AttrType::BLOCK) {
+          size_t blk_idx = attr.block_idx();
+          op->SetBlockAttr(attr.name(), *this->MutableBlock(blk_idx));
+          std::cout << "In ProgramDesc 2: set block attr idx " << blk_idx
+                    << std::endl;
         }
       }
     }
