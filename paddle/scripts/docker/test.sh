@@ -27,7 +27,7 @@ for (( i = 0; i < $NUM_PROC; i++ )); do
         else
 	    # only use up to two GPUs, the test speed decrease with
 	    # more GPU because cuda init takes time. But we need at
-	    # lease 2 GPUs to test multiple GPU test cases.
+	    # least two GPUs to test multiple GPU test cases.
 	    if ! [[ $cuda_list = *,* ]]; then
 		cuda_list="$cuda_list,$n"
 	    fi
