@@ -111,39 +111,42 @@ public:
                   int paddingWidth,
                   int dilationHeight,
                   int dilationWidth,
-                  int colHeightStart,
-                  int colHeightSize,
-                  int colWidthStart,
-                  int colWidthSize) {
+                  int inputChannels,
+                  int colOffset,
+                  int colOutputHeight,
+                  int colWidth) {
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
     int filterHeight = colShape[1];
     int filterWidth = colShape[2];
     int outputWidth = colShape[4];
 
-    for (int colh = 0; colh < colHeightSize; colh++) {
-      int wOffset = (colHeightStart + colh) % filterWidth;
-      int hOffset = ((colHeightStart + colh) / filterWidth) % filterHeight;
-      int c_im = (colHeightStart + colh) / filterWidth / filterHeight;
-
-      for (int colw = 0; colw < colWidthSize; colw++) {
-        int h = (colWidthStart + colw) / outputWidth;
-        int w = (colWidthStart + colw) % outputWidth;
-
-        int imRowIdx = h * strideHeight + hOffset * dilationHeight;
-        int imColIdx = w * strideWidth + wOffset * dilationWidth;
-        if ((imRowIdx - paddingHeight) < 0 ||
-            (imRowIdx - paddingHeight) >= inputHeight ||
-            (imColIdx - paddingWidth) < 0 ||
-            (imColIdx - paddingWidth) >= inputWidth) {
-          colData[colh * colWidthSize + colw] = static_cast<T>(0);
-        } else {
-          imRowIdx += c_im * inputHeight - paddingHeight;
-          imColIdx -= paddingWidth;
-          colData[colh * colWidthSize + colw] =
-              imData[imRowIdx * inputWidth + imColIdx];
+    for (int ic = 0; ic < inputChannels; ic++) {
+      for (int oh = 0; oh < colOutputHeight; oh++) {
+        T* dstData = colData + oh * outputWidth;
+        for (int fh = 0; fh < filterHeight; fh++) {
+          for (int fw = 0; fw < filterWidth; fw++) {
+            int imRowIdx = (oh + colOffset) * strideHeight +
+                           fh * dilationHeight - paddingHeight;
+            if (imRowIdx < 0 || imRowIdx >= inputHeight) {
+              memset(dstData, 0, outputWidth * sizeof(T));
+            } else {
+              for (int ow = 0; ow < outputWidth; ow++) {
+                int imColIdx =
+                    ow * strideWidth + fw * dilationWidth - paddingWidth;
+                if (imColIdx < 0 || imColIdx >= inputWidth) {
+                  dstData[ow] = T(0);
+                } else {
+                  dstData[ow] = imData[imRowIdx * inputWidth + imColIdx];
+                }
+              }
+            }
+            dstData += colWidth;
+          }
         }
       }
+      colData += filterHeight * filterWidth * colWidth;
+      imData += inputHeight * inputWidth;
     }
   }
 };

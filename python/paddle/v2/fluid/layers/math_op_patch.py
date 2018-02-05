@@ -145,7 +145,9 @@ def monkey_patch_variable():
             # a*b == b*a. Do not need to reverse explicitly
         ("__rmul__", "elementwise_mul", False),
         ("__div__", "elementwise_div", False),
-        ("__rdiv__", "elementwise_div", True)):
+        ("__rdiv__", "elementwise_div", True),
+        ("__pow__", "elementwise_pow", False),
+        ("__rpow__", "elementwise_pow", True)):
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse))
 

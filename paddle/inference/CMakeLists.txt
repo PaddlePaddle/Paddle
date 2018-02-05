@@ -1,4 +1,4 @@
-set(FLUID_CORE_MODULES proto_desc paddle_memory executor prune init)
+set(FLUID_CORE_MODULES proto_desc paddle_memory lod_tensor executor prune init)
 
 cc_library(paddle_fluid_api
     SRCS io.cc
@@ -29,19 +29,6 @@ add_custom_target(inference_lib_dist DEPENDS
   inference_lib framework_lib memory_lib platform_lib string_lib
   gflags_lib glog_lib protobuf_lib eigen3_lib)
 
-add_executable(example example.cc)
-if(APPLE)
-  set(OPTIONAL_LINK_FLAGS)
-  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-    set(OPTIONAL_LINK_FLAGS "-undefined dynamic_lookup")
-  endif()
-  target_link_libraries(example
-      -Wl,-force_load paddle_fluid
-      ${OPTIONAL_LINK_FLAGS}
-      ${PTOOLS_LIB})
-else()
-  target_link_libraries(example
-      -Wl,--start-group -Wl,--whole-archive paddle_fluid
-      -Wl,--no-whole-archive -Wl,--end-group
-      ${PTOOLS_LIB})
+if(WITH_TESTING)
+  add_subdirectory(tests/book)
 endif()

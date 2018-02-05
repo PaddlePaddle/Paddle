@@ -42,28 +42,34 @@ class SendOp : public framework::OperatorBase {
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
+
+    auto client_var_name = Output("RPCClient");
+    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
+                            "Can not find variable '%s' in the scope.",
+                            client_var_name);
+    auto* client_var = scope.FindVar(client_var_name);
+    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
+
     for (size_t i = 0; i < ins.size(); i++) {
       VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-      client_.AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+      rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
     }
-    PADDLE_ENFORCE(client_.Wait());
+    PADDLE_ENFORCE(rpc_client->Wait());
 
     for (auto& ep : endpoints) {
       VLOG(3) << "batch barrier, ep: " << ep;
-      client_.AsyncSendBatchBarrier(ep);
+      rpc_client->AsyncSendBatchBarrier(ep);
     }
-    PADDLE_ENFORCE(client_.Wait());
+    PADDLE_ENFORCE(rpc_client->Wait());
 
-    for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
-      client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+    if (outs.size() > 0) {
+      for (size_t i = 0; i < outs.size(); i++) {
+        VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
+        rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+      }
+      PADDLE_ENFORCE(rpc_client->Wait());
     }
-
-    PADDLE_ENFORCE(client_.Wait());
   }
-
- private:
-  mutable detail::RPCClient client_;
 };
 
 class SendOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -73,11 +79,16 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor) Input tensor to be sent").AsDuplicable();
     AddOutput("Out", "(Tensor) Output tensor to be received from server")
         .AsDuplicable();
+    AddOutput("RPCClient",
+              "(RPCClient) The RPC client object which is"
+              "initialized at most once.");
     AddComment(R"DOC(
 Send operator
 
 This operator will send tensor to recv_op at the parameter server.
 )DOC");
+    // TODO(typhoonzero): remove this attr generate de-duplicated vector from
+    // epmap when initializing.
     AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")

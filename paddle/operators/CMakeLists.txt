@@ -122,9 +122,11 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(send_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     op_library(recv_op DEPS ${DISTRIBUTE_DEPS})
     set_source_files_properties(recv_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op sum_op executor)
+    op_library(listen_and_serv_op DEPS ${DISTRIBUTE_DEPS})
+    set_source_files_properties(listen_and_serv_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op listen_and_serv_op sum_op executor)
 else()
-    set(DEPS_OPS ${DEPS_OPS} send_op recv_op)
+    set(DEPS_OPS ${DEPS_OPS} send_op recv_op listen_and_serv_op)
 endif()
 
 op_library(cond_op DEPS framework_proto tensor net_op)
@@ -156,7 +158,10 @@ op_library(parallel_do_op DEPS executor)
 
 # Regist multiple Kernel to pybind
 if (WITH_GPU)
-op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS vol2col)
+
+op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS
+    vol2col depthwise_conv)
+
 op_library(edit_distance_op SRCS edit_distance_op.cc edit_distance_op.cu DEPS math_function)
 op_library(pool_op SRCS pool_op.cc pool_op.cu.cc pool_cudnn_op.cu.cc DEPS pooling)
 op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
@@ -173,6 +178,8 @@ endif()
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
+op_library(save_combine_op DEPS lod_tensor)
+op_library(load_combine_op DEPS lod_tensor)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
@@ -192,3 +199,4 @@ if(WITH_GPU)
     cc_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
 endif()
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
+cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)

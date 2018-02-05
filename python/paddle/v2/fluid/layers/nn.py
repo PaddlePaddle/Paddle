@@ -847,7 +847,35 @@ def cos_sim(X, Y, **kwargs):
     return out
 
 
-def dropout(x, dropout_prob, is_test=False, seed=0, **kwargs):
+def dropout(x, dropout_prob, is_test=False, seed=None, **kwargs):
+    """
+    Computes dropout.
+
+    Drop or keep each element of `x` independently. Dropout is a regularization
+    technique for reducing overfitting by preventing neuron co-adaption during
+    training. The dropout operator randomly set (according to the given dropout
+    probability) the outputs of some units to zero, while others are remain
+    unchanged.
+
+    Args:
+       x(variable): The input tensor.
+       dropout_prob(float): Probability of setting units to zero.
+       is_test(bool): A flag indicating whether it is in test phrase or not.
+       seed(int): A Python integer used to create random seeds. If this
+                  parameter is set to None, a random seed is used.
+                  NOTE: If an integer seed is given, always the same output
+                  units will be dropped. DO NOT use a fixed seed in training.
+
+    Returns:
+        Variable: A tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          droped = fluid.layers.dropout(input=x, dropout_rate=0.5)
+    """
+
     helper = LayerHelper('dropout', **kwargs)
     out = helper.create_tmp_variable(dtype=x.dtype)
     mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
@@ -856,9 +884,12 @@ def dropout(x, dropout_prob, is_test=False, seed=0, **kwargs):
         inputs={'X': [x]},
         outputs={'Out': [out],
                  'Mask': [mask]},
-        attrs={'dropout_prob': dropout_prob,
-               'is_test': is_test,
-               'seed': seed})
+        attrs={
+            'dropout_prob': dropout_prob,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0
+        })
     return out
 
 
@@ -1200,10 +1231,17 @@ def conv2d(input,
     """
     if stride is None:
         stride = [1, 1]
-    helper = LayerHelper('conv2d', **locals())
-    dtype = helper.input_dtype()
 
     num_channels = input.shape[1]
+
+    l_type = 'conv2d'
+    if (num_channels == groups and num_filters % num_channels == 0 and
+            not use_cudnn):
+        l_type = 'depthwise_conv2d'
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+
     if groups is None:
         num_filter_channels = num_channels
     else:
@@ -1236,7 +1274,7 @@ def conv2d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d',
+        type=l_type,
         inputs={
             'Input': input,
             'Filter': filter_param,
@@ -1447,7 +1485,9 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
-               name=None):
+               name=None,
+               moving_mean_name=None,
+               moving_variance_name=None):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -1477,6 +1517,7 @@ def batch_norm(input,
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
+        name=moving_mean_name,
         dtype=input.dtype,
         shape=param_shape,
         persistable=True,
@@ -1484,6 +1525,7 @@ def batch_norm(input,
     helper.set_variable_initializer(var=mean, initializer=Constant(0.0))
 
     variance = helper.create_global_variable(
+        name=moving_variance_name,
         dtype=input.dtype,
         shape=param_shape,
         persistable=True,
