@@ -64,15 +64,17 @@ struct ForRange<CUDADeviceContext> {
   inline void operator()(Function func) const {
     constexpr int num_threads = 1024;
     int block_size = limit_ <= num_threads ? limit_ : num_threads;
-    int grid_size = (limit_ + num_threads - 1) / num_threads;
 
-    if (grid_size == 1) {
-      ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
-          func);
-    } else {
-      ForRangeElemwiseOp<<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
-          func, limit_);
+    if (block_size < 1024) {
+      int size = 1;
+      while (size < block_size) size <<= 1;
+      block_size = size;
     }
+
+    int grid_size = (limit_ + block_size - 1) / block_size;
+
+    ForRangeElemwiseOp<<<grid_size, block_size, 0, dev_ctx_.stream()>>>(func,
+                                                                        limit_);
   }
 
   const CUDADeviceContext& dev_ctx_;
