@@ -1116,45 +1116,6 @@ class ConditionalBlock(object):
             attrs={'sub_block': inside_block})
 
 
-class SwitchScopeGuard(object):
-    """
-    1. only switch.case can be called inside a switch.scope
-    2. switch.case can only be called inside a switch.scope
-    """
-
-    def __init__(self, op):
-        if not isinstance(op, Switch):
-            raise TypeError("op should be switch")
-        self.switch_op = op
-
-    def __enter__(self):
-        """
-        set flag that now is inside switch.block {}
-        :return:
-        """
-        self.switch_op.inside_scope = True
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.switch_op.inside_scope = False
-        if exc_type is not None:
-            return False  # re-raise exception
-
-        cond_num = len(self.switch_op.conditions)
-        case_block_num = len(self.switch_op.case_blocks)
-
-        tmp = case_block_num - cond_num
-        if tmp != 0 and tmp != 1:
-            raise ValueError("case_num=%d, cond_num=%d not match",
-                             case_block_num, cond_num)
-
-        self.switch_op.helper.append_op(
-            type='switch',
-            inputs={'X': self.switch_op.conditions},
-            attrs={'level': 0})
-
-        return True
-
-
 class CaseBlockGuard(BlockGuard):
     def __init__(self, op, condition):
         if not isinstance(op, Switch):
@@ -1201,11 +1162,6 @@ class Switch(object):
         self.conditions = []
         self.case_blocks = []
 
-    def scope(self):
-        """the scope for this switch op, works like `{}`
-        """
-        return SwitchScopeGuard(self)
-
     def case(self, condition):
         """create a new block for this condition
         """
@@ -1229,6 +1185,8 @@ class Switch(object):
         if exc_type is not None:
             return False  # re-raise exception
 
+        current_block = self.helper.main_program.current_block()
+
         cond_num = len(self.conditions)
         case_block_num = len(self.case_blocks)
 
@@ -1237,9 +1195,13 @@ class Switch(object):
             raise ValueError("case_num=%d, cond_num=%d not match",
                              case_block_num, cond_num)
 
+        step_scope = current_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
         self.helper.append_op(
             type='switch',
-            inputs={'X': self.conditions},
+            inputs={'X': self.conditions,
+                    'ScopeIn': [step_scope]},
+            outputs={'Scope': [step_scope]},
             attrs={'case_blocks': self.case_blocks})
 
         return True

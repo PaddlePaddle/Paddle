@@ -23,6 +23,10 @@ class SwitchOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   SwitchOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The conditional variable of this operator.").AsDuplicable();
+    AddInput("ScopeIn",
+             "(std::vector<Scope*>) The step scope of conditional block. To "
+             "unify the conditional block, rnn and while op, "
+             "the type of scope is std::vector<Scope*>");
     AddOutput("Scope",
               "(std::vector<Scope*>) The step scope of conditional block. To "
               "unify the conditional block, rnn and while op, "
