@@ -27,6 +27,7 @@ __all__ = [
     'StaticRNNMemoryLink',
     'WhileGuard',
     'While',
+    'Switch',
     'lod_rank_table',
     'max_sequence_len',
     'topk',
@@ -1144,6 +1145,97 @@ class ConditionalBlock(object):
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
             attrs={'sub_block': inside_block})
+
+
+class CaseBlockGuard(BlockGuard):
+    def __init__(self, op, condition):
+        if not isinstance(op, Switch):
+            raise TypeError("op should be switch")
+        if not op.inside_scope:
+            raise ValueError(
+                "switch.case can only be called inside switch.block")
+        self.switch_op = op
+        super(CaseBlockGuard, self).__init__(self.switch_op.helper.main_program)
+        self.switch_op.conditions.append(condition)
+
+    def __enter__(self):
+        return super(CaseBlockGuard, self).__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.switch_op.case_blocks.append(self.main_program.current_block())
+        return super(CaseBlockGuard, self).__exit__(exc_type, exc_val, exc_tb)
+
+
+class DefaultCaseBlockGuard(BlockGuard):
+    def __init__(self, op):
+        if not isinstance(op, Switch):
+            raise TypeError("op should be switch")
+        if not op.inside_scope:
+            raise ValueError(
+                "switch.case can only be called inside switch.block")
+        self.switch_op = op
+        super(DefaultCaseBlockGuard,
+              self).__init__(self.switch_op.helper.main_program)
+
+    def __enter__(self):
+        return super(DefaultCaseBlockGuard, self).__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.switch_op.case_blocks.append(self.main_program.current_block())
+        return super(DefaultCaseBlockGuard, self).__exit__(exc_type, exc_val,
+                                                           exc_tb)
+
+
+class Switch(object):
+    def __init__(self, name=None):
+        self.helper = LayerHelper('switch', name=name)
+        self.inside_scope = False
+        self.conditions = []
+        self.case_blocks = []
+
+    def case(self, condition):
+        """create a new block for this condition
+        """
+        return CaseBlockGuard(self, condition)
+
+    def default(self):
+        """create a default case for this switch
+        """
+        return DefaultCaseBlockGuard(self)
+
+    def __enter__(self):
+        """
+        set flag that now is inside switch.block {}
+        :return:
+        """
+        self.inside_scope = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.inside_scope = False
+        if exc_type is not None:
+            return False  # re-raise exception
+
+        current_block = self.helper.main_program.current_block()
+
+        cond_num = len(self.conditions)
+        case_block_num = len(self.case_blocks)
+
+        tmp = case_block_num - cond_num
+        if tmp != 0 and tmp != 1:
+            raise ValueError("case_num=%d, cond_num=%d not match",
+                             case_block_num, cond_num)
+
+        step_scope = current_block.create_var(
+            type=core.VarDesc.VarType.STEP_SCOPES)
+        self.helper.append_op(
+            type='switch',
+            inputs={'X': self.conditions,
+                    'ScopeIn': [step_scope]},
+            outputs={'Scope': [step_scope]},
+            attrs={'case_blocks': self.case_blocks})
+
+        return True
 
 
 class IfElseBlockGuard(object):

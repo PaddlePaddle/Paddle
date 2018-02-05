@@ -271,6 +271,7 @@ void BindOpDesc(py::module &m) {
       .def("set_attr", &OpDesc::SetAttr)
       .def("attr", &OpDesc::GetAttr)
       .def("set_block_attr", &OpDesc::SetBlockAttr)
+      .def("set_blocks_attr", &OpDesc::SetBlocksAttr)
       .def("set_serialized_attr",
            [](OpDesc &self, const std::string &name,
               const py::bytes &seriralized) {
