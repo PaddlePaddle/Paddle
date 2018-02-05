@@ -69,7 +69,7 @@ TEST(Channel, ReceiverGetsZeroOnClosedChannel) {
     // Try to write more than buffer size.
     size_t out;
     for (size_t i = 0; i < 12; ++i) {
-      ch->Receive(&out)
+      ch->Receive(&out);
       if (i < buffer_size)
         EXPECT_EQ(out, i);  // should block after 10 iterations
       else
