@@ -54,7 +54,7 @@ class Vector : public std::vector<T> {
     CopyToCUDA();
     PADDLE_ENFORCE_NOT_NULL(
         cuda_ptr_, "No data or Insufficient CUDA memory to allocation");
-    return static_cast<T *>(cuda_ptr_);
+    return static_cast<T *>(cuda_ptr_.get());
   }
 
   /* Get host vector */
@@ -127,7 +127,7 @@ void Vector<T>::CopyToCUDA() {
 #ifdef PADDLE_WITH_CUDA
   if (cuda_size_ < this->size() || cuda_ptr_ == nullptr) {
     cuda_ptr_.reset(
-        memory::Alloc<platform::CUDAPlace>(this->size() * sizeof(T)),
+        memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T)),
         memory::PlainDeleter<void, platform::CUDAPlace>(place_));
   }
   cuda_size_ = this->size();
