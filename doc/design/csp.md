@@ -138,20 +138,16 @@ The following program illustrates the Python syntax for accessing Fluid buffers.
 ```python
 import fluid
 
-# Create a buffered channel of capacity 10
 buffer_size = 10
 ch = fluid.make_channel(dtype=INT, buffer_size)
 
 # Now write three elements to the channel
 with fluid.while(steps=buffer_size):
   fluid.send(ch, step)
-
-# Read all the data from the channel
+  fluid.close_channel(ch)
+  
 with fluid.while(steps=buffer_size):
   fluid.print(fluid.recv(ch))
-
-# Done receiving , now close the channel
-fluid.close_channel(ch)
 ```
 
 The following example shows that to avoid the always-blocking behavior of unbuffered channels, we need to use Fluid's goroutines.
@@ -159,16 +155,13 @@ The following example shows that to avoid the always-blocking behavior of unbuff
 ```python
 import fluid
 
-# Create an unbuffered channel
 ch = fluid.make_channel(dtype=INT)
 
-# Writes and Reads are synchronous otherwise the calls will block.
 with fluid.go():
   fluid.send(ch)
 
 y = fluid.recv(ch)
 
-# Done receiving , now close the channel
 fluid.close_channel(ch)
 ```
 
