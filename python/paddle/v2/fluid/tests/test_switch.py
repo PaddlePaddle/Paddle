@@ -23,7 +23,6 @@ from paddle.v2.fluid.framework import default_startup_program
 
 class TestSwitch(unittest.TestCase):
     def check_switch(self, value):
-
         x = layers.fill_constant(shape=[1], dtype='float32', value=value)
 
         zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
@@ -39,25 +38,27 @@ class TestSwitch(unittest.TestCase):
 
         with layers.Switch() as switch:
             with switch.case(cond1):
-                layers.assign(result, zero_var)
+                layers.assign(zero_var, result)
             with switch.case(cond2):
-                layers.assign(result, one_var)
+                layers.assign(one_var, result)
             with switch.case(cond3):
-                layers.assign(result, two_var)
+                layers.assign(two_var, result)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
         exe.run(default_startup_program())
 
-        out = exe.run(feed={}, fetch_list=[result])[0]
+        out = exe.run(feed={}, fetch_list=[result])[0][0]
         return out
 
     def test_switch(self):
-        main_program = framework.Program()
-        startup_program = framework.Program()
-        with framework.program_guard(main_program, startup_program):
-            result = self.check_switch(0.0)
-            self.assertEqual(result, 1)
+        test_data = {(-0.1, 0), (0.1, 1), (1.1, 2)}
+        for x, expected_result in test_data:
+            main_program = framework.Program()
+            startup_program = framework.Program()
+            with framework.program_guard(main_program, startup_program):
+                result = self.check_switch(x)
+                self.assertEqual(result, expected_result)
 
 
 if __name__ == '__main__':
