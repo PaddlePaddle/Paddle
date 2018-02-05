@@ -131,7 +131,7 @@ def polynomial_decay(learning_rate,
                      end_learning_rate=0.0001,
                      power=1.0,
                      cycle=False):
-    """Applies inverse time decay to the initial learning rate.
+    """Applies polynomial decay to the initial learning rate.
 
     ```python
     if cycle:
@@ -162,10 +162,9 @@ def polynomial_decay(learning_rate,
         zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
         one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
 
-        cond = layers.equal(x=global_step, y=zero_var)
-        true_cond = layers.ConditionalBlock([cond])
-        with true_cond.block():
-            layers.assign(input=one_var, output=div_res)
+        with layers.Switch() as switch:
+            with switch.case(layers.equal(x=global_step, y=zero_var)):
+                layers.assign(input=one_var, output=div_res)
         decay_steps = decay_steps * div_res
     else:
         decay_steps_var = layers.fill_constant(
