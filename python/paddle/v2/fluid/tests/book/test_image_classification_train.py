@@ -18,6 +18,8 @@ import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import unittest
 import contextlib
+import math
+import sys
 
 
 def resnet_cifar10(input, depth=32):
@@ -140,6 +142,8 @@ def main(net_type, use_cuda):
             pass_acc = accuracy.eval(exe)
             print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
                 pass_acc))
+            if math.isnan(float(loss)):
+                sys.exit("got NaN loss, training failed.")
             return
 
     raise AssertionError(
