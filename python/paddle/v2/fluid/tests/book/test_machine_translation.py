@@ -208,6 +208,7 @@ def train_main():
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
                   " avg_cost=" + str(avg_cost_val))
             if batch_id > 3:
+                #fluid.io.save_inference_model(save_dirname, ['src_word_id'], [rnn_out], exe)
                 break
             batch_id += 1
 
@@ -251,5 +252,5 @@ def decode_main():
 
 
 if __name__ == '__main__':
-    #train_main()
-    decode_main()
+    train_main()
+    #decode_main()
