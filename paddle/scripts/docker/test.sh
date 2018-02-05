@@ -8,7 +8,7 @@ NUM_PROC=${CTEST_PARALLEL_LEVEL:-6}
 CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
 
 # calculate and set the memory usage for each process
-MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 * $CUDA_DEVICE_COUNT / $NUM_PROC" | bc`)
+MEM_USAGE=$(printf "%.2f" `echo "scale=5; 0.95 * $CUDA_DEVICE_COUNT / $NUM_PROC" | bc`)
 if (( `echo "$MEM_USAGE > 1.0"|bc -l` )); then
     MEM_USAGE=1.0
 fi
@@ -25,7 +25,12 @@ for (( i = 0; i < $NUM_PROC; i++ )); do
         if [ $j -eq 0 ]; then
             cuda_list=("$n")
         else
-            cuda_list="$cuda_list,$n"
+	    # only use up to two GPUs, the test speed decrease with
+	    # more GPU because cuda init takes time. But we need at
+	    # lease 2 GPUs to test multiple GPU test cases.
+	    if ! [[ $cuda_list = *,* ]]; then
+		cuda_list="$cuda_list,$n"
+	    fi
         fi
     done
     echo $cuda_list
