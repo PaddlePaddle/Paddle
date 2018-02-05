@@ -28,7 +28,14 @@ template <typename DeviceContext, typename T>
 class ElementwiseMinKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseComputeEx<MinFunctor<T>, DeviceContext, T>(ctx);
+    using Tensor = framework::Tensor;
+
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* z = ctx.Output<Tensor>("Out");
+    z->mutable_data<T>(ctx.GetPlace());
+    int axis = ctx.Attr<int>("axis");
+    ElementwiseComputeEx<MinFunctor<T>, DeviceContext, T>(ctx, x, y, axis, z);
   }
 };
 
@@ -110,9 +117,19 @@ template <typename DeviceContext, typename T>
 class ElementwiseMinGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    using Tensor = framework::Tensor;
+
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    int axis = ctx.Attr<int>("axis");
     ElementwiseGradCompute<DeviceContext, T, ElementwiseMinGradFunctor<T>,
                            ElementwiseMinBroadCastGradFunctor<T>,
-                           ElementwiseMinBroadCast2GradFunctor<T>>(ctx);
+                           ElementwiseMinBroadCast2GradFunctor<T>>(
+        ctx, x, y, out, dout, axis, dx, dy);
   }
 };
 

@@ -233,7 +233,7 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
       };
       break;
     default:
-      sorted_domain = "event end time";
+      sorted_domain = "event first end time";
   }
 
   std::vector<std::vector<EventItem>> events_table;
