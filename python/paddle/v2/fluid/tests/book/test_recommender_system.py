@@ -14,6 +14,7 @@
 
 import numpy as np
 import paddle.v2 as paddle
+import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
@@ -147,11 +148,11 @@ def model():
 
     avg_cost = layers.mean(x=square_cost)
 
-    return avg_cost
+    return scale_infer, avg_cost
 
 
-def main():
-    cost = model()
+def train(save_dirname):
+    scale_infer, cost = model()
     sgd_optimizer = SGDOptimizer(learning_rate=0.2)
     opts = sgd_optimizer.minimize(cost)
 
@@ -216,7 +217,13 @@ def main():
             out = np.array(outs[0])
             if out[0] < 6.0:
                 # if avg cost less than 6.0, we think our code is good.
-                exit(0)
+                fluid.io.save_inference_model(save_dirname, [
+                    "user_id", "gender_id", "age_id", "job_id", "movie_id",
+                    "category_id", "movie_title"
+                ], [scale_infer], exe)
+                return
 
 
-main()
+if __name__ == '__main__':
+    save_dirname = "recommender_system.inference.model"
+    train(save_dirname)
