@@ -26,7 +26,8 @@ class SwitchOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Scope",
               "(std::vector<Scope*>) The step scope of conditional block. To "
               "unify the conditional block, rnn and while op, "
-              "the type of scope is std::vector<Scope*>");
+              "the type of scope is std::vector<Scope*>")
+        .AsIntermediate();
     AddAttr<std::vector<framework::BlockDesc *>>(
         "sub_blocks",
         "The step block of conditional "
@@ -168,8 +169,8 @@ class SwitchGradOp : public SwitchOpBase {
       exec.Run(*blocks[match_case_id]->Program(), &cur_scope,
                blocks[match_case_id]->ID(), false);
 
-      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("X"),
-                                  Outputs(framework::GradVarName("X")));
+      //      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("X"),
+      //                                  Outputs(framework::GradVarName("X")));
     }
   }
 
