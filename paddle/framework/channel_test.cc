@@ -23,7 +23,7 @@ using paddle::framework::Channel;
 using paddle::framework::MakeChannel;
 using paddle::framework::CloseChannel;
 
-void RecevingOrderEqualToSendingOrder(Channel<int>* ch) {
+void RecevingOrderEqualToSendingOrder(Channel<int> *ch) {
   unsigned sum_send = 0;
   std::thread t([&]() {
     for (int i = 0; i < 5; i++) {
