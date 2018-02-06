@@ -214,11 +214,20 @@ void BindVarDsec(py::module &m) {
            py::return_value_policy::reference)
       .def("set_name", &VarDesc::SetName)
       .def("set_shape", &VarDesc::SetShape)
+      .def("set_shapes", &VarDesc::SetShapes)
       .def("set_dtype", &VarDesc::SetDataType)
-      .def("shape", &VarDesc::Shape, py::return_value_policy::reference)
+      .def("set_dtypes", &VarDesc::SetDataTypes)
+      .def("set_tensor_num", &VarDesc::SetTensorDescNum)
+      .def("tensor_num", &VarDesc::GetTensorDescNum)
+      .def("shape", &VarDesc::GetShape, py::return_value_policy::reference)
+      .def("shapes", &VarDesc::GetShapes, py::return_value_policy::reference)
       .def("dtype", &VarDesc::GetDataType, py::return_value_policy::reference)
+      .def("dtypes", &VarDesc::GetDataTypes, py::return_value_policy::reference)
       .def("lod_level", &VarDesc::GetLoDLevel)
+      .def("lod_levels", &VarDesc::GetLoDLevels,
+           py::return_value_policy::reference)
       .def("set_lod_level", &VarDesc::SetLoDLevel)
+      .def("set_lod_levels", &VarDesc::SetLoDLevels)
       .def("type", &VarDesc::GetType)
       .def("set_type", &VarDesc::SetType)
       .def("serialize_to_string", SerializeMessage<VarDesc>)
@@ -233,7 +242,8 @@ void BindVarDsec(py::module &m) {
       .value("STEP_SCOPES", proto::VarDesc::STEP_SCOPES)
       .value("LOD_RANK_TABLE", proto::VarDesc::LOD_RANK_TABLE)
       .value("LOD_TENSOR_ARRAY", proto::VarDesc::LOD_TENSOR_ARRAY)
-      .value("PLACE_LIST", proto::VarDesc::PLACE_LIST);
+      .value("PLACE_LIST", proto::VarDesc::PLACE_LIST)
+      .value("READER", proto::VarDesc::READER);
 }
 
 void BindOpDesc(py::module &m) {
