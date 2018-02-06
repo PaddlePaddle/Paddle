@@ -123,7 +123,7 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   delete ch;
 }
 
-void RecevingOrderEqualToSendingOrder(Channel ch) {
+void RecevingOrderEqualToSendingOrder(Channel* ch) {
   unsigned sum_send = 0;
   std::thread t([&]() {
     for (int i = 0; i < 5; i++) {
