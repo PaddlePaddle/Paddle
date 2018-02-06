@@ -1,5 +1,5 @@
 if(WITH_GPU)
-  cc_library(enforce SRCS enforce.cc DEPS nccl)
+  cc_library(enforce SRCS enforce.cc DEPS)
 else()
   cc_library(enforce SRCS enforce.cc)
 endif()

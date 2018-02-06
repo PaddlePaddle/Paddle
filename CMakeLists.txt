@@ -141,7 +141,6 @@ include(external/boost)     # download, build, install boost
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
-include(external/nccl)
 include(external/cares)
 include(external/grpc)
 

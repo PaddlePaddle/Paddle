@@ -34,6 +34,7 @@ function cmake_gen() {
     Configuring cmake in /paddle/build ...
         -DCMAKE_BUILD_TYPE=${BUILD_TYPE:Release}
         ${PYTHON_FLAGS}
+        -DWITH_DSO=ON
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
@@ -56,6 +57,7 @@ EOF
     cmake .. \
         -DCMAKE_BUILD_TYPE=${BUILD_TYPE:Release} \
         ${PYTHON_FLAGS} \
+        -DWITH_DSO=ON \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
@@ -170,7 +172,7 @@ EOF
     if [[ ${WITH_GPU} == "ON"  ]]; then
         NCCL_DEPS="apt-get install -y libnccl-dev &&"
     else
-        NCCL_DEPS="" 
+        NCCL_DEPS=""
     fi
 
     cat >> /paddle/build/Dockerfile <<EOF
@@ -186,6 +188,7 @@ EOF
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
+    ENV NCCL_LAUNCH_MODE PARALLEL
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
     # default command shows the paddle version and exit
