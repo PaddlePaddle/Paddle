@@ -68,6 +68,7 @@ TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
     EXPECT_EQ(ch->Send(&i), true);  // sending should not block
   }
 
+  int out;
   for (size_t i = 0; i < buffer_size / 2; ++i) {
     EXPECT_EQ(ch->Receive(&out), true);  // receiving should not block
     EXPECT_EQ(out, i);
@@ -149,6 +150,7 @@ TEST(Channel, BufferedChannelCloseUnblocksReceiversTest) {
           int data;
           // All reads should return false
           EXPECT_EQ(ch->Receive(&data), false);
+          EXPECT_EQ(data, 0);
           *p = true;
         },
         &thread_ended[i]);
@@ -244,6 +246,7 @@ TEST(Channel, UnbufferedChannelCloseUnblocksReceiversTest) {
         [&](bool *p) {
           int data;
           EXPECT_EQ(ch->Receive(&data), false);
+          EXPECT_EQ(data, 0);
           *p = true;
         },
         &thread_ended[i]);
