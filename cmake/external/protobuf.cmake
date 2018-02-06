@@ -259,13 +259,6 @@ IF(NOT PROTOBUF_FOUND)
         ENDIF()
     ENDIF()
 
-    set(lib_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/protobuf")
-    add_custom_target(protobuf_lib
-        COMMAND mkdir -p "${lib_dir}/lib"
-        COMMAND cp -r "${PROTOBUF_INCLUDE_DIR}" "${lib_dir}"
-        COMMAND cp "${PROTOBUF_LITE_LIBRARY}" "${lib_dir}/lib"
-    )
-
     IF(CMAKE_CROSSCOMPILING)
         PROMPT_PROTOBUF_LIB(protobuf_host extern_protobuf)
     ELSE()

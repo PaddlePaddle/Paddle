@@ -76,10 +76,3 @@ IF(WITH_C_API)
     INSTALL(FILES ${GLOG_LIBRARIES} DESTINATION third_party/glog/lib)
   ENDIF()
 ENDIF()
-
-set(lib_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/glog")
-add_custom_target(glog_lib
-    COMMAND mkdir -p "${lib_dir}/lib"
-    COMMAND cp -r "${GLOG_INCLUDE_DIR}" "${lib_dir}"
-    COMMAND cp "${GLOG_LIBRARIES}" "${lib_dir}/lib"
-)

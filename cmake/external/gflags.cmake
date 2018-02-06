@@ -60,10 +60,3 @@ IF(WITH_C_API)
     INSTALL(FILES ${GFLAGS_LIBRARIES} DESTINATION third_party/gflags/lib)
   ENDIF()
 ENDIF()
-
-set(lib_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/gflags")
-add_custom_target(gflags_lib
-    COMMAND mkdir -p "${lib_dir}/lib"
-    COMMAND cp -r "${GFLAGS_INCLUDE_DIR}" "${lib_dir}"
-    COMMAND cp "${GFLAGS_LIBRARIES}" "${lib_dir}/lib"
-)

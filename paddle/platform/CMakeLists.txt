@@ -39,11 +39,3 @@ nv_test(nccl_test SRCS nccl_test.cu DEPS dynload_cuda gpu_info device_context)
 
 cc_library(profiler SRCS profiler.cc DEPS device_context)
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
-
-set(lib_dir "${CMAKE_INSTALL_PREFIX}/paddle/platform")
-add_custom_target(platform_lib
-    COMMAND mkdir -p "${lib_dir}/dynload" "${lib_dir}/details"
-    COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${lib_dir}"
-    COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/dynload/*.h" "${lib_dir}/dynload"
-    COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/details/*.h" "${lib_dir}/details"
-)    

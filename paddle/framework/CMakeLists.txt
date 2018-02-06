@@ -92,12 +92,4 @@ cc_test(init_test SRCS init_test.cc DEPS init)
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
       
-set(lib_dir "${CMAKE_INSTALL_PREFIX}/paddle/framework")
-add_custom_target(framework_lib DEPENDS framework_py_proto
-    COMMAND mkdir -p "${lib_dir}/details"
-    COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/*.h" "${lib_dir}"
-    COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/details/*.h" "${lib_dir}/details"
-    COMMAND cp "${CMAKE_CURRENT_BINARY_DIR}/framework.pb.h" "${lib_dir}"
-)
-
 cc_test(channel_test SRCS channel_test.cc)
