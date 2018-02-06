@@ -85,7 +85,7 @@ static inline void GetMaxScoreIndex(
   std::stable_sort(sorted_indices->begin(), sorted_indices->end(),
                    SortScorePairDescend<int>);
   // Keep top_k scores if needed.
-  if (top_k > -1 && top_k < sorted_indices->size()) {
+  if (top_k > -1 && top_k < static_cast<int>(sorted_indices->size())) {
     sorted_indices->resize(top_k);
   }
 }
@@ -151,7 +151,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     while (sorted_indices.size() != 0) {
       const int idx = sorted_indices.front().second;
       bool keep = true;
-      for (int k = 0; k < selected_indices->size(); ++k) {
+      for (size_t k = 0; k < selected_indices->size(); ++k) {
         if (keep) {
           const int kept_idx = (*selected_indices)[k];
           T overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
@@ -201,7 +201,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         int label = it.first;
         const T* sdata = scores_data + label * predict_dim;
         const std::vector<int>& label_indices = it.second;
-        for (int j = 0; j < label_indices.size(); ++j) {
+        for (size_t j = 0; j < label_indices.size(); ++j) {
           int idx = label_indices[j];
           PADDLE_ENFORCE_LT(idx, predict_dim);
           score_index_pairs.push_back(
@@ -215,7 +215,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
       // Store the new indices.
       std::map<int, std::vector<int>> new_indices;
-      for (int j = 0; j < score_index_pairs.size(); ++j) {
+      for (size_t j = 0; j < score_index_pairs.size(); ++j) {
         int label = score_index_pairs[j].second.first;
         int idx = score_index_pairs[j].second.second;
         new_indices[label].push_back(idx);
@@ -238,7 +238,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       int label = it.first;
       const T* sdata = scores_data + label * predict_dim;
       const std::vector<int>& indices = it.second;
-      for (int j = 0; j < indices.size(); ++j) {
+      for (size_t j = 0; j < indices.size(); ++j) {
         int idx = indices[j];
         const T* bdata = bboxes_data + idx * kBBoxSize;
         odata[count * kOutputDim] = label;           // label
