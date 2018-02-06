@@ -342,12 +342,6 @@ def save_inference_model(dirname,
     prepend_feed_ops(inference_program, feeded_var_names)
     append_fetch_ops(inference_program, fetch_var_names)
 
-    # save for checking
-    curstr = inference_program.to_string(True)
-    f = open("save_inf_prog_after_feed_fetch.txt", 'w')
-    f.write(curstr)
-    f.close()
-
     model_file_name = dirname + "/__model__"
     with open(model_file_name, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())

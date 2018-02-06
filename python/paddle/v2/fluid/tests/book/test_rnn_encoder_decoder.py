@@ -225,18 +225,8 @@ def infer(save_dirname=None):
 
     # Construct feed as a dictionary of {feed_target_name: feed_target_data}
     # and results will contain a list of data corresponding to fetch_targets.
-    print("Print feed fetch target names as follows")
-    print(feed_target_names)
     assert feed_target_names[0] == 'source_sequence'
     assert feed_target_names[1] == 'target_sequence'
-    print([var.name for var in fetch_targets])
-
-    # save for checking
-    curstr = inference_program.to_string(True)
-    f = open("loaded_infer_prog.txt", 'w')
-    f.write(curstr)
-    f.close()
-
     results = exe.run(inference_program,
                       feed={
                           feed_target_names[0]: word_data,
