@@ -15,14 +15,14 @@
 #pragma once
 
 #include "paddle/framework/ddim.h"
-#include "paddle/framework/lod_tensor.h"
+#include "paddle/framework/lod_tensor_array.h"
 
 namespace paddle {
 namespace framework {
 
 class ReaderBase {
  public:
-  virtual std::vector<LoDTensor> ReadNext() = 0;
+  virtual void ReadNext(std::vector<LoDtensor>* out) = 0;
   virtual bool HasNext() const = 0;
 
   virtual DDim shape(size_t idx) const = 0;
@@ -73,24 +73,24 @@ class RandomReader : public FileReader {
     dist_ = std::uniform_real_distribution<float>(min_, max_);
   }
 
-  std::vector<LoDTensor> ReadNext() override {
-    std::vector<LoDTensor> res;
-    res.reserve(shapes_.size());
+  void ReadNext(std::vector<LoDtensor>* out) override {
+    out.clear();
+    out.reserve(shapes_.size());
     for (const DDim& shape : shapes_) {
       PADDLE_ENFORCE_GE(
           shape.size(), 2,
-          "The rank of input data should be 2 at least.(Now it's %d)",
+          "The rank of reader's output data should be 2 at least.(Now it's %d)",
           shape.size());
-      LoDTensor out;
-      out.Resize(shape);
-      T* data = out.mutable_data<T>(platform::CPUPlace());
+      LoDTensor out_tensor;
+      out_tensor.Resize(shape);
+      T* data = out_tensor.mutable_data<T>(platform::CPUPlace());
       int64_t numel = product(shape);
       for (int64_t i = 0; i < numel; ++i) {
         data[i] = dist_(engine_);
       }
-      res.push_back(out);
+      out.push_back(out_tensor);
     }
-    return res;
+    return out;
   }
 
   bool HasNext() const override { return true; }
@@ -111,11 +111,11 @@ class ShuffleReader : public DecoratedReader {
     buffer_.reserve(buffer_size);
   }
 
-  std::vector<LoDTensor> ReadNext() override;
+  void ReadNext(std::vector<LoDtensor>* out) override;
 
  private:
   int buffer_size_;
-  std::vector<std::vector<LoDTensor>> buffer_;
+  std::vector<std::vector<LoDtensor>> buffer_;
   size_t iteration_pos_;
 };
 
@@ -126,11 +126,11 @@ class BatchReader : public DecoratedReader {
     buffer_.reserve(batch_size_);
   }
 
-  std::vector<LoDTensor> ReadNext() override;
+  void ReadNext(std::vector<LoDtensor>* out) override;
 
  private:
   int batch_size_;
-  std::vector<std::vector<LoDTensor>> buffer_;
+  std::vector<std::vector<LoDtensor>> buffer_;
 };
 
 // The ReaderHolder is used as readers' unified wrapper,
@@ -141,7 +141,7 @@ class ReaderHolder {
 
   ReaderBase* Get() const { return reader_.get(); }
 
-  std::vector<LoDTensor> ReadNext() { return reader_->ReadNext(); }
+  void ReadNext(std::vector<LoDtensor>* out) { reader_->ReadNext(out); }
   bool HasNext() const { return reader_->HasNext(); }
 
   DDim shape(size_t idx) const { return reader_->shape(idx); }
