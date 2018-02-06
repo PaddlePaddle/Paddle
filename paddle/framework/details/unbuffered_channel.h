@@ -87,8 +87,6 @@ bool UnBuffered<T>::Send(T* data) {
 // data that was sent by a writer is read from a reader.
 template <typename T>
 bool UnBuffered<T>::Receive(T* data) {
-  if (closed_) return false;
-
   // Prevent other readers from entering
   std::unique_lock<std::recursive_mutex> read_lock{mu_read_};
   reader_found_ = true;

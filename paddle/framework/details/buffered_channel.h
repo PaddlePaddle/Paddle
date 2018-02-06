@@ -70,8 +70,6 @@ bool Buffered<T>::Send(T* item) {
 
 template <typename T>
 bool Buffered<T>::Receive(T* item) {
-  if (closed_) return false;
-
   std::unique_lock<std::mutex> lock(mu_);
   empty_cond_var_.wait(lock, [this]() { return !channel_.empty() || closed_; });
   bool ret = false;
