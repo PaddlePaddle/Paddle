@@ -60,6 +60,38 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   delete ch;
 }
 
+TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
+  const size_t buffer_size = 10;
+  auto ch = MakeChannel<size_t>(buffer_size);
+
+  for (size_t i = 0; i < buffer_size; ++i) {
+    EXPECT_EQ(ch->Send(&i), true);  // sending should not block
+  }
+
+  size_t out;
+  for (size_t i = 0; i < buffer_size / 2; ++i) {
+    EXPECT_EQ(ch->Receive(&out), true);  // receiving should not block
+    EXPECT_EQ(out, i);
+  }
+
+  CloseChannel(ch);
+
+  for (size_t i = buffer_size / 2; i < buffer_size; ++i) {
+    EXPECT_EQ(ch->Receive(&out),
+              true);  // receving should return residual values.
+    EXPECT_EQ(out, i);
+  }
+
+  for (size_t i = 0; i < buffer_size; ++i) {
+    EXPECT_EQ(ch->Receive(&out),
+              false);  // after receiving residual values, return zeros.
+    // Note: we cannot check EXPECT_EQ(out, 0), because C++ doesn't
+    // define zero values like Go does.
+  }
+
+  delete ch;
+}
+
 TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
