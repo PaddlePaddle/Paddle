@@ -82,7 +82,7 @@ inline const T *Vector<T>::data(platform::Place place) const {
     if (cuda_ptr_ == nullptr) {
       return nullptr;
     }
-    if (platform::is_same_place(place, place_)) {
+    if (boost::get<platform::CUDAPlace>(place) == place_) {
       return static_cast<const T *>(cuda_ptr_.get());
     } else {
       PADDLE_THROW(
@@ -99,7 +99,7 @@ inline T *Vector<T>::mutable_data(platform::Place place) {
   if (platform::is_cpu_place(place)) {
     return std::vector<T>::data();
   } else if (platform::is_gpu_place(place)) {
-    if (!platform::is_same_place(place, place_)) {
+    if (boost::get<platform::CUDAPlace>(place) != place_) {
       place_ = boost::get<platform::CUDAPlace>(place);
     }
 #ifdef PADDLE_WITH_CUDA
@@ -154,6 +154,27 @@ void Vector<T>::CopyFromCUDA() {
   auto *ctx = pool.GetByPlace(place_);
   memory::Copy(platform::CPUPlace(), static_cast<void *>(this->data()), place_,
                static_cast<const void *>(cuda_ptr_.get()),
+               this->size() * sizeof(T), ctx->stream());
+  ctx->Wait();
+#endif
+}
+
+template <typename T>
+void Vector<T>::CopyToPeer(platform::Place place) {
+#ifdef PADDLE_WITH_CUDA
+  if (boost::get<platform::CUDAPlace>(place) != place_) {
+    place_ = boost::get<platform::CUDAPlace>(place);
+  }
+  if (cuda_size_ < this->size() || cuda_ptr_ == nullptr) {
+    cuda_ptr_.reset(
+        memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T)),
+        memory::PlainDeleter<void, platform::CUDAPlace>(place_));
+  }
+  cuda_size_ = this->size();
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *ctx = pool.GetByPlace(place_);
+  memory::Copy(place_, cuda_ptr_.get(), platform::CPUPlace(),
+               static_cast<const void *>(this->data()),
                this->size() * sizeof(T), ctx->stream());
   ctx->Wait();
 #endif
