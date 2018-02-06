@@ -25,13 +25,15 @@ DDim FileReader::shape(size_t idx) const {
   return shapes_[idx];
 }
 
-std::vector<LoDTensor> ShuffleReader::ReadNext() {
+void ShuffleReader::ReadNext(std::vector<LoDtensor>* out) {
   if (iteration_pos_ >= buffer_.size()) {
     // Reload buffer with new data
     buffer_.clear();
+    buffer_.reverse(buffer_size_);
     for (int i = 0; i < buffer_size_; ++i) {
       if (reader_->HasNext()) {
-        buffer_.push_back(reader_->ReadNext());
+        buffer.push_back(std::vector<LoDTensor>());
+        reader_->ReadNext(&buffer.back());
       } else {
         break;
       }
@@ -39,29 +41,32 @@ std::vector<LoDTensor> ShuffleReader::ReadNext() {
     std::random_shuffle(buffer_.begin(), buffer_.end());
     iteration_pos_ = 0;
   }
-  if (buffer_.empty()) {
-    std::vector<LoDTensor> empty_res;
-    return empty_res;
+  out->clear();
+  if (!buffer_.empty()) {
+    std::swap(*out, buffer_[iteration_pos_++]);
   }
-  return buffer_[iteration_pos_++];
+  // if buffer_ is empty, the 'out' will return as an empty vector.
 }
 
-std::vector<LoDTensor> BatchReader::ReadNext() {
+void BatchReader::ReadNext(std::vector<LoDtensor>* out) {
   buffer_.clear();
+  buffer_.reserve(batch_size_);
   for (int i = 0; i < batch_size_; ++i) {
     if (reader_->HasNext()) {
-      buffer_.push_back(reader_->ReadNext());
+      buffer_.push_back(std::vector<LoDtensor>());
+      reader_->ReadNext(&buffer_.back());
     } else {
       break;
     }
   }
   // Concat instances
-  std::vector<LoDTensor> res;
+  out.clear();
   if (buffer_.empty()) {
-    return res;
+    // if buffer_ is empty, the 'out' will return as an empty vector.
+    return;
   }
   int out_num = buffer_[0].size();
-  res.reserve(out_num);
+  out->reserve(out_num);
   for (int j = 0; j < out_num; ++j) {
     // Merge shape and check date type
     std::type_index batch_type = buffer_[0][j].type();
@@ -76,9 +81,9 @@ std::vector<LoDTensor> BatchReader::ReadNext() {
       batch_shape[0] += ins_shape[0];
     }
 
-    LoDTensor out;
-    out.Resize(batch_shape);
-    out.mutable_data(platform::CPUPlace(), batch_type);
+    LoDTensor out_tensor;
+    out_tensor.Resize(batch_shape);
+    out_tensor.mutable_data(platform::CPUPlace(), batch_type);
     int64_t dst_offset = 0;
 
     // Merge lod and data
@@ -102,15 +107,14 @@ std::vector<LoDTensor> BatchReader::ReadNext() {
           top_level_lod.back() +
           (ins_lod.empty() ? ins_shape[0] : (ins_lod[0].size() - 1)));
 
-      Tensor dst = out.Slice(dst_offset, dst_offset + ins_shape[0]);
+      Tensor dst = out_tensor.Slice(dst_offset, dst_offset + ins_shape[0]);
       Copy(buffer_[i][j], platform::CPUPlace(), &dst);
       dst_offset += ins_shape[0];
     }
     batch_lod.insert(batch_lod.begin(), top_level_lod);
-    out.set_lod(batch_lod);
-    res.push_back(out);
+    out_tensor.set_lod(batch_lod);
+    out->push_back(out_tensor);
   }
-  return res;
 }
 }  // namespace framework
 }  // namespace paddle
