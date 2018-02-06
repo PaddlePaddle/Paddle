@@ -86,7 +86,7 @@ TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
     EXPECT_EQ(ch->Receive(&out),
               false);  // after receiving residual values, return zeros.
     EXPECT_EQ(out, 0);
-  });
+  }
 
   delete ch;
 }
