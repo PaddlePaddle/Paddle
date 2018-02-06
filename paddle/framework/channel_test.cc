@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <chrono>
 #include <thread>
-#include <stdexcept>
 
 #include "gtest/gtest.h"
 

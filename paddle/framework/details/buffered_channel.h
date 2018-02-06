@@ -17,7 +17,6 @@ limitations under the License. */
 #include <condition_variable>
 #include <deque>
 #include <mutex>
-#include <stdexcept>
 
 #include "paddle/framework/channel.h"
 #include "paddle/platform/enforce.h"

@@ -16,7 +16,6 @@ limitations under the License. */
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <stdexcept>
 
 #include "paddle/framework/channel.h"
 
