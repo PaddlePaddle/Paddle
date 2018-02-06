@@ -29,8 +29,8 @@ class UnBuffered : public paddle::framework::Channel<T> {
   friend void paddle::framework::CloseChannel<T>(Channel<T>*);
 
  public:
-  virtual void Send(T*);
-  virtual void Receive(T*);
+  virtual bool Send(T*);
+  virtual bool Receive(T*);
   virtual size_t Cap() { return 0; }
   virtual void Close();
   virtual ~UnBuffered();
@@ -57,7 +57,7 @@ class UnBuffered : public paddle::framework::Channel<T> {
 // This function implements the concept of how data should
 // be sent from a writer to a reader.
 template <typename T>
-void UnBuffered<T>::Send(T* data) {
+bool UnBuffered<T>::Send(T* data) {
   // Prevent other writers from entering
   std::unique_lock<std::recursive_mutex> writer_lock(mu_write_);
   writer_found_ = true;
@@ -66,6 +66,7 @@ void UnBuffered<T>::Send(T* data) {
   cv_writer_.wait(cv_lock,
                   [this]() { return reader_found_ == true || closed_; });
   cv_reader_.notify_one();
+  bool ret = false;
   if (!closed_) {
     std::unique_lock<std::mutex> channel_lock(mu_ch_);
     item = data;
@@ -74,14 +75,16 @@ void UnBuffered<T>::Send(T* data) {
     channel_lock.lock();
     cv_channel_.wait(channel_lock,
                      [this]() { return item == nullptr || closed_; });
+    ret = true;
   }
   writer_found_ = false;
+  return ret;
 }
 
 // This function implements the concept of how
 // data that was sent by a writer is read from a reader.
 template <typename T>
-void UnBuffered<T>::Receive(T* data) {
+bool UnBuffered<T>::Receive(T* data) {
   // Prevent other readers from entering
   std::unique_lock<std::recursive_mutex> read_lock{mu_read_};
   reader_found_ = true;
@@ -90,6 +93,7 @@ void UnBuffered<T>::Receive(T* data) {
   cv_reader_.wait(cv_lock,
                   [this]() { return writer_found_ == true || closed_; });
   cv_writer_.notify_one();
+  bool ret = false;
   if (!closed_) {
     std::unique_lock<std::mutex> lock_ch{mu_ch_};
     // Reader should wait for the writer to first write its data
@@ -98,10 +102,12 @@ void UnBuffered<T>::Receive(T* data) {
       *data = std::move(*item);
       item = nullptr;
       lock_ch.unlock();
+      ret = true;
     }
     cv_channel_.notify_one();
   }
   reader_found_ = false;
+  return ret;
 }
 
 // This function implements the sequence of events
