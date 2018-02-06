@@ -149,17 +149,7 @@ TEST(inference, recognize_digits) {
       dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
-  EXPECT_EQ(output1.dims(), output2.dims());
-  EXPECT_EQ(output1.numel(), output2.numel());
-
-  float err = 1E-3;
-  int count = 0;
-  for (int64_t i = 0; i < output1.numel(); ++i) {
-    if (fabs(output1.data<float>()[i] - output2.data<float>()[i]) > err) {
-      count++;
-    }
-  }
-  EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
+  CheckError<float>(output1, output2);
 #endif
 }
 
@@ -175,12 +165,10 @@ TEST(inference, recognize_digits_combine) {
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
   paddle::framework::LoDTensor input;
-  srand(time(0));
-  float* input_ptr =
-      input.mutable_data<float>({1, 28, 28}, paddle::platform::CPUPlace());
-  for (int i = 0; i < 784; ++i) {
-    input_ptr[i] = rand() / (static_cast<float>(RAND_MAX));
-  }
+  // Use normilized image pixels as input data,
+  // which should be in the range [-1.0, 1.0].
+  SetupTensor<float>(
+      input, {1, 28, 28}, static_cast<float>(-1), static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
