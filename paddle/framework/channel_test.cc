@@ -65,7 +65,6 @@ TEST(Channel, SendOnClosedChannelPanics){
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
   size_t i = 5;
-  size_t error_found = 1U;
   EXPECT_EQ(ch->Send(&i), true); // should not block or panic
   CloseChannel(ch);
   EXPECT_EQ(ch->Send(&i), false); // should panic
