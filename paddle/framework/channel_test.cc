@@ -60,6 +60,16 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   delete ch;
 }
 
+TEST(Channel, SendOnClosedChannelPanics) {
+  const size_t buffer_size = 10;
+  auto ch = MakeChannel<size_t>(buffer_size);
+  size_t i = 5;
+  EXPECT_EQ(ch->Send(&i), true);  // should not block or panic
+  CloseChannel(ch);
+  EXPECT_EQ(ch->Send(&i), false);  // should panic
+  delete ch;
+}
+
 TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
@@ -88,7 +98,6 @@ TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
     // Note: we cannot check EXPECT_EQ(out, 0), because C++ doesn't
     // define zero values like Go does.
   }
-
   delete ch;
 }
 
