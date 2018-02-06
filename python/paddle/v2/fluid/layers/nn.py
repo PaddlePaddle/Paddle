@@ -2526,7 +2526,7 @@ def ctc_greedy_decoder(input, blank, name=None):
 
     Returns:
         Variable: CTC greedy decode result. If all the sequences in result were
-        empty, the result LoDTensor will be [-1] with LoD [[0]] and dims [1].
+        empty, the result LoDTensor will be [-1] with LoD [[0]] and dims [1, 1].
 
     Examples:
         .. code-block:: python

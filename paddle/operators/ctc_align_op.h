@@ -71,7 +71,7 @@ class CTCAlignKernel : public framework::OpKernel<T> {
     output->Resize({static_cast<int64_t>(output_lod0.back()), 1});
     // for empty sequence
     if (output_lod0.back() == 0) {
-      output->Resize({1});
+      output->Resize({1, 1});
       output_data = output->mutable_data<T>(ctx.GetPlace());
       output_data[0] = -1;
     }
