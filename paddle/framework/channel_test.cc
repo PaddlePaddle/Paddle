@@ -60,29 +60,33 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   delete ch;
 }
 
-// This test tests that CloseChannel returns a value of zero
-// immediately to all receivers that are trying to receive from the channel.
-TEST(Channel, ReceiverGetsZeroOnClosedChannel) {
+TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
-  std::thread t([&]() {
-    // Try to write more than buffer size.
-    size_t out;
-    for (size_t i = 0; i < 12; ++i) {
-      ch->Receive(&out);
-      if (i < buffer_size)
-        EXPECT_EQ(out, i);  // should block after 10 iterations
-      else
-        EXPECT_EQ(out, 0U); // after close Channel is called, expected value is 0
-    }
-  });
 
   for (size_t i = 0; i < buffer_size; ++i) {
     EXPECT_EQ(ch->Send(&i), true);  // sending should not block
   }
 
+  for (size_t i = 0; i < buffer_size / 2; ++i) {
+    EXPECT_EQ(ch->Receive(&out), true);  // receiving should not block
+    EXPECT_EQ(out, i);
+  }
+
   CloseChannel(ch);
-  t.join();
+
+  for (size_t i = buffer_size / 2; i < buffer_size; ++i) {
+    EXPECT_EQ(ch->Receive(&out),
+              true);  // receving should return residual values.
+    EXPECT_EQ(out, i);
+  }
+
+  for (size_t i = 0; i < buffer_size; ++i) {
+    EXPECT_EQ(ch->Receive(&out),
+              false);  // after receiving residual values, return zeros.
+    EXPECT_EQ(out, 0);
+  });
+
   delete ch;
 }
 
