@@ -390,7 +390,7 @@ def load_inference_model(dirname, executor, load_file_name=None):
         raise ValueError("There is no directory named '%s'", dirname)
 
     model_file_name = ""
-    if save_file_name == None:
+    if load_file_name == None:
         model_file_name = dirname + "/__model__"
     else:
         model_file_name = dirname + "/__model_combined__"
