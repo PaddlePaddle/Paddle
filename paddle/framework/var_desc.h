@@ -68,17 +68,33 @@ class VarDesc {
 
   void SetName(std::string name) { desc_.set_name(name); }
 
+  void SetTensorDescNum(size_t num);
+
+  size_t GetTensorDescNum() const;
+
   void SetShape(const std::vector<int64_t> &dims);
+
+  void SetShapes(const std::vector<std::vector<int64_t>> &multiple_dims);
+
+  std::vector<int64_t> GetShape() const;
+
+  std::vector<std::vector<int64_t>> GetShapes() const;
 
   void SetDataType(proto::DataType data_type);
 
-  std::vector<int64_t> Shape() const;
+  void SetDataTypes(const std::vector<proto::DataType> &multiple_data_type);
 
   proto::DataType GetDataType() const;
 
+  std::vector<proto::DataType> GetDataTypes() const;
+
   void SetLoDLevel(int32_t lod_level);
 
+  void SetLoDLevels(const std::vector<int32_t> &multiple_lod_level);
+
   int32_t GetLoDLevel() const;
+
+  std::vector<int32_t> GetLoDLevels() const;
 
   proto::VarDesc::VarType GetType() const;
 
@@ -90,7 +106,9 @@ class VarDesc {
 
  private:
   const proto::TensorDesc &tensor_desc() const;
+  std::vector<proto::TensorDesc> tensor_descs() const;
   proto::TensorDesc *mutable_tensor_desc();
+  std::vector<proto::TensorDesc *> mutable_tensor_descs();
 
   proto::VarDesc desc_;
 };
