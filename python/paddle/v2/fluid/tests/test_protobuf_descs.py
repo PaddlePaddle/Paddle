@@ -123,8 +123,6 @@ class TestVarDesc(unittest.TestCase):
         var.set_tensor_num(3)
         src_shapes = [[2, 3, 3], [4, 5], [6, 7, 8, 9]]
         var.set_shapes(src_shapes)
-        #import pdb
-        # pdb.set_trace()
         res_shapes = var.shapes()
         self.assertEqual(src_shapes, res_shapes)
         self.assertEqual(core.VarDesc.VarType.READER, var.type())
