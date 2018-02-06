@@ -83,8 +83,7 @@ size_t GpuMaxChunkSize() {
 
   // Reserving the rest memory for page tables, etc.
 
-  size_t allocating = static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
-                                          (total - reserving));
+  size_t allocating = static_cast<size_t>(0.8 * (total - reserving));
 
   PADDLE_ENFORCE_LE(allocating, available);
 

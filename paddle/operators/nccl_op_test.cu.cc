@@ -44,7 +44,7 @@ namespace p = paddle::platform;
 static std::vector<int> gpu_list;
 
 // test data amount
-const f::DDim kDims = {100, 100};
+const f::DDim kDims = {2, 3};
 
 // nccl op common tester, init communicator.
 class NCCLTester : public ::testing::Test {
@@ -89,6 +89,7 @@ class NCCLTester : public ::testing::Test {
 
     p::CUDAPlace place(gpu_id);
     auto &ctx = dev_ctxs.at(gpu_id);
+    cudaSetDevice(gpu_id);
 
     auto *send_tensor = scope->Var("st")->GetMutable<f::LoDTensor>();
     auto *recv_tensor = scope->Var("rt")->GetMutable<f::LoDTensor>();
@@ -97,8 +98,10 @@ class NCCLTester : public ::testing::Test {
       send_tensor->Resize(kDims);
       send_tensor->mutable_data<T>(kDims, place);
 
-      std::vector<T> send_vector(f::product(kDims), gpu_id);
+      std::vector<T> send_vector(f::product(kDims), 1);
       paddle::framework::CopyFromVector<T>(send_vector, *ctx, send_tensor);
+      std::vector<T> recv_vector(f::product(kDims), 0);
+      paddle::framework::CopyFromVector<T>(recv_vector, *ctx, recv_tensor);
       ctx->Wait();
       VLOG(1) << "Send Tensor filled with elements " << send_tensor->numel();
     }
@@ -166,9 +169,15 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
     ths[i].join();
   }
 
+  for (size_t i = 0; i < dev_scopes.size(); ++i) {
+    auto &recv_tensor = dev_scopes[i]->FindVar("rt")->Get<f::LoDTensor>();
+    auto &send_tensor = dev_scopes[i]->FindVar("st")->Get<f::LoDTensor>();
+    LOG(INFO) << i << " send " << send_tensor;
+    LOG(INFO) << i << " recv " << recv_tensor;
+  }
+
   // check results
   float result = std::accumulate(gpu_list.begin(), gpu_list.end(), 0);
-
   for (size_t i = 0; i < dev_scopes.size(); ++i) {
     p::CPUPlace cpu_place;
     p::CUDAPlace gpu_place(gpu_list[i]);

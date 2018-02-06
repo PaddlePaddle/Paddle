@@ -233,7 +233,8 @@ void BindVarDsec(py::module &m) {
       .value("STEP_SCOPES", proto::VarDesc::STEP_SCOPES)
       .value("LOD_RANK_TABLE", proto::VarDesc::LOD_RANK_TABLE)
       .value("LOD_TENSOR_ARRAY", proto::VarDesc::LOD_TENSOR_ARRAY)
-      .value("PLACE_LIST", proto::VarDesc::PLACE_LIST);
+      .value("PLACE_LIST", proto::VarDesc::PLACE_LIST)
+      .value("NCCL_COM", proto::VarDesc::NCCL_COM);
 }
 
 void BindOpDesc(py::module &m) {

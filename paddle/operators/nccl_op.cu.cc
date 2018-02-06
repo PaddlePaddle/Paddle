@@ -43,7 +43,9 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "This kernel only runs on GPU device.");
-
+    int my_device;
+    cudaGetDevice(&my_device);
+    LOG(INFO) << "I am on device " << my_device;
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto outs = ctx.MultiOutput<LoDTensor>("Out");
 
@@ -71,19 +73,21 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     int idx = comm->GetCommId(gpu_id);
 
     for (size_t i = 0; i < ins.size(); ++i) {
-      VLOG(1) << "gpu : "
-              << " invoke allreduce. send " << ins[i]->numel() << " recv "
-              << outs[i]->numel();
+      LOG(INFO) << "gpu " << gpu_id << ": "
+                << " invoke allreduce. send " << ins[i]->numel() << " recv "
+                << outs[i]->numel();
+      LOG(INFO) << ncclFloat;
+      LOG(INFO) << NCCLTypeWrapper<T>::type;
 
       PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
           ins[i]->data<T>(), outs[i]->mutable_data<T>(ctx.GetPlace()),
           outs[i]->numel(), NCCLTypeWrapper<T>::type, reduction_op_,
           comm->comms_[idx], stream));
-      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
+      //      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
 
-      VLOG(1) << "gpu : "
-              << " finished allreduce. send " << ins[i]->numel() << " recv "
-              << outs[i]->numel();
+      LOG(INFO) << "gpu " << gpu_id << ": "
+                << " finished allreduce. send " << ins[i]->numel() << " recv "
+                << outs[i]->numel();
     }
   }
 };

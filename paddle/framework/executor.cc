@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/operators/nccl/nccl_gpu_common.h"  // platform::Communicator
 #include "paddle/platform/place.h"
 #include "paddle/platform/profiler.h"
 
@@ -55,6 +56,8 @@ static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
     var->GetMutable<LoDTensorArray>();
   } else if (var_type == proto::VarDesc::PLACE_LIST) {
     var->GetMutable<platform::PlaceList>();
+  } else if (var_type == proto::VarDesc::NCCL_COM) {
+    var->GetMutable<platform::Communicator>();
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "

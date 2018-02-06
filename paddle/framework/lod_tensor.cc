@@ -57,14 +57,16 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
     return os;
   }
 
-  os << "dim: " << t.dims() << "\n";
-  os << "lod: " << t.lod() << "\n";
+  os << "{dim: " << t.dims() << "},";
+  os << "{lod: " << t.lod() << "},";
 
   // only print first ten elements
+  os << "{";
   int64_t size = t.numel() < 10 ? t.numel() : 10;
   for (int64_t i = 0; i < size; ++i) {
     os << t.data<float>()[i] << " ";
   }
+  os << "}";
 
   return os;
 }

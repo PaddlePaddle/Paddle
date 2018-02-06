@@ -74,10 +74,14 @@ def print_arguments(args):
 
 
 def parallel_do_transpiler(init_program, program):
-    nccl_communicator = init_program.block(0).create_var(name='nccl_com')
-    init_program.block(0).append_op(
+    nccl_communicator = program.block(0).create_var(
+        name='nccl_com',
+        type=fluid.core.VarDesc.VarType.NCCL_COM, )
+    program.block(0).prepend_op(
         type='ncclInit', outputs={'Communicator': nccl_communicator})
-    nccl_communicator = program.block(0).create_var(name='nccl_com')
+
+    # nccl_communicator = program.block(0).create_var(
+    #     name='nccl_com', type=fluid.core.VarDesc.VarType.NCCL_COM)
 
     def insert_allreduce_op(block, param_names):
         print(param_names)
@@ -96,7 +100,7 @@ def parallel_do_transpiler(init_program, program):
                             },
                             outputs={'Out': [block.create_var()]})
                         new_ops.append(block.ops[-1])
-        block.ops = new_ops
+        # block.ops = new_ops
 
     block = program.block(0)
     for op in block.ops:
@@ -150,6 +154,11 @@ def cnn_model(data, args):
                              size=args.label_size,
                              act="softmax")
     predict = fluid.layers.fc(input=hidden, size=args.label_size, act="softmax")
+    # predict = fluid.layers.fc(input=predict, size=args.label_size, act="softmax")
+    # predict = fluid.layers.fc(input=predict, size=args.label_size, act="softmax")
+    # predict = fluid.layers.fc(input=predict, size=args.label_size, act="softmax")
+    # predict = fluid.layers.fc(input=predict, size=args.label_size, act="softmax")
+
     return predict
 
 
@@ -199,7 +208,6 @@ def run_benchmark(model, args):
 
     for iter_id in range(0, args.iterations):
         start = time.time()
-
         outs = exe.run(fluid.default_main_program(),
                        feed={"pixel": img_data,
                              "label": y_data},
@@ -208,7 +216,7 @@ def run_benchmark(model, args):
 
         end = time.time()
         print("iter=%d, error=%f, elapse=%f" % (iter_id, loss, (end - start)))
-        time.sleep(1)
+        # time.sleep(1)
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/threadpool.h"
 #include "paddle/operators/detail/safe_ref.h"
+#include "paddle/platform/gpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -239,8 +240,9 @@ class ParallelDoGradOp : public framework::OperatorBase {
       worker.wait();
     }
     WaitOnPlaces(places);
-
-    AccumulateGrad(scope, place, sub_scopes, places);
+    // FIXME(tonyyang-svail):
+    //     testing nccl, disable for now
+    // AccumulateGrad(scope, place, sub_scopes, places);
   }
 
   void AccumulateGrad(const framework::Scope &scope,
