@@ -155,8 +155,6 @@ BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
   for (const proto::OpDesc &op_desc : desc_->ops()) {
     ops_.emplace_back(new OpDesc(op_desc, prog, this));
   }
-  std::cout << "Constructed block idx " << desc->idx() << " from protobuf str"
-            << std::endl;
 }
 
 BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
@@ -164,9 +162,8 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
     : prog_(prog), desc_(desc) {
   need_update_ = true;
   for (auto &op : other.ops_) {
-    ops_.emplace_back(new OpDesc(*op, this));
+    ops_.emplace_back(new OpDesc(*op->Proto(), prog, this));
   }
-
   for (auto &it : other.vars_) {
     auto *var = new VarDesc(*it.second);
     vars_[it.first].reset(var);
