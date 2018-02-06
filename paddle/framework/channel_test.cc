@@ -62,7 +62,7 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
 
 // This test tests that CloseChannel returns a value of zero
 // immediately to all receivers that are trying to receive from the channel.
-TEST(Channel, ReceiverGetsZeroOnClosedChannel) {
+TEST(Channel, ReceiverGetsZeroOnClosedBufferedChannel) {
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
 
@@ -70,19 +70,24 @@ TEST(Channel, ReceiverGetsZeroOnClosedChannel) {
     EXPECT_EQ(ch->Send(&i), true);  // sending should not block
   }
 
+  for (size_t i = 1; i <= 5; ++i) {
+    int out;
+    EXPECT_EQ(ch->Receive(&out), true);
+    EXPECT_EQ(out, i);
+  }
   CloseChannel(ch);
 
   // Now try receiving for more number of times than buffer size
   // after channel is closed
-  int out;
-  for (size_t i = 1; i <= 12; ++i) {
+
+  for (size_t i = 6; i <= 12; ++i) {
+    int out;
     ch->Receive(&out);
     if (i <= buffer_size)
       EXPECT_EQ(out, i);  // same value as was written by senders
     else
       EXPECT_EQ(out, 0U); // 0 after all elements are emptied from a closed channel
   }
-
   delete ch;
 }
 
@@ -145,6 +150,7 @@ TEST(Channel, BufferedChannelCloseUnblocksReceiversTest) {
           int data;
           // All reads should return false
           EXPECT_EQ(ch->Receive(&data), false);
+          EXPECT_EQ(data, 0);
           *p = true;
         },
         &thread_ended[i]);
@@ -240,6 +246,7 @@ TEST(Channel, UnbufferedChannelCloseUnblocksReceiversTest) {
         [&](bool *p) {
           int data;
           EXPECT_EQ(ch->Receive(&data), false);
+          EXPECT_EQ(data, 0);
           *p = true;
         },
         &thread_ended[i]);
