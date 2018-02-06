@@ -75,7 +75,7 @@ bool Buffered<T>::Receive(T* item) {
   std::unique_lock<std::mutex> lock(mu_);
   empty_cond_var_.wait(lock, [this]() { return !channel_.empty() || closed_; });
   bool ret = false;
-  if (!closed_) {
+  if (!channel_.empty()) {
     *item = std::move(channel_.front());
     channel_.pop_front();
     full_cond_var_.notify_one();

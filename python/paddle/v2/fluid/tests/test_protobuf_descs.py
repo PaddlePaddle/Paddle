@@ -115,6 +115,18 @@ class TestVarDesc(unittest.TestCase):
         self.assertEqual(src_shape, res_shape)
         self.assertEqual(core.VarDesc.VarType.SELECTED_ROWS, var.type())
 
+    def test_multiple_shape(self):
+        program_desc = core.ProgramDesc()
+        block = program_desc.block(0)
+        var = block.var('my_reader')
+        var.set_type(core.VarDesc.VarType.READER)
+        var.set_tensor_num(3)
+        src_shapes = [[2, 3, 3], [4, 5], [6, 7, 8, 9]]
+        var.set_shapes(src_shapes)
+        res_shapes = var.shapes()
+        self.assertEqual(src_shapes, res_shapes)
+        self.assertEqual(core.VarDesc.VarType.READER, var.type())
+
     def test_dtype(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
@@ -123,6 +135,30 @@ class TestVarDesc(unittest.TestCase):
         var.set_dtype(core.DataType.INT32)
         self.assertEqual(core.DataType.INT32, var.dtype())
         self.assertEqual(core.VarDesc.VarType.LOD_TENSOR, var.type())
+
+    def test_multiple_dtype(self):
+        program_desc = core.ProgramDesc()
+        block = program_desc.block(0)
+        var = block.var('my_reader')
+        var.set_type(core.VarDesc.VarType.READER)
+        var.set_tensor_num(3)
+        src_types = [
+            core.DataType.INT32, core.DataType.FP64, core.DataType.FP32
+        ]
+        var.set_dtypes(src_types)
+        self.assertEqual(src_types, var.dtypes())
+        self.assertEqual(core.VarDesc.VarType.READER, var.type())
+
+    def test_multiple_lod_level(self):
+        program_desc = core.ProgramDesc()
+        block = program_desc.block(0)
+        var = block.var('my_reader')
+        var.set_type(core.VarDesc.VarType.READER)
+        var.set_tensor_num(3)
+        src_types = [3, 1, 2]
+        var.set_lod_levels(src_types)
+        self.assertEqual(src_types, var.lod_levels())
+        self.assertEqual(core.VarDesc.VarType.READER, var.type())
 
 
 class TestBlockDesc(unittest.TestCase):
