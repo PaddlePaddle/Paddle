@@ -186,6 +186,11 @@ function(cc_library TARGET_NAME)
       add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
     endif()
     if (cc_library_DEPS)
+      # Don't need link libwarpctc.so
+      if ("${cc_library_DEPS};" MATCHES "warpctc;")
+        list(REMOVE_ITEM cc_library_DEPS warpctc)
+        add_dependencies(${TARGET_NAME} warpctc)
+      endif()
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
@@ -465,10 +470,10 @@ function(py_test TARGET_NAME)
   if(WITH_TESTING)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS ARGS)
+    set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python
+             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
