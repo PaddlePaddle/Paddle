@@ -85,7 +85,8 @@ TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
   for (size_t i = 0; i < buffer_size; ++i) {
     EXPECT_EQ(ch->Receive(&out),
               false);  // after receiving residual values, return zeros.
-    EXPECT_EQ(out, 0);
+    // Note: we cannot check EXPECT_EQ(out, 0), because C++ doesn't
+    // define zero values like Go does.
   }
 
   delete ch;
