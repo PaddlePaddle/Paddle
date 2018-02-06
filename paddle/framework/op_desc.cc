@@ -72,7 +72,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void SetDim(const std::string &name, const DDim &dim) override;
 
-  std::vector<DDim> GetRepeatedDim(const std::string &name) const override;
+  std::vector<DDim> GetRepeatedDims(const std::string &name) const override;
+
+  void SetRepeatedDims(const std::string &name,
+                       const std::vector<DDim> &dims) override;
 
   const OpDesc &op_;
   const BlockDesc &block_;
@@ -470,7 +473,7 @@ DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
   return res;
 }
 
-std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDim(
+std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
     const std::string &name) const {
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
@@ -491,6 +494,16 @@ void CompileTimeInferShapeContext::SetDim(const std::string &name,
                                           const DDim &dim) {
   block_.FindVarRecursive(name)->SetShape(vectorize(dim));
 }
+
+void CompileTimeInferShapeContext::SetRepeatedDims(
+    const std::string &name, const std::vector<DDim> &dims) {
+  auto var = block_.FindVarRecursive(name);
+  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  std::vector<std::vector<int64_t>> dim_vec(dims.size());
+  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize);
+  var->SetShapes(dim_vec);
+}
+
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
 
 proto::VarDesc::VarType CompileTimeInferShapeContext::GetVarType(

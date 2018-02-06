@@ -62,6 +62,16 @@ void InferShapeContext::SetOutputsDim(const std::string &name,
   SetDims(names, dims);
 }
 
+void InferShapeContext::SetReaderDims(const std::string &name,
+                                      const std::vector<DDim> &dims) {
+  const std::vector<std::string> &arg_names = Outputs(name);
+  PADDLE_ENFORCE_EQ(
+      arg_names.size(), 1UL,
+      "Reader output '%s' should hold one element, but now it holds %d", name,
+      arg_names.size());
+  return this->SetRepeatedDims(arg_names[0], dims);
+}
+
 std::vector<DDim> InferShapeContext::GetDims(
     const std::vector<std::string> &names) const {
   std::vector<DDim> ret;
