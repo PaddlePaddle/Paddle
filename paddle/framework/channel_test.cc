@@ -23,6 +23,8 @@ using paddle::framework::Channel;
 using paddle::framework::MakeChannel;
 using paddle::framework::CloseChannel;
 
+namespace paddle {
+
 TEST(Channel, MakeAndClose) {
   using paddle::framework::details::Buffered;
   using paddle::framework::details::UnBuffered;
@@ -84,9 +86,7 @@ TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
 
   for (size_t i = 0; i < buffer_size; ++i) {
     EXPECT_EQ(ch->Receive(&out),
-              false);  // after receiving residual values, return zeros.
-    // Note: we cannot check EXPECT_EQ(out, 0), because C++ doesn't
-    // define zero values like Go does.
+              false);  // receiving on closed channel should return false
   }
 
   delete ch;
@@ -114,13 +114,7 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   delete ch;
 }
 
-// This test tests that send and receive operations are ordered,
-// as in , the sequence in which objects were sent will be the same
-// as the sequence in which they were received.
-TEST(Channel, OrderedSendReceiveChannelTest) {
-  // This is an unbuffered channel in this test, but the behavior
-  // should be the same for buffered channels as well.
-  auto ch = MakeChannel<int>(0);
+void RecevingOrderEqualToSendingOrder(Channel ch) {
   unsigned sum_send = 0;
   std::thread t([&]() {
     for (int i = 0; i < 5; i++) {
@@ -138,6 +132,16 @@ TEST(Channel, OrderedSendReceiveChannelTest) {
   t.join();
   EXPECT_EQ(sum_send, 10U);
   delete ch;
+}
+
+TEST(Channel, RecevingOrderEqualToSendingOrderWithUnBufferedChannel) {
+  auto ch = MakeChannel<int>(0);
+  RecevingOrderEqualToSendingOrder(ch);
+}
+
+TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel) {
+  auto ch = MakeChannel<int>(10);
+  RecevingOrderEqualToSendingOrder(ch);
 }
 
 // This tests that closing a buffered channel also unblocks
@@ -376,4 +380,5 @@ TEST(Channel, UnbufferedMoreReceiveLessSendTest) {
   EXPECT_EQ(sum_send, 28U);
   EXPECT_EQ(sum_receive, 28U);
   delete ch;
+}
 }
