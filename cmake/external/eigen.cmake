@@ -28,11 +28,3 @@ endif()
 add_dependencies(eigen3 extern_eigen3)
 
 LIST(APPEND external_project_dependencies eigen3)
-
-set(lib_dir "${CMAKE_INSTALL_PREFIX}/third_party/eigen3")
-add_custom_target(eigen3_lib
-    COMMAND mkdir -p "${lib_dir}/Eigen" "${lib_dir}/unsupported"
-    COMMAND cp "${EIGEN_INCLUDE_DIR}/Eigen/Core" "${lib_dir}/Eigen"
-    COMMAND cp -r "${EIGEN_INCLUDE_DIR}/Eigen/src" "${lib_dir}/Eigen"
-    COMMAND cp -r "${EIGEN_INCLUDE_DIR}/unsupported/Eigen" "${lib_dir}/unsupported"
-)
