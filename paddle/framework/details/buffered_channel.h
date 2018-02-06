@@ -86,6 +86,9 @@ bool Buffered<T>::Receive(T* item) {
 
 template <typename T>
 void Buffered<T>::Close() {
+  if (closed_) {
+    return;
+  }
   std::unique_lock<std::mutex> lock(mu_);
   closed_ = true;
   NotifyAllParticipants(&lock);

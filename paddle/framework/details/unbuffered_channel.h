@@ -117,6 +117,9 @@ bool UnBuffered<T>::Receive(T* data) {
 // that take place once the channel is closed.
 template <typename T>
 void UnBuffered<T>::Close() {
+  if (closed_) {
+    return;
+  }
   std::unique_lock<std::mutex> lock(mu_ch_);
   item = nullptr;
   closed_ = true;
