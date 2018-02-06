@@ -183,8 +183,7 @@ def main(use_cuda, parallel, nn_type, combine):
         save_dirname = "recognize_digits_" + nn_type + ".inference.model"
         save_filename = None
         if combine == True:
-            save_dirname = "recognize_digits_" + nn_type + "_combine.inference.model"
-            save_filename = "params.dat"
+            save_filename = "__params_combined__"
     else:
         save_dirname = None
         save_filename = None
@@ -226,8 +225,10 @@ def inject_all_tests():
     for use_cuda in (False, True):
         for parallel in (False, True):
             for nn_type in ('mlp', 'conv'):
-                for combine in (False, True):
-                    inject_test_method(use_cuda, parallel, nn_type, combine)
+                inject_test_method(use_cuda, parallel, nn_type, True)
+
+    # One unit-test for saving parameters as separate files
+    inject_test_method(False, False, 'mlp', False)
 
 
 inject_all_tests()

@@ -36,7 +36,6 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
 
 std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
                                              framework::Scope& scope,
-                                             const std::string& dirname,
                                              const std::string& prog_filename,
                                              const std::string& param_filename);
 

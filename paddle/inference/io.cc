@@ -21,6 +21,18 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
+void ReadProgramDescFromFile(const std::string& model_filename,
+                             std::string& program_desc_str) {
+  VLOG(3) << "loading model from " << model_filename;
+  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
+  inputfs.seekg(0, std::ios::end);
+  program_desc_str.resize(inputfs.tellg());
+  inputfs.seekg(0, std::ios::beg);
+  VLOG(3) << "program_desc_str's size: " << program_desc_str.size();
+  inputfs.read(&program_desc_str[0], program_desc_str.size());
+  inputfs.close();
+}
+
 bool IsParameter(const framework::VarDesc* var,
                  const framework::ProgramDesc& main_program) {
   if (var->Persistable()) {
@@ -84,7 +96,7 @@ void LoadPersistables(framework::Executor& executor,
     framework::OpDesc* op = load_block->AppendOp();
     op->SetType("load_combine");
     op->SetOutput("Out", paramlist);
-    op->SetAttr("file_path", {dirname + "/" + param_filename});
+    op->SetAttr("file_path", {param_filename});
     op->CheckAttrs();
   }
 
@@ -98,15 +110,8 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
                                              framework::Scope& scope,
                                              const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
-  VLOG(3) << "loading model from " << model_filename;
-  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
   std::string program_desc_str;
-  inputfs.seekg(0, std::ios::end);
-  program_desc_str.resize(inputfs.tellg());
-  inputfs.seekg(0, std::ios::beg);
-  VLOG(3) << "program_desc_str's size: " << program_desc_str.size();
-  inputfs.read(&program_desc_str[0], program_desc_str.size());
-  inputfs.close();
+  ReadProgramDescFromFile(model_filename, program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
@@ -118,24 +123,16 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
 std::unique_ptr<framework::ProgramDesc> Load(
     framework::Executor& executor,
     framework::Scope& scope,
-    const std::string& dirname,
     const std::string& prog_filename,
     const std::string& param_filename) {
-  std::string model_filename = dirname + "/" + prog_filename;
-  VLOG(3) << "loading model from " << model_filename;
-  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
+  std::string model_filename = prog_filename;
   std::string program_desc_str;
-  inputfs.seekg(0, std::ios::end);
-  program_desc_str.resize(inputfs.tellg());
-  inputfs.seekg(0, std::ios::beg);
-  VLOG(3) << "program_desc_str's size: " << program_desc_str.size();
-  inputfs.read(&program_desc_str[0], program_desc_str.size());
-  inputfs.close();
+  ReadProgramDescFromFile(model_filename, program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
 
-  LoadPersistables(executor, scope, *main_program, dirname, param_filename);
+  LoadPersistables(executor, scope, *main_program, "", param_filename);
   return main_program;
 }
 

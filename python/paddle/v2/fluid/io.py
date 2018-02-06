@@ -342,7 +342,11 @@ def save_inference_model(dirname,
     prepend_feed_ops(inference_program, feeded_var_names)
     append_fetch_ops(inference_program, fetch_var_names)
 
-    model_file_name = dirname + "/__model__"
+    if save_file_name == None:
+        model_file_name = dirname + "/__model__"
+    else:
+        model_file_name = dirname + "/__model_combined__"
+
     with open(model_file_name, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())
 
