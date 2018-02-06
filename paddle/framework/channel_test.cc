@@ -70,7 +70,7 @@ TEST(Channel, ReceiverGetsZeroOnClosedBufferedChannel) {
     EXPECT_EQ(ch->Send(&i), true);  // sending should not block
   }
 
-  for (size_t i = 1; i <= 5; ++i) {
+  for (size_t i = 1; i < buffer_size/2; ++i) {
     int out;
     EXPECT_EQ(ch->Receive(&out), true);
     EXPECT_EQ(out, i);
@@ -80,7 +80,7 @@ TEST(Channel, ReceiverGetsZeroOnClosedBufferedChannel) {
   // Now try receiving for more number of times than buffer size
   // after channel is closed
 
-  for (size_t i = 6; i <= 12; ++i) {
+  for (size_t i = buffer_size/2; i <= 12; ++i) {
     int out;
     ch->Receive(&out);
     if (i <= buffer_size)
