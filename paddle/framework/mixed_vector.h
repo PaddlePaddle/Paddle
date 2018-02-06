@@ -116,6 +116,8 @@ inline T *Vector<T>::mutable_data(platform::Place place) {
                  this->size() * sizeof(T), ctx->stream());
     ctx->Wait();
     return static_cast<T *>(cuda_ptr_.get());
+#else
+    return nullptr;
 #endif
   } else {
     PADDLE_THROW("Unsupport Place.");
