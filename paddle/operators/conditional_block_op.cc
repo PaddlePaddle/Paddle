@@ -51,7 +51,7 @@ class ConditionalOp : public framework::OperatorBase {
           ips[0]->numel() == 1)) {
       PADDLE_THROW(
           "condition input's data type should be bool, "
-          "number should be 1, actual numel is %d",
+          "numel should be 1, actual numel is %d",
           ips[0]->numel());
     }
     return ips[0]->data<bool>()[0];
