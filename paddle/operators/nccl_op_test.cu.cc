@@ -98,7 +98,7 @@ class NCCLTester : public ::testing::Test {
       send_tensor->Resize(kDims);
       send_tensor->mutable_data<T>(kDims, place);
 
-      std::vector<T> send_vector(f::product(kDims), 1);
+      std::vector<T> send_vector(f::product(kDims), gpu_id);
       paddle::framework::CopyFromVector<T>(send_vector, *ctx, send_tensor);
       std::vector<T> recv_vector(f::product(kDims), 0);
       paddle::framework::CopyFromVector<T>(recv_vector, *ctx, recv_tensor);
