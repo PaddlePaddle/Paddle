@@ -53,7 +53,7 @@ TEST(ProgramDesc, copy_ctor) {
     ASSERT_NE(copy, var_before);
     ASSERT_EQ(copy->Name(), var_before->Name());
     ASSERT_EQ(copy->GetType(), var_before->GetType());
-    ASSERT_EQ(copy->Shape(), var_before->Shape());
+    ASSERT_EQ(copy->GetShape(), var_before->GetShape());
     ASSERT_EQ(copy->Proto()->SerializeAsString(),
               var_before->Proto()->SerializeAsString());
   };
@@ -117,7 +117,7 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
     ASSERT_NE(restored, var_before);
     ASSERT_EQ(restored->Name(), var_before->Name());
     ASSERT_EQ(restored->GetType(), var_before->GetType());
-    ASSERT_EQ(restored->Shape(), var_before->Shape());
+    ASSERT_EQ(restored->GetShape(), var_before->GetShape());
     ASSERT_EQ(restored->Proto()->SerializeAsString(),
               var_before->Proto()->SerializeAsString());
   };
