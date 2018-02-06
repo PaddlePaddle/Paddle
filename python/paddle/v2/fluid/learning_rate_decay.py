@@ -211,10 +211,10 @@ def piecewise_decay(global_step, boundaries, values):
             value_var = layers.fill_constant(
                 shape=[1], dtype='float32', value=float(values[i]))
             with switch.case(layers.less_than(global_step, boundary_val)):
-                layers.assign(lr, value_var)
+                layers.assign(value_var, lr)
         last_value_var = layers.fill_constant(
             shape=[1], dtype='float32', value=float(values[len(values) - 1]))
         with switch.default():
-            layers.assign(lr, last_value_var)
+            layers.assign(last_value_var, lr)
 
     return lr

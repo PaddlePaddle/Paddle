@@ -21,7 +21,6 @@ import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.learning_rate_decay as lr_decay
-import paddle.v2.fluid.debuger as debugger
 
 
 def exponential_decay(learning_rate,
@@ -99,7 +98,6 @@ class TestLearningRateDecay(unittest.TestCase):
                                        feed=[],
                                        fetch_list=[global_step, decayed_lr])
             python_decayed_lr = python_decay_fn(global_step=step, **kwargs)
-            print(str(python_decayed_lr) + ":" + str(lr_val[0]))
             self.assertAlmostEqual(python_decayed_lr, lr_val[0])
 
     def test_decay(self):
