@@ -90,6 +90,79 @@ def vgg16_bn_drop(input):
     return fc2
 
 
+def train(net_type, use_cuda, save_dirname):
+    classdim = 10
+    data_shape = [3, 32, 32]
+
+    images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
+    if net_type == "vgg":
+        print("train vgg net")
+        net = vgg16_bn_drop(images)
+    elif net_type == "resnet":
+        print("train resnet")
+        net = resnet_cifar10(images, 32)
+    else:
+        raise ValueError("%s network is not supported" % net_type)
+
+    predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    avg_cost = fluid.layers.mean(x=cost)
+    acc = fluid.layers.accuracy(input=predict, label=label)
+
+    # Test program 
+    test_program = fluid.default_main_program().clone()
+
+    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer.minimize(avg_cost)
+
+    BATCH_SIZE = 128
+    PASS_NUM = 1
+
+    train_reader = paddle.batch(
+        paddle.reader.shuffle(
+            paddle.dataset.cifar.train10(), buf_size=128 * 10),
+        batch_size=BATCH_SIZE)
+
+    test_reader = paddle.batch(
+        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+    feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
+    exe.run(fluid.default_startup_program())
+
+    loss = 0.0
+    for pass_id in range(PASS_NUM):
+        for batch_id, data in enumerate(train_reader()):
+            exe.run(feed=feeder.feed(data))
+
+            if (batch_id % 10) == 0:
+                acc_list = []
+                avg_loss_list = []
+                for tid, test_data in enumerate(test_reader()):
+                    loss_t, acc_t = exe.run(program=test_program,
+                                            feed=feeder.feed(test_data),
+                                            fetch_list=[avg_cost, acc])
+                    acc_list.append(float(acc_t))
+                    avg_loss_list.append(float(loss_t))
+                    break  # Use 1 segment for speeding up CI
+
+                acc_value = numpy.array(acc_list).mean()
+                avg_loss_value = numpy.array(avg_loss_list).mean()
+
+                print(
+                    'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
+                    format(pass_id, batch_id + 1,
+                           float(avg_loss_value), float(acc_value)))
+
+                if acc_value > 0.01:  # Low threshold for speeding up CI
+                    fluid.io.save_inference_model(save_dirname, ["pixel"],
+                                                  [predict], exe)
+                    return
+
+
 def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
@@ -119,87 +192,11 @@ def main(net_type, use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
-    classdim = 10
-    data_shape = [3, 32, 32]
-
-    images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-    if net_type == "vgg":
-        print("train vgg net")
-        net = vgg16_bn_drop(images)
-    elif net_type == "resnet":
-        print("train resnet")
-        net = resnet_cifar10(images, 32)
-    else:
-        raise ValueError("%s network is not supported" % net_type)
-
     # Directory for saving the trained model
     save_dirname = "image_classification_" + net_type + ".inference.model"
 
-    predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
-    acc = fluid.layers.accuracy(input=predict, label=label)
-
-    # Test program 
-    test_program = fluid.default_main_program().clone()
-
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    optimizer.minimize(avg_cost)
-
-    BATCH_SIZE = 128
-    PASS_NUM = 1
-
-    train_reader = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.cifar.train10(), buf_size=128 * 10),
-        batch_size=BATCH_SIZE)
-
-    test_reader = paddle.batch(
-        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
-
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
-    feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
-    exe.run(fluid.default_startup_program())
-
-    early_terminate = False
-
-    loss = 0.0
-    for pass_id in range(PASS_NUM):
-        for batch_id, data in enumerate(train_reader()):
-            exe.run(feed=feeder.feed(data))
-
-            if (batch_id % 10) == 0:
-                acc_list = []
-                avg_loss_list = []
-                for tid, test_data in enumerate(test_reader()):
-                    loss_t, acc_t = exe.run(program=test_program,
-                                            feed=feeder.feed(test_data),
-                                            fetch_list=[avg_cost, acc])
-                    acc_list.append(float(acc_t))
-                    avg_loss_list.append(float(loss_t))
-                    break  # just use 1 segment for now
-
-                acc_value = numpy.array(acc_list).mean()
-                avg_loss_value = numpy.array(avg_loss_list).mean()
-
-                print(
-                    'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
-                    format(pass_id, batch_id + 1,
-                           float(avg_loss_value), float(acc_value)))
-
-                if acc_value > 0.01:  # Low threshold for speeding up
-                    fluid.io.save_inference_model(save_dirname, ["pixel"],
-                                                  [predict], exe)
-                    early_terminate = True
-                    break
-
-        if early_terminate:
-            break
-
-    infer(use_cuda=use_cuda, save_dirname=save_dirname)
+    train(net_type, use_cuda, save_dirname)
+    infer(use_cuda, save_dirname)
 
 
 class TestImageClassification(unittest.TestCase):
