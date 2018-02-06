@@ -45,9 +45,11 @@ class UnBuffered : public paddle::framework::Channel<T> {
   // A transaction occurs only when both are true
   std::atomic<bool> reader_found_{false}, writer_found_{false};
   std::condition_variable cv_channel_;
-  std::condition_variable_any cv_reader_, cv_writer_;
+  std::condition_variable_any cv_reader_, cv_writer_, cv_destructor_;
   T* item{nullptr};
   std::atomic<bool> closed_{false};
+  std::atomic<unsigned> send_ctr{0};
+  std::atomic<unsigned> recv_ctr{0};
 
   UnBuffered() : closed_(false) {}
 
@@ -62,6 +64,7 @@ bool UnBuffered<T>::Send(T* data) {
   if (closed_) {
     return ret;
   }
+  send_ctr++;
   // Prevent other writers from entering
   std::unique_lock<std::recursive_mutex> writer_lock(mu_write_);
   writer_found_ = true;
@@ -81,6 +84,8 @@ bool UnBuffered<T>::Send(T* data) {
     ret = true;
   }
   writer_found_ = false;
+  send_ctr--;
+  cv_destructor_.notify_one();
   return ret;
 }
 
@@ -88,6 +93,12 @@ bool UnBuffered<T>::Send(T* data) {
 // data that was sent by a writer is read from a reader.
 template <typename T>
 bool UnBuffered<T>::Receive(T* data) {
+  bool ret = false;
+  // If channel is closed, we don't even want any reader to enter.
+  // Unlike a buffered channel, an unbuffered channel does not allow
+  // readers to read after closing because there is no buffer to be consumed.
+  if (closed_) return ret;
+  recv_ctr++;
   // Prevent other readers from entering
   std::unique_lock<std::recursive_mutex> read_lock{mu_read_};
   reader_found_ = true;
@@ -96,7 +107,6 @@ bool UnBuffered<T>::Receive(T* data) {
   cv_reader_.wait(cv_lock,
                   [this]() { return writer_found_ == true || closed_; });
   cv_writer_.notify_one();
-  bool ret = false;
   if (!closed_) {
     std::unique_lock<std::mutex> lock_ch{mu_ch_};
     // Reader should wait for the writer to first write its data
@@ -110,6 +120,8 @@ bool UnBuffered<T>::Receive(T* data) {
     cv_channel_.notify_one();
   }
   reader_found_ = false;
+  recv_ctr--;
+  cv_destructor_.notify_one();
   return ret;
 }
 
@@ -135,6 +147,9 @@ UnBuffered<T>::~UnBuffered() {
   item = nullptr;
   closed_ = true;
   NotifyAllParticipants(&lock);
+  lock.lock();
+  cv_destructor_.wait(lock,
+                      [this]() { return send_ctr == 0 && recv_ctr == 0; });
 }
 
 // This function notifies all the readers, writers and

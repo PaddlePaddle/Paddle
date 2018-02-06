@@ -60,13 +60,84 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   delete ch;
 }
 
-TEST(Channel, SendOnClosedChannelPanics) {
+// This tests that a buffered channel must panic (return false)
+// on send and receive performed after closing the channel.
+// Receive will only panic after close when queue is empty
+TEST(Channel, ClosedBufferedChannelPanics) {
   const size_t buffer_size = 10;
+  const size_t data = 5;
   auto ch = MakeChannel<size_t>(buffer_size);
-  size_t i = 5;
-  EXPECT_EQ(ch->Send(&i), true);  // should not block or panic
+
+  std::thread send_thread{[&]() {
+    size_t i = data;
+    EXPECT_EQ(ch->Send(&i), true);  // should not block or panic
+  }};
+
+  std::thread recv_thread{[&]() {
+    size_t i;
+    EXPECT_EQ(ch->Receive(&i), true);  // should not block or panic
+    EXPECT_EQ(i, data);
+  }};
+
+  send_thread.join();
+  recv_thread.join();
+
+  // After closing send should panic. Receive should
+  // also panic because the queue is empty.
   CloseChannel(ch);
-  EXPECT_EQ(ch->Send(&i), false);  // should panic
+
+  send_thread = std::thread{[&]() {
+    size_t i = data;
+    EXPECT_EQ(ch->Send(&i), false);  // should panic because channel is closed
+  }};
+  recv_thread = std::thread{[&]() {
+    size_t i;
+    // should panic because channel is closed and queue is empty
+    EXPECT_EQ(ch->Receive(&i), false);
+  }};
+
+  send_thread.join();
+  recv_thread.join();
+  delete ch;
+}
+
+// This tests that an unbuffered channel must panic (return false)
+// on send and receive performed after closing the channel
+TEST(Channel, ClosedUnBufferedChannelPanics) {
+  const size_t buffer_size = 10;
+  const size_t data = 5;
+  auto ch = MakeChannel<size_t>(buffer_size);
+
+  std::thread send_thread{[&]() {
+    size_t i = data;
+    EXPECT_EQ(ch->Send(&i), true);  // should not block or panic
+  }};
+
+  std::thread recv_thread{[&]() {
+    size_t i;
+    EXPECT_EQ(ch->Receive(&i), true);  // should not block or panic
+    EXPECT_EQ(i, data);
+  }};
+
+  send_thread.join();
+  recv_thread.join();
+
+  // After closing send should panic. Receive should
+  // also panic because the queue is empty.
+  CloseChannel(ch);
+
+  send_thread = std::thread{[&]() {
+    size_t i = data;
+    EXPECT_EQ(ch->Send(&i), false);  // should panic because channel is closed
+  }};
+  recv_thread = std::thread{[&]() {
+    size_t i;
+    // should panic because channel is closed and queue is empty
+    EXPECT_EQ(ch->Receive(&i), false);
+  }};
+
+  send_thread.join();
+  recv_thread.join();
   delete ch;
 }
 
@@ -380,4 +451,164 @@ TEST(Channel, UnbufferedMoreReceiveLessSendTest) {
   EXPECT_EQ(sum_send, 28U);
   EXPECT_EQ(sum_receive, 28U);
   delete ch;
+}
+
+// This tests that destroying a buffered channel also unblocks
+//  any receivers waiting on the channel
+
+TEST(Channel, BufferedChannelDestroyUnblocksReceiversTest) {
+  auto ch = MakeChannel<int>(1);
+  size_t num_threads = 5;
+  std::thread t[num_threads];
+  bool thread_ended[num_threads];
+
+  // Launches threads that try to read and are blocked because of no writers
+  for (size_t i = 0; i < num_threads; i++) {
+    thread_ended[i] = false;
+    t[i] = std::thread(
+        [&](bool *p) {
+          int data;
+          // All reads should return false
+          EXPECT_EQ(ch->Receive(&data), false);
+          *p = true;
+        },
+        &thread_ended[i]);
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait
+
+  // Verify that all threads are blocked
+  for (size_t i = 0; i < num_threads; i++) {
+    EXPECT_EQ(thread_ended[i], false);
+  }
+  // delete the channel
+  delete ch;
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));  // wait
+  // Verify that all threads got unblocked
+  for (size_t i = 0; i < num_threads; i++) {
+    EXPECT_EQ(thread_ended[i], true);
+  }
+
+  for (size_t i = 0; i < num_threads; i++) t[i].join();
+}
+
+// This tests that destroying a buffered channel also unblocks
+//  any senders waiting for channel to have write space
+TEST(Channel, BufferedChannelDestroyUnblocksSendersTest) {
+  auto ch = MakeChannel<int>(1);
+  size_t num_threads = 5;
+  std::thread t[num_threads];
+  bool thread_ended[num_threads];
+  bool send_success[num_threads];
+
+  // Launches threads that try to write and are blocked because of no readers
+  for (size_t i = 0; i < num_threads; i++) {
+    thread_ended[i] = false;
+    send_success[i] = false;
+    t[i] = std::thread(
+        [&](bool *ended, bool *success) {
+          int data = 10;
+          *success = ch->Send(&data);
+          *ended = true;
+        },
+        &thread_ended[i], &send_success[i]);
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait
+  // Verify that atleast 4 threads are blocked
+  int ct = 0;
+  for (size_t i = 0; i < num_threads; i++) {
+    if (thread_ended[i] == false) ct++;
+  }
+  // Atleast 4 threads must be blocked
+  EXPECT_GE(ct, 4);
+
+  // Explicitly destroy the channel
+  delete ch;
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));  // wait
+  // Verify that all threads got unblocked
+  for (size_t i = 0; i < num_threads; i++) {
+    EXPECT_EQ(thread_ended[i], true);
+  }
+
+  // Verify that only 1 send was successful
+  ct = 0;
+  for (size_t i = 0; i < num_threads; i++) {
+    if (send_success[i]) ct++;
+  }
+  // Only 1 send must be successful
+  EXPECT_EQ(ct, 1);
+  for (size_t i = 0; i < num_threads; i++) t[i].join();
+}
+
+// This tests that destroying an unbuffered channel also unblocks
+//  unblocks any receivers waiting for senders
+TEST(Channel, UnbufferedChannelDestroyUnblocksReceiversTest) {
+  auto ch = MakeChannel<int>(0);
+  size_t num_threads = 5;
+  std::thread t[num_threads];
+  bool thread_ended[num_threads];
+
+  // Launches threads that try to read and are blocked because of no writers
+  for (size_t i = 0; i < num_threads; i++) {
+    thread_ended[i] = false;
+    t[i] = std::thread(
+        [&](bool *p) {
+          int data;
+          EXPECT_EQ(ch->Receive(&data), false);
+          *p = true;
+        },
+        &thread_ended[i]);
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
+
+  // Verify that all the threads are blocked
+  for (size_t i = 0; i < num_threads; i++) {
+    EXPECT_EQ(thread_ended[i], false);
+  }
+  // Explicitly destroy the channel
+  // This should unblock all receivers
+  delete ch;
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
+  // Verify that all threads got unblocked
+  for (size_t i = 0; i < num_threads; i++) {
+    EXPECT_EQ(thread_ended[i], true);
+  }
+
+  for (size_t i = 0; i < num_threads; i++) t[i].join();
+}
+
+// This tests that destroying an unbuffered channel also unblocks
+//  unblocks any senders waiting for senders
+TEST(Channel, UnbufferedChannelDestroyUnblocksSendersTest) {
+  auto ch = MakeChannel<int>(0);
+  size_t num_threads = 5;
+  std::thread t[num_threads];
+  bool thread_ended[num_threads];
+
+  // Launches threads that try to read and are blocked because of no writers
+  for (size_t i = 0; i < num_threads; i++) {
+    thread_ended[i] = false;
+    t[i] = std::thread(
+        [&](bool *p) {
+          int data = 10;
+          EXPECT_EQ(ch->Send(&data), false);
+          *p = true;
+        },
+        &thread_ended[i]);
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
+  // Verify that all the threads are blocked
+  for (size_t i = 0; i < num_threads; i++) {
+    EXPECT_EQ(thread_ended[i], false);
+  }
+
+  // Explicitly destroy the channel
+  // This should unblock all receivers
+  delete ch;
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait 0.5 sec
+  // Verify that all threads got unblocked
+  for (size_t i = 0; i < num_threads; i++) {
+    EXPECT_EQ(thread_ended[i], true);
+  }
+
+  for (size_t i = 0; i < num_threads; i++) t[i].join();
 }
