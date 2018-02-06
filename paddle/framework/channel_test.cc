@@ -104,9 +104,8 @@ TEST(Channel, ClosedBufferedChannelPanics) {
 // This tests that an unbuffered channel must panic (return false)
 // on send and receive performed after closing the channel
 TEST(Channel, ClosedUnBufferedChannelPanics) {
-  const size_t buffer_size = 10;
   const size_t data = 5;
-  auto ch = MakeChannel<size_t>(buffer_size);
+  auto ch = MakeChannel<size_t>(0);
 
   std::thread send_thread{[&]() {
     size_t i = data;
