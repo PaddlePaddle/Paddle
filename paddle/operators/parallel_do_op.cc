@@ -248,6 +248,8 @@ class ParallelDoGradOp : public framework::OperatorBase {
                       const std::vector<framework::Scope *> &sub_scopes,
                       const platform::PlaceList &places) const {
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
+      VLOG(10) << "Accumulating " << s;
+      if (s == framework::kEmptyVarName) continue;
       std::string tmp_name;
       auto *tmp = sub_scopes[0]->Var(&tmp_name);
 
@@ -334,16 +336,9 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
 class ParallelDoGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    std::vector<std::string> input{kParameters, kInputs};
-    std::vector<std::string> output{kOutputs};
-
     PADDLE_ENFORCE(ctx->HasInputs(kParameters));
-    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
     PADDLE_ENFORCE(ctx->HasInputs(kInputs));
-
-    for (auto &s : output) {
-      PADDLE_ENFORCE(ctx->HasInputs(s));
-    }
+    PADDLE_ENFORCE(ctx->HasInputs(kOutputs));
 
     ctx->SetOutputsDim(framework::GradVarName(kParameters),
                        ctx->GetInputsDim(kParameters));
@@ -360,10 +355,14 @@ class ParallelDoGradOpShapeInference : public framework::InferShapeBase {
       ctx->SetDims({ig_name}, {i_dims[i]});
     }
 
-    if (ctx->HasInputs(kParameters)) {
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
-      ctx->SetOutputsDim(framework::GradVarName(kParameters),
-                         ctx->GetInputsDim(kParameters));
+    auto p_dims = ctx->GetInputsDim(kParameters);
+    auto pg_names = ctx->Outputs(framework::GradVarName(kParameters));
+    for (size_t i = 0; i < pg_names.size(); ++i) {
+      auto &pg_name = pg_names[i];
+      if (pg_name == framework::kEmptyVarName) {
+        continue;
+      }
+      ctx->SetDims({pg_name}, {p_dims[i]});
     }
   }
 };
