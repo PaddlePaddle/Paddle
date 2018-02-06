@@ -89,16 +89,6 @@ TEST(inference, label_semantic_roles) {
   LOG(INFO) << output2.lod();
   LOG(INFO) << output2.dims();
 
-  EXPECT_EQ(output1.dims(), output2.dims());
-  EXPECT_EQ(output1.numel(), output2.numel());
-
-  float err = 1E-3;
-  int count = 0;
-  for (int64_t i = 0; i < output1.numel(); ++i) {
-    if (fabs(output1.data<float>()[i] - output2.data<float>()[i]) > err) {
-      count++;
-    }
-  }
-  EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
+  CheckError<float>(output1, output2);
 #endif
 }

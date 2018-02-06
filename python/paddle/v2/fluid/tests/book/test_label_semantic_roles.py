@@ -127,6 +127,14 @@ def to_lodtensor(data, place):
     return res
 
 
+def create_random_lodtensor(lod, low, high, place):
+    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
+    res = fluid.LoDTensor()
+    res.set(data, place)
+    res.set_lod([lod])
+    return res
+
+
 def train(save_dirname=None):
     # define network topology
     word = fluid.layers.data(
@@ -211,14 +219,14 @@ def train(save_dirname=None):
                 if batch_id != 0:
                     print("second per batch: " + str((time.time() - start_time)
                                                      / batch_id))
-                if save_dirname is None:
-                    exit(0)
                 # Set the threshold low to speed up the CI test
                 if float(pass_precision) > 0.1:
-                    fluid.io.save_inference_model(save_dirname, [
-                        'word_data', 'verb_data', 'ctx_n2_data', 'ctx_n1_data',
-                        'ctx_0_data', 'ctx_p1_data', 'ctx_p2_data', 'mark_data'
-                    ], [feature_out], exe)
+                    if save_dirname is not None:
+                        fluid.io.save_inference_model(save_dirname, [
+                            'word_data', 'verb_data', 'ctx_n2_data',
+                            'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
+                            'ctx_p2_data', 'mark_data'
+                        ], [feature_out], exe)
                     return
 
             batch_id = batch_id + 1
@@ -238,15 +246,15 @@ def infer(save_dirname=None):
     [inference_program, feed_target_names,
      fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    data = [[0, 1, 0, 1], [0, 1, 1, 0, 0, 1]]
-    ts_word = to_lodtensor(data, place)
-    ts_pred = to_lodtensor(data, place)
-    ts_ctx_n2 = to_lodtensor(data, place)
-    ts_ctx_n1 = to_lodtensor(data, place)
-    ts_ctx_0 = to_lodtensor(data, place)
-    ts_ctx_p1 = to_lodtensor(data, place)
-    ts_ctx_p2 = to_lodtensor(data, place)
-    ts_mark = to_lodtensor(data, place)
+    lod = [0, 4, 10]
+    ts_word = create_random_lodtensor(lod, low=0, high=1, place)
+    ts_pred = create_random_lodtensor(lod, low=0, high=1, place)
+    ts_ctx_n2 = create_random_lodtensor(lod, low=0, high=1, place)
+    ts_ctx_n1 = create_random_lodtensor(lod, low=0, high=1, place)
+    ts_ctx_0 = create_random_lodtensor(lod, low=0, high=1, place)
+    ts_ctx_p1 = create_random_lodtensor(lod, low=0, high=1, place)
+    ts_ctx_p2 = create_random_lodtensor(lod, low=0, high=1, place)
+    ts_mark = create_random_lodtensor(lod, low=0, high=1, place)
 
     # Construct feed as a dictionary of {feed_target_name: feed_target_data}
     # and results will contain a list of data corresponding to fetch_targets.
