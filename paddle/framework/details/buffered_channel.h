@@ -56,7 +56,7 @@ template <typename T>
 bool Buffered<T>::Send(T* item) {
   bool ret = false;
   if (closed_) {
-    throw std::runtime_error("Channel is closed!");
+    return ret;
   }
   std::unique_lock<std::mutex> lock(mu_);
   full_cond_var_.wait(lock,

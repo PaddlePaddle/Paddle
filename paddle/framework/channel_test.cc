@@ -66,23 +66,9 @@ TEST(Channel, SendOnClosedChannelPanics){
   auto ch = MakeChannel<size_t>(buffer_size);
   size_t i = 5;
   size_t error_found = 1U;
-  try {
-    EXPECT_EQ(ch->Send(&i), true); // should not block
-  } catch (std::runtime_error &error) {
-    error_found = 2U;
-  } catch(std::exception &error) {
-    error_found = 3U;
-  }
-  EXPECT_EQ(error_found, 1U); // should not have panicked
+  EXPECT_EQ(ch->Send(&i), true); // should not block or panic
   CloseChannel(ch);
-  try {
-    ch->Send(&i); // should throw an exception
-  } catch (std::runtime_error &error) {
-    error_found = 2U;
-  } catch(std::exception &error) {
-    error_found = 3U;
-  }
-  EXPECT_EQ(error_found, 2U); // should panic with runtime_error exception
+  EXPECT_EQ(ch->Send(&i), false); // should panic
   delete ch;
 }
 

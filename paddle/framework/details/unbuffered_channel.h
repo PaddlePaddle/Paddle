@@ -59,8 +59,9 @@ class UnBuffered : public paddle::framework::Channel<T> {
 // be sent from a writer to a reader.
 template <typename T>
 bool UnBuffered<T>::Send(T* data) {
+  bool ret = false;
   if (closed_) {
-    throw std::runtime_error("Channel is closed!");
+    return ret;
   }
   // Prevent other writers from entering
   std::unique_lock<std::recursive_mutex> writer_lock(mu_write_);
@@ -70,7 +71,6 @@ bool UnBuffered<T>::Send(T* data) {
   cv_writer_.wait(cv_lock,
                   [this]() { return reader_found_ == true || closed_; });
   cv_reader_.notify_one();
-  bool ret = false;
   if (!closed_) {
     std::unique_lock<std::mutex> channel_lock(mu_ch_);
     item = data;
