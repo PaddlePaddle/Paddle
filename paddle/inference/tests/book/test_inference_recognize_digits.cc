@@ -58,6 +58,47 @@ void TestInference(const std::string& dirname,
   delete scope;
 }
 
+template <typename T>
+void SetupTensor(paddle::framework::LoDTensor& input,
+                 paddle::framework::DDim dims,
+                 T lower,
+                 T upper) {
+  srand(time(0));
+  float* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
+  for (int i = 0; i < input.numel(); ++i) {
+    input_ptr[i] =
+        (static_cast<T>(rand()) / static_cast<T>(RAND_MAX)) * (upper - lower) +
+        lower;
+  }
+}
+
+template <typename T>
+void CheckError(paddle::framework::LoDTensor& output1,
+                paddle::framework::LoDTensor& output2) {
+  // Check lod information
+  EXPECT_EQ(output1.lod(), output2.lod());
+
+  EXPECT_EQ(output1.dims(), output2.dims());
+  EXPECT_EQ(output1.numel(), output2.numel());
+
+  T err = static_cast<T>(0);
+  if (typeid(T) == typeid(float)) {
+    err = 1E-3;
+  } else if (typeid(T) == typeid(double)) {
+    err = 1E-6;
+  } else {
+    err = 0;
+  }
+
+  size_t count = 0;
+  for (int64_t i = 0; i < output1.numel(); ++i) {
+    if (fabs(output1.data<T>()[i] - output2.data<T>()[i]) > err) {
+      count++;
+    }
+  }
+  EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
+}
+
 TEST(inference, recognize_digits) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
@@ -70,12 +111,10 @@ TEST(inference, recognize_digits) {
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
   paddle::framework::LoDTensor input;
-  srand(time(0));
-  float* input_ptr =
-      input.mutable_data<float>({1, 28, 28}, paddle::platform::CPUPlace());
-  for (int i = 0; i < 784; ++i) {
-    input_ptr[i] = rand() / (static_cast<float>(RAND_MAX));
-  }
+  // Use normilized image pixels as input data,
+  // which should be in the range [-1.0, 1.0].
+  SetupTensor<float>(
+      input, {1, 28, 28}, static_cast<float>(-1), static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -98,16 +137,6 @@ TEST(inference, recognize_digits) {
       dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
-  EXPECT_EQ(output1.dims(), output2.dims());
-  EXPECT_EQ(output1.numel(), output2.numel());
-
-  float err = 1E-3;
-  int count = 0;
-  for (int64_t i = 0; i < output1.numel(); ++i) {
-    if (fabs(output1.data<float>()[i] - output2.data<float>()[i]) > err) {
-      count++;
-    }
-  }
-  EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
+  CheckError<float>(output1, output2);
 #endif
 }
