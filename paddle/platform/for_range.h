@@ -66,9 +66,7 @@ struct ForRange<CUDADeviceContext> {
     int block_size = limit_ <= num_threads ? limit_ : num_threads;
 
     if (block_size < 1024) {
-      int size = 1;
-      while (size < block_size) size <<= 1;
-      block_size = size;
+      block_size = ((blokc_size + 31) >> 5) << 5;
     }
 
     int grid_size = (limit_ + block_size - 1) / block_size;
