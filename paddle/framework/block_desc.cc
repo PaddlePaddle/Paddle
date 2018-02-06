@@ -42,6 +42,30 @@ bool BlockDesc::HasVar(const std::string &name) const {
   return vars_.find(name) != vars_.end();
 }
 
+void BlockDesc::RenameVar(const std::string &old_name,
+                          const std::string &new_name) {
+  if (this->HasVar(old_name)) {
+    auto *var = this->Var(old_name);
+    var->SetName(new_name);
+    vars_[new_name].reset(var);
+    vars_.erase(old_name);
+    // rename inputs and outputs
+    for (const auto &op : ops_) {
+      auto *it = op.get();
+      for (auto in_name : it->InputArgumentNames()) {
+        if (in_name == old_name) {
+          it->RenameInput(old_name, new_name);
+        }
+      }
+      for (auto out_name : it->OutputArgumentNames()) {
+        if (out_name == old_name) {
+          it->RenameOutput(old_name, new_name);
+        }
+      }
+    }
+  }
+}
+
 VarDesc *BlockDesc::FindVarRecursive(const std::string &name) const {
   if (name == kEmptyVarName) return nullptr;
 

@@ -203,7 +203,7 @@ class DistributeTranspiler:
                 block_map[varname] = []
             block_map[varname].append((long(offset), long(size)))
         for varname, splited in block_map.iteritems():
-            orig_var = program.global_block().vars[varname]
+            orig_var = program.global_block().var(varname)
 
             if len(splited) == 1:
                 # rename var to the trainer_id var
