@@ -44,12 +44,6 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
     bool flip = ctx->Attrs().Get<bool>("flip");
 
-    PADDLE_ENFORCE_GT(min_sizes.size(), 0,
-                      "Size of min_sizes must be at least 1.");
-    for (size_t i = 0; i < min_sizes.size(); ++i) {
-      PADDLE_ENFORCE_GT(min_sizes[i], 0, "min_sizes[%d] must be positive.", i);
-    }
-
     std::vector<float> aspect_ratios_vec;
     ExpandAspectRatios(aspect_ratios, flip, aspect_ratios_vec);
 
@@ -64,17 +58,6 @@ class PriorBoxOp : public framework::OperatorWithKernel {
         num_priors += 1;
       }
     }
-
-    PADDLE_ENFORCE_EQ(variances.size(), 4, "Must and only provide 4 variance.");
-    for (size_t i = 0; i < variances.size(); ++i) {
-      PADDLE_ENFORCE_GT(variances[i], 0.0,
-                        "variance[%d] must be greater than 0.", i);
-    }
-
-    const float step_h = ctx->Attrs().Get<float>("step_h");
-    PADDLE_ENFORCE_GT(step_h, 0.0, "step_h should be larger than 0.");
-    const float step_w = ctx->Attrs().Get<float>("step_w");
-    PADDLE_ENFORCE_GT(step_w, 0.0, "step_w should be larger than 0.");
 
     std::vector<int64_t> dim_vec(4);
     dim_vec[0] = input_dims[2];
@@ -106,26 +89,54 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
               "PriorBoxOp. The layout is [H, W, num_priors, 4]. "
               "H is the height of input, W is the width of input, num_priors "
               "is the box count of each position.");
-    AddAttr<std::vector<int>>("min_sizes", "(vector<int>) ",
-                              "List of min sizes of generated prior boxes.");
-    AddAttr<std::vector<int>>("max_sizes", "(vector<int>) ",
-                              "List of max sizes of generated prior boxes.");
+
+    AddAttr<std::vector<int>>("min_sizes",
+                              "(vector<int>) List of min sizes "
+                              "of generated prior boxes.")
+        .AddCustomChecker([](const std::vector<int>& min_sizes) {
+          PADDLE_ENFORCE_GT(min_sizes.size(), 0,
+                            "Size of min_sizes must be at least 1.");
+          for (size_t i = 0; i < min_sizes.size(); ++i) {
+            PADDLE_ENFORCE_GT(min_sizes[i], 0,
+                              "min_sizes[%d] must be positive.", i);
+          }
+        });
+    AddAttr<std::vector<int>>(
+        "max_sizes",
+        "(vector<int>) List of max sizes of generated prior boxes.");
     AddAttr<std::vector<float>>(
-        "aspect_ratios", "(vector<float>) ",
-        "List of aspect ratios of generated prior boxes.");
+        "aspect_ratios",
+        "(vector<float>) List of aspect ratios of generated prior boxes.");
+
     AddAttr<std::vector<float>>(
-        "variances", "(vector<float>) ",
-        "List of variances to be encoded in prior boxes.");
-    AddAttr<bool>("flip", "(bool) ", "Whether to flip aspect ratios.")
+        "variances",
+        "(vector<float>) List of variances to be encoded in prior boxes.")
+        .AddCustomChecker([](const std::vector<float>& variances) {
+          PADDLE_ENFORCE_EQ(variances.size(), 4,
+                            "Must and only provide 4 variance.");
+          for (size_t i = 0; i < variances.size(); ++i) {
+            PADDLE_ENFORCE_GT(variances[i], 0.0,
+                              "variance[%d] must be greater than 0.", i);
+          }
+        });
+    AddAttr<bool>("flip", "(bool) Whether to flip aspect ratios.")
         .SetDefault(true);
-    AddAttr<bool>("clip", "(bool) ", "Whether to clip out-of-boundary boxes.")
+    AddAttr<bool>("clip", "(bool) Whether to clip out-of-boundary boxes.")
         .SetDefault(true);
+
     AddAttr<float>("step_w",
                    "Prior boxes step across width, 0 for auto calculation.")
-        .SetDefault(0.0);
+        .SetDefault(0.0)
+        .AddCustomChecker([](const float& step_w) {
+          PADDLE_ENFORCE_GT(step_w, 0.0, "step_w should be larger than 0.");
+        });
     AddAttr<float>("step_h",
                    "Prior boxes step across height, 0 for auto calculation.")
-        .SetDefault(0.0);
+        .SetDefault(0.0)
+        .AddCustomChecker([](const float& step_h) {
+          PADDLE_ENFORCE_GT(step_h, 0.0, "step_h should be larger than 0.");
+        });
+
     AddAttr<float>("offset",
                    "(float) "
                    "Prior boxes center offset.")

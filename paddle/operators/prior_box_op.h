@@ -25,7 +25,7 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                std::vector<float>& output_aspect_ratior) {
   constexpr float epsilon = 1e-6;
   output_aspect_ratior.clear();
-  output_aspect_ratior.push_back(1.);
+  output_aspect_ratior.push_back(1.0f);
   for (size_t i = 0; i < input_aspect_ratior.size(); ++i) {
     float ar = input_aspect_ratior[i];
     bool already_exist = false;
@@ -38,7 +38,7 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
     if (!already_exist) {
       output_aspect_ratior.push_back(ar);
       if (flip) {
-        output_aspect_ratior.push_back(1. / ar);
+        output_aspect_ratior.push_back(1.0f / ar);
       }
     }
   }
@@ -46,7 +46,7 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
 
 template <typename T>
 struct ClipFunctor {
-  HOSTDEVICE T operator()(T in) const {
+  HOSTDEVICE inline T operator()(T in) const {
     return std::min<T>(std::max<T>(in, 0.), 1.);
   }
 };
@@ -97,6 +97,9 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     boxes->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
 
+    T inv_img_width = 1.0 / img_width;
+    T inv_img_height = 1.0 / img_height;
+
     auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes);
     for (int h = 0; h < feature_height; ++h) {
       for (int w = 0; w < feature_width; ++w) {
@@ -109,13 +112,15 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
           // first prior: aspect_ratio = 1, size = min_size
           box_width = box_height = min_size;
           // xmin
-          e_boxes(h, w, idx, 0) = (center_x - box_width / 2.) / img_width;
+          e_boxes(h, w, idx, 0) = (center_x - box_width * 0.5) * inv_img_width;
           // ymin
-          e_boxes(h, w, idx, 1) = (center_y - box_height / 2.) / img_height;
+          e_boxes(h, w, idx, 1) =
+              (center_y - box_height * 0.5) * inv_img_height;
           // xmax
-          e_boxes(h, w, idx, 2) = (center_x + box_width / 2.) / img_width;
+          e_boxes(h, w, idx, 2) = (center_x + box_width * 0.5) * inv_img_width;
           // ymax
-          e_boxes(h, w, idx, 3) = (center_y + box_height / 2.) / img_height;
+          e_boxes(h, w, idx, 3) =
+              (center_y + box_height * 0.5) * inv_img_height;
 
           idx++;
           if (max_sizes.size() > 0) {
@@ -124,13 +129,17 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
             // size = sqrt(min_size * max_size)
             box_width = box_height = sqrt(min_size * max_size);
             // xmin
-            e_boxes(h, w, idx, 0) = (center_x - box_width / 2.) / img_width;
+            e_boxes(h, w, idx, 0) =
+                (center_x - box_width * 0.5) * inv_img_width;
             // ymin
-            e_boxes(h, w, idx, 1) = (center_y - box_height / 2.) / img_height;
+            e_boxes(h, w, idx, 1) =
+                (center_y - box_height * 0.5) * inv_img_height;
             // xmax
-            e_boxes(h, w, idx, 2) = (center_x + box_width / 2.) / img_width;
+            e_boxes(h, w, idx, 2) =
+                (center_x + box_width * 0.5) * inv_img_width;
             // ymax
-            e_boxes(h, w, idx, 3) = (center_y + box_height / 2.) / img_height;
+            e_boxes(h, w, idx, 3) =
+                (center_y + box_height * 0.5) * inv_img_height;
             idx++;
           }
 
@@ -143,13 +152,17 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
             box_width = min_size * sqrt(ar);
             box_height = min_size / sqrt(ar);
             // xmin
-            e_boxes(h, w, idx, 0) = (center_x - box_width / 2.) / img_width;
+            e_boxes(h, w, idx, 0) =
+                (center_x - box_width * 0.5) * inv_img_width;
             // ymin
-            e_boxes(h, w, idx, 1) = (center_y - box_height / 2.) / img_height;
+            e_boxes(h, w, idx, 1) =
+                (center_y - box_height * 0.5) * inv_img_height;
             // xmax
-            e_boxes(h, w, idx, 2) = (center_x + box_width / 2.) / img_width;
+            e_boxes(h, w, idx, 2) =
+                (center_x + box_width * 0.5) * inv_img_width;
             // ymax
-            e_boxes(h, w, idx, 3) = (center_y + box_height / 2.) / img_height;
+            e_boxes(h, w, idx, 3) =
+                (center_y + box_height * 0.5) * inv_img_height;
             idx++;
           }
         }

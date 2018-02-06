@@ -8,4 +8,3 @@ PaddlePaddle 文档
   howto/index_cn.rst
   api/index_cn.rst
   faq/index_cn.rst
-  mobile/index_cn.rst
