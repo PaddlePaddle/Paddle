@@ -740,15 +740,9 @@ class Block(object):
         """
         if not self.has_var(name):
             raise ValueError("var %s is not in current" % name)
-        orig_var = self.var(name)
-        del self.vars[name]
-        orig_var.name = new_name
-        self.vars[new_name] = orig_var
-        for op in self.ops:
-            if name in op.input_arg_names:
-                op.rename_input(name, new_name)
-            if name in op.output_arg_names:
-                op.rename_output(name, new_name)
+        self.desc.rename_var(name, new_name)
+        self.sync_with_cpp()
+        print("renamed var: ", self.var(new_name))
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
@@ -837,7 +831,7 @@ class Block(object):
         for p in other.iter_parameters():
             assert isinstance(p, Parameter)
             v = self.vars.get(p.name, None)
-            print("var shape to copy", v)
+            print("var shape to copy", v, p)
             if v is None:
                 raise ValueError("copy_param_info_from should be invoked with "
                                  "same topology")
