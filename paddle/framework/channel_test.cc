@@ -23,7 +23,25 @@ using paddle::framework::Channel;
 using paddle::framework::MakeChannel;
 using paddle::framework::CloseChannel;
 
-namespace paddle {
+void RecevingOrderEqualToSendingOrder(Channel<int>* ch) {
+  unsigned sum_send = 0;
+  std::thread t([&]() {
+    for (int i = 0; i < 5; i++) {
+      EXPECT_EQ(ch->Send(&i), true);
+      sum_send += i;
+    }
+  });
+  for (int i = 0; i < 5; i++) {
+    int recv;
+    EXPECT_EQ(ch->Receive(&recv), true);
+    EXPECT_EQ(recv, i);
+  }
+
+  CloseChannel(ch);
+  t.join();
+  EXPECT_EQ(sum_send, 10U);
+  delete ch;
+}
 
 TEST(Channel, MakeAndClose) {
   using paddle::framework::details::Buffered;
@@ -120,26 +138,6 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
 
   CloseChannel(ch);
   t.join();
-  delete ch;
-}
-
-void RecevingOrderEqualToSendingOrder(Channel* ch) {
-  unsigned sum_send = 0;
-  std::thread t([&]() {
-    for (int i = 0; i < 5; i++) {
-      EXPECT_EQ(ch->Send(&i), true);
-      sum_send += i;
-    }
-  });
-  for (int i = 0; i < 5; i++) {
-    int recv;
-    EXPECT_EQ(ch->Receive(&recv), true);
-    EXPECT_EQ(recv, i);
-  }
-
-  CloseChannel(ch);
-  t.join();
-  EXPECT_EQ(sum_send, 10U);
   delete ch;
 }
 
@@ -389,5 +387,4 @@ TEST(Channel, UnbufferedMoreReceiveLessSendTest) {
   EXPECT_EQ(sum_send, 28U);
   EXPECT_EQ(sum_receive, 28U);
   delete ch;
-}
 }
