@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/framework/var_desc.h"
-#include "paddle/framework/block_desc.h"
 #include "paddle/platform/enforce.h"
 
 namespace paddle {
