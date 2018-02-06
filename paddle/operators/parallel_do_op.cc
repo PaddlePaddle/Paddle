@@ -79,7 +79,7 @@ inline void CopyOrShare(const framework::Variable &src,
       dst->GetMutable<LoDTensor>()->set_lod(src.Get<LoDTensor>().lod());
     } else {
       Copy(src.Get<LoDTensor>(), dst_place, dst->GetMutable<LoDTensor>());
-      LoD lod(src.Get<LoDTensor>().lod());
+      framework::LoD lod(src.Get<LoDTensor>().lod());
       lod.CopyToPeer(dst_place);
       dst->GetMutable<LoDTensor>()->set_lod(lod);
     }
@@ -92,7 +92,7 @@ inline void CopyOrShare(const framework::Variable &src,
       dst_sr->set_rows(src_sr.rows());
     } else {
       Copy(src_sr.value(), dst_place, dst_sr->mutable_value());
-      LoD lod(src.Get<LoDTensor>().lod());
+      framework::Vector<int64_t> lod(src_sr.rows());
       lod.CopyToPeer(dst_place);
       dst_sr->set_rows(lod);
     }

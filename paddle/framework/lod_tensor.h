@@ -65,7 +65,7 @@ struct LoD : public std::vector<Vector<size_t>> {
 
   void CopyToPeer(platform::Place place) {
     for (auto it = this->begin(); it != this->end(); ++it) {
-      it->mutable_data(place);
+      it->CopyToPeer(place);
     }
   }
 };
