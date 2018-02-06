@@ -73,3 +73,10 @@ wmt14
 ..  automodule:: paddle.v2.dataset.wmt14
     :members:
     :noindex:
+
+wmt16
++++++
+
+..  automodule:: paddle.v2.dataset.wmt16
+    :members:
+    :noindex:

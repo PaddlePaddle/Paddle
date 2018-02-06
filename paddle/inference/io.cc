@@ -55,7 +55,7 @@ void LoadPersistables(framework::Executor& executor,
       VLOG(3) << "parameter's name: " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());
-      new_var->SetShape(var->Shape());
+      new_var->SetShape(var->GetShape());
       new_var->SetDataType(var->GetDataType());
       new_var->SetType(var->GetType());
       new_var->SetLoDLevel(var->GetLoDLevel());
