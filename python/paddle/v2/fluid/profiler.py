@@ -103,10 +103,10 @@ def profiler(state, sorted_key=None):
     core.enable_profiler(prof_state)
     yield
 
-    if sorted_key not in ['calls', 'total', 'max', 'min', 'ave']:
-        raise ValueError("The state must be in 'calls', 'total', "
-                         "'max', 'min', 'ave'")
     sorted_key = 'default' if sorted_key is None else sorted_key
+    if sorted_key not in ['default', 'calls', 'total', 'max', 'min', 'ave']:
+        raise ValueError("The sorted_key must be None or in 'calls', 'total', "
+                         "'max', 'min' and 'ave'")
     key_map = {
         'default': core.EventSortingKey.kDefault,
         'calls': core.EventSortingKey.kCalls,
