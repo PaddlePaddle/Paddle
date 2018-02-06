@@ -42,17 +42,19 @@ class ConditionalOp : public framework::OperatorBase {
     return retv;
   }
 
-  bool IsScalarFalse(
+  bool ScalarCondition(
       const std::vector<const framework::LoDTensor *> &ips) const {
-    if (ips.size() == 1UL && ips[0]->IsInitialized()) {
-      if (ips[0]->type().hash_code() == typeid(bool).hash_code() &&
-          ips[0]->numel() == 1) {
-        if (ips[0]->data<bool>()[0] == false) {
-          return true;
-        }
-      }
+    if (!(ips.size() == 1UL && ips[0]->IsInitialized())) {
+      PADDLE_THROW("should have one initialized input as condition");
     }
-    return false;
+    if (!(ips[0]->type().hash_code() == typeid(bool).hash_code() &&
+          ips[0]->numel() == 1)) {
+      PADDLE_THROW(
+          "condition input's data type should be bool, "
+          "number should be 1, actual numel is %d",
+          ips[0]->numel());
+    }
+    return ips[0]->data<bool>()[0];
   }
 };
 
@@ -66,12 +68,14 @@ class ConditionalBlockOp : public ConditionalOp {
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
     auto xs = InputTensors(scope);
-    bool need_run = std::all_of(
-        xs.begin(), xs.end(),
-        [](const framework::LoDTensor *t) { return t->numel() != 0; });
 
-    if (IsScalarFalse(xs)) {
-      need_run = false;
+    bool need_run;
+    if (Attr<bool>("is_scalar_condition")) {
+      need_run = ScalarCondition(xs);
+    } else {
+      need_run = std::all_of(
+          xs.begin(), xs.end(),
+          [](const framework::LoDTensor *t) { return t->numel() != 0; });
     }
 
     if (need_run) {
@@ -105,6 +109,10 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
               "scope is std::vector<Scope*>");
     AddAttr<framework::BlockDesc *>(
         "sub_block", "The step block of conditional block operator");
+    AddAttr<bool>("is_scalar_condition",
+                  "the input X is used as scalar "
+                  "condition")
+        .SetDefault(false);
     AddComment(R"DOC(Conditional block operator
 
 Run the sub-block if X is not empty. Params is the other inputs and Out is the
@@ -123,12 +131,14 @@ class ConditionalBlockGradOp : public ConditionalOp {
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
     auto xs = this->InputTensors(scope);
-    bool need_run = std::all_of(
-        xs.begin(), xs.end(),
-        [](const framework::LoDTensor *t) { return t->numel() != 0; });
 
-    if (IsScalarFalse(xs)) {
-      need_run = false;
+    bool need_run;
+    if (Attr<bool>("is_scalar_condition")) {
+      need_run = ScalarCondition(xs);
+    } else {
+      need_run = std::all_of(
+          xs.begin(), xs.end(),
+          [](const framework::LoDTensor *t) { return t->numel() != 0; });
     }
 
     if (need_run) {
@@ -203,6 +213,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetOutput(framework::GradVarName("Params"),
                        InputGrad("Params", false));
     grad_op->SetBlockAttr("sub_block", *this->grad_block_[0]);
+    grad_op->SetAttr("is_scalar_condition", GetAttr("is_scalar_condition"));
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };

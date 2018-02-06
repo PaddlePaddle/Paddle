@@ -1065,11 +1065,12 @@ class ConditionalBlockGuard(BlockGuard):
 
 
 class ConditionalBlock(object):
-    def __init__(self, inputs, name=None):
+    def __init__(self, inputs, is_scalar_condition=False, name=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
                 raise TypeError("Each input should be variable")
         self.inputs = inputs
+        self.is_scalar_condition = is_scalar_condition
         self.helper = LayerHelper('conditional_block', name=name)
 
     def block(self):
@@ -1114,7 +1115,10 @@ class ConditionalBlock(object):
             },
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
-            attrs={'sub_block': inside_block})
+            attrs={
+                'sub_block': inside_block,
+                'is_scalar_condition': self.is_scalar_condition
+            })
 
 
 class Switch(object):
@@ -1130,7 +1134,7 @@ class Switch(object):
             raise ValueError("case should be called inside with")
 
         if len(self.pre_not_conditions) == 0:
-            cond_block = ConditionalBlock([condition])
+            cond_block = ConditionalBlock([condition], is_scalar_condition=True)
             not_cond = logical_not(x=condition)
             self.pre_not_conditions.append(not_cond)
         else:
@@ -1141,7 +1145,8 @@ class Switch(object):
             self.pre_not_conditions.append(new_not_cond)
             cond_block = ConditionalBlock(
                 [logical_and(
-                    x=pre_not_cond, y=condition)])
+                    x=pre_not_cond, y=condition)],
+                is_scalar_condition=True)
 
         return ConditionalBlockGuard(cond_block)
 
@@ -1152,7 +1157,8 @@ class Switch(object):
         if pre_cond_num == 0:
             raise ValueError("there should be at least one condition")
         cond_block = ConditionalBlock(
-            [self.pre_not_conditions[pre_cond_num - 1]])
+            [self.pre_not_conditions[pre_cond_num - 1]],
+            is_scalar_condition=True)
         return ConditionalBlockGuard(cond_block)
 
     def __enter__(self):
