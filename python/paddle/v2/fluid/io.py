@@ -342,6 +342,7 @@ def save_inference_model(dirname,
     prepend_feed_ops(inference_program, feeded_var_names)
     append_fetch_ops(inference_program, fetch_var_names)
 
+    model_file_name = ""
     if save_file_name == None:
         model_file_name = dirname + "/__model__"
     else:
@@ -388,7 +389,12 @@ def load_inference_model(dirname, executor, load_file_name=None):
     if not os.path.isdir(dirname):
         raise ValueError("There is no directory named '%s'", dirname)
 
-    model_file_name = dirname + "/__model__"
+    model_file_name = ""
+    if save_file_name == None:
+        model_file_name = dirname + "/__model__"
+    else:
+        model_file_name = dirname + "/__model_combined__"
+
     with open(model_file_name, "rb") as f:
         program_desc_str = f.read()
 
