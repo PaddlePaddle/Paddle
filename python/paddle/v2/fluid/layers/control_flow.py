@@ -1121,8 +1121,7 @@ class Switch(object):
     def __init__(self, name=None):
         self.helper = LayerHelper('switch', name=name)
         self.inside_scope = False
-        self.conditions = []
-        self.pre_conditions = []
+        self.pre_not_conditions = []
 
     def case(self, condition):
         """create a new block for this condition
@@ -1130,36 +1129,30 @@ class Switch(object):
         if not self.inside_scope:
             raise ValueError("case should be called inside with")
 
-        if len(self.conditions) == 0:
+        if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition])
             not_cond = logical_not(x=condition)
-            self.pre_conditions.append(not_cond)
+            self.pre_not_conditions.append(not_cond)
         else:
-            case_num = len(self.conditions)
-            pre_cond_num = len(self.pre_conditions)
-            if case_num != pre_cond_num:
-                raise ValueError("case_num=" + str(case_num) + " pre_cond_num="
-                                 + str(pre_cond_num))
-            assert case_num == len(self.pre_conditions)
-            pre_not_cond = self.pre_conditions[case_num - 1]
-            not_cond = logical_and(x=pre_not_cond, y=logical_not(x=condition))
-            self.pre_conditions.append(not_cond)
+            pre_cond_num = len(self.pre_not_conditions)
+            pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
+            new_not_cond = logical_and(
+                x=pre_not_cond, y=logical_not(x=condition))
+            self.pre_not_conditions.append(new_not_cond)
             cond_block = ConditionalBlock(
                 [logical_and(
                     x=pre_not_cond, y=condition)])
-        self.conditions.append(condition)
 
         return ConditionalBlockGuard(cond_block)
 
     def default(self):
         """create a default case for this switch
         """
-        if not self.inside_scope:
-            raise ValueError("default should be called inside with")
-        cond_num = len(self.conditions)
-        if cond_num == 0:
+        pre_cond_num = len(self.pre_not_conditions)
+        if pre_cond_num == 0:
             raise ValueError("there should be at least one condition")
-        cond_block = ConditionalBlock([self.pre_conditions[cond_num - 1]])
+        cond_block = ConditionalBlock(
+            [self.pre_not_conditions[pre_cond_num - 1]])
         return ConditionalBlockGuard(cond_block)
 
     def __enter__(self):
