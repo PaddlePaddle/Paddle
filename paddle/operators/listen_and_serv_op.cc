@@ -101,8 +101,8 @@ class ListenAndServOp : public framework::OperatorBase {
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
-    // Recored received sparse variables, so that
-    // we could reset those after each mini-batch
+    // Record received sparse variables, so that
+    // we could reset those after execute optimize program
     std::vector<framework::Variable *> sparse_vars;
     while (!exit_flag) {
       // Get from multiple trainers, we don't care about the order in which
@@ -162,7 +162,8 @@ class ListenAndServOp : public framework::OperatorBase {
       }
 
       // Reset the received sparse variables, the sum operator would not
-      // sum the input selectedrows variables which rows is empty.
+      // sum the input sparse variables which rows is empty at the next
+      // mini-batch.
       // TOOD(Yancey1989): move the reset action into an operator, we couldn't
       // have any hide logic in the operator.
       for (auto &var : sparse_vars) {
