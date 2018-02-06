@@ -25,7 +25,7 @@ class ReadInferShape : public framework::InferShapeBase {
                    "The ReadOp must take a reader as input.");
     PADDLE_ENFORCE(ctx->HasOutputs("Out"),
                    "The ReadOp should be assigned with output.");
-    std::vector<DDim> reader_dims = ctx->GetReaderDims("Reader");
+    std::vector<framework::DDim> reader_dims = ctx->GetReaderDims("Reader");
     std::vector<std::string> out_names = ctx->Outputs("Out");
     PADDLE_ENFORCE_EQ(
         reader_dims.size(), out_names.size(),
@@ -40,12 +40,12 @@ class ReadInferVarType : public framework::VarTypeInference {
                   framework::BlockDesc* block) const override {
     std::string reader_name = op_desc.Input("Reader")[0];
     std::vector<std::string> out_names = op_desc.Output("Out");
-    framework::VarDesc reader = block.FindVarRecursive(reader_name);
-    auto dtypes = reader.GetDataTypes();
+    framework::VarDesc* reader = block->FindVarRecursive(reader_name);
+    auto dtypes = reader->GetDataTypes();
     PADDLE_ENFORCE_EQ(dtypes.size(), out_names.size());
     for (size_t i = 0; i < dtypes.size(); ++i) {
-      faremwork::VarDesc& out = block->FindRecursiveOrCreateVar(out_names[i]);
-      out.SetType(framework::proto::DataType::LOD_TENSOR);
+      framework::VarDesc& out = block->FindRecursiveOrCreateVar(out_names[i]);
+      out.SetType(framework::proto::VarDesc::LOD_TENSOR);
       out.SetDataType(dtypes[i]);
     }
   }
@@ -56,20 +56,18 @@ class ReadOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
-    const framework::ReaderHolder& reader =
-        scope.FindVar(Input("Reader"))->Get<ReaderHolder>();
-    if (!reader.HasNext()) {
-      // what shall we do???
+    framework::ReaderHolder* reader =
+        scope.FindVar(Input("Reader"))->GetMutable<framework::ReaderHolder>();
+    if (!reader->HasNext()) {
       return;
     }
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
-    reader.ReadNext(&ins);
+    reader->ReadNext(&ins);
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
     for (size_t i = 0; i < ins.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
-      PADDLE_ENFORCE_EQ(ins[i].dims(), out->dims());
       out->ShareDataWith(ins[i]);
       out->set_lod(ins[i].lod());
     }
@@ -86,9 +84,13 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
       Read Operator
 
       Execute a given reader once and output data.
-    )DOC")
+    )DOC");
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+REGISTER_OPERATOR(read, ops::ReadOp, ops::ReadInferShape, ops::ReadOpMaker,
+                  paddle::framework::EmptyGradOpMaker, ops::ReadInferVarType);

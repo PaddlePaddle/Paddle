@@ -18,12 +18,30 @@
 namespace paddle {
 namespace operators {
 
+std::vector<framework::DDim> RestoreShapes(const std::vector<int>& shape_concat,
+                                           const std::vector<int>& ranks) {
+  std::vector<framework::DDim> res;
+  int offset = 0;
+  for (int len : ranks) {
+    auto start_it = shape_concat.begin() + offset;
+    auto end_it = start_it + len;
+    res.push_back(framework::make_ddim(std::vector<int>(start_it, end_it)));
+    offset += len;
+  }
+  return res;
+}
+
 // general infershape for file readers
 class CreateFileReaderInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "The output file reader should not be null.");
+    const auto shape_concat =
+        ctx->Attrs().Get<std::vector<int>>("shape_concat");
+    const auto ranks = ctx->Attrs().Get<std::vector<int>>("ranks");
+    std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
+    ctx->SetReaderDims("Out", shapes);
   }
 };
 
@@ -31,10 +49,22 @@ class CreateFileReaderInferShape : public framework::InferShapeBase {
 class CreateDecoratedReaderInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Underlying_reader"),
-                   "Input(Underlying_reader) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("UnderlyingReader"),
+                   "Input(UnderlyingReader) should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "The output decorated reader should not be null.");
+    ctx->SetReaderDims("Out", ctx->GetReaderDims("UnderlyingReader"));
+  }
+};
+
+// general var type inference for all readers
+class CreateReaderInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    std::string reader_name = op_desc.Output("Out")[0];
+    framework::VarDesc* reader = block->FindVarRecursive(reader_name);
+    reader->SetType(framework::proto::VarDesc::READER);
   }
 };
 
@@ -51,15 +81,7 @@ class CreateRandomReaderOp : public framework::OperatorBase {
                       int(shape_concat.size()),
                       "The accumulate of all ranks should be equal to the "
                       "shape concat's length.");
-    std::vector<framework::DDim> shapes;
-    int offset = 0;
-    for (int len : ranks) {
-      auto start_it = shape_concat.begin() + offset;
-      auto end_it = start_it + len;
-      shapes.push_back(
-          framework::make_ddim(std::vector<int>(start_it, end_it)));
-      offset += len;
-    }
+    std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
     out->Reset(new framework::RandomReader<T>(shapes, Attr<float>("min"),
@@ -99,7 +121,7 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
-    const auto& underlying_reader = scope.FindVar(Input("Underlying_reader"))
+    const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
@@ -113,7 +135,7 @@ class CreateShuffleReaderOpMaker : public framework::OpProtoAndCheckerMaker {
   CreateShuffleReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(op_proto, op_checker) {
     AddInput(
-        "Underlying_reader",
+        "UnderlyingReader",
         "(ReaderHolder) The underlying reader for creating a shuffle reader.");
     AddOutput("Out", "(ReaderHolder) The created shuffle reader.");
     AddAttr<int>("buffer_size", "The shuffle buffer size.").GreaterThan(0);
@@ -131,7 +153,7 @@ class CreateBatchReaderOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
-    const auto& underlying_reader = scope.FindVar(Input("Underlying_reader"))
+    const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
@@ -145,7 +167,7 @@ class CreateBatchReaderOpMaker : public framework::OpProtoAndCheckerMaker {
   CreateBatchReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(op_proto, op_checker) {
     AddInput(
-        "Underlying_reader",
+        "UnderlyingReader",
         "(ReaderHolder) The underlying reader for creating a batch reader.");
     AddOutput("Out", "(ReaderHolder) The created batch reader.");
     AddAttr<int>("batch_size",
@@ -167,12 +189,15 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(create_random_reader, ops::CreateRandomReaderOp<float>,
                   ops::CreateFileReaderInferShape,
                   ops::CreateRandomReaderOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+                  paddle::framework::EmptyGradOpMaker,
+                  ops::CreateReaderInferVarType);
 REGISTER_OPERATOR(create_shuffle_reader, ops::CreateShuffleReaderOp,
                   ops::CreateDecoratedReaderInferShape,
                   ops::CreateShuffleReaderOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+                  paddle::framework::EmptyGradOpMaker,
+                  ops::CreateReaderInferVarType);
 REGISTER_OPERATOR(create_batch_reader, ops::CreateBatchReaderOp,
                   ops::CreateDecoratedReaderInferShape,
                   ops::CreateBatchReaderOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+                  paddle::framework::EmptyGradOpMaker,
+                  ops::CreateReaderInferVarType);

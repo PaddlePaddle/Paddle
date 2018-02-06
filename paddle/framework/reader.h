@@ -22,38 +22,35 @@ namespace framework {
 
 class ReaderBase {
  public:
-  virtual void ReadNext(std::vector<LoDtensor>* out) = 0;
-  virtual bool HasNext() const = 0;
-
-  virtual DDim shape(size_t idx) const = 0;
-  virtual std::vector<DDim> shapes() const = 0;
-
-  virtual ~ReaderBase() {}
-};
-
-class FileReader : public ReaderBase {
- public:
-  explicit FileReader(const std::vector<DDim>& shapes) : shapes_(shapes) {
+  explicit ReaderBase(const std::vector<DDim>& shapes) : shapes_(shapes) {
     PADDLE_ENFORCE(!shapes_.empty());
   }
+  virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
+  virtual bool HasNext() const = 0;
 
-  DDim shape(size_t idx) const override;
-  std::vector<DDim> shapes() const override { return shapes_; }
+  DDim shape(size_t idx) const;
+  std::vector<DDim> shapes() const { return shapes_; }
+  void set_shapes(const std::vector<DDim>& shapes) { shapes_ = shapes; }
+
+  virtual ~ReaderBase() {}
 
  protected:
   std::vector<DDim> shapes_;
 };
 
+class FileReader : public ReaderBase {
+ public:
+  explicit FileReader(const std::vector<DDim>& shapes) : ReaderBase(shapes) {}
+};
+
 class DecoratedReader : public ReaderBase {
  public:
-  explicit DecoratedReader(ReaderBase* reader) : reader_(reader) {
+  explicit DecoratedReader(ReaderBase* reader)
+      : ReaderBase(reader->shapes()), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
   bool HasNext() const override { return reader_->HasNext(); }
-
-  DDim shape(size_t idx) const override { return reader_->shape(idx); }
-  std::vector<DDim> shapes() const override { return reader_->shapes(); }
 
  protected:
   ReaderBase* reader_;
@@ -73,9 +70,9 @@ class RandomReader : public FileReader {
     dist_ = std::uniform_real_distribution<float>(min_, max_);
   }
 
-  void ReadNext(std::vector<LoDtensor>* out) override {
-    out.clear();
-    out.reserve(shapes_.size());
+  void ReadNext(std::vector<LoDTensor>* out) override {
+    out->clear();
+    out->reserve(shapes_.size());
     for (const DDim& shape : shapes_) {
       PADDLE_ENFORCE_GE(
           shape.size(), 2,
@@ -88,9 +85,8 @@ class RandomReader : public FileReader {
       for (int64_t i = 0; i < numel; ++i) {
         data[i] = dist_(engine_);
       }
-      out.push_back(out_tensor);
+      out->push_back(out_tensor);
     }
-    return out;
   }
 
   bool HasNext() const override { return true; }
@@ -111,11 +107,11 @@ class ShuffleReader : public DecoratedReader {
     buffer_.reserve(buffer_size);
   }
 
-  void ReadNext(std::vector<LoDtensor>* out) override;
+  void ReadNext(std::vector<LoDTensor>* out) override;
 
  private:
   int buffer_size_;
-  std::vector<std::vector<LoDtensor>> buffer_;
+  std::vector<std::vector<LoDTensor>> buffer_;
   size_t iteration_pos_;
 };
 
@@ -126,11 +122,11 @@ class BatchReader : public DecoratedReader {
     buffer_.reserve(batch_size_);
   }
 
-  void ReadNext(std::vector<LoDtensor>* out) override;
+  void ReadNext(std::vector<LoDTensor>* out) override;
 
  private:
   int batch_size_;
-  std::vector<std::vector<LoDtensor>> buffer_;
+  std::vector<std::vector<LoDTensor>> buffer_;
 };
 
 // The ReaderHolder is used as readers' unified wrapper,
@@ -141,11 +137,14 @@ class ReaderHolder {
 
   ReaderBase* Get() const { return reader_.get(); }
 
-  void ReadNext(std::vector<LoDtensor>* out) { reader_->ReadNext(out); }
+  void ReadNext(std::vector<LoDTensor>* out) { reader_->ReadNext(out); }
   bool HasNext() const { return reader_->HasNext(); }
 
   DDim shape(size_t idx) const { return reader_->shape(idx); }
   std::vector<DDim> shapes() const { return reader_->shapes(); }
+  void set_shapes(const std::vector<DDim>& shapes) {
+    reader_->set_shapes(shapes);
+  }
 
  private:
   std::unique_ptr<ReaderBase> reader_;

@@ -428,13 +428,13 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  std::vector<DDim> GetRepeatedDim(const std::string& name) const override {
+  std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
     Variable* var = scope_.FindVar(name);
     if (var->IsType<ReaderHolder>()) {
       return var->Get<ReaderHolder>().shapes();
     } else {
       PADDLE_THROW(
-          "Only ReaderHolder support 'GetRepeatedDim', but Variable %s's "
+          "Only ReaderHolder support 'GetRepeatedDims', but Variable %s's "
           "type_id is %s.",
           name, var->Type().name());
     }
@@ -449,6 +449,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
     } else {
       PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
                    name, var->Type().name());
+    }
+  }
+
+  void SetRepeatedDims(const std::string& name,
+                       const std::vector<DDim>& dims) override {
+    Variable* var = scope_.FindVar(name);
+    if (var->IsType<ReaderHolder>()) {
+      var->GetMutable<ReaderHolder>()->set_shapes(dims);
+    } else {
+      PADDLE_THROW(
+          "Only ReaderHolder support 'SetRepeatedDims', but Variable %s's "
+          "type_id is %s.",
+          name, var->Type().name());
     }
   }
 

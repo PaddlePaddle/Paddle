@@ -17,7 +17,7 @@
 namespace paddle {
 namespace framework {
 
-DDim FileReader::shape(size_t idx) const {
+DDim ReaderBase::shape(size_t idx) const {
   PADDLE_ENFORCE_LT(
       idx, shapes_.size(),
       "Cannot get the %d'th shape, 'shapes_' only has %d elements.", idx,
@@ -25,15 +25,15 @@ DDim FileReader::shape(size_t idx) const {
   return shapes_[idx];
 }
 
-void ShuffleReader::ReadNext(std::vector<LoDtensor>* out) {
+void ShuffleReader::ReadNext(std::vector<LoDTensor>* out) {
   if (iteration_pos_ >= buffer_.size()) {
     // Reload buffer with new data
     buffer_.clear();
-    buffer_.reverse(buffer_size_);
+    buffer_.reserve(buffer_size_);
     for (int i = 0; i < buffer_size_; ++i) {
       if (reader_->HasNext()) {
-        buffer.push_back(std::vector<LoDTensor>());
-        reader_->ReadNext(&buffer.back());
+        buffer_.push_back(std::vector<LoDTensor>());
+        reader_->ReadNext(&buffer_.back());
       } else {
         break;
       }
@@ -48,19 +48,19 @@ void ShuffleReader::ReadNext(std::vector<LoDtensor>* out) {
   // if buffer_ is empty, the 'out' will return as an empty vector.
 }
 
-void BatchReader::ReadNext(std::vector<LoDtensor>* out) {
+void BatchReader::ReadNext(std::vector<LoDTensor>* out) {
   buffer_.clear();
   buffer_.reserve(batch_size_);
   for (int i = 0; i < batch_size_; ++i) {
     if (reader_->HasNext()) {
-      buffer_.push_back(std::vector<LoDtensor>());
+      buffer_.push_back(std::vector<LoDTensor>());
       reader_->ReadNext(&buffer_.back());
     } else {
       break;
     }
   }
   // Concat instances
-  out.clear();
+  out->clear();
   if (buffer_.empty()) {
     // if buffer_ is empty, the 'out' will return as an empty vector.
     return;
