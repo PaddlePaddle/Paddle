@@ -29,7 +29,14 @@ template <typename DeviceContext, typename T>
 class ElementwisePowKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    ElementwiseComputeEx<PowFunctor<T>, DeviceContext, T>(ctx);
+    using Tensor = framework::Tensor;
+
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* z = ctx.Output<Tensor>("Out");
+    z->mutable_data<T>(ctx.GetPlace());
+    int axis = ctx.Attr<int>("axis");
+    ElementwiseComputeEx<PowFunctor<T>, DeviceContext, T>(ctx, x, y, axis, z);
   }
 };
 

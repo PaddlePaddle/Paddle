@@ -39,10 +39,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasOutputs(const std::string &name) const override;
 
-  DDim GetInputDim(const std::string &name) const override;
-
-  void SetOutputDim(const std::string &name, const DDim &dim) override;
-
   AttrReader Attrs() const override;
 
   const std::vector<std::string> &Inputs(
@@ -444,21 +440,6 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
   return true;
 }
 
-DDim CompileTimeInferShapeContext::GetInputDim(const std::string &name) const {
-  std::vector<DDim> ddims = GetInputsDim(name);
-  auto length = ddims.size();
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Input(%s) should have 1 value, "
-                    "but it has %d now",
-                    name, length);
-  return ddims[0];
-}
-
-void CompileTimeInferShapeContext::SetOutputDim(const std::string &name,
-                                                const DDim &dim) {
-  SetOutputsDim(name, {dim});
-}
-
 AttrReader CompileTimeInferShapeContext::Attrs() const {
   return AttrReader(op_.GetAttrMap());
 }
@@ -477,11 +458,11 @@ DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
   try {
-    auto shape = var->Shape();
+    auto shape = var->GetShape();
     if (shape.empty()) {
       return framework::make_ddim({0UL});
     } else {
-      return framework::make_ddim(var->Shape());
+      return framework::make_ddim(var->GetShape());
     }
   } catch (...) {
     VLOG(5) << "GetDim of variable " << name << " error";

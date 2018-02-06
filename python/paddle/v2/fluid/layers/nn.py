@@ -1231,10 +1231,17 @@ def conv2d(input,
     """
     if stride is None:
         stride = [1, 1]
-    helper = LayerHelper('conv2d', **locals())
-    dtype = helper.input_dtype()
 
     num_channels = input.shape[1]
+
+    l_type = 'conv2d'
+    if (num_channels == groups and num_filters % num_channels == 0 and
+            not use_cudnn):
+        l_type = 'depthwise_conv2d'
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+
     if groups is None:
         num_filter_channels = num_channels
     else:
@@ -1267,7 +1274,7 @@ def conv2d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d',
+        type=l_type,
         inputs={
             'Input': input,
             'Filter': filter_param,
@@ -1478,7 +1485,9 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
-               name=None):
+               name=None,
+               moving_mean_name=None,
+               moving_variance_name=None):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -1508,6 +1517,7 @@ def batch_norm(input,
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
+        name=moving_mean_name,
         dtype=input.dtype,
         shape=param_shape,
         persistable=True,
@@ -1515,6 +1525,7 @@ def batch_norm(input,
     helper.set_variable_initializer(var=mean, initializer=Constant(0.0))
 
     variance = helper.create_global_variable(
+        name=moving_variance_name,
         dtype=input.dtype,
         shape=param_shape,
         persistable=True,
