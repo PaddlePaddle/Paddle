@@ -18,6 +18,7 @@ from tensor import assign, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
+from ops import logical_and, logical_not, logical_or
 
 __all__ = [
     'split_lod_tensor',
@@ -1212,19 +1213,45 @@ class Switch(object):
         self.helper = LayerHelper('switch', name=name)
         self.inside_scope = False
         self.conditions = []
-        self.case_blocks = []
+        self.pre_conditions = []
 
     def case(self, condition):
         """create a new block for this condition
         """
+        if not self.inside_scope:
+            raise ValueError("case should be called inside with")
+
+        if len(self.conditions) == 0:
+            cond_block = ConditionalBlock([condition])
+            not_cond = logical_not(x=condition)
+            self.pre_conditions.append(not_cond)
+        else:
+            case_num = len(self.conditions)
+            pre_cond_num = len(self.pre_conditions)
+            if case_num != pre_cond_num:
+                raise ValueError("case_num=" + str(case_num) + " pre_cond_num="
+                                 + str(pre_cond_num))
+            assert case_num == len(self.pre_conditions)
+            pre_not_cond = self.pre_conditions[case_num - 1]
+            not_cond = logical_and(x=pre_not_cond, y=logical_not(x=condition))
+            self.pre_conditions.append(not_cond)
+            cond_block = ConditionalBlock(
+                [logical_and(
+                    x=pre_not_cond, y=condition)])
         self.conditions.append(condition)
-        cond_block = ConditionalBlock([condition])
+
         return ConditionalBlockGuard(cond_block)
 
     def default(self):
         """create a default case for this switch
         """
-        return DefaultCaseBlockGuard(self)
+        if not self.inside_scope:
+            raise ValueError("default should be called inside with")
+        cond_num = len(self.conditions)
+        if cond_num == 0:
+            raise ValueError("there should be at least one condition")
+        cond_block = ConditionalBlock([self.pre_conditions[cond_num - 1]])
+        return ConditionalBlockGuard(cond_block)
 
     def __enter__(self):
         """
@@ -1238,25 +1265,6 @@ class Switch(object):
         self.inside_scope = False
         if exc_type is not None:
             return False  # re-raise exception
-
-        current_block = self.helper.main_program.current_block()
-
-        cond_num = len(self.conditions)
-        case_block_num = len(self.case_blocks)
-
-        tmp = case_block_num - cond_num
-        if tmp != 0 and tmp != 1:
-            raise ValueError("case_num=%d, cond_num=%d not match",
-                             case_block_num, cond_num)
-
-        step_scope = current_block.create_var(
-            type=core.VarDesc.VarType.STEP_SCOPES)
-        self.helper.append_op(
-            type='switch',
-            inputs={'X': self.conditions,
-                    'ScopeIn': [step_scope]},
-            outputs={'Scope': [step_scope]},
-            attrs={'case_blocks': self.case_blocks})
 
         return True
 
