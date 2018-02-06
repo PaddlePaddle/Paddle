@@ -21,6 +21,7 @@ set(BOOST_URL           "http://sourceforge.net/projects/boost/files/boost/${BOO
 set(BOOST_SOURCES_DIR ${THIRD_PARTY_PATH}/boost)
 set(BOOST_DOWNLOAD_DIR  "${BOOST_SOURCES_DIR}/src/${BOOST_PROJECT}")
 set(BOOST_INCLUDE_DIR "${BOOST_DOWNLOAD_DIR}/${BOOST_TAR}" CACHE PATH "boost include directory." FORCE)
+set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 
 include_directories(${BOOST_INCLUDE_DIR})
 
