@@ -1,0 +1,79 @@
+type: "nn"
+layers {
+  name: "word"
+  type: "data"
+  size: 128
+  active_type: ""
+}
+layers {
+  name: "starts"
+  type: "data"
+  size: 5
+  active_type: ""
+}
+layers {
+  name: "ends"
+  type: "data"
+  size: 5
+  active_type: ""
+}
+layers {
+  name: "__seq_slice_layer_0__"
+  type: "seq_slice"
+  size: 128
+  active_type: ""
+  inputs {
+    input_layer_name: "word"
+  }
+  inputs {
+    input_layer_name: "starts"
+  }
+  inputs {
+    input_layer_name: "ends"
+  }
+}
+layers {
+  name: "__seq_slice_layer_1__"
+  type: "seq_slice"
+  size: 128
+  active_type: ""
+  inputs {
+    input_layer_name: "word"
+  }
+  inputs {
+    input_layer_name: "starts"
+  }
+  select_first: true
+}
+layers {
+  name: "__seq_slice_layer_2__"
+  type: "seq_slice"
+  size: 128
+  active_type: ""
+  inputs {
+    input_layer_name: "word"
+  }
+  inputs {
+    input_layer_name: "ends"
+  }
+  select_first: false
+}
+input_layer_names: "word"
+output_layer_names: "__seq_slice_layer_0__"
+output_layer_names: "__seq_slice_layer_1__"
+output_layer_names: "__seq_slice_layer_2__"
+sub_models {
+  name: "root"
+  layer_names: "word"
+  layer_names: "starts"
+  layer_names: "ends"
+  layer_names: "__seq_slice_layer_0__"
+  layer_names: "__seq_slice_layer_1__"
+  layer_names: "__seq_slice_layer_2__"
+  input_layer_names: "word"
+  output_layer_names: "__seq_slice_layer_0__"
+  output_layer_names: "__seq_slice_layer_1__"
+  output_layer_names: "__seq_slice_layer_2__"
+  is_recurrent_layer_group: false
+}
+

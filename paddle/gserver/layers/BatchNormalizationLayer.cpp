@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/utils/Stat.h"
-#ifndef PADDLE_ONLY_CPU
+#ifdef PADDLE_WITH_CUDA
 #include "hl_batch_transpose.h"
 #endif
 #include "BatchNormalizationLayer.h"
@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 
 REGISTER_LAYER(batch_norm, BatchNormalizationLayer);
-
-const real BatchNormalizationLayer::EPS = 1E-5;
 
 bool BatchNormalizationLayer::init(const LayerMap& layerMap,
                                    const ParameterMap& parameterMap) {
@@ -53,7 +51,7 @@ void BatchNormalizationLayer::calMeanAndStd(const MatrixPtr& mat) {
 
   calMovingMeanAndVar();
 
-  savedInvVar_->subScalar(-EPS);
+  savedInvVar_->subScalar(-epsilon_);
   savedInvVar_->sqrt2(*savedInvVar_);
 }
 
@@ -74,7 +72,7 @@ void BatchNormalizationLayer::setMeanAndStd() {
   savedInvVar_->copyFrom(*(movingVar_->getW()));
   savedInvVar_->downClip(real(0.0));
 
-  savedInvVar_->subScalar(-EPS);
+  savedInvVar_->subScalar(-epsilon_);
   savedInvVar_->sqrt2(*savedInvVar_);
 }
 
@@ -90,7 +88,7 @@ void BatchNormalizationLayer::expandMat(const MatrixPtr& in, MatrixPtr& out) {
   size_t batchSize = in->getHeight();
   CHECK_EQ(out->getHeight(), batchSize * imgPixels_);
   if (useGpu_) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
     LOG(FATAL) << "paddle is compiled only for cpu";
 #else
     batchTranspose(
@@ -127,7 +125,7 @@ void BatchNormalizationLayer::shrinkMat(const MatrixPtr& in, MatrixPtr& out) {
   }
   CHECK_EQ(in->getHeight(), static_cast<size_t>(batchSize * imgPixels_));
   if (useGpu_) {
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
     LOG(FATAL) << "paddle is compiled only for cpu";
 #else
     batchTranspose(

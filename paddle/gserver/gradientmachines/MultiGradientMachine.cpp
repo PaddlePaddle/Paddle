@@ -166,8 +166,18 @@ MultiGradientMachine::MultiGradientMachine(const ModelConfig& config,
 
   outArgStream_ = HPPL_STREAM_1;
 
+  start();
+}
+
+void MultiGradientMachine::start() {
   for (auto& thread : threads_) {
     thread->start();
+  }
+}
+
+void MultiGradientMachine::finish() {
+  for (auto& thread : threads_) {
+    thread->stop();
   }
 }
 
@@ -326,12 +336,6 @@ void MultiGradientMachine::onPassEnd() {
   }
 }
 
-void MultiGradientMachine::finish() {
-  for (auto& thread : threads_) {
-    thread->stop();
-  }
-}
-
 Evaluator* MultiGradientMachine::makeEvaluator() const {
   return threads_[0]->getGradientMachine()->makeEvaluator();
 }
@@ -445,7 +449,7 @@ TrainerThread::TrainerThread(const ModelConfig& config,
 
   gradStream_ = HPPL_STREAM_2;
   valueStream_ = HPPL_STREAM_3;
-  stopping_ = false;
+  stopping_ = true;
   updateCounter_ = 0;
   parameterUpdated_ = false;
 }
@@ -453,6 +457,10 @@ TrainerThread::TrainerThread(const ModelConfig& config,
 TrainerThread::~TrainerThread() { stop(); }
 
 void TrainerThread::start() {
+  if (!stopping_) return;
+
+  stopping_ = false;
+
   gradientMachine_->start();
 
   computeThread_.reset(new std::thread([this]() { computeThread(); }));
@@ -518,7 +526,7 @@ void TrainerThread::computeThread() {
         backward();
         break;
       case MultiGradientMachine::TASK_COPY_IN_ARGS:
-        copyInArgs();
+        batchSize_ = copyInArgs();
         inArgsCopied_ = true;
         multiMachine_->waitForCopyInArgs();
         break;
@@ -593,7 +601,7 @@ void TrainerThread::backward() {
 
 void TrainerThread::backwardCallback(Parameter* para) {
   // CPU parameters are merged in the end
-  if (!para->useGpu()) return;
+  if (!para->useGpu() || para->isStatic()) return;
 
   int paramId = para->getID();
   if (multiMachine_->getNumThreads() == 1) {

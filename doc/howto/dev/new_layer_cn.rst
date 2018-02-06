@@ -37,7 +37,7 @@
 
    \frac{\partial c(y)}{\partial x} = \frac{\partial c(y)}{\partial y} \frac{\partial y}{\partial x}
 
-假设 :math:`z = f(W^T x + b)` ，那么
+假设 :math:`z = W^T x + b` ，那么
 
 .. math::
 

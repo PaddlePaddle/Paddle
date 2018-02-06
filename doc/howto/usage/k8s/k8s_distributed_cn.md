@@ -213,7 +213,7 @@ I1116 09:10:17.123440    50 Util.cpp:130] Calling runInitFunctions
 I1116 09:10:17.123764    50 Util.cpp:143] Call runInitFunctions done.
 [WARNING 2016-11-16 09:10:17,227 default_decorators.py:40] please use keyword arguments in paddle config.
 [INFO 2016-11-16 09:10:17,239 networks.py:1282] The input order is [movie_id, title, genres, user_id, gender, age, occupation, rating]
-[INFO 2016-11-16 09:10:17,239 networks.py:1289] The output order is [__mse_cost_0__]
+[INFO 2016-11-16 09:10:17,239 networks.py:1289] The output order is [__square_error_cost_0__]
 I1116 09:10:17.392917    50 Trainer.cpp:170] trainer mode: Normal
 I1116 09:10:17.613910    50 PyDataProvider2.cpp:257] loading dataprovider dataprovider::process
 I1116 09:10:17.680917    50 PyDataProvider2.cpp:257] loading dataprovider dataprovider::process

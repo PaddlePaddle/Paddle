@@ -15,9 +15,76 @@ limitations under the License. */
 #include "MathFunctions.h"
 #include "hl_matrix_apply.cuh"
 #include "hl_matrix_ops.cuh"
+#include "paddle/utils/DynamicLoader.h"
+
+namespace dynload {
+
+std::once_flag lapack_dso_flag;
+void* lapack_dso_handle = nullptr;
+
+/**
+ * The following macro definition can generate structs
+ * (for each function) to dynamic load lapack routine
+ * via operator overloading.
+ *
+ * note: default dynamic linked libs
+ */
+
+// The argument for stringizing operator is not macro-expanded first.
+// We have to use two levels of macro to do the expansion.
+// See https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html
+#define STR(x) #x
+
+// clang-format off
+#ifndef LAPACK_FOUND
+#define DYNAMIC_LOAD_LAPACK_WRAP(__name)                                       \
+  struct DynLoad__##__name {                                                   \
+    template <typename... Args>                                                \
+    auto operator()(Args... args) -> decltype(__name(args...)) {               \
+      using lapack_func = decltype(__name(args...)) (*)(Args...);              \
+      std::call_once(lapack_dso_flag, GetLapackDsoHandle, &lapack_dso_handle); \
+      void* p_##__name = dlsym(lapack_dso_handle, STR(__name));                \
+      CHECK(p_##__name) << "Cannot find symbol " << STR(__name)                \
+                        << " in liblapack.so";                                 \
+      return reinterpret_cast<lapack_func>(p_##__name)(args...);               \
+    }                                                                          \
+  } __name;  // struct DynLoad__##__name
+#else
+#define DYNAMIC_LOAD_LAPACK_WRAP(__name)                                       \
+  struct DynLoad__##__name {                                                   \
+    template <typename... Args>                                                \
+    auto operator()(Args... args) -> decltype(__name(args...)) {               \
+      return __name(args...);                                                  \
+    }                                                                          \
+  } __name;  // struct DynLoad__##__name
+#endif
+
+#ifdef PADDLE_USE_ATLAS
+  #define  PADDLE_SGETRF  clapack_sgetrf
+  #define  PADDLE_DGETRF  clapack_dgetrf
+  #define  PADDLE_SGETRI  clapack_sgetri
+  #define  PADDLE_DGETRI  clapack_dgetri
+#else
+  #define  PADDLE_SGETRF  LAPACKE_sgetrf
+  #define  PADDLE_DGETRF  LAPACKE_dgetrf
+  #define  PADDLE_SGETRI  LAPACKE_sgetri
+  #define  PADDLE_DGETRI  LAPACKE_dgetri
+#endif
+
+#define LAPACK_ROUTINE_EACH(__macro)       \
+  __macro(PADDLE_SGETRF)                   \
+  __macro(PADDLE_DGETRF)                   \
+  __macro(PADDLE_SGETRI)                   \
+  __macro(PADDLE_DGETRI)
+// clang-format on
+
+LAPACK_ROUTINE_EACH(DYNAMIC_LOAD_LAPACK_WRAP)
+
+}  // namespace dynload
 
 namespace paddle {
 
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
 template <>
 void gemm<float>(const CBLAS_TRANSPOSE transA,
                  const CBLAS_TRANSPOSE transB,
@@ -77,6 +144,7 @@ void gemm<double>(const CBLAS_TRANSPOSE transA,
               C,
               ldc);
 }
+#endif
 
 template <>
 int getrf<float>(const CBLAS_ORDER order,
@@ -85,16 +153,7 @@ int getrf<float>(const CBLAS_ORDER order,
                  float* A,
                  const int lda,
                  int* ipiv) {
-#ifdef PADDLE_USE_LAPACK
-#ifdef PADDLE_USE_ATLAS
-  return clapack_sgetrf(order, M, N, A, lda, ipiv);
-#else
-  return LAPACKE_sgetrf(order, M, N, A, lda, ipiv);
-#endif
-#else
-  LOG(FATAL) << "Not implemented";
-#endif
-  return 0;
+  return dynload::PADDLE_SGETRF(order, M, N, A, lda, ipiv);
 }
 
 template <>
@@ -104,16 +163,7 @@ int getrf<double>(const CBLAS_ORDER order,
                   double* A,
                   const int lda,
                   int* ipiv) {
-#ifdef PADDLE_USE_LAPACK
-#ifdef PADDLE_USE_ATLAS
-  return clapack_dgetrf(order, M, N, A, lda, ipiv);
-#else
-  return LAPACKE_dgetrf(order, M, N, A, lda, ipiv);
-#endif
-#else
-  LOG(FATAL) << "Not implemented";
-#endif
-  return 0;
+  return dynload::PADDLE_DGETRF(order, M, N, A, lda, ipiv);
 }
 
 template <>
@@ -122,16 +172,7 @@ int getri<float>(const CBLAS_ORDER order,
                  float* A,
                  const int lda,
                  const int* ipiv) {
-#ifdef PADDLE_USE_LAPACK
-#ifdef PADDLE_USE_ATLAS
-  return clapack_sgetri(order, N, A, lda, ipiv);
-#else
-  return LAPACKE_sgetri(order, N, A, lda, ipiv);
-#endif
-#else
-  LOG(FATAL) << "Not implemented";
-#endif
-  return 0;
+  return dynload::PADDLE_SGETRI(order, N, A, lda, ipiv);
 }
 
 template <>
@@ -140,18 +181,10 @@ int getri<double>(const CBLAS_ORDER order,
                   double* A,
                   const int lda,
                   const int* ipiv) {
-#ifdef PADDLE_USE_LAPACK
-#ifdef PADDLE_USE_ATLAS
-  return clapack_dgetri(order, N, A, lda, ipiv);
-#else
-  return LAPACKE_dgetri(order, N, A, lda, ipiv);
-#endif
-#else
-  LOG(FATAL) << "Not implemented";
-#endif
-  return 0;
+  return dynload::PADDLE_DGETRI(order, N, A, lda, ipiv);
 }
 
+#ifndef PADDLE_USE_EIGEN_FOR_BLAS
 template <>
 void axpy<float>(const int n, const float alpha, const float* x, float* y) {
   cblas_saxpy(n, alpha, x, 1, y, 1);
@@ -171,8 +204,9 @@ template <>
 double dotProduct<double>(const int n, const double* x, const double* y) {
   return cblas_ddot(n, x, 1, y, 1);
 }
+#endif
 
-#ifdef PADDLE_USE_MKL
+#if defined(PADDLE_USE_MKLML)
 
 template <>
 void vExp<float>(const int n, const float* a, float* r) {
@@ -213,36 +247,6 @@ template <>
 void vAdd<double>(const int n, const double* a, const double* b, double* r) {
   vdAdd(n, a, b, r);
 }
-
-template <>
-void vInvSqrt<float>(const int n, const float* a, float* r) {
-  vsInvSqrt(n, a, r);
-}
-
-template <>
-void vInvSqrt<double>(const int n, const double* a, double* r) {
-  vdInvSqrt(n, a, r);
-}
-
-template <>
-void vLog1p<float>(const int n, const float* a, float* r) {
-  vsLog1p(n, a, r);
-}
-
-template <>
-void vLog1p<double>(const int n, const double* a, double* r) {
-  vdLog1p(n, a, r);
-}
-
-template <>
-void vTanh<float>(const int n, const float* a, float* r) {
-  vsTanh(n, a, r);
-}
-
-template <>
-void vTanh<double>(const int n, const double* a, double* r) {
-  vdTanh(n, a, r);
-}
 #else
 
 DEFINE_MATRIX_BINARY_OP(vExp, b = std::exp(a));
@@ -257,29 +261,6 @@ template <class T>
 void vLog(const int n, const T* a, T* r) {
   hl_cpu_apply_binary_op<T, binary::vLog<T>, 0, 0>(
       binary::vLog<T>(), const_cast<T*>(a), r, 1, n, n, n);
-}
-
-DEFINE_MATRIX_BINARY_OP(vInvSqrt, b = 1.0f / std::sqrt(a));
-template <class T>
-void vInvSqrt(const int n, const T* a, T* r) {
-  hl_cpu_apply_binary_op<T, binary::vInvSqrt<T>, 0, 0>(
-      binary::vInvSqrt<T>(), const_cast<T*>(a), r, 1, n, n, n);
-}
-
-DEFINE_MATRIX_BINARY_OP(vLog1p, b = std::log(1.0f + a));
-template <class T>
-void vLog1p(const int n, const T* a, T* r) {
-  hl_cpu_apply_binary_op<T, binary::vLog1p<T>, 0, 0>(
-      binary::vLog1p<T>(), const_cast<T*>(a), r, 1, n, n, n);
-}
-
-DEFINE_MATRIX_BINARY_OP(vTanh, T tmp = -2.0 * a;
-                        tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
-                        b = 2.0 / (1.0 + std::exp(tmp)) - 1.0);
-template <class T>
-void vTanh(const int n, const T* a, T* r) {
-  hl_cpu_apply_binary_op<T, binary::vTanh<T>, 0, 0>(
-      binary::vTanh<T>(), const_cast<T*>(a), r, 1, n, n, n);
 }
 
 DEFINE_MATRIX_BINARY_PARAMETER_OP(vPow, ONE_PARAMETER, b = std::pow(a, p));
@@ -307,17 +288,41 @@ template void vExp(const int n, const float* a, float* r);
 template void vExp(const int n, const double* a, double* r);
 template void vLog(const int n, const float* a, float* r);
 template void vLog(const int n, const double* a, double* r);
-template void vInvSqrt(const int n, const double* a, double* r);
-template void vInvSqrt(const int n, const float* a, float* r);
-template void vLog1p(const int n, const float* a, float* r);
-template void vLog1p(const int n, const double* a, double* r);
-template void vTanh(const int n, const float* a, float* r);
-template void vTanh(const int n, const double* a, double* r);
 template void vPow(const int n, const float* a, const float b, float* r);
 template void vPow(const int n, const double* a, const double b, double* r);
 template void vAdd(const int n, const float* a, const float* b, float* r);
 template void vAdd(const int n, const double* a, const double* b, double* r);
 
 #endif
+
+DEFINE_MATRIX_BINARY_OP(vInvSqrt, b = 1.0f / std::sqrt(a));
+template <class T>
+void vInvSqrt(const int n, const T* a, T* r) {
+  hl_cpu_apply_binary_op<T, binary::vInvSqrt<T>, 0, 0>(
+      binary::vInvSqrt<T>(), const_cast<T*>(a), r, 1, n, n, n);
+}
+
+DEFINE_MATRIX_BINARY_OP(vLog1p, b = std::log(1.0f + a));
+template <class T>
+void vLog1p(const int n, const T* a, T* r) {
+  hl_cpu_apply_binary_op<T, binary::vLog1p<T>, 0, 0>(
+      binary::vLog1p<T>(), const_cast<T*>(a), r, 1, n, n, n);
+}
+
+DEFINE_MATRIX_BINARY_OP(vTanh, T tmp = -2.0 * a;
+                        tmp = (tmp > EXP_MAX_INPUT) ? EXP_MAX_INPUT : tmp;
+                        b = 2.0 / (1.0 + std::exp(tmp)) - 1.0);
+template <class T>
+void vTanh(const int n, const T* a, T* r) {
+  hl_cpu_apply_binary_op<T, binary::vTanh<T>, 0, 0>(
+      binary::vTanh<T>(), const_cast<T*>(a), r, 1, n, n, n);
+}
+
+template void vInvSqrt(const int n, const double* a, double* r);
+template void vInvSqrt(const int n, const float* a, float* r);
+template void vLog1p(const int n, const float* a, float* r);
+template void vLog1p(const int n, const double* a, double* r);
+template void vTanh(const int n, const float* a, float* r);
+template void vTanh(const int n, const double* a, double* r);
 
 }  // namespace paddle

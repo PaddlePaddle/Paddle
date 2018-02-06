@@ -64,11 +64,7 @@ ModelConfig* TrainerConfig::getModelConfig() const {
 
 ParameterConfig::ParameterConfig() : m(new ParameterConfigPrivate()) {}
 
-ParameterConfig::~ParameterConfig() {
-  if (m) {
-    delete m;
-  }
-}
+ParameterConfig::~ParameterConfig() { delete m; }
 
 ParameterConfig* ParameterConfig::createParameterConfigFromParameterSharedPtr(
     void* ptr) {
@@ -98,11 +94,7 @@ void* ParameterConfig::getRawPtr() { return m->getConfigPtr(); }
 
 OptimizationConfig::OptimizationConfig() : m(new OptimizationConfigPrivate()) {}
 
-OptimizationConfig::~OptimizationConfig() {
-  if (m) {
-    delete m;
-  }
-}
+OptimizationConfig::~OptimizationConfig() { delete m; }
 
 std::string OptimizationConfig::toProtoString() {
   return m->getConfig().SerializeAsString();

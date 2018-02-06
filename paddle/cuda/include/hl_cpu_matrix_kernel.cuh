@@ -17,10 +17,9 @@ limitations under the License. */
 
 #include <stdio.h>
 #include "hl_base.h"
-#if defined(__ARM_NEON__) || defined(__ARM_NEON)
-#include "hl_neon_matrix_kernel.cuh"
-#else
-#include "hl_sse_matrix_kernel.cuh"
+
+#ifndef __CUDA_ARCH__
+#include "hl_cpu_matrix_kernel_detail.cuh"
 #endif
 
 /**
@@ -111,35 +110,6 @@ void hl_cpu_apply_quaternary_op(Op op,
                      C_h[i*ldc + j],
                      D_h[i*ldd + j]);
     }
-  }
-}
-
-template <class Agg, class Op, class Saver>
-void hl_matrix_row_op(Agg agg, Op op, Saver sv,
-                      int dimM, int dimN,
-                      real *dst, int ld,
-                      real *A, int lda) {
-  for (int i = 0; i < dimM; i++) {
-    real tmp = agg.init();
-    for (int j = 0; j < dimN; j++) {
-        tmp = agg(tmp, op(A[i * lda + j]));
-    }
-    dst[i*ld] = sv(dst[i*ld], tmp);
-  }
-}
-
-template <class Agg, class Op, class Saver>
-void hl_matrix_row_op(Agg agg, Op op, Saver sv,
-                      int dimM, int dimN,
-                      real *dst, int ld,
-                      real *A, int lda,
-                      real *B, int ldb) {
-  for (int i = 0; i < dimM; i++) {
-    real tmp = agg.init();
-    for (int j = 0; j < dimN; j++) {
-        tmp = agg(tmp, op(A[i * lda + j], B[i * ldb + j]));
-    }
-    dst[i*ld] = sv(dst[i*ld], tmp);
   }
 }
 

@@ -1,12 +1,20 @@
-import py_paddle.swig_paddle as swig_api
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import paddle.trainer_config_helpers.config_parser_utils as config_parser_utils
 import paddle.trainer_config_helpers.optimizers as v1_optimizers
-"""
-Optimizers(update equation) for SGD method.
-
-TODO(yuyang18): Complete comments.
-"""
+from paddle.proto.OptimizerConfig_pb2 import OptimizerConfig
 
 __all__ = [
     'Momentum', 'Adam', 'Adamax', 'AdaGrad', 'DecayedAdaGrad', 'AdaDelta',
@@ -16,6 +24,7 @@ __all__ = [
 
 class Optimizer(object):
     def __init__(self, **kwargs):
+        import py_paddle.swig_paddle as swig_api
         if 'batch_size' in kwargs:
             del kwargs['batch_size']  # not important for python library.
 
@@ -34,46 +43,90 @@ class Optimizer(object):
         For each optimizer(SGD, Adam), GradientMachine should enable different
         buffers.
         """
+        import py_paddle.swig_paddle as swig_api
         tmp = swig_api.ParameterOptimizer.create(self.__opt_conf__)
         assert isinstance(tmp, swig_api.ParameterOptimizer)
         return tmp.getParameterTypes()
 
-    def create_local_updater(self):
+    def __create_local_updater__(self):
+        import py_paddle.swig_paddle as swig_api
         return swig_api.ParameterUpdater.createLocalUpdater(self.__opt_conf__)
 
-    def create_remote_updater(self, pass_num):
-        return swig_api.ParameterUpdater.createRemoteUpdater(self.__opt_conf__,
-                                                             pass_num)
+    def __create_remote_updater__(self, pass_num, use_sparse_updater):
+        import py_paddle.swig_paddle as swig_api
+        return swig_api.ParameterUpdater.createRemoteUpdater(
+            self.__opt_conf__, pass_num, use_sparse_updater)
+
+    def __create_new_remote_updater__(self, pserver_spec, use_etcd):
+        import py_paddle.swig_paddle as swig_api
+        return swig_api.ParameterUpdater.createNewRemoteUpdater(
+            self.__opt_conf__, pserver_spec, use_etcd)
+
+    def create_updater(self, is_local, num_passes, use_sparse_updater,
+                       pserver_spec, use_etcd):
+        """
+        create proper parameter_updater by configuration.
+        :param is_local: create local or remote parameter updater
+        :param num_passes: remote parameter updater will use this to config
+        parameter server.
+        :param use_sparse_updater: when use remote updater, if some parameter is
+        sparse, updater should do some extra thing:
+
+        ..  code-block:: python
+
+            if use_sparse_remote_updater:
+                        gradient_machine.prefetch(in_args)
+                        parameter_updater.getParametersRemote()
+
+        :param pserver_spec: pserver location, eg: localhost:3000, if use etcd,
+        pserver_spec should be the etcd endpoints, eg: http://localhost:2379
+        :return: parameter_updater
+        """
+        if is_local:
+            parameter_updater = self.__create_local_updater__()
+        else:
+            if pserver_spec is None:
+                parameter_updater = self.__create_remote_updater__(
+                    num_passes, use_sparse_updater)
+            else:
+                parameter_updater = self.__create_new_remote_updater__(
+                    pserver_spec, use_etcd)
+        return parameter_updater
 
 
 class Momentum(Optimizer):
     """
-    SGD Optimizer.
+    Momentum Optimizer.
 
-    SGD is an optimization method, trying to find a neural network that
-    minimize the "cost/error" of it by iteration. In paddle's implementation
-    SGD Optimizer is synchronized, which means all gradients will be wait to
-    calculate and reduced into one gradient, then do optimize operation.
-
-    The neural network consider the learning problem of minimizing an objective
-    function, that has the form of a sum
+    When sparse=False, the momentum update formula is as follows:
 
     ..  math::
 
-        Q(w) = \\sum_{i}^{n} Q_i(w)
+        v_{t} &= k * v_{t-1} - \\gamma_t (g_{t} + \\lambda w_{t-1}) \\\\
+        w_{t} &= w_{t-1} + v_{t} \\\\
 
-    The value of function Q sometimes is the cost of neural network (Mean
-    Square Error between prediction and label for example). The function Q is
-    parametrised by w, the weight/bias of neural network. And weights is what to
-    be learned. The i is the i-th observation in (trainning) data.
+    where, :math:`k` is momentum, :math:`\\lambda` is decay rate,
+    :math:`\\gamma_t` is learning rate at the t'th iteration.
+    :math:`w_{t}` is the weight as the t'th iteration.
+    And the :math:`v_{t}` is the history momentum variable.
 
-    So, the SGD method will optimize the weight by
+    When sparse=True, the update scheme:
 
     ..  math::
 
-        w = w - \\eta \\nabla Q(w) = w - \\eta \\sum_{i}^{n} \\nabla Q_i(w)
+        \\alpha_t &= \\alpha_{t-1} / k \\\\
+        \\beta_t &= \\beta_{t-1} / (1 + \\lambda \\gamma_t) \\\\
+        u_t &= u_{t-1} - \\alpha_t \\gamma_t g_t \\\\
+        v_t &= v_{t-1} + \\tau_{t-1} \\alpha_t \\gamma_t g_t \\\\
+        \\tau_t &= \\tau_{t-1} + \\beta_t / \\alpha_t
+    
+    where :math:`k` is momentum, :math:`\\lambda` is decay rate, 
+    :math:`\\gamma_t` is learning rate at the t'th iteration.
 
-    where :math:`\\eta` is learning rate. And :math:`n` is batch size.
+    :param momentum: the momentum factor.
+    :type momentum: float
+    :param sparse: with sparse support or not, False by default.
+    :type sparse: bool
     """
 
     def __init__(self, momentum=None, sparse=False, **kwargs):
@@ -93,7 +146,7 @@ class Adam(Optimizer):
 
         m(w, t) & = \\beta_1 m(w, t-1) + (1 - \\beta_1) \\nabla Q_i(w) \\\\
         v(w, t) & = \\beta_2 v(w, t-1) + (1 - \\beta_2)(\\nabla Q_i(w)) ^2 \\\\
-        w & = w - \\frac{\\eta}{\\sqrt{v(w,t) + \\epsilon}}
+        w & = w - \\frac{\\eta m(w, t)}{\\sqrt{v(w,t) + \\epsilon}}
 
     :param beta1: the :math:`\\beta_1` in equation.
     :type beta1: float
@@ -232,6 +285,7 @@ ModelAverage = v1_optimizers.ModelAverage
 L2Regularization = v1_optimizers.L2Regularization
 
 if __name__ == '__main__':
+    import py_paddle.swig_paddle as swig_api
     swig_api.initPaddle('--use_gpu=false')
     for opt in [
             Momentum(), Adam(), Adamax(), AdaGrad(), DecayedAdaGrad(),

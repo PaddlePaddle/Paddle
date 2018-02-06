@@ -37,7 +37,7 @@ TEST(PyDataProvider, py_fill_slots) {
   config.clear_files();
   std::string dataFile = "gserver/tests/pyDataProvider/pyDataProviderList";
   config.set_files(dataFile);
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   bool useGpu = false;
 #else
   bool useGpu = true;
@@ -71,7 +71,7 @@ TEST(PyDataProvider, py_fill_nest_slots) {
   std::string dataFile = "gserver/tests/pyDataProvider/pyDataProviderList";
   config.set_files(dataFile);
   EXPECT_EQ(config.IsInitialized(), true);
-#ifdef PADDLE_ONLY_CPU
+#ifndef PADDLE_WITH_CUDA
   bool useGpu = false;
 #else
   bool useGpu = true;

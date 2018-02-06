@@ -15,8 +15,9 @@
 """
 
 __all__ = [
-    "BasePoolingType", "MaxPooling", "AvgPooling", "CudnnMaxPooling",
-    "CudnnAvgPooling", "SumPooling", "SquareRootNPooling"
+    "BasePoolingType", "MaxPooling", "AvgPooling", "MaxWithMaskPooling",
+    "CudnnMaxPooling", "CudnnAvgPooling", "CudnnAvgInclPadPooling",
+    "SumPooling", "SquareRootNPooling"
 ]
 
 
@@ -55,6 +56,19 @@ class MaxPooling(BasePoolingType):
         self.output_max_index = output_max_index
 
 
+class MaxWithMaskPooling(BasePoolingType):
+    """
+    MaxWithMask pooling.
+
+    Not only return the very large values for each dimension in sequence or time steps,
+    but also the location indices of found maxinum values.
+
+    """
+
+    def __init__(self):
+        BasePoolingType.__init__(self, "max-pool-with-mask")
+
+
 class CudnnMaxPooling(BasePoolingType):
     """
     Cudnn max pooling only support GPU. Return the maxinum value in the
@@ -73,6 +87,16 @@ class CudnnAvgPooling(BasePoolingType):
 
     def __init__(self):
         BasePoolingType.__init__(self, "cudnn-avg-pool")
+
+
+class CudnnAvgInclPadPooling(BasePoolingType):
+    """
+    Cudnn average pooling only support GPU. Return the average value in the
+    pooling window taking into account the padding cells.
+    """
+
+    def __init__(self):
+        BasePoolingType.__init__(self, "cudnn-avg-incl-pad-pool")
 
 
 class AvgPooling(BasePoolingType):

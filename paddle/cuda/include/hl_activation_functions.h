@@ -40,18 +40,18 @@ public:
 namespace gpu {
 static __device__ Active<real>::forward forward[] = HPPL_ACTIVE_FUNCTION;
 static __device__ Active<real>::backward backward[] = HPPL_ACTIVE_FUNCTION;
-}
+}  // namespace gpu
 #else
 namespace cpu {
 static Active<real>::forward forward[] = HPPL_ACTIVE_FUNCTION;
 static Active<real>::backward backward[] = HPPL_ACTIVE_FUNCTION;
-}
+}  // namespace cpu
 
 #ifdef __AVX__
 namespace avx {
 static Active<__m256>::forward forward[] = HPPL_ACTIVE_FUNCTION;
 static Active<__m256>::backward backward[] = HPPL_ACTIVE_FUNCTION;
-}
+}  // namespace avx
 #endif
 #endif
 
