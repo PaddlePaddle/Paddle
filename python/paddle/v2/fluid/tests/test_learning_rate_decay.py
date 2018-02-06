@@ -21,6 +21,7 @@ import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.learning_rate_decay as lr_decay
+import paddle.v2.fluid.debuger as debugger
 
 
 def exponential_decay(learning_rate,
@@ -73,6 +74,14 @@ def polynomial_decay(learning_rate,
            ((1 - float(global_step) / float(decay_steps)) ** power) + end_learning_rate
 
 
+def piecewise_decay(global_step, boundaries, values):
+    assert len(boundaries) + 1 == len(values)
+    for i in range(len(boundaries)):
+        if global_step < boundaries[i]:
+            return values[i]
+    return values[len(values) - 1]
+
+
 class TestLearningRateDecay(unittest.TestCase):
     def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
         global_step = layers.create_global_var(
@@ -90,6 +99,7 @@ class TestLearningRateDecay(unittest.TestCase):
                                        feed=[],
                                        fetch_list=[global_step, decayed_lr])
             python_decayed_lr = python_decay_fn(global_step=step, **kwargs)
+            print(str(python_decayed_lr) + ":" + str(lr_val[0]))
             self.assertAlmostEqual(python_decayed_lr, lr_val[0])
 
     def test_decay(self):
@@ -122,6 +132,10 @@ class TestLearningRateDecay(unittest.TestCase):
                 "learning_rate": 1.0,
                 "decay_steps": 5,
                 "cycle": False
+            }),
+            (piecewise_decay, lr_decay.piecewise_decay, {
+                "boundaries": [3, 6, 9],
+                "values": [0.1, 0.2, 0.3, 0.4]
             }),
         ]
 

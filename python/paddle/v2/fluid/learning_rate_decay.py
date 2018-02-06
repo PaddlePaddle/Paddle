@@ -173,3 +173,48 @@ def polynomial_decay(learning_rate,
 
     return (learning_rate - end_learning_rate) * \
            ((1 - global_step / decay_steps) ** power) + end_learning_rate
+
+
+def piecewise_decay(global_step, boundaries, values):
+    """Applies piecewise decay to the initial learning rate.
+
+    ```python
+    boundaries = [10000, 20000]
+    values = [1.0, 0.5, 0.1]
+
+    if step < 10000:
+        learning_rate = 1.0
+    elif step >= 10000 and step < 20000:
+        learning_rate = 0.5
+    else:
+        learning_rate = 0.1
+    ```
+    """
+
+    if len(values) - len(boundaries) != 1:
+        raise ValueError("len(values) - len(boundaries) should be 1")
+
+    if not isinstance(global_step, Variable):
+        raise ValueError("global_step is required for inverse_time_decay.")
+
+    lr = layers.create_global_var(
+        shape=[1],
+        value=0.0,
+        dtype='float32',
+        persistable=True,
+        name="learning_rate")
+
+    with layers.Switch() as switch:
+        for i in range(len(boundaries)):
+            boundary_val = layers.fill_constant(
+                shape=[1], dtype='float32', value=float(boundaries[i]))
+            value_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=float(values[i]))
+            with switch.case(layers.less_than(global_step, boundary_val)):
+                layers.assign(lr, value_var)
+        last_value_var = layers.fill_constant(
+            shape=[1], dtype='float32', value=float(values[len(values) - 1]))
+        with switch.default():
+            layers.assign(lr, last_value_var)
+
+    return lr
