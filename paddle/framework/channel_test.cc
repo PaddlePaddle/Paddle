@@ -65,24 +65,24 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
 TEST(Channel, ReceiverGetsZeroOnClosedChannel) {
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
-  std::thread t([&]() {
-    // Try to write more than buffer size.
-    size_t out;
-    for (size_t i = 0; i < 12; ++i) {
-      ch->Receive(&out);
-      if (i < buffer_size)
-        EXPECT_EQ(out, i);  // should block after 10 iterations
-      else
-        EXPECT_EQ(out, 0U); // after close Channel is called, expected value is 0
-    }
-  });
 
-  for (size_t i = 0; i < buffer_size; ++i) {
+  for (size_t i = 1; i <= buffer_size; ++i) {
     EXPECT_EQ(ch->Send(&i), true);  // sending should not block
   }
 
   CloseChannel(ch);
-  t.join();
+
+  // Now try receiving for more number of times than buffer size
+  // after channel is closed
+  int out;
+  for (size_t i = 1; i <= 12; ++i) {
+    ch->Receive(&out);
+    if (i <= buffer_size)
+      EXPECT_EQ(out, i);  // same value as was written by senders
+    else
+      EXPECT_EQ(out, 0U); // 0 after all elements are emptied from a closed channel
+  }
+
   delete ch;
 }
 
