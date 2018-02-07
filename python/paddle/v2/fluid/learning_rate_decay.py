@@ -195,7 +195,7 @@ def piecewise_decay(global_step, boundaries, values):
         raise ValueError("len(values) - len(boundaries) should be 1")
 
     if not isinstance(global_step, Variable):
-        raise ValueError("global_step is required for inverse_time_decay.")
+        raise ValueError("global_step is required for piecewise_decay.")
 
     lr = layers.create_global_var(
         shape=[1],
