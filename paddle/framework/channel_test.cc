@@ -60,14 +60,11 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   delete ch;
 }
 
-// This tests that a buffered channel must return false
+// This tests that a  channel must return false
 // on send and receive performed after closing the channel.
 // Receive will only return false after close when queue is empty
-TEST(Channel, ClosedBufferedChannelPanics) {
-  const size_t buffer_size = 10;
+void ClosedChannelSendReceivePanics(Channel<size_t> *ch) {
   const size_t data = 5;
-  auto ch = MakeChannel<size_t>(buffer_size);
-
   std::thread send_thread{[&]() {
     size_t i = data;
     EXPECT_EQ(ch->Send(&i), true);  // should not block
@@ -83,9 +80,8 @@ TEST(Channel, ClosedBufferedChannelPanics) {
   recv_thread.join();
 
   // After closing send should return false. Receive should
-  // also return false because the queue is empty.
+  // also return false as there is no data in queue.
   CloseChannel(ch);
-
   send_thread = std::thread{[&]() {
     size_t i = data;
     EXPECT_EQ(ch->Send(&i), false);  // should return false
@@ -98,45 +94,18 @@ TEST(Channel, ClosedBufferedChannelPanics) {
 
   send_thread.join();
   recv_thread.join();
+}
+
+TEST(Channel, ClosedBufferedChannelPanics) {
+  size_t buffer_size = 10;
+  auto ch = MakeChannel<size_t>(buffer_size);
+  ClosedChannelSendReceivePanics(ch);
   delete ch;
 }
 
-// This tests that an unbuffered channel return false
-// on send and receive performed after closing the channel
 TEST(Channel, ClosedUnBufferedChannelPanics) {
-  const size_t data = 5;
   auto ch = MakeChannel<size_t>(0);
-
-  std::thread send_thread{[&]() {
-    size_t i = data;
-    EXPECT_EQ(ch->Send(&i), true);  // should not block and return true
-  }};
-
-  std::thread recv_thread{[&]() {
-    size_t i;
-    EXPECT_EQ(ch->Receive(&i), true);  // should not block and return true
-    EXPECT_EQ(i, data);
-  }};
-
-  send_thread.join();
-  recv_thread.join();
-
-  // After closing send should return false. Receive should
-  // also return false because the queue is empty.
-  CloseChannel(ch);
-
-  send_thread = std::thread{[&]() {
-    size_t i = data;
-    EXPECT_EQ(ch->Send(&i), false);  // should return false
-  }};
-  recv_thread = std::thread{[&]() {
-    size_t i;
-    // should return false because channel is closed and queue is empty
-    EXPECT_EQ(ch->Receive(&i), false);
-  }};
-
-  send_thread.join();
-  recv_thread.join();
+  ClosedChannelSendReceivePanics(ch);
   delete ch;
 }
 
