@@ -43,7 +43,6 @@ TEST(inference, label_semantic_roles) {
   // Run inference on CPU
   TestInference<paddle::platform::CPUPlace, float>(
       dirname, cpu_feeds, cpu_fetchs1);
-  LOG(INFO) << output1.lod();
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -54,7 +53,6 @@ TEST(inference, label_semantic_roles) {
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace, float>(
       dirname, cpu_feeds, cpu_fetchs2);
-  LOG(INFO) << output2.lod();
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);

@@ -47,8 +47,6 @@ def train(use_cuda, save_dirname):
 
     PASS_NUM = 100
     for pass_id in range(PASS_NUM):
-        fluid.io.save_persistables(exe, "./fit_a_line.model/")
-        fluid.io.load_persistables(exe, "./fit_a_line.model/")
         for data in train_reader():
             avg_loss_value, = exe.run(fluid.default_main_program(),
                                       feed=feeder.feed(data),
