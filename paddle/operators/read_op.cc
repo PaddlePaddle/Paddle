@@ -59,7 +59,10 @@ class ReadOp : public framework::OperatorBase {
     framework::ReaderHolder* reader =
         scope.FindVar(Input("Reader"))->GetMutable<framework::ReaderHolder>();
     if (!reader->HasNext()) {
-      return;
+      reader->ReInit();
+      PADDLE_ENFORCE(
+          reader->HasNext(),
+          "Reader can not read the next data even it has been re-initialized.");
     }
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
