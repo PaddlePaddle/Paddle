@@ -45,8 +45,7 @@ class EditDistanceKernel : public framework::OpKernel<T> {
     *seq_num_data = static_cast<int64_t>(num_strs);
 
     out_t->Resize({static_cast<int64_t>(num_strs), 1});
-    out_t->mutable_data<float>(ctx.GetPlace());
-    auto out = out_t->data<T>();
+    auto out = out_t->mutable_data<T>(ctx.GetPlace());
 
     T distance = 0.0;
     for (size_t num = 0; num < num_strs; ++num) {
@@ -83,11 +82,8 @@ class EditDistanceKernel : public framework::OpKernel<T> {
       }
 
       if (normalized) {
-        PADDLE_ENFORCE(n > 0,
-                       "The reference string (#%d) cannot be empty "
-                       "when Attr(normalized) is enabled.",
-                       n);
-        distance = distance / n;
+        auto max_len = std::max(m, n);
+        distance = max_len == 0 ? 0 : (distance / std::max(m, n));
       }
       out[num] = distance;
     }
