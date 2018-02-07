@@ -28,6 +28,8 @@ class ReaderBase {
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
   virtual bool HasNext() const = 0;
 
+  virtual void ReInit() = 0;
+
   DDim shape(size_t idx) const;
   std::vector<DDim> shapes() const { return shapes_; }
   void set_shapes(const std::vector<DDim>& shapes) { shapes_ = shapes; }
@@ -52,6 +54,8 @@ class DecoratedReader : public ReaderBase {
 
   bool HasNext() const override { return reader_->HasNext(); }
 
+  void ReInit() override { reader_->ReInit(); }
+
  protected:
   ReaderBase* reader_;
 };
@@ -59,9 +63,9 @@ class DecoratedReader : public ReaderBase {
 // file readers
 
 template <typename T>
-class RandomReader : public FileReader {
+class RandomDataGenerator : public FileReader {
  public:
-  RandomReader(const std::vector<DDim>& shapes, float min, float max)
+  RandomDataGenerator(const std::vector<DDim>& shapes, float min, float max)
       : FileReader(shapes), min_(min), max_(max) {
     PADDLE_ENFORCE_LE(
         min, max, "'min' shouldn't be greater than 'max'.(%f vs %f)", min, max);
@@ -90,6 +94,8 @@ class RandomReader : public FileReader {
   }
 
   bool HasNext() const override { return true; }
+
+  void ReInit() override { return; }
 
  private:
   float min_;
@@ -139,6 +145,7 @@ class ReaderHolder {
 
   void ReadNext(std::vector<LoDTensor>* out) { reader_->ReadNext(out); }
   bool HasNext() const { return reader_->HasNext(); }
+  void ReInit() { reader_->ReInit(); }
 
   DDim shape(size_t idx) const { return reader_->shape(idx); }
   std::vector<DDim> shapes() const { return reader_->shapes(); }

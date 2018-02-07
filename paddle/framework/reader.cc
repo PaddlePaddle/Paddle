@@ -38,6 +38,8 @@ void ShuffleReader::ReadNext(std::vector<LoDTensor>* out) {
         break;
       }
     }
+    // TODO(fengjiayi): 'std::random_shuffle' can be very slow. It needs to be
+    // optimize.
     std::random_shuffle(buffer_.begin(), buffer_.end());
     iteration_pos_ = 0;
   }
