@@ -52,6 +52,7 @@ ExternalProject_Add(
                     -DWITH_TORCH=OFF
                     -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
                     -DBUILD_SHARED=ON
+                    -DBUILD_TESTS=OFF
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     ${EXTERNAL_OPTIONAL_ARGS}

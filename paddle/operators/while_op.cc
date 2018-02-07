@@ -53,6 +53,8 @@ class WhileOp : public framework::OperatorBase {
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
+    PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
+                   "Condition of while op must in CPU memory.");
     while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
@@ -99,6 +101,9 @@ class WhileGradOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
@@ -205,6 +210,8 @@ class WhileGradOp : public framework::OperatorBase {
         sum_op->Run(cur_scope, dev_place);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
+      dev_ctx.Wait();
+      const_cast<framework::Scope &>(scope).DeleteScope(&cur_scope);
     }
   }
 };
