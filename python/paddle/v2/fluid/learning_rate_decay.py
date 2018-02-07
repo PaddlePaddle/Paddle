@@ -15,7 +15,10 @@
 import layers
 from framework import Variable
 
-__all__ = ['exponential_decay', 'natural_exp_decay', 'inverse_time_decay']
+__all__ = [
+    'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
+    'polynomial_decay', 'piecewise_decay'
+]
 """
 When training a model, it's often useful to decay the
 learning rate during training process, this is called
