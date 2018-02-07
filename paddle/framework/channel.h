@@ -23,8 +23,8 @@ namespace framework {
 template <typename T>
 class Channel {
  public:
-  virtual void Send(T*) = 0;
-  virtual void Receive(T*) = 0;
+  virtual bool Send(T*) = 0;
+  virtual bool Receive(T*) = 0;
   virtual size_t Cap() = 0;
   virtual void Close() = 0;
   virtual ~Channel() {}
