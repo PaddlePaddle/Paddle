@@ -5,6 +5,6 @@ HOW TO
   :maxdepth: 1
 
   cmd_parameter/index_en.rst
-  cluster/cluster_train_en.md
+  cluster/index_en.rst
   rnn/index_en.rst
   optimization/gpu_profiling_en.rst
