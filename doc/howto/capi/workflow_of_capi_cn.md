@@ -1,4 +1,4 @@
-## C-API 使用流程
+## C-API使用流程
 
 这篇文档介绍 PaddlePaddle C-API 整体使用流程。
 

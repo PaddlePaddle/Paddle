@@ -1,39 +1,6 @@
-# Distributed Training
-
-## Introduction
-
-In this article, we'll explain how to run distributed training jobs with PaddlePaddle on different types of clusters. The diagram below shows the main architecture of a distributed trainning job:
-
-<img src="https://user-images.githubusercontent.com/13348433/31772146-41523d84-b511-11e7-8a12-a69fd136c283.png" width="500">
-
-- Data shard: training data will be split into multiple partitions, trainers use the partitions of the whole dataset to do the training job.
-- Trainer: each trainer reads the data shard, and train the neural network. Then the trainer will upload calculated "gradients" to parameter servers, and wait for parameters to be optimized on the parameter server side. When that finishes, the trainer download optimized parameters and continues its training.
-- Parameter server: every parameter server stores part of the whole neural network model data. They will do optimization calculations when gradients are uploaded from trainers, and then send updated parameters to trainers.
-
-PaddlePaddle can support both synchronize stochastic gradient descent (SGD) and asynchronous SGD.
-
-When training with synchronize SGD, PaddlePaddle uses an internal "synchronize barrier" which makes gradients update and parameter download in strict order. On the other hand, asynchronous SGD won't wait for all trainers to finish upload at a single step, this will increase the parallelism of distributed training: parameter servers do not depend on each other, they'll do parameter optimization concurrently. Parameter servers will not wait for trainers, so trainers will also do their work concurrently. But asynchronous SGD will introduce more randomness and noises in the gradient.
-
-## Preparations
-1. Prepare your computer cluster. It's normally a bunch of Linux servers connected by LAN. Each server will be assigned a unique IP address. The computers in the cluster can be called "nodes".
-2. Install PaddlePaddle on every node. If you are going to take advantage of GPU cards, you'll also need to install proper driver and CUDA libraries. To install PaddlePaddle please read [this build and install](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/index_en.html) document. We strongly recommend using [Docker installation](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/docker_install_en.html).
-
-After installation, you can check the version by typing the below command (run a docker container  if using docker: `docker run -it paddlepaddle/paddle:[tag] /bin/bash`):
-
-```bash
-$ paddle version
-PaddlePaddle 0.10.0rc, compiled with
-    with_avx: ON
-    with_gpu: OFF
-    with_double: OFF
-    with_python: ON
-    with_rdma: OFF
-    with_timer: OFF
-```
-
-We'll take `doc/howto/usage/cluster/src/word2vec` as an example to introduce distributed training using PaddlePaddle v2 API.
-
 ## Command-line arguments
+
+We'll take `doc/howto/cluster/src/word2vec` as an example to introduce distributed training using PaddlePaddle v2 API.
 
 ### Starting parameter server
 
@@ -171,21 +138,3 @@ Your workspace may looks like:
 
 - `train_data_dir`: containing training data. Mount from storage service or copy trainning data to here.
 - `test_data_dir`: containing testing data.
-
-## Use cluster platforms or cluster management tools
-
-PaddlePaddle supports running jobs on several platforms including:
-- [Kubernetes](http://kubernetes.io) open-source system for automating deployment, scaling, and management of containerized applications from Google.
-- [OpenMPI](https://www.open-mpi.org) Mature high performance parallel computing framework.
-- [Fabric](http://www.fabfile.org) A cluster management tool. Write scripts to submit jobs or manage the cluster.
-
-We'll introduce cluster job management on these platforms. The examples can be found under [cluster_train_v2](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/scripts/cluster_train_v2).
-
-These cluster platforms provide API or environment variables for training processes, when the job is dispatched to different nodes. Like node ID, IP or total number of nodes etc.
-
-## Use different clusters
-
-  - [fabric](fabric_en.md)
-  - [openmpi](openmpi_en.md)
-  - [kubernetes](k8s_en.md)
-  - [kubernetes on AWS](k8s_aws_en.md)
