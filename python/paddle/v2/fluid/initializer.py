@@ -14,13 +14,36 @@
 
 import framework
 import numpy as np
+import contextlib
 
 __all__ = [
-    'Constant',
-    'Uniform',
-    'Normal',
-    'Xavier',
+    'Constant', 'Uniform', 'Normal', 'Xavier', 'force_init_on_cpu',
+    'init_on_cpu'
 ]
+
+_force_init_on_cpu_ = False
+
+
+def force_init_on_cpu():
+    return _force_init_on_cpu_
+
+
+@contextlib.contextmanager
+def init_on_cpu():
+    """
+    Switch program with `with` statement
+
+    Examples:
+        >>> with init_on_cpu():
+        >>>   step = layers.create_global_var()
+
+    """
+    global _force_init_on_cpu_
+
+    pre_state = force_init_on_cpu()
+    _force_init_on_cpu_ = True
+    yield
+    _force_init_on_cpu_ = pre_state
 
 
 class Initializer(object):

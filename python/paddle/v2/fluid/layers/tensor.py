@@ -16,7 +16,7 @@ from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
-from ..initializer import Constant
+from ..initializer import Constant, force_init_on_cpu
 from ..core import DataType
 import numpy
 
@@ -261,7 +261,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             'shape': shape,
             'dtype': out.dtype,
             'value': float(value),
-            'force_cpu': force_cpu
+            'force_cpu': force_cpu or force_init_on_cpu()
         })
     out.stop_gradient = True
     return out
