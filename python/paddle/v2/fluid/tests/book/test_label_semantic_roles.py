@@ -18,7 +18,9 @@ import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
 import paddle.v2.fluid as fluid
+import contextlib
 import time
+import unittest
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -135,7 +137,7 @@ def create_random_lodtensor(lod, place, low, high):
     return res
 
 
-def train(save_dirname=None):
+def train(use_cuda, save_dirname=None):
     # define network topology
     word = fluid.layers.data(
         name='word_data', shape=[1], dtype='int64', lod_level=1)
@@ -183,8 +185,8 @@ def train(save_dirname=None):
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    # place = fluid.CPUPlace()
-    place = fluid.CUDAPlace(0)
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     feeder = fluid.DataFeeder(
         feed_list=[
             word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
@@ -232,12 +234,11 @@ def train(save_dirname=None):
             batch_id = batch_id + 1
 
 
-def infer(save_dirname=None):
+def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
-    # place = fluid.CPUPlace()
-    place = fluid.CUDAPlace(0)
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
     # Use fluid.io.load_inference_model to obtain the inference program desc,
@@ -287,7 +288,35 @@ def infer(save_dirname=None):
     print("Inference results: ", np_data)
 
 
-if __name__ == '__main__':
+def main(use_cuda):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+
+    # Directory for saving the trained model
     save_dirname = "label_semantic_roles.inference.model"
-    train(save_dirname)
-    infer(save_dirname)
+
+    train(use_cuda, save_dirname)
+    infer(use_cuda, save_dirname)
+
+
+class TestLabelSemanticRoles(unittest.TestCase):
+    def test_cuda(self):
+        with self.scope_prog_guard():
+            main(use_cuda=True)
+
+    def test_cpu(self):
+        with self.scope_prog_guard():
+            main(use_cuda=False)
+
+    @contextlib.contextmanager
+    def scope_prog_guard(self):
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        scope = fluid.core.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(prog, startup_prog):
+                yield
+
+
+if __name__ == '__main__':
+    unittest.main()
