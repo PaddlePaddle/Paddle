@@ -248,7 +248,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
                       const std::vector<framework::Scope *> &sub_scopes,
                       const platform::PlaceList &places) const {
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
-      VLOG(10) << "Accumulating " << s;
+      VLOG(3) << "Accumulating " << s;
       if (s == framework::kEmptyVarName) continue;
       std::string tmp_name;
       auto *tmp = sub_scopes[0]->Var(&tmp_name);
@@ -260,7 +260,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
             framework::AttributeMap{});
-        VLOG(3) << sum_op->DebugStringEx(sub_scopes[0]);
+        VLOG(10) << sum_op->DebugStringEx(sub_scopes[0]);
         sum_op->Run(*sub_scopes[0], places[0]);
         WaitOnPlace(places[0]);
       }
