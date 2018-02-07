@@ -16,6 +16,8 @@ import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import contextlib
 import unittest
+import math
+import sys
 
 
 def main(use_cuda):
@@ -58,6 +60,8 @@ def main(use_cuda):
             print(avg_loss_value)
             if avg_loss_value[0] < 10.0:
                 return
+            if math.isnan(float(avg_loss_value)):
+                sys.exit("got NaN loss, training failed.")
     raise AssertionError("Fit a line cost is too large, {0:2.2}".format(
         avg_loss_value[0]))
 

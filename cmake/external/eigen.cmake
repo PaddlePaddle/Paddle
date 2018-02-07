@@ -28,9 +28,3 @@ endif()
 add_dependencies(eigen3 extern_eigen3)
 
 LIST(APPEND external_project_dependencies eigen3)
-
-IF(NOT WITH_C_API AND WITH_FLUID)
-    INSTALL(FILES ${EIGEN_INCLUDE_DIR}/Eigen/Core DESTINATION third_party/eigen3/Eigen)
-    INSTALL(DIRECTORY ${EIGEN_INCLUDE_DIR}/Eigen/src DESTINATION third_party/eigen3/Eigen)
-    INSTALL(DIRECTORY ${EIGEN_INCLUDE_DIR}/unsupported/Eigen DESTINATION third_party/eigen3/unsupported)
-ENDIF()

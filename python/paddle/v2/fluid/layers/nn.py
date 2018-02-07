@@ -92,7 +92,7 @@ def fc(input,
 
     .. math::
 
-        Out = Act({\sum_{i=0}^{N-1}W_iX_i + b})
+        Out = Act({\sum_{i=0}^{N-1}X_iW_i + b})
 
     In the above equation:
 

@@ -57,10 +57,13 @@ size_t VarDesc::GetTensorDescNum() const {
 
 void VarDesc::SetShapes(
     const std::vector<std::vector<int64_t>> &multiple_dims) {
-  PADDLE_ENFORCE_EQ(multiple_dims.size(), GetTensorDescNum(),
-                    "The number of given shapes(%d) doesn't equal to the "
-                    "number of sub tensor.",
-                    multiple_dims.size(), GetTensorDescNum());
+  if (multiple_dims.size() != GetTensorDescNum()) {
+    VLOG(3) << "WARNING: The number of given shapes(" << multiple_dims.size()
+            << ") doesn't match the existing tensor number("
+            << GetTensorDescNum()
+            << "). The Reader is going to be reinitialized.";
+    SetTensorDescNum(multiple_dims.size());
+  }
   std::vector<proto::TensorDesc *> tensors = mutable_tensor_descs();
   for (size_t i = 0; i < multiple_dims.size(); ++i) {
     VectorToRepeated(multiple_dims[i], tensors[i]->mutable_dims());
@@ -87,10 +90,14 @@ void VarDesc::SetDataType(proto::DataType data_type) {
 
 void VarDesc::SetDataTypes(
     const std::vector<proto::DataType> &multiple_data_type) {
-  PADDLE_ENFORCE_EQ(multiple_data_type.size(), GetTensorDescNum(),
-                    "The number of given data types(%d) doesn't equal to the "
-                    "number of sub tensor.",
-                    multiple_data_type.size(), GetTensorDescNum());
+  if (multiple_data_type.size() != GetTensorDescNum()) {
+    VLOG(3) << "WARNING: The number of given data types("
+            << multiple_data_type.size()
+            << ") doesn't match the existing tensor number("
+            << GetTensorDescNum()
+            << "). The Reader is going to be reinitialized.";
+    SetTensorDescNum(multiple_data_type.size());
+  }
   std::vector<proto::TensorDesc *> tensor_descs = mutable_tensor_descs();
   for (size_t i = 0; i < multiple_data_type.size(); ++i) {
     tensor_descs[i]->set_data_type(multiple_data_type[i]);
@@ -127,10 +134,14 @@ void VarDesc::SetLoDLevel(int32_t lod_level) {
 }
 
 void VarDesc::SetLoDLevels(const std::vector<int32_t> &multiple_lod_level) {
-  PADDLE_ENFORCE_EQ(multiple_lod_level.size(), GetTensorDescNum(),
-                    "The number of given data types(%d) doesn't equal to the "
-                    "number of sub tensor.",
-                    multiple_lod_level.size(), GetTensorDescNum());
+  if (multiple_lod_level.size() != GetTensorDescNum()) {
+    VLOG(3) << "WARNING: The number of given lod_levels("
+            << multiple_lod_level.size()
+            << ") doesn't match the existing tensor number("
+            << GetTensorDescNum()
+            << "). The Reader is going to be reinitialized.";
+    SetTensorDescNum(multiple_lod_level.size());
+  }
   switch (desc_.type()) {
     case proto::VarDesc::READER: {
       size_t i = 0;

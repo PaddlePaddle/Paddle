@@ -16,15 +16,15 @@ limitations under the License. */
 #include <time.h>
 #include <sstream>
 #include "gflags/gflags.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/inference/io.h"
+#include "test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
 template <typename Place, typename T, bool IsCombined>
-void TestInference(const std::string& dirname,
-                   const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
-                   std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
+void TestInferenceWithCombine(
+    const std::string& dirname,
+    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
+    std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
   // 1. Define place, executor and scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
@@ -70,47 +70,6 @@ void TestInference(const std::string& dirname,
   delete scope;
 }
 
-template <typename T>
-void SetupTensor(paddle::framework::LoDTensor& input,
-                 paddle::framework::DDim dims,
-                 T lower,
-                 T upper) {
-  srand(time(0));
-  float* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
-  for (int i = 0; i < input.numel(); ++i) {
-    input_ptr[i] =
-        (static_cast<T>(rand()) / static_cast<T>(RAND_MAX)) * (upper - lower) +
-        lower;
-  }
-}
-
-template <typename T>
-void CheckError(paddle::framework::LoDTensor& output1,
-                paddle::framework::LoDTensor& output2) {
-  // Check lod information
-  EXPECT_EQ(output1.lod(), output2.lod());
-
-  EXPECT_EQ(output1.dims(), output2.dims());
-  EXPECT_EQ(output1.numel(), output2.numel());
-
-  T err = static_cast<T>(0);
-  if (typeid(T) == typeid(float)) {
-    err = 1E-3;
-  } else if (typeid(T) == typeid(double)) {
-    err = 1E-6;
-  } else {
-    err = 0;
-  }
-
-  size_t count = 0;
-  for (int64_t i = 0; i < output1.numel(); ++i) {
-    if (fabs(output1.data<T>()[i] - output2.data<T>()[i]) > err) {
-      count++;
-    }
-  }
-  EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
-}
-
 TEST(inference, recognize_digits) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
@@ -135,7 +94,7 @@ TEST(inference, recognize_digits) {
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
-  TestInference<paddle::platform::CPUPlace, float, false>(
+  TestInferenceWithCombine<paddle::platform::CPUPlace, float, false>(
       dirname, cpu_feeds, cpu_fetchs1);
   LOG(INFO) << output1.dims();
 
@@ -145,7 +104,7 @@ TEST(inference, recognize_digits) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
-  TestInference<paddle::platform::CUDAPlace, float, false>(
+  TestInferenceWithCombine<paddle::platform::CUDAPlace, float, false>(
       dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
@@ -177,7 +136,7 @@ TEST(inference, recognize_digits_combine) {
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
-  TestInference<paddle::platform::CPUPlace, float, true>(
+  TestInferenceWithCombine<paddle::platform::CPUPlace, float, true>(
       dirname, cpu_feeds, cpu_fetchs1);
   LOG(INFO) << output1.dims();
 
@@ -187,7 +146,7 @@ TEST(inference, recognize_digits_combine) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
-  TestInference<paddle::platform::CUDAPlace, float, true>(
+  TestInferenceWithCombine<paddle::platform::CUDAPlace, float, true>(
       dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
