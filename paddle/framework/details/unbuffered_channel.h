@@ -23,6 +23,13 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+// Four of the properties of UnBuffered Channel:
+// - A send to a channel blocks temporarily until a receive from the
+// channel or the channel is closed.
+// - A receive from a channel blocks temporarily until a send to the
+// channel or the channel is closed.
+// - A send to a closed channel returns false immediately.
+// - A receive from a closed channel returns false immediately.
 template <typename T>
 class UnBuffered : public paddle::framework::Channel<T> {
   friend Channel<T>* paddle::framework::MakeChannel<T>(size_t);
