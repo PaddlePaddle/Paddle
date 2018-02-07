@@ -67,7 +67,7 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
 // Receive will only return false after close when queue is empty.
 // By creating separate threads for sending and receiving, we make this
 // function able to test both buffered and unbuffered channels.
-void SendReceiveClosedChannelPanics(Channel<size_t> *ch) {
+void SendReceiveWithACloseChannelShouldPanic(Channel<size_t> *ch) {
   const size_t data = 5;
   std::thread send_thread{[&]() {
     size_t i = data;
@@ -103,13 +103,13 @@ void SendReceiveClosedChannelPanics(Channel<size_t> *ch) {
 TEST(Channel, SendReceiveClosedBufferedChannelPanics) {
   size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
-  SendReceiveClosedChannelPanics(ch);
+  SendReceiveWithACloseChannelShouldPanic(ch);
   delete ch;
 }
 
 TEST(Channel, SendReceiveClosedUnBufferedChannelPanics) {
   auto ch = MakeChannel<size_t>(0);
-  SendReceiveClosedChannelPanics(ch);
+  SendReceiveWithACloseChannelShouldPanic(ch);
   delete ch;
 }
 
