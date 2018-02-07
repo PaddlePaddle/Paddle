@@ -20,20 +20,32 @@ include(ExternalProject)
 
 set(NCCL_SOURCE_DIR ${THIRD_PARTY_PATH}/nccl)
 
-include_directories(${NCCL_SOURCE_DIR}/src/extern_nccl/src)
+# https://github.com/PaddlePaddle/Paddle/issues/8195
+# Note: nccl2.1.4 seems works well on cuda9, but not compatible with cuda8
+# TODO(dzhwinter): disable the NCCL DSO temporarily, should be removed
+# also the commented out code in nccl.h
+set(WITH_DSO OFF)
 
 if(WITH_DSO)
+  # If we use DSO, we use system default nccl.h
+  set(NCCL_ROOT "/usr" CACHE PATH "NCCL ROOT")
+  find_path(NCCL_INCLUDE_DIR nccl.h
+    PATHS ${NCCL_ROOT} ${NCCL_ROOT}/include
+    $ENV{NCCL_ROOT} $ENV{NCCL_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
+    NO_DEFAULT_PATH
+    )
   # If we use DSO, we do not build nccl, just download the dependencies
   set(NCCL_BUILD_COMMAND "")
   set(NCCL_INSTALL_COMMAND "")
   set(NCCL_INSTALL_DIR "")
 else()
   # otherwise, we build nccl and link it.
+  include_directories(${NCCL_SOURCE_DIR}/src/extern_nccl/src)
   set(NCCL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/nccl)
   # Note: cuda 8.0 is needed to make nccl
   # When cuda is not installed on the system directory, need to set CUDA_HOME to your cuda root
-  set(NCCL_BUILD_COMMAND "make -j 8")
-  set(NCCL_INSTALL_COMMAND  "make install PREFIX=${NCCL_INSTALL_DIR}")
+  set(NCCL_BUILD_COMMAND make -j 8)
+  set(NCCL_INSTALL_COMMAND  make install PREFIX=${NCCL_INSTALL_DIR})
 endif()
 
 ExternalProject_Add(
@@ -44,6 +56,7 @@ ExternalProject_Add(
     PREFIX          "${NCCL_SOURCE_DIR}"
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
+    BUILD_IN_SOURCE 1
     BUILD_COMMAND     "${NCCL_BUILD_COMMAND}"
     INSTALL_COMMAND   "${NCCL_INSTALL_COMMAND}"
     INSTALL_DIR       "${NCCL_INSTALL_DIR}"

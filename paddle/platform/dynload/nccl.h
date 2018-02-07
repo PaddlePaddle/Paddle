@@ -27,6 +27,7 @@ namespace dynload {
 extern std::once_flag nccl_dso_flag;
 extern void* nccl_dso_handle;
 
+/*
 #ifdef PADDLE_USE_DSO
 extern void LoadNCCLDSO();
 
@@ -42,6 +43,8 @@ extern void LoadNCCLDSO();
   };                                                             \
   extern DynLoad__##__name __name
 #else
+#endif
+*/
 #define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name) \
   struct DynLoad__##__name {                   \
     template <typename... Args>                \
@@ -50,13 +53,19 @@ extern void LoadNCCLDSO();
     }                                          \
   };                                           \
   extern DynLoad__##__name __name
-#endif
+#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP_NO_RETURN(__name) \
+  struct DynLoad__##__name {                             \
+    template <typename... Args>                          \
+    void operator()(Args... args) {                      \
+      __name(args...);                                   \
+    }                                                    \
+  };                                                     \
+  extern DynLoad__##__name __name
 
 #define NCCL_RAND_ROUTINE_EACH(__macro) \
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
-  __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \
   __macro(ncclCommCuDevice);            \
   __macro(ncclCommUserRank);            \
@@ -69,6 +78,8 @@ extern void LoadNCCLDSO();
   __macro(ncclGetErrorString);
 
 NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+
+DECLARE_DYNAMIC_LOAD_NCCL_WRAP_NO_RETURN(ncclCommDestroy);
 
 }  // namespace dynload
 }  // namespace platform
