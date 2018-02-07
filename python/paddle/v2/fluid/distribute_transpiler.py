@@ -469,6 +469,9 @@ class DistributeTranspiler:
                 if not isinstance(vars, list):
                     vars = [vars]
                 for var in vars:
+                    # FIXME(Yancey1989): need to merge server program and 
+                    # optimize sub program, so that we couldn't create
+                    # the variable twice.
                     program.global_block().create_var(
                         name=var.name,
                         persistable=var.persistable,
@@ -527,6 +530,7 @@ class DistributeTranspiler:
         return ufind
 
     def _is_opt_op(self, op):
+        # NOTE: It's a HACK implement.
         # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc... 
         if op.inputs and op.inputs.has_key("Param") \
           and op.inputs.has_key("LearningRate"):
@@ -573,25 +577,32 @@ class DistributeTranspiler:
                     shape=v.shape)
         # step6
         optimize_sub_program = Program()
+        # step 6.1
+        # Create a union-find data struct by optimize ops,
+        # If two ops are connected, we could add these two ops
+        # into one set.
         ufind = self._create_ufind(self.optimize_ops)
-        # Iterate through the ops and append ops as needed
+        # step 6.2 
+        # Iterate through the ops and append optimize op which
+        # located on current pserver
         opt_op_on_pserver = []
         for _, op in enumerate(self.optimize_ops):
             if self._is_opt_op(op) and self._is_opt_op_on_pserver(endpoint, op):
                 opt_op_on_pserver.append(op)
-
+        # step 6.3
+        # Iterate through the ops, and if an op and the optimize ops
+        # which located on current pserver are in one set, then 
+        # append it into the sub program.
         for _, op in enumerate(self.optimize_ops):
-            if not True in [
-                    ufind.is_connected(op, opt_op)
-                    for opt_op in opt_op_on_pserver
-            ]:
-                continue
-            if self._is_opt_op(op):
-                self._append_pserver_ops(optimize_sub_program, pserver_program,
-                                         op, endpoint)
-            else:
-                self._append_pserver_non_opt_ops(optimize_sub_program,
-                                                 pserver_program, op)
+            for _, opt_op in enumerate(opt_op_on_pserver):
+                if ufind.is_connected(op, opt_op):
+                    if self._is_opt_op(op):
+                        self._append_pserver_ops(optimize_sub_program,
+                                                 pserver_program, op, endpoint)
+                    else:
+                        self._append_pserver_non_opt_ops(optimize_sub_program,
+                                                         pserver_program, op)
+                    break
 
         # Append the listen_and_serv op
         pserver_program.global_block().append_op(

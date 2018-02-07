@@ -205,18 +205,12 @@ class Optimizer(object):
                                                            param_and_grad)
                     optimize_ops.append(optimize_op)
 
-            # Returned list of ops can include more ops in addition
-            # to optimization ops
-            return_ops = optimize_ops
-
             # Get custom finish ops for subclasses
             # FIXME: Need to fix this once we figure out how to handle dependencies
-            finish_ops = self._finish_update(loss.block)
-            if finish_ops is not None:
-                return_ops += finish_ops
+            self._finish_update(loss.block)
 
             if self._global_step is not None:
-                return_ops.append(self._increment_global_step(loss.block))
+                self._increment_global_step(loss.block)
             end = len(global_block.ops)
             return global_block.slice_ops(start, end)
 
