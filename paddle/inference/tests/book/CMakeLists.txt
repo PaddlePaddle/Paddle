@@ -15,6 +15,10 @@ cc_test(test_inference_label_semantic_roles
     SRCS test_inference_label_semantic_roles.cc
     DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
     ARGS --dirname=${PYTHON_TESTS_DIR}/book/label_semantic_roles.inference.model)
+cc_test(test_inference_understand_sentiment
+    SRCS test_inference_understand_sentiment.cc
+    DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
+    ARGS --dirname=${PYTHON_TESTS_DIR}/book/understand_sentiment.inference.model)
 set_tests_properties(test_inference_recognize_digits_mlp
     PROPERTIES DEPENDS test_recognize_digits)
 set_tests_properties(test_inference_image_classification_vgg
@@ -23,3 +27,5 @@ set_tests_properties(test_inference_image_classification_resnet
     PROPERTIES DEPENDS test_image_classification_train)
 set_tests_properties(test_inference_label_semantic_roles
     PROPERTIES DEPENDS test_label_semantic_roles) 
+set_tests_properties(test_inference_understand_sentiment
+    PROPERTIES DEPENDS test_understand_sentiment) 
