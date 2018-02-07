@@ -61,7 +61,7 @@ __global__ void SetOutput(T* out, const T* dist, const int M, const int N,
                           bool normalized) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   if (idx == 0) {
-    auto max_len = N ? N > M : M;
+    auto max_len = N > M ? N : M;
     out[0] =
         normalized ? dist[M * (N + 1) + N] / max_len : dist[M * (N + 1) + N];
   }
