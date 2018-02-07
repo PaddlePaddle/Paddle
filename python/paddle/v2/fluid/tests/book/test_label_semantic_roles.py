@@ -183,8 +183,8 @@ def train(save_dirname=None):
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    place = fluid.CPUPlace()
-    # place = fluid.CUDAPlace(0)
+    # place = fluid.CPUPlace()
+    place = fluid.CUDAPlace(0)
     feeder = fluid.DataFeeder(
         feed_list=[
             word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
@@ -236,7 +236,8 @@ def infer(save_dirname=None):
     if save_dirname is None:
         return
 
-    place = fluid.CPUPlace()
+    # place = fluid.CPUPlace()
+    place = fluid.CUDAPlace(0)
     exe = fluid.Executor(place)
 
     # Use fluid.io.load_inference_model to obtain the inference program desc,

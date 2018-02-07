@@ -21,12 +21,22 @@ void SetupTensor(paddle::framework::LoDTensor& input,
                  T lower,
                  T upper) {
   srand(time(0));
-  float* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
+  T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
   for (int i = 0; i < input.numel(); ++i) {
     input_ptr[i] =
         (static_cast<T>(rand()) / static_cast<T>(RAND_MAX)) * (upper - lower) +
         lower;
   }
+}
+
+template <typename T>
+void SetupLoDTensor(paddle::framework::LoDTensor& input,
+                    paddle::framework::LoD& lod,
+                    T lower,
+                    T upper) {
+  input.set_lod(lod);
+  int dim = lod[0][lod[0].size() - 1];
+  SetupTensor(input, {dim, 1}, lower, upper);
 }
 
 template <typename T>

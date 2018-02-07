@@ -20,22 +20,6 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-void SetupLoDTensor(paddle::framework::LoDTensor* input) {
-  // Setup data
-  srand(time(0));
-  int64_t* input_ptr =
-      input->mutable_data<int64_t>({10, 1}, paddle::platform::CPUPlace());
-  for (int i = 0; i < 10; ++i) {
-    // For this label semantic role example, the valid integer should
-    // be in the range of [0, 1] for some input tensor
-    input_ptr[i] = rand() % 2;
-  }
-
-  // Setup LoD info
-  paddle::framework::LoD lod{{0, 4, 10}};
-  input->set_lod(lod);
-}
-
 TEST(inference, label_semantic_roles) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
@@ -49,14 +33,17 @@ TEST(inference, label_semantic_roles) {
 
   paddle::framework::LoDTensor word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1,
       ctx_p2, mark;
-  SetupLoDTensor(&word);
-  SetupLoDTensor(&predicate);
-  SetupLoDTensor(&ctx_n2);
-  SetupLoDTensor(&ctx_n1);
-  SetupLoDTensor(&ctx_0);
-  SetupLoDTensor(&ctx_p1);
-  SetupLoDTensor(&ctx_p2);
-  SetupLoDTensor(&mark);
+  paddle::framework::LoD lod{{0, 4, 10}};
+
+  SetupLoDTensor(word, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(
+      predicate, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_n2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_n1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_0, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_p1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_p2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(mark, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&word);
