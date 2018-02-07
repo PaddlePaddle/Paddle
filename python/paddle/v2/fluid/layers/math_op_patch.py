@@ -112,7 +112,8 @@ def monkey_patch_variable():
                 other_var = tmp
 
             tmp_name = unique_tmp_name()
-            out = self.block.create_var(name=tmp_name, dtype=lhs_dtype)
+            out = self.block.create_var(
+                name=tmp_name, dtype=lhs_dtype, persistable=self.persistable)
             self.block.append_op(
                 type=op_type,
                 inputs={'X': [self],

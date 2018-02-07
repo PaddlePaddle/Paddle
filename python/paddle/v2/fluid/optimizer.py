@@ -190,6 +190,8 @@ class Optimizer(object):
         # Create any accumulators
         program = loss.block.program
         with program_guard(program, startup_program):
+            global_block = framework.default_main_program().global_block()
+            start = len(global_block.ops)
             self.helper = LayerHelper(self.__class__.__name__)
             self._create_accumulators(loss.block,
                                       [p[0] for p in parameters_and_grads])
@@ -215,7 +217,8 @@ class Optimizer(object):
 
             if self._global_step is not None:
                 return_ops.append(self._increment_global_step(loss.block))
-            return return_ops
+            end = len(global_block.ops)
+            return global_block.slice_ops(start, end)
 
     def minimize(self,
                  loss,

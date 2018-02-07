@@ -33,6 +33,57 @@ class VarBlock:
         return "%s:%d:%d" % (self.varname, self.offset, self.size)
 
 
+class UnionFind(object):
+    """ Union-find data struct.
+    
+    Union-find is a data struct that keeps track of a set of elements partitioned
+    into a number of disjoint (non-overlapping) subsets.
+
+    Reference:
+    https://en.wikipedia.org/wiki/Disjoint-set_data_structure
+
+    Args:
+      elements(list): The initialize element list.
+    """
+
+    def __init__(self, elementes=None):
+        self._parents = []  # index -> parent index
+        self._index = {}  # element -> index
+        self._curr_idx = 0
+        if not elementes:
+            elementes = []
+        for ele in elementes:
+            self._parents.append(self._curr_idx)
+            self._index.update({ele: self._curr_idx})
+            self._curr_idx += 1
+
+    def find(self, x):
+        # Find the root index of given element x,
+        # execute the path compress while findind the root index
+        if not x in self._index:
+            return -1
+        idx = self._index[x]
+        while idx != self._parents[idx]:
+            t = self._parents[idx]
+            self._parents[idx] = self._parents[t]
+            idx = t
+        return idx
+
+    def union(self, x, y):
+        # Union two given element
+        x_root = self.find(x)
+        y_root = self.find(y)
+
+        if x_root == y_root:
+            return
+        self._parents[x_root] = y_root
+
+    def is_connected(self, x, y):
+        # If two given elements have the same root index,
+        # then they are connected.
+        return self.find(x) == self.find(y)
+
+
 def same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
@@ -178,6 +229,21 @@ class DistributeTranspiler:
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
+        self.lr_param_mapping = self._create_lr_param_mapping()
+
+    def _create_lr_param_mapping(self):
+        lr_mapping = dict()
+        for _, opt_op in enumerate(self.optimize_ops):
+            if not opt_op.inputs or not opt_op.inputs.has_key("LearningRate") \
+              or not opt_op.inputs.has_key("Param"):
+                continue
+            lr = opt_op.inputs["LearningRate"].name
+            param = opt_op.inputs["Param"].name
+            if not lr_mapping.has_key(lr):
+                lr_mapping.update({lr: list()})
+            lr_mapping[lr].append(param)
+        return lr_mapping
+
     def _create_vars_from_blocklist(self, program, block_list):
         # Create respective variables using the block_list
         block_map = dict()
@@ -300,43 +366,15 @@ class DistributeTranspiler:
             pass
         return orig_shape
 
-    def _is_op_on_pserver(self, endpoint, all_ops, idx):
-        """
-        Recursively check if the op need to run on current server.
-        Assume that ops are in the execution order.
-        """
-        param_names = [
-            p.name for p in self.param_grad_ep_mapping[endpoint]["params"]
-        ]
-        op = all_ops[idx]
-        if op.inputs.has_key("Param"):
-            if op.inputs["Param"].name in param_names:
-                return True
-            else:
-                for n in param_names:
-                    if same_or_split_var(n, op.inputs[
-                            "Param"].name) and n != op.inputs["Param"].name:
-                        return True
-                return False
-        else:
-            j = idx - 1
-            while j >= 0:
-                prev_op = all_ops[j]
-                prev_output_names = [o.name for o in prev_op.outputs.values()]
-                prev_input_names = [o.name for o in prev_op.inputs.values()]
-                found1 = False
-                found2 = False
-                for _, v in op.inputs.iteritems():
-                    if v.name in prev_output_names:
-                        found1 = self._is_op_on_pserver(endpoint, all_ops, j)
-                # later ops may produce output for prev op's next batch use.
-                for _, v in op.outputs.iteritems():
-                    if v.name in prev_input_names:
-                        found2 = self._is_op_on_pserver(endpoint, all_ops, j)
-                if found1 or found2:
-                    return True
-                j -= 1
-            return False
+    def _fetch_var_names(self, param_dict):
+        res = []
+        if not param_dict:
+            return res
+        for _, values in param_dict.iteritems():
+            if not isinstance(values, list):
+                values = [values]
+            res += [v.name for v in values]
+        return res
 
     def _append_pserver_ops(self, program, pserver_program, opt_op, endpoint):
         new_inputs = dict()
@@ -390,12 +428,17 @@ class DistributeTranspiler:
                 new_inputs[key] = tmpvar
 
         for key, var in opt_op.inputs.iteritems():
+            new_shape = None
             if key in ["Param", "Grad"]:
                 continue
-            # update accumulator variable shape
-            param_shape = new_inputs["Param"].shape
-            new_shape = self._get_optimizer_input_shape(opt_op.type, key,
-                                                        var.shape, param_shape)
+            elif key == "LearningRate":
+                new_shape = var.shape
+            else:
+                # update accumulator variable shape
+                param_shape = new_inputs["Param"].shape
+                new_shape = self._get_optimizer_input_shape(
+                    opt_op.type, key, var.shape, param_shape)
+
             tmpvar = program.global_block().create_var(
                 name=var.name,
                 persistable=var.persistable,
@@ -421,22 +464,88 @@ class DistributeTranspiler:
 
     def _append_pserver_non_opt_ops(self, program, pserver_program, opt_op):
         # Append the ops for parameters that do not need to be optimized/updated
-        for _, var in opt_op.inputs.iteritems():
-            program.global_block().create_var(
-                name=var.name,
-                persistable=var.persistable,
-                dtype=var.dtype,
-                shape=var.shape)
-            pserver_program.global_block().create_var(
-                name=var.name,
-                persistable=var.persistable,
-                dtype=var.dtype,
-                shape=var.shape)
+        if opt_op.inputs:
+            for _, vars in opt_op.inputs.iteritems():
+                if not isinstance(vars, list):
+                    vars = [vars]
+                for var in vars:
+                    program.global_block().create_var(
+                        name=var.name,
+                        persistable=var.persistable,
+                        dtype=var.dtype,
+                        shape=var.shape)
+                    pserver_program.global_block().create_var(
+                        name=var.name,
+                        persistable=var.persistable,
+                        dtype=var.dtype,
+                        shape=var.shape)
+
+        for _, vars in opt_op.outputs.iteritems():
+            if not isinstance(vars, list):
+                vars = [vars]
+            for var in vars:
+                program.global_block().create_var(
+                    name=var.name,
+                    persistable=var.persistable,
+                    dtype=var.dtype,
+                    shape=var.shape)
+                pserver_program.global_block().create_var(
+                    name=var.name,
+                    persistable=var.persistable,
+                    dtype=var.dtype,
+                    shape=var.shape)
+
         program.global_block().append_op(
             type=opt_op.type,
             inputs=opt_op.inputs,
             outputs=opt_op.outputs,
             attrs=opt_op.attrs)
+
+    def _is_op_connected(self, op1, op2):
+        # If one op's input is another op's output or
+        # one op's output is another op's input, we say
+        # the two operator is connected.
+        op1_input_names = self._fetch_var_names(op1.inputs)
+        op1_output_names = self._fetch_var_names(op1.outputs)
+
+        op2_input_names = self._fetch_var_names(op2.inputs)
+        op2_output_names = self._fetch_var_names(op2.outputs)
+        if set(op1_output_names) & set(op2_input_names) or \
+           set(op1_input_names) & set(op2_output_names):
+            return True
+        return False
+
+    def _create_ufind(self, optimize_ops):
+        # Create a unit find data struct by optimize ops
+        ufind = UnionFind(optimize_ops)
+        for i in xrange(len(optimize_ops)):
+            for j in xrange(i, len(optimize_ops)):
+                op1 = optimize_ops[i]
+                op2 = optimize_ops[j]
+                if self._is_op_connected(op1, op2):
+                    ufind.union(op1, op2)
+        return ufind
+
+    def _is_opt_op(self, op):
+        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc... 
+        if op.inputs and op.inputs.has_key("Param") \
+          and op.inputs.has_key("LearningRate"):
+            return True
+        return False
+
+    def _is_opt_op_on_pserver(self, endpoint, op):
+        param_names = [
+            p.name for p in self.param_grad_ep_mapping[endpoint]["params"]
+        ]
+        if op.inputs["Param"].name in param_names:
+            return True
+        else:
+            for n in param_names:
+                param = op.inputs["Param"].name
+                if same_or_split_var(n, param) and n != op.inputs["Param"].name:
+                    return True
+            return False
+        return False
 
     def get_pserver_program(self, endpoint):
         """
@@ -457,8 +566,6 @@ class DistributeTranspiler:
             pserver_program.global_block().create_var(
                 name=v.name, persistable=True, dtype=v.dtype, shape=v.shape)
             for trainer_id in xrange(self.trainers):
-                print("create variable for program: %s.trainer_%d" %
-                      (v.name, trainer_id))
                 pserver_program.global_block().create_var(
                     name="%s.trainer_%d" % (v.name, trainer_id),
                     persistable=True,
@@ -466,18 +573,26 @@ class DistributeTranspiler:
                     shape=v.shape)
         # step6
         optimize_sub_program = Program()
+        ufind = self._create_ufind(self.optimize_ops)
         # Iterate through the ops and append ops as needed
-        for idx, opt_op in enumerate(self.optimize_ops):
-            is_op_on_pserver = self._is_op_on_pserver(endpoint,
-                                                      self.optimize_ops, idx)
-            if not is_op_on_pserver:
+        opt_op_on_pserver = []
+        for _, op in enumerate(self.optimize_ops):
+            if self._is_opt_op(op) and self._is_opt_op_on_pserver(endpoint, op):
+                opt_op_on_pserver.append(op)
+
+        for _, op in enumerate(self.optimize_ops):
+            if not True in [
+                    ufind.is_connected(op, opt_op)
+                    for opt_op in opt_op_on_pserver
+            ]:
                 continue
-            if opt_op.inputs.has_key("Grad"):
+            if self._is_opt_op(op):
                 self._append_pserver_ops(optimize_sub_program, pserver_program,
-                                         opt_op, endpoint)
+                                         op, endpoint)
             else:
                 self._append_pserver_non_opt_ops(optimize_sub_program,
-                                                 pserver_program, opt_op)
+                                                 pserver_program, op)
+
         # Append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
