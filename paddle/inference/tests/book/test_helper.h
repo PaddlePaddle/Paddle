@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <time.h>
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/inference/io.h"
 
@@ -30,6 +31,15 @@ void SetupTensor(paddle::framework::LoDTensor& input,
 }
 
 template <typename T>
+void SetupTensor(paddle::framework::LoDTensor& input,
+                 paddle::framework::DDim dims,
+                 std::vector<T>& data) {
+  CHECK_EQ(paddle::framework::product(dims), data.size());
+  T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
+  memcpy(input_ptr, data.data(), input.numel() * sizeof(T));
+}
+
+template <typename T>
 void SetupLoDTensor(paddle::framework::LoDTensor& input,
                     paddle::framework::LoD& lod,
                     T lower,
@@ -37,6 +47,19 @@ void SetupLoDTensor(paddle::framework::LoDTensor& input,
   input.set_lod(lod);
   int dim = lod[0][lod[0].size() - 1];
   SetupTensor(input, {dim, 1}, lower, upper);
+}
+
+template <typename T>
+void SetupLoDTensor(paddle::framework::LoDTensor& input,
+                    paddle::framework::DDim dims,
+                    paddle::framework::LoD lod,
+                    std::vector<T>& data) {
+  const size_t level = lod.size() - 1;
+  CHECK_EQ(dims[0], (lod[level]).back());
+  CHECK_EQ(paddle::framework::product(dims), data.size());
+  input.set_lod(lod);
+  T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
+  memcpy(input_ptr, data.data(), input.numel() * sizeof(T));
 }
 
 template <typename T>
@@ -66,7 +89,7 @@ void CheckError(paddle::framework::LoDTensor& output1,
   EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
 }
 
-template <typename Place, typename T>
+template <typename Place>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {

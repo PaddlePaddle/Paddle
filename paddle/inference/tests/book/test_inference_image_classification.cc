@@ -69,10 +69,12 @@ TEST(inference, image_classification) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
+  int64_t batch_size = 1;
+
   paddle::framework::LoDTensor input;
   srand(time(0));
-  float* input_ptr =
-      input.mutable_data<float>({1, 3, 32, 32}, paddle::platform::CPUPlace());
+  float* input_ptr = input.mutable_data<float>({batch_size, 3, 32, 32},
+                                               paddle::platform::CPUPlace());
   for (int i = 0; i < 3072; ++i) {
     input_ptr[i] = rand() / (static_cast<float>(RAND_MAX));
   }

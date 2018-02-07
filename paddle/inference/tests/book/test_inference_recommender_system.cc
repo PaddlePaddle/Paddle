@@ -13,14 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <time.h>
-#include <sstream>
 #include "gflags/gflags.h"
 #include "test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-TEST(inference, label_semantic_roles) {
+TEST(inference, recommender_system) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
@@ -31,29 +29,41 @@ TEST(inference, label_semantic_roles) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
-  paddle::framework::LoDTensor word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1,
-      ctx_p2, mark;
-  paddle::framework::LoD lod{{0, 4, 10}};
+  int64_t batch_size = 1;
 
-  SetupLoDTensor(word, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(
-      predicate, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_n2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_n1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_0, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_p1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_p2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(mark, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  paddle::framework::LoDTensor user_id, gender_id, age_id, job_id, movie_id,
+      category_id, movie_title;
+
+  // Use the first data from paddle.dataset.movielens.test() as input
+  std::vector<int64_t> user_id_data = {1};
+  SetupTensor<int64_t>(user_id, {batch_size, 1}, user_id_data);
+
+  std::vector<int64_t> gender_id_data = {1};
+  SetupTensor<int64_t>(gender_id, {batch_size, 1}, gender_id_data);
+
+  std::vector<int64_t> age_id_data = {0};
+  SetupTensor<int64_t>(age_id, {batch_size, 1}, age_id_data);
+
+  std::vector<int64_t> job_id_data = {10};
+  SetupTensor<int64_t>(job_id, {batch_size, 1}, job_id_data);
+
+  std::vector<int64_t> movie_id_data = {783};
+  SetupTensor<int64_t>(movie_id, {batch_size, 1}, movie_id_data);
+
+  std::vector<int64_t> category_id_data = {10, 8, 9};
+  SetupLoDTensor<int64_t>(category_id, {3, 1}, {{0, 3}}, category_id_data);
+
+  std::vector<int64_t> movie_title_data = {1069, 4140, 2923, 710, 988};
+  SetupLoDTensor<int64_t>(movie_title, {5, 1}, {{0, 5}}, movie_title_data);
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
-  cpu_feeds.push_back(&word);
-  cpu_feeds.push_back(&predicate);
-  cpu_feeds.push_back(&ctx_n2);
-  cpu_feeds.push_back(&ctx_n1);
-  cpu_feeds.push_back(&ctx_0);
-  cpu_feeds.push_back(&ctx_p1);
-  cpu_feeds.push_back(&ctx_p2);
-  cpu_feeds.push_back(&mark);
+  cpu_feeds.push_back(&user_id);
+  cpu_feeds.push_back(&gender_id);
+  cpu_feeds.push_back(&age_id);
+  cpu_feeds.push_back(&job_id);
+  cpu_feeds.push_back(&movie_id);
+  cpu_feeds.push_back(&category_id);
+  cpu_feeds.push_back(&movie_title);
 
   paddle::framework::LoDTensor output1;
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
@@ -61,7 +71,6 @@ TEST(inference, label_semantic_roles) {
 
   // Run inference on CPU
   TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
-  LOG(INFO) << output1.lod();
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -71,7 +80,6 @@ TEST(inference, label_semantic_roles) {
 
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
-  LOG(INFO) << output2.lod();
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);
