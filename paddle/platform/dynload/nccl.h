@@ -72,8 +72,6 @@ extern void LoadNCCLDSO();
   __macro(ncclAllReduce);               \
   __macro(ncclBcast);                   \
   __macro(ncclAllGather);               \
-  __macro(ncclGroupStart);              \
-  __macro(ncclGroupEnd);                \
   __macro(ncclReduce);                  \
   __macro(ncclGetErrorString);
 
