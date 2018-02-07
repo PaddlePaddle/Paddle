@@ -94,11 +94,4 @@ cc_test(init_test SRCS init_test.cc DEPS init)
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
       
-if(NOT WITH_C_API AND WITH_FLUID)
-  file(GLOB FRAMEWORK_HEADERS *.h)
-  install(FILES ${FRAMEWORK_HEADERS} DESTINATION include/paddle/framework)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/framework.pb.h DESTINATION include/paddle/framework)
-  install(FILES details/cow_ptr.h details/op_registry.h DESTINATION include/paddle/framework/details)
-endif()
-
 cc_test(channel_test SRCS channel_test.cc)
