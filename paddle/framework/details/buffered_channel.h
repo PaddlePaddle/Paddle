@@ -27,11 +27,12 @@ namespace details {
 
 // Four of the properties of Buffered Channel:
 // - A send to a full channel blocks temporarily until a receive from the
-// channel or the channel is closed
+// channel or the channel is closed.
 // - A receive from an empty channel blocks temporarily until a send to the
-// channel or the channel is closed
-// - A send to a closed channel returns false immediately
-// - A receive from a closed channel returns false immediately
+// channel or the channel is closed.
+// - A send to a closed channel returns false immediately.
+// - A receive from a closed channel returns false immediately.
+
 template <typename T>
 class Buffered : public paddle::framework::Channel<T> {
   friend Channel<T>* paddle::framework::MakeChannel<T>(size_t);
