@@ -31,7 +31,7 @@ dtype_to_size = {
 
 
 class ControlFlowGraph(object):
-    def __init__(self, Program, ops, forward_num):
+    def __init__(self, Program, ops, forward_num, skip_opt):
         self._program = Program
         self._ops = ops
         self._forward_num = forward_num
@@ -41,6 +41,7 @@ class ControlFlowGraph(object):
         self._defs = defaultdict(set)
         self._live_in = defaultdict(set)
         self._live_out = defaultdict(set)
+        self._skip_opt = skip_opt
 
     def _add_connections(self, connections):
         for node1, node2 in connections:
@@ -130,6 +131,10 @@ class ControlFlowGraph(object):
                     block_desc, x,
                     is_forward).type() != core.VarDesc.VarType.LOD_TENSOR:
                 return False
+            if x in self._skip_opt:
+                return False
+            if not self._find_var(block_desc, x, is_forward).shape():
+                return False
             return True
 
         self._build_graph()
@@ -150,6 +155,9 @@ class ControlFlowGraph(object):
                     for x in defs_can_optimize
                 ]
                 for x, x_shape in out_pair:
+                    # If x is both in uses and defs, it can not be optimized!
+                    if x in self._uses[i]:
+                        continue
                     for index, cache_pair in enumerate(self.pool):
                         cache_var = cache_pair[0]
                         cache_shape = cache_pair[1]
@@ -197,28 +205,32 @@ def get_cfgs(input_program):
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
     # Get global block ops
-    ops_list.append(([block_desc.op(i) for i in range(op_size)], op_size))
+    ops_list.append(
+        ([block_desc.op(i) for i in range(op_size)], op_size, set()))
 
     while_sub_block_ids = []
     while_grad_sub_block_ids = []
-    while_pair = []
+    while_block_id_pair = []
+    while_op_dict = {}
 
     for i in range(op_size):
         op = block_desc.op(i)
         if op.type() == "while":
             while_sub_block_ids.append(op.attr("sub_block").id)
+            while_op_dict[op.attr("sub_block").id] = op
         elif op.type() == "while_grad":
             while_grad_sub_block_ids.append(op.attr("sub_block").id)
+            while_op_dict[op.attr("sub_block").id] = op
 
     # Find while/while_grad block pair
     for grad_id in while_grad_sub_block_ids:
         parent_id = pdesc.block(grad_id).parent
         if parent_id in while_sub_block_ids:
-            while_pair.append((parent_id, grad_id))
+            while_block_id_pair.append((parent_id, grad_id))
             while_sub_block_ids.remove(parent_id)
 
     # Get while/while_grad block ops
-    for parent_id, grad_id in while_pair:
+    for parent_id, grad_id in while_block_id_pair:
         while_block_ops = []
         while_block = pdesc.block(parent_id)
         while_block_op_size = while_block.op_size()
@@ -230,7 +242,11 @@ def get_cfgs(input_program):
         for i in range(while_grad_block_op_size):
             while_block_ops.append(while_grad_block.op(i))
 
-        ops_list.append((while_block_ops, while_block_op_size))
+        while_op_output = set()
+        while_op_output.update(while_op_dict[parent_id].output_arg_names())
+        while_op_output.update(while_op_dict[grad_id].output_arg_names())
+
+        ops_list.append((while_block_ops, while_block_op_size, while_op_output))
 
     # Process rest while block ops
     for parent_id in while_sub_block_ids:
@@ -240,9 +256,15 @@ def get_cfgs(input_program):
         for i in range(while_block_op_size):
             while_block_ops.append(while_block.op(i))
 
-        ops_list.append((while_block_ops, while_block_op_size))
+        while_op_output = set()
+        while_op_output.update(while_op_dict[parent_id].output_arg_names())
 
-    cfgs = [ControlFlowGraph(input_program, i, j) for i, j in ops_list]
+        ops_list.append((while_block_ops, while_block_op_size, while_op_output))
+
+    cfgs = [
+        ControlFlowGraph(input_program, ops, forward_num, skip_opt)
+        for ops, forward_num, skip_opt in ops_list
+    ]
     return cfgs
 
 
