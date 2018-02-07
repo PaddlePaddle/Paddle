@@ -18,7 +18,9 @@ import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
 import paddle.v2.fluid as fluid
+import contextlib
 import time
+import unittest
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
@@ -127,7 +129,15 @@ def to_lodtensor(data, place):
     return res
 
 
-def main():
+def create_random_lodtensor(lod, place, low, high):
+    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
+    res = fluid.LoDTensor()
+    res.set(data, place)
+    res.set_lod([lod])
+    return res
+
+
+def train(use_cuda, save_dirname=None):
     # define network topology
     word = fluid.layers.data(
         name='word_data', shape=[1], dtype='int64', lod_level=1)
@@ -175,8 +185,8 @@ def main():
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
-    # place = fluid.CPUPlace()
-    place = fluid.CUDAPlace(0)
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     feeder = fluid.DataFeeder(
         feed_list=[
             word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
@@ -211,12 +221,102 @@ def main():
                 if batch_id != 0:
                     print("second per batch: " + str((time.time() - start_time)
                                                      / batch_id))
-
-            # exit early for CI
-            exit(0)
+                # Set the threshold low to speed up the CI test
+                if float(pass_precision) > 0.05:
+                    if save_dirname is not None:
+                        fluid.io.save_inference_model(save_dirname, [
+                            'word_data', 'verb_data', 'ctx_n2_data',
+                            'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
+                            'ctx_p2_data', 'mark_data'
+                        ], [feature_out], exe)
+                    return
 
             batch_id = batch_id + 1
 
 
+def infer(use_cuda, save_dirname=None):
+    if save_dirname is None:
+        return
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    lod = [0, 4, 10]
+    ts_word = create_random_lodtensor(lod, place, low=0, high=1)
+    ts_pred = create_random_lodtensor(lod, place, low=0, high=1)
+    ts_ctx_n2 = create_random_lodtensor(lod, place, low=0, high=1)
+    ts_ctx_n1 = create_random_lodtensor(lod, place, low=0, high=1)
+    ts_ctx_0 = create_random_lodtensor(lod, place, low=0, high=1)
+    ts_ctx_p1 = create_random_lodtensor(lod, place, low=0, high=1)
+    ts_ctx_p2 = create_random_lodtensor(lod, place, low=0, high=1)
+    ts_mark = create_random_lodtensor(lod, place, low=0, high=1)
+
+    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+    # and results will contain a list of data corresponding to fetch_targets.
+    assert feed_target_names[0] == 'word_data'
+    assert feed_target_names[1] == 'verb_data'
+    assert feed_target_names[2] == 'ctx_n2_data'
+    assert feed_target_names[3] == 'ctx_n1_data'
+    assert feed_target_names[4] == 'ctx_0_data'
+    assert feed_target_names[5] == 'ctx_p1_data'
+    assert feed_target_names[6] == 'ctx_p2_data'
+    assert feed_target_names[7] == 'mark_data'
+
+    results = exe.run(inference_program,
+                      feed={
+                          feed_target_names[0]: ts_word,
+                          feed_target_names[1]: ts_pred,
+                          feed_target_names[2]: ts_ctx_n2,
+                          feed_target_names[3]: ts_ctx_n1,
+                          feed_target_names[4]: ts_ctx_0,
+                          feed_target_names[5]: ts_ctx_p1,
+                          feed_target_names[6]: ts_ctx_p2,
+                          feed_target_names[7]: ts_mark
+                      },
+                      fetch_list=fetch_targets,
+                      return_numpy=False)
+    print(results[0].lod())
+    np_data = np.array(results[0])
+    print("Inference Shape: ", np_data.shape)
+    print("Inference results: ", np_data)
+
+
+def main(use_cuda):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+
+    # Directory for saving the trained model
+    save_dirname = "label_semantic_roles.inference.model"
+
+    train(use_cuda, save_dirname)
+    infer(use_cuda, save_dirname)
+
+
+class TestLabelSemanticRoles(unittest.TestCase):
+    def test_cuda(self):
+        with self.scope_prog_guard():
+            main(use_cuda=True)
+
+    def test_cpu(self):
+        with self.scope_prog_guard():
+            main(use_cuda=False)
+
+    @contextlib.contextmanager
+    def scope_prog_guard(self):
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        scope = fluid.core.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(prog, startup_prog):
+                yield
+
+
 if __name__ == '__main__':
-    main()
+    unittest.main()
