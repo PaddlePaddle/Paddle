@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,38 +18,38 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void UpdateTargetLabelKernel(const int* neg_indices,
-                                        const size_t* lod, const int num,
-                                        const int num_prior_box,
-                                        const int background_label,
-                                        int* out_label, T* out_label_wt) {
+__global__ void NegTargetAssignKernel(const int* neg_indices, const size_t* lod,
+                                      const int num, const int num_prior_box,
+                                      const int background_label,
+                                      int* out_label, T* out_label_wt) {
   int bidx = blockIdx.x;
   int st = lod[bidx];
   int ed = lod[bidx + 1];
 
+  int row_start = bidx * num_prior_box;
   for (int i = st + threadIdx.x; i < ed; i += blockDim.x) {
-    int id = neg_indices[i];
-    out_label[bidx * num_prior_box + id] = background_label;
-    out_label_wt[bidx * num_prior_box + id] = 1.;
+    int id = row_start + neg_indices[i];
+    out_label[id] = background_label;
+    out_label_wt[id] = 1.;
   }
 }
 
 template <typename T>
-struct UpdateTargetLabelFunctor<platform::CUDADeviceContext, T> {
+struct NegTargetAssignFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& ctx,
                   const int* neg_indices, const size_t* lod, const int num,
                   const int num_prior_box, const int background_label,
                   int* out_label, T* out_label_wt) {
     const int block_size = 256;
     const int grid_size = num;
-    UpdateTargetLabelKernel<T><<<grid_size, block_size, 0, ctx.stream()>>>(
+    NegTargetAssignKernel<T><<<grid_size, block_size, 0, ctx.stream()>>>(
         neg_indices, lod, num, num_prior_box, background_label, out_label,
         out_label_wt);
   }
 };
 
-template struct UpdateTargetLabelFunctor<platform::CUDADeviceContext, float>;
-template struct UpdateTargetLabelFunctor<platform::CUDADeviceContext, double>;
+template struct NegTargetAssignFunctor<platform::CUDADeviceContext, float>;
+template struct NegTargetAssignFunctor<platform::CUDADeviceContext, double>;
 
 }  // namespace operators
 }  // namespace paddle

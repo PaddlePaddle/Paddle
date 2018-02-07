@@ -14,8 +14,6 @@
 
 import unittest
 import numpy as np
-import math
-import sys
 import random
 from op_test import OpTest
 
@@ -89,8 +87,6 @@ class TestTargetAssginOp(OpTest):
         num_class = 21
         gt_lod = [0, 5, 11, 23]
         neg_lod = [0, 4, 7, 13]
-        #gt_lod = [0, 2, 5]
-        #neg_lod = [0, 2, 4]
         batch_size = len(gt_lod) - 1
         num_gt = gt_lod[-1]
         background_label = 0
