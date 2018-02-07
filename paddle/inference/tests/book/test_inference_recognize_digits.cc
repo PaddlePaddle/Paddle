@@ -21,7 +21,7 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-template <typename Place, typename T>
+template <typename Place, typename T, bool IsCombined>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
@@ -29,9 +29,21 @@ void TestInference(const std::string& dirname,
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
+  std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
 
+  LOG(INFO) << "Going to call load()" << std::endl;
   // 2. Initialize the inference_program and load all parameters from file
-  auto inference_program = paddle::inference::Load(executor, *scope, dirname);
+  if (IsCombined) {
+    // Hard-coding the names for combined params case
+    std::string prog_filename = "__model_combined__";
+    std::string param_filename = "__params_combined__";
+    inference_program = paddle::inference::Load(executor,
+                                                *scope,
+                                                dirname + "/" + prog_filename,
+                                                dirname + "/" + param_filename);
+  } else {
+    inference_program = paddle::inference::Load(executor, *scope, dirname);
+  }
 
   // 3. Get the feed_target_names and fetch_target_names
   const std::vector<std::string>& feed_target_names =
@@ -123,7 +135,7 @@ TEST(inference, recognize_digits) {
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
-  TestInference<paddle::platform::CPUPlace, float>(
+  TestInference<paddle::platform::CPUPlace, float, false>(
       dirname, cpu_feeds, cpu_fetchs1);
   LOG(INFO) << output1.dims();
 
@@ -133,7 +145,49 @@ TEST(inference, recognize_digits) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
-  TestInference<paddle::platform::CUDAPlace, float>(
+  TestInference<paddle::platform::CUDAPlace, float, false>(
+      dirname, cpu_feeds, cpu_fetchs2);
+  LOG(INFO) << output2.dims();
+
+  CheckError<float>(output1, output2);
+#endif
+}
+
+TEST(inference, recognize_digits_combine) {
+  if (FLAGS_dirname.empty()) {
+    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
+  }
+
+  LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
+  std::string dirname = FLAGS_dirname;
+
+  // 0. Call `paddle::framework::InitDevices()` initialize all the devices
+  // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
+
+  paddle::framework::LoDTensor input;
+  // Use normilized image pixels as input data,
+  // which should be in the range [-1.0, 1.0].
+  SetupTensor<float>(
+      input, {1, 28, 28}, static_cast<float>(-1), static_cast<float>(1));
+  std::vector<paddle::framework::LoDTensor*> cpu_feeds;
+  cpu_feeds.push_back(&input);
+
+  paddle::framework::LoDTensor output1;
+  std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+  cpu_fetchs1.push_back(&output1);
+
+  // Run inference on CPU
+  TestInference<paddle::platform::CPUPlace, float, true>(
+      dirname, cpu_feeds, cpu_fetchs1);
+  LOG(INFO) << output1.dims();
+
+#ifdef PADDLE_WITH_CUDA
+  paddle::framework::LoDTensor output2;
+  std::vector<paddle::framework::LoDTensor*> cpu_fetchs2;
+  cpu_fetchs2.push_back(&output2);
+
+  // Run inference on CUDA GPU
+  TestInference<paddle::platform::CUDAPlace, float, true>(
       dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
