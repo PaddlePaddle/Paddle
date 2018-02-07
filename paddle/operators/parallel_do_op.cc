@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#endif
 
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
@@ -95,17 +98,20 @@ inline void CopyOrShare(const framework::Variable &src,
 }
 
 void WaitOnPlace(const platform::Place place) {
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &dev_ctx = *pool.Get(place);
-  dev_ctx.Wait();
+#ifdef PADDLE_WITH_CUDA
+  // FIXME(yuyang18): The previous implementation of WaitOnPlace has bug.
+  // Here just synchronize all streams of a device
+  // It should be changed if multi-streams are implemented
+  if (platform::is_gpu_place(place)) {
+    cudaSetDevice(boost::get<platform::CUDAPlace>(place).device);
+    cudaDeviceSynchronize();
+  }
+#endif
 }
 
 void WaitOnPlaces(const std::vector<platform::Place> places) {
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-
-  for (auto &place : places) {
-    auto &dev_ctx = *pool.Get(place);
-    dev_ctx.Wait();
+  for (auto &p : places) {
+    WaitOnPlace(p);
   }
 }
 
