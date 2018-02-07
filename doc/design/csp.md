@@ -42,7 +42,7 @@ The type *channel* is conceptually the blocking queue.  In Go, its implemented i
 
 The `select` operation has been in OS kernels long before Go language.  All Unix kernels implement system calls *poll* and *select*.  They monitor multiple file descriptors to see if I/O is possible on any of them.  This takes O(N) time.  Since Linux 2.6, a new system call, *epoll*, can do the same in O(1) time.  In BSD systems, there is a similar system call *kqueue*.  Go's Linux implementation uses epoll.
 
-It might be a good idea to implement Fluid's select using epoll too.  In this design doc, we start from the O(N) way, so we could focus on Python binding and the syntax.
+It might be a good idea to implement Fluid's select using epoll too.  In this design doc, we start from the O(N) way so that we could focus on Python binding and the syntax.
 
 ### Type Channel
 
@@ -71,14 +71,14 @@ ch1 := make(chan int, 100)  // a channel that can buffer 100 ints.
 In Fluid, we should be able to do the same:
 
 ```python
-ch  = fluid.make_chan(dtype=INT)
-ch1 = fluid.make_chan(dtype=INT, 100)
+ch  = fluid.make_channel(dtype=INT)
+ch1 = fluid.make_channel(dtype=INT, 100)
 ```
 
 In addition to that, we want channels that can hold more complex element types, e.g., Tensors of float16:
 
 ```python
-ch = fluid.make_chan(dtype=Tensor, etype=float16)
+ch = fluid.make_channel(dtype=Tensor, etype=float16)
 ```
 
 or Tensors of Tensors of float16 etc.
@@ -87,7 +87,135 @@ The point here is that we need a consistent way to compose types, like in C++ we
 
 ### Send and Recv
 
+Go's CSP implementation depends on data type *channel*. There are two types of channels:
+
+1. The unblocked channel, or buffered channel, is a blocking queue with a non-zero sized buffer. The sending to buffered channel blocks if the buffer is full, and the receive operation blocks if the buffer is empty.
+1. blocked channel, or unbuffered channel, is a blocking queue with no buffer.  Both sending and receiving block with unbuffered channels.
+
+There are four types of actions with a channel:
+
+1. Create a channel
+
+   ```go
+   ch := make(chan int) // this is an unbuffered channel
+   ch := make(chan int, 100) // this is a buffered channel of 100 ints.
+   ```
+
+1. Send
+
+   ```go
+   ch <- 111
+   ```
+
+1. Recv
+
+   ```go
+   y, ok <- ch
+   ```
+
+1. Close
+
+   ```go
+   close(ch)
+   ```
+   
+   Please be aware that a closed channel is not a nil channel, which is `var ch chan int`.
+   
+There are some [axioms with channels](https://dave.cheney.net/2014/03/19/channel-axioms):
+
+1. A send to a nil channel blocks forever
+
+1. A receive from a nil channel blocks forever
+
+1. A send to a closed channel panics
+
+1. A receive from a closed channel returns the residual values and then zeros.
+
+In Fluid, we have [buffered channels](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/details/buffered_channel.h) and [unbuffered channels](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/details/unbuffered_channel.h)
+
+The following program illustrates the Python syntax for accessing Fluid buffers.
+
+```python
+import fluid
+
+buffer_size = 10
+ch = fluid.make_channel(dtype=INT, buffer_size)
+
+# Now write three elements to the channel
+with fluid.while(steps=buffer_size):
+  fluid.send(ch, step)
+
+fluid.close_channel(ch)
+
+with fluid.while(steps=buffer_size):
+  fluid.print(fluid.recv(ch))
+```
+
+The following example shows that to avoid the always-blocking behavior of unbuffered channels, we need to use Fluid's goroutines.
+
+```python
+import fluid
+
+ch = fluid.make_channel(dtype=INT)
+
+with fluid.go():
+  fluid.send(ch)
+
+y = fluid.recv(ch)
+
+fluid.close_channel(ch)
+```
+
 ### Select
+
+In Go, the `select` statement lets a goroutine wait on multiple communication operations. A `select` blocks until one of its cases can run, then it executes that case. It chooses one at random if multiple are ready.
+
+```go
+
+ch1  := make(chan int)       
+ch2  := make(chan int, 100)
+
+x := 0
+
+for {
+    select {
+    case ch1 <- x:
+      x := x + 1
+    case y <- ch2:
+      fmt.Println("Received on channel")
+    default:
+      fmt.Println("Default")
+    }
+  }
+
+```
+
+In Fluid, we should be able to do the same:
+
+```python
+ch1  = fluid.make_chan(dtype=INT)
+ch2 = fluid.make_chan(dtype=INT, 100)
+
+sel = fluid.select()
+
+with sel.case(ch1, 'w', X):
+    fluid.layers.increment(X)
+
+with sel.case(ch2, 'r', Y):
+    fluid.print("Received on Channel")
+
+with sel.default():
+    fluid.print("Default")
+
+```
+
+In the above code snippet, `X` and `Y` are variables. Now let us look at each of these statements one by one.
+
+- `sel.case(ch1, 'w', X)` : This specifies that we are writing to `ch1` and we want to write the integer in variable `X` to the channel. The character `w` is used here to make the syntax familiar to write syntax in Python I/O.
+
+- `sel.case(ch2, 'r', Y)` : This specifies that we would like to read the result from `ch2` into variable `Y`. The character `r` is used here to make the syntax familiar to read syntax in Python I/O.
+
+- `sel.default()` : This is equivalent to the default in Go `select`. If none of the channels are ready for read or write, then the fluid code in the default block will be executed.
 
 ## Example Programs
 
