@@ -80,7 +80,7 @@ class ConstantInitializer(Initializer):
     """Implements the constant initializer
     """
 
-    def __init__(self, value=0.0):
+    def __init__(self, value=0.0, force_cpu=False):
         """Constructor for ConstantInitializer
 
         Args:
@@ -89,6 +89,7 @@ class ConstantInitializer(Initializer):
         assert value is not None
         super(ConstantInitializer, self).__init__()
         self._value = value
+        self._force_cpu = force_cpu
 
     def __call__(self, var, block):
         """Add constant initialization ops for a variable
@@ -110,7 +111,8 @@ class ConstantInitializer(Initializer):
             attrs={
                 "shape": var.shape,
                 "dtype": int(var.dtype),
-                "value": self._value
+                "value": float(self._value),
+                'force_cpu': self._force_cpu
             })
         var.op = op
         return op

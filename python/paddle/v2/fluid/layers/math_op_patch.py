@@ -29,20 +29,24 @@ def monkey_patch_variable():
             raise ValueError("Cannot get data type from %s", var.name)
         return dtype
 
-    def create_tensor(block, value, dtype, shape):
+    def create_tensor(block, value, dtype, shape, force_cpu=False):
         value = float(value)
         tmp_name = unique_tmp_name()
         var = block.create_var(name=tmp_name, shape=shape, dtype=dtype)
         block.append_op(
             type="fill_constant",
             outputs={'Out': [var]},
-            attrs={'dtype': var.dtype,
-                   'shape': shape,
-                   'value': value})
+            attrs={
+                'dtype': var.dtype,
+                'shape': shape,
+                'value': value,
+                'force_cpu': force_cpu
+            })
         return var
 
-    def create_scalar(block, value, dtype):
-        return create_tensor(block, value, dtype, shape=[1])
+    def create_scalar(block, value, dtype, force_cpu):
+        return create_tensor(
+            block, value, dtype, shape=[1], force_cpu=force_cpu)
 
     def create_tensor_with_batchsize(ref_var, value, dtype):
         assert isinstance(ref_var, Variable)
