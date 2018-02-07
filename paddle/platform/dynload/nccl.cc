@@ -24,6 +24,7 @@ void *nccl_dso_handle;
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 NCCL_RAND_ROUTINE_EACH(DEFINE_WRAP);
+DEFINE_WRAP(ncclCommDestroy);
 
 void LoadNCCLDSO() {
   platform::call_once(nccl_dso_flag,
