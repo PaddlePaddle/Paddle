@@ -60,9 +60,9 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   delete ch;
 }
 
-// This tests that a buffered channel must panic (return false)
+// This tests that a buffered channel must return false
 // on send and receive performed after closing the channel.
-// Receive will only panic after close when queue is empty
+// Receive will only return false after close when queue is empty
 TEST(Channel, ClosedBufferedChannelPanics) {
   const size_t buffer_size = 10;
   const size_t data = 5;
@@ -70,29 +70,29 @@ TEST(Channel, ClosedBufferedChannelPanics) {
 
   std::thread send_thread{[&]() {
     size_t i = data;
-    EXPECT_EQ(ch->Send(&i), true);  // should not block or panic
+    EXPECT_EQ(ch->Send(&i), true);  // should not block
   }};
 
   std::thread recv_thread{[&]() {
     size_t i;
-    EXPECT_EQ(ch->Receive(&i), true);  // should not block or panic
+    EXPECT_EQ(ch->Receive(&i), true);  // should not block
     EXPECT_EQ(i, data);
   }};
 
   send_thread.join();
   recv_thread.join();
 
-  // After closing send should panic. Receive should
-  // also panic because the queue is empty.
+  // After closing send should return false. Receive should
+  // also return false because the queue is empty.
   CloseChannel(ch);
 
   send_thread = std::thread{[&]() {
     size_t i = data;
-    EXPECT_EQ(ch->Send(&i), false);  // should panic because channel is closed
+    EXPECT_EQ(ch->Send(&i), false);  // should return false
   }};
   recv_thread = std::thread{[&]() {
     size_t i;
-    // should panic because channel is closed and queue is empty
+    // should return false because channel is closed and queue is empty
     EXPECT_EQ(ch->Receive(&i), false);
   }};
 
@@ -101,7 +101,7 @@ TEST(Channel, ClosedBufferedChannelPanics) {
   delete ch;
 }
 
-// This tests that an unbuffered channel must panic (return false)
+// This tests that an unbuffered channel return false
 // on send and receive performed after closing the channel
 TEST(Channel, ClosedUnBufferedChannelPanics) {
   const size_t data = 5;
@@ -109,29 +109,29 @@ TEST(Channel, ClosedUnBufferedChannelPanics) {
 
   std::thread send_thread{[&]() {
     size_t i = data;
-    EXPECT_EQ(ch->Send(&i), true);  // should not block or panic
+    EXPECT_EQ(ch->Send(&i), true);  // should not block and return true
   }};
 
   std::thread recv_thread{[&]() {
     size_t i;
-    EXPECT_EQ(ch->Receive(&i), true);  // should not block or panic
+    EXPECT_EQ(ch->Receive(&i), true);  // should not block and return true
     EXPECT_EQ(i, data);
   }};
 
   send_thread.join();
   recv_thread.join();
 
-  // After closing send should panic. Receive should
-  // also panic because the queue is empty.
+  // After closing send should return false. Receive should
+  // also return false because the queue is empty.
   CloseChannel(ch);
 
   send_thread = std::thread{[&]() {
     size_t i = data;
-    EXPECT_EQ(ch->Send(&i), false);  // should panic because channel is closed
+    EXPECT_EQ(ch->Send(&i), false);  // should return false
   }};
   recv_thread = std::thread{[&]() {
     size_t i;
-    // should panic because channel is closed and queue is empty
+    // should return false because channel is closed and queue is empty
     EXPECT_EQ(ch->Receive(&i), false);
   }};
 
