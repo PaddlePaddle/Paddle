@@ -51,8 +51,7 @@ def as_numpy(tensor):
     if len(lod) == 0:
         ans = tensor_data
     else:
-        #raise RuntimeError("LoD Calculate lacks unit tests and buggy")
-        ans = tensor_data
+        raise RuntimeError("LoD Calculate lacks unit tests and buggy")
     # elif len(lod) == 1:
     #     ans = []
     #     idx = 0

@@ -33,16 +33,6 @@ create_random_reader_op = block.append_op(
         "max": 1.0
     })
 
-batch_reader = block.create_var(
-    type=fluid.core.VarDesc.VarType.READER, name=("BatchReader"))
-batch_reader.desc.set_lod_levels([0, 0])
-
-create_batch_reader_op = block.append_op(
-    type="create_batch_reader",
-    inputs={"UnderlyingReader": random_reader},
-    outputs={"Out": batch_reader},
-    attrs={"batch_size": 10})
-
 out1 = block.create_var(
     type=fluid.core.VarDesc.VarType.LOD_TENSOR,
     name="Out1",
@@ -57,7 +47,8 @@ out2 = block.create_var(
     lod_level=1)
 
 read_op = block.append_op(
-    type="read", inputs={"Reader": batch_reader},
+    type="read",
+    inputs={"Reader": random_reader},
     outputs={"Out": [out1, out2]})
 
 place = fluid.CPUPlace()
