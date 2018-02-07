@@ -83,7 +83,7 @@ RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
 # Download the NCCL1.3 and build it locally
 RUN git clone https://github.com/NVIDIA/nccl /nccl && \
     (cd /nccl \
-    export PREFIX=/usr make -j `nproc` && make install)
+    make -j `nproc` && export PREFIX=/usr; make install)
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
