@@ -79,9 +79,6 @@ static void CheckTensorNANOrInf(const std::string& name,
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
-  // TODO(tonyyang-svail):
-  //    - only runs on the first device (i.e. no interdevice communication)
-  //    - will change to use multiple blocks for RNN op and Cond Op
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), pdesc.Size());
   auto& block = pdesc.Block(block_id);
 
