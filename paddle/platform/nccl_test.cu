@@ -89,6 +89,7 @@ TEST(NCCL, all_reduce) {
 
   VLOG(1) << "Invoking ncclAllReduce";
 
+  dynload::ncclGroupStart();
   for (int i = 0; i < dev_count; ++i) {
     VLOG(1) << "Invoking ncclAllReduce with device " << i;
     SetDeviceId(i);
@@ -97,6 +98,7 @@ TEST(NCCL, all_reduce) {
         ncclSum, comms[i], data[i]->dev_ctx.stream()));
     VLOG(1) << "Invoked ncclAllReduce for device " << i;
   }
+  dynload::ncclGroupEnd();
 
   VLOG(1) << "Invoked ncclAllReduce";
 
