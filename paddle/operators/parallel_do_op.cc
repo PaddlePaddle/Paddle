@@ -255,7 +255,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
       for (size_t i = 1; i < sub_scopes.size(); ++i) {
         CopyOrShare(*sub_scopes[i]->FindVar(s), places[0], tmp);
-        WaitOnPlace(places[0]);
+        WaitOnPlaces(places);
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
