@@ -22,7 +22,7 @@ COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y \
-    git python-pip python-dev openssh-server bison libnccl-dev \
+    git python-pip python-dev openssh-server bison \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
@@ -76,6 +76,14 @@ RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
      cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
            -DCMAKE_BUILD_TYPE=Release . \
      make)
+
+# https://github.com/PaddlePaddle/Paddle/issues/8195
+# NCCL2.1.4 seems works well on cuda9, but not compatible with cuda8
+# TODO(dzhwinter): this disable the NCCL DSO temporarily, should be removed
+# Download the NCCL1.3 and build it locally
+RUN git clone https://github.com/NVIDIA/nccl /nccl && \
+    (cd /nccl \
+    export PREFIX=/usr make -j `nproc` && make install)
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
