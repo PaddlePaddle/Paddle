@@ -20,7 +20,7 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-TEST(inference, recognize_digits) {
+TEST(inference, label_semantic_roles) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
@@ -31,13 +31,29 @@ TEST(inference, recognize_digits) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
-  paddle::framework::LoDTensor input;
-  // Use normilized image pixels as input data,
-  // which should be in the range [-1.0, 1.0].
-  SetupTensor<float>(
-      input, {1, 28, 28}, static_cast<float>(-1), static_cast<float>(1));
+  paddle::framework::LoDTensor word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1,
+      ctx_p2, mark;
+  paddle::framework::LoD lod{{0, 4, 10}};
+
+  SetupLoDTensor(word, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(
+      predicate, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_n2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_n1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_0, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_p1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(ctx_p2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(mark, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
-  cpu_feeds.push_back(&input);
+  cpu_feeds.push_back(&word);
+  cpu_feeds.push_back(&predicate);
+  cpu_feeds.push_back(&ctx_n2);
+  cpu_feeds.push_back(&ctx_n1);
+  cpu_feeds.push_back(&ctx_0);
+  cpu_feeds.push_back(&ctx_p1);
+  cpu_feeds.push_back(&ctx_p2);
+  cpu_feeds.push_back(&mark);
 
   paddle::framework::LoDTensor output1;
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
@@ -46,6 +62,7 @@ TEST(inference, recognize_digits) {
   // Run inference on CPU
   TestInference<paddle::platform::CPUPlace, float>(
       dirname, cpu_feeds, cpu_fetchs1);
+  LOG(INFO) << output1.lod();
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -56,6 +73,7 @@ TEST(inference, recognize_digits) {
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace, float>(
       dirname, cpu_feeds, cpu_fetchs2);
+  LOG(INFO) << output2.lod();
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);
