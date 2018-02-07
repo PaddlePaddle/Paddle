@@ -149,7 +149,7 @@ void ChannelCloseUnblocksReceiversTest(Channel<int> *ch) {
   std::thread t[num_threads];
   bool thread_ended[num_threads];
 
-  // Launches threads that try to read and are blocked becausew of no writers
+  // Launches threads that try to read and are blocked because of no writers
   for (size_t i = 0; i < num_threads; i++) {
     thread_ended[i] = false;
     t[i] = std::thread(
@@ -167,7 +167,7 @@ void ChannelCloseUnblocksReceiversTest(Channel<int> *ch) {
     EXPECT_EQ(thread_ended[i], false);
   }
 
-  // Explicitly close the thread
+  // Explicitly close the channel
   // This should unblock all receivers
   CloseChannel(ch);
 
