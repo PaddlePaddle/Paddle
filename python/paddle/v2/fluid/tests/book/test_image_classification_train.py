@@ -17,6 +17,8 @@ from __future__ import print_function
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import contextlib
+import math
+import sys
 import numpy
 import unittest
 
@@ -145,6 +147,8 @@ def train(net_type, use_cuda, save_dirname):
                     loss_t, acc_t = exe.run(program=test_program,
                                             feed=feeder.feed(test_data),
                                             fetch_list=[avg_cost, acc])
+                    if math.isnan(float(loss_t)):
+                        sys.exit("got NaN loss, training failed.")
                     acc_list.append(float(acc_t))
                     avg_loss_list.append(float(loss_t))
                     break  # Use 1 segment for speeding up CI
