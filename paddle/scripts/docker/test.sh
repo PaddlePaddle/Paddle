@@ -8,7 +8,7 @@ NUM_PROC=${CTEST_PARALLEL_LEVEL:-6}
 CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
 
 # calculate and set the memory usage for each process
-MEM_USAGE=$(printf "%.2f" `echo "scale=5; 0.95 * $CUDA_DEVICE_COUNT / $NUM_PROC" | bc`)
+MEM_USAGE=$(printf "%.2f" `echo "scale=5; 0.9 * $CUDA_DEVICE_COUNT / $NUM_PROC" | bc`)
 if (( `echo "$MEM_USAGE > 1.0"|bc -l` )); then
     MEM_USAGE=1.0
 fi
