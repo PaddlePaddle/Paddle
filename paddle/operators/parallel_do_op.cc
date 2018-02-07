@@ -152,7 +152,9 @@ class ParallelDoOp : public framework::OperatorBase {
         auto *sub_scope = sub_scopes[i];
         auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
         framework::Copy(src, place, dst);
-        dst->set_lod(src.lod());
+        framework::LoD lod(src.lod());
+        lod.CopyToPeer(place);
+        dst->set_lod(lod);
       }
     }
     WaitOnPlaces(places);
