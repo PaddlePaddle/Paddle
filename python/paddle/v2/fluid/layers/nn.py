@@ -166,8 +166,10 @@ def fc(input,
 
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-
-        tmp = matmul(input_var, w, False, False)
+        if (len(input_shape) > 2):
+            tmp = matmul(input_var, w, False, False, num_flatten_dims, 1)
+        else:
+            tmp = matmul(input_var, w, False, False)
 
         mul_results.append(tmp)
 
@@ -2281,7 +2283,13 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     return out
 
 
-def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
+def matmul(x,
+           y,
+           transpose_x=False,
+           transpose_y=False,
+           x_num_col_dims=0,
+           y_num_col_dims=0,
+           name=None):
     """
     Applies matrix multiplication to two tensors.
 
@@ -2315,6 +2323,26 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         y (Variable): The input variable which is a Tensor or LoDTensor.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        x_num_col_dims (integer): The matmul layer can accept an input tensor with
+                              more than two dimensions. If this happens, the
+                              multidimensional tensor will first be flattened
+                              into a 2-dimensional matrix. The parameter
+                              `x_num_col_dims` determines how the input tensor
+                              is flattened: the first `x_num_col_dims`
+                              (inclusive, index starts from 1) dimensions will
+                              be flatten to form the first dimension of the
+                              final matrix (height of the matrix), and the rest
+                              `rank(X) - x_num_col_dims` dimensions are
+                              flattened to form the second dimension of the
+                              final matrix (width of the matrix). For example,
+                              suppose `X` is a 6-dimensional tensor with a shape
+                              [2, 3, 4, 5, 6], and `x_num_col_dims` = 3. Then,
+                              the flattened matrix will have a shape
+                              [2 x 3 x 4, 5 x 6] = [24, 30]. By default,
+                              the `x_num_col_dims` is set as 0 to indicate
+                              the input is a 2-D Matrix.
+        y_num_col_dims (integer): See comments of `x_num_col_dims` for
+                              more details.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -2382,8 +2410,12 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         inputs={'X': x,
                 'Y': y},
         outputs={'Out': out},
-        attrs={'transpose_X': transpose_x,
-               'transpose_Y': transpose_y})
+        attrs={
+            'transpose_X': transpose_x,
+            'transpose_Y': transpose_y,
+            'x_num_col_dims': x_num_col_dims,
+            'y_num_col_dims': y_num_col_dims,
+        })
     return out
 
 

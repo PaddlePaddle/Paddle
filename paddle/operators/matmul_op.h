@@ -38,9 +38,38 @@ class MatMulKernel : public framework::OpKernel<T> {
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
 
-    math::MatMulFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), x, transpose_x, y,
-        transpose_y, T(1), out, T(0));
+    int x_num_col_dims = context.template Attr<int>("x_num_col_dims");
+    int y_num_col_dims = context.template Attr<int>("y_num_col_dims");
+
+    if (x_num_col_dims == 0 && y_num_col_dims == 0) {
+      math::MatMulFunctor<DeviceContext, T>()(
+          context.template device_context<DeviceContext>(), x, transpose_x, y,
+          transpose_y, T(1), out, T(0));
+    } else {
+      if (x_num_col_dims == 0) {
+        x_num_col_dims = 1;
+      }
+      if (y_num_col_dims == 0) {
+        y_num_col_dims = 1;
+      }
+      const Tensor x_matrix =
+          x.dims().size() > 2 ? framework::ReshapeToMatrix(x, x_num_col_dims)
+                              : x;
+      const Tensor y_matrix =
+          y.dims().size() > 2 ? framework::ReshapeToMatrix(y, y_num_col_dims)
+                              : y;
+
+      auto out_dim = out->dims();
+      if (out_dim.size() != 2) {
+        out->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
+      }
+      math::matmul<DeviceContext, T>(
+          context.template device_context<DeviceContext>(), x_matrix, false,
+          y_matrix, false, 1, out, 0);
+      if (out_dim.size() != 2) {
+        out->Resize(out_dim);
+      }
+    }
   }
 };
 
@@ -124,111 +153,160 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
 
-    std::vector<int64_t> x_dims = vectorize(x.dims());
-    std::vector<int64_t> y_dims = vectorize(y.dims());
-
-    // If X is a vector, reshape it to a matrix.
-    if (x_dims.size() == 1) {
-      x_dims.insert(x_dims.begin(), 1);
-    }
-
-    // If Y is a vector, reshape it to a matrix.
-    if (y_dims.size() == 1) {
-      y_dims.push_back(1);
-    }
-
-    int batch_count = 0;
-    // The first rank-2 dimensions are accumulated on the batch_count, and the
-    // last two dimensions are used for matrix multiplication.
-    if (x_dims.size() > 3) {
-      batch_count = accumulate(x_dims.begin(), x_dims.end() - 2, 1,
-                               std::multiplies<int>());
-    }
-    // Fix the dOut dimensions.
-    int M = 0, N = 0, batchCountX = 0, batchCountY = 0;
-
-    switch (x_dims.size()) {
-      case 2:
-        M = transpose_x ? x_dims[1] : x_dims[0];
-        break;
-      case 3:
-        batchCountX = x_dims[0];
-        M = transpose_x ? x_dims[2] : x_dims[1];
-        break;
-      default:
-        batchCountX = batch_count;
-        size_t mat_s = x_dims.size() - 2;
-        M = transpose_x ? x_dims[mat_s + 1] : x_dims[mat_s];
-    }
-
-    switch (y_dims.size()) {
-      case 2:
-        N = transpose_y ? y_dims[0] : y_dims[1];
-        break;
-      case 3:
-        batchCountY = y_dims[0];
-        N = transpose_y ? y_dims[1] : y_dims[2];
-        break;
-      default:
-        batchCountY = batch_count;
-        size_t mat_s = y_dims.size() - 2;
-        N = transpose_y ? y_dims[mat_s] : y_dims[mat_s + 1];
-    }
-    if (batchCountX && batchCountY) {
-      PADDLE_ENFORCE_EQ(
-          batchCountX, batchCountY,
-          "When Input(X) and Input(Y) are both three dimensional, they "
-          "must have the same batch dimension.");
-    }
-    int batchCount = std::max(batchCountX, batchCountY);
-    std::vector<int64_t> dout_dims = {M, N};
-    if (batchCount) {
-      if (x_dims.size() > 3) {
-        dout_dims.insert(dout_dims.begin(), x_dims.begin(), x_dims.end() - 2);
-      } else {
-        dout_dims.insert(dout_dims.begin(), batchCount);
-      }
-    }
-    Tensor X = Reshape<T>(x, make_ddim(x_dims));
-    Tensor Y = Reshape<T>(y, make_ddim(y_dims));
-    Tensor dOut = Reshape<T>(dout, make_ddim(dout_dims));
-
+    int x_num_col_dims = context.template Attr<int>("x_num_col_dims");
+    int y_num_col_dims = context.template Attr<int>("y_num_col_dims");
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    if (dx) {
-      dx->mutable_data<T>(context.GetPlace());
-      const Tensor& dOut_for_dX =
-          (x_dims.size() == 2 && y_dims.size() == 3)
-              ? CombineBatchAndN<DeviceContext, T>(dev_ctx, dOut)
-              : dOut;
-      if (x_dims.size() == 2 && y_dims.size() == 3) {
-        Y = transpose_y ? CombineBatchAndM<T>(Y)
-                        : CombineBatchAndN<DeviceContext, T>(dev_ctx, Y);
-      }
-      if (transpose_x) {
-        math::MatMulFunctor<DeviceContext, T>()(
-            dev_ctx, Y, transpose_y, dOut_for_dX, transpose_x, T(1), dx, T(0));
-      } else {
-        math::MatMulFunctor<DeviceContext, T>()(
-            dev_ctx, dOut_for_dX, transpose_x, Y, !transpose_y, T(1), dx, T(0));
-      }
-    }
 
-    if (dy) {
-      dy->mutable_data<T>(context.GetPlace());
-      const Tensor& dOut_for_dY = (y_dims.size() == 2 && x_dims.size() == 3)
-                                      ? CombineBatchAndM<T>(dOut)
-                                      : dOut;
-      if (y_dims.size() == 2 && x_dims.size() == 3) {
-        X = transpose_x ? CombineBatchAndN<DeviceContext, T>(dev_ctx, X)
-                        : CombineBatchAndM<T>(X);
-        dOut = CombineBatchAndM<T>(dOut);
+    if (x_num_col_dims == 0 && y_num_col_dims == 0) {
+      std::vector<int64_t> x_dims = vectorize(x.dims());
+      std::vector<int64_t> y_dims = vectorize(y.dims());
+
+      // If X is a vector, reshape it to a matrix.
+      if (x_dims.size() == 1) {
+        x_dims.insert(x_dims.begin(), 1);
       }
-      if (transpose_y) {
-        math::MatMulFunctor<DeviceContext, T>()(
-            dev_ctx, dOut_for_dY, transpose_y, X, transpose_x, T(1), dy, T(0));
-      } else {
-        math::MatMulFunctor<DeviceContext, T>()(
-            dev_ctx, X, !transpose_x, dOut_for_dY, transpose_y, T(1), dy, T(0));
+
+      // If Y is a vector, reshape it to a matrix.
+      if (y_dims.size() == 1) {
+        y_dims.push_back(1);
+      }
+
+      int batch_count = 0;
+      // The first rank-2 dimensions are accumulated on the batch_count, and the
+      // last two dimensions are used for matrix multiplication.
+      if (x_dims.size() > 3) {
+        batch_count = accumulate(x_dims.begin(), x_dims.end() - 2, 1,
+                                 std::multiplies<int>());
+      }
+      // Fix the dOut dimensions.
+      int M = 0, N = 0, batchCountX = 0, batchCountY = 0;
+
+      switch (x_dims.size()) {
+        case 2:
+          M = transpose_x ? x_dims[1] : x_dims[0];
+          break;
+        case 3:
+          batchCountX = x_dims[0];
+          M = transpose_x ? x_dims[2] : x_dims[1];
+          break;
+        default:
+          batchCountX = batch_count;
+          size_t mat_s = x_dims.size() - 2;
+          M = transpose_x ? x_dims[mat_s + 1] : x_dims[mat_s];
+      }
+
+      switch (y_dims.size()) {
+        case 2:
+          N = transpose_y ? y_dims[0] : y_dims[1];
+          break;
+        case 3:
+          batchCountY = y_dims[0];
+          N = transpose_y ? y_dims[1] : y_dims[2];
+          break;
+        default:
+          batchCountY = batch_count;
+          size_t mat_s = y_dims.size() - 2;
+          N = transpose_y ? y_dims[mat_s] : y_dims[mat_s + 1];
+      }
+      if (batchCountX && batchCountY) {
+        PADDLE_ENFORCE_EQ(
+            batchCountX, batchCountY,
+            "When Input(X) and Input(Y) are both three dimensional, they "
+            "must have the same batch dimension.");
+      }
+      int batchCount = std::max(batchCountX, batchCountY);
+      std::vector<int64_t> dout_dims = {M, N};
+      if (batchCount) {
+        if (x_dims.size() > 3) {
+          dout_dims.insert(dout_dims.begin(), x_dims.begin(), x_dims.end() - 2);
+        } else {
+          dout_dims.insert(dout_dims.begin(), batchCount);
+        }
+      }
+      Tensor X = Reshape<T>(x, make_ddim(x_dims));
+      Tensor Y = Reshape<T>(y, make_ddim(y_dims));
+      Tensor dOut = Reshape<T>(dout, make_ddim(dout_dims));
+
+      auto& dev_ctx = context.template device_context<DeviceContext>();
+      if (dx) {
+        dx->mutable_data<T>(context.GetPlace());
+        const Tensor& dOut_for_dX =
+            (x_dims.size() == 2 && y_dims.size() == 3)
+                ? CombineBatchAndN<DeviceContext, T>(dev_ctx, dOut)
+                : dOut;
+        if (x_dims.size() == 2 && y_dims.size() == 3) {
+          Y = transpose_y ? CombineBatchAndM<T>(Y)
+                          : CombineBatchAndN<DeviceContext, T>(dev_ctx, Y);
+        }
+        if (transpose_x) {
+          math::MatMulFunctor<DeviceContext, T>()(dev_ctx, Y, transpose_y,
+                                                  dOut_for_dX, transpose_x,
+                                                  T(1), dx, T(0));
+        } else {
+          math::MatMulFunctor<DeviceContext, T>()(dev_ctx, dOut_for_dX,
+                                                  transpose_x, Y, !transpose_y,
+                                                  T(1), dx, T(0));
+        }
+      }
+
+      if (dy) {
+        dy->mutable_data<T>(context.GetPlace());
+        const Tensor& dOut_for_dY = (y_dims.size() == 2 && x_dims.size() == 3)
+                                        ? CombineBatchAndM<T>(dOut)
+                                        : dOut;
+        if (y_dims.size() == 2 && x_dims.size() == 3) {
+          X = transpose_x ? CombineBatchAndN<DeviceContext, T>(dev_ctx, X)
+                          : CombineBatchAndM<T>(X);
+          dOut = CombineBatchAndM<T>(dOut);
+        }
+        if (transpose_y) {
+          math::MatMulFunctor<DeviceContext, T>()(dev_ctx, dOut_for_dY,
+                                                  transpose_y, X, transpose_x,
+                                                  T(1), dy, T(0));
+        } else {
+          math::MatMulFunctor<DeviceContext, T>()(dev_ctx, X, !transpose_x,
+                                                  dOut_for_dY, transpose_y,
+                                                  T(1), dy, T(0));
+        }
+      }
+    } else {
+      if (x_num_col_dims == 0) {
+        x_num_col_dims = 1;
+      }
+      if (y_num_col_dims == 0) {
+        y_num_col_dims = 1;
+      }
+      const Tensor x_matrix =
+          x.dims().size() > 2 ? framework::ReshapeToMatrix(x, x_num_col_dims)
+                              : x;
+      const Tensor y_matrix =
+          y.dims().size() > 2 ? framework::ReshapeToMatrix(y, y_num_col_dims)
+                              : y;
+      const Tensor* dout = context.Input<Tensor>(framework::GradVarName("Out"));
+
+      Tensor dout_mat;
+      dout_mat.ShareDataWith(*dout);
+      dout_mat.Resize({framework::flatten_to_2d(x.dims(), x_num_col_dims)[0],
+                       framework::flatten_to_2d(y.dims(), y_num_col_dims)[1]});
+
+      if (dx) {
+        dx->mutable_data<T>(context.GetPlace());
+        Tensor dx_matrix = dx->dims().size() > 2
+                               ? framework::ReshapeToMatrix(*dx, x_num_col_dims)
+                               : *dx;
+
+        // dx = dout * y'. dx: M x K, dout : M x N, y : K x N
+        math::matmul<DeviceContext, T>(dev_ctx, dout_mat, false, y_matrix, true,
+                                       1, &dx_matrix, 0);
+      }
+      if (dy) {
+        dy->mutable_data<T>(context.GetPlace());
+        Tensor dy_matrix = dy->dims().size() > 2
+                               ? framework::ReshapeToMatrix(*dy, y_num_col_dims)
+                               : *dy;
+        // dy = x' * dout. dy K x N, dout : M x N, x : M x K
+        math::matmul<DeviceContext, T>(dev_ctx, x_matrix, true, dout_mat, false,
+                                       1, &dy_matrix, 0);
       }
     }
   }
