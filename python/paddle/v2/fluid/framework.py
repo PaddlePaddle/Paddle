@@ -469,16 +469,6 @@ class Operator(object):
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
-        def __is_block_list__(attr):
-            if not isinstance(attr, list):
-                return False
-            if len(attr) == 0:
-                return False
-            for item in attr:
-                if not isinstance(item, Block):
-                    return False
-            return True
-
         if attrs is not None:
             if not isinstance(attrs, dict):
                 raise TypeError("'attrs' should be a dict.")
@@ -492,9 +482,6 @@ class Operator(object):
                    isinstance(attrs[attr_name], core.ProgramDesc):
                     self.desc.set_serialized_attr(
                         attr_name, attrs[attr_name].serialize_to_string())
-                elif __is_block_list__(attrs[attr_name]):
-                    self.desc.set_blocks_attr(
-                        attr_name, [item.desc for item in attrs[attr_name]])
                 else:
                     self.desc.set_attr(attr_name, attrs[attr_name])
 
@@ -503,7 +490,7 @@ class Operator(object):
             'feed', 'fetch', 'save', 'load', 'recurrent',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
-            'load_combine', 'switch'
+            'load_combine'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
