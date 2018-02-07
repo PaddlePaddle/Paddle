@@ -155,6 +155,9 @@ class ControlFlowGraph(object):
                     for x in defs_can_optimize
                 ]
                 for x, x_shape in out_pair:
+                    # If x is both in uses and defs, it can not be optimized!
+                    if x in self._uses[i]:
+                        continue
                     for index, cache_pair in enumerate(self.pool):
                         cache_var = cache_pair[0]
                         cache_shape = cache_pair[1]
