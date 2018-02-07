@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -61,10 +61,12 @@ class TargetAssignOp : public framework::OperatorWithKernel {
                       "The rank of Input(NegIndices) must be 2.");
 
     PADDLE_ENFORCE_EQ(blabel_dims[0], slabel_dims[0],
-                      "The 1st dimension of Input(EncodedGTBBox) and "
-                      "Input(GTScoreLabel) must be the same.");
+                      "The 1st dimension (means the total number of "
+                      "ground-truth bounding boxes) of Input(EncodedGTBBox) "
+                      "and Input(GTScoreLabel) must be the same.");
     PADDLE_ENFORCE_EQ(blabel_dims[1], mi_dims[1],
-                      "The 2nd dimension of Input(EncodedGTBBox) and "
+                      "The 2nd dimension (means the number of priod boxes) "
+                      "of Input(EncodedGTBBox) and "
                       "Input(MatchIndices) must be the same.");
     PADDLE_ENFORCE_EQ(blabel_dims[2], 4,
                       "The 3rd dimension of Input(EncodedGTBBox) must be 4.");
@@ -101,31 +103,31 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
              "labels with shape [Ng, 1], where the Ng is the same as it in "
              "the input of EncodedGTBBox.");
     AddInput("MatchIndices",
-             "(Tensor, default LoDTensor<int>), The input matched indices "
+             "(Tensor, default Tensor<int>), The input matched indices "
              "with shape [N, Np], where N is the batch size, Np is the same "
              "as it in the input of EncodedGTBBox. If MatchIndices[i][j] "
              "is -1, the j-th prior box is not matched to any ground-truh "
              "box in i-th instance.");
     AddInput("NegIndices",
              "(LoDTensor, default LoDTensor<int>), The input negative example "
-             "indics with shape [Neg, 1], where is the total number of "
+             "indices with shape [Neg, 1], where is the total number of "
              "negative example indices.");
     AddAttr<int>("background_label",
-                 "(int, default 0), Label id for background class.")
+                 "(int, default 0), Label index of background class.")
         .SetDefault(0);
     AddOutput("PredBBoxLabel",
               "(Tensor), The output encoded ground-truth labels "
               "with shape [N, Np, 4], N is the batch size and Np, 4 is the "
               "same as they in input of EncodedGTBBox. If MatchIndices[i][j] "
               "is -1, the PredBBoxLabel[i][j][:] is the encoded ground-truth "
-              "box for background_label_id in i-th instance.");
+              "box for background_label in i-th instance.");
     AddOutput("PredBBoxWeight",
               "(Tensor), The weight for PredBBoxLabel with the shape "
               "of [N, Np, 1]");
     AddOutput("PredScoreLabel",
               "(Tensor, default Tensor<int>), The output score labels for "
               "each predictions with shape [N, Np, 1]. If MatchIndices[i][j] "
-              "is -1, PredScoreLabel[i][j] = background_label_id.");
+              "is -1, PredScoreLabel[i][j] = background_label.");
     AddOutput("PredScoreWeight",
               "(Tensor), The weight for PredScoreLabel with the shape "
               "of [N, Np, 1]");
@@ -136,19 +138,47 @@ and regression targets to each prior box as well as weights to each
 prior box. The weights is used to specify which prior box would not contribute
 to training loss.
 
-TODO(dang qingqing) add an example.
+For each instance, the output `PredBBoxLabel`, `PredBBoxWeight`,
+`PredScoreLabel` and `PredScoreWeight` are assigned based on `MatchIndices`.
+Assumed that the row offset for each instance in `EncodedGTBBox` is called lod,
+this operato assigns classification/regression targets by performing the
+following steps:
+
+1. Assigning all outpts based on `MatchIndices`:
+
+If id = MatchIndices[i][j] > 0,
+
+    PredBBoxLabel[i][j] = EncodedGTBBox[lod[i] + id][j]
+    PredBBoxWeight[i][j] = 1.
+    PredScoreLabel[i][j] = GTScoreLabel[lod[i] + id]
+    PredScoreWeight[i][j] = 1.
+
+Otherwise, 
+
+    PredBBoxLabel[j][j] = [0., 0., 0., 0.]
+    PredBBoxWeight[i][j] = 0.
+    PredScoreLabel[i][j] = background_label
+    PredScoreWeight[i][j] = 0.
+
+2. Assigning PredScoreWeight based on `NegIndices`:
+
+Assumed that the row offset for each instance in `NegIndices` is caleed neg_lod,
+for i-th instance and all ids of NegIndices in this instance:
+
+    PredScoreLabel[i][id] = background_label
+    PredScoreWeight[i][id] = 1.0
 
     )DOC");
   }
 };
 
 template <typename T>
-struct UpdateTargetLabelFunctor<platform::CPUDeviceContext, T> {
+struct NegTargetAssignFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, const int* neg_indices,
                   const size_t* lod, const int num, const int num_prior_box,
                   const int background_label, int* out_label, T* out_label_wt) {
     for (int i = 0; i < num; ++i) {
-      for (int j = lod[i]; j < lod[i + 1]; ++j) {
+      for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
         int id = neg_indices[j];
         out_label[i * num_prior_box + id] = background_label;
         out_label_wt[i * num_prior_box + id] = static_cast<T>(1.0);
@@ -157,8 +187,8 @@ struct UpdateTargetLabelFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-template struct UpdateTargetLabelFunctor<platform::CPUDeviceContext, float>;
-template struct UpdateTargetLabelFunctor<platform::CPUDeviceContext, double>;
+template struct NegTargetAssignFunctor<platform::CPUDeviceContext, float>;
+template struct NegTargetAssignFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace operators
 }  // namespace paddle

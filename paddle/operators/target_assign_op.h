@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,40 +56,41 @@ struct TargetAssignFunctor {
     int row = i / num_prior_box_;
     int col = i - row * num_prior_box_;
 
-    size_t off = lod_[row];
+    size_t row_off = lod_[row];
+    int offset = row * num_prior_box_ + col;
 
-    int id = match_indices_[row * num_prior_box_ + col];
-    T* obox = out_box_ + (row * num_prior_box_ + col) * 4;
-    int* olabel = out_label_ + row * num_prior_box_ + col;
-    T* obox_wt = out_box_wt_ + row * num_prior_box_ + col;
-    T* olabel_wt = out_label_wt_ + row * num_prior_box_ + col;
+    int id = match_indices_[offset];
+    T* obox = out_box_ + offset * 4;
+    int* olabel = out_label_ + offset;
+    T* obox_wt = out_box_wt_ + offset;
+    T* olabel_wt = out_label_wt_ + offset;
 
     if (id > -1) {
-      const T* gtbox = gt_box_ + ((off + id) * num_prior_box_ + col) * 4;
+      const T* gtbox = gt_box_ + ((row_off + id) * num_prior_box_ + col) * 4;
 
       obox[0] = gtbox[0];
       obox[1] = gtbox[1];
       obox[2] = gtbox[2];
       obox[3] = gtbox[3];
 
-      olabel[0] = gt_label_[off + id];
-      obox_wt[0] = 1.;
-      olabel_wt[0] = 1.;
+      olabel[0] = gt_label_[row_off + id];
+      obox_wt[0] = static_cast<T>(1.);
+      olabel_wt[0] = static_cast<T>(1.);
     } else {
-      obox[0] = 0.;
-      obox[1] = 0.;
-      obox[2] = 0.;
-      obox[3] = 0.;
+      obox[0] = static_cast<T>(0.);
+      obox[1] = static_cast<T>(0.);
+      obox[2] = static_cast<T>(0.);
+      obox[3] = static_cast<T>(0.);
 
       olabel[0] = background_label_;
-      obox_wt[0] = 0.;
-      olabel_wt[0] = 0.;
+      obox_wt[0] = static_cast<T>(0.);
+      olabel_wt[0] = static_cast<T>(0.);
     }
   }
 };
 
 template <typename DeviceContext, typename T>
-struct UpdateTargetLabelFunctor {
+struct NegTargetAssignFunctor {
   void operator()(const platform::DeviceContext& ctx, const int* neg_indices,
                   const size_t* lod, const int num, const int num_prior_box,
                   const int background_label, int* out_label,
@@ -130,7 +131,11 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     int64_t num_prior_box = match_indices->dims()[1];
 
     auto gt_lod = enc_gt_box->lod().back();
+    auto gt_label_lod = gt_label->lod().back();
     auto neg_lod = neg_indices->lod().back();
+    for (size_t i = 0; i < gt_lod.size(); ++i) {
+      PADDLE_ENFORCE_EQ(gt_lod.data()[i], gt_label_lod.data()[i]);
+    }
 
     size_t* gt_lod_data = gt_lod.data(ctx.GetPlace());
     size_t* neg_lod_data = neg_lod.data(ctx.GetPlace());
@@ -145,9 +150,9 @@ class TargetAssignKernel : public framework::OpKernel<T> {
                                                 num * num_prior_box);
     for_range(functor);
 
-    UpdateTargetLabelFunctor<DeviceContext, T> update_functor;
-    update_functor(device_ctx, neg_idx_data, neg_lod_data, num, num_prior_box,
-                   background_label, olabel_data, olabel_wt_data);
+    NegTargetAssignFunctor<DeviceContext, T> neg_trg_functor;
+    neg_trg_functor(device_ctx, neg_idx_data, neg_lod_data, num, num_prior_box,
+                    background_label, olabel_data, olabel_wt_data);
   }
 };
 
