@@ -126,6 +126,7 @@ class ParallelDoOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    OperatorBase::Run(scope, place);
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
@@ -218,6 +219,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    OperatorBase::Run(scope, place);
     auto *block = Attr<framework::BlockDesc *>(kParallelBlock);
     auto *program = block->Program();
 

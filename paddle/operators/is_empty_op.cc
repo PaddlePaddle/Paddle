@@ -30,6 +30,7 @@ class IsEmptyOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    OperatorBase::Run(scope, place);
     // get input
     auto *var = scope.FindVar(Input(kInput));
     PADDLE_ENFORCE_NOT_NULL(var);

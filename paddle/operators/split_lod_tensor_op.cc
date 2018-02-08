@@ -35,6 +35,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
     auto *out_true =

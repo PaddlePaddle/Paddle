@@ -44,6 +44,7 @@ class FillOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    OperatorBase::Run(scope, place);
     auto &out =
         detail::Ref(detail::Ref(scope.FindVar(Output("Out")),
                                 "Cannot find variable %s", Output("Out"))

@@ -26,6 +26,7 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     auto mem_var_name = Input("X");
     auto *mem_var = scope.FindVar(mem_var_name);
     PADDLE_ENFORCE(mem_var != nullptr,
@@ -78,6 +79,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     auto out_grad_var_name = Input(framework::GradVarName("Out"));
     auto *out_grad_var = scope.FindVar(out_grad_var_name);
 

@@ -41,6 +41,7 @@ class WhileOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
@@ -101,6 +102,7 @@ class WhileGradOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);

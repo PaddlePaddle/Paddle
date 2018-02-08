@@ -75,7 +75,7 @@ class OperatorBase {
   OperatorBase(const std::string& type, const VariableNameMap& inputs,
                const VariableNameMap& outputs, const AttributeMap& attrs);
 
-  virtual ~OperatorBase() {}
+  virtual ~OperatorBase() = default;
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
@@ -90,7 +90,7 @@ class OperatorBase {
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   /// Net will call this function to Run an op.
-  virtual void Run(const Scope& scope, const platform::Place& place) const = 0;
+  virtual void Run(const Scope& scope, const platform::Place& place) const;
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}

@@ -56,6 +56,7 @@ class ReadOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
+    framework::OperatorBase::Run(scope, dev_place);
     framework::ReaderHolder* reader =
         scope.FindVar(Input("Reader"))->GetMutable<framework::ReaderHolder>();
     if (!reader->HasNext()) {

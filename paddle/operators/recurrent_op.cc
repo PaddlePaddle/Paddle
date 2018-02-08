@@ -228,6 +228,7 @@ class RecurrentOp : public RecurrentBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    OperatorBase::Run(scope, place);
     auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
     VLOG(3) << "Static RNN input sequence length = " << seq_len;
     StepScopes scopes = CreateStepScopes(scope, seq_len);
@@ -317,6 +318,7 @@ class RecurrentGradOp : public RecurrentBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    OperatorBase::Run(scope, place);
     auto seq_len = static_cast<size_t>(GetSequenceLength(scope));
     StepScopes scopes = CreateStepScopes(scope, seq_len);
     auto reverse = Attr<bool>(kReverse);

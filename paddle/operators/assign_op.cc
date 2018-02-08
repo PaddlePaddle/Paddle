@@ -73,6 +73,7 @@ class AssignOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    framework::OperatorBase::Run(scope, place);
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) {
       return;

@@ -28,6 +28,7 @@ class NCCLInitOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    OperatorBase::Run(scope, place);
     const auto &name = Output("Communicator");
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(name),
                             "Can not find variable '%s' in the scope.", name);

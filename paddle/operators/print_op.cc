@@ -132,6 +132,7 @@ class TensorPrintOp : public framework::OperatorBase {
 
   void Run(const framework::Scope& scope,
            const platform::Place& place) const override {
+    OperatorBase::Run(scope, place);
     const framework::Variable* in_var_ptr = nullptr;
     std::string phase = kForward;
     std::string printed_var_name = "";
