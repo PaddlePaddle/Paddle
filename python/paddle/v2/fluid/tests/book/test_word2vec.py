@@ -16,6 +16,8 @@ import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import unittest
 import os
+import math
+import sys
 
 
 def main(use_cuda, is_sparse, parallel):
@@ -112,6 +114,9 @@ def main(use_cuda, is_sparse, parallel):
                                   fetch_list=[avg_cost])
             if avg_cost_np[0] < 5.0:
                 return
+            if math.isnan(float(avg_cost_np[0])):
+                sys.exit("got NaN loss, training failed.")
+
     raise AssertionError("Cost is too large {0:2.2}".format(avg_cost_np[0]))
 
 
@@ -153,4 +158,6 @@ for use_cuda in (False, True):
             inject_test_method(use_cuda, is_sparse, parallel)
 
 if __name__ == '__main__':
+    # FIXME(tonyyang-svail):
+    #   This test always fail on MultiGPU CI
     unittest.main()
