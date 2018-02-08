@@ -14,7 +14,7 @@
 """
 All layers just related to the neural network.
 """
-
+import math
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
@@ -65,6 +65,7 @@ __all__ = [
     'beam_search',
     'row_conv',
     'multiplex',
+    'prior_boxes',
 ]
 
 
@@ -2993,3 +2994,152 @@ def multiplex(inputs, index):
                 'Ids': index},
         outputs={'Out': [out]})
     return out
+
+
+def prior_box(input,
+              image,
+              min_sizes,
+              max_sizes,
+              aspect_ratios,
+              variance,
+              flip,
+              clip,
+              step_w,
+              step_h,
+              offset,
+              name=None):
+    """
+    **Prior_box**
+
+    """
+    helper = LayerHelper("prior_box", **locals())
+    dtype = helper.input_dtype()
+
+    box = helper.create_tmp_variable(dtype)
+    var = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="prior_box",
+        inputs={"Input": input,
+                "Image": image},
+        outputs={"Boxes": box,
+                 "Variances": var},
+        attrs={
+            'min_sizes': min_sizes,
+            'max_sizes': max_sizes,
+            'aspect_ratios': aspect_ratios,
+            'variances': variance,
+            'flip': flip,
+            'clip': clip,
+            'step_w': step_w,
+            'step_h': step_h,
+            'offset': offset
+        })
+    return box, var
+
+
+def prior_boxes(input_layers,
+                image,
+                min_ratio,
+                max_ratio,
+                steps,
+                aspect_ratios,
+                min_dim,
+                step_w=None,
+                step_h=None,
+                offset=0.5,
+                variance=[0.1],
+                flip=True,
+                clip=True,
+                name=None):
+    """
+    **Prior_boxes**
+    e.g.
+       prior_boxes(
+          input_layers = [conv1, conv2, conv3, conv4, conv5, conv6],
+          image = data,
+          min_ratio = 0.2,
+          max_ratio = 0.9,
+          steps = [8, 16, 32, 64, 100, 300],
+          aspect_ratios = [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
+          min_dim = 300,
+          offset = 0.5,
+          variance = [0.1],
+          flip=True,
+          clip=True)
+    """
+    assert isinstance(input_layers, list), 'input_layer should be a list.'
+    assert not step_h and not steps, ''
+    assert not step_w and not steps, ''
+
+    num_layer = len(input_layers)
+    assert num_layer > 2  # TODO(zcd): currently, num_layer must be bigger than two.
+
+    min_sizes = []
+    max_sizes = []
+    if num_layer > 2:
+        step = int(math.floor((max_ratio - min_ratio) / (num_layer - 2)))
+        for ratio in xrange(min_ratio, max_ratio + 1, step):
+            min_sizes.append(min_dim * ratio)
+            max_sizes.append(min_dim * (ratio + step))
+        min_sizes = [min_dim * .10] + min_sizes
+        max_sizes = [min_dim * .20] + max_sizes
+
+    if step_h:
+        assert isinstance(step_h,list) and len(step_h) == num_layer, \
+            'step_h should be list and input_layers and step_h should have same length'
+    if step_w:
+        assert isinstance(step_w,list) and len(step_w) == num_layer, \
+            'step_w should be list and input_layers and step_w should have same length'
+    if steps:
+        assert isinstance(steps,list) and len(step_w) == num_layer, \
+            'steps should be list and input_layers and step_w should have same length'
+        step_w = steps
+        step_h = steps
+    if aspect_ratios:
+        assert isinstance(aspect_ratios, list) and len(aspect_ratios) == num_layer, \
+            'aspect_ratios should be list and input_layers and aspect_ratios should ' \
+            'have same length'
+
+    helper = LayerHelper("prior_box", **locals())
+    dtype = helper.input_dtype()
+
+    box_results = []
+    var_results = []
+    for i, input in enumerate(input_layers):
+        min_size = min_sizes[i]
+        max_size = max_sizes[i]
+        if isinstance(min_size, list):
+            min_size = [min_size]
+        if isinstance(max_size, list):
+            max_size = [max_size]
+        if aspect_ratios:
+            aspect_ratio = aspect_ratios[i]
+            if isinstance(aspect_ratio, list):
+                aspect_ratio = [aspect_ratio]
+
+        box, var = prior_box(input, image, min_size, max_size, aspect_ratios,
+                             variance, flip, clip, step_w[i], step_h[i], offset)
+
+        box_results.append(box)
+        var_results.append(var)
+
+    if len(box_results) == 1:
+        box = box_results[0]
+        var = var_results[0]
+    else:
+        axis = 1
+        box = helper.create_tmp_variable(dtype)
+        helper.append_op(
+            type="concat",
+            inputs={"X": box_results},
+            outputs={"Out": box},
+            attrs={'axis': axis})
+
+        var = helper.create_tmp_variable(dtype)
+        helper.append_op(
+            type="concat",
+            inputs={"X": var_results},
+            outputs={"Out": var},
+            attrs={'axis': axis})
+
+    return box, var
