@@ -410,12 +410,12 @@ def dynamic_lstmp(input,
     """
     **Dynamic LSTMP Layer**
 
-    LSTMP (LSTM with recurrent projection) layer has a separate projection 
-    layer after the LSTM layer, projecting the original hidden state to a 
-    lower-dimensional one, which is proposed to reduce the number of total 
-    parameters and furthermore computational complexity for the LSTM, 
-    espeacially for the case that the size of output units is relative 
-    large (https://research.google.com/pubs/archive/43905.pdf). 
+    LSTMP (LSTM with recurrent projection) layer has a separate projection
+    layer after the LSTM layer, projecting the original hidden state to a
+    lower-dimensional one, which is proposed to reduce the number of total
+    parameters and furthermore computational complexity for the LSTM,
+    espeacially for the case that the size of output units is relative
+    large (https://research.google.com/pubs/archive/43905.pdf).
 
     The formula is as follows:
 
@@ -441,27 +441,27 @@ def dynamic_lstmp(input,
           the matrix of weights from the input gate to the input).
     * :math:`W_{ic}`, :math:`W_{fc}`, :math:`W_{oc}`: Diagonal weight \
           matrices for peephole connections. In our implementation, \
-          we use vectors to reprenset these diagonal weight matrices. 
+          we use vectors to reprenset these diagonal weight matrices.
     * :math:`b`: Denotes bias vectors (e.g. :math:`b_i` is the input gate \
-          bias vector). 
+          bias vector).
     * :math:`\sigma`: The activation, such as logistic sigmoid function.
     * :math:`i, f, o` and :math:`c`: The input gate, forget gate, output \
           gate, and cell activation vectors, respectively, all of which have \
-          the same size as the cell output activation vector :math:`h`. 
+          the same size as the cell output activation vector :math:`h`.
     * :math:`h`: The hidden state.
-    * :math:`r`: The recurrent projection of the hidden state. 
+    * :math:`r`: The recurrent projection of the hidden state.
     * :math:`\\tilde{c_t}`: The candidate hidden state, whose \
           computation is based on the current input and previous hidden state.
-    * :math:`\odot`: The element-wise product of the vectors. 
+    * :math:`\odot`: The element-wise product of the vectors.
     * :math:`act_g` and :math:`act_h`: The cell input and cell output \
-          activation functions and `tanh` is usually used for them. 
+          activation functions and `tanh` is usually used for them.
     * :math:`\overline{act_h}`: The activation function for the projection \
           output, usually using `identity` or same as :math:`act_h`.
 
     Set `use_peepholes` to `False` to disable peephole connection. The formula
     is omitted here, please refer to the paper
     http://www.bioinf.jku.at/publications/older/2604.pdf for details.
-    
+
     Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
     operations on the input :math:`x_{t}` are NOT included in this operator.
     Users can choose to use fully-connected layer before LSTMP layer.
@@ -479,8 +479,8 @@ def dynamic_lstmp(input,
 
                                - Hidden-hidden weight = {:math:`W_{ch}, W_{ih}, \
                                                 W_{fh}, W_{oh}`}.
-                               - The shape of hidden-hidden weight is (P x 4D), 
-                                 where P is the projection size and D the hidden 
+                               - The shape of hidden-hidden weight is (P x 4D),
+                                 where P is the projection size and D the hidden
                                  size.
                                - Projection weight = {:math:`W_{rh}`}.
                                - The shape of projection weight is (D x P).
@@ -525,9 +525,9 @@ def dynamic_lstmp(input,
             hidden_dim, proj_dim = 512, 256
             fc_out = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
                                      act=None, bias_attr=None)
-            proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out, 
-                                                     size=hidden_dim * 4, 
-                                                     proj_size=proj_dim, 
+            proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out,
+                                                     size=hidden_dim * 4,
+                                                     proj_size=proj_dim,
                                                      use_peepholes=False,
                                                      is_reverse=True,
                                                      cell_activation="tanh",
@@ -2525,7 +2525,8 @@ def ctc_greedy_decoder(input, blank, name=None):
                     interval [0, num_classes + 1).
 
     Returns:
-        Variable: CTC greedy decode result.
+        Variable: CTC greedy decode result. If all the sequences in result were
+        empty, the result LoDTensor will be [-1] with LoD [[0]] and dims [1, 1].
 
     Examples:
         .. code-block:: python
