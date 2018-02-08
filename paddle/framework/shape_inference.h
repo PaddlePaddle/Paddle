@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -24,6 +25,7 @@ namespace framework {
 class InferShapeContext {
  public:
   virtual ~InferShapeContext() = default;
+  virtual bool IsCompileTime() const = 0;
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
 
@@ -50,6 +52,8 @@ class InferShapeContext {
   virtual const std::vector<std::string> &Outputs(
       const std::string &name) const = 0;
 
+  virtual LoD GetLoD(const std::string &name) const = 0;
+  virtual void SetLoD(const std::string &name, const LoD &lod) = 0;
   virtual void ShareLoD(const std::string &in, const std::string &out,
                         size_t i = 0, size_t j = 0) const = 0;
 
