@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vgg16job-trainer
+spec:
+  parallelism: 20
+  completions: 20
+  template:
+    metadata:
+      labels:
+        tf-job-trainer: vgg16job
+    spec:
+      imagePullSecrets:
+        - name: job-registry-secret
+      hostNetwork: true
+      containers:
+      - name: trainer
+        image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
+        imagePullPolicy: Always
+        command: ["paddle_k8s", "start_tf"]
+        env:
+        - name: JOB_NAME
+          value: vgg16job
+        - name: TRAINING_ROLE
+          value: "TRAINER"
+        - name: INIT_PSERVERS_NUM
+          value: "10"
+        - name: INIT_TRAINER_NUM
+          value: "20"
+        - name: TRAINER_PACKAGE
+          value: "/workspace"
+        - name: INIT_NUM_PASSES
+          value: "1"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: "status.podIP"
+        resources:
+          requests:
+            memory: 40Gi
+            cpu: 2
+          limits:
+            memory: 40Gi
+            cpu: 2
+      restartPolicy: Never

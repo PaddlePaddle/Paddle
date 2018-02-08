@@ -1,0 +1,50 @@
+apiVersion: extensions/v1beta1
+kind: ReplicaSet
+metadata:
+  name: vgg16job-pserver
+spec:
+  replicas: 10
+  template:
+    metadata:
+      labels:
+        tf-job-pserver: vgg16job
+    spec:
+      hostNetwork: true
+      imagePullSecrets:
+      - name: job-registry-secret
+      containers:
+      - name: pserver
+        image: "registry.baidu.com/gongweibao/fluid_benchmark:vgg16"
+        imagePullPolicy: Always
+        command: ["tf_k8s", "start_tf"]
+        ports:
+        - name: jobport-30236
+          containerPort: 30236
+        env:
+        - name: JOB_NAME
+          value: vgg16job
+        - name: TRAINING_ROLE
+          value: "PSERVER"
+        - name: INIT_PSERVERS_NUM
+          value: "10"
+        - name: INIT_TRAINER_NUM
+          value: "20"
+        - name: TRAINER_PACKAGE
+          value: "/workspace"
+        - name: INIT_NUM_PASSES
+          value: "1"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: "status.podIP"
+        resources:
+          requests:
+            memory: 10Gi
+            cpu: 4
+          limits:
+            memory: 10Gi
+            cpu: 4

@@ -30,7 +30,7 @@ parser.add_argument('--num_passes', type=int, default=50, help="No. of passes.")
 parser.add_argument(
     '--device',
     type=str,
-    default='GPU',
+    default='CPU',
     choices=['CPU', 'GPU'],
     help="The device type.")
 parser.add_argument(
@@ -46,6 +46,23 @@ parser.add_argument(
     default='cifar10',
     choices=['cifar10', 'flowers'],
     help='Optional dataset for benchmark.')
+
+parser.add_argument(
+    "--ps_hosts",
+    type=str,
+    default="",
+    help="Comma-separated list of hostname:port pairs")
+parser.add_argument(
+    "--worker_hosts",
+    type=str,
+    default="",
+    help="Comma-separated list of hostname:port pairs")
+parser.add_argument(
+    "--job_name", type=str, default="", help="One of 'ps', 'worker'")
+# Flags for defining the tf.train.Server
+parser.add_argument(
+    "--task_index", type=int, default=0, help="Index of task within the job")
+
 args = parser.parse_args()
 
 
@@ -308,5 +325,21 @@ def print_arguments():
 
 
 if __name__ == '__main__':
+    ps_hosts = args.ps_hosts.split(",")
+    worker_hosts = args.worker_hosts.split(",")
+
+    # Create a cluster from the parameter server and worker hosts.
+    cluster = tf.train.ClusterSpec({"ps": ps_hosts, "worker": worker_hosts})
+
+    # Create and start a server for the local task.
+    server = tf.train.Server(
+        cluster, job_name=args.job_name, task_index=args.task_index)
+
     print_arguments()
-    run_benchmark()
+
+    if args.job_name == "ps":
+        print("start pserver")
+        server.join()
+    elif args.job_name == "worker":
+        print("start worker")
+        #run_benchmark()
