@@ -16,7 +16,10 @@ import layers
 from framework import Variable
 from initializer import init_on_cpu
 
-__all__ = ['exponential_decay', 'natural_exp_decay', 'inverse_time_decay']
+__all__ = [
+    'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
+    'polynomial_decay', 'piecewise_decay'
+]
 """
 When training a model, it's often useful to decay the
 learning rate during training process, this is called
@@ -210,7 +213,7 @@ def piecewise_decay(global_step, boundaries, values):
         raise ValueError("len(values) - len(boundaries) should be 1")
 
     if not isinstance(global_step, Variable):
-        raise ValueError("global_step is required for inverse_time_decay.")
+        raise ValueError("global_step is required for piecewise_decay.")
 
     with init_on_cpu():
         lr = layers.create_global_var(
