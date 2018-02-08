@@ -48,10 +48,24 @@ namespace framework {
  */
 struct LoD : public std::vector<Vector<size_t>> {
   using std::vector<Vector<size_t>>::vector;
+  platform::Place place() const {
+    if (this->size() == 0) {
+      // Not Initialze Yet.
+      return platform::CPUPlace();
+    } else {
+      return this->front().place();
+    }
+  }
 
   void CopyFromCUDA() {
     for (auto it = this->begin(); it != this->end(); ++it) {
       it->CopyFromCUDA();
+    }
+  }
+
+  void CopyToPeer(platform::Place place) {
+    for (auto it = this->begin(); it != this->end(); ++it) {
+      it->CopyToPeer(place);
     }
   }
 };

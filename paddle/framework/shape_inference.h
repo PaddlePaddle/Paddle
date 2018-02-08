@@ -36,12 +36,13 @@ class InferShapeContext {
   virtual bool HasOutputs(const std::string &name) const = 0;
 
   DDim GetInputDim(const std::string &name) const;
-
   std::vector<DDim> GetInputsDim(const std::string &name) const;
+  std::vector<DDim> GetReaderDims(const std::string &name) const;
   DDim GetInputsElementDim(const std::string &name, int idx) const;
 
   void SetOutputDim(const std::string &name, const DDim &dim);
   void SetOutputsDim(const std::string &name, const std::vector<DDim> &dims);
+  void SetReaderDims(const std::string &name, const std::vector<DDim> &dims);
 
   virtual AttrReader Attrs() const = 0;
   virtual const std::vector<std::string> &Inputs(
@@ -61,6 +62,9 @@ class InferShapeContext {
  protected:
   virtual DDim GetDim(const std::string &name) const = 0;
   virtual void SetDim(const std::string &name, const DDim &dim) = 0;
+  virtual std::vector<DDim> GetRepeatedDims(const std::string &name) const = 0;
+  virtual void SetRepeatedDims(const std::string &name,
+                               const std::vector<DDim> &dims) = 0;
 
   std::vector<DDim> GetDims(const std::vector<std::string> &names) const;
   std::vector<proto::VarDesc::VarType> GetVarTypes(
