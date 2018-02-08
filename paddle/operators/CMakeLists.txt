@@ -62,7 +62,7 @@ function(op_library TARGET)
     endif()
 
     # Define operators that don't need pybind here.
-    foreach(manual_pybind_op "net_op" "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
+    foreach(manual_pybind_op "net_op" "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op" "create_reader_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -155,6 +155,7 @@ op_library(recurrent_op DEPS executor)
 op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale math_function)
 op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
+op_library(create_reader_op DEPS reader)
 
 # Regist multiple Kernel to pybind
 if (WITH_GPU)
@@ -185,7 +186,7 @@ list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
     op_library(${src})
 endforeach()
-file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
+file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\nUSE_NO_KERNEL_OP(create_random_data_generator);\n")
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 

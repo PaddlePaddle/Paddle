@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+import sys
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid.core as core
@@ -217,6 +219,8 @@ def main():
             if out[0] < 6.0:
                 # if avg cost less than 6.0, we think our code is good.
                 exit(0)
+            if math.isnan(float(out[0])):
+                sys.exit("got NaN loss, training failed.")
 
 
 main()

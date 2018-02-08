@@ -1,6 +1,6 @@
-##################
+########################
 Contribute Documentation
-##################
+########################
 
 PaddlePaddle supports English documentation ``doc`` and Chinese documentation ``doc_cn``.
 Both are compiled by `cmake`_ and `sphinx`_ , the compiled documentations will be stored under ``doc`` and ``doc_cn`` directories.
