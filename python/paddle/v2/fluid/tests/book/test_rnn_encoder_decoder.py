@@ -19,6 +19,8 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 import contextlib
+import math
+import sys
 import unittest
 from paddle.v2.fluid.executor import Executor
 
@@ -207,7 +209,8 @@ def train(use_cuda, save_dirname=None):
             avg_cost_val = np.array(outs[0])
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
                   " avg_cost=" + str(avg_cost_val))
-
+            if math.isnan(float(avg_cost_val[0])):
+                sys.exit("got NaN loss, training failed.")
             if batch_id > 3:
                 if save_dirname is not None:
                     fluid.io.save_inference_model(
