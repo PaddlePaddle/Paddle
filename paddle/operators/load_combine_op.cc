@@ -99,7 +99,7 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "Out",
         "(vector) The output LoDTensors that will be read from the input file.")
         .AsDuplicable();
-    AddAttr<std::string>("file_path",
+    AddAttr<std::string>("input_str",
                          "(string) "
                          "LoDTensors will be loaded from \"input_string\". It "
                          "can be a buffer or denote a filename")
