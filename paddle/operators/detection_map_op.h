@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,6 +58,14 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto* in_label = ctx.Input<framework::LoDTensor>("Label");
     auto* out_map = ctx.Output<framework::Tensor>("MAP");
 
+    auto* in_pos_count = ctx.Input<framework::Tensor>("PosCount");
+    auto* in_true_pos = ctx.Input<framework::LoDTensor>("TruePos");
+    auto* in_false_pos = ctx.Input<framework::LoDTensor>("FalsePos");
+
+    auto* out_pos_count = ctx.Output<framework::Tensor>("OutPosCount");
+    auto* out_true_pos = ctx.Output<framework::LoDTensor>("OutTruePos");
+    auto* out_false_pos = ctx.Output<framework::LoDTensor>("OutFalsePos");
+
     float overlap_threshold = ctx.Attr<float>("overlap_threshold");
     float evaluate_difficult = ctx.Attr<bool>("evaluate_difficult");
     auto ap_type = GetAPType(ctx.Attr<std::string>("ap_type"));
@@ -79,11 +87,19 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     std::map<int, std::vector<std::pair<T, int>>> true_pos;
     std::map<int, std::vector<std::pair<T, int>>> false_pos;
 
+    if (in_pos_count != nullptr) {
+      GetInputPos(*in_pos_count, *in_true_pos, *in_false_pos, label_pos_count,
+                  true_pos, false_pos);
+    }
+
     CalcTrueAndFalsePositive(gt_boxes, detect_boxes, evaluate_difficult,
                              overlap_threshold, label_pos_count, true_pos,
                              false_pos);
 
     T map = CalcMAP(ap_type, label_pos_count, true_pos, false_pos);
+
+    GetOutputPos(ctx, label_pos_count, true_pos, false_pos, *out_pos_count,
+                 *out_true_pos, *out_false_pos);
 
     T* map_data = out_map->mutable_data<T>(ctx.GetPlace());
     map_data[0] = map;
@@ -159,6 +175,119 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       }
       detect_boxes.push_back(boxes);
     }
+  }
+
+  void GetOutputPos(
+      const framework::ExecutionContext& ctx,
+      const std::map<int, int>& label_pos_count,
+      const std::map<int, std::vector<std::pair<T, int>>>& true_pos,
+      const std::map<int, std::vector<std::pair<T, int>>>& false_pos,
+      framework::Tensor& output_pos_count,
+      framework::LoDTensor& output_true_pos,
+      framework::LoDTensor& output_false_pos) const {
+    int max_class_id = 0;
+    int true_pos_count = 0;
+    int false_pos_count = 0;
+    for (auto it = label_pos_count.begin(); it != label_pos_count.end(); ++it) {
+      int label = it->first;
+      if (label > max_class_id) max_class_id = label;
+      int label_num_pos = it->second;
+      if (label_num_pos == 0 || true_pos.find(label) == true_pos.end())
+        continue;
+      auto label_true_pos = true_pos.find(label)->second;
+      auto label_false_pos = false_pos.find(label)->second;
+      true_pos_count += label_true_pos.size();
+      false_pos_count += label_false_pos.size();
+    }
+
+    int* pos_count_data = output_pos_count.mutable_data<int>(
+        framework::make_ddim({max_class_id + 1, 1}), ctx.GetPlace());
+    T* true_pos_data = output_true_pos.mutable_data<T>(
+        framework::make_ddim({true_pos_count, 2}), ctx.GetPlace());
+    T* false_pos_data = output_false_pos.mutable_data<T>(
+        framework::make_ddim({false_pos_count, 2}), ctx.GetPlace());
+    true_pos_count = 0;
+    false_pos_count = 0;
+    std::vector<size_t> true_pos_starts = {0};
+    std::vector<size_t> false_pos_starts = {0};
+    for (int i = 0; i <= max_class_id; ++i) {
+      auto it_count = label_pos_count.find(i);
+      pos_count_data[i] = 0;
+      if (it_count != label_pos_count.end()) {
+        pos_count_data[i] = it_count->second;
+      }
+      auto it_true_pos = true_pos.find(i);
+      if (it_true_pos != true_pos.end()) {
+        const std::vector<std::pair<T, int>>& true_pos_vec =
+            it_true_pos->second;
+        for (const std::pair<T, int>& tp : true_pos_vec) {
+          true_pos_data[true_pos_count * 2] = tp.first;
+          true_pos_data[true_pos_count * 2 + 1] = static_cast<T>(tp.second);
+          true_pos_count++;
+        }
+      }
+      true_pos_starts.push_back(true_pos_count);
+
+      auto it_false_pos = false_pos.find(i);
+      if (it_false_pos != false_pos.end()) {
+        const std::vector<std::pair<T, int>>& false_pos_vec =
+            it_false_pos->second;
+        for (const std::pair<T, int>& fp : false_pos_vec) {
+          false_pos_data[false_pos_count * 2] = fp.first;
+          false_pos_data[false_pos_count * 2 + 1] = static_cast<T>(fp.second);
+          false_pos_count++;
+        }
+      }
+      false_pos_starts.push_back(false_pos_count);
+    }
+
+    framework::LoD true_pos_lod;
+    true_pos_lod.emplace_back(true_pos_starts);
+    framework::LoD false_pos_lod;
+    false_pos_lod.emplace_back(false_pos_starts);
+
+    output_true_pos.set_lod(true_pos_lod);
+    output_false_pos.set_lod(false_pos_lod);
+    return;
+  }
+
+  void GetInputPos(
+      const framework::Tensor& input_pos_count,
+      const framework::LoDTensor& input_true_pos,
+      const framework::LoDTensor& input_false_pos,
+      std::map<int, int>& label_pos_count,
+      std::map<int, std::vector<std::pair<T, int>>>& true_pos,
+      std::map<int, std::vector<std::pair<T, int>>>& false_pos) const {
+    constexpr T kEPS = static_cast<T>(1e-6);
+    int class_number = input_pos_count.dims()[0];
+    const int* pos_count_data = input_pos_count.data<int>();
+    for (int i = 0; i < class_number; ++i) {
+      label_pos_count[i] = pos_count_data[i];
+    }
+
+    const T* true_pos_data = input_true_pos.data<T>();
+    auto true_pos_data_lod = input_true_pos.lod();
+    for (int i = 0; i < true_pos_data_lod.size(); ++i) {
+      for (int j = true_pos_data_lod[0][i]; j < true_pos_data_lod[0][i + 1];
+           ++j) {
+        T score = true_pos_data[j * 2];
+        int flag = 1;
+        if (true_pos_data[j * 2 + 1] < kEPS) flag = 0;
+        true_pos[i].push_back(std::make_pair(score, flag));
+      }
+    }
+    const T* false_pos_data = input_false_pos.data<T>();
+    auto false_pos_data_lod = input_false_pos.lod();
+    for (int i = 0; i < false_pos_data_lod.size(); ++i) {
+      for (int j = false_pos_data_lod[0][i]; j < false_pos_data_lod[0][i + 1];
+           ++j) {
+        T score = false_pos_data[j * 2];
+        int flag = 1;
+        if (false_pos_data[j * 2 + 1] < kEPS) flag = 0;
+        false_pos[i].push_back(std::make_pair(score, flag));
+      }
+    }
+    return;
   }
 
   void CalcTrueAndFalsePositive(
@@ -283,7 +412,6 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       size_t num = tp_sum.size();
       // Compute Precision.
       for (size_t i = 0; i < num; ++i) {
-        // CHECK_LE(tpCumSum[i], labelNumPos);
         precision.push_back(static_cast<T>(tp_sum[i]) /
                             static_cast<T>(tp_sum[i] + fp_sum[i]));
         recall.push_back(static_cast<T>(tp_sum[i]) / label_num_pos);

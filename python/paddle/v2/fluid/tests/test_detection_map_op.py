@@ -29,10 +29,24 @@ class TestDetectionMAPOp(OpTest):
         self.detect = np.array(self.detect).astype('float32')
         self.mAP = np.array(self.mAP).astype('float32')
 
-        self.inputs = {
-            'Label': (self.label, self.label_lod),
-            'Detection': (self.detect, self.detect_lod)
-        }
+        if (len(self.class_pos_count) > 0):
+            self.class_pos_count = np.array(self.class_pos_count).astype(
+                'int32')
+            self.true_pos = np.array(self.true_pos).astype('float32')
+            self.false_pos = np.array(self.false_pos).astype('float32')
+
+            self.inputs = {
+                'Label': (self.label, self.label_lod),
+                'Detection': (self.detect, self.detect_lod),
+                'PosCount': self.class_pos_count,
+                'TruePos': (self.true_pos, self.true_pos_lod),
+                'FalsePos': (self.false_pos, self.false_pos_lod)
+            }
+        else:
+            self.inputs = {
+                'Label': (self.label, self.label_lod),
+                'Detection': (self.detect, self.detect_lod),
+            }
 
         self.attrs = {
             'overlap_threshold': self.overlap_threshold,
@@ -40,7 +54,17 @@ class TestDetectionMAPOp(OpTest):
             'ap_type': self.ap_type
         }
 
-        self.outputs = {'MAP': self.mAP}
+        self.out_class_pos_count = np.array(self.out_class_pos_count).astype(
+            'int')
+        self.out_true_pos = np.array(self.out_true_pos).astype('float32')
+        self.out_false_pos = np.array(self.out_false_pos).astype('float32')
+
+        self.outputs = {
+            'MAP': self.mAP,
+            'OutPosCount': self.out_class_pos_count,
+            'OutTruePos': (self.out_true_pos, self.out_true_pos_lod),
+            'OutFalsePos': (self.out_false_pos, self.out_false_pos_lod)
+        }
 
     def init_test_case(self):
         self.overlap_threshold = 0.3
@@ -67,13 +91,64 @@ class TestDetectionMAPOp(OpTest):
                        [1, 0.2, 1, 0], [2, 0.8, 0, 1], [2, 0.1, 1, 0],
                        [3, 0.2, 0, 1]]
 
+        self.class_pos_count = []
+        self.true_pos_lod = [[]]
+        self.true_pos = [[]]
+        self.false_pos_lod = [[]]
+        self.false_pos = [[]]
+
     def calc_map(self, tf_pos, tf_pos_lod):
         mAP = 0.0
         count = 0
 
-        class_pos_count = {}
-        true_pos = {}
-        false_pos = {}
+        def get_input_pos(class_pos_count, true_pos, true_pos_lod, false_pos,
+                          false_pos_lod):
+            class_pos_count_dict = collections.Counter()
+            true_pos_dict = collections.defaultdict(list)
+            false_pos_dict = collections.defaultdict(list)
+            for i, count in enumerate(class_pos_count):
+                class_pos_count_dict[i] = count
+
+            for i in range(len(true_pos_lod[0]) - 1):
+                start = true_pos_lod[0][i]
+                end = true_pos_lod[0][i + 1]
+                for j in range(start, end):
+                    true_pos_dict[i].append(true_pos[j])
+
+            for i in range(len(false_pos_lod[0]) - 1):
+                start = false_pos_lod[0][i]
+                end = false_pos_lod[0][i + 1]
+                for j in range(start, end):
+                    false_pos_dict[i].append(false_pos[j])
+
+            return class_pos_count_dict, true_pos_dict, false_pos_dict
+
+        def get_output_pos(label_count, true_pos, false_pos):
+            max_label = 0
+            for (label, label_pos_num) in label_count.items():
+                if max_label < label:
+                    max_label = label
+
+            label_number = max_label + 1
+
+            out_class_pos_count = []
+            out_true_pos_lod = [0]
+            out_true_pos = []
+            out_false_pos_lod = [0]
+            out_false_pos = []
+
+            for i in range(label_number):
+                out_class_pos_count.append([label_count[i]])
+                true_pos_list = true_pos[i]
+                out_true_pos += true_pos_list
+                out_true_pos_lod.append(len(out_true_pos))
+                false_pos_list = false_pos[i]
+                out_false_pos += false_pos_list
+                out_false_pos_lod.append(len(out_false_pos))
+
+            return out_class_pos_count, out_true_pos, [
+                out_true_pos_lod
+            ], out_false_pos, [out_false_pos_lod]
 
         def get_accumulation(pos_list):
             sorted_list = sorted(pos_list, key=lambda pos: pos[0], reverse=True)
@@ -84,7 +159,9 @@ class TestDetectionMAPOp(OpTest):
                 accu_list.append(sum)
             return accu_list
 
-        label_count = collections.Counter()
+        label_count, true_pos, false_pos = get_input_pos(
+            self.class_pos_count, self.true_pos, self.true_pos_lod,
+            self.false_pos, self.false_pos_lod)
         for (label, difficult, xmin, ymin, xmax, ymax) in self.label:
             if self.evaluate_difficult:
                 label_count[label] += 1
@@ -143,8 +220,10 @@ class TestDetectionMAPOp(OpTest):
 
                 mAP += average_precisions
                 count += 1
-
-        if count != 0: mAP /= count
+        self.out_class_pos_count, self.out_true_pos, self.out_true_pos_lod, self.out_false_pos, self.out_false_pos_lod = get_output_pos(
+            label_count, true_pos, false_pos)
+        if count != 0:
+            mAP /= count
         return mAP * 100.0
 
     def setUp(self):
@@ -172,6 +251,16 @@ class TestDetectionMAPOp11Point(TestDetectionMAPOp):
         super(TestDetectionMAPOp11Point, self).init_test_case()
 
         self.ap_type = "11point"
+
+
+class TestDetectionMAPOpMultiBatch(TestDetectionMAPOp):
+    def init_test_case(self):
+        super(TestDetectionMAPOpMultiBatch, self).init_test_case()
+        self.class_pos_count = [0, 2, 1]
+        self.true_pos_lod = [[0, 0, 3, 5]]
+        self.true_pos = [[0.7, 1.], [0.3, 0.], [0.2, 1.], [0.8, 0.], [0.1, 1.]]
+        self.false_pos_lod = [[0, 0, 3, 5]]
+        self.false_pos = [[0.7, 0.], [0.3, 1.], [0.2, 0.], [0.8, 1.], [0.1, 0.]]
 
 
 if __name__ == '__main__':
