@@ -153,4 +153,6 @@ for use_cuda in (False, True):
             inject_test_method(use_cuda, is_sparse, parallel)
 
 if __name__ == '__main__':
+    # FIXME(tonyyang-svail):
+    #   This test always fail on MultiGPU CI
     unittest.main()
