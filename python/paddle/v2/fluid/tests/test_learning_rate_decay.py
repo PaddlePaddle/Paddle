@@ -15,6 +15,8 @@
 import unittest
 
 import math
+import copy
+
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.layers as layers
@@ -54,21 +56,37 @@ def inverse_time_decay(learning_rate,
     return learning_rate / (1 + decay_rate * temp)
 
 
-class TestLearningRateDecay(unittest.TestCase):
-    def check_decay(self, python_decay_fn, fluid_decay_fn, staircase):
-        init_lr = 1.0
-        decay_steps = 5
-        decay_rate = 0.5
+def polynomial_decay(learning_rate,
+                     global_step,
+                     decay_steps,
+                     end_learning_rate=0.0001,
+                     power=1.0,
+                     cycle=False):
+    if cycle:
+        div = math.ceil(global_step / float(decay_steps))
+        if div == 0:
+            div = 1
+        decay_steps = decay_steps * div
+    else:
+        global_step = min(global_step, decay_steps)
+    return (learning_rate - end_learning_rate) * \
+           ((1 - float(global_step) / float(decay_steps)) ** power) + end_learning_rate
 
+
+def piecewise_decay(global_step, boundaries, values):
+    assert len(boundaries) + 1 == len(values)
+    for i in range(len(boundaries)):
+        if global_step < boundaries[i]:
+            return values[i]
+    return values[len(values) - 1]
+
+
+class TestLearningRateDecay(unittest.TestCase):
+    def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
         global_step = layers.create_global_var(
             shape=[1], value=0.0, dtype='float32', persistable=True)
 
-        decayed_lr = fluid_decay_fn(
-            learning_rate=init_lr,
-            global_step=global_step,
-            decay_steps=decay_steps,
-            decay_rate=decay_rate,
-            staircase=staircase)
+        decayed_lr = fluid_decay_fn(global_step=global_step, **kwargs)
         layers.increment(global_step, 1.0)
 
         place = fluid.CPUPlace()
@@ -79,31 +97,52 @@ class TestLearningRateDecay(unittest.TestCase):
             step_val, lr_val = exe.run(fluid.default_main_program(),
                                        feed=[],
                                        fetch_list=[global_step, decayed_lr])
-            python_decayed_lr = python_decay_fn(
-                learning_rate=init_lr,
-                global_step=step,
-                decay_steps=decay_steps,
-                decay_rate=decay_rate,
-                staircase=staircase)
+            python_decayed_lr = python_decay_fn(global_step=step, **kwargs)
             self.assertAlmostEqual(python_decayed_lr, lr_val[0])
 
     def test_decay(self):
+        common_kwargs_true = {
+            "learning_rate": 1.0,
+            "decay_steps": 5,
+            "decay_rate": 0.5,
+            "staircase": True
+        }
+        common_kwargs_false = copy.deepcopy(common_kwargs_true)
+        common_kwargs_false["staircase"] = False
+
         decay_fns = [
-            (exponential_decay, lr_decay.exponential_decay, True),
-            (exponential_decay, lr_decay.exponential_decay, False),
-            (natural_exp_decay, lr_decay.natural_exp_decay, True),
-            (natural_exp_decay, lr_decay.natural_exp_decay, False),
-            (inverse_time_decay, lr_decay.inverse_time_decay, True),
-            (inverse_time_decay, lr_decay.inverse_time_decay, False),
+            (exponential_decay, lr_decay.exponential_decay, common_kwargs_true),
+            (exponential_decay, lr_decay.exponential_decay,
+             common_kwargs_false),
+            (natural_exp_decay, lr_decay.natural_exp_decay, common_kwargs_true),
+            (natural_exp_decay, lr_decay.natural_exp_decay,
+             common_kwargs_false),
+            (inverse_time_decay, lr_decay.inverse_time_decay,
+             common_kwargs_true),
+            (inverse_time_decay, lr_decay.inverse_time_decay,
+             common_kwargs_false),
+            (polynomial_decay, lr_decay.polynomial_decay, {
+                "learning_rate": 1.0,
+                "decay_steps": 5,
+                "cycle": True
+            }),
+            (polynomial_decay, lr_decay.polynomial_decay, {
+                "learning_rate": 1.0,
+                "decay_steps": 5,
+                "cycle": False
+            }),
+            (piecewise_decay, lr_decay.piecewise_decay, {
+                "boundaries": [3, 6, 9],
+                "values": [0.1, 0.2, 0.3, 0.4]
+            }),
         ]
 
-        for py_decay_fn, fluid_decay_fn, staircase in decay_fns:
-            print("decay_fn=" + str(py_decay_fn) + " staircase=" + str(
-                staircase))
+        for py_decay_fn, fluid_decay_fn, kwargs in decay_fns:
+            print("decay_fn=" + py_decay_fn.__name__ + " kwargs=" + str(kwargs))
             main_program = framework.Program()
             startup_program = framework.Program()
             with framework.program_guard(main_program, startup_program):
-                self.check_decay(py_decay_fn, fluid_decay_fn, staircase)
+                self.check_decay(py_decay_fn, fluid_decay_fn, kwargs)
 
 
 if __name__ == '__main__':
