@@ -22,19 +22,17 @@ limitations under the License. */
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/reader.h"
 #include "paddle/platform/place.h"
 #include "paddle/platform/profiler.h"
 
-DECLARE_bool(do_memory_benchmark);
+DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
             "Checking whether operator produce NAN/INF or not. It will be "
             "extremely slow so please use this flag wisely.");
 
 namespace paddle {
 namespace framework {
-
-const std::string kFeedOpType = "feed";
-const std::string kFetchOpType = "fetch";
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
@@ -55,11 +53,13 @@ static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
     var->GetMutable<LoDTensorArray>();
   } else if (var_type == proto::VarDesc::PLACE_LIST) {
     var->GetMutable<platform::PlaceList>();
+  } else if (var_type == proto::VarDesc::READER) {
+    var->GetMutable<ReaderHolder>();
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
-        "[LoDTensor, SelectedRows, FEED_MINIBATCH, FETCH_LIST, LOD_RANK_TABLE,"
-        " PLACE_LIST]",
+        "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
+        "LOD_RANK_TABLE, PLACE_LIST, READER]",
         var_type);
   }
 }
@@ -125,7 +125,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 
     op->Run(*local_scope, place_);
     VLOG(3) << op->DebugStringEx(local_scope);
-    if (FLAGS_do_memory_benchmark) {
+    if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);
     }
@@ -142,7 +142,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
   }
-  if (FLAGS_do_memory_benchmark) {
+  if (FLAGS_benchmark) {
     VLOG(2) << "-------------------------------------------------------";
     VLOG(2) << "Memory used after deleting local scope: "
             << memory::memory_usage(place_);

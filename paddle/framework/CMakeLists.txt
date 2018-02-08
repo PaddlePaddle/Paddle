@@ -20,9 +20,12 @@ endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
+nv_test(mixed_vector_test SRCS mixed_vector_test.cu DEPS place paddle_memory device_context init)
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor paddle_memory)
-nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
+nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor init)
+
+cc_library(reader SRCS reader.cc DEPS lod_tensor ddim)
 
 cc_test(variable_test SRCS variable_test.cc)
 
@@ -92,11 +95,4 @@ cc_test(init_test SRCS init_test.cc DEPS init)
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
       
-if(NOT WITH_C_API AND WITH_FLUID)
-  file(GLOB FRAMEWORK_HEADERS *.h)
-  install(FILES ${FRAMEWORK_HEADERS} DESTINATION include/paddle/framework)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/framework.pb.h DESTINATION include/paddle/framework)
-  install(FILES details/cow_ptr.h details/op_registry.h DESTINATION include/paddle/framework/details)
-endif()
-
 cc_test(channel_test SRCS channel_test.cc)

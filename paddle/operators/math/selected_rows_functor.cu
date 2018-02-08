@@ -31,7 +31,7 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(in1_height, input2.height());
     output->set_height(in1_height);
 
-    auto& in1_rows = input1.rows();
+    framework::Vector<int64_t> in1_rows(input1.rows());
     auto& in2_rows = input2.rows();
     std::vector<int64_t> out_rows;
     out_rows.reserve(in1_rows.size() + in2_rows.size());
@@ -108,7 +108,7 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(in1_height, out_dims[0]);
 
     auto& in1_value = input1.value();
-    auto& in1_rows = input1.rows();
+    framework::Vector<int64_t> in1_rows(input1.rows());
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(in1_row_numel, input2.numel() / in1_height);
@@ -126,7 +126,7 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     dim3 grid(1, in1_rows.size());
     SelectedRowsAddTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, in1_rows.data(), out_data, in1_row_numel);
+        in1_data, in1_rows.cuda_data(), out_data, in1_row_numel);
 
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
     auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
@@ -146,7 +146,7 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     auto in1_height = input1.height();
     PADDLE_ENFORCE_EQ(in1_height, input2->height());
 
-    auto& in1_rows = input1.rows();
+    framework::Vector<int64_t> in1_rows(input1.rows());
     auto& in2_rows = *(input2->mutable_rows());
 
     auto& in1_value = input1.value();
@@ -204,7 +204,7 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(in1_height, in2_dims[0]);
 
     auto& in1_value = input1.value();
-    auto& in1_rows = input1.rows();
+    framework::Vector<int64_t> in1_rows(input1.rows());
 
     int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
     PADDLE_ENFORCE_EQ(in1_row_numel, input2->numel() / in1_height);
@@ -216,7 +216,7 @@ struct SelectedRowsAddToTensor<platform::CUDADeviceContext, T> {
     dim3 grid(1, in1_rows.size());
     SelectedRowsAddToTensorKernel<
         T, block_size><<<grid, threads, 0, context.stream()>>>(
-        in1_data, in1_rows.data(), in2_data, in1_row_numel);
+        in1_data, in1_rows.cuda_data(), in2_data, in1_row_numel);
   }
 };
 
@@ -257,7 +257,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
   framework::SelectedRows operator()(const platform::CUDADeviceContext& context,
                                      const framework::SelectedRows& input) {
     framework::SelectedRows out;
-    auto input_rows = input.rows();
+    framework::Vector<int64_t> input_rows(input.rows());
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
 
@@ -283,9 +283,9 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
     MergeAddKernel<
         T, 256><<<grid1, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(input_data, input.rows().data(), out_data,
-                                   out.rows().data(), out.rows().size(),
-                                   input_width);
+                      .stream()>>>(input_data, input_rows.cuda_data(), out_data,
+                                   out.mutable_rows()->cuda_data(),
+                                   out.rows().size(), input_width);
     return out;
   }
 };
@@ -370,8 +370,8 @@ struct UpdateToTensor<platform::CUDADeviceContext, T> {
     dim3 threads(platform::PADDLE_CUDA_NUM_THREADS, 1);
     dim3 grid(1, in1_rows.size());
     UpdateToTensorKernel<T, platform::PADDLE_CUDA_NUM_THREADS><<<
-        grid, threads, 0, context.stream()>>>(in1_data, in1_rows.data(), op,
-                                              in2_data, in1_row_numel);
+        grid, threads, 0, context.stream()>>>(in1_data, in1_rows.cuda_data(),
+                                              op, in2_data, in1_row_numel);
   }
 };
 }  // namespace scatter
