@@ -82,7 +82,8 @@ IF(NOT ${CBLAS_FOUND})
         CONFIGURE_COMMAND   ""
     )
     SET(CBLAS_PROVIDER openblas)
-    IF(WITH_C_API OR WITH_FLUID)
+    FILE(REMOVE_RECURSE ${CBLAS_INSTALL_DIR}/lib/cmake ${CBLAS_INSTALL_DIR}/lib/pkgconfig)
+    IF(WITH_C_API)
         INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)
         # Because libopenblas.a is a symbolic link of another library, thus need to
         # install the whole directory.
@@ -98,11 +99,6 @@ IF(NOT ${CBLAS_FOUND})
         )
         INSTALL(CODE "MESSAGE(STATUS \"Installing: \"
                 \"${CBLAS_INSTALL_DIR}/lib -> ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}\"
-            )"
-        )
-        INSTALL(CODE "execute_process(
-            COMMAND rm -r ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}/cmake
-                    ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}/pkgconfig
             )"
         )
     ENDIF()

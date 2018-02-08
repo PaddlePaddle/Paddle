@@ -52,6 +52,12 @@ IF(NOT PROTOBUF_FOUND)
     )
 ENDIF(NOT PROTOBUF_FOUND)
 
+set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/openblas")
+copy(openblas_lib
+  SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
+  DSTS ${dst_dir} ${dst_dir}
+)
+
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle")
 set(dst_dir "${CMAKE_INSTALL_PREFIX}/paddle")
@@ -69,7 +75,7 @@ copy(memory_lib
 
 set(module "inference")
 copy(inference_lib DEPENDS paddle_fluid_shared
-  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/inference/libpaddle_fluid.so
+  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/inference/libpaddle_fluid.*
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}
 )
 
@@ -87,4 +93,4 @@ copy(string_lib
 
 add_custom_target(inference_lib_dist DEPENDS 
   inference_lib framework_lib memory_lib platform_lib string_lib
-  gflags_lib glog_lib protobuf_lib eigen3_lib)
+  gflags_lib glog_lib protobuf_lib eigen3_lib openblas_lib)

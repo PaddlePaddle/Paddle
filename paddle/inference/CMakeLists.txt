@@ -13,7 +13,7 @@ cc_library(paddle_fluid DEPS paddle_fluid_api
   shape_inference cpu_info op_registry operator op_proto_maker op_info 
   data_transform data_device_transform data_type_transform data_layout_transform
   selected_rows lod_tensor lod_rank_table dynload_warpctc dynamic_loader 
-  device_context profiler
+  device_context profiler reader feed_fetch_method
   ${GPU_DEPS}
   ${OP_MATH_MODULES}
   ${FLUID_CORE_MODULES} 
