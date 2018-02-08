@@ -18,7 +18,7 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-TEST(inference, label_semantic_roles) {
+TEST(inference, rnn_encoder_decoder) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
@@ -29,29 +29,17 @@ TEST(inference, label_semantic_roles) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
-  paddle::framework::LoDTensor word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1,
-      ctx_p2, mark;
+  paddle::framework::LoDTensor word_data, trg_word;
   paddle::framework::LoD lod{{0, 4, 10}};
 
-  SetupLoDTensor(word, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
   SetupLoDTensor(
-      predicate, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_n2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_n1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_0, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_p1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_p2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(mark, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+      word_data, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(
+      trg_word, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
-  cpu_feeds.push_back(&word);
-  cpu_feeds.push_back(&predicate);
-  cpu_feeds.push_back(&ctx_n2);
-  cpu_feeds.push_back(&ctx_n1);
-  cpu_feeds.push_back(&ctx_0);
-  cpu_feeds.push_back(&ctx_p1);
-  cpu_feeds.push_back(&ctx_p2);
-  cpu_feeds.push_back(&mark);
+  cpu_feeds.push_back(&word_data);
+  cpu_feeds.push_back(&trg_word);
 
   paddle::framework::LoDTensor output1;
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
