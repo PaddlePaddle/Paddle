@@ -198,7 +198,4 @@ class ParallelOpTestMultipleInput(BaseParallelForTest):
 
 
 if __name__ == '__main__':
-    # FIXME(tonyyang-svail):
-    #   This test always fail on MultiGPU CI
-    exit(0)
     unittest.main()
