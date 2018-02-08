@@ -118,6 +118,38 @@ message LoDTensorArrayDesc {
 
 message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
 
+message MetaDataDesc {
+  enum DataType {
+    BOOL = 1;
+    INT16 = 2;
+    INT32 = 3;
+    INT64 = 4;
+    FP16 = 5;
+    FP32 = 6;
+    FP64 = 7;
+    TENSOR = 8;
+    LOD_TENSOR = 9;
+    SELECTED_ROWS = 10;
+    LOD_TENSOR_ARRAY = 11;
+  }
+  required DataType base_type = 1;
+  optional bool data_bool = 2;
+  optional int32 data_int32 = 3;
+  optional int64 data_int64 = 4;
+  optional float data_float = 5;
+  optional LoDTensorDesc lod_tensor = 6;
+  optional TensorDesc selected_rows = 7;
+  optional LoDTensorArrayDesc tensor_array = 8;
+}
+
+message ChanEleDesc { repeated MetaDataDesc meta_data = 1; }
+
+message ChanDesc {
+  repeated ChanEleDesc channel_type = 1;
+  required int32 cap = 2 [ default = 0 ];
+  required string name = 3;
+}
+
 message VarDesc {
   enum VarType {
     LOD_TENSOR = 1;
