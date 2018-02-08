@@ -14,13 +14,16 @@
 """
 All layers just related to the neural network.
 """
-import math
+
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
 from layer_function_generator import autodoc
 from tensor import concat
+import math
+import numpy as np
+from operator import mul
 
 __all__ = [
     'fc',
@@ -64,7 +67,10 @@ __all__ = [
     'nce',
     'beam_search',
     'row_conv',
+    'reshape',
+    'reshape_with_axis',
     'multiplex',
+    'prior_box'
     'prior_boxes',
 ]
 
@@ -2996,6 +3002,40 @@ def multiplex(inputs, index):
     return out
 
 
+def reshape_with_axis(input, axis):
+    """
+    **ReshapeWithAxis Layer**
+
+    """
+    assert len(input.shape) > axis and axis >= 0, ' '
+    input_shape = input.shape
+    new_dim = [-1, reduce(mul, input_shape[axis:len(input_shape)], 1)]
+
+    helper = LayerHelper('reshape', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype())
+    helper.append_op(
+        type='reshape',
+        inputs={'X': [input]},
+        outputs={'Out': [out]},
+        attrs={'shape': new_dim})
+    return out
+
+
+def reshape(input, new_dim):
+    """
+    **Reshape Layer**
+
+    """
+    helper = LayerHelper('reshape', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype())
+    helper.append_op(
+        type='reshape',
+        inputs={'X': [input]},
+        outputs={'Out': [out]},
+        attrs={'shape': new_dim})
+    return out
+
+
 def prior_box(input,
               image,
               min_sizes,
@@ -3041,13 +3081,13 @@ def prior_boxes(input_layers,
                 image,
                 min_ratio,
                 max_ratio,
-                steps,
                 aspect_ratios,
                 min_dim,
+                steps=None,
                 step_w=None,
                 step_h=None,
                 offset=0.5,
-                variance=[0.1],
+                variance=[0.1, 0.1, 0.1, 0.1],
                 flip=True,
                 clip=True,
                 name=None):
@@ -3059,8 +3099,8 @@ def prior_boxes(input_layers,
           image = data,
           min_ratio = 0.2,
           max_ratio = 0.9,
-          steps = [8, 16, 32, 64, 100, 300],
-          aspect_ratios = [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
+          steps = [8., 16., 32., 64., 100., 300.],
+          aspect_ratios = [[2.], [2., 3.], [2., 3.], [2., 3.], [2.], [2.]],
           min_dim = 300,
           offset = 0.5,
           variance = [0.1],
@@ -3068,19 +3108,16 @@ def prior_boxes(input_layers,
           clip=True)
     """
     assert isinstance(input_layers, list), 'input_layer should be a list.'
-    assert not step_h and not steps, ''
-    assert not step_w and not steps, ''
-
     num_layer = len(input_layers)
     assert num_layer > 2  # TODO(zcd): currently, num_layer must be bigger than two.
 
     min_sizes = []
     max_sizes = []
     if num_layer > 2:
-        step = int(math.floor((max_ratio - min_ratio) / (num_layer - 2)))
+        step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
         for ratio in xrange(min_ratio, max_ratio + 1, step):
-            min_sizes.append(min_dim * ratio)
-            max_sizes.append(min_dim * (ratio + step))
+            min_sizes.append(min_dim * ratio / 100.)
+            max_sizes.append(min_dim * (ratio + step) / 100.)
         min_sizes = [min_dim * .10] + min_sizes
         max_sizes = [min_dim * .20] + max_sizes
 
@@ -3091,7 +3128,7 @@ def prior_boxes(input_layers,
         assert isinstance(step_w,list) and len(step_w) == num_layer, \
             'step_w should be list and input_layers and step_w should have same length'
     if steps:
-        assert isinstance(steps,list) and len(step_w) == num_layer, \
+        assert isinstance(steps,list) and len(steps) == num_layer, \
             'steps should be list and input_layers and step_w should have same length'
         step_w = steps
         step_h = steps
@@ -3100,25 +3137,25 @@ def prior_boxes(input_layers,
             'aspect_ratios should be list and input_layers and aspect_ratios should ' \
             'have same length'
 
-    helper = LayerHelper("prior_box", **locals())
-    dtype = helper.input_dtype()
-
     box_results = []
     var_results = []
     for i, input in enumerate(input_layers):
         min_size = min_sizes[i]
         max_size = max_sizes[i]
-        if isinstance(min_size, list):
+        aspect_ratio = []
+        if not isinstance(min_size, list):
             min_size = [min_size]
-        if isinstance(max_size, list):
+        if not isinstance(max_size, list):
             max_size = [max_size]
         if aspect_ratios:
             aspect_ratio = aspect_ratios[i]
-            if isinstance(aspect_ratio, list):
+            if not isinstance(aspect_ratio, list):
                 aspect_ratio = [aspect_ratio]
 
-        box, var = prior_box(input, image, min_size, max_size, aspect_ratios,
-                             variance, flip, clip, step_w[i], step_h[i], offset)
+        box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
+                             variance, flip, clip, step_w[i]
+                             if step_w else [], step_h[i]
+                             if step_w else [], offset)
 
         box_results.append(box)
         var_results.append(var)
@@ -3127,18 +3164,29 @@ def prior_boxes(input_layers,
         box = box_results[0]
         var = var_results[0]
     else:
-        axis = 1
+        axis = 3
+        reshaped_boxes = []
+        reshaped_vars = []
+        for i in range(len(box_results)):
+            reshaped_boxes += [reshape_with_axis(box_results[i], axis=axis)]
+            reshaped_vars += [reshape_with_axis(var_results[i], axis=axis)]
+
+        helper = LayerHelper("concat", **locals())
+        dtype = helper.input_dtype()
         box = helper.create_tmp_variable(dtype)
+        var = helper.create_tmp_variable(dtype)
+
+        axis = 0
         helper.append_op(
             type="concat",
-            inputs={"X": box_results},
+            inputs={"X": reshaped_boxes},
             outputs={"Out": box},
             attrs={'axis': axis})
 
         var = helper.create_tmp_variable(dtype)
         helper.append_op(
             type="concat",
-            inputs={"X": var_results},
+            inputs={"X": reshaped_vars},
             outputs={"Out": var},
             attrs={'axis': axis})
 

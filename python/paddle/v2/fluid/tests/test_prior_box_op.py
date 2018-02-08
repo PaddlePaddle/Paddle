@@ -65,9 +65,9 @@ class TestPriorBoxOp(OpTest):
         self.batch_size = 10
 
         self.min_sizes = [2, 4]
-        self.min_sizes = np.array(self.min_sizes).astype('int64')
+        self.min_sizes = np.array(self.min_sizes).astype('float32')
         self.max_sizes = [5, 10]
-        self.max_sizes = np.array(self.max_sizes).astype('int64')
+        self.max_sizes = np.array(self.max_sizes).astype('float32')
         self.aspect_ratios = [2.0, 3.0]
         self.flip = True
         self.real_aspect_ratios = [1, 2.0, 1.0 / 2.0, 3.0, 1.0 / 3.0]
