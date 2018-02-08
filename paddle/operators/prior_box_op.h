@@ -60,8 +60,8 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto* boxes = ctx.Output<paddle::framework::Tensor>("Boxes");
     auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
 
-    auto min_sizes = ctx.Attr<std::vector<int>>("min_sizes");
-    auto max_sizes = ctx.Attr<std::vector<int>>("max_sizes");
+    auto min_sizes = ctx.Attr<std::vector<float>>("min_sizes");
+    auto max_sizes = ctx.Attr<std::vector<float>>("max_sizes");
     auto input_aspect_ratio = ctx.Attr<std::vector<float>>("aspect_ratios");
     auto variances = ctx.Attr<std::vector<float>>("variances");
     auto flip = ctx.Attr<bool>("flip");
@@ -108,7 +108,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
         T box_width, box_height;
         int idx = 0;
         for (size_t s = 0; s < min_sizes.size(); ++s) {
-          int min_size = min_sizes[s];
+          auto min_size = min_sizes[s];
           // first prior: aspect_ratio = 1, size = min_size
           box_width = box_height = min_size;
           // xmin
@@ -124,7 +124,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
 
           idx++;
           if (max_sizes.size() > 0) {
-            int max_size = max_sizes[s];
+            auto max_size = max_sizes[s];
             // second prior: aspect_ratio = 1,
             // size = sqrt(min_size * max_size)
             box_width = box_height = sqrt(min_size * max_size);
