@@ -28,28 +28,6 @@ __global__ void test(size_t* a, int size) {
   }
 }
 
-TEST(Vector, Normal) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  using namespace paddle::memory;
-
-  paddle::framework::InitDevices();
-
-  paddle::framework::Vector<size_t> vec({1, 2, 3});
-  size_t* ptr = vec.data();
-  for (size_t i = 0; i < vec.size(); ++i) {
-    EXPECT_EQ(vec[i], *(ptr + i));
-  }
-
-  vec.clear();
-  vec.CopyFromCUDA();
-
-  std::vector<size_t> v = {1, 2, 3};
-  for (size_t i = 0; i < v.size(); ++i) {
-    EXPECT_EQ(v[i], vec[i]);
-  }
-}
-
 TEST(LoD, data) {
   paddle::framework::InitDevices();
 

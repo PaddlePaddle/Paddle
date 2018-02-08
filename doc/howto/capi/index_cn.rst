@@ -1,4 +1,4 @@
-PaddlePaddle C-API
+C-API预测库
 ==================
 
 ..  toctree::

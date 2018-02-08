@@ -1,37 +1,10 @@
 HOW TO
 =======
 
-Usage
--------
-
 ..  toctree::
   :maxdepth: 1
 
-  usage/cmd_parameter/index_en.rst
-  usage/cluster/cluster_train_en.md
-
-Development
-------------
-
-..  toctree::
-  :maxdepth: 1
-
-  dev/new_layer_en.rst
-  dev/contribute_to_paddle_en.md
-  dev/write_docs_en.rst
-
-Configuration
--------------
-
-..  toctree::
-  :maxdepth: 1
-
-  deep_model/rnn/index_en.rst
-
-Optimization
--------------
-
-..  toctree::
-  :maxdepth: 1
-
+  cmd_parameter/index_en.rst
+  cluster/index_en.rst
+  rnn/index_en.rst
   optimization/gpu_profiling_en.rst

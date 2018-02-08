@@ -5,6 +5,8 @@ PaddlePaddle 文档
   :maxdepth: 1
 
   getstarted/index_cn.rst
+  build_and_install/index_cn.rst
   howto/index_cn.rst
+  dev/index_cn.rst
   api/index_cn.rst
   faq/index_cn.rst
