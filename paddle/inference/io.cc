@@ -13,12 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/inference/io.h"
+
 #include <fstream>
+#include "paddle/framework/block_desc.h"
+#include "paddle/framework/feed_fetch_type.h"
 
 namespace paddle {
 namespace inference {
-
-const std::string kFeedOpType = "feed";
 
 bool IsParameter(const framework::VarDesc* var,
                  const framework::ProgramDesc& main_program) {
@@ -27,7 +28,7 @@ bool IsParameter(const framework::VarDesc* var,
     for (size_t i = 0; i < main_program.Size(); ++i) {
       const framework::BlockDesc& block = main_program.Block(i);
       for (auto* op : block.AllOps()) {
-        if (op->Type() == kFeedOpType) {
+        if (op->Type() == framework::kFeedOpType) {
           continue;
         }
         for (auto input_argument_name : op->InputArgumentNames()) {
@@ -51,10 +52,10 @@ void LoadPersistables(framework::Executor& executor,
   framework::BlockDesc* load_block = load_program->MutableBlock(0);
   for (auto* var : global_block.AllVars()) {
     if (IsParameter(var, main_program)) {
-      LOG(INFO) << "parameter's name: " << var->Name();
+      VLOG(3) << "parameter's name: " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());
-      new_var->SetShape(var->Shape());
+      new_var->SetShape(var->GetShape());
       new_var->SetDataType(var->GetDataType());
       new_var->SetType(var->GetType());
       new_var->SetLoDLevel(var->GetLoDLevel());

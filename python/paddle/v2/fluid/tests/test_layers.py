@@ -223,6 +223,14 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.sequence_softmax(x=seq))
         print(str(program))
 
+    def test_softmax(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[10], dtype='float32')
+            hid = layers.fc(input=data, size=20)
+            self.assertIsNotNone(layers.softmax(x=hid))
+        print(str(program))
+
     def test_get_places(self):
         program = Program()
         with program_guard(program):

@@ -120,12 +120,14 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     T* padding_data = padding.data<T>();
     if (norm_by_times) {
       SequencePaddingKernel<T, 1, 1><<<grid, threads, 0, context.stream()>>>(
-          padding_data, const_cast<T*>(seq_data), abs_offset_lod[level].data(),
-          sequence_width, max_sequence_length, num_sequences);
+          padding_data, const_cast<T*>(seq_data),
+          abs_offset_lod[level].cuda_data(), sequence_width,
+          max_sequence_length, num_sequences);
     } else {
       SequencePaddingKernel<T, 0, 1><<<grid, threads, 0, context.stream()>>>(
-          padding_data, const_cast<T*>(seq_data), abs_offset_lod[level].data(),
-          sequence_width, max_sequence_length, num_sequences);
+          padding_data, const_cast<T*>(seq_data),
+          abs_offset_lod[level].cuda_data(), sequence_width,
+          max_sequence_length, num_sequences);
     }
   }
 };
@@ -193,12 +195,14 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     T* seq_data = seq.data<T>();
     if (norm_by_times) {
       SequencePaddingKernel<T, 1, 0><<<grid, threads, 0, context.stream()>>>(
-          const_cast<T*>(padding_data), seq_data, abs_offset_lod[level].data(),
-          sequence_width, max_sequence_length, num_sequences);
+          const_cast<T*>(padding_data), seq_data,
+          abs_offset_lod[level].cuda_data(), sequence_width,
+          max_sequence_length, num_sequences);
     } else {
       SequencePaddingKernel<T, 0, 0><<<grid, threads, 0, context.stream()>>>(
-          const_cast<T*>(padding_data), seq_data, abs_offset_lod[level].data(),
-          sequence_width, max_sequence_length, num_sequences);
+          const_cast<T*>(padding_data), seq_data,
+          abs_offset_lod[level].cuda_data(), sequence_width,
+          max_sequence_length, num_sequences);
     }
   }
 };
