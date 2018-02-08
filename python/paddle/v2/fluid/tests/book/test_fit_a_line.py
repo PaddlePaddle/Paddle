@@ -17,6 +17,8 @@ import paddle.v2.fluid as fluid
 import contextlib
 import numpy
 import unittest
+import math
+import sys
 
 
 def train(use_cuda, save_dirname):
@@ -57,6 +59,8 @@ def train(use_cuda, save_dirname):
                     fluid.io.save_inference_model(save_dirname, ['x'],
                                                   [y_predict], exe)
                 return
+            if math.isnan(float(avg_loss_value)):
+                sys.exit("got NaN loss, training failed.")
     raise AssertionError("Fit a line cost is too large, {0:2.2}".format(
         avg_loss_value[0]))
 

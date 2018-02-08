@@ -116,7 +116,7 @@ message LoDTensorArrayDesc {
   optional int32 lod_level = 2 [ default = 0 ];
 }
 
-message Reader { repeated LoDTensorDesc lod_tensor = 1; }
+message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
 
 message VarDesc {
   enum VarType {
@@ -136,7 +136,7 @@ message VarDesc {
   optional LoDTensorDesc lod_tensor = 4;
   optional TensorDesc selected_rows = 5;
   optional LoDTensorArrayDesc tensor_array = 6;
-  optional Reader reader = 7;
+  optional ReaderDesc reader = 7;
 }
 
 message BlockDesc {
