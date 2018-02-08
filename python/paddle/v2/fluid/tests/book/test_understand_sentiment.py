@@ -17,6 +17,7 @@ import paddle.v2.fluid as fluid
 import paddle.v2 as paddle
 import contextlib
 import math
+import numpy as np
 import sys
 
 
