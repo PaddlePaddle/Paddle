@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+import sys
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
@@ -213,9 +215,11 @@ def train(use_cuda, save_dirname):
     PASS_NUM = 100
     for pass_id in range(PASS_NUM):
         for batch_id, data in enumerate(train_reader()):
-            # train a mini-batch, fetch nothing
-            exe.run(program=fluid.default_main_program(),
-                    feed=func_feed(feeding, data))
+            # train a mini-batch
+            outs = exe.run(program=fluid.default_main_program(),
+                           feed=func_feed(feeding, data),
+                           fetch_list=[avg_cost])
+            out = np.array(outs[0])
             if (batch_id + 1) % 10 == 0:
                 avg_cost_set = []
                 for test_data in test_reader():
@@ -235,6 +239,9 @@ def train(use_cuda, save_dirname):
                             "movie_id", "category_id", "movie_title"
                         ], [scale_infer], exe)
                     return
+
+            if math.isnan(float(out[0])):
+                sys.exit("got NaN loss, training failed.")
 
 
 def infer(use_cuda, save_dirname=None):

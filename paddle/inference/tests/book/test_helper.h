@@ -46,7 +46,7 @@ void SetupLoDTensor(paddle::framework::LoDTensor& input,
                     T upper) {
   input.set_lod(lod);
   int dim = lod[0][lod[0].size() - 1];
-  SetupTensor(input, {dim, 1}, lower, upper);
+  SetupTensor<T>(input, {dim, 1}, lower, upper);
 }
 
 template <typename T>
@@ -56,10 +56,8 @@ void SetupLoDTensor(paddle::framework::LoDTensor& input,
                     std::vector<T>& data) {
   const size_t level = lod.size() - 1;
   CHECK_EQ(dims[0], (lod[level]).back());
-  CHECK_EQ(paddle::framework::product(dims), data.size());
   input.set_lod(lod);
-  T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
-  memcpy(input_ptr, data.data(), input.numel() * sizeof(T));
+  SetupTensor<T>(input, dims, data);
 }
 
 template <typename T>

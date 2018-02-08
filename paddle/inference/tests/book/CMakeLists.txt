@@ -28,4 +28,4 @@ set_tests_properties(test_inference_image_classification_resnet
 set_tests_properties(test_inference_label_semantic_roles
     PROPERTIES DEPENDS test_label_semantic_roles) 
 set_tests_properties(test_inference_recommender_system
-    PROPERTIES DEPENDS test_label_recommender_system)
+    PROPERTIES DEPENDS test_recommender_system)
