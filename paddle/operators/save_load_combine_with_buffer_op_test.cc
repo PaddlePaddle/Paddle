@@ -69,6 +69,15 @@ void CheckValues(int* expect, int* actual, paddle::framework::LoD expect_lod,
   }
 }
 
+void ReadFromFile(const std::string filename, std::string& buf) {
+  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
+  inputfs.seekg(0, std::ios::end);
+  buf.resize(inputfs.tellg());
+  inputfs.seekg(0, std::ios::beg);
+  inputfs.read(&buf[0], buf.size());
+  inputfs.close()
+}
+
 // Here, we create 4 LoDTensors and use save_combine_op to first save these
 // in a single file. Then, we use load_combine_op to load these sequentially
 TEST(SaveLoadCombineOp, CPU) {
@@ -117,7 +126,10 @@ TEST(SaveLoadCombineOp, CPU) {
   auto target4 = GeneratePlaceholderBeforeLoad("out_var4", scope);
 
   paddle::framework::AttributeMap attrs_load;
-  attrs_load.insert({"input_str", std::string(filename)});
+  std::string file_contents;
+  ReadFromFile(filename, file_contents);
+  attrs_load.insert({"input_str", std::string(file_contents)});
+  attrs_load.insert({"is_buffer", bool(true)});
 
   // Run the load_combine_op
   auto load_combine_op = paddle::framework::OpRegistry::CreateOp(
@@ -157,9 +169,8 @@ TEST(SaveLoadTestWithCombineOp, CPU) {
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     expect[i] = static_cast<int>(i);
   }
-  std::string filename = "check_t.save";
   paddle::framework::AttributeMap attrs;
-  attrs.insert({"file_path", std::string(filename)});
+  attrs.insert({"file_path", std::string("check_t.save")});
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "save_combine", {{"X", {"test_var"}}}, {}, attrs);
@@ -170,7 +181,6 @@ TEST(SaveLoadTestWithCombineOp, CPU) {
 
   paddle::framework::AttributeMap attrs_load;
   attrs_load.insert({"input_str", std::string(filename)});
-
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load_combine", {}, {{"Out", {"out_var"}}}, attrs_load);
   load_op->Run(scope, place);

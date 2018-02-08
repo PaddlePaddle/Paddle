@@ -12,12 +12,49 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <fstream>
+#include <sstream>
 
 #include "paddle/framework/op_registry.h"
 #include "paddle/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
+
+void deserialize(std::istream &is, platform::DeviceContextPool &pool,
+                 const framework::Scope &scope, const platform::Place &place,
+                 const std::vector<std::string> &out_var_names,
+                 const std::string &filename, bool is_buffer) {
+  auto &dev_ctx = *pool.Get(place);
+
+  for (size_t i = 0; i < out_var_names.size(); i++) {
+    auto *out_var = scope.FindVar(out_var_names[i]);
+
+    PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
+                   out_var_names[i]);
+
+    auto *tensor = out_var->GetMutable<framework::LoDTensor>();
+
+    // Error checking
+    PADDLE_ENFORCE(static_cast<bool>(is), "Cannot read more from %s",
+                   is_buffer ? "input buffer." : "file " + filename);
+
+    // Get data from fin to tensor
+    DeserializeFromStream(is, tensor, dev_ctx);
+
+    if (platform::is_gpu_place(place)) {
+      // copy CPU to GPU
+      framework::LoDTensor cpu_tensor;
+      cpu_tensor.ShareDataWith(*tensor);
+      cpu_tensor.set_lod(tensor->lod());
+
+      // reset tensor
+      out_var->Clear();
+      tensor = out_var->GetMutable<framework::LoDTensor>();
+      tensor->set_lod(cpu_tensor.lod());
+      Copy(cpu_tensor, place, dev_ctx, tensor);
+    }
+  }
+}
 
 class LoadCombineOp : public framework::OperatorBase {
  public:
@@ -28,47 +65,28 @@ class LoadCombineOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
-    auto filename = Attr<std::string>("file_path");
-
-    std::ifstream fin(filename);
-    PADDLE_ENFORCE(static_cast<bool>(fin),
-                   "Cannot open file %s for load_combine op", filename);
-
+    auto input_str = Attr<std::string>("input_str");
+    auto is_buffer = Attr<bool>("is_buffer");
     auto out_var_names = Outputs("Out");
+
     PADDLE_ENFORCE_GT(
         static_cast<int>(out_var_names.size()), 0,
         "The number of output variables should be greater than 0.");
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
 
-    for (size_t i = 0; i < out_var_names.size(); i++) {
-      auto *out_var = scope.FindVar(out_var_names[i]);
+    if (is_buffer) {
+      PADDLE_ENFORCE(!input_str.empty(),
+                     "Input buffer for load_combine op is empty");
+      std::istringstream iss(input_str);
+      deserialize(iss, pool, scope, place, out_var_names, "", is_buffer);
 
-      PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found",
-                     out_var_names[i]);
+    } else {
+      std::ifstream fin(input_str);
+      PADDLE_ENFORCE(static_cast<bool>(fin),
+                     "Cannot open file %s for load_combine op", input_str);
 
-      auto *tensor = out_var->GetMutable<framework::LoDTensor>();
-
-      // Error checking
-      PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot read more from file %s",
-                     filename);
-
-      // Get data from fin to tensor
-      DeserializeFromStream(fin, tensor, dev_ctx);
-
-      if (platform::is_gpu_place(place)) {
-        // copy CPU to GPU
-        framework::LoDTensor cpu_tensor;
-        cpu_tensor.ShareDataWith(*tensor);
-        cpu_tensor.set_lod(tensor->lod());
-
-        // reset tensor
-        out_var->Clear();
-        tensor = out_var->GetMutable<framework::LoDTensor>();
-        tensor->set_lod(cpu_tensor.lod());
-        Copy(cpu_tensor, place, dev_ctx, tensor);
-      }
+      deserialize(fin, pool, scope, place, out_var_names, input_str, is_buffer);
     }
   }
 };
@@ -83,9 +101,14 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddAttr<std::string>("file_path",
                          "(string) "
-                         "LoDTensors will be loaded from \"file_path\".")
+                         "LoDTensors will be loaded from \"input_string\". It "
+                         "can be a buffer or denote a filename")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
+    AddAttr<bool>("is_buffer",
+                  "A flag indicating whether the input_string corresponds to  "
+                  "a buffer or denotes a filename. ")
+        .SetDefault(false);
     AddComment(R"DOC(
 LoadCombine Operator.
 
