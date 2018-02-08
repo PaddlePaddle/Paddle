@@ -25,6 +25,26 @@ using paddle::framework::CloseChannel;
 using paddle::framework::details::Buffered;
 using paddle::framework::details::UnBuffered;
 
+void RecevingOrderEqualToSendingOrder(Channel<int> *ch) {
+  unsigned sum_send = 0;
+  std::thread t([&]() {
+    for (int i = 0; i < 5; i++) {
+      EXPECT_EQ(ch->Send(&i), true);
+      sum_send += i;
+    }
+  });
+  for (int i = 0; i < 5; i++) {
+    int recv;
+    EXPECT_EQ(ch->Receive(&recv), true);
+    EXPECT_EQ(recv, i);
+  }
+
+  CloseChannel(ch);
+  t.join();
+  EXPECT_EQ(sum_send, 10U);
+  delete ch;
+}
+
 TEST(Channel, MakeAndClose) {
   using paddle::framework::details::Buffered;
   using paddle::framework::details::UnBuffered;
@@ -137,9 +157,7 @@ TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
 
   for (size_t i = 0; i < buffer_size; ++i) {
     EXPECT_EQ(ch->Receive(&out),
-              false);  // after receiving residual values, return zeros.
-    // Note: we cannot check EXPECT_EQ(out, 0), because C++ doesn't
-    // define zero values like Go does.
+              false);  // receiving on closed channel should return false
   }
   delete ch;
 }
@@ -166,25 +184,14 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
   delete ch;
 }
 
-TEST(Channel, SimpleUnbufferedChannelTest) {
+TEST(Channel, RecevingOrderEqualToSendingOrderWithUnBufferedChannel) {
   auto ch = MakeChannel<int>(0);
-  unsigned sum_send = 0;
-  std::thread t([&]() {
-    for (int i = 0; i < 5; i++) {
-      EXPECT_EQ(ch->Send(&i), true);
-      sum_send += i;
-    }
-  });
-  for (int i = 0; i < 5; i++) {
-    int recv;
-    EXPECT_EQ(ch->Receive(&recv), true);
-    EXPECT_EQ(recv, i);
-  }
+  RecevingOrderEqualToSendingOrder(ch);
+}
 
-  CloseChannel(ch);
-  t.join();
-  EXPECT_EQ(sum_send, 10U);
-  delete ch;
+TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel) {
+  auto ch = MakeChannel<int>(10);
+  RecevingOrderEqualToSendingOrder(ch);
 }
 
 // This tests that closing a buffered channel also unblocks
