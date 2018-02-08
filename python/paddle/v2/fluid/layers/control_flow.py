@@ -38,6 +38,7 @@ __all__ = [
     'array_write',
     'create_array',
     'less_than',
+    'equal',
     'array_read',
     'shrink_memory',
     'array_length',
@@ -972,6 +973,36 @@ def less_than(x, y, cond=None, **ignored):
     helper.append_op(
         type='less_than', inputs={'X': [x],
                                   'Y': [y]}, outputs={'Out': [cond]})
+    return cond
+
+
+def equal(x, y, cond=None, **ignored):
+    """
+    **equal**
+
+    This layer returns the truth value of :math:`x == y` elementwise.
+
+    Args:
+        x(Variable): First operand of *equal*
+        y(Variable): Second operand of *equal*
+        cond(Variable|None): Optional output variable to store the result of *equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *equal*.
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.equal(x=label, y=limit)
+    """
+    helper = LayerHelper("equal", **locals())
+    if cond is None:
+        cond = helper.create_tmp_variable(dtype='bool')
+        cond.stop_gradient = True
+
+    helper.append_op(
+        type='equal', inputs={'X': [x],
+                              'Y': [y]}, outputs={'Out': [cond]})
     return cond
 
 

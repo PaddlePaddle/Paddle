@@ -217,8 +217,6 @@ void BindVarDsec(py::module &m) {
       .def("set_shapes", &VarDesc::SetShapes)
       .def("set_dtype", &VarDesc::SetDataType)
       .def("set_dtypes", &VarDesc::SetDataTypes)
-      .def("set_tensor_num", &VarDesc::SetTensorDescNum)
-      .def("tensor_num", &VarDesc::GetTensorDescNum)
       .def("shape", &VarDesc::GetShape, py::return_value_policy::reference)
       .def("shapes", &VarDesc::GetShapes, py::return_value_policy::reference)
       .def("dtype", &VarDesc::GetDataType, py::return_value_policy::reference)

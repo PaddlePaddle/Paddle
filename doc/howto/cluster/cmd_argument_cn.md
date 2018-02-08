@@ -1,41 +1,7 @@
-# 分布式训练
-
-
-## 概述
-
-本文将介绍如何使用PaddlePaddle在不同的集群框架下完成分布式训练。分布式训练架构如下图所示：
-
-<img src="https://user-images.githubusercontent.com/13348433/31772175-5f419eca-b511-11e7-9db7-5231fe3d9ccb.png" width="500">
-
-- 数据分片（Data shard): 用于训练神经网络的数据，被切分成多个部分，每个部分分别给每个trainer使用。
-- 计算节点（Trainer）: 每个trainer启动后读取切分好的一部分数据，开始神经网络的“前馈”和“后馈”计算，并和参数服务器通信。在完成一定量数据的训练后，上传计算得出的梯度（gradients），然后下载优化更新后的神经网络参数（parameters）。
-- 参数服务器（Parameter server）:每个参数服务器只保存整个神经网络所有参数的一部分。参数服务器接收从计算节点上传的梯度，并完成参数优化更新，再将更新后的参数下发到每个计算节点。
-
-这样，通过计算节点和参数服务器的分布式协作，可以完成神经网络的SGD方法的训练。PaddlePaddle可以同时支持同步随机梯度下降（SGD）和异步随机梯度下降。
-
-在使用同步SGD训练神经网络时，PaddlePaddle使用同步屏障（barrier），使梯度的提交和参数的更新按照顺序方式执行。在异步SGD中，则并不会等待所有trainer提交梯度才更新参数，这样极大地提高了计算的并行性：参数服务器之间不相互依赖，并行地接收梯度和更新参数，参数服务器也不会等待计算节点全部都提交梯度之后才开始下一步，计算节点之间也不会相互依赖，并行地执行模型的训练。可以看出，虽然异步SGD方式会提高参数更新并行度, 但是并不能保证参数同步更新，在任意时间某一台参数服务器上保存的参数可能比另一台要更新，与同步SGD相比，梯度会有噪声。
-
-
-## 环境准备
-
-1. 准备您的计算集群。计算集群通常由一组（几台到几千台规模）的Linux服务器组成。服务器之间可以通过局域网（LAN）联通，每台服务器具有集群中唯一的IP地址（或者可被DNS解析的主机名）。集群中的每台计算机通常被成为一个“节点”。
-1. 我们需要在集群的所有节点上安装 PaddlePaddle。 如果要启用GPU，还需要在节点上安装对应的GPU驱动以及CUDA。PaddlePaddle的安装可以参考[build_and_install](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/index_cn.html)的多种安装方式。我们推荐使用[Docker](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/build_and_install/docker_install_cn.html)安装方式来快速安装PaddlePaddle。
-
-安装完成之后，执行下面的命令可以查看已经安装的版本（docker安装方式可以进入docker容器执行：`docker run -it paddlepaddle/paddle:[tag] /bin/bash`）：
-```bash
-$ paddle version
-PaddlePaddle 0.10.0, compiled with
-    with_avx: ON
-    with_gpu: OFF
-    with_double: OFF
-    with_python: ON
-    with_rdma: OFF
-    with_timer: OFF
-```
-
-下面以`doc/howto/usage/cluster/src/word2vec`中的代码作为实例，介绍使用PaddlePaddle v2 API完成分布式训练。
-
 ## 启动参数说明
+
+下面以`doc/howto/cluster/src/word2vec`中的代码作为实例，介绍使用PaddlePaddle v2 API完成分布式训练。
+
 ### 启动参数服务器
 执行以下的命令启动一个参数服务器并等待和计算节点的数据交互
 ```bash
@@ -167,22 +133,3 @@ test.txt-00002
 
 - `train_data_dir`：包含训练数据的目录，可以是从分布式存储挂载过来的，也可以是在任务启动前下载到本地的。
 - `test_data_dir`：包含测试数据集的目录。
-
-## 使用分布式计算平台或工具
-
-PaddlePaddle可以使用多种分布式计算平台构建分布式计算任务，包括：
-- [Kubernetes](http://kubernetes.io) Google开源的容器集群的调度框架，支持大规模集群生产环境的完整集群方案。
-- [OpenMPI](https://www.open-mpi.org) 成熟的高性能并行计算框架。
-- [Fabric](http://www.fabfile.org) 集群管理工具。可以使用`Fabric`编写集群任务提交和管理脚本。
-
-对于不同的集群平台，会分别介绍集群作业的启动和停止方法。这些例子都可以在[cluster_train_v2](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/scripts/cluster_train_v2)找到。
-
-在使用分布式计算平台进行训练时，任务被调度在集群中时，分布式计算平台通常会通过API或者环境变量提供任务运行需要的参数，比如节点的ID、IP和任务节点个数等。
-
-## 在不同集群中运行
-
-  - [fabric集群](fabric_cn.md)
-  - [openmpi集群](openmpi_cn.md)
-  - [kubernetes单机](k8s_cn.md)
-  - [kubernetes distributed分布式](k8s_distributed_cn.md)
-  - [AWS上运行kubernetes集群训练](k8s_aws_cn.md)
