@@ -21,8 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-void ReadBinaryFile(const std::string& filename,
-                    std::string& contents) {
+void ReadBinaryFile(const std::string& filename, std::string& contents) {
   VLOG(3) << "loading model from " << filename;
   std::ifstream inputfs(filename, std::ios::in | std::ios::binary);
   inputfs.seekg(0, std::ios::end);
