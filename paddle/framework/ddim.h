@@ -125,6 +125,8 @@ DDim flatten_to_2d(const DDim& src, int num_col_dims);
 DDim flatten_to_1d(const DDim& src);
 
 DDim stride(const DDim& ddim);
+
+DDim stride_numel(const DDim& ddim);
 }  // namespace framework
 }  // namespace paddle
 
