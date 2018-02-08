@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,6 +28,12 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
                    "Input(Detection) of DetectionMAPOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
                    "Input(Label) of DetectionMAPOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutPosCount"),
+                   "Output(OutPosCount) of DetectionMAPOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutTruePos"),
+                   "Output(OutTruePos) of DetectionMAPOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutFalsePos"),
+                   "Output(OutFalsePos) of DetectionMAPOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MAP"),
                    "Output(MAP) of DetectionMAPOp should not be null.");
 
@@ -44,9 +50,6 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(label_dims[1], 6UL,
                       "The shape is of Input(Label) [N, 6].");
 
-    auto ap_type = GetAPType(ctx->Attrs().Get<std::string>("ap_type"));
-    PADDLE_ENFORCE_NE(ap_type, APType::kNone,
-                      "The ap_type should be 'integral' or '11point.");
     auto map_dim = framework::make_ddim({1});
     ctx->SetOutputDim("MAP", map_dim);
   }
@@ -55,7 +58,8 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("Label")->type()),
+        framework::ToDataType(
+            ctx.Input<framework::Tensor>("Detection")->type()),
         ctx.device_context());
   }
 };
@@ -80,6 +84,33 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
              "the offsets in first dimension are called LoD, the number of "
              "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
              "no detected data.");
+    AddInput("PosCount",
+             "(Tensor) A tensor with shape [Ncls, 1], store the "
+             "input positive example count of each class.")
+        .AsDispensable();
+    AddInput("TruePos",
+             "(LodTensor) A 2-D LodTensor with shape [Ntp, 2], store the "
+             "input true positive example of each class.")
+        .AsDispensable();
+    AddInput("FalsePos",
+             "(LodTensor) A 2-D LodTensor with shape [Nfp, 2], store the "
+             "input false positive example of each class.")
+        .AsDispensable();
+    AddOutput("OutPosCount",
+              "(Tensor) A tensor with shape [Ncls, 1], store the "
+              "positive example count of each class. It combines the input "
+              "input(PosCount) and the positive example count computed from "
+              "input(Detection) and input(Label).");
+    AddOutput("OutTruePos",
+              "(LodTensor) A LodTensor with shape [Ntp', 2], store the "
+              "true positive example of each class. It combines the "
+              "input(TruePos) and the true positive examples computed from "
+              "input(Detection) and input(Label).");
+    AddOutput("OutFalsePos",
+              "(LodTensor) A LodTensor with shape [Nfp', 2], store the "
+              "false positive example of each class. It combines the "
+              "input(FalsePos) and the false positive examples computed from "
+              "input(Detection) and input(Label).");
     AddOutput("MAP",
               "(Tensor) A tensor with shape [1], store the mAP evaluate "
               "result of the detection.");
@@ -97,7 +128,11 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
                          "(string, default 'integral') "
                          "The AP algorithm type, 'integral' or '11point'.")
         .SetDefault("integral")
-        .InEnum({"integral", "11point"});
+        .InEnum({"integral", "11point"})
+        .AddCustomChecker([](const std::string& ap_type) {
+          PADDLE_ENFORCE_NE(GetAPType(ap_type), APType::kNone,
+                            "The ap_type should be 'integral' or '11point.");
+        });
     AddComment(R"DOC(
 Detection mAP evaluate operator.
 The general steps are as follows. First, calculate the true positive and
