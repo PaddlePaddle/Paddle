@@ -17,6 +17,8 @@ import unittest
 import paddle.v2.fluid as fluid
 import paddle.v2 as paddle
 import contextlib
+import math
+import sys
 
 
 def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
@@ -134,6 +136,8 @@ def main(word_dict, net_method, use_cuda, parallel=False):
             print("cost=" + str(cost_val) + " acc=" + str(acc_val))
             if cost_val < 0.4 and acc_val > 0.8:
                 return
+            if math.isnan(float(cost_val)):
+                sys.exit("got NaN loss, training failed.")
     raise AssertionError("Cost is too large for {0}".format(
         net_method.__name__))
 

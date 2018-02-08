@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor_array.h"
 #include "paddle/framework/op_registry.h"
+#include "paddle/framework/reader.h"
 #include "paddle/platform/place.h"
 #include "paddle/platform/profiler.h"
 
@@ -52,11 +53,13 @@ static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
     var->GetMutable<LoDTensorArray>();
   } else if (var_type == proto::VarDesc::PLACE_LIST) {
     var->GetMutable<platform::PlaceList>();
+  } else if (var_type == proto::VarDesc::READER) {
+    var->GetMutable<ReaderHolder>();
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
-        "[LoDTensor, SelectedRows, FEED_MINIBATCH, FETCH_LIST, LOD_RANK_TABLE,"
-        " PLACE_LIST]",
+        "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
+        "LOD_RANK_TABLE, PLACE_LIST, READER]",
         var_type);
   }
 }

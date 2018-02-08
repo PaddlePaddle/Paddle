@@ -72,6 +72,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void SetDim(const std::string &name, const DDim &dim) override;
 
+  std::vector<DDim> GetRepeatedDims(const std::string &name) const override;
+
+  void SetRepeatedDims(const std::string &name,
+                       const std::vector<DDim> &dims) override;
+
   const OpDesc &op_;
   const BlockDesc &block_;
 };
@@ -457,23 +462,48 @@ const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
 DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  DDim res;
   try {
-    auto shape = var->Shape();
-    if (shape.empty()) {
-      return framework::make_ddim({0UL});
-    } else {
-      return framework::make_ddim(var->Shape());
-    }
+    auto shape = var->GetShape();
+    res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
   } catch (...) {
     VLOG(5) << "GetDim of variable " << name << " error";
     std::rethrow_exception(std::current_exception());
   }
+  return res;
+}
+
+std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
+    const std::string &name) const {
+  auto var = block_.FindVarRecursive(name);
+  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  std::vector<DDim> res;
+  try {
+    auto shapes = var->GetShapes();
+    for (const auto &s : shapes) {
+      res.push_back(s.empty() ? make_ddim({0UL}) : make_ddim(s));
+    }
+  } catch (...) {
+    VLOG(5) << "GetRepeatedDim of variable " << name << " error.";
+    std::rethrow_exception(std::current_exception());
+  }
+  return res;
 }
 
 void CompileTimeInferShapeContext::SetDim(const std::string &name,
                                           const DDim &dim) {
-  block_.FindVarRecursive(name)->SetShape(framework::vectorize(dim));
+  block_.FindVarRecursive(name)->SetShape(vectorize(dim));
 }
+
+void CompileTimeInferShapeContext::SetRepeatedDims(
+    const std::string &name, const std::vector<DDim> &dims) {
+  auto var = block_.FindVarRecursive(name);
+  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  std::vector<std::vector<int64_t>> dim_vec(dims.size());
+  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize);
+  var->SetShapes(dim_vec);
+}
+
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
 
 proto::VarDesc::VarType CompileTimeInferShapeContext::GetVarType(

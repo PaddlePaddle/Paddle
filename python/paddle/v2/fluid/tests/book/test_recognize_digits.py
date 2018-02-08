@@ -18,6 +18,8 @@ import paddle.v2 as paddle
 import sys
 import numpy
 import unittest
+import math
+import sys
 
 
 def parse_arg():
@@ -65,6 +67,7 @@ def conv_net(img, label):
         pool_size=2,
         pool_stride=2,
         act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -148,6 +151,8 @@ def train(nn_type, use_cuda, parallel, save_dirname):
                         'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
                         format(pass_id, batch_id + 1,
                                float(avg_loss_val), float(acc_val)))
+                    if math.isnan(float(avg_loss_val)):
+                        sys.exit("got NaN loss, training failed.")
     raise AssertionError("Loss of recognize digits is too large")
 
 
@@ -166,7 +171,9 @@ def infer(use_cuda, save_dirname=None):
      fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
     # The input's dimension of conv should be 4-D or 5-D.
-    tensor_img = numpy.random.rand(1, 1, 28, 28).astype("float32")
+    # Use normilized image pixels as input data, which should be in the range [-1.0, 1.0].
+    tensor_img = numpy.random.uniform(-1.0, 1.0,
+                                      [1, 1, 28, 28]).astype("float32")
 
     # Construct feed as a dictionary of {feed_target_name: feed_target_data}
     # and results will contain a list of data corresponding to fetch_targets.
