@@ -128,6 +128,10 @@ class Tensor {
 
   inline void set_layout(const DataLayout layout) { layout_ = layout; }
 
+  size_t capacity() const {
+    return holder_ == nullptr ? 0UL : holder_->size() - offset_;
+  }
+
  private:
   friend class LoDTensor;
 

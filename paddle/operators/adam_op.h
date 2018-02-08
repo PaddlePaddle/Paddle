@@ -201,7 +201,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
       const T* grad_data = grad_tensor.template data<T>();
       int64_t* rows = nullptr;
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        rows = grad_merge.mutable_rows()->cuda_data();
+        rows = grad_merge.mutable_rows()->CUDAMutableData(ctx.GetPlace());
       } else {
         rows = grad_merge.mutable_rows()->data();
       }
