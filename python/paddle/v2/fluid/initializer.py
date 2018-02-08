@@ -135,7 +135,7 @@ class ConstantInitializer(Initializer):
                 "shape": var.shape,
                 "dtype": int(var.dtype),
                 "value": float(self._value),
-                'force_cpu': self._force_cpu
+                'force_cpu': self._force_cpu or force_init_on_cpu()
             })
         var.op = op
         return op
