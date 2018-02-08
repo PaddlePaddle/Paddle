@@ -38,6 +38,7 @@ __all__ = [
     'array_write',
     'create_array',
     'less_than',
+    'equal',
     'array_read',
     'shrink_memory',
     'array_length',
@@ -276,21 +277,20 @@ class ParallelDo(object):
         parent_block = self.parent_block()
 
         local_inputs = set()
-
-        for op in current_block.ops:
-            for oname in op.output_names:
-                for out_var_name in op.output(oname):
-                    local_inputs.add(out_var_name)
-
+        params = list()
         for var in self.inputs:
             local_inputs.add(var.name)
 
-        params = list()
         for op in current_block.ops:
             for iname in op.input_names:
                 for in_var_name in op.input(iname):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
+
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    local_inputs.add(out_var_name)
+
         params = list(set(params))
 
         return [parent_block.var(name) for name in params]
@@ -972,6 +972,36 @@ def less_than(x, y, cond=None, **ignored):
     helper.append_op(
         type='less_than', inputs={'X': [x],
                                   'Y': [y]}, outputs={'Out': [cond]})
+    return cond
+
+
+def equal(x, y, cond=None, **ignored):
+    """
+    **equal**
+
+    This layer returns the truth value of :math:`x == y` elementwise.
+
+    Args:
+        x(Variable): First operand of *equal*
+        y(Variable): Second operand of *equal*
+        cond(Variable|None): Optional output variable to store the result of *equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *equal*.
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.equal(x=label, y=limit)
+    """
+    helper = LayerHelper("equal", **locals())
+    if cond is None:
+        cond = helper.create_tmp_variable(dtype='bool')
+        cond.stop_gradient = True
+
+    helper.append_op(
+        type='equal', inputs={'X': [x],
+                              'Y': [y]}, outputs={'Out': [cond]})
     return cond
 
 

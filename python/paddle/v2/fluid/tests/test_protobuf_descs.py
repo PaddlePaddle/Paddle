@@ -120,7 +120,6 @@ class TestVarDesc(unittest.TestCase):
         block = program_desc.block(0)
         var = block.var('my_reader')
         var.set_type(core.VarDesc.VarType.READER)
-        var.set_tensor_num(3)
         src_shapes = [[2, 3, 3], [4, 5], [6, 7, 8, 9]]
         var.set_shapes(src_shapes)
         res_shapes = var.shapes()
@@ -141,7 +140,6 @@ class TestVarDesc(unittest.TestCase):
         block = program_desc.block(0)
         var = block.var('my_reader')
         var.set_type(core.VarDesc.VarType.READER)
-        var.set_tensor_num(3)
         src_types = [
             core.DataType.INT32, core.DataType.FP64, core.DataType.FP32
         ]
@@ -154,7 +152,6 @@ class TestVarDesc(unittest.TestCase):
         block = program_desc.block(0)
         var = block.var('my_reader')
         var.set_type(core.VarDesc.VarType.READER)
-        var.set_tensor_num(3)
         src_types = [3, 1, 2]
         var.set_lod_levels(src_types)
         self.assertEqual(src_types, var.lod_levels())
