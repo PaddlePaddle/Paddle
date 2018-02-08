@@ -138,9 +138,10 @@ class BaseParallelForTest(unittest.TestCase):
 
         def _impl_(a, b, fetch_id, item_id):
             item_str = ['CPU', 'ParallelCPU', 'GPU', 'ParallelGPU']
-            flag = numpy.allclose(a, b, rtol=0.1)
-            self.assertTrue(flag, "The {0} are different in {1}".format(
-                fetch[fetch_id], item_str[item_id]))
+            flag = numpy.allclose(a, b, rtol=0.1, atol=1e-3)
+            self.assertTrue(flag,
+                            "The {0} are different in {1}, {2} vs {3}".format(
+                                fetch[fetch_id], item_str[item_id], a, b))
 
         for i, items in enumerate(zip(*args)):
             self.assertGreater(len(items), 0)

@@ -28,4 +28,4 @@ class TestRegistry(unittest.TestCase):
         exe = fluid.Executor(place)
         X = np.random.random((10, 10)).astype("float32")
         mean_out = exe.run(feed={"X": X}, fetch_list=[output])
-        self.assertAlmostEqual(np.mean(X), mean_out[0])
+        self.assertAlmostEqual(np.mean(X), mean_out[0], delta=1e-5)
