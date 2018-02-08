@@ -60,6 +60,14 @@ class Vector : public std::vector<T> {
   T *data() { return std::vector<T>::data(); }
   const T *data() const { return std::vector<T>::data(); }
 
+  T *data(const platform::Place &place) {
+    if (platform::is_cpu_place(place)) {
+      return data();
+    } else {
+      return cuda_data();
+    }
+  }
+
   /* Synchronize host vector to device vector */
   void CopyToCUDA();
   /* Synchronize device vector to host vector */
