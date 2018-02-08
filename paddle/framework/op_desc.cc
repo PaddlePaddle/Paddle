@@ -125,11 +125,10 @@ OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
   // restore attrs_
   for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
+    // The sub_block referred to by the BLOCK attr hasn't been added
+    // to ProgramDesc class yet, we skip setting BLOCK attr here.
     if (attr.type() != proto::AttrType::BLOCK) {
       attrs_[attr_name] = GetAttrValue(attr);
-    } else {
-      auto bid = attr.block_idx();
-      attrs_[attr_name] = prog->MutableBlock(bid);
     }
   }
   this->block_ = block;
