@@ -31,6 +31,8 @@ def CTCAlign(input, lod, blank, merge_repeated):
                 result.append(token)
             prev_token = token
     result = np.array(result).reshape([len(result), 1]).astype("int32")
+    if len(result) == 0:
+        result = np.array([-1])
     return result
 
 
@@ -70,6 +72,15 @@ class TestCTCAlignOpCase1(TestCTCAlignOp):
         self.input = np.array(
             [0, 1, 2, 2, 0, 4, 0, 4, 5, 0, 6, 6, 0, 0, 7, 7, 7, 0, 0]).reshape(
                 [19, 1]).astype("int32")
+
+
+class TestCTCAlignOpCase2(TestCTCAlignOp):
+    def config(self):
+        self.op_type = "ctc_align"
+        self.input_lod = [[0, 4]]
+        self.blank = 0
+        self.merge_repeated = True
+        self.input = np.array([0, 0, 0, 0]).reshape([4, 1]).astype("int32")
 
 
 if __name__ == "__main__":
