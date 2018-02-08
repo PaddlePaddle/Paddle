@@ -65,6 +65,7 @@ __all__ = [
     'beam_search',
     'row_conv',
     'multiplex',
+    'softmax_with_cross_entropy',
 ]
 
 
@@ -2993,4 +2994,120 @@ def multiplex(inputs, index):
         inputs={'X': inputs,
                 'Ids': index},
         outputs={'Out': [out]})
+    return out
+
+
+def multiplex(inputs, index):
+    """
+    **Multiplex Layer**
+
+    Referring to the given index variable, this layer selects rows from the
+    input variables to construct a multiplex variable. Assuming that there are
+    :math:`m` input variables and :math:`I_i` represents the i-th input
+    variable and :math:`i` is in [0, :math:`m`). All input variables are
+    tensors with same shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`].
+    Please note that rank of the input tensor should be at least 2. Each input
+    variable will be treated as a 2-D matrix with shape [:math:`M`, :math:`N`]
+    where :math:`M` for :math:`d_0` and :math:`N` for :math:`d_1` * :math:`d_2`
+    * ... * :math:`d_R`. Let :math:`I_i[j]` be the j-th row of the i-th input
+    variable. The given index variable should be a 2-D tensor with shape
+    [:math:`M`, 1]. Let `ID[i]` be the i-th index value of the index variable.
+    Then the output variable will be a tensor with shape [:math:`d_0`,
+    :math:`d_1`, ..., :math:`d_R`]. If we treat the output tensor as a 2-D
+    matrix with shape [:math:`M`, :math:`N`] and let :math:`O[i]` be the i-th
+    row of the matrix, then `O[i]` is equal to :math:`I_{ID[i]}[i]`.
+
+    Args:
+       inputs (list): A list of variables to gather from. All variables have the
+                same shape and the rank is at least 2.
+       index (Variable): Tensor<int32>, index variable which is a 2-D tensor
+                with shape [M, 1] where M is the batch size.
+
+    Returns:
+        Variable: Multiplex variable gathered from input variables.
+
+    Examples:
+        .. code-block:: python
+
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+            index = fluid.layers.data(name='index', shape=[1], dtype='int32')
+            out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+    """
+    helper = LayerHelper('multiplex', **locals())
+
+    if not isinstance(inputs, list) and len(inputs) < 2:
+        raise ValueError("inputs should be a list object and contains at least "
+                         "2 elements.")
+
+    out = helper.create_tmp_variable(inputs[0].dtype)
+    helper.append_op(
+        type='multiplex',
+        inputs={'X': inputs,
+                'Ids': index},
+        outputs={'Out': [out]})
+    return out
+
+
+def softmax_with_cross_entropy(logits, label, soft_label=False, **kwargs):
+    """
+    **Softmax With Cross Entropy Operator.**
+    
+    Cross entropy loss with softmax is used as the output layer extensively. This
+    operator computes the softmax normalized values for each row of the input
+    tensor, after which cross-entropy loss is computed. This provides a more
+    numerically stable gradient.
+    
+    Because this operator performs a softmax on logits internally, it expects
+    unscaled logits. This operator should not be used with the output of
+    softmax operator since that would produce incorrect results.
+    
+    When the attribute soft_label is set false, this operators expects mutually
+    exclusive hard labels, each sample in a batch is in exactly one class with a
+    probability of 1.0. Each sample in the batch will have a single label.
+    
+    The equation is as follows:
+    
+    1) Hard label (one-hot label, so every sample has exactly one class)
+    
+        $$Loss_j =  -\text{Logit}_{Label_j} +
+        \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right),
+        j = 1,..., K$$
+    
+    2) Soft label (each sample can have a distribution over all classes)
+    
+        $$Loss_j =  -\sum_{i=0}^{K}\text{Label}_i \left(\text{Logit}_i -
+        \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right)\right),
+        j = 1,...,K$$
+
+    Args:
+        logits (Variable): The unscaled log probabilities, which is a 2-D tensor
+            with shape [N x K]. N is the batch_size, and K is the class number.
+        label (Variable): The ground truth which is a 2-D tensor. If soft_label
+            is set to false, Label is a Tensor<int64> with shape [N x 1]. If
+            soft_label is set to true, Label is a Tensor<float/double> with
+        soft_label (bool): A flag to indicate whether to interpretate the given
+            labels as soft labels. By default, `soft_label` is set to False.
+    Returns:
+        Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
+
+    Examples:
+        .. code-block:: python
+
+            data = fluid.layers.data(name='data', shape=[128], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            fc = fluid.layers.fc(input=data, size=100)
+            out = fluid.layers.softmax_with_cross_entropy(logits=fc, label=label)
+    """
+
+    helper = LayerHelper('softmax_with_cross_entropy', **kwargs)
+    softmax = helper.create_tmp_variable(dtype=logits.dtype)
+    loss = helper.create_tmp_variable(dtype=logits.dtype)
+    helper.append_op(
+        type='softmax_with_cross_entropy',
+        inputs={'Logits': logits,
+                'Label': label},
+        outputs={'Softmax': softmax,
+                 'Loss': loss},
+        attrs={'soft_label': soft_label})
     return out

@@ -104,7 +104,6 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     auto* enc_gt_box = ctx.Input<framework::LoDTensor>("EncodedGTBBox");
     auto* gt_label = ctx.Input<framework::LoDTensor>("GTScoreLabel");
     auto* match_indices = ctx.Input<framework::Tensor>("MatchIndices");
-    auto* neg_indices = ctx.Input<framework::LoDTensor>("NegIndices");
 
     auto* out_box = ctx.Output<framework::Tensor>("PredBBoxLabel");
     auto* out_box_wt = ctx.Output<framework::Tensor>("PredBBoxWeight");
@@ -113,14 +112,12 @@ class TargetAssignKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(enc_gt_box->lod().size(), 1UL);
     PADDLE_ENFORCE_EQ(gt_label->lod().size(), 1UL);
-    PADDLE_ENFORCE_EQ(neg_indices->lod().size(), 1UL);
 
     int background_label = ctx.Attr<int>("background_label");
 
     const T* box_data = enc_gt_box->data<T>();
     const int* label_data = gt_label->data<int>();
     const int* match_idx_data = match_indices->data<int>();
-    const int* neg_idx_data = neg_indices->data<int>();
 
     T* obox_data = out_box->mutable_data<T>(ctx.GetPlace());
     T* obox_wt_data = out_box_wt->mutable_data<T>(ctx.GetPlace());
@@ -132,7 +129,6 @@ class TargetAssignKernel : public framework::OpKernel<T> {
 
     auto gt_lod = enc_gt_box->lod().back();
     auto gt_label_lod = gt_label->lod().back();
-    auto neg_lod = neg_indices->lod().back();
     for (size_t i = 0; i < gt_lod.size(); ++i) {
       PADDLE_ENFORCE_EQ(gt_lod.data()[i], gt_label_lod.data()[i]);
     }
@@ -150,9 +146,16 @@ class TargetAssignKernel : public framework::OpKernel<T> {
                                                 num * num_prior_box);
     for_range(functor);
 
-    NegTargetAssignFunctor<DeviceContext, T> neg_trg_functor;
-    neg_trg_functor(device_ctx, neg_idx_data, neg_lod_data, num, num_prior_box,
-                    background_label, olabel_data, olabel_wt_data);
+    auto* neg_indices = ctx.Input<framework::LoDTensor>("NegIndices");
+    if (neg_indices) {
+      PADDLE_ENFORCE_EQ(neg_indices->lod().size(), 1UL);
+      const int* neg_idx_data = neg_indices->data<int>();
+      auto neg_lod = neg_indices->lod().back();
+      NegTargetAssignFunctor<DeviceContext, T> neg_trg_functor;
+      neg_trg_functor(device_ctx, neg_idx_data, neg_lod_data, num,
+                      num_prior_box, background_label, olabel_data,
+                      olabel_wt_data);
+    }
   }
 };
 

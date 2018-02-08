@@ -44,6 +44,8 @@ __activations__ = [
     'swish',
 ]
 
+__det__ = []
+
 __all__ = [
     'mean',
     'mul',

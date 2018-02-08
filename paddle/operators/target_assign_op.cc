@@ -29,8 +29,6 @@ class TargetAssignOp : public framework::OperatorWithKernel {
                    "Input(GTScoreLabel) of TargetAssignOp should not be null");
     PADDLE_ENFORCE(ctx->HasInput("MatchIndices"),
                    "Input(MatchIndices) of TargetAssignOp should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("NegIndices"),
-                   "Input(NegIndices) of TargetAssignOp should not be null");
 
     // checkout outputs
     PADDLE_ENFORCE(
@@ -49,7 +47,6 @@ class TargetAssignOp : public framework::OperatorWithKernel {
     auto blabel_dims = ctx->GetInputDim("EncodedGTBBox");
     auto slabel_dims = ctx->GetInputDim("GTScoreLabel");
     auto mi_dims = ctx->GetInputDim("MatchIndices");
-    auto neg_dims = ctx->GetInputDim("NegIndices");
 
     PADDLE_ENFORCE_EQ(blabel_dims.size(), 3UL,
                       "The rank of Input(EncodedGTBBox) must be 3.");
@@ -57,8 +54,6 @@ class TargetAssignOp : public framework::OperatorWithKernel {
                       "The rank of Input(GTScoreLabel) must be 2.");
     PADDLE_ENFORCE_EQ(mi_dims.size(), 2UL,
                       "The rank of Input(MatchIndices) must be 2.");
-    PADDLE_ENFORCE_EQ(neg_dims.size(), 2UL,
-                      "The rank of Input(NegIndices) must be 2.");
 
     PADDLE_ENFORCE_EQ(blabel_dims[0], slabel_dims[0],
                       "The 1st dimension (means the total number of "
@@ -70,6 +65,12 @@ class TargetAssignOp : public framework::OperatorWithKernel {
                       "Input(MatchIndices) must be the same.");
     PADDLE_ENFORCE_EQ(blabel_dims[2], 4,
                       "The 3rd dimension of Input(EncodedGTBBox) must be 4.");
+
+    if (ctx->HasInput("NegIndices")) {
+      auto neg_dims = ctx->GetInputDim("NegIndices");
+      PADDLE_ENFORCE_EQ(neg_dims.size(), 2UL,
+                        "The rank of Input(NegIndices) must be 2.");
+    }
 
     auto n = mi_dims[0];
     auto np = mi_dims[1];
@@ -111,7 +112,8 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("NegIndices",
              "(LoDTensor, default LoDTensor<int>), The input negative example "
              "indices with shape [Neg, 1], where is the total number of "
-             "negative example indices.");
+             "negative example indices.")
+        .AsDispensable();
     AddAttr<int>("background_label",
                  "(int, default 0), Label index of background class.")
         .SetDefault(0);
