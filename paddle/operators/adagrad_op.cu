@@ -101,9 +101,9 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
     SparseAdagradFunctorKernel<
         T, 256><<<grid2, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(grad_merge_data, merge_rows.cuda_data(), lr,
-                                   param_data, moment_data, grad_width,
-                                   epsilon);
+                      .stream()>>>(
+        grad_merge_data, merge_rows.CUDAMutableData(context.GetPlace()), lr,
+        param_data, moment_data, grad_width, epsilon);
   }
 };
 

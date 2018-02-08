@@ -46,7 +46,8 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
 
     SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
         num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
-        seq_data, abs_offset_lod[level].cuda_data(), scales, seq_width);
+        seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
+        scales, seq_width);
   }
 };
 
