@@ -21,15 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-void ReadProgramDescFromFile(const std::string& model_filename,
-                             std::string& program_desc_str) {
-  VLOG(3) << "loading model from " << model_filename;
-  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
+void ReadBinaryFile(const std::string& filename,
+                    std::string& contents) {
+  VLOG(3) << "loading model from " << filename;
+  std::ifstream inputfs(filename, std::ios::in | std::ios::binary);
   inputfs.seekg(0, std::ios::end);
-  program_desc_str.resize(inputfs.tellg());
+  contents.clear();
+  contents.resize(inputfs.tellg());
   inputfs.seekg(0, std::ios::beg);
-  VLOG(3) << "program_desc_str's size: " << program_desc_str.size();
-  inputfs.read(&program_desc_str[0], program_desc_str.size());
+  inputfs.read(&contents[0], contents.size());
   inputfs.close();
 }
 
@@ -111,7 +111,7 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
                                              const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
   std::string program_desc_str;
-  ReadProgramDescFromFile(model_filename, program_desc_str);
+  ReadBinaryFile(model_filename, program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
@@ -127,7 +127,7 @@ std::unique_ptr<framework::ProgramDesc> Load(
     const std::string& param_filename) {
   std::string model_filename = prog_filename;
   std::string program_desc_str;
-  ReadProgramDescFromFile(model_filename, program_desc_str);
+  ReadBinaryFile(model_filename, program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
