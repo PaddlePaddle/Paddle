@@ -326,7 +326,8 @@ class OpTest(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(
                         actual_t, expect_t, atol=atol),
-                    "Output (" + out_name + ") has diff at " + str(place))
+                    "Output (" + out_name + ") has diff at " + str(place) +
+                    str(actual_t) + str(expect_t))
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.lod(), expect[1],
                                          "Output (" + out_name +

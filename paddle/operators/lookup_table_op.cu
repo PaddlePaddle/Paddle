@@ -125,7 +125,9 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       new_rows.resize(ids_dim[0]);
       auto gpu_place = boost::get<platform::CUDAPlace>(context.GetPlace());
 
-      memory::Copy(platform::CPUPlace(), new_rows.cuda_data(), gpu_place,
+      // TODO(yuyang18): Strange code here.
+      memory::Copy(platform::CPUPlace(),
+                   new_rows.CUDAMutableData(context.GetPlace()), gpu_place,
                    ids_data, ids_dim[0] * sizeof(int64_t), stream);
 
       d_table->set_rows(new_rows);

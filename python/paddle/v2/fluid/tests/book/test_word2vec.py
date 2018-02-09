@@ -17,6 +17,8 @@ import paddle.v2.fluid as fluid
 import unittest
 import os
 import numpy as np
+import math
+import sys
 
 
 def create_random_lodtensor(lod, place, low, high):
@@ -169,13 +171,16 @@ def train(use_cuda, is_sparse, parallel, save_dirname):
                         'firstw', 'secondw', 'thirdw', 'forthw'
                     ], [predict_word], exe)
                 return
+            if math.isnan(float(avg_cost_np[0])):
+                sys.exit("got NaN loss, training failed.")
+
     raise AssertionError("Cost is too large {0:2.2}".format(avg_cost_np[0]))
 
 
 def main(use_cuda, is_sparse, parallel):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    save_dirname = "word_to_vec.inference.model"
+    save_dirname = "word2vec.inference.model"
     train(use_cuda, is_sparse, parallel, save_dirname)
     infer(use_cuda, save_dirname)
 

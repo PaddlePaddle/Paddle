@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/lod_rank_table.h"
 #include "paddle/framework/lod_tensor.h"
 #include "paddle/framework/lod_tensor_array.h"
+#include "paddle/framework/reader.h"
 #include "paddle/framework/selected_rows.h"
 #include "paddle/framework/variable.h"
 
@@ -31,6 +32,8 @@ inline proto::VarDesc::VarType ToVarType(std::type_index type) {
     return proto::VarDesc_VarType_LOD_TENSOR_ARRAY;
   } else if (type.hash_code() == typeid(SelectedRows).hash_code()) {
     return proto::VarDesc_VarType_SELECTED_ROWS;
+  } else if (type.hash_code() == typeid(ReaderHolder).hash_code()) {
+    return proto::VarDesc_VarType_READER;
   } else {
     PADDLE_THROW("ToVarType:Unsupported type %s", type.name());
   }
@@ -40,7 +43,7 @@ template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (ToVarType(var.Type())) {
     case proto::VarDesc_VarType_LOD_TENSOR:
-      visitor(var.Get<framework::LoDTensor>());
+      visitor(var.Get<LoDTensor>());
       return;
     case proto::VarDesc_VarType_LOD_RANK_TABLE:
       visitor(var.Get<LoDRankTable>());
@@ -50,6 +53,9 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
       return;
     case proto::VarDesc_VarType_SELECTED_ROWS:
       visitor(var.Get<SelectedRows>());
+      return;
+    case proto::VarDesc_VarType_READER:
+      visitor(var.Get<ReaderHolder>());
       return;
     default:
       PADDLE_THROW("Not supported visit type, %d", ToVarType(var.Type()));

@@ -69,8 +69,9 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.cuda_device_context().stream();
     MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
-        num_tokens, tokens, num_seq, input_lod[level].cuda_data(), blank,
-        merge_repeated, dev_out_lod0_ptr, output_data);
+        num_tokens, tokens, num_seq,
+        input_lod[level].CUDAMutableData(ctx.GetPlace()), blank, merge_repeated,
+        dev_out_lod0_ptr, output_data);
 
     // set output lod
     std::vector<size_t> host_out_lod0(dev_out_lod0.begin(), dev_out_lod0.end());
@@ -80,6 +81,14 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
 
     // resize output dims
     output->Resize({static_cast<int64_t>(host_out_lod0.back()), 1});
+
+    if (host_out_lod0.back() == 0) {
+      output->Resize({1, 1});
+      output->mutable_data<T>(ctx.GetPlace());
+      math::SetConstant<platform::CUDADeviceContext, T> set_constant;
+      set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
+                   output, -1);
+    }
   }
 };
 

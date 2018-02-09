@@ -46,15 +46,7 @@ namespace framework {
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-struct LoD : public std::vector<Vector<size_t>> {
-  using std::vector<Vector<size_t>>::vector;
-
-  void CopyFromCUDA() {
-    for (auto it = this->begin(); it != this->end(); ++it) {
-      it->CopyFromCUDA();
-    }
-  }
-};
+using LoD = std::vector<Vector<size_t>>;
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
