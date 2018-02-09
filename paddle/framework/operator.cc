@@ -22,9 +22,7 @@ limitations under the License. */
 #include "paddle/framework/shape_inference.h"
 #include "paddle/framework/var_type.h"
 
-DEFINE_bool(op_sync, false,
-            "Default cuda is asynchronous device, set to True will"
-            "force op run in synchronous mode.");
+DECLARE_bool(benchmark);
 
 namespace paddle {
 namespace framework {
@@ -322,8 +320,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     if (length == 0) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL, "Input %s should have more than one inputs",
-                      name);
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Input %s should not have more than one inputs", name);
     auto ipt = ins[0];
     auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
@@ -335,8 +333,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     if (length == 0) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL, "Output %s should have more than one inputs",
-                      name);
+    PADDLE_ENFORCE_EQ(length, 1UL,
+                      "Output %s should not have more than one inputs", name);
     auto ipt = outs[0];
     auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
     return var != nullptr;
@@ -366,14 +364,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
       }
     }
     return true;
-  }
-
-  DDim GetInputDim(const std::string& name) const override {
-    return GetDim(op_.Input(name));
-  }
-
-  void SetOutputDim(const std::string& name, const DDim& dim) override {
-    SetDim(op_.Output(name), dim);
   }
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
@@ -431,8 +421,22 @@ class RuntimeInferShapeContext : public InferShapeContext {
     } else if (var->IsType<SelectedRows>()) {
       return var->Get<SelectedRows>().GetCompleteDims();
     } else {
-      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
-                   name, var->Type().name());
+      PADDLE_THROW(
+          "Only LoDTensor/SelectedRows support 'GetDim', but Variable %s's "
+          "type_id is %s.",
+          name, var->Type().name());
+    }
+  }
+
+  std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
+    Variable* var = scope_.FindVar(name);
+    if (var->IsType<ReaderHolder>()) {
+      return var->Get<ReaderHolder>().shapes();
+    } else {
+      PADDLE_THROW(
+          "Only ReaderHolder support 'GetRepeatedDims', but Variable %s's "
+          "type_id is %s.",
+          name, var->Type().name());
     }
   }
 
@@ -445,6 +449,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
     } else {
       PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
                    name, var->Type().name());
+    }
+  }
+
+  void SetRepeatedDims(const std::string& name,
+                       const std::vector<DDim>& dims) override {
+    Variable* var = scope_.FindVar(name);
+    if (var->IsType<ReaderHolder>()) {
+      var->GetMutable<ReaderHolder>()->set_shapes(dims);
+    } else {
+      PADDLE_THROW(
+          "Only ReaderHolder support 'SetRepeatedDims', but Variable %s's "
+          "type_id is %s.",
+          name, var->Type().name());
     }
   }
 
@@ -531,7 +548,7 @@ void OperatorWithKernel::Run(const Scope& scope,
       ExecutionContext(*this, new_scope, *new_dev_ctx));
 
   /*For profiling/benchmark only*/
-  if (FLAGS_op_sync) {
+  if (FLAGS_benchmark) {
     new_dev_ctx->Wait();
   }
 }

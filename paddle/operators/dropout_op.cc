@@ -51,6 +51,13 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                          "'dropout_prob' must be between 0.0 and 1.0.");
         });
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
+    AddAttr<bool>("fix_seed",
+                  "A flag indicating whether to use a fixed seed to generate "
+                  "random mask. NOTE: DO NOT set this flag to true in "
+                  "training. Setting this flag to true is only useful in "
+                  "unittest or for debug that always the same output units "
+                  "will be dropped.")
+        .SetDefault(false);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
 
     AddComment(R"DOC(

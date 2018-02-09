@@ -11,21 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as pd
 from paddle.v2.fluid.executor import Executor
+import unittest
 
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
-src_dict, trg_dict = paddle.dataset.wmt14.get_dict(dict_size)
 hidden_dim = 32
 word_dim = 16
-IS_SPARSE = True
 batch_size = 2
 max_length = 8
 topk_size = 50
@@ -34,10 +33,8 @@ beam_size = 2
 
 decoder_size = hidden_dim
 
-place = core.CPUPlace()
 
-
-def encoder():
+def encoder(is_sparse):
     # encoder
     src_word_id = pd.data(
         name="src_word_id", shape=[1], dtype='int64', lod_level=1)
@@ -45,7 +42,7 @@ def encoder():
         input=src_word_id,
         size=[dict_size, word_dim],
         dtype='float32',
-        is_sparse=IS_SPARSE,
+        is_sparse=is_sparse,
         param_attr=fluid.ParamAttr(name='vemb'))
 
     fc1 = pd.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
@@ -54,7 +51,7 @@ def encoder():
     return encoder_out
 
 
-def decoder_train(context):
+def decoder_train(context, is_sparse):
     # decoder
     trg_language_word = pd.data(
         name="target_language_word", shape=[1], dtype='int64', lod_level=1)
@@ -62,7 +59,7 @@ def decoder_train(context):
         input=trg_language_word,
         size=[dict_size, word_dim],
         dtype='float32',
-        is_sparse=IS_SPARSE,
+        is_sparse=is_sparse,
         param_attr=fluid.ParamAttr(name='vemb'))
 
     rnn = pd.DynamicRNN()
@@ -82,10 +79,10 @@ def decoder_train(context):
     return rnn()
 
 
-def decoder_decode(context):
+def decoder_decode(context, is_sparse):
     init_state = context
     array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
-    counter = pd.zeros(shape=[1], dtype='int64')
+    counter = pd.zeros(shape=[1], dtype='int64', force_cpu=True)
 
     # fill the first element with init_state
     state_array = pd.create_array('float32')
@@ -117,7 +114,7 @@ def decoder_decode(context):
             input=pre_ids,
             size=[dict_size, word_dim],
             dtype='float32',
-            is_sparse=IS_SPARSE)
+            is_sparse=is_sparse)
 
         # use rnn unit to update rnn
         current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
@@ -150,7 +147,7 @@ def decoder_decode(context):
 
 
 def set_init_lod(data, lod, place):
-    res = core.LoDTensor()
+    res = fluid.LoDTensor()
     res.set(data, place)
     res.set_lod(lod)
     return res
@@ -165,15 +162,19 @@ def to_lodtensor(data, place):
         lod.append(cur_len)
     flattened_data = np.concatenate(data, axis=0).astype("int64")
     flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = core.LoDTensor()
+    res = fluid.LoDTensor()
     res.set(flattened_data, place)
     res.set_lod([lod])
     return res
 
 
-def train_main():
-    context = encoder()
-    rnn_out = decoder_train(context)
+def train_main(use_cuda, is_sparse):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+    context = encoder(is_sparse)
+    rnn_out = decoder_train(context, is_sparse)
     label = pd.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
     cost = pd.cross_entropy(input=rnn_out, label=label)
@@ -212,9 +213,13 @@ def train_main():
             batch_id += 1
 
 
-def decode_main():
-    context = encoder()
-    translation_ids, translation_scores = decoder_decode(context)
+def decode_main(use_cuda, is_sparse):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+
+    context = encoder(is_sparse)
+    translation_ids, translation_scores = decoder_decode(context, is_sparse)
 
     exe = Executor(place)
     exe.run(framework.default_startup_program())
@@ -250,6 +255,60 @@ def decode_main():
         break
 
 
+class TestMachineTranslation(unittest.TestCase):
+    pass
+
+
+@contextlib.contextmanager
+def scope_prog_guard():
+    prog = fluid.Program()
+    startup_prog = fluid.Program()
+    scope = fluid.core.Scope()
+    with fluid.scope_guard(scope):
+        with fluid.program_guard(prog, startup_prog):
+            yield
+
+
+def inject_test_train(use_cuda, is_sparse):
+    f_name = 'test_{0}_{1}_train'.format('cuda' if use_cuda else 'cpu', 'sparse'
+                                         if is_sparse else 'dense')
+
+    def f(*args):
+        with scope_prog_guard():
+            train_main(use_cuda, is_sparse)
+
+    setattr(TestMachineTranslation, f_name, f)
+
+
+def inject_test_decode(use_cuda, is_sparse, decorator=None):
+    f_name = 'test_{0}_{1}_decode'.format('cuda'
+                                          if use_cuda else 'cpu', 'sparse'
+                                          if is_sparse else 'dense')
+
+    def f(*args):
+        with scope_prog_guard():
+            decode_main(use_cuda, is_sparse)
+
+    if decorator is not None:
+        f = decorator(f)
+
+    setattr(TestMachineTranslation, f_name, f)
+
+
+for _use_cuda_ in (False, True):
+    for _is_sparse_ in (False, True):
+        inject_test_train(_use_cuda_, _is_sparse_)
+
+for _use_cuda_ in (False, True):
+    for _is_sparse_ in (False, True):
+
+        _decorator_ = None
+        if _use_cuda_:
+            _decorator_ = unittest.skip(
+                reason='Beam Search does not support CUDA!')
+
+        inject_test_decode(
+            is_sparse=_is_sparse_, use_cuda=_use_cuda_, decorator=_decorator_)
+
 if __name__ == '__main__':
-    # train_main()
-    decode_main()
+    unittest.main()

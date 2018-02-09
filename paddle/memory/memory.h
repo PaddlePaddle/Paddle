@@ -81,5 +81,23 @@ class PODDeleter {
   Place place_;
 };
 
+/**
+ * \brief   Free memory block in one place does not meet POD
+ *
+ * \note    In some cases, custom deleter is used to
+ *          deallocate the memory automatically for
+ *          std::unique_ptr<T> in tensor.h.
+ *
+ */
+template <typename T, typename Place>
+class PlainDeleter {
+ public:
+  explicit PlainDeleter(Place place) : place_(place) {}
+  void operator()(T* ptr) { Free(place_, reinterpret_cast<void*>(ptr)); }
+
+ private:
+  Place place_;
+};
+
 }  // namespace memory
 }  // namespace paddle

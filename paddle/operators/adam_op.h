@@ -199,7 +199,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
           merge_func(ctx.template device_context<DeviceContext>(), grad);
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      auto* rows = grad_merge.rows().data();
+      int64_t* rows = nullptr;
+      if (platform::is_gpu_place(ctx.GetPlace())) {
+        rows = grad_merge.mutable_rows()->cuda_data();
+      } else {
+        rows = grad_merge.mutable_rows()->data();
+      }
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
       SparseAdamFunctor<T> functor(
