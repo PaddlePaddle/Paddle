@@ -30,11 +30,8 @@ wait_running_pods(){
   stdbuf -oL python /root/k8s_tools.py wait_pods_running ${pserver_label} ${PSERVERS_NUM}
   stdbuf -oL python /root/k8s_tools.py wait_pods_running ${trainer_label} ${TRAINERS_NUM}
 
-  g_pservers=$(python /root/k8s_tools.py fetch_pserver_ips ${label} ${PORT})
-  g_trainers=$(python /root/k8s_tools.py fetch_trainer_ips ${label} ${PORT})
-
-  echo $g_pservers
-  echo $g_trainers
+  g_pservers=$(python /root/k8s_tools.py fetch_pserver_ips ${pserver_label} ${PORT})
+  g_trainers=$(python /root/k8s_tools.py fetch_trainer_ips ${trainer_label} ${PORT})
 }
 
 start_tf_pserver(){

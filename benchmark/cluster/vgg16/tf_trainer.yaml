@@ -19,7 +19,12 @@ spec:
         image: "registry.baidu.com/gongweibao/test/fluid_benchmark:vgg16"
         imagePullPolicy: Always
         command: ["tf_k8s", "start_tf"]
+        ports:
+        - name: jobport-30236
+          containerPort: 30236
         env:
+        - name: PORT
+          value: "32036"
         - name: JOB_NAME
           value: vgg16job
         - name: TRAINING_ROLE
