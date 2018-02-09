@@ -1,6 +1,5 @@
 #   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
+# # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
@@ -207,19 +206,20 @@ def inject_test_method(use_cuda, is_sparse, parallel):
             with fluid.program_guard(prog, startup_prog):
                 main(use_cuda=use_cuda, is_sparse=is_sparse, parallel=parallel)
 
-    #if use_cuda and is_sparse and parallel:
-    fn = __impl__
-    #else:
-    # skip the other test when on CI server
-    #    fn = unittest.skipUnless(
-    #        condition=FULL_TEST, reason=SKIP_REASON)(__impl__)
+    # run only 2 cases: use_cuda is either True or False
+    if is_sparse and parallel:
+        fn = __impl__
+    else:
+        # skip the other test when on CI server
+        fn = unittest.skipUnless(
+            condition=FULL_TEST, reason=SKIP_REASON)(__impl__)
 
     setattr(W2VTest, fn_name, fn)
 
 
-for use_cuda in (False, ):  #  True):
-    for is_sparse in (False, ):  # True):
-        for parallel in (False, ):  # True):
+for use_cuda in (False, True):
+    for is_sparse in (False, True):
+        for parallel in (False, True):
             inject_test_method(use_cuda, is_sparse, parallel)
 
 if __name__ == '__main__':
