@@ -741,7 +741,7 @@ class Block(object):
         self.desc.remove_op(start, end + 1)
 
     def slice_ops(self, start, end):
-        return list(self.ops)[start:end + 1]
+        return list(self.ops)[start:end]
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()

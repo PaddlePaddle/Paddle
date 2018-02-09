@@ -380,11 +380,11 @@ class DistributeTranspiler:
         new_inputs = dict()
         # update param/grad shape first, then other inputs like
         # moment can use the updated shape
-        for key, var in opt_op.inputs.iteritems():
+        for key in opt_op.input_names:
             if key == "Grad":
                 grad_block = None
                 for g in self.param_grad_ep_mapping[endpoint]["grads"]:
-                    if same_or_split_var(g.name, var.name):
+                    if same_or_split_var(g.name, opt_op.input(key)[0]):
                         grad_block = g
                         break
                 if not grad_block:
@@ -414,7 +414,7 @@ class DistributeTranspiler:
                 # param is already created on global program
                 param_block = None
                 for p in self.param_grad_ep_mapping[endpoint]["params"]:
-                    if same_or_split_var(p.name, var.name):
+                    if same_or_split_var(p.name, opt_op.input(key)[0]):
                         param_block = p
                         break
                 if not param_block:
@@ -427,18 +427,19 @@ class DistributeTranspiler:
 
                 new_inputs[key] = tmpvar
 
-        for key, var in opt_op.inputs.iteritems():
+        for key in opt_op.input_names:
             new_shape = None
             if key in ["Param", "Grad"]:
                 continue
-            elif key == "LearningRate":
+
+            var = program.global_block().vars[opt_op.input(key)[0]]
+            if key == "LearningRate":
                 new_shape = var.shape
             else:
                 # update accumulator variable shape
                 param_shape = new_inputs["Param"].shape
                 new_shape = self._get_optimizer_input_shape(
                     opt_op.type, key, var.shape, param_shape)
-
             tmpvar = program.global_block().create_var(
                 name=var.name,
                 persistable=var.persistable,
@@ -455,6 +456,7 @@ class DistributeTranspiler:
                 shape=new_shape)
 
         # change output's ParamOut variable
+        #outputs = self._get_output_map_from_op(program.global_block().vars, opt_op)
         opt_op.outputs["ParamOut"] = new_inputs["Param"]
         program.global_block().append_op(
             type=opt_op.type,
@@ -464,29 +466,34 @@ class DistributeTranspiler:
 
     def _append_pserver_non_opt_ops(self, program, pserver_program, opt_op):
         # Append the ops for parameters that do not need to be optimized/updated
-        if opt_op.inputs:
-            for _, vars in opt_op.inputs.iteritems():
-                if not isinstance(vars, list):
-                    vars = [vars]
-                for var in vars:
-                    # FIXME(Yancey1989): need to merge server program and 
-                    # optimize sub program, so that we couldn't create
-                    # the variable twice.
+        inputs = self._get_input_map_from_op(self.program.global_block().vars,
+                                             opt_op)
+        for varlist in inputs.itervalues():
+            if not isinstance(varlist, list):
+                varlist = [varlist]
+
+            for var in varlist:
+                # TODO(typhoonzero): will remove below line later.
+                if not program.global_block().vars.has_key(var.name):
                     program.global_block().create_var(
                         name=var.name,
                         persistable=var.persistable,
                         dtype=var.dtype,
                         shape=var.shape)
+                if not pserver_program.global_block().vars.has_key(var.name):
                     pserver_program.global_block().create_var(
                         name=var.name,
                         persistable=var.persistable,
                         dtype=var.dtype,
                         shape=var.shape)
 
-        for _, vars in opt_op.outputs.iteritems():
-            if not isinstance(vars, list):
-                vars = [vars]
-            for var in vars:
+        outputs = self._get_output_map_from_op(self.program.global_block().vars,
+                                               opt_op)
+        for varlist in outputs.itervalues():
+            if not isinstance(varlist, list):
+                varlist = [varlist]
+
+            for var in varlist:
                 program.global_block().create_var(
                     name=var.name,
                     persistable=var.persistable,
@@ -500,8 +507,8 @@ class DistributeTranspiler:
 
         program.global_block().append_op(
             type=opt_op.type,
-            inputs=opt_op.inputs,
-            outputs=opt_op.outputs,
+            inputs=inputs,
+            outputs=outputs,
             attrs=opt_op.attrs)
 
     def _is_op_connected(self, op1, op2):
@@ -603,7 +610,6 @@ class DistributeTranspiler:
                         self._append_pserver_non_opt_ops(optimize_sub_program,
                                                          pserver_program, op)
                     break
-
         # Append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
@@ -624,6 +630,30 @@ class DistributeTranspiler:
             })
         pserver_program.sync_with_cpp()
         return pserver_program
+
+    def _get_input_map_from_op(self, varmap, op):
+        iomap = dict()
+        for key in op.input_names:
+            vars = []
+            for varname in op.input(key):
+                vars.append(varmap[varname])
+            if len(vars) == 1:
+                iomap[key] = vars[0]
+            else:
+                iomap[key] = vars
+        return iomap
+
+    def _get_output_map_from_op(self, varmap, op):
+        iomap = dict()
+        for key in op.output_names:
+            vars = []
+            for varname in op.output(key):
+                vars.append(varmap[varname])
+            if len(vars) == 1:
+                iomap[key] = vars[0]
+            else:
+                iomap[key] = vars
+        return iomap
 
     def get_startup_program(self, endpoint, pserver_program):
         """
@@ -655,17 +685,21 @@ class DistributeTranspiler:
 
         # 2. rename op outputs
         for op in orig_s_prog.global_block().ops:
+            new_inputs = dict()
             new_outputs = dict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
-            for key, var in op.outputs.iteritems():
-                newname, _ = _get_splited_name_and_shape(var.name)
+            for key in op.output_names:
+                newname, _ = _get_splited_name_and_shape(op.output(key)[0])
                 if newname:
                     op_on_pserver = True
                     new_outputs[key] = created_var_map[newname]
-                elif var.name in pserver_vars:
+                elif op.output(key)[0] in pserver_vars:
                     op_on_pserver = True
-                    new_outputs[key] = pserver_vars[var.name]
+                    new_outputs[key] = pserver_vars[op.output(key)[0]]
+
+            # most startup program ops have no inputs
+            new_inputs = self._get_input_map_from_op(pserver_vars, op)
 
             if op_on_pserver:
                 if op.type in [
@@ -674,7 +708,7 @@ class DistributeTranspiler:
                     op.attrs["shape"] = new_outputs["Out"].shape
                 s_prog.global_block().append_op(
                     type=op.type,
-                    inputs=op.inputs,
+                    inputs=new_inputs,
                     outputs=new_outputs,
                     attrs=op.attrs)
         return s_prog
