@@ -54,8 +54,10 @@ class ReadInferVarType : public framework::VarTypeInference {
 class ReadOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
-  void Run(const framework::Scope& scope,
-           const platform::Place& dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {
     framework::ReaderHolder* reader =
         scope.FindVar(Input("Reader"))->GetMutable<framework::ReaderHolder>();
     if (!reader->HasNext()) {
