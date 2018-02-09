@@ -24,6 +24,7 @@ function(inference_test TARGET_NAME)
   endforeach()
 endfunction(inference_test)
 
+inference_test(fit_a_line)
 inference_test(recognize_digits ARGS mlp)
 inference_test(image_classification ARGS vgg resnet)
 inference_test(label_semantic_roles)
