@@ -116,8 +116,6 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of LayerNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Scale"),
-                   "Input(Scale) of LayerNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Mean"),
                    "Input(Mean) of LayerNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Variance"),
