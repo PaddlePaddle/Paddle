@@ -147,7 +147,9 @@ def infer(use_cuda, save_dirname=None):
      fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
     lod = [0, 4, 10]
-    tensor_words = create_random_lodtensor(lod, place, low=0, high=1)
+    word_dict = paddle.dataset.imdb.word_dict()
+    tensor_words = create_random_lodtensor(
+        lod, place, low=0, high=len(word_dict) - 1)
 
     # Construct feed as a dictionary of {feed_target_name: feed_target_data}
     # and results will contain a list of data corresponding to fetch_targets.
