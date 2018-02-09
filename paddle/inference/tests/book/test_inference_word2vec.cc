@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <time.h>
-#include <sstream>
 #include "gflags/gflags.h"
 #include "test_helper.h"
 
@@ -51,8 +49,7 @@ TEST(inference, word2vec) {
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
-  TestInference<paddle::platform::CPUPlace, float>(
-      dirname, cpu_feeds, cpu_fetchs1);
+  TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
   LOG(INFO) << output1.lod();
   LOG(INFO) << output1.dims();
 
