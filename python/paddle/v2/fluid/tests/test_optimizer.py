@@ -42,9 +42,9 @@ class TestOptimizer(unittest.TestCase):
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
         opts, _ = sgd_optimizer.minimize(mean_out, init_program)
-        self.assertEqual(len(opts), 1)
-        sgd_op = opts[0]
-        self.assertEqual(sgd_op.type, "sgd")
+        self.assertEqual(len(opts), 3)
+        self.assertEqual([op.type for op in opts],
+                         ["fill_constant", "elementwise_mul", "sgd"])
 
     def test_sgd_optimizer_with_global_step(self):
         init_program = framework.Program()
@@ -72,11 +72,10 @@ class TestOptimizer(unittest.TestCase):
         sgd_optimizer = optimizer.SGDOptimizer(
             learning_rate=learning_rate, global_step=global_step)
         opts, _ = sgd_optimizer.minimize(mean_out, init_program)
-        self.assertEqual(len(opts), 2)
-        sgd_op = opts[0]
-        self.assertEqual(sgd_op.type, "sgd")
-        increment_op = opts[1]
-        self.assertEqual(increment_op.type, "increment")
+        self.assertEqual(len(opts), 4)
+        self.assertEqual(
+            [op.type for op in opts],
+            ["fill_constant", "elementwise_mul", "sgd", "increment"])
 
         # Check init_program
         init_ops = init_program.global_block().ops
@@ -121,9 +120,10 @@ class TestMomentumOptimizer(unittest.TestCase):
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(
             params_grads, mul_out, init_program)
-        self.assertEqual(len(opts), 1)
-        sgd_op = opts[0]
-        self.assertEqual(sgd_op.type, "momentum")
+        self.assertEqual(len(opts), 3)
+        sgd_op = opts[-1]
+        self.assertEqual([op.type for op in opts],
+                         ["fill_constant", "elementwise_mul", "momentum"])
         self.assertFalse(sgd_op.attr('use_nesterov'))
 
         # Check accumulators
@@ -170,9 +170,10 @@ class TestMomentumOptimizer(unittest.TestCase):
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
         opts = momentum_optimizer.create_optimization_pass(
             params_grads, mul_out, init_program)
-        self.assertEqual(len(opts), 1)
-        sgd_op = opts[0]
-        self.assertEqual(sgd_op.type, "momentum")
+        self.assertEqual(len(opts), 3)
+        sgd_op = opts[-1]
+        self.assertEqual([op.type for op in opts],
+                         ["fill_constant", "elementwise_mul", "momentum"])
         self.assertTrue(sgd_op.attr('use_nesterov'))
 
         # Check accumulators
@@ -228,9 +229,9 @@ class TestAdagradOptimizer(unittest.TestCase):
         self.assertEqual(len(adagrad_optimizer.get_accumulators()), 0)
         opts = adagrad_optimizer.create_optimization_pass(params_grads, mul_out,
                                                           init_program)
-        self.assertEqual(len(opts), 1)
-        adagrad_op = opts[0]
-        self.assertEqual(adagrad_op.type, "adagrad")
+        self.assertEqual(len(opts), 3)
+        self.assertEqual([op.type for op in opts],
+                         ["fill_constant", "elementwise_mul", "adagrad"])
 
         # Check accumulators
         accumulators = adagrad_optimizer.get_accumulators()
@@ -288,9 +289,10 @@ class TestAdamOptimizer(unittest.TestCase):
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
         opts = adam_optimizer.create_optimization_pass(params_grads, mul_out,
                                                        init_program)
-        self.assertEqual(len(opts), 3)
-        adam_op = opts[0]
-        self.assertEqual(adam_op.type, "adam")
+        self.assertEqual(len(opts), 5)
+        self.assertEqual(
+            [op.type for op in opts],
+            ["fill_constant", "elementwise_mul", "adam", "scale", "scale"])
 
         # Check accumulators
         accumulators = adam_optimizer.get_accumulators()
@@ -350,9 +352,10 @@ class TestAdamaxOptimizer(unittest.TestCase):
         self.assertEqual(len(adamax_optimizer.get_accumulators()), 0)
         opts = adamax_optimizer.create_optimization_pass(params_grads, mul_out,
                                                          init_program)
-        self.assertEqual(len(opts), 2)
-        adam_op = opts[0]
-        self.assertEqual(adam_op.type, "adamax")
+        self.assertEqual(len(opts), 4)
+        self.assertEqual(
+            [op.type for op in opts],
+            ["fill_constant", "elementwise_mul", "adamax", "scale"])
 
         # Check accumulators
         accumulators = adamax_optimizer.get_accumulators()
@@ -409,9 +412,10 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
         self.assertEqual(len(decayed_adagrad_optimizer.get_accumulators()), 0)
         opts = decayed_adagrad_optimizer.create_optimization_pass(
             params_grads, mul_out, init_program)
-        self.assertEqual(len(opts), 1)
-        decayed_adagrad_op = opts[0]
-        self.assertEqual(decayed_adagrad_op.type, "decayed_adagrad")
+        self.assertEqual(len(opts), 3)
+        self.assertEqual(
+            [op.type for op in opts],
+            ["fill_constant", "elementwise_mul", "decayed_adagrad"])
 
         # Check accumulators
         accumulators = decayed_adagrad_optimizer.get_accumulators()

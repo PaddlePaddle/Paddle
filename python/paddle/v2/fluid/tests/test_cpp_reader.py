@@ -32,31 +32,43 @@ create_random_data_generator_op = block.append_op(
         "min": 0.0,
         "max": 1.0
     })
+shuffle_reader = block.create_var(
+    type=fluid.core.VarDesc.VarType.READER, name="ShuffleReader")
+shuffle_reader.desc.set_lod_levels([0, 0])
 
-out1 = block.create_var(
-    type=fluid.core.VarDesc.VarType.LOD_TENSOR,
-    name="Out1",
-    shape=[10, 2],
-    dtype="float32",
-    lod_level=1)
-out2 = block.create_var(
-    type=fluid.core.VarDesc.VarType.LOD_TENSOR,
-    name="Out2",
-    shape=[10, 1],
-    dtype="float32",
-    lod_level=1)
+create_shuffle_reader_op = block.append_op(
+    type="create_shuffle_reader",
+    inputs={"UnderlyingReader": random_reader},
+    outputs={"Out": shuffle_reader},
+    attrs={"buffer_size": 7})
+
+batch_reader = block.create_var(
+    type=fluid.core.VarDesc.VarType.READER, name="BatchReader")
+batch_reader.desc.set_lod_levels([1, 1])
+
+create_batch_reader_op = block.append_op(
+    type="create_batch_reader",
+    inputs={"UnderlyingReader": shuffle_reader},
+    outputs={"Out": batch_reader},
+    attrs={"batch_size": 10})
+
+out1 = block.create_var(type=fluid.core.VarDesc.VarType.LOD_TENSOR, name="Out1")
+out2 = block.create_var(type=fluid.core.VarDesc.VarType.LOD_TENSOR, name="Out2")
 
 read_op = block.append_op(
-    type="read",
-    inputs={"Reader": random_reader},
+    type="read", inputs={"Reader": batch_reader},
     outputs={"Out": [out1, out2]})
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
 
-[res1, res2] = exe.run(prog, fetch_list=[out1, out2])
+[res1, res2] = exe.run(prog, fetch_list=[out1, out2], return_numpy=False)
 
-if len(res1) == 0 or len(res2) == 0:
+test_pass = res1.lod() == [range(0, 11)] and res1.lod() == [
+    range(0, 11)
+] and np.array(res1).shape == (10, 2) and np.array(res2).shape == (10, 1)
+
+if not test_pass:
     exit(1)
 
 exit(0)
