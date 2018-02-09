@@ -15,7 +15,7 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-TEST(inference, label_semantic_roles) {
+TEST(inference, fit_a_line) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
@@ -29,8 +29,9 @@ TEST(inference, label_semantic_roles) {
   paddle::framework::LoDTensor input;
   // The second dim of the input tensor should be 13
   // The input data should be >= 0
+  int64_t batch_size = 10;
   SetupTensor<float>(
-      input, {10, 13}, static_cast<float>(0), static_cast<float>(10));
+      input, {batch_size, 13}, static_cast<float>(0), static_cast<float>(10));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -39,8 +40,7 @@ TEST(inference, label_semantic_roles) {
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
-  TestInference<paddle::platform::CPUPlace, float>(
-      dirname, cpu_feeds, cpu_fetchs1);
+  TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -49,8 +49,7 @@ TEST(inference, label_semantic_roles) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
-  TestInference<paddle::platform::CUDAPlace, float>(
-      dirname, cpu_feeds, cpu_fetchs2);
+  TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);

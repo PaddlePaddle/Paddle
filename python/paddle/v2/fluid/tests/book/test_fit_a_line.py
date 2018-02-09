@@ -81,7 +81,8 @@ def infer(use_cuda, save_dirname=None):
 
     # The input's dimension should be 2-D and the second dim is 13
     # The input data should be >= 0
-    tensor_x = numpy.random.uniform(0, 10, [10, 13]).astype("float32")
+    batch_size = 10
+    tensor_x = numpy.random.uniform(0, 10, [batch_size, 13]).astype("float32")
     assert feed_target_names[0] == 'x'
     results = exe.run(inference_program,
                       feed={feed_target_names[0]: tensor_x},
