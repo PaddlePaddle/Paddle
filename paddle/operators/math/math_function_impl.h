@@ -87,6 +87,88 @@ class ColwiseSum<platform::CPUDeviceContext, T> {
   }
 };
 
+template <typename DeviceContext, typename T>
+void RowwiseMean<DeviceContext, T>::operator()(const DeviceContext& context,
+                                               const framework::Tensor& input,
+                                               framework::Tensor* out) {
+  auto in_dims = input.dims();
+  PADDLE_ENFORCE_EQ(in_dims.size(), 2U);
+  PADDLE_ENFORCE_EQ(out->numel(), in_dims[0]);
+
+  auto in = framework::EigenMatrix<T>::From(input);
+  auto vec = framework::EigenVector<T>::Flatten(*out);
+
+  vec.device(*context.eigen_device()) = in.mean(Eigen::array<int, 1>({{1}}));
+}
+// TODO(zcd): Following ColwiseSum format, need to confirm.
+// Specialize for CPU, since Eigen implement a general reduce. However,
+// rowwise-sum can be easily implemented. General reduce has a huge overhead in
+// CPU
+template <typename T>
+class RowwiseMean<platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* out) {
+    auto& in_dims = input.dims();
+    PADDLE_ENFORCE_EQ(in_dims.size(), 2U);
+    auto height = in_dims[0];
+    auto size = in_dims[1];
+    PADDLE_ENFORCE_EQ(out->numel(), height);
+    auto inv_size = 1.0 / size;
+    T* out_buf = out->mutable_data<T>(out->place());
+    const T* in_buf = input.data<T>();
+
+    for (size_t i = 0; i < static_cast<size_t>(height); ++i) {
+      T sum = 0;
+      for (size_t j = 0; j < static_cast<size_t>(size); ++j) {
+        sum += in_buf[i * size + j];
+      }
+      out_buf[i] = sum * inv_size;
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+void RowwiseSum<DeviceContext, T>::operator()(const DeviceContext& context,
+                                              const framework::Tensor& input,
+                                              framework::Tensor* out) {
+  auto in_dims = input.dims();
+  PADDLE_ENFORCE_EQ(in_dims.size(), 2U);
+  PADDLE_ENFORCE_EQ(out->numel(), in_dims[0]);
+
+  auto in = framework::EigenMatrix<T>::From(input);
+  auto vec = framework::EigenVector<T>::Flatten(*out);
+
+  vec.device(*context.eigen_device()) = in.sum(Eigen::array<int, 1>({{1}}));
+}
+// TODO(zcd): Following ColwiseSum format, need to confirm.
+// Specialize for CPU, since Eigen implement a general reduce. However,
+// rowwise-sum can be easily implemented. General reduce has a huge overhead in
+// CPU
+template <typename T>
+class RowwiseSum<platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& input, framework::Tensor* out) {
+    auto& in_dims = input.dims();
+    PADDLE_ENFORCE_EQ(in_dims.size(), 2U);
+    auto height = in_dims[0];
+    auto size = in_dims[1];
+    PADDLE_ENFORCE_EQ(out->numel(), size);
+
+    T* out_buf = out->mutable_data<T>(out->place());
+    const T* in_buf = input.data<T>();
+
+    for (size_t i = 0; i < static_cast<size_t>(height); ++i) {
+      T sum = 0;
+      for (size_t j = 0; j < static_cast<size_t>(size); ++j) {
+        sum += in_buf[i * size + j];
+      }
+      out_buf[i] = sum;
+    }
+  }
+};
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

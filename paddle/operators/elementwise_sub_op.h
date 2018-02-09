@@ -34,7 +34,8 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(ctx, x, y, axis, z);
+    ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          SubFunctor<T>(), z);
   }
 };
 

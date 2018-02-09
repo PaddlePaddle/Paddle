@@ -7,7 +7,7 @@ cc_library(paddle_fluid_api
 if(WITH_GPU)
   set(GPU_DEPS gpu_info dynload_cuda)
 endif()
-# Merge all modules into a single static library
+# Create static library
 cc_library(paddle_fluid DEPS paddle_fluid_api 
   framework_proto ddim tensor place scope threadpool attribute 
   shape_inference cpu_info op_registry operator op_proto_maker op_info 
@@ -20,15 +20,10 @@ cc_library(paddle_fluid DEPS paddle_fluid_api
   ${GLOB_OP_LIB})
 
 # Create shared library
-add_library(paddle_fluid_shared SHARED io.cc)
-
-target_circle_link_libraries(paddle_fluid_shared
-  ARCHIVE_START
-  ${GLOB_OP_LIB}
-  ${FLUID_CORE_MODULES}
-  ARCHIVE_END)
-
-SET_TARGET_PROPERTIES(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
+cc_library(paddle_fluid_shared SHARED
+    SRCS io.cc
+    DEPS ARCHIVE_START ${GLOB_OP_LIB} ${FLUID_CORE_MODULES} ARCHIVE_END)
+set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 
 if(WITH_TESTING)
   add_subdirectory(tests/book)
