@@ -11,62 +11,83 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-#include <cuda.h>
 #include <cuda_runtime.h>
+
+#include "glog/logging.h"
 #include "gtest/gtest.h"
-
-#include "paddle/framework/init.h"
 #include "paddle/framework/mixed_vector.h"
-
-using namespace paddle::framework;
-using namespace paddle::platform;
-using namespace paddle::memory;
+#include "paddle/platform/gpu_info.h"
 
 template <typename T>
-__global__ void test(T* data, int size) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
-       i += blockDim.x * gridDim.x) {
-    data[i] *= 2;
+using vec = paddle::framework::Vector<T>;
+
+TEST(mixed_vector, CPU_VECTOR) {
+  vec<int> tmp;
+  for (int i = 0; i < 10; ++i) {
+    tmp.push_back(i);
+  }
+  ASSERT_EQ(tmp.size(), 10);
+  vec<int> tmp2;
+  tmp2 = tmp;
+  ASSERT_EQ(tmp2.size(), 10);
+  for (int i = 0; i < 10; ++i) {
+    ASSERT_EQ(tmp2[i], i);
+    ASSERT_EQ(tmp2[i], tmp[i]);
+  }
+  int cnt = 0;
+  for (auto& t : tmp2) {
+    ASSERT_EQ(t, cnt);
+    ++cnt;
   }
 }
 
-TEST(Vector, Normal) {
-  // fill the device context pool.
-  InitDevices();
-
-  Vector<size_t> vec({1, 2, 3});
-  size_t* ptr = vec.data();
-  for (size_t i = 0; i < vec.size(); ++i) {
-    EXPECT_EQ(vec[i], *(ptr + i));
-  }
-
-  vec.clear();
-  vec.CopyFromCUDA();
-
-  std::vector<size_t> v = {1, 2, 3};
-  for (size_t i = 0; i < v.size(); ++i) {
-    EXPECT_EQ(v[i], vec[i]);
+static __global__ void multiply_10(int* ptr) {
+  for (int i = 0; i < 10; ++i) {
+    ptr[i] *= 10;
   }
 }
 
-TEST(Vector, MultipleCopy) {
-  InitDevices();
-  Vector<size_t> vec({1, 2, 3});
-  CUDAPlace place(0);
-  vec.mutable_data(place);
-  auto vec2 = Vector<size_t>(vec);
-  {
-    const size_t* ptr = vec2.data(CPUPlace());
-    for (size_t i = 0; i < vec2.size(); ++i) {
-      EXPECT_EQ(*(ptr + i), vec[i]);
-    }
+cudaStream_t GetCUDAStream(paddle::platform::CUDAPlace place) {
+  return reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
+             paddle::platform::DeviceContextPool::Instance().Get(place))
+      ->stream();
+}
+
+TEST(mixed_vector, GPU_VECTOR) {
+  vec<int> tmp;
+  for (int i = 0; i < 10; ++i) {
+    tmp.push_back(i);
   }
-  test<size_t><<<3, 3>>>(vec2.mutable_data(place), vec2.size());
-  vec2.CopyFromCUDA();
-  {
-    const size_t* ptr = vec2.data(CPUPlace());
-    for (size_t i = 0; i < vec2.size(); ++i) {
-      EXPECT_EQ(*(ptr + i), vec[i] * 2);
-    }
+  ASSERT_EQ(tmp.size(), 10);
+  paddle::platform::CUDAPlace gpu(0);
+
+  multiply_10<<<1, 1, 0, GetCUDAStream(gpu)>>>(tmp.MutableData(gpu));
+
+  for (int i = 0; i < 10; ++i) {
+    ASSERT_EQ(tmp[i], i * 10);
+  }
+}
+
+TEST(mixed_vector, MultiGPU) {
+  if (paddle::platform::GetCUDADeviceCount() < 2) {
+    LOG(WARNING) << "Skip mixed_vector.MultiGPU since there are not multiple "
+                    "GPUs in your machine.";
+    return;
+  }
+
+  vec<int> tmp;
+  for (int i = 0; i < 10; ++i) {
+    tmp.push_back(i);
+  }
+  ASSERT_EQ(tmp.size(), 10);
+  paddle::platform::CUDAPlace gpu0(0);
+  paddle::platform::SetDeviceId(0);
+  multiply_10<<<1, 1, 0, GetCUDAStream(gpu0)>>>(tmp.MutableData(gpu0));
+  paddle::platform::CUDAPlace gpu1(1);
+  auto* gpu1_ptr = tmp.MutableData(gpu1);
+  paddle::platform::SetDeviceId(1);
+  multiply_10<<<1, 1, 0, GetCUDAStream(gpu1)>>>(gpu1_ptr);
+  for (int i = 0; i < 10; ++i) {
+    ASSERT_EQ(tmp[i], i * 100);
   }
 }
