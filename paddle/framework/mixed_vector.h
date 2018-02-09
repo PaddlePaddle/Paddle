@@ -277,11 +277,15 @@ class Vector {
     kDirty = 0x10
   };
 
+  void CopyToCPU() const {
+    // COPY GPU Data To CPU
+    Copy(cuda_vec_, platform::CPUPlace(), &cpu_vec_);
+    WaitPlace(cuda_vec_.place());
+  }
+
   void MutableCPU() {
     if (IsInCUDA() && IsDirty()) {
-      // COPY GPU Data To CPU
-      Copy(cuda_vec_, platform::CPUPlace(), &cpu_vec_);
-      WaitPlace(cuda_vec_.place());
+      CopyToCPU();
     }
     flag_ = kDirty | kDataInCPU;
   }
@@ -311,8 +315,10 @@ class Vector {
         SetFlag(kDataInCUDA);
       } else if (!(place == cuda_vec_.place())) {
         framework::Tensor tmp;
+        WaitPlace(cuda_vec_.place());
         Copy(cuda_vec_, boost::get<platform::CUDAPlace>(place), &tmp);
         WaitPlace(cuda_vec_.place());
+        WaitPlace(place);
         cuda_vec_.ShareDataWith(tmp);
       } else {
         // Not Dirty && DataInCUDA && Device is same
@@ -324,8 +330,7 @@ class Vector {
   void ImmutableCPU() const {
     if (IsDirty() &&
         !IsInCPU()) {  // If data has been changed in CUDA, or CPU has no data.
-      Copy(cuda_vec_, platform::CPUPlace(), &cpu_vec_);
-      WaitPlace(cuda_vec_.place());
+      CopyToCPU();
       UnsetFlag(kDirty);
     }
     SetFlag(kDataInCPU);

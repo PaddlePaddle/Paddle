@@ -81,10 +81,12 @@ TEST(mixed_vector, MultiGPU) {
   }
   ASSERT_EQ(tmp.size(), 10);
   paddle::platform::CUDAPlace gpu0(0);
+  paddle::platform::SetDeviceId(0);
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu0)>>>(tmp.MutableData(gpu0));
   paddle::platform::CUDAPlace gpu1(1);
-  multiply_10<<<1, 1, 0, GetCUDAStream(gpu1)>>>(tmp.MutableData(gpu1));
-
+  auto* gpu1_ptr = tmp.MutableData(gpu1);
+  paddle::platform::SetDeviceId(1);
+  multiply_10<<<1, 1, 0, GetCUDAStream(gpu1)>>>(gpu1_ptr);
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(tmp[i], i * 100);
   }
