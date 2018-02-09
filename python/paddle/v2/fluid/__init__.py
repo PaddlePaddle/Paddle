@@ -26,15 +26,17 @@ import initializer
 import layers
 import nets
 import optimizer
+import learning_rate_decay
 import backward
 import regularizer
-from param_attr import ParamAttr
+from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace
 from distribute_transpiler import DistributeTranspiler
 from distribute_transpiler_simple import SimpleDistributeTranspiler
 import clip
 from memory_optimization_transpiler import memory_optimize
+import profiler
 
 Tensor = LoDTensor
 
@@ -44,18 +46,21 @@ __all__ = framework.__all__ + executor.__all__ + [
     'layers',
     'nets',
     'optimizer',
+    'learning_rate_decay',
     'backward',
     'regularizer',
     'LoDTensor',
     'CPUPlace',
     'CUDAPlace',
     'Tensor',
-    'ParamAttr'
+    'ParamAttr',
+    'WeightNormParamAttr',
     'DataFeeder',
     'clip',
     'SimpleDistributeTranspiler',
     'DistributeTranspiler',
     'memory_optimize',
+    'profiler',
 ]
 
 
@@ -87,10 +92,10 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
     read_env_flags = [
-        'use_pinned_memory', 'check_nan_inf', 'do_memory_benchmark'
+        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir'
     ]
-    if core.is_compile_gpu():
-        read_env_flags += ['fraction_of_gpu_memory_to_use', 'op_sync']
+    if core.is_compiled_with_cuda():
+        read_env_flags += ['fraction_of_gpu_memory_to_use']
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])

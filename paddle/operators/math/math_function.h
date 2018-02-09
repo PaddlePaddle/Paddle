@@ -128,6 +128,18 @@ struct ColwiseSum {
                   framework::Tensor* vec);
 };
 
+template <typename DeviceContext, typename T>
+struct RowwiseSum {
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  framework::Tensor* vec);
+};
+
+template <typename DeviceContext, typename T>
+struct RowwiseMean {
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  framework::Tensor* vec);
+};
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
