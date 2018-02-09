@@ -57,20 +57,6 @@ class NetOp : public framework::OperatorBase {
     this->CompleteAddOp();
   }
 
-  /**
-   * @brief Run the network.
-   *
-   * Run all the operators with the `scope`, if no scope is provided, default
-   * scope will be used instead. If no OpContext is provicded, default context
-   * will be used.
-   */
-  void Run(const framework::Scope& scope,
-           const platform::Place& place) const override {
-    for (auto& op : ops_) {
-      op->Run(scope, place);
-    }
-  }
-
   bool SupportGPU() const override {
     for (auto& op : ops_) {
       if (!op->SupportGPU()) {
@@ -117,6 +103,20 @@ class NetOp : public framework::OperatorBase {
   std::vector<std::unique_ptr<framework::OperatorBase>> ops_;
 
  private:
+  /**
+   * @brief Run the network.
+   *
+   * Run all the operators with the `scope`, if no scope is provided, default
+   * scope will be used instead. If no OpContext is provicded, default context
+   * will be used.
+   */
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const override {
+    for (auto& op : ops_) {
+      op->Run(scope, place);
+    }
+  }
+
   bool add_op_done_{false};
   std::set<std::string> intermediate_outputs_;
 

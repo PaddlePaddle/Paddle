@@ -77,8 +77,9 @@ class CondOp : public framework::OperatorBase {
     sub_net_op_[FALSE_BRANCH] = std::move(net);
   }
 
-  void Run(const framework::Scope& scope,
-           const platform::Place& place) const override;
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const override;
 
  private:
   const int TRUE_BRANCH = 0;
