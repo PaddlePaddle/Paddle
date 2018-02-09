@@ -78,7 +78,7 @@ def target_assign(encoded_box, gt_label, match_indices, neg_indices, gt_lod,
     return trg_box, trg_box_wt, trg_label, trg_label_wt
 
 
-class TestTargetAssginOp1(OpTest):
+class TestTargetAssginFloatType(OpTest):
     def setUp(self):
         self.op_type = "target_assign"
         num_prior = 120
@@ -100,6 +100,7 @@ class TestTargetAssginOp1(OpTest):
                                           neg_indices, gt_lod, neg_lod,
                                           mismatch_value)
 
+        # assign regression targets
         x = encoded_box
         self.inputs = {
             'X': (x, [gt_lod]),
@@ -111,11 +112,11 @@ class TestTargetAssginOp1(OpTest):
             'OutWeight': out_wt,
         }
 
-    def not_test_check_output(self):
+    def test_check_output(self):
         self.check_output()
 
 
-class TestTargetAssginOp2(OpTest):
+class TestTargetAssginIntType(OpTest):
     def setUp(self):
         self.op_type = "target_assign"
         num_prior = 120
@@ -137,6 +138,7 @@ class TestTargetAssginOp2(OpTest):
                                            neg_indices, gt_lod, neg_lod,
                                            mismatch_value)
 
+        # assign cassification argets
         x = np.reshape(gt_label, (num_gt, 1, 1))
         self.inputs = {
             'X': (x, [gt_lod]),
