@@ -122,6 +122,11 @@ class GradOpDescMakerBase {
     return it->second;
   }
 
+  template <typename T>
+  inline const T& Attr(const std::string& name) const {
+    return boost::get<T>(GetAttr(name));
+  }
+
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
 
  private:
