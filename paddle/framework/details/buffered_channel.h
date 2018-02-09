@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
@@ -30,8 +31,8 @@ class Buffered : public paddle::framework::Channel<T> {
   friend void paddle::framework::CloseChannel<T>(Channel<T>*);
 
  public:
-  virtual void Send(T*);
-  virtual void Receive(T*);
+  virtual bool Send(T*);
+  virtual bool Receive(T*);
   virtual size_t Cap() { return cap_; }
   virtual void Close();
   virtual ~Buffered();
@@ -41,18 +42,26 @@ class Buffered : public paddle::framework::Channel<T> {
   std::mutex mu_;
   std::condition_variable empty_cond_var_;
   std::condition_variable full_cond_var_;
+  std::condition_variable destructor_cond_var_;
   std::deque<T> channel_;
-  bool closed_;
+  std::atomic<bool> closed_{false};
+  std::atomic<unsigned> send_ctr{0};
+  std::atomic<unsigned> recv_ctr{0};
 
   Buffered(size_t cap) : cap_(cap), closed_(false) {
     PADDLE_ENFORCE_GT(cap, 0);
   }
 
-  void NotifyAllSenders(std::unique_lock<std::mutex>*);
+  void NotifyAllParticipants(std::unique_lock<std::mutex>*);
 };
 
 template <typename T>
-void Buffered<T>::Send(T* item) {
+bool Buffered<T>::Send(T* item) {
+  bool ret = false;
+  if (closed_) {
+    return ret;
+  }
+  send_ctr++;
   std::unique_lock<std::mutex> lock(mu_);
   full_cond_var_.wait(lock,
                       [this]() { return channel_.size() < cap_ || closed_; });
@@ -60,27 +69,43 @@ void Buffered<T>::Send(T* item) {
     channel_.push_back(std::move(*item));
     lock.unlock();
     empty_cond_var_.notify_one();
+    ret = true;
   }
+  send_ctr--;
+  destructor_cond_var_.notify_one();
+  return ret;
 }
 
 template <typename T>
-void Buffered<T>::Receive(T* item) {
+bool Buffered<T>::Receive(T* item) {
+  bool ret = false;
+  // Once the channel has been closed and all data has been consumed,
+  // just return false. Don't even try acquiring the mutex.
+  if (closed_ && channel_.empty()) {
+    return false;
+  }
+  recv_ctr++;
   std::unique_lock<std::mutex> lock(mu_);
   empty_cond_var_.wait(lock, [this]() { return !channel_.empty() || closed_; });
-  if (!closed_) {
+  if (!channel_.empty()) {
     *item = std::move(channel_.front());
     channel_.pop_front();
-    NotifyAllSenders(&lock);
-  } else {
-    item = nullptr;
+    full_cond_var_.notify_one();
+    ret = true;
   }
+  recv_ctr--;
+  destructor_cond_var_.notify_one();
+  return ret;
 }
 
 template <typename T>
 void Buffered<T>::Close() {
+  if (closed_) {
+    return;
+  }
   std::unique_lock<std::mutex> lock(mu_);
   closed_ = true;
-  NotifyAllSenders(&lock);
+  NotifyAllParticipants(&lock);
 }
 
 template <typename T>
@@ -88,13 +113,20 @@ Buffered<T>::~Buffered() {
   std::unique_lock<std::mutex> lock(mu_);
   closed_ = true;
   channel_.clear();
-  NotifyAllSenders(&lock);
+  NotifyAllParticipants(&lock);
+
+  // The destructor must wait for all readers and writers to complete their task
+  // The channel has been closed, so we will not accept new readers and writers
+  lock.lock();
+  destructor_cond_var_.wait(
+      lock, [this]() { return send_ctr == 0 && recv_ctr == 0; });
 }
 
 template <typename T>
-void Buffered<T>::NotifyAllSenders(std::unique_lock<std::mutex>* lock) {
+void Buffered<T>::NotifyAllParticipants(std::unique_lock<std::mutex>* lock) {
   lock->unlock();
   full_cond_var_.notify_all();
+  empty_cond_var_.notify_all();
 }
 
 }  // namespace details

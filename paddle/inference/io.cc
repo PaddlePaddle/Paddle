@@ -21,6 +21,17 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
+void ReadBinaryFile(const std::string& filename, std::string& contents) {
+  VLOG(3) << "loading model from " << filename;
+  std::ifstream inputfs(filename, std::ios::in | std::ios::binary);
+  inputfs.seekg(0, std::ios::end);
+  contents.clear();
+  contents.resize(inputfs.tellg());
+  inputfs.seekg(0, std::ios::beg);
+  inputfs.read(&contents[0], contents.size());
+  inputfs.close();
+}
+
 bool IsParameter(const framework::VarDesc* var,
                  const framework::ProgramDesc& main_program) {
   if (var->Persistable()) {
@@ -44,32 +55,53 @@ bool IsParameter(const framework::VarDesc* var,
 
 void LoadPersistables(framework::Executor& executor,
                       framework::Scope& scope,
+                      const framework::ProgramDesc& main_program,
                       const std::string& dirname,
-                      const framework::ProgramDesc& main_program) {
+                      const std::string& param_filename) {
   const framework::BlockDesc& global_block = main_program.Block(0);
 
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
   framework::BlockDesc* load_block = load_program->MutableBlock(0);
+  std::vector<std::string> paramlist;
+
   for (auto* var : global_block.AllVars()) {
     if (IsParameter(var, main_program)) {
       VLOG(3) << "parameter's name: " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());
-      new_var->SetShape(var->Shape());
+      new_var->SetShape(var->GetShape());
       new_var->SetDataType(var->GetDataType());
       new_var->SetType(var->GetType());
       new_var->SetLoDLevel(var->GetLoDLevel());
       new_var->SetPersistable(true);
 
-      // append_op
-      framework::OpDesc* op = load_block->AppendOp();
-      op->SetType("load");
-      op->SetOutput("Out", {new_var->Name()});
-      op->SetAttr("file_path", {dirname + "/" + new_var->Name()});
-      op->CheckAttrs();
+      if (!param_filename.empty()) {
+        paramlist.push_back(new_var->Name());
+      } else {
+        // append_op
+        framework::OpDesc* op = load_block->AppendOp();
+        op->SetType("load");
+        op->SetOutput("Out", {new_var->Name()});
+        op->SetAttr("file_path", {dirname + "/" + new_var->Name()});
+        op->CheckAttrs();
+      }
     }
   }
+
+  if (!param_filename.empty()) {
+    // sort paramlist to have consistent ordering
+    std::sort(paramlist.begin(), paramlist.end());
+    // append just the load_combine op
+    framework::OpDesc* op = load_block->AppendOp();
+    op->SetType("load_combine");
+    op->SetOutput("Out", paramlist);
+    op->SetAttr("file_path", {param_filename});
+    op->CheckAttrs();
+  }
+
   executor.Run(*load_program, &scope, 0, true, true);
+
+  VLOG(3) << "Ran loading successfully";
   delete load_program;
 }
 
@@ -77,20 +109,29 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
                                              framework::Scope& scope,
                                              const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
-  LOG(INFO) << "loading model from " << model_filename;
-  std::ifstream inputfs(model_filename, std::ios::in | std::ios::binary);
   std::string program_desc_str;
-  inputfs.seekg(0, std::ios::end);
-  program_desc_str.resize(inputfs.tellg());
-  inputfs.seekg(0, std::ios::beg);
-  LOG(INFO) << "program_desc_str's size: " << program_desc_str.size();
-  inputfs.read(&program_desc_str[0], program_desc_str.size());
-  inputfs.close();
+  ReadBinaryFile(model_filename, program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
 
-  LoadPersistables(executor, scope, dirname, *main_program);
+  LoadPersistables(executor, scope, *main_program, dirname, "");
+  return main_program;
+}
+
+std::unique_ptr<framework::ProgramDesc> Load(
+    framework::Executor& executor,
+    framework::Scope& scope,
+    const std::string& prog_filename,
+    const std::string& param_filename) {
+  std::string model_filename = prog_filename;
+  std::string program_desc_str;
+  ReadBinaryFile(model_filename, program_desc_str);
+
+  std::unique_ptr<framework::ProgramDesc> main_program(
+      new framework::ProgramDesc(program_desc_str));
+
+  LoadPersistables(executor, scope, *main_program, "", param_filename);
   return main_program;
 }
 

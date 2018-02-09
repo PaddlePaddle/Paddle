@@ -17,6 +17,9 @@ import paddle.v2.fluid as fluid
 import paddle.v2 as paddle
 import sys
 import numpy
+import unittest
+import math
+import sys
 
 
 def parse_arg():
@@ -64,6 +67,7 @@ def conv_net(img, label):
         pool_size=2,
         pool_stride=2,
         act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -74,18 +78,18 @@ def conv_net(img, label):
     return loss_net(conv_pool_2, label)
 
 
-def train(args, save_dirname=None):
-    print("recognize digits with args: {0}".format(" ".join(sys.argv[1:])))
-
+def train(nn_type, use_cuda, parallel, save_dirname, save_param_filename):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    if args.nn_type == 'mlp':
+    if nn_type == 'mlp':
         net_conf = mlp
     else:
         net_conf = conv_net
 
-    if args.parallel:
+    if parallel:
         places = fluid.layers.get_places()
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
@@ -107,7 +111,7 @@ def train(args, save_dirname=None):
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
-    place = fluid.CUDAPlace(0) if args.use_cuda else fluid.CPUPlace()
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
@@ -139,32 +143,39 @@ def train(args, save_dirname=None):
                 avg_loss_val = numpy.array(avg_loss_set).mean()
                 if float(acc_val) > 0.85:  # test acc > 85%
                     if save_dirname is not None:
-                        fluid.io.save_inference_model(save_dirname, ["img"],
-                                                      [prediction], exe)
+                        fluid.io.save_inference_model(
+                            save_dirname, ["img"], [prediction],
+                            exe,
+                            save_file_name=save_param_filename)
                     return
                 else:
                     print(
                         'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
                         format(pass_id, batch_id + 1,
                                float(avg_loss_val), float(acc_val)))
+                    if math.isnan(float(avg_loss_val)):
+                        sys.exit("got NaN loss, training failed.")
+    raise AssertionError("Loss of recognize digits is too large")
 
 
-def infer(args, save_dirname=None):
+def infer(use_cuda, save_dirname=None, param_filename=None):
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if args.use_cuda else fluid.CPUPlace()
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
     # Use fluid.io.load_inference_model to obtain the inference program desc,
     # the feed_target_names (the names of variables that will be feeded 
     # data using feed operators), and the fetch_targets (variables that 
     # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    [inference_program, feed_target_names, fetch_targets
+     ] = fluid.io.load_inference_model(save_dirname, exe, param_filename)
 
     # The input's dimension of conv should be 4-D or 5-D.
-    tensor_img = numpy.random.rand(1, 1, 28, 28).astype("float32")
+    # Use normilized image pixels as input data, which should be in the range [-1.0, 1.0].
+    tensor_img = numpy.random.uniform(-1.0, 1.0,
+                                      [1, 1, 28, 28]).astype("float32")
 
     # Construct feed as a dictionary of {feed_target_name: feed_target_data}
     # and results will contain a list of data corresponding to fetch_targets.
@@ -174,11 +185,60 @@ def infer(args, save_dirname=None):
     print("infer results: ", results[0])
 
 
-if __name__ == '__main__':
-    args = parse_arg()
-    if not args.use_cuda and not args.parallel:
-        save_dirname = "recognize_digits_" + args.nn_type + ".inference.model"
+def main(use_cuda, parallel, nn_type, combine):
+    if not use_cuda and not parallel:
+        save_dirname = "recognize_digits_" + nn_type + ".inference.model"
+        save_filename = None
+        if combine == True:
+            save_filename = "__params_combined__"
     else:
         save_dirname = None
-    train(args, save_dirname)
-    infer(args, save_dirname)
+        save_filename = None
+
+    train(
+        nn_type=nn_type,
+        use_cuda=use_cuda,
+        parallel=parallel,
+        save_dirname=save_dirname,
+        save_param_filename=save_filename)
+    infer(
+        use_cuda=use_cuda,
+        save_dirname=save_dirname,
+        param_filename=save_filename)
+
+
+class TestRecognizeDigits(unittest.TestCase):
+    pass
+
+
+def inject_test_method(use_cuda, parallel, nn_type, combine):
+    def __impl__(self):
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        scope = fluid.core.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(prog, startup_prog):
+                main(use_cuda, parallel, nn_type, combine)
+
+    fn = 'test_{0}_{1}_{2}_{3}'.format(nn_type, 'cuda'
+                                       if use_cuda else 'cpu', 'parallel'
+                                       if parallel else 'normal', 'combine'
+                                       if combine else 'separate')
+
+    setattr(TestRecognizeDigits, fn, __impl__)
+
+
+def inject_all_tests():
+    for use_cuda in (False, True):
+        for parallel in (False, True):
+            for nn_type in ('mlp', 'conv'):
+                inject_test_method(use_cuda, parallel, nn_type, True)
+
+    # One unit-test for saving parameters as separate files
+    inject_test_method(False, False, 'mlp', False)
+
+
+inject_all_tests()
+
+if __name__ == '__main__':
+    unittest.main()

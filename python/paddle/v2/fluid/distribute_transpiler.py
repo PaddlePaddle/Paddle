@@ -478,9 +478,9 @@ class DistributeTranspiler:
             else:
                 self._append_pserver_non_opt_ops(optimize_sub_program,
                                                  pserver_program, opt_op)
-        # Append the recv op
+        # Append the listen_and_serv op
         pserver_program.global_block().append_op(
-            type="recv",
+            type="listen_and_serv",
             inputs={},
             outputs={},
             attrs={

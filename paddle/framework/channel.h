@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ namespace framework {
 template <typename T>
 class Channel {
  public:
-  virtual void Send(T*) = 0;
-  virtual void Receive(T*) = 0;
+  virtual bool Send(T*) = 0;
+  virtual bool Receive(T*) = 0;
   virtual size_t Cap() = 0;
   virtual void Close() = 0;
   virtual ~Channel() {}

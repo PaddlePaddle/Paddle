@@ -18,6 +18,10 @@ import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
+import contextlib
+import math
+import sys
+import unittest
 from paddle.v2.fluid.executor import Executor
 
 dict_size = 30000
@@ -145,7 +149,7 @@ def seq_to_seq_net():
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = fluid.layers.mean(x=cost)
 
-    return avg_cost
+    return avg_cost, prediction
 
 
 def to_lodtensor(data, place):
@@ -163,8 +167,16 @@ def to_lodtensor(data, place):
     return res
 
 
-def main():
-    avg_cost = seq_to_seq_net()
+def create_random_lodtensor(lod, place, low, high):
+    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
+    res = fluid.LoDTensor()
+    res.set(data, place)
+    res.set_lod([lod])
+    return res
+
+
+def train(use_cuda, save_dirname=None):
+    [avg_cost, prediction] = seq_to_seq_net()
 
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
     optimizer.minimize(avg_cost)
@@ -174,7 +186,7 @@ def main():
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
 
-    place = core.CPUPlace()
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = Executor(place)
 
     exe.run(framework.default_startup_program())
@@ -185,6 +197,7 @@ def main():
             word_data = to_lodtensor(map(lambda x: x[0], data), place)
             trg_word = to_lodtensor(map(lambda x: x[1], data), place)
             trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
+
             outs = exe.run(framework.default_main_program(),
                            feed={
                                'source_sequence': word_data,
@@ -192,13 +205,86 @@ def main():
                                'label_sequence': trg_word_next
                            },
                            fetch_list=[avg_cost])
+
             avg_cost_val = np.array(outs[0])
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
                   " avg_cost=" + str(avg_cost_val))
+            if math.isnan(float(avg_cost_val[0])):
+                sys.exit("got NaN loss, training failed.")
             if batch_id > 3:
-                exit(0)
+                if save_dirname is not None:
+                    fluid.io.save_inference_model(
+                        save_dirname, ['source_sequence',
+                                       'target_sequence'], [prediction], exe)
+                return
+
             batch_id += 1
 
 
+def infer(use_cuda, save_dirname=None):
+    if save_dirname is None:
+        return
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    lod = [0, 4, 10]
+    word_data = create_random_lodtensor(lod, place, low=0, high=1)
+    trg_word = create_random_lodtensor(lod, place, low=0, high=1)
+
+    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+    # and results will contain a list of data corresponding to fetch_targets.
+    assert feed_target_names[0] == 'source_sequence'
+    assert feed_target_names[1] == 'target_sequence'
+    results = exe.run(inference_program,
+                      feed={
+                          feed_target_names[0]: word_data,
+                          feed_target_names[1]: trg_word,
+                      },
+                      fetch_list=fetch_targets,
+                      return_numpy=False)
+    print(results[0].lod())
+    np_data = np.array(results[0])
+    print("Inference shape: ", np_data.shape)
+    print("Inference results: ", np_data)
+
+
+def main(use_cuda):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+
+    # Directory for saving the trained model
+    save_dirname = "rnn_encoder_decoder.inference.model"
+
+    train(use_cuda, save_dirname)
+    infer(use_cuda, save_dirname)
+
+
+class TestRnnEncoderDecoder(unittest.TestCase):
+    def test_cuda(self):
+        with self.scope_prog_guard():
+            main(use_cuda=True)
+
+    def test_cpu(self):
+        with self.scope_prog_guard():
+            main(use_cuda=False)
+
+    @contextlib.contextmanager
+    def scope_prog_guard(self):
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        scope = fluid.core.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(prog, startup_prog):
+                yield
+
+
 if __name__ == '__main__':
-    main()
+    unittest.main()
