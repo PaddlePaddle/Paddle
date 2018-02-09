@@ -62,7 +62,7 @@ function(op_library TARGET)
     endif()
 
     # Define operators that don't need pybind here.
-    foreach(manual_pybind_op "net_op" "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
+    foreach(manual_pybind_op "net_op" "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op" "create_reader_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -122,9 +122,11 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(send_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     op_library(recv_op DEPS ${DISTRIBUTE_DEPS})
     set_source_files_properties(recv_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-    cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op recv_op sum_op executor)
+    op_library(listen_and_serv_op DEPS ${DISTRIBUTE_DEPS})
+    set_source_files_properties(listen_and_serv_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+    cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS send_op listen_and_serv_op sum_op executor)
 else()
-    set(DEPS_OPS ${DEPS_OPS} send_op recv_op)
+    set(DEPS_OPS ${DEPS_OPS} send_op recv_op listen_and_serv_op)
 endif()
 
 op_library(cond_op DEPS framework_proto tensor net_op)
@@ -147,15 +149,20 @@ op_library(max_sequence_len_op DEPS lod_rank_table)
 op_library(sequence_conv_op DEPS context_project)
 op_library(sequence_pool_op DEPS sequence_pooling)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
+op_library(lstmp_op DEPS sequence2batch lstm_compute)
 op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(recurrent_op DEPS executor)
 op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale math_function)
 op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
+op_library(create_reader_op DEPS reader)
 
 # Regist multiple Kernel to pybind
 if (WITH_GPU)
-op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS vol2col)
+
+op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS
+    vol2col depthwise_conv)
+
 op_library(edit_distance_op SRCS edit_distance_op.cc edit_distance_op.cu DEPS math_function)
 op_library(pool_op SRCS pool_op.cc pool_op.cu.cc pool_cudnn_op.cu.cc DEPS pooling)
 op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
@@ -172,12 +179,14 @@ endif()
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
+op_library(save_combine_op DEPS lod_tensor)
+op_library(load_combine_op DEPS lod_tensor)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
     op_library(${src})
 endforeach()
-file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
+file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\nUSE_NO_KERNEL_OP(create_random_data_generator);\n")
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 
@@ -191,3 +200,4 @@ if(WITH_GPU)
     cc_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
 endif()
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
+cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)

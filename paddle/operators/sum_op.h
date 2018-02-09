@@ -68,7 +68,32 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      PADDLE_ENFORCE(!in_place, "SelectedRows not support inplace sum now");
+      std::unique_ptr<framework::SelectedRows> in0;
+      if (in_place) {
+        // If is in_place, we store the input[0] to in0
+        auto &in_sel0 = in_vars[0]->Get<SelectedRows>();
+        auto &rows = in_sel0.rows();
+#ifdef PADDLE_WITH_CUDA
+        std::vector<int64_t> rows_in_cpu;
+        rows_in_cpu.reserve(rows.size());
+        for (auto item : rows) {
+          rows_in_cpu.push_back(item);
+        }
+        in0.reset(new framework::SelectedRows(rows_in_cpu, in_sel0.height()));
+#else
+        in0.reset(new framework::SelectedRows(rows, in_sel0.height()));
+#endif
+        in0->mutable_value()->ShareDataWith(in_sel0.value());
+      }
+
+      auto get_selected_row = [&](size_t i) -> const SelectedRows & {
+        if (i == 0 && in0) {
+          return *in0.get();
+        } else {
+          return in_vars[i]->Get<SelectedRows>();
+        }
+      };
+
       auto *out = context.Output<SelectedRows>("Out");
       out->mutable_rows()->clear();
       auto *out_value = out->mutable_value();
@@ -76,24 +101,26 @@ class SumKernel : public framework::OpKernel<T> {
       // Runtime InferShape
       size_t first_dim = 0;
       for (int i = 0; i < N; i++) {
-        first_dim += in_vars[i]->Get<SelectedRows>().rows().size();
+        auto &sel_row = get_selected_row(i);
+        first_dim += sel_row.rows().size();
       }
-      auto in_dim = in_vars[0]->Get<SelectedRows>().value().dims();
-      auto in_dim_vec = framework::vectorize(in_dim);
-      in_dim_vec[0] = static_cast<int64_t>(first_dim);
+      auto in_dim =
+          framework::vectorize(get_selected_row(N - 1).value().dims());
+      in_dim[0] = static_cast<int64_t>(first_dim);
 
-      out_value->Resize(framework::make_ddim(in_dim_vec));
+      out_value->Resize(framework::make_ddim(in_dim));
       out_value->mutable_data<T>(context.GetPlace());
 
       math::SelectedRowsAddTo<DeviceContext, T> functor;
 
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {
-        PADDLE_ENFORCE_EQ(out->height(),
-                          in_vars[i]->Get<SelectedRows>().height());
-        functor(context.template device_context<DeviceContext>(),
-                in_vars[i]->Get<SelectedRows>(), offset, out);
-        offset += in_vars[i]->Get<SelectedRows>().value().numel();
+        auto &sel_row = get_selected_row(i);
+
+        PADDLE_ENFORCE_EQ(out->height(), sel_row.height());
+        functor(context.template device_context<DeviceContext>(), sel_row,
+                offset, out);
+        offset += sel_row.value().numel();
       }
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();

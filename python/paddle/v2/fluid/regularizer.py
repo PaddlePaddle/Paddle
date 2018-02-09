@@ -87,6 +87,11 @@ class WeightDecayRegularizer(object):
         """
         raise NotImplementedError()
 
+    def __str__(self):
+        """Debug string
+        """
+        raise NotImplementedError()
+
 
 class L2DecayRegularizer(WeightDecayRegularizer):
     """Implements the L2 Weight Decay Regularization
@@ -122,6 +127,9 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             attrs={"scale": self._regularization_coeff})
 
         return decay
+
+    def __str__(self):
+        return "L2Decay, regularization_coeff=%f" % self._regularization_coeff
 
 
 class L1DecayRegularizer(WeightDecayRegularizer):
@@ -162,6 +170,9 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             attrs={"scale": self._regularization_coeff})
 
         return decay
+
+    def __str__(self):
+        return "L1Decay, regularization_coeff=%f" % self._regularization_coeff
 
 
 # We short the class name, since users will use the regulaizer with the package

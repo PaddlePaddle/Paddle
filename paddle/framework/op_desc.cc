@@ -39,10 +39,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasOutputs(const std::string &name) const override;
 
-  DDim GetInputDim(const std::string &name) const override;
-
-  void SetOutputDim(const std::string &name, const DDim &dim) override;
-
   AttrReader Attrs() const override;
 
   const std::vector<std::string> &Inputs(
@@ -75,6 +71,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   DDim GetDim(const std::string &name) const override;
 
   void SetDim(const std::string &name, const DDim &dim) override;
+
+  std::vector<DDim> GetRepeatedDims(const std::string &name) const override;
+
+  void SetRepeatedDims(const std::string &name,
+                       const std::vector<DDim> &dims) override;
 
   const OpDesc &op_;
   const BlockDesc &block_;
@@ -124,11 +125,10 @@ OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
   // restore attrs_
   for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
+    // The sub_block referred to by the BLOCK attr hasn't been added
+    // to ProgramDesc class yet, we skip setting BLOCK attr here.
     if (attr.type() != proto::AttrType::BLOCK) {
       attrs_[attr_name] = GetAttrValue(attr);
-    } else {
-      auto bid = attr.block_idx();
-      attrs_[attr_name] = prog->MutableBlock(bid);
     }
   }
   this->block_ = block;
@@ -444,21 +444,6 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
   return true;
 }
 
-DDim CompileTimeInferShapeContext::GetInputDim(const std::string &name) const {
-  std::vector<DDim> ddims = GetInputsDim(name);
-  auto length = ddims.size();
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Input(%s) should have 1 value, "
-                    "but it has %d now",
-                    name, length);
-  return ddims[0];
-}
-
-void CompileTimeInferShapeContext::SetOutputDim(const std::string &name,
-                                                const DDim &dim) {
-  SetOutputsDim(name, {dim});
-}
-
 AttrReader CompileTimeInferShapeContext::Attrs() const {
   return AttrReader(op_.GetAttrMap());
 }
@@ -476,23 +461,48 @@ const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
 DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  DDim res;
   try {
-    auto shape = var->Shape();
-    if (shape.empty()) {
-      return framework::make_ddim({0UL});
-    } else {
-      return framework::make_ddim(var->Shape());
-    }
+    auto shape = var->GetShape();
+    res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
   } catch (...) {
     VLOG(5) << "GetDim of variable " << name << " error";
     std::rethrow_exception(std::current_exception());
   }
+  return res;
+}
+
+std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
+    const std::string &name) const {
+  auto var = block_.FindVarRecursive(name);
+  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  std::vector<DDim> res;
+  try {
+    auto shapes = var->GetShapes();
+    for (const auto &s : shapes) {
+      res.push_back(s.empty() ? make_ddim({0UL}) : make_ddim(s));
+    }
+  } catch (...) {
+    VLOG(5) << "GetRepeatedDim of variable " << name << " error.";
+    std::rethrow_exception(std::current_exception());
+  }
+  return res;
 }
 
 void CompileTimeInferShapeContext::SetDim(const std::string &name,
                                           const DDim &dim) {
-  block_.FindVarRecursive(name)->SetShape(framework::vectorize(dim));
+  block_.FindVarRecursive(name)->SetShape(vectorize(dim));
 }
+
+void CompileTimeInferShapeContext::SetRepeatedDims(
+    const std::string &name, const std::vector<DDim> &dims) {
+  auto var = block_.FindVarRecursive(name);
+  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+  std::vector<std::vector<int64_t>> dim_vec(dims.size());
+  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize);
+  var->SetShapes(dim_vec);
+}
+
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
 
 proto::VarDesc::VarType CompileTimeInferShapeContext::GetVarType(
