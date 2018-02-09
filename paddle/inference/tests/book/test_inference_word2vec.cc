@@ -59,8 +59,7 @@ TEST(inference, word2vec) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
-  TestInference<paddle::platform::CUDAPlace, float>(
-      dirname, cpu_feeds, cpu_fetchs2);
+  TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.lod();
   LOG(INFO) << output2.dims();
 
