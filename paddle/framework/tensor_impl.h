@@ -61,7 +61,7 @@ static inline size_t SizeOfType(std::type_index type) {
 inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
-  PADDLE_ENFORCE_GE(
+  PADDLE_ENFORCE_LE(
       numel() * SizeOfType(type()), memory_size(),
       "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
       "first to re-allocate memory.\n"
