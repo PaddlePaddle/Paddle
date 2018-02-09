@@ -490,7 +490,7 @@ class Operator(object):
             'feed', 'fetch', 'save', 'load', 'recurrent',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
-            'load_combine'
+            'load_combine', 'ncclInit'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
