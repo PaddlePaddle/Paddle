@@ -30,26 +30,35 @@ class Vector {
  public:
   using value_type = T;
 
-  Vector() {
-    size_ = 0;
-    flag_ = kDataInCPU;
-  }
+  Vector() { InitEmpty(); }
 
   explicit Vector(size_t count, const T& value = T()) {
-    resize(count);
-    T* ptr = begin();
-    for (size_t i = 0; i < count; ++i) {
-      ptr[i] = value;
+    if (count == 0) {
+      InitEmpty();
+    } else {
+      resize(count);
+      T* ptr = begin();
+      for (size_t i = 0; i < count; ++i) {
+        ptr[i] = value;
+      }
     }
   }
 
   Vector(std::initializer_list<T> init) {
-    InitByIter(init.size(), init.begin(), init.end());
+    if (init.size() == 0) {
+      InitEmpty();
+    } else {
+      InitByIter(init.size(), init.begin(), init.end());
+    }
   }
 
   template <typename U>
   Vector(const std::vector<U>& dat) {  // NOLINT
-    InitByIter(dat.size(), dat.begin(), dat.end());
+    if (dat.size() == 0) {
+      InitEmpty();
+    } else {
+      InitByIter(dat.size(), dat.begin(), dat.end());
+    }
   }
 
   Vector(const Vector<T>& other) { this->operator=(other); }
@@ -58,8 +67,7 @@ class Vector {
     if (other.size() != 0) {
       this->InitByIter(other.size(), other.begin(), other.end());
     } else {
-      size_ = 0;
-      flag_ = kDataInCPU;
+      InitEmpty();
     }
     return *this;
   }
@@ -218,6 +226,11 @@ class Vector {
   }
 
  private:
+  void InitEmpty() {
+    size_ = 0;
+    flag_ = kDataInCPU;
+  }
+
   template <typename Iter>
   void InitByIter(size_t size, Iter begin, Iter end) {
     platform::Place cpu = platform::CPUPlace();
