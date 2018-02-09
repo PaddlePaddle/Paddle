@@ -35,7 +35,8 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis, z);
+    ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          AddFunctor<T>(), z);
   }
 };
 

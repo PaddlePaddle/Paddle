@@ -144,8 +144,9 @@ ch = fluid.make_channel(dtype=INT, buffer_size)
 # Now write three elements to the channel
 with fluid.while(steps=buffer_size):
   fluid.send(ch, step)
-  fluid.close_channel(ch)
-  
+
+fluid.close_channel(ch)
+
 with fluid.while(steps=buffer_size):
   fluid.print(fluid.recv(ch))
 ```

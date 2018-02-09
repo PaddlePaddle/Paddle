@@ -10,8 +10,7 @@ The following example shows the usage of `fluid.switch`.
 a = fluid.Var(10)
 b = fluid.Var(0)
 
-switch = fluid.switch()
-with switch.block():
+with switch() as switch:
     with switch.case(fluid.less_equal(a, 10)):
         fluid.print("Case 1")
     with switch.case(fluid.larger(a, 0)):
