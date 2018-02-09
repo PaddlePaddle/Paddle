@@ -118,12 +118,9 @@ message LoDTensorArrayDesc {
 
 message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
 
-message ChanEleDesc { repeated VarDesc meta_data = 1; }
-
-message ChanDesc {
-  repeated ChanEleDesc channel_type = 1;
-  required int32 cap = 2 [ default = 0 ];
-  required string name = 3;
+message ChannelDesc {
+  required VarDesc elem_type = 1;
+  optional int32 cap = 2 [ default = 0 ];
 }
 
 message VarDesc {
@@ -137,7 +134,7 @@ message VarDesc {
     LOD_TENSOR_ARRAY = 7;
     PLACE_LIST = 8;
     READER = 9;
-    CHAN = 10;
+    CHANNEL = 10;
   }
   required string name = 1;
   required VarType type = 2;
@@ -146,7 +143,7 @@ message VarDesc {
   optional TensorDesc selected_rows = 5;
   optional LoDTensorArrayDesc tensor_array = 6;
   optional ReaderDesc reader = 7;
-  optional ChanDesc chan = 8;
+  optional ChannelDesc chan = 8;
 }
 
 message BlockDesc {
