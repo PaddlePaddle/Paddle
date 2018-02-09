@@ -20,6 +20,8 @@ import paddle.v2.fluid.core as core
 from paddle.v2.fluid.op import Operator
 from paddle.v2.fluid.framework import grad_var_name
 
+np.random.random(123)
+
 
 def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
     x_shape = x.shape
@@ -62,9 +64,9 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
 
     grad_x = dx_end + d_mean + d_std
 
-    grad_y.shape = x_shape
-    x.shape = x_shape
+    grad_x.shape, x.shape, grad_y.shape = x_shape, x_shape, x_shape
     scale.shape = scale_shape
+    var.shape, mean.shape = [N, ], [N, ]
     return grad_x, d_scale, d_bias
 
 
@@ -112,10 +114,7 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
 
 class TestLayerNormdOp(OpTest):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(
-            np.allclose(
-                np.array(tensor).reshape(np_array.shape), np_array, atol=atol),
-            msg)
+        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
     def __assert_grad_close(self,
                             tensor,
@@ -123,7 +122,7 @@ class TestLayerNormdOp(OpTest):
                             name,
                             place,
                             max_relative_error=0.02):
-        a = np.array(tensor).reshape(np_array.shape)
+        a = np.array(tensor)
         b = np_array
         abs_a = np.abs(a)
         abs_a[abs_a < 1e-5] = 1
@@ -151,7 +150,7 @@ class TestLayerNormdOp(OpTest):
             x_shape = shape
             D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
             scale_shape = [D]
-            np.random.random(123)
+
             x_val = np.random.random_sample(x_shape).astype(np.float32)
             scale_val = np.random.random_sample(scale_shape).astype(np.float32)
             bias_val = np.random.random_sample(scale_shape).astype(np.float32)

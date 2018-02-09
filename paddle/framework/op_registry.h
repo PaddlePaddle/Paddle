@@ -143,7 +143,7 @@ class OpKernelRegistrar : public Registrar {
 
 /**
  * Macro to register Operator. When the input is duplicable, you should
- * use REGISTER_OP_EX with deop_empty_grad=false instead.
+ * use REGISTER_OP_EX with drop_empty_grad=false instead.
  */
 #define REGISTER_OP(op_type, op_class, op_maker_class, grad_op_type, \
                     grad_op_class)                                   \

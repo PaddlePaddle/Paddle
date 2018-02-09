@@ -128,13 +128,13 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Prior boxes step across width, 0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_w) {
-          PADDLE_ENFORCE_GT(step_w, 0.0, "step_w should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_w, 0.0, "step_w should be larger than 0.");
         });
     AddAttr<float>("step_h",
                    "Prior boxes step across height, 0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_h) {
-          PADDLE_ENFORCE_GT(step_h, 0.0, "step_h should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_h, 0.0, "step_h should be larger than 0.");
         });
 
     AddAttr<float>("offset",

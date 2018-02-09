@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include <time.h>
-#include <sstream>
 #include "gflags/gflags.h"
 #include "test_helper.h"
 
@@ -60,8 +58,7 @@ TEST(inference, label_semantic_roles) {
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
-  TestInference<paddle::platform::CPUPlace, float>(
-      dirname, cpu_feeds, cpu_fetchs1);
+  TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
   LOG(INFO) << output1.lod();
   LOG(INFO) << output1.dims();
 
@@ -71,8 +68,7 @@ TEST(inference, label_semantic_roles) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
-  TestInference<paddle::platform::CUDAPlace, float>(
-      dirname, cpu_feeds, cpu_fetchs2);
+  TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.lod();
   LOG(INFO) << output2.dims();
 

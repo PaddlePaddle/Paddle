@@ -4,19 +4,14 @@ cc_library(paddle_fluid_api
     SRCS io.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
-# Merge all modules into a single static library
+# Create static library
 cc_library(paddle_fluid DEPS paddle_fluid_api ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 
 # Create shared library
-add_library(paddle_fluid_shared SHARED io.cc)
-
-target_circle_link_libraries(paddle_fluid_shared
-  ARCHIVE_START
-  ${GLOB_OP_LIB}
-  ${FLUID_CORE_MODULES}
-  ARCHIVE_END)
-
-SET_TARGET_PROPERTIES(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
+cc_library(paddle_fluid_shared SHARED
+    SRCS io.cc
+    DEPS ARCHIVE_START ${GLOB_OP_LIB} ${FLUID_CORE_MODULES} ARCHIVE_END)
+set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 
 if(WITH_TESTING)
   add_subdirectory(tests/book)
