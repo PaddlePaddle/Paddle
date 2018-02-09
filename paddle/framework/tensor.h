@@ -120,6 +120,7 @@ class Tensor {
     return holder_->type();
   }
 
+  // memory size returns the holding memory size in byte.
   size_t memory_size() const;
 
   inline void check_memory_size() const;

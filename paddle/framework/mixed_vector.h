@@ -17,176 +17,347 @@
 #include <initializer_list>
 #include <vector>
 
-#include "paddle/memory/memcpy.h"
-#include "paddle/memory/memory.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/place.h"
+#include "paddle/framework/tensor.h"
+#include "paddle/framework/tensor_util.h"
+
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
 
-/**
- * @brief Vector support both cpu and gpu.
- * host vector lifetime is same with Vector
- * device vector is lazily malloc and modified.
- */
-
+// Vector<T> implements the std::vector interface, and can get Data or
+// MutableData from any place. The data will be synced implicitly inside.
 template <typename T>
-class Vector : public std::vector<T> {
+class Vector {
  public:
-  using std::vector<T>::vector;
+  using value_type = T;
 
-  Vector() {}
-  Vector(const std::vector<T> &v) : std::vector<T>(v) {}  // NOLINT
+  // Default ctor. Create empty Vector
+  Vector() { InitEmpty(); }
 
-  inline platform::Place place() const { return place_; }
-
-  /*! Return a pointer to constant memory block. */
-  inline const T *data(platform::Place place) const;
-
-  /*! Return a pointer to mutable memory block. */
-  inline T *mutable_data(platform::Place place);
-
-  // TODO(dzhwinter): below interfaces should be removed
-  /* Get device vector */
-  T *cuda_data() {
-    CopyToCUDA();
-    PADDLE_ENFORCE_NOT_NULL(
-        cuda_ptr_, "No data or Insufficient CUDA memory to allocation");
-    return static_cast<T *>(cuda_ptr_.get());
-  }
-
-  /* Get host vector */
-  T *data() { return std::vector<T>::data(); }
-  const T *data() const { return std::vector<T>::data(); }
-
-  T *data(const platform::Place &place) {
-    if (platform::is_cpu_place(place)) {
-      return data();
+  // Fill vector with value. The vector size is `count`.
+  explicit Vector(size_t count, const T& value = T()) {
+    if (count == 0) {
+      InitEmpty();
     } else {
-      return cuda_data();
+      resize(count);
+      T* ptr = begin();
+      for (size_t i = 0; i < count; ++i) {
+        ptr[i] = value;
+      }
     }
   }
 
-  /* Synchronize host vector to device vector */
-  void CopyToCUDA();
-  /* Synchronize device vector to host vector */
-  void CopyFromCUDA();
-  /* Switch device vector location */
-  void CopyToPeer(platform::Place);
+  // Ctor with init_list
+  Vector(std::initializer_list<T> init) {
+    if (init.size() == 0) {
+      InitEmpty();
+    } else {
+      InitByIter(init.size(), init.begin(), init.end());
+    }
+  }
+
+  // implicit cast from std::vector.
+  template <typename U>
+  Vector(const std::vector<U>& dat) {  // NOLINT
+    if (dat.size() == 0) {
+      InitEmpty();
+    } else {
+      InitByIter(dat.size(), dat.begin(), dat.end());
+    }
+  }
+
+  // Copy ctor
+  Vector(const Vector<T>& other) { this->operator=(other); }
+
+  // Copy operator
+  Vector<T>& operator=(const Vector<T>& other) {
+    if (other.size() != 0) {
+      this->InitByIter(other.size(), other.begin(), other.end());
+    } else {
+      InitEmpty();
+    }
+    return *this;
+  }
+
+  // Move ctor
+  Vector(Vector<T>&& other) {
+    this->size_ = other.size_;
+    this->flag_ = other.flag_;
+    if (other.cuda_vec_.memory_size()) {
+      this->cuda_vec_.ShareDataWith(other.cuda_vec_);
+    }
+    if (other.cpu_vec_.memory_size()) {
+      this->cpu_vec_.ShareDataWith(other.cpu_vec_);
+    }
+  }
+
+  // CPU data access method. Mutable.
+  T& operator[](size_t i) {
+    MutableCPU();
+    return const_cast<T*>(cpu_vec_.data<T>())[i];
+  }
+
+  // CPU data access method. Immutable.
+  const T& operator[](size_t i) const {
+    ImmutableCPU();
+    return cpu_vec_.data<T>()[i];
+  }
+
+  // std::vector iterator methods. Based on CPU data access method
+  size_t size() const { return size_; }
+
+  T* begin() { return &this->operator[](0); }
+
+  T* end() { return &this->operator[](size()); }
+
+  T& front() { return *begin(); }
+
+  T& back() {
+    auto it = end();
+    --it;
+    return *it;
+  }
+
+  const T* begin() const { return &this->operator[](0); }
+  const T* end() const { return &this->operator[](size()); }
+
+  const T& back() const {
+    auto it = end();
+    --it;
+    return *it;
+  }
+
+  T* data() { return begin(); }
+
+  const T* data() const { return begin(); }
+
+  const T& front() const { return *begin(); }
+  // end of std::vector iterator methods
+
+  // assign this from iterator.
+  // NOTE: the iterator must support `end-begin`
+  template <typename Iter>
+  void assign(Iter begin, Iter end) {
+    InitByIter(end - begin, begin, end);
+  }
+
+  // push_back. If the previous capacity is not enough, the memory will
+  // double.
+  void push_back(T elem) {
+    if (size_ + 1 > capacity()) {
+      reserve((size_ + 1) << 1);
+    }
+    *end() = elem;
+    ++size_;
+  }
+
+  // extend a vector by iterator.
+  // NOTE: the iterator must support end-begin
+  template <typename It>
+  void Extend(It begin, It end) {
+    size_t pre_size = size_;
+    resize(pre_size + (end - begin));
+    T* ptr = this->begin() + pre_size;
+    for (; begin < end; ++begin, ++ptr) {
+      *ptr = *begin;
+    }
+  }
+
+  // resize the vector
+  void resize(size_t size) {
+    if (size + 1 < capacity()) {
+      size_ = size;
+    } else {
+      MutableCPU();
+      Tensor cpu_tensor;
+      platform::Place cpu = platform::CPUPlace();
+      T* ptr = cpu_tensor.mutable_data<T>(
+          framework::make_ddim({static_cast<int64_t>(size)}), cpu);
+      const T* old_ptr =
+          cpu_vec_.memory_size() == 0 ? nullptr : cpu_vec_.data<T>();
+      if (old_ptr != nullptr) {
+        std::copy(old_ptr, old_ptr + size_, ptr);
+      }
+      size_ = size;
+      cpu_vec_.ShareDataWith(cpu_tensor);
+    }
+  }
+
+  // get cuda ptr. immutable
+  const T* CUDAData(platform::Place place) const {
+    PADDLE_ENFORCE(platform::is_gpu_place(place),
+                   "CUDA Data must on CUDA place");
+    ImmutableCUDA(place);
+    return cuda_vec_.data<T>();
+  }
+
+  // get cuda ptr. mutable
+  T* CUDAMutableData(platform::Place place) {
+    const T* ptr = CUDAData(place);
+    flag_ = kDirty | kDataInCUDA;
+    return const_cast<T*>(ptr);
+  }
+
+  // clear
+  void clear() {
+    size_ = 0;
+    flag_ = kDirty | kDataInCPU;
+  }
+
+  size_t capacity() const {
+    return cpu_vec_.memory_size() / SizeOfType(typeid(T));
+  }
+
+  // reserve data
+  void reserve(size_t size) {
+    size_t pre_size = size_;
+    resize(size);
+    resize(pre_size);
+  }
+
+  // the unify method to access CPU or CUDA data. immutable.
+  const T* Data(platform::Place place) const {
+    if (platform::is_gpu_place(place)) {
+      return CUDAData(place);
+    } else {
+      return data();
+    }
+  }
+
+  // the unify method to access CPU or CUDA data. mutable.
+  T* MutableData(platform::Place place) {
+    if (platform::is_gpu_place(place)) {
+      return CUDAMutableData(place);
+    } else {
+      return data();
+    }
+  }
+
+  // implicit cast operator. Vector can be cast to std::vector implicitly.
+  operator std::vector<T>() const {
+    std::vector<T> result;
+    result.resize(size());
+    std::copy(begin(), end(), result.begin());
+    return result;
+  }
+
+  bool operator==(const Vector<T>& other) const {
+    if (size() != other.size()) return false;
+    for (auto it1 = begin(), it2 = other.begin(); it1 < end(); ++it1, ++it2) {
+      if (*it1 != *it2) {
+        return false;
+      }
+    }
+    return true;
+  }
 
  private:
-  std::shared_ptr<void> cuda_ptr_;
-  size_t cuda_size_ = 0;  // device vector numel
-  platform::CUDAPlace place_;
-};
+  void InitEmpty() {
+    size_ = 0;
+    flag_ = kDataInCPU;
+  }
 
-template <typename T>
-inline const T *Vector<T>::data(platform::Place place) const {
-  if (platform::is_cpu_place(place)) {
-    return std::vector<T>::data();
-  } else if (platform::is_gpu_place(place)) {
-    if (cuda_ptr_ == nullptr) {
-      return nullptr;
+  template <typename Iter>
+  void InitByIter(size_t size, Iter begin, Iter end) {
+    platform::Place cpu = platform::CPUPlace();
+    T* ptr = this->cpu_vec_.template mutable_data<T>(
+        framework::make_ddim({static_cast<int64_t>(size)}), cpu);
+    for (size_t i = 0; i < size; ++i) {
+      *ptr++ = *begin++;
     }
-    if (boost::get<platform::CUDAPlace>(place) == place_) {
-      return static_cast<const T *>(cuda_ptr_.get());
+    flag_ = kDataInCPU | kDirty;
+    size_ = size;
+  }
+
+  enum DataFlag {
+    kDataInCPU = 0x01,
+    kDataInCUDA = 0x02,
+    // kDirty means the data has been changed in one device.
+    kDirty = 0x10
+  };
+
+  void CopyToCPU() const {
+    // COPY GPU Data To CPU
+    Copy(cuda_vec_, platform::CPUPlace(), &cpu_vec_);
+    WaitPlace(cuda_vec_.place());
+  }
+
+  void MutableCPU() {
+    if (IsInCUDA() && IsDirty()) {
+      CopyToCPU();
+    }
+    flag_ = kDirty | kDataInCPU;
+  }
+
+  void ImmutableCUDA(platform::Place place) const {
+    if (IsDirty()) {
+      if (IsInCPU()) {
+        Copy(cpu_vec_, boost::get<platform::CUDAPlace>(place), &cuda_vec_);
+        WaitPlace(place);
+        UnsetFlag(kDirty);
+        SetFlag(kDataInCUDA);
+      } else if (IsInCUDA() && !(place == cuda_vec_.place())) {
+        framework::Tensor tmp;
+        Copy(cuda_vec_, boost::get<platform::CUDAPlace>(place), &tmp);
+        WaitPlace(cuda_vec_.place());
+        cuda_vec_.ShareDataWith(tmp);
+        // Still dirty
+      } else {
+        // Dirty && DataInCUDA && Device is same
+        // Do nothing
+      }
     } else {
-      PADDLE_THROW(
-          "Unmatched place. Please use `mutable_data` copy lod to the target "
-          "Place first.");
+      if (!IsInCUDA()) {
+        // Even data is not dirty. However, data is not in CUDA. Copy data.
+        Copy(cpu_vec_, boost::get<platform::CUDAPlace>(place), &cuda_vec_);
+        WaitPlace(place);
+        SetFlag(kDataInCUDA);
+      } else if (!(place == cuda_vec_.place())) {
+        framework::Tensor tmp;
+        WaitPlace(cuda_vec_.place());
+        Copy(cuda_vec_, boost::get<platform::CUDAPlace>(place), &tmp);
+        WaitPlace(cuda_vec_.place());
+        WaitPlace(place);
+        cuda_vec_.ShareDataWith(tmp);
+      } else {
+        // Not Dirty && DataInCUDA && Device is same
+        // Do nothing.
+      }
     }
-  } else {
-    PADDLE_THROW("Unsupport Place.");
   }
-}
 
-template <typename T>
-inline T *Vector<T>::mutable_data(platform::Place place) {
-  if (platform::is_cpu_place(place)) {
-    return std::vector<T>::data();
-  } else if (platform::is_gpu_place(place)) {
-    if (boost::get<platform::CUDAPlace>(place) != place_) {
-      place_ = boost::get<platform::CUDAPlace>(place);
+  void ImmutableCPU() const {
+    if (IsDirty() &&
+        !IsInCPU()) {  // If data has been changed in CUDA, or CPU has no data.
+      CopyToCPU();
+      UnsetFlag(kDirty);
     }
-#ifdef PADDLE_WITH_CUDA
-    if (cuda_size_ < this->size() || cuda_ptr_ == nullptr) {
-      cuda_ptr_.reset(
-          memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T)),
-          memory::PlainDeleter<void, platform::CUDAPlace>(place_));
+    SetFlag(kDataInCPU);
+  }
+
+  void UnsetFlag(int flag) const { flag_ &= ~flag; }
+  void SetFlag(int flag) const { flag_ |= flag; }
+
+  bool IsDirty() const { return flag_ & kDirty; }
+
+  bool IsInCUDA() const { return flag_ & kDataInCUDA; }
+
+  bool IsInCPU() const { return flag_ & kDataInCPU; }
+
+  static void WaitPlace(const platform::Place place) {
+    if (platform::is_gpu_place(place)) {
+      platform::DeviceContextPool::Instance()
+          .Get(boost::get<platform::CUDAPlace>(place))
+          ->Wait();
     }
-    cuda_size_ = this->size();
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto *ctx = pool.GetByPlace(place_);
-    memory::Copy(place_, cuda_ptr_.get(), platform::CPUPlace(),
-                 static_cast<const void *>(this->data()),
-                 this->size() * sizeof(T), ctx->stream());
-    ctx->Wait();
-    return static_cast<T *>(cuda_ptr_.get());
-#else
-    return nullptr;
-#endif
-  } else {
-    PADDLE_THROW("Unsupport Place.");
   }
-}
 
-template <typename T>
-void Vector<T>::CopyToCUDA() {
-#ifdef PADDLE_WITH_CUDA
-  if (cuda_size_ < this->size() || cuda_ptr_ == nullptr) {
-    cuda_ptr_.reset(
-        memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T)),
-        memory::PlainDeleter<void, platform::CUDAPlace>(place_));
-  }
-  cuda_size_ = this->size();
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto *ctx = pool.GetByPlace(place_);
-  memory::Copy(place_, cuda_ptr_.get(), platform::CPUPlace(),
-               static_cast<const void *>(this->data()),
-               this->size() * sizeof(T), ctx->stream());
-  ctx->Wait();
-#endif
-}
-
-template <typename T>
-void Vector<T>::CopyFromCUDA() {
-#ifdef PADDLE_WITH_CUDA
-  if (cuda_ptr_ == nullptr) {
-    LOG(WARNING) << "No uncommitted cuda data.";
-    return;
-  }
-  this->resize(cuda_size_);
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto *ctx = pool.GetByPlace(place_);
-  memory::Copy(platform::CPUPlace(), static_cast<void *>(this->data()), place_,
-               static_cast<const void *>(cuda_ptr_.get()),
-               this->size() * sizeof(T), ctx->stream());
-  ctx->Wait();
-#endif
-}
-
-template <typename T>
-void Vector<T>::CopyToPeer(platform::Place place) {
-#ifdef PADDLE_WITH_CUDA
-  if (boost::get<platform::CUDAPlace>(place) != place_) {
-    place_ = boost::get<platform::CUDAPlace>(place);
-  }
-  if (cuda_size_ < this->size() || cuda_ptr_ == nullptr) {
-    cuda_ptr_.reset(
-        memory::Alloc<platform::CUDAPlace>(place_, this->size() * sizeof(T)),
-        memory::PlainDeleter<void, platform::CUDAPlace>(place_));
-  }
-  cuda_size_ = this->size();
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto *ctx = pool.GetByPlace(place_);
-  memory::Copy(place_, cuda_ptr_.get(), platform::CPUPlace(),
-               static_cast<const void *>(this->data()),
-               this->size() * sizeof(T), ctx->stream());
-  ctx->Wait();
-#endif
-}
+  mutable int flag_;
+  mutable Tensor cpu_vec_;
+  mutable Tensor cuda_vec_;
+  size_t size_;
+};
 
 }  // namespace framework
 }  // namespace paddle
