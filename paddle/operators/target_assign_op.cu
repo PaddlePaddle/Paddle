@@ -17,39 +17,41 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename WT>
 __global__ void NegTargetAssignKernel(const int* neg_indices, const size_t* lod,
-                                      const int num, const int num_prior_box,
-                                      const int background_label,
-                                      int* out_label, T* out_label_wt) {
+                                      const int N, const int M, const int K,
+                                      const int mismatch_value, T* out,
+                                      WT* out_wt) {
   int bidx = blockIdx.x;
   int st = lod[bidx];
   int ed = lod[bidx + 1];
 
-  int row_start = bidx * num_prior_box;
+  int row_start = bidx * M;
   for (int i = st + threadIdx.x; i < ed; i += blockDim.x) {
     int id = row_start + neg_indices[i];
-    out_label[id] = background_label;
-    out_label_wt[id] = 1.;
+    for (int k = 0; k < K; ++k) {
+      out[id * K + k] = T(mismatch_value);
+      out_wt[id * K + k] = WT(1.);
+    }
   }
 }
 
-template <typename T>
-struct NegTargetAssignFunctor<platform::CUDADeviceContext, T> {
+template <typename T, typename WT>
+struct NegTargetAssignFunctor<platform::CUDADeviceContext, T, WT> {
   void operator()(const platform::CUDADeviceContext& ctx,
-                  const int* neg_indices, const size_t* lod, const int num,
-                  const int num_prior_box, const int background_label,
-                  int* out_label, T* out_label_wt) {
+                  const int* neg_indices, const size_t* lod, const int N,
+                  const int M, const int K, const int mismatch_value, T* out,
+                  WT* out_wt) {
     const int block_size = 256;
-    const int grid_size = num;
-    NegTargetAssignKernel<T><<<grid_size, block_size, 0, ctx.stream()>>>(
-        neg_indices, lod, num, num_prior_box, background_label, out_label,
-        out_label_wt);
+    const int grid_size = N;
+    NegTargetAssignKernel<T, WT><<<grid_size, block_size, 0, ctx.stream()>>>(
+        neg_indices, lod, N, M, K, mismatch_value, out, out_wt);
   }
 };
 
-template struct NegTargetAssignFunctor<platform::CUDADeviceContext, float>;
-template struct NegTargetAssignFunctor<platform::CUDADeviceContext, double>;
+template struct NegTargetAssignFunctor<platform::CUDADeviceContext, int, float>;
+template struct NegTargetAssignFunctor<platform::CUDADeviceContext, float,
+                                       float>;
 
 }  // namespace operators
 }  // namespace paddle
@@ -57,5 +59,5 @@ template struct NegTargetAssignFunctor<platform::CUDADeviceContext, double>;
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     target_assign,
-    ops::TargetAssignKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TargetAssignKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::TargetAssignKernel<paddle::platform::CUDADeviceContext, int, float>,
+    ops::TargetAssignKernel<paddle::platform::CUDADeviceContext, float, float>);

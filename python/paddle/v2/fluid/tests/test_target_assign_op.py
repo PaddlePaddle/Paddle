@@ -43,7 +43,7 @@ def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):
 
 
 def target_assign(encoded_box, gt_label, match_indices, neg_indices, gt_lod,
-                  neg_lod, background_label):
+                  neg_lod, mismatch_value):
     batch_size, num_prior = match_indices.shape
 
     # init target bbox
@@ -52,7 +52,7 @@ def target_assign(encoded_box, gt_label, match_indices, neg_indices, gt_lod,
     trg_box_wt = np.zeros((batch_size, num_prior, 1)).astype('float32')
     # init target label
     trg_label = np.ones((batch_size, num_prior, 1)).astype('int32')
-    trg_label = trg_label * background_label
+    trg_label = trg_label * mismatch_value
     # init weight for target label
     trg_label_wt = np.zeros((batch_size, num_prior, 1)).astype('float32')
 
@@ -65,53 +65,88 @@ def target_assign(encoded_box, gt_label, match_indices, neg_indices, gt_lod,
         # target bbox
         for v, c in zip(col_val + gt_start, col_ids[0].tolist()):
             trg_box[i][c][:] = encoded_box[v][c][:]
-
         # weight for target bbox
         trg_box_wt[i][col_ids] = 1.0
 
         trg_label[i][col_ids] = gt_label[col_val + gt_start]
-
         trg_label_wt[i][col_ids] = 1.0
         # set target label weight to 1.0 for the negative samples
-        neg_ids = neg_indices[neg_lod[i]:neg_lod[i + 1]]
-        trg_label_wt[i][neg_ids] = 1.0
+        if neg_indices is not None:
+            neg_ids = neg_indices[neg_lod[i]:neg_lod[i + 1]]
+            trg_label_wt[i][neg_ids] = 1.0
 
     return trg_box, trg_box_wt, trg_label, trg_label_wt
 
 
-class TestTargetAssginOp(OpTest):
+class TestTargetAssginOp1(OpTest):
     def setUp(self):
         self.op_type = "target_assign"
-
         num_prior = 120
         num_class = 21
         gt_lod = [0, 5, 11, 23]
         neg_lod = [0, 4, 7, 13]
+        mismatch_value = 0
         batch_size = len(gt_lod) - 1
         num_gt = gt_lod[-1]
-        background_label = 0
 
         encoded_box = np.random.random((num_gt, num_prior, 4)).astype('float32')
         gt_label = np.random.randint(
             num_class, size=(num_gt, 1)).astype('int32')
+
         match_indices, neg_indices = gen_match_and_neg_indices(num_prior,
                                                                gt_lod, neg_lod)
-        trg_box, trg_box_wt, trg_label, trg_label_wt = target_assign(
-            encoded_box, gt_label, match_indices, neg_indices, gt_lod, neg_lod,
-            background_label)
 
+        out, out_wt, _, _ = target_assign(encoded_box, gt_label, match_indices,
+                                          neg_indices, gt_lod, neg_lod,
+                                          mismatch_value)
+
+        x = encoded_box
         self.inputs = {
-            'EncodedGTBBox': (encoded_box, [gt_lod]),
-            'GTScoreLabel': (gt_label, [gt_lod]),
-            'MatchIndices': (match_indices),
+            'X': (x, [gt_lod]),
+            'MatchIndices': match_indices,
+        }
+        self.attrs = {'mismatch_value': mismatch_value}
+        self.outputs = {
+            'Out': out,
+            'OutWeight': out_wt,
+        }
+
+    def not_test_check_output(self):
+        self.check_output()
+
+
+class TestTargetAssginOp2(OpTest):
+    def setUp(self):
+        self.op_type = "target_assign"
+        num_prior = 120
+        num_class = 21
+        gt_lod = [0, 5, 11, 23]
+        neg_lod = [0, 4, 7, 13]
+        mismatch_value = 0
+        batch_size = len(gt_lod) - 1
+        num_gt = gt_lod[-1]
+
+        encoded_box = np.random.random((num_gt, num_prior, 4)).astype('float32')
+        gt_label = np.random.randint(
+            num_class, size=(num_gt, 1)).astype('int32')
+
+        match_indices, neg_indices = gen_match_and_neg_indices(num_prior,
+                                                               gt_lod, neg_lod)
+
+        _, _, out, out_wt, = target_assign(encoded_box, gt_label, match_indices,
+                                           neg_indices, gt_lod, neg_lod,
+                                           mismatch_value)
+
+        x = np.reshape(gt_label, (num_gt, 1, 1))
+        self.inputs = {
+            'X': (x, [gt_lod]),
+            'MatchIndices': match_indices,
             'NegIndices': (neg_indices, [neg_lod]),
         }
-        self.attrs = {'background_label': background_label}
+        self.attrs = {'mismatch_value': mismatch_value}
         self.outputs = {
-            'PredBBoxLabel': (trg_box),
-            'PredBBoxWeight': (trg_box_wt),
-            'PredScoreLabel': (trg_label),
-            'PredScoreWeight': (trg_label_wt),
+            'Out': out,
+            'OutWeight': out_wt,
         }
 
     def test_check_output(self):
