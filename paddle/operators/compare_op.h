@@ -62,7 +62,7 @@ class CompareOpKernel
     z->mutable_data<T>(context.GetPlace());
     int axis = context.Attr<int>("axis");
     ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, axis,
-                                                          z);
+                                                          Functor(), z);
   }
 };
 
