@@ -58,7 +58,7 @@ parser.add_argument(
     default="",
     help="Comma-separated list of hostname:port pairs")
 parser.add_argument(
-    "--job_name", type=str, default="", help="One of 'ps', 'worker'")
+    "--training_role", type=str, default="", help="One of 'ps', 'worker'")
 # Flags for defining the tf.train.Server
 parser.add_argument(
     "--task_index", type=int, default=0, help="Index of task within the job")
@@ -333,13 +333,13 @@ if __name__ == '__main__':
 
     # Create and start a server for the local task.
     server = tf.train.Server(
-        cluster, job_name=args.job_name, task_index=args.task_index)
+        cluster, training_role=args.training_role, task_index=args.task_index)
 
     print_arguments()
 
-    if args.job_name == "ps":
+    if args.training_role == "PSERVER":
         print("start pserver")
         server.join()
-    elif args.job_name == "worker":
+    elif args.training_role == "TRAINER":
         print("start worker")
         #run_benchmark()

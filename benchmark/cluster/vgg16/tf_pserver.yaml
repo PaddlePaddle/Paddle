@@ -11,7 +11,8 @@ spec:
     spec:
       hostNetwork: true
       imagePullSecrets:
-      - name: job-registry-secret
+      #- name: job-registry-secret
+      - name: gongweibaobaidusecret
       containers:
       - name: pserver
         image: "registry.baidu.com/gongweibao/fluid_benchmark:vgg16"
@@ -21,17 +22,21 @@ spec:
         - name: jobport-30236
           containerPort: 30236
         env:
+        - name: PORT
+          value: 32036
+        - name: ENTRY
+          value: "python train.py"
         - name: JOB_NAME
           value: vgg16job
+        - name: PSERVERS_NUM
+          value: "10"
         - name: TRAINING_ROLE
           value: "PSERVER"
-        - name: INIT_PSERVERS_NUM
-          value: "10"
-        - name: INIT_TRAINER_NUM
+        - name: TRAINERS_NUM
           value: "20"
         - name: TRAINER_PACKAGE
           value: "/workspace"
-        - name: INIT_NUM_PASSES
+        - name: NUM_PASSES
           value: "1"
         - name: NAMESPACE
           valueFrom:

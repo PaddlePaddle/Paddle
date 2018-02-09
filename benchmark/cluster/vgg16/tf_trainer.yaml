@@ -11,25 +11,28 @@ spec:
         tf-job-trainer: vgg16job
     spec:
       imagePullSecrets:
-        - name: job-registry-secret
+      #- name: job-registry-secret
+      - name: gongweibaobaidusecret
       hostNetwork: true
       containers:
       - name: trainer
-        image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
+        image: "registry.baidu.com/gongweibao/fluid_benchmark:vgg16"
         imagePullPolicy: Always
-        command: ["paddle_k8s", "start_tf"]
+        command: ["tf_k8s", "start_tf"]
         env:
         - name: JOB_NAME
           value: vgg16job
         - name: TRAINING_ROLE
           value: "TRAINER"
-        - name: INIT_PSERVERS_NUM
+        - name: ENTRY
+          value: "python train.py"
+        - name: PSERVERS_NUM
           value: "10"
-        - name: INIT_TRAINER_NUM
+        - name: TRAINERS_NUM
           value: "20"
         - name: TRAINER_PACKAGE
           value: "/workspace"
-        - name: INIT_NUM_PASSES
+        - name: NUM_PASSES
           value: "1"
         - name: NAMESPACE
           valueFrom:
