@@ -1637,7 +1637,7 @@ def layer_norm(input,
             dtype=dtype,
             default_initializer=Constant(1.0))
         inputs['Scale'] = scale
-    if center:
+    if shift:
         assert bias_attr is not False
         bias = helper.create_parameter(
             attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
