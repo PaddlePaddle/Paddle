@@ -2392,10 +2392,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
-def edit_distance(input,
-                  label,
-                  normalized=False,
-                  ignored_tokens=None,
+def edit_distance(input, label, normalized=True, ignored_tokens=None,
                   name=None):
     """
     EditDistance operator computes the edit distances between a batch of
@@ -2426,7 +2423,7 @@ def edit_distance(input,
         label(Variable): The indices for reference strings.
 
         normalized(bool): Indicated whether to normalize the edit distance by
-                          the length of reference string.
+                          the max length of two strings.
 
         ignored_tokens(list of int): Tokens that should be removed before
                                      calculating edit distance.

@@ -61,7 +61,9 @@ __global__ void SetOutput(T* out, const T* dist, const int M, const int N,
                           bool normalized) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   if (idx == 0) {
-    out[0] = normalized ? dist[M * (N + 1) + N] / N : dist[M * (N + 1) + N];
+    auto max_len = N > M ? N : M;
+    out[0] =
+        normalized ? dist[M * (N + 1) + N] / max_len : dist[M * (N + 1) + N];
   }
 }
 
@@ -107,11 +109,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
       if (m == 0 || n == 0) {
         distance = std::max(m, n);
         if (normalized) {
-          PADDLE_ENFORCE(n > 0,
-                         "The reference string (#%d) cannot be empty "
-                         "when Attr(normalized) is enabled.",
-                         n);
-          distance = distance / n;
+          auto max_len = std::max(m, n);
+          distance = max_len == 0 ? 0.0 : 1.0;
         }
         memory::Copy(boost::get<Place>(ctx.GetPlace()), out + num,
                      platform::CPUPlace(), &distance, sizeof(T), stream);
