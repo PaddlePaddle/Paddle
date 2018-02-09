@@ -15,6 +15,8 @@
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import math
+import sys
 
 # need to fix random seed and training data to compare the loss
 # value accurately calculated by the default and the memory optimization
@@ -63,4 +65,6 @@ for pass_id in range(PASS_NUM):
 
         if avg_loss_value[0] < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
+        if math.isnan(float(avg_loss_value)):
+            sys.exit("got NaN loss, training failed.")
 exit(1)
