@@ -31,13 +31,33 @@ void SetupTensor(paddle::framework::LoDTensor& input,
 }
 
 template <typename T>
+void SetupTensor(paddle::framework::LoDTensor& input,
+                 paddle::framework::DDim dims,
+                 std::vector<T>& data) {
+  CHECK_EQ(paddle::framework::product(dims), data.size());
+  T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
+  memcpy(input_ptr, data.data(), input.numel() * sizeof(T));
+}
+
+template <typename T>
 void SetupLoDTensor(paddle::framework::LoDTensor& input,
                     paddle::framework::LoD& lod,
                     T lower,
                     T upper) {
   input.set_lod(lod);
   int dim = lod[0][lod[0].size() - 1];
-  SetupTensor(input, {dim, 1}, lower, upper);
+  SetupTensor<T>(input, {dim, 1}, lower, upper);
+}
+
+template <typename T>
+void SetupLoDTensor(paddle::framework::LoDTensor& input,
+                    paddle::framework::DDim dims,
+                    paddle::framework::LoD lod,
+                    std::vector<T>& data) {
+  const size_t level = lod.size() - 1;
+  CHECK_EQ(dims[0], (lod[level]).back());
+  input.set_lod(lod);
+  SetupTensor<T>(input, dims, data);
 }
 
 template <typename T>
@@ -67,17 +87,31 @@ void CheckError(paddle::framework::LoDTensor& output1,
   EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
 }
 
-template <typename Place, typename T>
+template <typename Place, bool IsCombined = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
-  // 1. Define place, executor and scope
+  // 1. Define place, executor, scope and inference_program
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
 
-  // 2. Initialize the inference_program and load all parameters from file
-  auto inference_program = paddle::inference::Load(executor, *scope, dirname);
+  // 2. Initialize the inference_program and load parameters
+  std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
+  if (IsCombined) {
+    // All parameters are saved in a single file.
+    // Hard-coding the file names of program and parameters in unittest.
+    // Users are free to specify different filename.
+    std::string prog_filename = "__model_combined__";
+    std::string param_filename = "__params_combined__";
+    inference_program = paddle::inference::Load(executor,
+                                                *scope,
+                                                dirname + "/" + prog_filename,
+                                                dirname + "/" + param_filename);
+  } else {
+    // Parameters are saved in separate files sited in the specified `dirname`.
+    inference_program = paddle::inference::Load(executor, *scope, dirname);
+  }
 
   // 3. Get the feed_target_names and fetch_target_names
   const std::vector<std::string>& feed_target_names =

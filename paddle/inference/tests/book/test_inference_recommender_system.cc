@@ -18,7 +18,7 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
-TEST(inference, image_classification) {
+TEST(inference, recommender_system) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
@@ -31,15 +31,39 @@ TEST(inference, image_classification) {
 
   int64_t batch_size = 1;
 
-  paddle::framework::LoDTensor input;
-  // Use normilized image pixels as input data,
-  // which should be in the range [0.0, 1.0].
-  SetupTensor<float>(input,
-                     {batch_size, 3, 32, 32},
-                     static_cast<float>(0),
-                     static_cast<float>(1));
+  paddle::framework::LoDTensor user_id, gender_id, age_id, job_id, movie_id,
+      category_id, movie_title;
+
+  // Use the first data from paddle.dataset.movielens.test() as input
+  std::vector<int64_t> user_id_data = {1};
+  SetupTensor<int64_t>(user_id, {batch_size, 1}, user_id_data);
+
+  std::vector<int64_t> gender_id_data = {1};
+  SetupTensor<int64_t>(gender_id, {batch_size, 1}, gender_id_data);
+
+  std::vector<int64_t> age_id_data = {0};
+  SetupTensor<int64_t>(age_id, {batch_size, 1}, age_id_data);
+
+  std::vector<int64_t> job_id_data = {10};
+  SetupTensor<int64_t>(job_id, {batch_size, 1}, job_id_data);
+
+  std::vector<int64_t> movie_id_data = {783};
+  SetupTensor<int64_t>(movie_id, {batch_size, 1}, movie_id_data);
+
+  std::vector<int64_t> category_id_data = {10, 8, 9};
+  SetupLoDTensor<int64_t>(category_id, {3, 1}, {{0, 3}}, category_id_data);
+
+  std::vector<int64_t> movie_title_data = {1069, 4140, 2923, 710, 988};
+  SetupLoDTensor<int64_t>(movie_title, {5, 1}, {{0, 5}}, movie_title_data);
+
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
-  cpu_feeds.push_back(&input);
+  cpu_feeds.push_back(&user_id);
+  cpu_feeds.push_back(&gender_id);
+  cpu_feeds.push_back(&age_id);
+  cpu_feeds.push_back(&job_id);
+  cpu_feeds.push_back(&movie_id);
+  cpu_feeds.push_back(&category_id);
+  cpu_feeds.push_back(&movie_title);
 
   paddle::framework::LoDTensor output1;
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
