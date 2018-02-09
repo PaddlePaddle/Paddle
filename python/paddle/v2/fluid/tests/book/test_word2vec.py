@@ -207,7 +207,7 @@ def inject_test_method(use_cuda, is_sparse, parallel):
                 main(use_cuda=use_cuda, is_sparse=is_sparse, parallel=parallel)
 
     # run only 2 cases: use_cuda is either True or False
-    if is_sparse and parallel:
+    if is_sparse == False and parallel == False:
         fn = __impl__
     else:
         # skip the other test when on CI server
