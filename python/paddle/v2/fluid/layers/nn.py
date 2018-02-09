@@ -184,7 +184,7 @@ def fc(input,
         helper.append_op(
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
-    pre_activation = helper.append_bias_op(pre_bias)
+    pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
     # add activation
     return helper.append_activation(pre_activation)
 
