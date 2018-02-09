@@ -15,15 +15,13 @@
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import contextlib
+import numpy
 import unittest
 import math
 import sys
 
 
-def main(use_cuda):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
-        return
-
+def train(use_cuda, save_dirname):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -51,19 +49,57 @@ def main(use_cuda):
 
     PASS_NUM = 100
     for pass_id in range(PASS_NUM):
-        fluid.io.save_persistables(exe, "./fit_a_line.model/")
-        fluid.io.load_persistables(exe, "./fit_a_line.model/")
         for data in train_reader():
             avg_loss_value, = exe.run(fluid.default_main_program(),
                                       feed=feeder.feed(data),
                                       fetch_list=[avg_cost])
             print(avg_loss_value)
             if avg_loss_value[0] < 10.0:
+                if save_dirname is not None:
+                    fluid.io.save_inference_model(save_dirname, ['x'],
+                                                  [y_predict], exe)
                 return
             if math.isnan(float(avg_loss_value)):
                 sys.exit("got NaN loss, training failed.")
     raise AssertionError("Fit a line cost is too large, {0:2.2}".format(
         avg_loss_value[0]))
+
+
+def infer(use_cuda, save_dirname=None):
+    if save_dirname is None:
+        return
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    # The input's dimension should be 2-D and the second dim is 13
+    # The input data should be >= 0
+    batch_size = 10
+    tensor_x = numpy.random.uniform(0, 10, [batch_size, 13]).astype("float32")
+    assert feed_target_names[0] == 'x'
+    results = exe.run(inference_program,
+                      feed={feed_target_names[0]: tensor_x},
+                      fetch_list=fetch_targets)
+    print("infer shape: ", results[0].shape)
+    print("infer results: ", results[0])
+
+
+def main(use_cuda):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+
+    # Directory for saving the trained model
+    save_dirname = "fit_a_line.inference.model"
+
+    train(use_cuda, save_dirname)
+    infer(use_cuda, save_dirname)
 
 
 class TestFitALine(unittest.TestCase):

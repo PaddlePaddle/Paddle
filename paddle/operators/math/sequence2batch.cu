@@ -45,7 +45,6 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& src,
                   framework::Vector<size_t> index_lod, framework::Tensor& dst,
                   bool is_src_index) {
-    size_t* index = index_lod.cuda_data();
     auto src_dims = src.dims();
     auto dst_dims = dst.dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2,
@@ -63,7 +62,8 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
     dim3 grid(8, 1);
     auto stream = context.stream();
     CopyMatrixRowsKernel<T, 128, 8, 8><<<grid, threads, 0, stream>>>(
-        src_data, dst_data, index, height, width, is_src_index);
+        src_data, dst_data, index_lod.CUDAData(context.GetPlace()), height,
+        width, is_src_index);
   }
 };
 

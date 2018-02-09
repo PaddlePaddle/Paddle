@@ -325,6 +325,31 @@ void ColwiseSum<platform::CUDADeviceContext, double>::operator()(
       vector->data<double>());
 }
 
+template struct RowwiseSum<platform::CUDADeviceContext, float>;
+// template struct RowwiseSum<platform::CUDADeviceContext, double>;
+// TODO(zcd): Following ColwiseSum format, need to confirm.
+// The RowwiseSum<platform::CUDADeviceContext, double> failed in debug mode,
+// and only failed for this case. So reimplemented it.
+template <>
+void RowwiseSum<platform::CUDADeviceContext, double>::operator()(
+    const platform::CUDADeviceContext& context, const framework::Tensor& input,
+    framework::Tensor* vector) {
+  auto in_dims = input.dims();
+  auto size = input.numel() / in_dims[0];
+  PADDLE_ENFORCE_EQ(vector->numel(), in_dims[0]);
+  framework::Tensor one;
+  one.mutable_data<double>({size}, context.GetPlace());
+  SetConstant<platform::CUDADeviceContext, double> set;
+  set(context, &one, static_cast<double>(1.0));
+  gemv<platform::CUDADeviceContext, double>(
+      context, true, static_cast<int>(in_dims[1]), static_cast<int>(in_dims[0]),
+      1.0, one.data<double>(), input.data<double>(), 0.0,
+      vector->data<double>());
+}
+
+template struct RowwiseMean<platform::CUDADeviceContext, float>;
+template struct RowwiseMean<platform::CUDADeviceContext, double>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
