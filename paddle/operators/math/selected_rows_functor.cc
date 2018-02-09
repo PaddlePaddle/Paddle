@@ -128,7 +128,7 @@ struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
     auto* in2_value = input2->mutable_value();
 
     // concat rows
-    in2_rows.insert(in2_rows.end(), in1_rows.begin(), in1_rows.end());
+    in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE(platform::is_cpu_place(in1_place));
