@@ -7,7 +7,3 @@ if(WITH_PYTHON)
     target_link_libraries(paddle_pybind rt)
   endif(NOT APPLE AND NOT ANDROID)
 endif(WITH_PYTHON)
-
-if(WITH_DOC)
-  cc_binary(print_operators_doc SRCS print_operators_doc.cc DEPS ${GLOB_OP_LIB})
-endif(WITH_DOC)
