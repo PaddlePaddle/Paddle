@@ -41,11 +41,26 @@ import profiler
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + [
-    'io', 'initializer', 'layers', 'nets', 'optimizer', 'learning_rate_decay',
-    'backward', 'regularizer', 'LoDTensor', 'CPUPlace', 'CUDAPlace', 'Tensor',
-    'ParamAttr', 'WeightNormParamAttr', 'DataFeeder', 'clip',
-    'SimpleDistributeTranspiler', 'DistributeTranspiler', 'memory_optimize',
-    'profiler'
+    'io',
+    'initializer',
+    'layers',
+    'nets',
+    'optimizer',
+    'learning_rate_decay',
+    'backward',
+    'regularizer',
+    'LoDTensor',
+    'CPUPlace',
+    'CUDAPlace',
+    'Tensor',
+    'ParamAttr',
+    'WeightNormParamAttr',
+    'DataFeeder',
+    'clip',
+    'SimpleDistributeTranspiler',
+    'DistributeTranspiler',
+    'memory_optimize',
+    'profiler',
 ]
 
 
