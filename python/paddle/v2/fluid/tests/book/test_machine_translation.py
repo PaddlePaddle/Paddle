@@ -324,7 +324,7 @@ def infer_for_decode_main(use_cuda, save_dirname=None):
 
     # setup init_ids and init_scores
     init_ids_data = np.ones((1, 1), dtype='int64')
-    init_scores_data = np.ones((1, 1), dtype='int64')
+    init_scores_data = np.ones((1, 1), dtype='float32')
     init_lod = [0, 1]
     init_lod = [init_lod, init_lod]
 
@@ -350,8 +350,8 @@ def infer_for_decode_main(use_cuda, save_dirname=None):
                                         },
                                         fetch_list=fetch_targets,
                                         return_numpy=False)
-    print(result_ids[0].lod())
-    np_data = np.array(result_ids[0])
+    print(result_ids.lod())
+    np_data = np.array(result_ids)
     print("Inference shape: ", np_data.shape)
     print("Inference results: ", np_data)
 
@@ -414,9 +414,9 @@ for _use_cuda_ in (False, True):
 if __name__ == '__main__':
     #unittest.main()
 
-    #save_dirname_decode = "machine_translation" + "_decode.inference.model"
-    #decode_main(False, False, save_dirname_decode)
-    #infer_for_decode_main(False, save_dirname_decode)
-    save_dirname_train = "machine_translation" + "_train.inference.model"
-    train_main(False, False, save_dirname_train)
-    infer_for_train_main(False, save_dirname_train)
+    save_dirname_decode = "machine_translation" + "_decode.inference.model"
+    decode_main(False, False, save_dirname_decode)
+    infer_for_decode_main(False, save_dirname_decode)
+    #save_dirname_train = "machine_translation" + "_train.inference.model"
+    #train_main(False, False, save_dirname_train)
+    #infer_for_train_main(False, save_dirname_train)
