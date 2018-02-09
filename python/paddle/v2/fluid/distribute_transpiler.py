@@ -376,7 +376,8 @@ class DistributeTranspiler:
             res += [v.name for v in values]
         return res
 
-    def _append_pserver_ops(self, program, pserver_program, opt_op, endpoint):
+    def _append_pserver_ops(self, optimize_block, opt_op, endpoint):
+        program = optimize_block.program
         new_inputs = dict()
         # update param/grad shape first, then other inputs like
         # moment can use the updated shape
@@ -391,20 +392,16 @@ class DistributeTranspiler:
                     # do not append this op if current endpoint
                     # is not dealing with this grad block
                     return
-                merged_var = program.global_block().create_var(
-                    name=grad_block.name,
-                    persistable=grad_block.persistable,
-                    dtype=grad_block.dtype,
-                    shape=grad_block.shape)
+                merged_var = program.global_block().vars[grad_block.name]
                 # append merging ops if trainers > 1
                 if self.trainers > 1:
                     vars2merge = self._create_var_for_trainers(
                         program.global_block(), grad_block, self.trainers)
-                    program.global_block().append_op(
+                    optimize_block.append_op(
                         type="sum",
                         inputs={"X": vars2merge},
                         outputs={"Out": merged_var})
-                    program.global_block().append_op(
+                    optimize_block.append_op(
                         type="scale",
                         inputs={"X": merged_var},
                         outputs={"Out": merged_var},
@@ -426,45 +423,38 @@ class DistributeTranspiler:
                     shape=param_block.shape)
 
                 new_inputs[key] = tmpvar
+            elif key == "LearningRate":
+                # leraning rate variable has already be created by non-optimize op,
+                # don't create it once again.
+                new_inputs[key] = program.global_block().vars[opt_op.input(key)[
+                    0]]
 
         for key in opt_op.input_names:
             new_shape = None
-            if key in ["Param", "Grad"]:
+            if key in ["Param", "Grad", "LearningRate"]:
                 continue
-
             var = program.global_block().vars[opt_op.input(key)[0]]
-            if key == "LearningRate":
-                new_shape = var.shape
-            else:
-                # update accumulator variable shape
-                param_shape = new_inputs["Param"].shape
-                new_shape = self._get_optimizer_input_shape(
-                    opt_op.type, key, var.shape, param_shape)
+            # update accumulator variable shape
+            param_shape = new_inputs["Param"].shape
+            new_shape = self._get_optimizer_input_shape(opt_op.type, key,
+                                                        var.shape, param_shape)
             tmpvar = program.global_block().create_var(
                 name=var.name,
                 persistable=var.persistable,
                 dtype=var.dtype,
                 shape=new_shape)
             new_inputs[key] = tmpvar
-            # create var in pserver program global block.
-            # TODO(typhoonzero): put blocks in one program to avoid create two
-            # variables.
-            pserver_program.global_block().create_var(
-                name=var.name,
-                persistable=var.persistable,
-                dtype=var.dtype,
-                shape=new_shape)
 
         # change output's ParamOut variable
-        #outputs = self._get_output_map_from_op(program.global_block().vars, opt_op)
         opt_op.outputs["ParamOut"] = new_inputs["Param"]
-        program.global_block().append_op(
+        optimize_block.append_op(
             type=opt_op.type,
             inputs=new_inputs,
             outputs=opt_op.outputs,
             attrs=opt_op.attrs)
 
-    def _append_pserver_non_opt_ops(self, program, pserver_program, opt_op):
+    def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
+        program = optimize_block.program
         # Append the ops for parameters that do not need to be optimized/updated
         inputs = self._get_input_map_from_op(self.program.global_block().vars,
                                              opt_op)
@@ -473,15 +463,8 @@ class DistributeTranspiler:
                 varlist = [varlist]
 
             for var in varlist:
-                # TODO(typhoonzero): will remove below line later.
                 if not program.global_block().vars.has_key(var.name):
                     program.global_block().create_var(
-                        name=var.name,
-                        persistable=var.persistable,
-                        dtype=var.dtype,
-                        shape=var.shape)
-                if not pserver_program.global_block().vars.has_key(var.name):
-                    pserver_program.global_block().create_var(
                         name=var.name,
                         persistable=var.persistable,
                         dtype=var.dtype,
@@ -489,6 +472,7 @@ class DistributeTranspiler:
 
         outputs = self._get_output_map_from_op(self.program.global_block().vars,
                                                opt_op)
+
         for varlist in outputs.itervalues():
             if not isinstance(varlist, list):
                 varlist = [varlist]
@@ -499,13 +483,8 @@ class DistributeTranspiler:
                     persistable=var.persistable,
                     dtype=var.dtype,
                     shape=var.shape)
-                pserver_program.global_block().create_var(
-                    name=var.name,
-                    persistable=var.persistable,
-                    dtype=var.dtype,
-                    shape=var.shape)
 
-        program.global_block().append_op(
+        optimize_block.append_op(
             type=opt_op.type,
             inputs=inputs,
             outputs=outputs,
@@ -583,7 +562,7 @@ class DistributeTranspiler:
                     dtype=v.dtype,
                     shape=v.shape)
         # step6
-        optimize_sub_program = Program()
+        optimize_block = pserver_program.create_block(0)
         # step 6.1
         # Create a union-find data struct by optimize ops,
         # If two ops are connected, we could add these two ops
@@ -604,11 +583,9 @@ class DistributeTranspiler:
             for _, opt_op in enumerate(opt_op_on_pserver):
                 if ufind.is_connected(op, opt_op):
                     if self._is_opt_op(op):
-                        self._append_pserver_ops(optimize_sub_program,
-                                                 pserver_program, op, endpoint)
+                        self._append_pserver_ops(optimize_block, op, endpoint)
                     else:
-                        self._append_pserver_non_opt_ops(optimize_sub_program,
-                                                         pserver_program, op)
+                        self._append_pserver_non_opt_ops(optimize_block, op)
                     break
         # Append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -616,7 +593,7 @@ class DistributeTranspiler:
             inputs={},
             outputs={},
             attrs={
-                "OptimizeBlock": optimize_sub_program.global_block(),
+                "OptimizeBlock": optimize_block,
                 "endpoint": endpoint,
                 "ParamList": [
                     p.name
