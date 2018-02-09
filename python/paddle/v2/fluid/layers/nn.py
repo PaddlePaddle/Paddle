@@ -66,7 +66,6 @@ __all__ = [
     'nce',
     'beam_search',
     'row_conv',
-    'reshape',
     'reshape_with_axis',
     'multiplex',
     'prior_box',
@@ -3103,12 +3102,11 @@ def reshape_with_axis(input, axis):
     """
     **ReshapeWithAxis Layer**
 
-    According to the axis to merge the adjacent dim of input. Currently, the axis of
-    reshape_with_axis must be a scalar.
+    ReshapeWithAxis is used to merge adjacent dimensions according to axis.
 
     Args:
        input(variable): The input tensor.
-       axis(list): According to the axis to merge the adjacent dim.
+       axis(list): The axis which is used to merge the adjacent dimensions.
 
     Returns:
         Variable: A tensor variable.
@@ -3117,7 +3115,7 @@ def reshape_with_axis(input, axis):
         .. code-block:: python
 
           x = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
-          reshaped = fluid.layers.reshape_with_axis(input=x, axis=2)
+          reshaped = fluid.layers.reshape_with_axis(input=x, axis=[2])
           reshaped.shape
             >> [-1, 1024]
           reshaped = fluid.layers.reshape_with_axis(input=x, axis=[1,3])
@@ -3151,46 +3149,17 @@ def reshape_with_axis(input, axis):
     return out
 
 
-def reshape(input, new_shape):
-    """
-    **Reshape Layer**
-
-    Reshape the shape of input according to new_dim.
-
-    Args:
-       input(variable): The input tensor.
-       new_shape(list): The new shape of input.
-
-    Returns:
-        Variable: A tensor variable.
-
-    Examples:
-        .. code-block:: python
-
-          x = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
-          reshaped = fluid.layers.reshape(input=x, new_shape=[-1, 1024])
-    """
-    helper = LayerHelper('reshape', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype())
-    helper.append_op(
-        type='reshape',
-        inputs={'X': [input]},
-        outputs={'Out': [out]},
-        attrs={'shape': new_dim})
-    return out
-
-
 def prior_box(input,
               image,
               min_sizes,
               max_sizes,
               aspect_ratios,
               variance,
-              flip,
-              clip,
-              step_w,
-              step_h,
-              offset,
+              flip=False,
+              clip=False,
+              step_w=0.0,
+              step_h=0.0,
+              offset=0.5,
               name=None):
     """
     **Prior_box**
@@ -3202,27 +3171,33 @@ def prior_box(input,
     sequence according to the aspect_ratios.
 
     Args:
-       input(variable): The input feature data of PriorBox, the layout is NCHW.
-       image(variable): The input image data of PriorBoxOp, the layout is NCHW.
+       input(variable): The input feature data of PriorBox,
+             the layout is NCHW.
+       image(variable): The input image data of PriorBox, the
+             layout is NCHW.
        min_sizes(list): the min sizes of generated prior boxes.
        max_sizes(list): the max sizes of generated prior boxes.
        aspect_ratios(list): the aspect ratios of generated prior boxes.
        variance(list): the variances to be encoded in prior boxes.
-       flip(bool): Whether to flip aspect ratios.
-       clip(bool): Whether to clip out-of-boundary boxes.
-       step_w(list): Prior boxes step across width, 0 for auto calculation.
-       step_h(list): Prior boxes step across height, 0 for auto calculation.
-       offset(float): Prior boxes center offset.
-       name(str): Name of the prior box layer.
+       flip(bool, optional, default=False): Whether to flip aspect ratios.
+       clip(bool, optional, default=False)): Whether to clip
+             out-of-boundary boxes.
+       step_w(int, optional, default=0.0): Prior boxes step across
+             width, 0.0 for auto calculation.
+       step_h(int, optional, default=0.0): Prior boxes step across
+             height, 0.0 for auto calculation.
+       offset(float, optional, default=0.5): Prior boxes center offset.
+       name(str, optional, default=None): Name of the prior box layer.
 
     Returns:
         boxes(variable): the output prior boxes of PriorBoxOp. The layout is
              [H, W, num_priors, 4]. H is the height of input, W is the width
-             of input, num_priors is the box count of each position.
+             of input, num_priors is the box count of each position. Where num_priors =
+             len(aspect_ratios) * len(min_sizes) + len(max_sizes)
         Variances(variable): the expanded variances of PriorBoxOp. The layout
              is [H, W, num_priors, 4]. H is the height of input, W is the width
-             of input, num_priors is the box count of each position.
-
+             of input, num_priors is the box count of each position. Where num_priors =
+             len(aspect_ratios) * len(min_sizes) + len(max_sizes)
     Examples:
         .. code-block:: python
 
@@ -3259,70 +3234,78 @@ def prior_box(input,
     return box, var
 
 
-def prior_boxes(input_layers,
+def prior_boxes(inputs,
                 image,
                 min_ratio,
                 max_ratio,
                 aspect_ratios,
-                min_dim,
+                base_size,
                 steps=None,
                 step_w=None,
                 step_h=None,
                 offset=0.5,
                 variance=[0.1, 0.1, 0.1, 0.1],
-                flip=True,
-                clip=True,
+                flip=False,
+                clip=False,
                 name=None):
     """
     **Prior_boxes**
 
     Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
-    Each position of the input produce N prior boxes, N is determined by
-    the count of min_sizes, max_sizes and aspect_ratios, The size of the
-    box is in range(min_size, max_size) interval, which is generated in
+    Each position of the inputs produces many prior boxes respectly, the number
+    of prior boxes which is produced by inputs respectly is determined by
+    the count of min_ratio, max_ratio and aspect_ratios, The size of the
+    box is in range(min_ratio, max_ratio) interval, which is generated in
     sequence according to the aspect_ratios.
 
     Args:
-       input(list): The list of input variables, the format of all variables is NCHW.
+       inputs(list): The list of input variables, the format of all variables is NCHW.
        image(variable): The input image data of PriorBoxOp, the layout is NCHW.
-       min_ratio(list): the min sizes of generated prior boxes.
-       max_ratio(list): the max sizes of generated prior boxes.
+       min_ratio(int): the min ratio of generated prior boxes.
+       max_ratio(int): the max ratio of generated prior boxes.
        aspect_ratios(list): the aspect ratios of generated prior boxes.
-       min_dim(int):
-       step_w(list): Prior boxes step across width, 0 for auto calculation.
-       step_h(list): Prior boxes step across height, 0 for auto calculation.
-       offset(float): Prior boxes center offset.
-       variance(list): the variances to be encoded in prior boxes.
-       flip(bool): Whether to flip aspect ratios.
-       clip(bool): Whether to clip out-of-boundary boxes.
-       name(str): Name of the prior box layer.
+            The length of input and aspect_ratios must be equal.
+       base_size(int): the base_size is used to get min_size and max_size
+            according to min_ratio and max_ratio.
+       step_w(list, optional, default=None): Prior boxes step across width.
+            If step_w[i] == 0.0, the prior boxes step across width of the inputs[i]
+            will be automatically calculated.
+       step_h(list, optional, default=None): Prior boxes step across height,
+            If step_h[i] == 0.0, the prior boxes step across height of the inputs[i]
+            will be automatically calculated.
+       offset(float, optional, default=0.5): Prior boxes center offset.
+       variance(list, optional, default=[0.1, 0.1, 0.1, 0.1]): the variances
+            to be encoded in prior boxes.
+       flip(bool, optional, default=False): Whether to flip aspect ratios.
+       clip(bool, optional, default=False): Whether to clip out-of-boundary boxes.
+       name(str, optional, None): Name of the prior box layer.
 
     Returns:
         boxes(variable): the output prior boxes of PriorBoxOp. The layout is
              [num_priors, 4]. num_priors is the total box count of each
-              position of input_layers.
+              position of inputs.
         Variances(variable): the expanded variances of PriorBoxOp. The layout
              is [num_priors, 4]. num_priors is the total box count of each
-             position of input_layers
+             position of inputs
 
     Examples:
         .. code-block:: python
 
           prior_boxes(
-             input_layers = [conv1, conv2, conv3, conv4, conv5, conv6],
+             inputs = [conv1, conv2, conv3, conv4, conv5, conv6],
              image = data,
-             min_ratio = 0.2,
-             max_ratio = 0.9,
+             min_ratio = 20, # 0.20
+             max_ratio = 90, # 0.90
              steps = [8., 16., 32., 64., 100., 300.],
              aspect_ratios = [[2.], [2., 3.], [2., 3.], [2., 3.], [2.], [2.]],
-             min_dim = 300,
+             base_size = 300,
              offset = 0.5,
              variance = [0.1,0.1,0.1,0.1],
              flip=True,
              clip=True)
     """
-    assert isinstance(input_layers, list), 'input_layer should be a list.'
-    num_layer = len(input_layers)
+    assert isinstance(inputs, list), 'inputs should be a list.'
+    num_layer = len(inputs)
     assert num_layer > 2  # TODO(zcd): currently, num_layer must be bigger than two.
 
     min_sizes = []
@@ -3330,30 +3313,30 @@ def prior_boxes(input_layers,
     if num_layer > 2:
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
         for ratio in xrange(min_ratio, max_ratio + 1, step):
-            min_sizes.append(min_dim * ratio / 100.)
-            max_sizes.append(min_dim * (ratio + step) / 100.)
-        min_sizes = [min_dim * .10] + min_sizes
-        max_sizes = [min_dim * .20] + max_sizes
+            min_sizes.append(base_size * ratio / 100.)
+            max_sizes.append(base_size * (ratio + step) / 100.)
+        min_sizes = [base_size * .10] + min_sizes
+        max_sizes = [base_size * .20] + max_sizes
 
     if step_h:
         assert isinstance(step_h,list) and len(step_h) == num_layer, \
-            'step_h should be list and input_layers and step_h should have same length'
+            'step_h should be list and inputs and step_h should have same length'
     if step_w:
         assert isinstance(step_w,list) and len(step_w) == num_layer, \
-            'step_w should be list and input_layers and step_w should have same length'
+            'step_w should be list and inputs and step_w should have same length'
     if steps:
         assert isinstance(steps,list) and len(steps) == num_layer, \
-            'steps should be list and input_layers and step_w should have same length'
+            'steps should be list and inputs and step_w should have same length'
         step_w = steps
         step_h = steps
     if aspect_ratios:
         assert isinstance(aspect_ratios, list) and len(aspect_ratios) == num_layer, \
-            'aspect_ratios should be list and input_layers and aspect_ratios should ' \
+            'aspect_ratios should be list and inputs and aspect_ratios should ' \
             'have same length'
 
     box_results = []
     var_results = []
-    for i, input in enumerate(input_layers):
+    for i, input in enumerate(inputs):
         min_size = min_sizes[i]
         max_size = max_sizes[i]
         aspect_ratio = []

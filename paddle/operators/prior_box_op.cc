@@ -51,11 +51,11 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     if (max_sizes.size() > 0) {
       PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
                         "The number of min_size and max_size must be equal.");
-      for (size_t i = 0; i < min_sizes.size(); ++i) {
+      num_priors += max_sizes.size();
+      for (size_t i = 0; i < max_sizes.size(); ++i) {
         PADDLE_ENFORCE_GT(max_sizes[i], min_sizes[i],
                           "max_size[%d] must be greater than min_size[%d].", i,
                           i);
-        num_priors += 1;
       }
     }
 
@@ -125,13 +125,13 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
 
     AddAttr<float>("step_w",
-                   "Prior boxes step across width, 0 for auto calculation.")
+                   "Prior boxes step across width, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_w) {
           PADDLE_ENFORCE_GE(step_w, 0.0, "step_w should be larger than 0.");
         });
     AddAttr<float>("step_h",
-                   "Prior boxes step across height, 0 for auto calculation.")
+                   "Prior boxes step across height, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_h) {
           PADDLE_ENFORCE_GE(step_h, 0.0, "step_h should be larger than 0.");
