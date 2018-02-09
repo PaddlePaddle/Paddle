@@ -3,7 +3,7 @@ kind: ReplicaSet
 metadata:
   name: vgg16job-pserver
 spec:
-  replicas: 10
+  replicas: 1
   template:
     metadata:
       labels:
@@ -15,7 +15,7 @@ spec:
       - name: gongweibaobaidusecret
       containers:
       - name: pserver
-        image: "registry.baidu.com/gongweibao/fluid_benchmark:vgg16"
+        image: "registry.baidu.com/gongweibao/test/fluid_benchmark:vgg16"
         imagePullPolicy: Always
         command: ["tf_k8s", "start_tf"]
         ports:
@@ -23,17 +23,17 @@ spec:
           containerPort: 30236
         env:
         - name: PORT
-          value: 32036
+          value: "32036"
         - name: ENTRY
-          value: "python train.py"
+          value: "python vgg16_tf.py"
         - name: JOB_NAME
           value: vgg16job
         - name: PSERVERS_NUM
-          value: "10"
+          value: "1"
         - name: TRAINING_ROLE
           value: "PSERVER"
         - name: TRAINERS_NUM
-          value: "20"
+          value: "1"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: NUM_PASSES

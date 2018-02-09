@@ -3,8 +3,8 @@ kind: Job
 metadata:
   name: vgg16job-trainer
 spec:
-  parallelism: 20
-  completions: 20
+  parallelism: 1
+  completions: 1
   template:
     metadata:
       labels:
@@ -16,7 +16,7 @@ spec:
       hostNetwork: true
       containers:
       - name: trainer
-        image: "registry.baidu.com/gongweibao/fluid_benchmark:vgg16"
+        image: "registry.baidu.com/gongweibao/test/fluid_benchmark:vgg16"
         imagePullPolicy: Always
         command: ["tf_k8s", "start_tf"]
         env:
@@ -25,11 +25,11 @@ spec:
         - name: TRAINING_ROLE
           value: "TRAINER"
         - name: ENTRY
-          value: "python train.py"
+          value: "python vgg16_tf.py"
         - name: PSERVERS_NUM
-          value: "10"
+          value: "1"
         - name: TRAINERS_NUM
-          value: "20"
+          value: "1"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: NUM_PASSES
