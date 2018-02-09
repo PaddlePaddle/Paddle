@@ -137,8 +137,8 @@ class TargetAssignKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(gt_lod.data()[i], gt_label_lod.data()[i]);
     }
 
-    size_t* gt_lod_data = gt_lod.data(ctx.GetPlace());
-    size_t* neg_lod_data = neg_lod.data(ctx.GetPlace());
+    size_t* gt_lod_data = gt_lod.MutableData(ctx.GetPlace());
+    size_t* neg_lod_data = neg_lod.MutableData(ctx.GetPlace());
 
     TargetAssignFunctor<T> functor(box_data, label_data, match_idx_data,
                                    gt_lod_data, background_label, num,

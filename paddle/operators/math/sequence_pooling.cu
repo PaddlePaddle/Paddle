@@ -73,7 +73,8 @@ class MaxSeqPoolFunctor<platform::CUDADeviceContext, T> {
     dim3 grid(num_seq, 1);
     auto stream = context.stream();
     KeMaxSequencePool<T><<<grid, threads, 0, stream>>>(
-        in_data, starts.cuda_data(), out_data, max_index, num_seq, dim);
+        in_data, starts.CUDAData(context.GetPlace()), out_data, max_index,
+        num_seq, dim);
   }
 };
 

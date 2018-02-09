@@ -365,10 +365,10 @@ template <typename Functor, typename DeviceContext, typename T,
           typename OutType = T>
 void ElementwiseComputeEx(const framework::ExecutionContext& ctx,
                           const framework::Tensor* x,
-                          const framework::Tensor* y, int axis,
+                          const framework::Tensor* y, int axis, Functor func,
                           framework::Tensor* z) {
   TransformFunctor<Functor, T, DeviceContext, OutType> functor(
-      x, y, z, ctx.template device_context<DeviceContext>(), Functor());
+      x, y, z, ctx.template device_context<DeviceContext>(), func);
 
   auto x_dims = x->dims();
   auto y_dims = y->dims();
