@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/framework/executor.h"
 #include "paddle/framework/op_registry.h"
 #include "paddle/framework/threadpool.h"
+#include "paddle/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -39,8 +40,10 @@ static void SplitTensorAndMoveTensorToScopes(
     const std::vector<std::string> &names) {
   size_t num_sub_scopes = 0;
   for (auto &argu : names) {
-    auto *var = scope.FindVar(argu);
-    const auto &tensor = var->Get<LoDTensor>();
+    const auto &tensor =
+        detail::Ref(scope.FindVar(argu),
+                    "Cannot find variable %s in the parent scope", argu)
+            .Get<LoDTensor>();
     auto lod_tensors = tensor.SplitLoDTensor(places);
 
     for (auto &lod : lod_tensors) {
@@ -60,7 +63,9 @@ static void SplitTensorAndMoveTensorToScopes(
     }
 
     for (size_t i = 0; i < lod_tensors.size(); ++i) {
-      *(*sub_scopes)[i]->Var(argu)->GetMutable<LoDTensor>() = lod_tensors[i];
+      *detail::Ref(sub_scopes->at(i)->Var(argu),
+                   "Cannot find variable in the sub-scope", argu)
+           .GetMutable<LoDTensor>() = lod_tensors[i];
     }
   }
 }
@@ -71,18 +76,25 @@ inline void CopyOrShare(const framework::Variable &src,
   if (src.IsType<LoDTensor>()) {
     if (src.Get<LoDTensor>().place() == dst_place) {
       dst->GetMutable<LoDTensor>()->ShareDataWith(src.Get<LoDTensor>());
+      dst->GetMutable<LoDTensor>()->set_lod(src.Get<LoDTensor>().lod());
     } else {
       Copy(src.Get<LoDTensor>(), dst_place, dst->GetMutable<LoDTensor>());
+      framework::LoD lod(src.Get<LoDTensor>().lod());
+      lod.CopyToPeer(dst_place);
+      dst->GetMutable<LoDTensor>()->set_lod(lod);
     }
   } else if (src.IsType<SelectedRows>()) {
     auto &src_sr = src.Get<SelectedRows>();
     auto *dst_sr = dst->GetMutable<SelectedRows>();
-    dst_sr->set_rows(src_sr.rows());
     dst_sr->set_height(src_sr.height());
     if (src_sr.value().place() == dst_place) {
       dst_sr->mutable_value()->ShareDataWith(src_sr.value());
+      dst_sr->set_rows(src_sr.rows());
     } else {
       Copy(src_sr.value(), dst_place, dst_sr->mutable_value());
+      framework::Vector<int64_t> lod(src_sr.rows());
+      lod.CopyToPeer(dst_place);
+      dst_sr->set_rows(lod);
     }
   } else {
     PADDLE_THROW("Expect LoDTensor/SelectedRows, get %s", src.Type().name());
@@ -140,6 +152,9 @@ class ParallelDoOp : public framework::OperatorBase {
         auto *sub_scope = sub_scopes[i];
         auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
         framework::Copy(src, place, dst);
+        framework::LoD lod(src.lod());
+        lod.CopyToPeer(place);
+        dst->set_lod(lod);
       }
     }
     WaitOnPlaces(places);
@@ -243,17 +258,19 @@ class ParallelDoGradOp : public framework::OperatorBase {
                       const std::vector<framework::Scope *> &sub_scopes,
                       const platform::PlaceList &places) const {
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
+      VLOG(3) << "Accumulating " << s;
+      if (s == framework::kEmptyVarName) continue;
       std::string tmp_name;
       auto *tmp = sub_scopes[0]->Var(&tmp_name);
 
       for (size_t i = 1; i < sub_scopes.size(); ++i) {
         CopyOrShare(*sub_scopes[i]->FindVar(s), places[0], tmp);
-        WaitOnPlace(places[0]);
+        WaitOnPlaces(places);
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
             framework::AttributeMap{});
-        VLOG(3) << sum_op->DebugStringEx(sub_scopes[0]);
+        VLOG(10) << sum_op->DebugStringEx(sub_scopes[0]);
         sum_op->Run(*sub_scopes[0], places[0]);
         WaitOnPlace(places[0]);
       }
@@ -287,6 +304,17 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
                         this->InputGrad(input_param, false));
       }
     }
+    auto *g_block = this->grad_block_[0];
+
+    // All variable name that needed by gradient operators
+    std::unordered_set<std::string> all_inputs_in_grad_blocks;
+
+    for (size_t i = 0; i < g_block->OpSize(); ++i) {
+      auto *op = g_block->Op(i);
+      for (auto &var_name : op->InputArgumentNames()) {
+        all_inputs_in_grad_blocks.insert(var_name);
+      }
+    }
 
     for (auto &output_param : this->OutputNames()) {
       if (output_param == kParallelScopes) {
@@ -295,8 +323,17 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
                        this->Output(output_param));
       } else {
         grad->SetInput(output_param, this->Output(output_param));
-        grad->SetInput(framework::GradVarName(output_param),
-                       this->OutputGrad(output_param));
+        std::vector<std::string> og_names;
+        for (auto &og_name : this->OutputGrad(output_param)) {
+          if (all_inputs_in_grad_blocks.count(og_name) != 0) {
+            // there are some gradient operators who need the OG. So make this
+            // OG as an input of parallel.do
+            og_names.push_back(og_name);
+          }
+          // else, there is no operator who need the OG. Do not use this OG as
+          // an input
+        }
+        grad->SetInput(framework::GradVarName(output_param), og_names);
       }
     }
     grad->SetAttrMap(this->Attrs());
@@ -309,16 +346,9 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
 class ParallelDoGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    std::vector<std::string> input{kParameters, kInputs};
-    std::vector<std::string> output{kOutputs};
-
     PADDLE_ENFORCE(ctx->HasInputs(kParameters));
-    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
     PADDLE_ENFORCE(ctx->HasInputs(kInputs));
-
-    for (auto &s : output) {
-      PADDLE_ENFORCE(ctx->HasInputs(s));
-    }
+    PADDLE_ENFORCE(ctx->HasInputs(kOutputs));
 
     ctx->SetOutputsDim(framework::GradVarName(kParameters),
                        ctx->GetInputsDim(kParameters));
@@ -335,10 +365,14 @@ class ParallelDoGradOpShapeInference : public framework::InferShapeBase {
       ctx->SetDims({ig_name}, {i_dims[i]});
     }
 
-    if (ctx->HasInputs(kParameters)) {
-      PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName(kParameters)));
-      ctx->SetOutputsDim(framework::GradVarName(kParameters),
-                         ctx->GetInputsDim(kParameters));
+    auto p_dims = ctx->GetInputsDim(kParameters);
+    auto pg_names = ctx->Outputs(framework::GradVarName(kParameters));
+    for (size_t i = 0; i < pg_names.size(); ++i) {
+      auto &pg_name = pg_names[i];
+      if (pg_name == framework::kEmptyVarName) {
+        continue;
+      }
+      ctx->SetDims({pg_name}, {p_dims[i]});
     }
   }
 };
