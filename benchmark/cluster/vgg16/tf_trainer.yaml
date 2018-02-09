@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vgg16job-trainer
+spec:
+  parallelism: 1
+  completions: 1
+  template:
+    metadata:
+      labels:
+        tf-job-trainer: vgg16job
+    spec:
+      imagePullSecrets:
+      #- name: job-registry-secret
+      - name: gongweibaobaidusecret
+      hostNetwork: true
+      containers:
+      - name: trainer
+        image: "registry.baidu.com/gongweibao/test/fluid_benchmark:vgg16"
+        imagePullPolicy: Always
+        command: ["tf_k8s", "start_tf"]
+        ports:
+        - name: jobport-30236
+          containerPort: 30236
+        env:
+        - name: PORT
+          value: "32036"
+        - name: JOB_NAME
+          value: vgg16job
+        - name: TRAINING_ROLE
+          value: "TRAINER"
+        - name: ENTRY
+          value: "python vgg16_tf.py"
+        - name: PSERVERS_NUM
+          value: "1"
+        - name: TRAINERS_NUM
+          value: "1"
+        - name: TRAINER_PACKAGE
+          value: "/workspace"
+        - name: NUM_PASSES
+          value: "1"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: "status.podIP"
+        resources:
+          requests:
+            memory: 40Gi
+            cpu: 2
+          limits:
+            memory: 40Gi
+            cpu: 2
+      restartPolicy: Never

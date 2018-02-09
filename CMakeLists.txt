@@ -61,6 +61,8 @@ option(WITH_DISTRIBUTE  "Compile with grpc distributed support"         OFF)
 option(USE_EIGEN_FOR_BLAS   "Use matrix multiplication in Eigen"        OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
 
+message(STATUS "with_avx:" ${WITH_AVX})
+
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
