@@ -79,7 +79,7 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Uniform random operator.
 
-This operator initializes a tensor with random values sampled from a 
+This operator initializes a tensor with random values sampled from a
 uniform distribution.
 
 )DOC");
@@ -108,5 +108,8 @@ uniform distribution.
 REGISTER_OP_WITHOUT_GRADIENT(uniform_random, paddle::operators::UniformRandomOp,
                              paddle::operators::UniformRandomOpMaker);
 REGISTER_OP_CPU_KERNEL(uniform_random,
+                       paddle::operators::CPUUniformRandomKernel<float>,
+                       paddle::operators::CPUUniformRandomKernel<double>);
+REGISTER_OP_CPU_KERNEL(uniform_random_batch_size_like,
                        paddle::operators::CPUUniformRandomKernel<float>,
                        paddle::operators::CPUUniformRandomKernel<double>);
