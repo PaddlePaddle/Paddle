@@ -17,9 +17,13 @@ limitations under the License. */
 #include "paddle/framework/attribute.h"
 #include "paddle/framework/ddim.h"
 #include "paddle/framework/framework.pb.h"
+#include "paddle/framework/var_desc.h"
+#include "paddle/framework/variable.h"
 
 namespace paddle {
 namespace framework {
+
+using InferShapeVarPtr = boost::variant<VarDesc *, Variable *>;
 
 class InferShapeContext {
  public:
@@ -55,6 +59,9 @@ class InferShapeContext {
 
   virtual bool IsRuntime() const = 0;
 
+  std::vector<InferShapeVarPtr> GetInputVarPtrs(const std::string &name);
+  std::vector<InferShapeVarPtr> GetOutputVarPtrs(const std::string &name);
+
   // Note: In while op, we need this to be public
   void SetDims(const std::vector<std::string> &names,
                const std::vector<DDim> &dims);
@@ -67,10 +74,13 @@ class InferShapeContext {
                                const std::vector<DDim> &dims) = 0;
 
   std::vector<DDim> GetDims(const std::vector<std::string> &names) const;
+
   std::vector<proto::VarDesc::VarType> GetVarTypes(
       const std::vector<std::string> &names) const;
 
   virtual proto::VarDesc::VarType GetVarType(const std::string &name) const = 0;
+
+  virtual InferShapeVarPtr GetVarPtr(const std::string &name) = 0;
 };
 
 }  // namespace framework

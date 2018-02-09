@@ -470,6 +470,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return ToVarType(var->Type());
   }
 
+  InferShapeVarPtr GetVarPtr(const std::string& name) override {
+    return scope_.FindVar(name);
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
