@@ -16,12 +16,14 @@ from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
+from ..initializer import Constant
 from ..core import DataType
 import numpy
 
 __all__ = [
     'create_tensor',
     'create_parameter',
+    'create_global_var',
     'cast',
     'concat',
     'sums',
@@ -33,13 +35,15 @@ __all__ = [
 ]
 
 
-def create_tensor(dtype, name=None):
+def create_tensor(dtype, name=None, persistable=False):
     helper = LayerHelper("create_tensor", **locals())
-    return helper.create_variable(name=helper.name, dtype=dtype)
+    return helper.create_variable(
+        name=helper.name, dtype=dtype, persistable=persistable)
 
 
 def create_parameter(shape,
                      dtype,
+                     name=None,
                      attr=None,
                      is_bias=False,
                      default_initializer=None):
@@ -58,11 +62,20 @@ def create_parameter(shape,
     Returns:
         Parameter: the created parameter
     """
-    helper = LayerHelper("create_parameter")
+    helper = LayerHelper("create_parameter", **locals())
     if attr is None:
-        attr = ParamAttr()
+        attr = ParamAttr(name=name)
     return helper.create_parameter(attr, shape, dtype, is_bias,
                                    default_initializer)
+
+
+def create_global_var(shape, value, dtype, persistable=False, name=None):
+    helper = LayerHelper("global_var", **locals())
+    var = helper.create_global_variable(
+        dtype=dtype, shape=shape, persistable=persistable, name=name)
+    helper.set_variable_initializer(
+        var, initializer=Constant(value=float(value)))
+    return var
 
 
 def cast(x, dtype):
@@ -284,7 +297,7 @@ def fill_constant_batch_size_like(input,
     return out
 
 
-def ones(shape, dtype):
+def ones(shape, dtype, force_cpu=False):
     """
     **ones**
 
@@ -308,7 +321,7 @@ def ones(shape, dtype):
     return fill_constant(value=1.0, **locals())
 
 
-def zeros(shape, dtype):
+def zeros(shape, dtype, force_cpu=False):
     """
     **zeros**
 

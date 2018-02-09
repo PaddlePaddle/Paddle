@@ -24,7 +24,7 @@ TEST(SaveLoadOp, CPU) {
 
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor->Resize({10, 10});
+  tensor->Resize({3, 10});
   paddle::framework::LoD expect_lod;
   expect_lod.resize(1);
   expect_lod[0].push_back(0);
