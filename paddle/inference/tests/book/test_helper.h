@@ -91,7 +91,7 @@ template <typename Place, bool IsCombined = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
-  // 1. Define place, executor, scope and inference_program
+  // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
@@ -101,7 +101,8 @@ void TestInference(const std::string& dirname,
   if (IsCombined) {
     // All parameters are saved in a single file.
     // Hard-coding the file names of program and parameters in unittest.
-    // Users are free to specify different filename.
+    // Users are free to specify different filename
+    // (provided: the filenames are changed in the python api as well: io.py)
     std::string prog_filename = "__model_combined__";
     std::string param_filename = "__params_combined__";
     inference_program = paddle::inference::Load(executor,
