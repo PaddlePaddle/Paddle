@@ -1,6 +1,9 @@
 Quick Start
 ============
 
+Quick Install
+-------------
+
 You can use pip to install PaddlePaddle with a single command, supports
 CentOS 6 above, Ubuntu 14.04 above or MacOS 10.12, with Python 2.7 installed.
 Simply run the following command to install, the version is cpu_avx_openblas:
@@ -16,6 +19,9 @@ If you need to install GPU version (cuda7.5_cudnn5_avx_openblas), run:
      pip install paddlepaddle-gpu
 
 For more details about installation and build: :ref:`install_steps` .
+
+Quick Use
+---------
 
 Create a new file called housing.py, and paste this Python
 code:

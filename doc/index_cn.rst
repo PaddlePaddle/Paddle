@@ -8,5 +8,4 @@ PaddlePaddle 文档
   build_and_install/index_cn.rst
   howto/index_cn.rst
   dev/index_cn.rst
-  api/index_cn.rst
   faq/index_cn.rst
