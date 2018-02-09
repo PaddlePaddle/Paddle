@@ -35,7 +35,8 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx, x, y, axis, z);
+    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          DivFunctor<T>(), z);
   }
 };
 
