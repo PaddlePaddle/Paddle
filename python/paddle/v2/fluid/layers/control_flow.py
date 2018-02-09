@@ -277,21 +277,20 @@ class ParallelDo(object):
         parent_block = self.parent_block()
 
         local_inputs = set()
-
-        for op in current_block.ops:
-            for oname in op.output_names:
-                for out_var_name in op.output(oname):
-                    local_inputs.add(out_var_name)
-
+        params = list()
         for var in self.inputs:
             local_inputs.add(var.name)
 
-        params = list()
         for op in current_block.ops:
             for iname in op.input_names:
                 for in_var_name in op.input(iname):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
+
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    local_inputs.add(out_var_name)
+
         params = list(set(params))
 
         return [parent_block.var(name) for name in params]
