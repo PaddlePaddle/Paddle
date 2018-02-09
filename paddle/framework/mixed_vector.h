@@ -25,13 +25,17 @@
 namespace paddle {
 namespace framework {
 
+// Vector<T> implements the std::vector interface, and can get Data or
+// MutableData from any place. The data will be synced implicitly inside.
 template <typename T>
 class Vector {
  public:
   using value_type = T;
 
+  // Default ctor. Create empty Vector
   Vector() { InitEmpty(); }
 
+  // Fill vector with value. The vector size is `count`.
   explicit Vector(size_t count, const T& value = T()) {
     if (count == 0) {
       InitEmpty();
@@ -44,6 +48,7 @@ class Vector {
     }
   }
 
+  // Ctor with init_list
   Vector(std::initializer_list<T> init) {
     if (init.size() == 0) {
       InitEmpty();
@@ -52,6 +57,7 @@ class Vector {
     }
   }
 
+  // implicit cast from std::vector.
   template <typename U>
   Vector(const std::vector<U>& dat) {  // NOLINT
     if (dat.size() == 0) {
@@ -61,8 +67,10 @@ class Vector {
     }
   }
 
+  // Copy ctor
   Vector(const Vector<T>& other) { this->operator=(other); }
 
+  // Copy operator
   Vector<T>& operator=(const Vector<T>& other) {
     if (other.size() != 0) {
       this->InitByIter(other.size(), other.begin(), other.end());
@@ -72,27 +80,31 @@ class Vector {
     return *this;
   }
 
+  // Move ctor
   Vector(Vector<T>&& other) {
     this->size_ = other.size_;
     this->flag_ = other.flag_;
-    if (other.cuda_vec_.capacity()) {
+    if (other.cuda_vec_.memory_size()) {
       this->cuda_vec_.ShareDataWith(other.cuda_vec_);
     }
-    if (other.cpu_vec_.capacity()) {
+    if (other.cpu_vec_.memory_size()) {
       this->cpu_vec_.ShareDataWith(other.cpu_vec_);
     }
   }
 
+  // CPU data access method. Mutable.
   T& operator[](size_t i) {
     MutableCPU();
     return const_cast<T*>(cpu_vec_.data<T>())[i];
   }
 
+  // CPU data access method. Immutable.
   const T& operator[](size_t i) const {
     ImmutableCPU();
     return cpu_vec_.data<T>()[i];
   }
 
+  // std::vector iterator methods. Based on CPU data access method
   size_t size() const { return size_; }
 
   T* begin() { return &this->operator[](0); }
@@ -116,17 +128,22 @@ class Vector {
     return *it;
   }
 
-  const T& front() const { return *begin(); }
+  T* data() { return begin(); }
 
+  const T* data() const { return begin(); }
+
+  const T& front() const { return *begin(); }
+  // end of std::vector iterator methods
+
+  // assign this from iterator.
+  // NOTE: the iterator must support `end-begin`
   template <typename Iter>
   void assign(Iter begin, Iter end) {
     InitByIter(end - begin, begin, end);
   }
 
-  T* data() { return begin(); }
-
-  const T* data() const { return begin(); }
-
+  // push_back. If the previous capacity is not enough, the memory will
+  // double.
   void push_back(T elem) {
     if (size_ + 1 > capacity()) {
       reserve((size_ + 1) << 1);
@@ -135,38 +152,8 @@ class Vector {
     ++size_;
   }
 
-  void resize(size_t size) {
-    if (size + 1 < capacity()) {
-      size_ = size;
-    } else {
-      MutableCPU();
-      Tensor cpu_tensor;
-      platform::Place cpu = platform::CPUPlace();
-      T* ptr = cpu_tensor.mutable_data<T>(
-          framework::make_ddim({static_cast<int64_t>(size)}), cpu);
-      const T* old_ptr =
-          cpu_vec_.capacity() == 0 ? nullptr : cpu_vec_.data<T>();
-      if (old_ptr != nullptr) {
-        std::copy(old_ptr, old_ptr + size_, ptr);
-      }
-      size_ = size;
-      cpu_vec_.ShareDataWith(cpu_tensor);
-    }
-  }
-
-  const T* CUDAData(platform::Place place) const {
-    PADDLE_ENFORCE(platform::is_gpu_place(place),
-                   "CUDA Data must on CUDA place");
-    ImmutableCUDA(place);
-    return cuda_vec_.data<T>();
-  }
-
-  T* CUDAMutableData(platform::Place place) {
-    const T* ptr = CUDAData(place);
-    flag_ = kDirty | kDataInCUDA;
-    return const_cast<T*>(ptr);
-  }
-
+  // extend a vector by iterator.
+  // NOTE: the iterator must support end-begin
   template <typename It>
   void Extend(It begin, It end) {
     size_t pre_size = size_;
@@ -177,21 +164,59 @@ class Vector {
     }
   }
 
+  // resize the vector
+  void resize(size_t size) {
+    if (size + 1 < capacity()) {
+      size_ = size;
+    } else {
+      MutableCPU();
+      Tensor cpu_tensor;
+      platform::Place cpu = platform::CPUPlace();
+      T* ptr = cpu_tensor.mutable_data<T>(
+          framework::make_ddim({static_cast<int64_t>(size)}), cpu);
+      const T* old_ptr =
+          cpu_vec_.memory_size() == 0 ? nullptr : cpu_vec_.data<T>();
+      if (old_ptr != nullptr) {
+        std::copy(old_ptr, old_ptr + size_, ptr);
+      }
+      size_ = size;
+      cpu_vec_.ShareDataWith(cpu_tensor);
+    }
+  }
+
+  // get cuda ptr. immutable
+  const T* CUDAData(platform::Place place) const {
+    PADDLE_ENFORCE(platform::is_gpu_place(place),
+                   "CUDA Data must on CUDA place");
+    ImmutableCUDA(place);
+    return cuda_vec_.data<T>();
+  }
+
+  // get cuda ptr. mutable
+  T* CUDAMutableData(platform::Place place) {
+    const T* ptr = CUDAData(place);
+    flag_ = kDirty | kDataInCUDA;
+    return const_cast<T*>(ptr);
+  }
+
+  // clear
   void clear() {
     size_ = 0;
     flag_ = kDirty | kDataInCPU;
   }
 
   size_t capacity() const {
-    return cpu_vec_.capacity() / SizeOfType(typeid(T));
+    return cpu_vec_.memory_size() / SizeOfType(typeid(T));
   }
 
+  // reserve data
   void reserve(size_t size) {
     size_t pre_size = size_;
     resize(size);
     resize(pre_size);
   }
 
+  // the unify method to access CPU or CUDA data. immutable.
   const T* Data(platform::Place place) const {
     if (platform::is_gpu_place(place)) {
       return CUDAData(place);
@@ -200,6 +225,7 @@ class Vector {
     }
   }
 
+  // the unify method to access CPU or CUDA data. mutable.
   T* MutableData(platform::Place place) {
     if (platform::is_gpu_place(place)) {
       return CUDAMutableData(place);
@@ -208,6 +234,7 @@ class Vector {
     }
   }
 
+  // implicit cast operator. Vector can be cast to std::vector implicitly.
   operator std::vector<T>() const {
     std::vector<T> result;
     result.resize(size());
@@ -243,7 +270,12 @@ class Vector {
     size_ = size;
   }
 
-  enum DataFlag { kDataInCPU = 0x01, kDataInCUDA = 0x02, kDirty = 0x10 };
+  enum DataFlag {
+    kDataInCPU = 0x01,
+    kDataInCUDA = 0x02,
+    // kDirty means the data has been changed in one device.
+    kDirty = 0x10
+  };
 
   void MutableCPU() {
     if (IsInCUDA() && IsDirty()) {
