@@ -22,7 +22,6 @@ from ..param_attr import ParamAttr
 from layer_function_generator import autodoc
 from tensor import concat
 import math
-import numpy as np
 from operator import mul
 
 __all__ = [
@@ -3006,10 +3005,43 @@ def reshape_with_axis(input, axis):
     """
     **ReshapeWithAxis Layer**
 
+    According to the axis to merge the adjacent dim of input. Currently, the axis of
+    reshape_with_axis must be a scalar.
+
+    Args:
+       input(variable): The input tensor.
+       axis(list): According to the axis to merge the adjacent dim.
+
+    Returns:
+        Variable: A tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
+          reshaped = fluid.layers.reshape_with_axis(input=x, axis=2)
+          reshaped.shape
+            >> [-1, 1024]
+          reshaped = fluid.layers.reshape_with_axis(input=x, axis=[1,3])
+          reshaped.shape
+            >> [-1, 96, 32]
     """
-    assert len(input.shape) > axis and axis >= 0, ' '
+    assert isinstance(axis, list), "axis should be list."
+    assert len(input.shape) > len(
+        axis), "the length of axis should be litter than input.shape's."
     input_shape = input.shape
-    new_dim = [-1, reduce(mul, input_shape[axis:len(input_shape)], 1)]
+    temp = 0
+    for ax in axis:
+        assert ax < len(input.shape) and ax > 0, \
+            'The data of Axis should be between 1 and len(input.shape)'
+        assert ax > temp, 'Axis should be incremented sequence'
+        temp = ax
+    axis += [len(input.shape)]
+
+    new_shape = []
+    for i in range(len(axis) - 1):
+        new_shape += [reduce(mul, input_shape[axis[i]:axis[i + 1]], 1)]
+    new_shape = [-1] + new_shape
 
     helper = LayerHelper('reshape', **locals())
     out = helper.create_tmp_variable(helper.input_dtype())
@@ -3017,14 +3049,28 @@ def reshape_with_axis(input, axis):
         type='reshape',
         inputs={'X': [input]},
         outputs={'Out': [out]},
-        attrs={'shape': new_dim})
+        attrs={'shape': new_shape})
     return out
 
 
-def reshape(input, new_dim):
+def reshape(input, new_shape):
     """
     **Reshape Layer**
 
+    Reshape the shape of input according to new_dim.
+
+    Args:
+       input(variable): The input tensor.
+       new_shape(list): The new shape of input.
+
+    Returns:
+        Variable: A tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
+          reshaped = fluid.layers.reshape(input=x, new_shape=[-1, 1024])
     """
     helper = LayerHelper('reshape', **locals())
     out = helper.create_tmp_variable(helper.input_dtype())
@@ -3051,6 +3097,44 @@ def prior_box(input,
     """
     **Prior_box**
 
+    Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+    Each position of the input produce N prior boxes, N is determined by
+    the count of min_sizes, max_sizes and aspect_ratios, The size of the
+    box is in range(min_size, max_size) interval, which is generated in
+    sequence according to the aspect_ratios.
+
+    Args:
+       input(variable): The input feature data of PriorBox, the layout is NCHW.
+       image(variable): The input image data of PriorBoxOp, the layout is NCHW.
+       min_sizes(list): the min sizes of generated prior boxes.
+       max_sizes(list): the max sizes of generated prior boxes.
+       aspect_ratios(list): the aspect ratios of generated prior boxes.
+       variance(list): the variances to be encoded in prior boxes.
+       flip(bool): Whether to flip aspect ratios.
+       clip(bool): Whether to clip out-of-boundary boxes.
+       step_w(list): Prior boxes step across width, 0 for auto calculation.
+       step_h(list): Prior boxes step across height, 0 for auto calculation.
+       offset(float): Prior boxes center offset.
+       name(str): Name of the prior box layer.
+
+    Returns:
+        boxes(variable): the output prior boxes of PriorBoxOp. The layout is
+             [H, W, num_priors, 4]. H is the height of input, W is the width
+             of input, num_priors is the box count of each position.
+        Variances(variable): the expanded variances of PriorBoxOp. The layout
+             is [H, W, num_priors, 4]. H is the height of input, W is the width
+             of input, num_priors is the box count of each position.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
+          conv2d = fluid.layers.conv2d(
+              input=data, num_filters=2, filter_size=3)
+          box, var = fluid.layers.prior_box(conv2d, data,
+              min_size, max_size, aspect_ratio,
+              variance, flip, clip,
+              step_w, step_h, offset)
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
@@ -3093,19 +3177,51 @@ def prior_boxes(input_layers,
                 name=None):
     """
     **Prior_boxes**
-    e.g.
-       prior_boxes(
-          input_layers = [conv1, conv2, conv3, conv4, conv5, conv6],
-          image = data,
-          min_ratio = 0.2,
-          max_ratio = 0.9,
-          steps = [8., 16., 32., 64., 100., 300.],
-          aspect_ratios = [[2.], [2., 3.], [2., 3.], [2., 3.], [2.], [2.]],
-          min_dim = 300,
-          offset = 0.5,
-          variance = [0.1],
-          flip=True,
-          clip=True)
+
+    Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+    Each position of the input produce N prior boxes, N is determined by
+    the count of min_sizes, max_sizes and aspect_ratios, The size of the
+    box is in range(min_size, max_size) interval, which is generated in
+    sequence according to the aspect_ratios.
+
+    Args:
+       input(list): The list of input variables, the format of all variables is NCHW.
+       image(variable): The input image data of PriorBoxOp, the layout is NCHW.
+       min_ratio(list): the min sizes of generated prior boxes.
+       max_ratio(list): the max sizes of generated prior boxes.
+       aspect_ratios(list): the aspect ratios of generated prior boxes.
+       min_dim(int):
+       step_w(list): Prior boxes step across width, 0 for auto calculation.
+       step_h(list): Prior boxes step across height, 0 for auto calculation.
+       offset(float): Prior boxes center offset.
+       variance(list): the variances to be encoded in prior boxes.
+       flip(bool): Whether to flip aspect ratios.
+       clip(bool): Whether to clip out-of-boundary boxes.
+       name(str): Name of the prior box layer.
+
+    Returns:
+        boxes(variable): the output prior boxes of PriorBoxOp. The layout is
+             [num_priors, 4]. num_priors is the total box count of each
+              position of input_layers.
+        Variances(variable): the expanded variances of PriorBoxOp. The layout
+             is [num_priors, 4]. num_priors is the total box count of each
+             position of input_layers
+
+    Examples:
+        .. code-block:: python
+
+          prior_boxes(
+             input_layers = [conv1, conv2, conv3, conv4, conv5, conv6],
+             image = data,
+             min_ratio = 0.2,
+             max_ratio = 0.9,
+             steps = [8., 16., 32., 64., 100., 300.],
+             aspect_ratios = [[2.], [2., 3.], [2., 3.], [2., 3.], [2.], [2.]],
+             min_dim = 300,
+             offset = 0.5,
+             variance = [0.1,0.1,0.1,0.1],
+             flip=True,
+             clip=True)
     """
     assert isinstance(input_layers, list), 'input_layer should be a list.'
     num_layer = len(input_layers)
@@ -3168,8 +3284,8 @@ def prior_boxes(input_layers,
         reshaped_boxes = []
         reshaped_vars = []
         for i in range(len(box_results)):
-            reshaped_boxes += [reshape_with_axis(box_results[i], axis=axis)]
-            reshaped_vars += [reshape_with_axis(var_results[i], axis=axis)]
+            reshaped_boxes += [reshape_with_axis(box_results[i], axis=[axis])]
+            reshaped_vars += [reshape_with_axis(var_results[i], axis=[axis])]
 
         helper = LayerHelper("concat", **locals())
         dtype = helper.input_dtype()
