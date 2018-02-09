@@ -120,6 +120,7 @@ class Tensor {
     return holder_->type();
   }
 
+  // memory size returns the holding memory size in byte.
   size_t memory_size() const;
 
   inline void check_memory_size() const;
@@ -127,10 +128,6 @@ class Tensor {
   inline DataLayout layout() const { return layout_; }
 
   inline void set_layout(const DataLayout layout) { layout_ = layout; }
-
-  size_t capacity() const {
-    return holder_ == nullptr ? 0UL : holder_->size() - offset_;
-  }
 
  private:
   friend class LoDTensor;
