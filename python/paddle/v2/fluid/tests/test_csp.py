@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,8 @@ class TestCSPFramework(unittest.TestCase):
     def helper(self, left, right):
         fluid.send(left, 1 + fluid.recv(right))
 
-    def daisy_chain(self, n):
+    def daisy_chain(self):
+        n = 10000
         leftmost = fluid.make_channel(dtype=INT)
         right = leftmost
         left = leftmost
