@@ -109,6 +109,4 @@ class TestNCECase1(TestNCE):
 
 
 if __name__ == '__main__':
-    # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/7778
-    exit(0)
     unittest.main()

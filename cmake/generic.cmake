@@ -483,6 +483,19 @@ function(py_test TARGET_NAME)
   endif()
 endfunction()
 
+function(py_test_modules TARGET_NAME)
+  if(WITH_TESTING)
+    set(options "")
+    set(oneValueArgs "")
+    set(multiValueArgs MODULES DEPS ARGS ENVS)
+    cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    add_test(NAME ${TARGET_NAME}
+             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python ${py_test_modules_ENVS}
+             ${PYTHON_EXECUTABLE} -u -m unittest --verbose ${py_test_modules_MODULES} ${py_test_modules_ARGS}
+             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  endif()
+endfunction()
+
 # grpc_library generate grpc code using grpc_cpp_plugin and protoc
 # then build the generated protobuf code and grpc code with your
 # implementation source codes together. Use SRCS argument for your

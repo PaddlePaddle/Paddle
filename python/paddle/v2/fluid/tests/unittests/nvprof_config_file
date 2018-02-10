@@ -1,0 +1,7 @@
+gpustarttimestamp
+gpuendtimestamp
+gridsize3d
+threadblocksize
+streamid
+enableonstart 0
+conckerneltrace
