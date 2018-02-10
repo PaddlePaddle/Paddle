@@ -103,37 +103,35 @@ message VarType {
     FP64 = 6;
 
     // other types, that might need additonal descriptions
-    LOD_TENSOR = 1; // LoDTensorType
-    SELECTED_ROWS = 2; // SelectedRowsType
-    FEED_MINIBATCH = 3;
-    FETCH_LIST = 4;
-    STEP_SCOPES = 5;
-    LOD_RANK_TABLE = 6;
+    LOD_TENSOR = 7;    // LoDTensor
+    SELECTED_ROWS = 8; // Tensor
+    FEED_MINIBATCH = 9;
+    FETCH_LIST = 10;
+    STEP_SCOPES = 11;
+    LOD_RANK_TABLE = 12;
     // LOD_TENSOR_ARRAY = 7; // replaced by array-of-tensors. c.f. ArrayType
     // PLACE_LIST = 8; // replaced by array-of-place. c.f. ArrayType
-    READER = 9; // ReaderType
+    READER = 13; // ReaderType
   }
 
   required Type type = 1;
-  
+
   message Tensor {
     required Type data_type = 1;
     repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
   }
   optional Tensor selected_rows = 2;
-  
+
   message LoDTensor {
     required Tensor tensor = 1;
     optional int32 lod_level = 2 [ default = 0 ];
   }
-  optional LoDTensorDesc lod_tensor = 3;
-  
-  message Array {
-    VarType elem_type = 1;
-  }
+  optional LoDTensor lod_tensor = 3;
+
+  message Array { VarType elem_type = 1; }
   optional Array array = 4;
-  
-  message Reader { repeated LoDTensorDesc lod_tensor = 1; }
+
+  message Reader { repeated LoDTensor lod_tensor = 1; }
   optional Reader reader = 5;
 }
 
