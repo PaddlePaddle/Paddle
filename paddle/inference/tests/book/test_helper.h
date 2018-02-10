@@ -34,7 +34,7 @@ template <typename T>
 void SetupTensor(paddle::framework::LoDTensor& input,
                  paddle::framework::DDim dims,
                  std::vector<T>& data) {
-  CHECK_EQ(paddle::framework::product(dims), data.size());
+  CHECK_EQ(paddle::framework::product(dims), static_cast<int64_t>(data.size()));
   T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
   memcpy(input_ptr, data.data(), input.numel() * sizeof(T));
 }
@@ -55,7 +55,7 @@ void SetupLoDTensor(paddle::framework::LoDTensor& input,
                     paddle::framework::LoD lod,
                     std::vector<T>& data) {
   const size_t level = lod.size() - 1;
-  CHECK_EQ(dims[0], (lod[level]).back());
+  CHECK_EQ(dims[0], static_cast<int64_t>((lod[level]).back()));
   input.set_lod(lod);
   SetupTensor<T>(input, dims, data);
 }
@@ -84,7 +84,7 @@ void CheckError(paddle::framework::LoDTensor& output1,
       count++;
     }
   }
-  EXPECT_EQ(count, 0) << "There are " << count << " different elements.";
+  EXPECT_EQ(count, 0U) << "There are " << count << " different elements.";
 }
 
 template <typename Place, bool IsCombined = false>
