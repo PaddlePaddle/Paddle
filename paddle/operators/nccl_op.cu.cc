@@ -47,8 +47,11 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto outs = ctx.MultiOutput<LoDTensor>("Out");
 
+    LOG(INFO) << "------------------";
     std::string reduction = ctx.Attr<std::string>("reduction");
+    LOG(INFO) << "------------------";
     ncclRedOp_t reduction_op_ = ncclSum;
+    LOG(INFO) << "------------------";
 
     if (reduction == "ncclMin") {
       reduction_op_ = ncclMin;
@@ -62,14 +65,19 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
       PADDLE_THROW("Invalid reduction. default ncclSum.");
     }
 
+    LOG(INFO) << "------------------";
     auto* comm = ctx.Input<Communicator>("Communicator");
 
+    LOG(INFO) << "------------------";
     auto stream = ctx.cuda_device_context().stream();
 
+    LOG(INFO) << "------------------";
     // device id
     int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
+    LOG(INFO) << "------------------";
     int idx = comm->GetCommId(gpu_id);
 
+    LOG(INFO) << "------------------";
     for (size_t i = 0; i < ins.size(); ++i) {
       VLOG(1) << "gpu : "
               << " invoke allreduce. send " << ins[i]->numel() << " recv "

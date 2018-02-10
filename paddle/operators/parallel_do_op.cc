@@ -30,6 +30,7 @@ static constexpr char kOutputs[] = "outputs";
 static constexpr char kParallelScopes[] = "parallel_scopes";
 
 static constexpr char kParallelBlock[] = "sub_block";
+static constexpr char kUseNCCL[] = "use_nccl";
 
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
@@ -159,6 +160,7 @@ class ParallelDoOp : public framework::OperatorBase {
     }
     WaitOnPlaces(places);
 
+    //    PADDLE_ENFORCE_EQ(places.size(), sub_scopes.size());
     std::vector<std::future<void>> workers;
     workers.reserve(places.size());
     for (size_t place_idx = 0; place_idx < sub_scopes.size(); ++place_idx) {
@@ -202,6 +204,8 @@ class ParallelDoOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(kOutputs, "").AsDuplicable();
     AddOutput(kParallelScopes, "");
     AddAttr<framework::BlockDesc *>(kParallelBlock, "");
+    AddAttr<bool>(kUseNCCL, "true if we use nccl on backward")
+        .SetDefault(false);
     AddComment(R"DOC(
 ParallelDo Operator.
 )DOC");
@@ -223,20 +227,22 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
     auto &sub_scopes = scope.FindVar(Input(kParallelScopes))
                            ->Get<std::vector<framework::Scope *>>();
-
     auto &places = scope.FindVar(Input(kPlaces))->Get<platform::PlaceList>();
+    //    PADDLE_ENFORCE_EQ(places.size(), sub_scopes.size());
 
     // feed output@grad
     SplitTensorAndMoveTensorToScopes(
         scope, const_cast<std::vector<framework::Scope *> *>(&sub_scopes),
         places, Inputs(framework::GradVarName(kOutputs)));
     WaitOnPlaces(places);
+    LOG(INFO) << "places " << places.size();
 
     // exe run
     std::vector<std::future<void>> workers;
     for (size_t i = 0; i < sub_scopes.size(); ++i) {
       auto &place = places[i];
       auto *cur_scope = sub_scopes[i];
+      LOG(INFO) << place;
 
       // execute
       workers.emplace_back(framework::Async([program, cur_scope, place, block] {
@@ -245,12 +251,26 @@ class ParallelDoGradOp : public framework::OperatorBase {
                      false /*create_local_scope*/);
       }));
     }
+    LOG(INFO) << "places " << places.size();
     for (auto &worker : workers) {
       worker.wait();
     }
     WaitOnPlaces(places);
 
-    AccumulateGrad(scope, place, sub_scopes, places);
+    // NCCL allreduce op will be added by backward,
+    // so no need to explicitly accumulate grad
+    if (!(Attr<bool>(kUseNCCL))) {
+      AccumulateGrad(scope, place, sub_scopes, places);
+    } else {
+      for (auto &place : places) {
+        PADDLE_ENFORCE(platform::is_gpu_place(place),
+                       "NCCL only supports cuda place");
+      }
+    }
+    for (auto &s : Outputs(framework::GradVarName(kParameters))) {
+      CopyOrShare(*sub_scopes[0]->FindVar(s), place, scope.FindVar(s));
+    }
+    WaitOnPlaces(places);
   }
 
   void AccumulateGrad(const framework::Scope &scope,

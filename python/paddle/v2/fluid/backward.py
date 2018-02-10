@@ -218,7 +218,7 @@ def _callback_lookup_(op):
     :param op:
     :return: callback function
     """
-    if op.type == 'parallel_do':
+    if op.type == 'parallel_do' and op.attr('use_nccl'):
         param_names = set(op.input('parameters'))
         param_grad_names = [n + "@GRAD" for n in param_names]
 
@@ -229,18 +229,25 @@ def _callback_lookup_(op):
 
             def __call__(self, block, context):
                 if not self.has_inserted_nccl_init:
-                    global_block = block.program.global_block()
-                    op_desc = global_block.desc.append_op()
-                    var_desc = global_block.desc.var('nccl_com')
-                    var_desc.set_type(core.VarDesc.VarType.NCCL_COM)
-                    self.nccl_com = global_block.create_var(
-                        name='nccl_com', type=core.VarDesc.VarType.NCCL_COM)
-                    framework.Operator(
-                        global_block,
-                        type='ncclInit',
-                        desc=op_desc,
-                        inputs={},
-                        outputs={'Communicator': [self.nccl_com]})
+                    # global_block = block.program.global_block()
+                    # op_desc = global_block.desc.append_op()
+                    # var_desc = global_block.desc.var('nccl_com__do_not_change_')
+                    # var_desc.set_type(core.VarDesc.VarType.NCCL_COM)
+                    # self.nccl_com = global_block.create_var(
+                    #     name='nccl_com', type=core.VarDesc.VarType.NCCL_COM)
+                    # framework.Operator(
+                    #     global_block,
+                    #     type='ncclInit',
+                    #     desc=op_desc,
+                    #     inputs={},
+                    #     outputs={'Communicator': [self.nccl_com]})
+                    op_desc = _create_op_desc_(
+                        "ncclInit", {},
+                        {"Communicator": ['nccl_com__do_not_change_']}, {})
+                    # block.desc.append_op().copy_from(op_desc)
+                    print(serialize_op_decs(op_desc))
+                    block.program.global_block().desc.append_op().copy_from(
+                        op_desc)
                     self.has_inserted_nccl_init = True
 
                 current_op_desc = context["__current_op_desc__"]
@@ -263,7 +270,8 @@ def _callback_lookup_(op):
                             op_desc = _create_op_desc_(
                                 "ncclAllReduce", {
                                     "X": [o_argu],
-                                    "Communicator": ['nccl_com_0']
+                                    "Communicator":
+                                    ['nccl_com__do_not_change_']
                                 }, {"Out": [allreduce_out_name]},
                                 {"reduction": "ncclSum"})
                             block.desc.append_op().copy_from(op_desc)
@@ -375,10 +383,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                 continue
             grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
         # infer_shape and infer_type
-        if op_desc.type() == 'ncclInit':
-            continue
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
+        # ncclInit dones't need to set data_type
+        if op_desc.type() == 'ncclInit':
+            continue
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
                 _infer_var_data_type_(arg, block)

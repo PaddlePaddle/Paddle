@@ -237,12 +237,13 @@ class ParallelDo(object):
     ParallelDo class is used to create a ParallelDo.
     """
 
-    def __init__(self, places, name=None):
+    def __init__(self, places, use_nccl=False, name=None):
         self.helper = LayerHelper("parallel_do", name=name)
         self.inputs = []
         self.places = places
         self.outputs = []
         self.status = StaticRNN.BEFORE_RNN_BLOCK
+        self.use_nccl = use_nccl
 
     def do(self):
         return BlockGuardWithCompletion(self)
@@ -325,7 +326,8 @@ class ParallelDo(object):
             },
             outputs={'outputs': outputs,
                      'parallel_scopes': [step_scope]},
-            attrs={'sub_block': current_block})
+            attrs={'sub_block': current_block,
+                   'use_nccl': self.use_nccl})
 
 
 class BlockGuardWithCompletion(BlockGuard):

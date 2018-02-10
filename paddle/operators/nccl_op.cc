@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <paddle/framework/framework.pb.h>
 #include "paddle/framework/op_registry.h"
 #include "paddle/operators/nccl/nccl_gpu_common.h"
 
@@ -47,6 +48,22 @@ class NCCLInitOp : public framework::OperatorBase {
         scope.FindVar(name)->GetMutable<platform::Communicator>();
     comm->InitAll(gpus);
   }
+};
+
+class NCCLInitOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    auto out_var_name = op_desc.Output("Communicator").front();
+    auto &out_var = block->FindRecursiveOrCreateVar(out_var_name);
+    auto var_type = framework::proto::VarDesc::NCCL_COM;
+    out_var.SetType(var_type);
+  }
+};
+
+class NCCLInitOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {}
 };
 
 class NCCLInitOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -214,7 +231,9 @@ Bcast the tensors.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(ncclInit, ops::NCCLInitOp,
-                  paddle::framework::EmptyGradOpMaker, ops::NCCLInitOpMaker);
+                  paddle::framework::EmptyGradOpMaker, ops::NCCLInitOpMaker,
+                  ops::NCCLInitOpVarTypeInference,
+                  ops::NCCLInitOpShapeInference);
 
 REGISTER_OP_WITHOUT_GRADIENT(ncclAllReduce, ops::NCCLAllReduceOp,
                              ops::NCCLAllReduceOpMaker);

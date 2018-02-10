@@ -67,12 +67,25 @@ class BaseParallelForTest(unittest.TestCase):
                 fetch=fetch,
                 place=gpu,
                 use_parallel=True)
+            result_gpu_nccl = self._run_test_impl_(
+                callback=callback,
+                feed=feed,
+                fetch=fetch,
+                place=gpu,
+                use_parallel=True,
+                use_nccl=True)
             self._assert_same_(fetch, result_cpu, result_cpu_parallel,
-                               result_gpu, result_gpu_parallel)
+                               result_gpu, result_gpu_parallel, result_gpu_nccl)
         else:
             self._assert_same_(fetch, result_cpu, result_cpu_parallel)
 
-    def _run_test_impl_(self, callback, feed, fetch, place, use_parallel=False):
+    def _run_test_impl_(self,
+                        callback,
+                        feed,
+                        fetch,
+                        place,
+                        use_parallel=False,
+                        use_nccl=False):
         """
         Run a single test, returns the fetch values
         Args:
@@ -96,7 +109,7 @@ class BaseParallelForTest(unittest.TestCase):
             # Automatically insert parallel do if use_parallel = True
             if use_parallel:
                 places = fluid.layers.get_places()
-                pd = fluid.layers.ParallelDo(places)
+                pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
                 data = next(generator)
 
                 if isinstance(data, fluid.Variable):
@@ -137,7 +150,9 @@ class BaseParallelForTest(unittest.TestCase):
         """
 
         def _impl_(a, b, fetch_id, item_id):
-            item_str = ['CPU', 'ParallelCPU', 'GPU', 'ParallelGPU']
+            item_str = [
+                'CPU', 'ParallelCPU', 'GPU', 'ParallelGPU', 'ParallelGPUNCCL'
+            ]
             flag = numpy.allclose(a, b, rtol=0.1)
             self.assertTrue(flag, "The {0} are different in {1}".format(
                 fetch[fetch_id], item_str[item_id]))
@@ -157,18 +172,10 @@ class ParallelOpTest(BaseParallelForTest):
         loss = fluid.layers.mean(x=hidden)
         yield loss
 
-    def test_simple_fc(self):
-        self.run_test(
-            callback=self.__network__,
-            feed={
-                'img': numpy.random.random(size=(51, 784)).astype('float32')
-            },
-            fetch=['fc1.w@GRAD'])
-
     def test_fc_with_tiny_data(self):
         self.run_test(
             callback=self.__network__,
-            feed={'img': numpy.random.random(size=(1, 784)).astype('float32')},
+            feed={'img': numpy.random.random(size=(8, 784)).astype('float32')},
             fetch=['fc1.w@GRAD'])
 
 
