@@ -1,6 +1,6 @@
 # Contribute Code
 
-To get started, <a href="https://www.clahub.com/agreements/wangkuiyi/Paddle">sign the Contributor License Agreement</a>.
+To get started, <a href="https://www.clahub.com/agreements/PaddlePaddle/Paddle">sign the Contributor License Agreement</a>.
 
 We sincerely appreciate your contribution.  This document explains our workflow and work style.
 
