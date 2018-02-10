@@ -90,7 +90,6 @@ void BatchReader::ReadNext(std::vector<LoDTensor>* out) {
 
     // Merge lod and data
     LoD batch_lod;
-    std::vector<size_t> top_level_lod({0});
     for (size_t i = 0; i < buffer_.size(); ++i) {
       DDim ins_shape = buffer_[i][j].dims();
       LoD ins_lod = buffer_[i][j].lod();
@@ -105,15 +104,10 @@ void BatchReader::ReadNext(std::vector<LoDTensor>* out) {
           }
         }
       }
-      top_level_lod.push_back(
-          top_level_lod.back() +
-          (ins_lod.empty() ? ins_shape[0] : (ins_lod[0].size() - 1)));
-
       Tensor dst = out_tensor.Slice(dst_offset, dst_offset + ins_shape[0]);
       Copy(buffer_[i][j], platform::CPUPlace(), &dst);
       dst_offset += ins_shape[0];
     }
-    batch_lod.insert(batch_lod.begin(), top_level_lod);
     out_tensor.set_lod(batch_lod);
     out->push_back(out_tensor);
   }
