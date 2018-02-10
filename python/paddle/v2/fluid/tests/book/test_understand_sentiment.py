@@ -17,6 +17,7 @@ import paddle.v2.fluid as fluid
 import paddle.v2 as paddle
 import contextlib
 import math
+import numpy as np
 import sys
 
 
@@ -43,7 +44,7 @@ def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
     adam_optimizer = fluid.optimizer.Adam(learning_rate=0.002)
     adam_optimizer.minimize(avg_cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy
+    return avg_cost, accuracy, prediction
 
 
 def stacked_lstm_net(data,
@@ -81,13 +82,18 @@ def stacked_lstm_net(data,
     adam_optimizer = fluid.optimizer.Adam(learning_rate=0.002)
     adam_optimizer.minimize(avg_cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy
+    return avg_cost, accuracy, prediction
 
 
-def main(word_dict, net_method, use_cuda):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
-        return
+def create_random_lodtensor(lod, place, low, high):
+    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
+    res = fluid.LoDTensor()
+    res.set(data, place)
+    res.set_lod([lod])
+    return res
 
+
+def train(word_dict, net_method, use_cuda, save_dirname=None):
     BATCH_SIZE = 128
     PASS_NUM = 5
     dict_dim = len(word_dict)
@@ -96,7 +102,7 @@ def main(word_dict, net_method, use_cuda):
     data = fluid.layers.data(
         name="words", shape=[1], dtype="int64", lod_level=1)
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-    cost, acc_out = net_method(
+    cost, acc_out, prediction = net_method(
         data, label, input_dim=dict_dim, class_dim=class_dim)
 
     train_data = paddle.batch(
@@ -116,11 +122,57 @@ def main(word_dict, net_method, use_cuda):
                                         fetch_list=[cost, acc_out])
             print("cost=" + str(cost_val) + " acc=" + str(acc_val))
             if cost_val < 0.4 and acc_val > 0.8:
+                if save_dirname is not None:
+                    fluid.io.save_inference_model(save_dirname, ["words"],
+                                                  prediction, exe)
                 return
             if math.isnan(float(cost_val)):
                 sys.exit("got NaN loss, training failed.")
     raise AssertionError("Cost is too large for {0}".format(
         net_method.__name__))
+
+
+def infer(use_cuda, save_dirname=None):
+    if save_dirname is None:
+        return
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    lod = [0, 4, 10]
+    word_dict = paddle.dataset.imdb.word_dict()
+    tensor_words = create_random_lodtensor(
+        lod, place, low=0, high=len(word_dict) - 1)
+
+    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+    # and results will contain a list of data corresponding to fetch_targets.
+    assert feed_target_names[0] == "words"
+    results = exe.run(inference_program,
+                      feed={feed_target_names[0]: tensor_words},
+                      fetch_list=fetch_targets,
+                      return_numpy=False)
+    print(results[0].lod())
+    np_data = np.array(results[0])
+    print("Inference Shape: ", np_data.shape)
+    print("Inference results: ", np_data)
+
+
+def main(word_dict, net_method, use_cuda):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+
+    # Directory for saving the trained model
+    save_dirname = "understand_sentiment.inference.model"
+
+    train(word_dict, net_method, use_cuda, save_dirname)
+    infer(use_cuda, save_dirname)
 
 
 class TestUnderstandSentiment(unittest.TestCase):
