@@ -33,5 +33,5 @@ CMakeFiles
 cmake_install.cmake
 paddle/.timestamp
 python/paddlepaddle.egg-info/
-paddle/pybind/pybind.h
+paddle/fluid/pybind/pybind.h
 python/paddle/version.py
