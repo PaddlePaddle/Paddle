@@ -16,7 +16,7 @@ from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
-from ..initializer import Constant
+from ..initializer import Constant, force_init_on_cpu
 from ..core import DataType
 import numpy
 
@@ -69,12 +69,30 @@ def create_parameter(shape,
                                    default_initializer)
 
 
-def create_global_var(shape, value, dtype, persistable=False, name=None):
+def create_global_var(shape,
+                      value,
+                      dtype,
+                      persistable=False,
+                      force_cpu=False,
+                      name=None):
+    """
+    Create a global variable. such as global_step
+    Args:
+        shape(list[int]): shape of the variable
+        value(float): the value of the variable
+        dtype(string): element type of the parameter
+        persistable(bool): if this variable is persistable
+        force_cpu(bool): force this variable to be on CPU
+
+    Returns:
+        Variable: the created Variable
+    """
     helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
         dtype=dtype, shape=shape, persistable=persistable, name=name)
     helper.set_variable_initializer(
-        var, initializer=Constant(value=float(value)))
+        var, initializer=Constant(
+            value=float(value), force_cpu=force_cpu))
     return var
 
 
@@ -221,6 +239,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         dtype(np.dtype|core.DataType|str): Data type of the output tensor.
         value(float): The constant value used to initialize the output tensor.
         out(Variable): The output tensor.
+        force_cpu(True|False): data should be on CPU if set true.
 
     Returns:
         Variable: The tensor variable storing the output.
@@ -242,7 +261,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             'shape': shape,
             'dtype': out.dtype,
             'value': float(value),
-            'force_cpu': force_cpu
+            'force_cpu': force_cpu or force_init_on_cpu()
         })
     out.stop_gradient = True
     return out
