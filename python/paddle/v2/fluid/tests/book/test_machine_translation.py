@@ -264,14 +264,6 @@ def create_random_lodtensor(lod, place, low, high):
     return res
 
 
-def create_random_lodtensor_typed(lod, place, low, high, type_info):
-    data = np.random.random_integers(low, high, [lod[-1], 1]).astype(type_info)
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod([lod])
-    return res
-
-
 # This function tests for loading a model using fluid.io.save_inference_model
 # after training (calling train_main). This is just for checking a general flow
 # of training, saving a model and loading it successfully, and doesn't
