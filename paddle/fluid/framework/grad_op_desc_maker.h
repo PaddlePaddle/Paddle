@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/framework/op_desc.h"
-#include "paddle/framework/operator.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace framework {

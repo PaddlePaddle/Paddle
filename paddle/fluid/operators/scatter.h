@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 #include <cstring>
 
-#include "paddle/framework/ddim.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/platform/place.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {

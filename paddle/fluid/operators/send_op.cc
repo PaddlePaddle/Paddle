@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include <ostream>
 
-#include "paddle/framework/data_type.h"
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/op_registry.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 #include <future>
-#include "paddle/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/grpc_client.h"
 
 namespace paddle {
 namespace operators {

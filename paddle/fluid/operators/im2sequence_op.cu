@@ -13,7 +13,7 @@
    limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/im2sequence_op.h"
+#include "paddle/fluid/operators/im2sequence_op.h"
 
 namespace ops = paddle::operators;
 

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/feed_fetch_type.h"
-#include "paddle/framework/scope.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {

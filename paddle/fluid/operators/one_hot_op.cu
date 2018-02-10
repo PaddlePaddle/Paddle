@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/operators/one_hot_op.h"
-#include "paddle/platform/cuda_helper.h"
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/operators/one_hot_op.h"
+#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace operators {

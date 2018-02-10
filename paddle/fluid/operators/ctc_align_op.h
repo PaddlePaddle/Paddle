@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <string.h>
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/math_function.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {

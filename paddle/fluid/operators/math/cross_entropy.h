@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/platform/hostdevice.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {

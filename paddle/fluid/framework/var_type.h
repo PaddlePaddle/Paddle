@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/lod_rank_table.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/lod_tensor_array.h"
-#include "paddle/framework/reader.h"
-#include "paddle/framework/selected_rows.h"
-#include "paddle/framework/variable.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/lod_rank_table.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace framework {

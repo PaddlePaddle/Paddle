@@ -11,10 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/framework/lod_rank_table.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/operators/array_operator.h"
-#include "paddle/operators/math/math_function.h"
+#include "paddle/fluid/framework/lod_rank_table.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/operators/array_operator.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {

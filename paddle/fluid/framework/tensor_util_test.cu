@@ -13,9 +13,9 @@
    limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/framework/tensor_util.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/place.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

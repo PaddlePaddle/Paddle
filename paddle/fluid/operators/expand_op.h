@@ -21,9 +21,9 @@ limitations under the License. */
 #include <boost/preprocessor/control/if.hpp>
 #include <boost/preprocessor/repetition/repeat.hpp>
 #include <iostream>
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 
 #define MAX_RANK_SUPPORTED 6
 

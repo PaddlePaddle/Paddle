@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/platform/place.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {

@@ -17,8 +17,8 @@
 #include <initializer_list>
 #include <vector>
 
-#include "paddle/framework/tensor.h"
-#include "paddle/framework/tensor_util.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 #include "glog/logging.h"
 

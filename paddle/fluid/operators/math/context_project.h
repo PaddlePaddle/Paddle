@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/operators/math/im2col.h"
-#include "paddle/operators/math/math_function.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {

@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/nccl/nccl_gpu_common.h"
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace platform {}  // namespace platform

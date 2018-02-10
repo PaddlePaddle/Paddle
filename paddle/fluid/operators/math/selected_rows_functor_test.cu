@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/operators/math/math_function.h"
-#include "paddle/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 TEST(selected_rows_functor, gpu_add) {
   using namespace paddle::framework;

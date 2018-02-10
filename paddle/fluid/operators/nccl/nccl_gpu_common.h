@@ -22,10 +22,10 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/dynload/nccl.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/macros.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace platform {

@@ -17,7 +17,7 @@ limitations under the License. */
 #include <curand.h>
 #include <dlfcn.h>
 #include <mutex>
-#include "paddle/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
 namespace platform {

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/framework/op_registry.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 USE_NO_KERNEL_OP(save);
 USE_NO_KERNEL_OP(load);

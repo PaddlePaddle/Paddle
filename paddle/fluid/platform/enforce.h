@@ -22,7 +22,7 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 
-#include "paddle/platform/macros.h"
+#include "paddle/fluid/platform/macros.h"
 #include "paddle/string/printf.h"
 #include "paddle/string/to_string.h"
 
@@ -34,10 +34,10 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 
-#include "paddle/platform/dynload/cublas.h"
-#include "paddle/platform/dynload/cudnn.h"
-#include "paddle/platform/dynload/curand.h"
-#include "paddle/platform/dynload/nccl.h"
+#include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/fluid/platform/dynload/curand.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
 
 #include <cublas_v2.h>
 #include <cudnn.h>

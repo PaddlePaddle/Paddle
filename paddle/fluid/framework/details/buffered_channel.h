@@ -18,8 +18,8 @@ limitations under the License. */
 #include <deque>
 #include <mutex>
 
-#include "paddle/framework/channel.h"
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

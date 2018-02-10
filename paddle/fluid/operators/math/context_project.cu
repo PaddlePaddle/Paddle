@@ -14,7 +14,7 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
-#include "paddle/operators/math/context_project.h"
+#include "paddle/fluid/operators/math/context_project.h"
 
 namespace paddle {
 namespace operators {

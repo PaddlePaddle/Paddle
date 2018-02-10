@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/operators/math/detail/activation_functions.h"
-#include "paddle/operators/math/lstm_compute.h"
-#include "paddle/platform/cuda_helper.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/operators/math/detail/activation_functions.h"
+#include "paddle/fluid/operators/math/lstm_compute.h"
+#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #include <type_traits>
 

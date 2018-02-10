@@ -17,11 +17,11 @@ limitations under the License. */
 #include <thread>
 
 #include "gtest/gtest.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/program_desc.h"
-#include "paddle/operators/math/math_function.h"
-#include "paddle/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/string/printf.h"
 
 USE_NO_KERNEL_OP(send);

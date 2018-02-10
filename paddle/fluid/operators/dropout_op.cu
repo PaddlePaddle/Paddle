@@ -17,7 +17,7 @@ limitations under the License. */
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
-#include "paddle/operators/dropout_op.h"
+#include "paddle/fluid/operators/dropout_op.h"
 
 namespace paddle {
 namespace operators {

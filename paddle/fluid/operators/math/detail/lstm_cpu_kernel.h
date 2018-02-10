@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
-#include "paddle/operators/math/detail/activation_functions.h"
-#include "paddle/operators/math/lstm_compute.h"
+#include "paddle/fluid/operators/math/detail/activation_functions.h"
+#include "paddle/fluid/operators/math/lstm_compute.h"
 
 namespace paddle {
 namespace operators {

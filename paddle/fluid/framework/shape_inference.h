@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/attribute.h"
-#include "paddle/framework/ddim.h"
-#include "paddle/framework/framework.pb.h"
+#include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace framework {

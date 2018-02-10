@@ -11,9 +11,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/operators/math/detail/activation_functions.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/operators/math/detail/activation_functions.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {

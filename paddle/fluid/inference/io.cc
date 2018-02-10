@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/inference/io.h"
+#include "paddle/fluid/inference/io.h"
 
 #include <fstream>
-#include "paddle/framework/block_desc.h"
-#include "paddle/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
 
 namespace paddle {
 namespace inference {

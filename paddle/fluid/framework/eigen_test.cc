@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/framework/eigen.h"
+#include "paddle/fluid/framework/eigen.h"
 #include <gtest/gtest.h>
 
 namespace paddle {

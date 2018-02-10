@@ -19,11 +19,11 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#include "paddle/framework/init.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/dynload/nccl.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/framework/init.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 static int dev_count = 0;
 

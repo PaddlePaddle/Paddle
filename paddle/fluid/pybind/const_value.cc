@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "const_value.h"
-#include "paddle/framework/operator.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace pybind {

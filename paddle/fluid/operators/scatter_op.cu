@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gather.cu.h"
-#include "paddle/operators/gather_op.h"
+#include "paddle/fluid/operators/gather_op.h"
 #include "scatter.cu.h"
 
 namespace paddle {

@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pybind/protobuf.h"
+#include "paddle/fluid/pybind/protobuf.h"
 #include <deque>
 #include <iostream>
-#include "paddle/framework/backward.h"
-#include "paddle/framework/block_desc.h"
-#include "paddle/framework/op_desc.h"
-#include "paddle/framework/program_desc.h"
-#include "paddle/framework/var_desc.h"
+#include "paddle/fluid/framework/backward.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
 
 // Cast boost::variant for PyBind.
 // Copy from

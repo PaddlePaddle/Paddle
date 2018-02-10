@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/operators/sequence_reshape_op.h"
-#include "paddle/framework/ddim.h"
+#include "paddle/fluid/operators/sequence_reshape_op.h"
+#include "paddle/fluid/framework/ddim.h"
 
 namespace paddle {
 namespace operators {

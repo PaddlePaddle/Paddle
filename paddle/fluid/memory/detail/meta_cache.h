@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/memory/detail/memory_block.h"
-#include "paddle/memory/detail/meta_data.h"
+#include "paddle/fluid/memory/detail/memory_block.h"
+#include "paddle/fluid/memory/detail/meta_data.h"
 
 #include <unordered_map>
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "gtest/gtest.h"
-#include "paddle/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 TEST(math_function, notrans_mul_trans) {
   paddle::framework::Tensor input1;

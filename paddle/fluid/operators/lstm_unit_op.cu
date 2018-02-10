@@ -16,10 +16,10 @@ limitations under the License. */
 https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op_gpu.cu
 */
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/cross_entropy_op.h"
-#include "paddle/platform/assert.h"
-#include "paddle/platform/hostdevice.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/cross_entropy_op.h"
+#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {

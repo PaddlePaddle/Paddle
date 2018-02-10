@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/framework/ddim.h"
-#include "paddle/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
 
 namespace paddle {
 namespace framework {

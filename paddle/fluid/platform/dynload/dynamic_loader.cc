@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include <dlfcn.h>
 #include <memory>
 #include <mutex>
 #include <string>
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/platform/enforce.h"
 
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "

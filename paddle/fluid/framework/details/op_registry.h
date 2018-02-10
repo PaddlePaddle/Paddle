@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/grad_op_desc_maker.h"
-#include "paddle/framework/op_info.h"
-#include "paddle/framework/op_proto_maker.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/var_type_inference.h"
+#include "paddle/fluid/framework/grad_op_desc_maker.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace framework {

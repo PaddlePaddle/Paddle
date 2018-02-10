@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/scope.h"
+#include "paddle/fluid/framework/scope.h"
 
 #include <memory>  // for unique_ptr
 #include <mutex>   // for call_once
 #include "glog/logging.h"
-#include "paddle/framework/threadpool.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/string/printf.h"
 
 DEFINE_bool(benchmark, false,

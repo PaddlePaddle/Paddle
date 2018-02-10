@@ -54,5 +54,5 @@ void CloseChannel(Channel<T>* ch) {
 }  // namespace framework
 }  // namespace paddle
 
-#include "paddle/framework/details/buffered_channel.h"
-#include "paddle/framework/details/unbuffered_channel.h"
+#include "paddle/fluid/framework/details/buffered_channel.h"
+#include "paddle/fluid/framework/details/unbuffered_channel.h"

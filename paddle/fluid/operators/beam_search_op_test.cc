@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/operators/beam_search_op.h"
+#include "paddle/fluid/operators/beam_search_op.h"
 
 #include <gtest/gtest.h>
 #include <vector>

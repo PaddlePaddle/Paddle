@@ -22,8 +22,8 @@ limitations under the License. */
 #include <thread>
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace framework {

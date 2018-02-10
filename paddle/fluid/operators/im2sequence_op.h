@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/framework/data_layout.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/im2col.h"
-#include "paddle/operators/math/math_function.h"
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {

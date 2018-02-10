@@ -21,12 +21,12 @@ limitations under the License. */
 #endif
 
 #include <glog/logging.h>
-#include "paddle/framework/ddim.h"
-#include "paddle/framework/mixed_vector.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/framework/tensor_util.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/place.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

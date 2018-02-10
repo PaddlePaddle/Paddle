@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/operators/bilinear_tensor_product_op.h"
+#include "paddle/fluid/operators/bilinear_tensor_product_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(

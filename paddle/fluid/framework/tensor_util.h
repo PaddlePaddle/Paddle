@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/data_type.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {

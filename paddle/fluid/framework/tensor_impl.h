@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/memory/memcpy.h"
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

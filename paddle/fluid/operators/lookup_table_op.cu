@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/lookup_table_op.h"
-#include "paddle/platform/assert.h"
-#include "paddle/platform/cuda_helper.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/lookup_table_op.h"
+#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {

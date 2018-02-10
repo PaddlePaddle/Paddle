@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <iostream>
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/variant.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace platform {

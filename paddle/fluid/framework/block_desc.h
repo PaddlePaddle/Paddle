@@ -20,10 +20,10 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/framework/op_desc.h"
-#include "paddle/framework/proto_desc.h"
-#include "paddle/framework/var_desc.h"
-#include "paddle/platform/macros.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/proto_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {

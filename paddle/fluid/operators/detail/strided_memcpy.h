@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/ddim.h"
-#include "paddle/memory/memcpy.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {

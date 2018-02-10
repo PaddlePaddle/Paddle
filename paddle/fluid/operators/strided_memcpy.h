@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/operators/detail/strided_memcpy.h"
+#include "paddle/fluid/operators/detail/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {

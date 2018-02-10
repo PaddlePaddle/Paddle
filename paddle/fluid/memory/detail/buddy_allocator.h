@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/memory/detail/meta_cache.h"
-#include "paddle/memory/detail/meta_data.h"
-#include "paddle/memory/detail/system_allocator.h"
-#include "paddle/platform/assert.h"
-#include "paddle/platform/cpu_info.h"
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/memory/detail/meta_cache.h"
+#include "paddle/fluid/memory/detail/meta_data.h"
+#include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 #include <mutex>
 #include <set>

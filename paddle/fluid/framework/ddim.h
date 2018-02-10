@@ -17,9 +17,9 @@ limitations under the License. */
 #include <initializer_list>
 #include <stdexcept>
 #include <vector>
-#include "paddle/framework/dim.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/variant.h"
+#include "paddle/fluid/framework/dim.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {

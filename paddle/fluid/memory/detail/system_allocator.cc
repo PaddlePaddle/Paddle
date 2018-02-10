@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/memory/detail/system_allocator.h"
-#include "paddle/platform/assert.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 #include <stdlib.h>    // for malloc and free
 #include <sys/mman.h>  // for mlock and munlock

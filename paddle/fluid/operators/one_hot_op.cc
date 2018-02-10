@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/operators/one_hot_op.h"
-#include "paddle/framework/framework.pb.h"
+#include "paddle/fluid/operators/one_hot_op.h"
+#include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace operators {

@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/cond_op.h"
-#include "paddle/operators/gather.h"
-#include "paddle/operators/scatter.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/operators/cond_op.h"
+#include "paddle/fluid/operators/gather.h"
+#include "paddle/fluid/operators/scatter.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {

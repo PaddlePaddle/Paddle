@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/op_info.h"
-#include "paddle/framework/program_desc.h"
-#include "paddle/framework/scope.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {

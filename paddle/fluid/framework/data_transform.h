@@ -18,14 +18,14 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/framework/op_kernel_type.h"
-#include "paddle/framework/selected_rows.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/framework/variable.h"
-#include "paddle/operators/math/math_function.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/macros.h"
-#include "paddle/platform/transform.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace framework {

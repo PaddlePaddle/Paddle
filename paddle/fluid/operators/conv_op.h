@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/depthwise_conv.h"
-#include "paddle/operators/math/im2col.h"
-#include "paddle/operators/math/math_function.h"
-#include "paddle/operators/math/vol2col.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/depthwise_conv.h"
+#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/vol2col.h"
 
 namespace paddle {
 namespace operators {

@@ -12,15 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/prune.h"
+#include "paddle/fluid/framework/prune.h"
 
-#include "paddle/framework/attribute.h"
-#include "paddle/framework/operator.h"
-#include "paddle/operators/net_op.h"
+#include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/net_op.h"
 
-#include "paddle/framework/block_desc.h"
-#include "paddle/framework/op_desc.h"
-#include "paddle/framework/program_desc.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/program_desc.h"
 
 #include <gtest/gtest.h>
 

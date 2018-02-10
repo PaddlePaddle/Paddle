@@ -15,18 +15,18 @@ limitations under the License. */
 #include <unordered_map>
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/platform/dynload/cublas.h"
-#include "paddle/platform/dynload/cudnn.h"
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #define EIGEN_USE_GPU
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/place.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "glog/logging.h"

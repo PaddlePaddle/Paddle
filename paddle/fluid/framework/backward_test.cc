@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/framework/backward.h"
+#include "paddle/fluid/framework/backward.h"
 
 #include <gtest/gtest.h>
-#include "paddle/framework/block_desc.h"
-#include "paddle/framework/op_desc.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/var_desc.h"
-#include "paddle/operators/net_op.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/operators/net_op.h"
 
 USE_NO_KERNEL_OP(fill_constant);
 

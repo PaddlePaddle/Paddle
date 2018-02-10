@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/memory/memory.h"
+#include "paddle/fluid/memory/memory.h"
 
 #include "glog/logging.h"
 
-#include "paddle/memory/detail/buddy_allocator.h"
-#include "paddle/memory/detail/system_allocator.h"
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/memory/detail/buddy_allocator.h"
+#include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 

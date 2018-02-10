@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/memory/memory.h"
-#include "paddle/operators/conv_transpose_op.h"
-#include "paddle/platform/assert.h"
-#include "paddle/platform/cudnn_helper.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/conv_transpose_op.h"
+#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
 namespace operators {

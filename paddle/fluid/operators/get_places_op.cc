@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <thread>
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/detail/safe_ref.h"
-#include "paddle/platform/place.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #endif
 
 namespace paddle {

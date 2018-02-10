@@ -14,7 +14,7 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
-#include "paddle/operators/mean_op.h"
+#include "paddle/fluid/operators/mean_op.h"
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(

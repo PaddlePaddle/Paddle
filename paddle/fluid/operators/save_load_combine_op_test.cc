@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "gtest/gtest.h"
-#include "paddle/framework/op_registry.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 USE_NO_KERNEL_OP(save_combine);
 USE_NO_KERNEL_OP(load_combine);

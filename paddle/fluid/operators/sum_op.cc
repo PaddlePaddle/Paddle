@@ -9,10 +9,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/sum_op.h"
+#include "paddle/fluid/operators/sum_op.h"
 #include <vector>
-#include "paddle/framework/var_type_inference.h"
-#include "paddle/operators/detail/safe_ref.h"
+#include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {

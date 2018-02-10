@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "grpc_client.h"
-#include "paddle/framework/threadpool.h"
+#include "paddle/fluid/framework/threadpool.h"
 namespace paddle {
 namespace operators {
 namespace detail {

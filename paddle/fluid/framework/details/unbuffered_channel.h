@@ -17,7 +17,7 @@ limitations under the License. */
 #include <condition_variable>
 #include <mutex>
 
-#include "paddle/framework/channel.h"
+#include "paddle/fluid/framework/channel.h"
 
 namespace paddle {
 namespace framework {

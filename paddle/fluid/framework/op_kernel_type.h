@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/data_layout.h"
-#include "paddle/framework/data_type.h"
-#include "paddle/framework/library_type.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/place.h"
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/library_type.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
