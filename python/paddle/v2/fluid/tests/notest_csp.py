@@ -22,18 +22,18 @@ class TestCSPFramework(unittest.TestCase):
 
     def daisy_chain(self):
         n = 10000
-        leftmost = fluid.make_channel(dtype=INT)
+        leftmost = fluid.make_channel(dtype=int)
         right = leftmost
         left = leftmost
-        with fluid.while(steps=n):
-            right = fluid.make_channel(dtype=INT)
+        with fluid.While(steps=n):
+            right = fluid.make_channel(dtype=int)
             with fluid.go():
                 self.helper(left, right)
             left = right
 
         with fluid.go():
             fluid.send(right, 1)
-        fluid.print(fluid.recv(leftmost))
+        fluid.Print(fluid.recv(leftmost))
 
 
 if __name__ == '__main__':
