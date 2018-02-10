@@ -14,6 +14,7 @@
 
 from ..framework import Variable, unique_name
 from layer_function_generator import OpProtoHolder
+from ..initializer import force_init_on_cpu
 
 __all__ = ['monkey_patch_variable']
 
@@ -36,9 +37,12 @@ def monkey_patch_variable():
         block.append_op(
             type="fill_constant",
             outputs={'Out': [var]},
-            attrs={'dtype': var.dtype,
-                   'shape': shape,
-                   'value': value})
+            attrs={
+                'dtype': var.dtype,
+                'shape': shape,
+                'value': value,
+                'force_cpu': force_init_on_cpu()
+            })
         return var
 
     def create_scalar(block, value, dtype):
@@ -145,7 +149,9 @@ def monkey_patch_variable():
             # a*b == b*a. Do not need to reverse explicitly
         ("__rmul__", "elementwise_mul", False),
         ("__div__", "elementwise_div", False),
-        ("__rdiv__", "elementwise_div", True)):
+        ("__rdiv__", "elementwise_div", True),
+        ("__pow__", "elementwise_pow", False),
+        ("__rpow__", "elementwise_pow", True)):
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse))
 

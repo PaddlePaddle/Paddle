@@ -109,7 +109,7 @@ setup(name='${PACKAGE_NAME}',
           '': '${CMAKE_CURRENT_SOURCE_DIR}',
           # The paddle.v2.fluid.proto will be generated while compiling.
           # So that package points to other directory.
-          'paddle.v2.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/framework',
+          'paddle.v2.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
           'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'
       },
       scripts=paddle_bins,

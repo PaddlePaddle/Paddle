@@ -53,7 +53,7 @@ class BaseParallelForTest(unittest.TestCase):
             fetch=fetch,
             place=cpu,
             use_parallel=True)
-        if fluid.core.is_compile_gpu():
+        if fluid.core.is_compiled_with_cuda():
             gpu = fluid.CUDAPlace(0)
             result_gpu = self._run_test_impl_(
                 callback=callback,
@@ -197,5 +197,5 @@ class ParallelOpTestMultipleInput(BaseParallelForTest):
             fetch=['fc1.w@GRAD', 'fc2.w@GRAD', 'fc3.w@GRAD'])
 
 
-if __name__ == '__main__':
-    unittest.main()
+#if __name__ == '__main__':
+#    unittest.main()

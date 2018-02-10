@@ -56,9 +56,17 @@ __all__ = [
     'elementwise_mul',
     'elementwise_max',
     'elementwise_min',
+    'elementwise_pow',
     'clip',
     'clip_by_norm',
+    'softmax',
     'sequence_softmax',
+    'logical_and',
+    'logical_or',
+    'logical_xor',
+    'logical_not',
+    'uniform_random',
+    'cumsum',
 ] + __activations__
 
 for _OP in set(__all__):

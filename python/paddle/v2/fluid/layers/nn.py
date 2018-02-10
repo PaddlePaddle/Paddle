@@ -26,6 +26,7 @@ __all__ = [
     'fc',
     'embedding',
     'dynamic_lstm',
+    'dynamic_lstmp',
     'dynamic_gru',
     'gru_unit',
     'linear_chain_crf',
@@ -63,6 +64,8 @@ __all__ = [
     'nce',
     'beam_search',
     'row_conv',
+    'multiplex',
+    'layer_norm',
 ]
 
 
@@ -90,7 +93,7 @@ def fc(input,
 
     .. math::
 
-        Out = Act({\sum_{i=0}^{N-1}W_iX_i + b})
+        Out = Act({\sum_{i=0}^{N-1}X_iW_i + b})
 
     In the above equation:
 
@@ -182,7 +185,7 @@ def fc(input,
         helper.append_op(
             type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
     # add bias
-    pre_activation = helper.append_bias_op(pre_bias)
+    pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
     # add activation
     return helper.append_activation(pre_activation)
 
@@ -255,7 +258,8 @@ def dynamic_lstm(input,
                  gate_activation='sigmoid',
                  cell_activation='tanh',
                  candidate_activation='tanh',
-                 dtype='float32'):
+                 dtype='float32',
+                 name=None):
     """
     **Dynamic LSTM Layer**
 
@@ -281,7 +285,7 @@ def dynamic_lstm(input,
     W_{fc}, W_{oc}` are diagonal weight matrices for peephole connections. In
     our implementation, we use vectors to reprenset these diagonal weight
     matrices. The :math:`b` terms denote bias vectors (:math:`b_i` is the input
-    gate bias vector), :math:`\sigma` is the non-line activations, such as
+    gate bias vector), :math:`\sigma` is the non-linear activations, such as
     logistic sigmoid function, and :math:`i, f, o` and :math:`c` are the input
     gate, forget gate, output gate, and cell activation vectors, respectively,
     all of which have the same size as the cell output activation vector :math:`h`.
@@ -307,25 +311,25 @@ def dynamic_lstm(input,
                          (T X 4D), where T is the total time steps in this
                          mini-batch, D is the hidden size.
         size(int): 4 * hidden size.
-        param_attr(ParamAttr): The parameter attribute for the learnable
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
                                hidden-hidden weights.
 
-                               - The shape is (D x 4D), where D is the hidden
-                                 size.
                                - Weights = {:math:`W_{ch}, W_{ih}, \
                                                 W_{fh}, W_{oh}`}
-        bias_attr(ParamAttr): The bias attribute for the learnable bias
+                               - The shape is (D x 4D), where D is the hidden
+                                 size.
+        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
 
                               1. `use_peepholes = False`
-                                - The shape is (1 x 4D).
                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                - The shape is (1 x 4D).
                               2. `use_peepholes = True`
-                                - The shape is (1 x 7D).
                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
+                                - The shape is (1 x 7D).
         use_peepholes(bool): Whether to enable diagonal/peephole connections,
                              default `True`.
         is_reverse(bool): Whether to compute reversed LSTM, default `False`.
@@ -338,6 +342,8 @@ def dynamic_lstm(input,
                               Choices = ["sigmoid", "tanh", "relu", "identity"],
                               default "tanh".
         dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
 
     Returns:
         tuple: The hidden state, and cell state of LSTM. The shape of both \
@@ -352,6 +358,7 @@ def dynamic_lstm(input,
             forward, _ = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
     """
+
     helper = LayerHelper('lstm', **locals())
     size = size / 4
     weight = helper.create_parameter(
@@ -386,6 +393,192 @@ def dynamic_lstm(input,
             'candidate_activation': candidate_activation
         })
     return hidden, cell
+
+
+def dynamic_lstmp(input,
+                  size,
+                  proj_size,
+                  param_attr=None,
+                  bias_attr=None,
+                  use_peepholes=True,
+                  is_reverse=False,
+                  gate_activation='sigmoid',
+                  cell_activation='tanh',
+                  candidate_activation='tanh',
+                  proj_activation='tanh',
+                  dtype='float32',
+                  name=None):
+    """
+    **Dynamic LSTMP Layer**
+
+    LSTMP (LSTM with recurrent projection) layer has a separate projection
+    layer after the LSTM layer, projecting the original hidden state to a
+    lower-dimensional one, which is proposed to reduce the number of total
+    parameters and furthermore computational complexity for the LSTM,
+    espeacially for the case that the size of output units is relative
+    large (https://research.google.com/pubs/archive/43905.pdf).
+
+    The formula is as follows:
+
+    .. math::
+
+        i_t & = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i)
+
+        f_t & = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f)
+
+        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c)
+
+        o_t & = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_t + b_o)
+
+        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
+
+        h_t & = o_t \odot act_h(c_t)
+
+        r_t & = \overline{act_h}(W_{rh}h_t)
+
+    In the above formula:
+
+    * :math:`W`: Denotes weight matrices (e.g. :math:`W_{xi}` is \
+          the matrix of weights from the input gate to the input).
+    * :math:`W_{ic}`, :math:`W_{fc}`, :math:`W_{oc}`: Diagonal weight \
+          matrices for peephole connections. In our implementation, \
+          we use vectors to reprenset these diagonal weight matrices.
+    * :math:`b`: Denotes bias vectors (e.g. :math:`b_i` is the input gate \
+          bias vector).
+    * :math:`\sigma`: The activation, such as logistic sigmoid function.
+    * :math:`i, f, o` and :math:`c`: The input gate, forget gate, output \
+          gate, and cell activation vectors, respectively, all of which have \
+          the same size as the cell output activation vector :math:`h`.
+    * :math:`h`: The hidden state.
+    * :math:`r`: The recurrent projection of the hidden state.
+    * :math:`\\tilde{c_t}`: The candidate hidden state, whose \
+          computation is based on the current input and previous hidden state.
+    * :math:`\odot`: The element-wise product of the vectors.
+    * :math:`act_g` and :math:`act_h`: The cell input and cell output \
+          activation functions and `tanh` is usually used for them.
+    * :math:`\overline{act_h}`: The activation function for the projection \
+          output, usually using `identity` or same as :math:`act_h`.
+
+    Set `use_peepholes` to `False` to disable peephole connection. The formula
+    is omitted here, please refer to the paper
+    http://www.bioinf.jku.at/publications/older/2604.pdf for details.
+
+    Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
+    operations on the input :math:`x_{t}` are NOT included in this operator.
+    Users can choose to use fully-connected layer before LSTMP layer.
+
+    Args:
+        input(Variable): The input of dynamic_lstmp layer, which supports
+                         variable-time length input sequence. The underlying
+                         tensor in this Variable is a matrix with shape
+                         (T X 4D), where T is the total time steps in this
+                         mini-batch, D is the hidden size.
+        size(int): 4 * hidden size.
+        proj_size(int): The size of projection output.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+                               hidden-hidden weight and projection weight.
+
+                               - Hidden-hidden weight = {:math:`W_{ch}, W_{ih}, \
+                                                W_{fh}, W_{oh}`}.
+                               - The shape of hidden-hidden weight is (P x 4D),
+                                 where P is the projection size and D the hidden
+                                 size.
+                               - Projection weight = {:math:`W_{rh}`}.
+                               - The shape of projection weight is (D x P).
+        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
+                              weights, which contains two parts, input-hidden
+                              bias weights and peephole connections weights if
+                              setting `use_peepholes` to `True`.
+
+                              1. `use_peepholes = False`
+                                - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                - The shape is (1 x 4D).
+                              2. `use_peepholes = True`
+                                - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                                 W_{fc}, W_{oc}`}.
+                                - The shape is (1 x 7D).
+        use_peepholes(bool): Whether to enable diagonal/peephole connections,
+                             default `True`.
+        is_reverse(bool): Whether to compute reversed LSTM, default `False`.
+        gate_activation(str): The activation for input gate, forget gate and
+                              output gate. Choices = ["sigmoid", "tanh", "relu",
+                              "identity"], default "sigmoid".
+        cell_activation(str): The activation for cell output. Choices = ["sigmoid",
+                              "tanh", "relu", "identity"], default "tanh".
+        candidate_activation(str): The activation for candidate hidden state.
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              default "tanh".
+        proj_activation(str): The activation for projection output.
+                              Choices = ["sigmoid", "tanh", "relu", "identity"],
+                              default "tanh".
+        dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        tuple: The projection of hidden state, and cell state of LSTMP. The \
+               shape of projection is (T x P), for the cell state which is \
+               (T x D), and both LoD is the same with the `input`.
+
+    Examples:
+        .. code-block:: python
+
+            hidden_dim, proj_dim = 512, 256
+            fc_out = fluid.layers.fc(input=input_seq, size=hidden_dim * 4,
+                                     act=None, bias_attr=None)
+            proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out,
+                                                     size=hidden_dim * 4,
+                                                     proj_size=proj_dim,
+                                                     use_peepholes=False,
+                                                     is_reverse=True,
+                                                     cell_activation="tanh",
+                                                     proj_activation="tanh")
+    """
+
+    helper = LayerHelper('lstmp', **locals())
+    size = size / 4
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[proj_size, 4 * size], dtype=dtype)
+    proj_weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, proj_size], dtype=dtype)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    projection = helper.create_tmp_variable(dtype)
+    cell = helper.create_tmp_variable(dtype)
+    ordered_proj0 = helper.create_tmp_variable(dtype)
+    batch_hidden = helper.create_tmp_variable(dtype)
+    batch_gate = helper.create_tmp_variable(dtype)
+    batch_cell_pre_act = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type='lstmp',
+        inputs={
+            'Input': input,
+            'Weight': weight,
+            'ProjWeight': proj_weight,
+            'Bias': bias
+        },
+        outputs={
+            'Projection': projection,
+            'Cell': cell,
+            'OrderedP0': ordered_proj0,
+            'BatchHidden': batch_hidden,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act
+        },
+        attrs={
+            'use_peepholes': use_peepholes,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation,
+            'proj_activation': proj_activation
+        })
+    return projection, cell
 
 
 def dynamic_gru(input,
@@ -449,8 +642,8 @@ def dynamic_gru(input,
             Choices = ["sigmoid", "tanh", "relu", "identity"], default "tanh".
 
     Returns:
-        Variable: The hidden state of GRU. The shape is (T \\times D), and lod \
-            is the same with the input.
+        Variable: The hidden state of GRU. The shape is :math:`(T \\times D)`, \
+            and lod is the same with the input.
 
     Examples:
         .. code-block:: python
@@ -655,7 +848,35 @@ def cos_sim(X, Y, **kwargs):
     return out
 
 
-def dropout(x, dropout_prob, is_test=False, seed=0, **kwargs):
+def dropout(x, dropout_prob, is_test=False, seed=None, **kwargs):
+    """
+    Computes dropout.
+
+    Drop or keep each element of `x` independently. Dropout is a regularization
+    technique for reducing overfitting by preventing neuron co-adaption during
+    training. The dropout operator randomly set (according to the given dropout
+    probability) the outputs of some units to zero, while others are remain
+    unchanged.
+
+    Args:
+       x(variable): The input tensor.
+       dropout_prob(float): Probability of setting units to zero.
+       is_test(bool): A flag indicating whether it is in test phrase or not.
+       seed(int): A Python integer used to create random seeds. If this
+                  parameter is set to None, a random seed is used.
+                  NOTE: If an integer seed is given, always the same output
+                  units will be dropped. DO NOT use a fixed seed in training.
+
+    Returns:
+        Variable: A tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+          x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+          droped = fluid.layers.dropout(input=x, dropout_rate=0.5)
+    """
+
     helper = LayerHelper('dropout', **kwargs)
     out = helper.create_tmp_variable(dtype=x.dtype)
     mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
@@ -664,9 +885,12 @@ def dropout(x, dropout_prob, is_test=False, seed=0, **kwargs):
         inputs={'X': [x]},
         outputs={'Out': [out],
                  'Mask': [mask]},
-        attrs={'dropout_prob': dropout_prob,
-               'is_test': is_test,
-               'seed': seed})
+        attrs={
+            'dropout_prob': dropout_prob,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0
+        })
     return out
 
 
@@ -767,7 +991,7 @@ def square_error_cost(input, label, **kwargs):
        label(Variable): Label tensor, has target labels.
 
     Returns:
-        Variable: The tensor variable storing the element-wise squared error
+        Variable: The tensor variable storing the element-wise squared error \
                   difference of input and label.
 
     Examples:
@@ -991,7 +1215,7 @@ def conv2d(input,
        act(str): Activation type. Default: None
 
     Returns:
-        Variable: The tensor variable storing the convolution and
+        Variable: The tensor variable storing the convolution and \
                   non-linearity activation result.
 
     Raises:
@@ -1008,10 +1232,17 @@ def conv2d(input,
     """
     if stride is None:
         stride = [1, 1]
-    helper = LayerHelper('conv2d', **locals())
-    dtype = helper.input_dtype()
 
     num_channels = input.shape[1]
+
+    l_type = 'conv2d'
+    if (num_channels == groups and num_filters % num_channels == 0 and
+            not use_cudnn):
+        l_type = 'depthwise_conv2d'
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+
     if groups is None:
         num_filter_channels = num_channels
     else:
@@ -1044,7 +1275,7 @@ def conv2d(input,
     pre_bias = helper.create_tmp_variable(dtype)
 
     helper.append_op(
-        type='conv2d',
+        type=l_type,
         inputs={
             'Input': input,
             'Filter': filter_param,
@@ -1255,7 +1486,9 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
-               name=None):
+               name=None,
+               moving_mean_name=None,
+               moving_variance_name=None):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -1285,6 +1518,7 @@ def batch_norm(input,
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
     mean = helper.create_global_variable(
+        name=moving_mean_name,
         dtype=input.dtype,
         shape=param_shape,
         persistable=True,
@@ -1292,6 +1526,7 @@ def batch_norm(input,
     helper.set_variable_initializer(var=mean, initializer=Constant(0.0))
 
     variance = helper.create_global_variable(
+        name=moving_variance_name,
         dtype=input.dtype,
         shape=param_shape,
         persistable=True,
@@ -1329,6 +1564,102 @@ def batch_norm(input,
                "is_test": is_test})
 
     return helper.append_activation(batch_norm_out)
+
+
+def layer_norm(input,
+               scale=True,
+               shift=True,
+               begin_norm_axis=1,
+               epsilon=1e-05,
+               param_attr=None,
+               bias_attr=None,
+               act=None,
+               name=None):
+    """
+    **Layer Normalization**
+
+    Assume feature vectors exist on dimensions 
+    :attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics
+    along these dimensions for each feature vector :math:`a` with size
+    :math:`H`, then normalize each feature vector using the corresponding
+    statistics. After that, apply learnable gain and bias on the normalized
+    tensor to scale and shift if :attr:`scale` and :attr:`shift` are set.
+
+    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
+
+    The formula is as follows:
+
+    .. math::
+
+        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
+
+        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
+
+        h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+
+    Args:
+        input(Variable): The input tensor variable.
+        scale(bool): Whether to learn the adaptive gain :math:`g` after 
+            normalization.
+        shift(bool): Whether to learn the adaptive bias :math:`b` after 
+            normalization.
+        begin_norm_axis(bool): The normalization will be performed along 
+            dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
+        epsilon(float): The small value added to the variance to prevent 
+            division by zero.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            gain :math:`g`.
+        bias_attr(ParamAttr|None): The parameter attribute for the learnable
+            bias :math:`b`.
+        act(str): Activation to be applied to the output of layer normalizaiton.
+
+    Returns:
+        Variable: A tensor variable with the same shape as the input.
+
+    Examples:
+        .. code-block:: python
+
+            data = fluid.layers.data(
+              name='data', shape=[3, 32, 32], dtype='float32')
+            x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+    """
+    helper = LayerHelper('layer_norm', **locals())
+    dtype = helper.input_dtype()
+
+    # create intput and parameters
+    inputs = {'X': input}
+    input_shape = input.shape
+    param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:])]
+    if scale:
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0))
+        inputs['Scale'] = scale
+    if shift:
+        assert bias_attr is not False
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+        inputs['Bias'] = bias
+
+    # create output
+    mean_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    variance_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    layer_norm_out = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type="layer_norm",
+        inputs=inputs,
+        outputs={
+            "Y": layer_norm_out,
+            "Mean": mean_out,
+            "Variance": variance_out,
+        },
+        attrs={"epsilon": epsilon,
+               "begin_norm_axis": begin_norm_axis})
+
+    return helper.append_activation(layer_norm_out)
 
 
 def beam_search_decode(ids, scores, name=None):
@@ -2291,7 +2622,8 @@ def ctc_greedy_decoder(input, blank, name=None):
                     interval [0, num_classes + 1).
 
     Returns:
-        Variable: CTC greedy decode result.
+        Variable: CTC greedy decode result. If all the sequences in result were
+        empty, the result LoDTensor will be [-1] with LoD [[0]] and dims [1, 1].
 
     Examples:
         .. code-block:: python
@@ -2707,3 +3039,55 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
                 'Filter': [filter_param]},
         outputs={'Out': [out]})
     return helper.append_activation(out)
+
+
+def multiplex(inputs, index):
+    """
+    **Multiplex Layer**
+
+    Referring to the given index variable, this layer selects rows from the
+    input variables to construct a multiplex variable. Assuming that there are
+    :math:`m` input variables and :math:`I_i` represents the i-th input
+    variable and :math:`i` is in [0, :math:`m`). All input variables are
+    tensors with same shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`].
+    Please note that rank of the input tensor should be at least 2. Each input
+    variable will be treated as a 2-D matrix with shape [:math:`M`, :math:`N`]
+    where :math:`M` for :math:`d_0` and :math:`N` for :math:`d_1` * :math:`d_2`
+    * ... * :math:`d_R`. Let :math:`I_i[j]` be the j-th row of the i-th input
+    variable. The given index variable should be a 2-D tensor with shape
+    [:math:`M`, 1]. Let `ID[i]` be the i-th index value of the index variable.
+    Then the output variable will be a tensor with shape [:math:`d_0`,
+    :math:`d_1`, ..., :math:`d_R`]. If we treat the output tensor as a 2-D
+    matrix with shape [:math:`M`, :math:`N`] and let :math:`O[i]` be the i-th
+    row of the matrix, then `O[i]` is equal to :math:`I_{ID[i]}[i]`.
+
+    Args:
+       inputs (list): A list of variables to gather from. All variables have the
+                same shape and the rank is at least 2.
+       index (Variable): Tensor<int32>, index variable which is a 2-D tensor
+                with shape [M, 1] where M is the batch size.
+
+    Returns:
+        Variable: Multiplex variable gathered from input variables.
+
+    Examples:
+        .. code-block:: python
+
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+            index = fluid.layers.data(name='index', shape=[1], dtype='int32')
+            out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+    """
+    helper = LayerHelper('multiplex', **locals())
+
+    if not isinstance(inputs, list) and len(inputs) < 2:
+        raise ValueError("inputs should be a list object and contains at least "
+                         "2 elements.")
+
+    out = helper.create_tmp_variable(inputs[0].dtype)
+    helper.append_op(
+        type='multiplex',
+        inputs={'X': inputs,
+                'Ids': index},
+        outputs={'Out': [out]})
+    return out
