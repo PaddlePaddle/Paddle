@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+   http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
 
 syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
@@ -91,52 +91,56 @@ message OpProto {
   required string comment = 5;
 }
 
-enum DataType {
-  BOOL = 0;
-  INT16 = 1;
-  INT32 = 2;
-  INT64 = 3;
-  FP16 = 4;
-  FP32 = 5;
-  FP64 = 6;
-}
+message VarType {
+  enum Type {
+    // POD types
+    BOOL = 0;
+    INT16 = 1;
+    INT32 = 2;
+    INT64 = 3;
+    FP16 = 4;
+    FP32 = 5;
+    FP64 = 6;
 
-message TensorDesc {
-  required DataType data_type = 1;
-  repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
-}
-
-message LoDTensorDesc {
-  required TensorDesc tensor = 1;
-  optional int32 lod_level = 2 [ default = 0 ];
-}
-
-message LoDTensorArrayDesc {
-  required TensorDesc tensor = 1;
-  optional int32 lod_level = 2 [ default = 0 ];
-}
-
-message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
-
-message VarDesc {
-  enum VarType {
-    LOD_TENSOR = 1;
-    SELECTED_ROWS = 2;
+    // other types, that might need additonal descriptions
+    LOD_TENSOR = 1; // LoDTensorType
+    SELECTED_ROWS = 2; // SelectedRowsType
     FEED_MINIBATCH = 3;
     FETCH_LIST = 4;
     STEP_SCOPES = 5;
     LOD_RANK_TABLE = 6;
-    LOD_TENSOR_ARRAY = 7;
-    PLACE_LIST = 8;
-    READER = 9;
+    // LOD_TENSOR_ARRAY = 7; // replaced by array-of-tensors. c.f. ArrayType
+    // PLACE_LIST = 8; // replaced by array-of-place. c.f. ArrayType
+    READER = 9; // ReaderType
   }
+
+  required Type type = 1;
+  
+  message Tensor {
+    required Type data_type = 1;
+    repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
+  }
+  optional Tensor selected_rows = 2;
+  
+  message LoDTensor {
+    required Tensor tensor = 1;
+    optional int32 lod_level = 2 [ default = 0 ];
+  }
+  optional LoDTensorDesc lod_tensor = 3;
+  
+  message Array {
+    VarType elem_type = 1;
+  }
+  optional Array array = 4;
+  
+  message Reader { repeated LoDTensorDesc lod_tensor = 1; }
+  optional Reader reader = 5;
+}
+
+message VarDesc {
   required string name = 1;
   required VarType type = 2;
   optional bool persistable = 3 [ default = false ];
-  optional LoDTensorDesc lod_tensor = 4;
-  optional TensorDesc selected_rows = 5;
-  optional LoDTensorArrayDesc tensor_array = 6;
-  optional ReaderDesc reader = 7;
 }
 
 message BlockDesc {
