@@ -13,38 +13,44 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include <thrust/device_ptr.h>
-#include <thrust/iterator/counting_iterator.h>
-#include <thrust/random.h>
-#include <thrust/transform.h>
+#include <memory>
+#include <typeindex>
+#include <typeinfo>
+
+#include <curand_kernel.h>
+
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/dropout_op.h"
 
 namespace paddle {
 namespace operators {
 
+// http://docs.nvidia.com/cuda/curand/device-api-overview.html#performance-notes
+// seperate curand_init as a single kernel for performance.
+template <typename AttrType>
+__global__ void CurandInitKernel(curandState* state, AttrType seed) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  curand_init(static_cast<unsigned long long>(seed), idx, 0, &state[idx]);
+}
+
 template <typename T, typename AttrType>
-struct MaskGenerator {
-  AttrType dropout_prob;
-  int seed;
-
-  __host__ __device__ MaskGenerator(AttrType dropout_prob, int seed)
-      : dropout_prob(dropout_prob), seed(seed) {}
-
-  inline __host__ __device__ T operator()(const unsigned int n) const {
-    thrust::minstd_rand rng;
-    rng.seed(seed);
-    thrust::uniform_real_distribution<AttrType> dist(0, 1);
-    rng.discard(n);
-    if (dist(rng) < dropout_prob) {
-      return static_cast<T>(0);
+__global__ void UniformRandomkernel(curandState* state, AttrType dropout_prob,
+                                    int64_t n, T* dst) {
+  int idx = threadIdx.x + blockIdx.x * 64;
+  int64_t count = 0;
+  /* Copy state to local memory for efficiency */
+  T rand_val;
+  curandState local_state = state[idx];
+  for (int64_t i = 0; i < n; ++i) {
+    if (std::type_index(typeid(T)).hash_code() == typeid(float).hash_code()) {
+      rand_val = curand_uniform(&local_state);
+      dst[i] = rand_val < dropout_prob;
     }
-    return static_cast<T>(1);
   }
-};
+  /*Copy state back to global memory */
+  state[idx] = local_state;
+}
 
-// It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
-// Use std::random and thrust::random(thrust is a std library in CUDA) to
-// implement uniform random.
 template <typename Place, typename T, typename AttrType>
 class GPUDropoutKernel : public framework::OpKernel<T> {
  public:
@@ -61,16 +67,22 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
-      int size = framework::product(mask->dims());
+      int64_t size = framework::product(mask->dims());
 
       std::random_device rnd;
       int seed =
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
 
-      thrust::counting_iterator<unsigned int> index_sequence_begin(0);
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<T>(mask_data),
-                        MaskGenerator<T, AttrType>(dropout_prob, seed));
+      // FIXME(dzhwinter): create state without hard core code.
+      curandState* dev_states;
+      std::unique_ptr<curandState> dev_states(
+          memory::Alloc<platform::CUDAPlace>(context.GetPlace(),
+                                             sizeof(curandState) * 64 * 64),
+          memory::PlainDeleter<curandState, platform::CUDAPlace>(place_));
+      CurandInitKernel<<<64, 64>>>(dev_states.get());
+      UniformRandomkernel<<<64, 64>>>(dev_states.get(), dropout_prob, size,
+                                      mask_data);
+
       auto M = EigenMatrix<T>::Reshape(*mask, 1);
       Y.device(place) = X * M;
     } else {
