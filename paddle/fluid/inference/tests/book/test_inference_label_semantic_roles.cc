@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include "gflags/gflags.h"
-#include "paddle/inference/tests/test_helper.h"
+#include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
