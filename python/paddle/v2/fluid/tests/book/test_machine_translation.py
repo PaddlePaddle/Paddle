@@ -371,8 +371,7 @@ def infer_for_decode_main(use_cuda, save_dirname=None):
 def train_main(use_cuda, is_sparse):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    # Repeated train in name, for consistent cmake in inference
-    save_dirname = "machine_translation_train" + "_train.inference.model"
+    save_dirname = "machine_translation_train.inference.model"
     train_main_and_save_model(use_cuda, is_sparse, save_dirname)
     infer_for_train_main(use_cuda, save_dirname)
 
@@ -380,8 +379,7 @@ def train_main(use_cuda, is_sparse):
 def decode_main(use_cuda, is_sparse):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    # Repeated decode in name, for consistent cmake in inference
-    save_dirname = "machine_translation_decode" + "_decode.inference.model"
+    save_dirname = "machine_translation_decode.inference.model"
     decode_main_and_save_model(use_cuda, is_sparse, save_dirname)
     infer_for_decode_main(use_cuda, save_dirname)
 
