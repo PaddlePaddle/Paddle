@@ -17,7 +17,9 @@ import contextlib
 from framework import Program, default_main_program
 from . import core
 
-__all__ = ['Executor', 'global_scope', 'scope_guard', 'switch_scope']
+__all__ = [
+    'Executor', 'global_scope', 'scope_guard', 'switch_scope', 'fetch_var'
+]
 
 g_scope = core.Scope()
 
@@ -45,27 +47,13 @@ def as_numpy(tensor):
         return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
     lod = tensor.lod()
-    tensor_data = np.array(tensor)
-    if len(lod) == 0:
-        ans = tensor_data
-    else:
-        raise RuntimeError("LoD Calculate lacks unit tests and buggy")
-    # elif len(lod) == 1:
-    #     ans = []
-    #     idx = 0
-    #     while idx < len(lod) - 1:
-    #         ans.append(tensor_data[lod[idx]:lod[idx + 1]])
-    #         idx += 1
-    # else:
-    #     for l in reversed(lod):
-    #         ans = []
-    #         idx = 0
-    #         while idx < len(l) - 1:
-    #             ans.append(tensor_data[l[idx]:l[idx + 1]])
-    #             idx += 1
-    #         tensor_data = ans
-    #     ans = tensor_data
-    return ans
+    if len(lod) > 0:
+        raise RuntimeError(
+            "Some of your featched tensors hold LoD information. \
+            They can not be completely cast to Python ndarray. \
+            Please set the parameter 'return_numpy' as 'False' to \
+            return LoDTensor itself directly.")
+    return np.array(tensor)
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):
@@ -80,12 +68,12 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
     Args:
         block: a block instance (typically global block of a program)
         feed_targets: a dictionary of {feed_target_name: feed_target_data}
-        feed_holder_name: the name of the variable that holds the data of 
-            all feed targets. The type of this feed_holder variable is 
+        feed_holder_name: the name of the variable that holds the data of
+            all feed targets. The type of this feed_holder variable is
             FEED_MINIBATCH, which is essentially vector<LoDTensor>.
 
     Returns:
-        A boolean value that indicates whether a block has feed operators 
+        A boolean value that indicates whether a block has feed operators
         that match the info contained in feed_targets and feed_holder_name.
     """
 
@@ -108,7 +96,7 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
 
 def has_fetch_operators(block, fetch_targets, fetch_holder_name):
     """ Check whether the block already has fetch operators.
-    
+
     Return false if the block does not have any fetch operators.
     If some fetch operators have been appended to the block, check that
     the info contained in these fetch operators matches the fetch_targets
@@ -118,13 +106,13 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
     Args:
         block: a block instance (typically global block of a program)
         fetch_targets: a dictionary of {fetch_target_name: fetch_target_data}
-        fetch_holder_name: the name of the variable that holds the data of 
-            all fetch targets. The type of this fetch_holder variable is 
-            FETCH_LIST, which is essentially vector<LoDTensor>.    
+        fetch_holder_name: the name of the variable that holds the data of
+            all fetch targets. The type of this fetch_holder variable is
+            FETCH_LIST, which is essentially vector<LoDTensor>.
 
-    Return:    
-        A boolean value that indicates whether a block has fetch operators 
-        that match the info contained in fetch_targets and fetch_holder_name.     
+    Return:
+        A boolean value that indicates whether a block has fetch operators
+        that match the info contained in fetch_targets and fetch_holder_name.
     """
 
     fetch_count = 0
@@ -144,6 +132,35 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
         raise Exception(
             "Fetch operators in program desc do not match 'fetch_targets'")
     return fetch_count > 0
+
+
+def fetch_var(name, scope=None, return_numpy=True):
+    """
+    Fetch the value of the variable with the given name from the given scope
+    Args:
+        name(str): name of the variable. Typically, only persistable variables
+            can be found in the scope used for running the program.
+        scope(core.Scope|None): scope object. It should be the scope where
+            you pass to Executor.run() when running your program.
+            If None, global_scope() will be used.
+        return_numpy(bool): whether convert the tensor to numpy.ndarray
+    Returns:
+       LodTensor|numpy.ndarray
+    """
+    assert isinstance(name, str)
+    if scope is None:
+        scope = global_scope()
+    assert isinstance(scope, core.Scope)
+
+    var = global_scope().find_var(name)
+    assert var is not None, (
+        "Cannot find " + name + " in scope. Perhaps you need to make the"
+        " variable persistable by using var.persistable = True in your"
+        " program.")
+    tensor = var.get_tensor()
+    if return_numpy:
+        tensor = as_numpy(tensor)
+    return tensor
 
 
 class Executor(object):
@@ -275,7 +292,6 @@ class Executor(object):
             core.get_fetch_variable(scope, fetch_var_name, i)
             for i in xrange(len(fetch_list))
         ]
-
         if return_numpy:
             outs = as_numpy(outs)
         return outs
