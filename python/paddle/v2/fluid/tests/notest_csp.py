@@ -17,9 +17,6 @@ import paddle.v2.fluid as fluid
 
 
 class TestCSPFramework(unittest.TestCase):
-    def helper(self, left, right):
-        fluid.send(left, 1 + fluid.recv(right))
-
     def daisy_chain(self):
         n = 10000
         leftmost = fluid.make_channel(dtype=int)
@@ -28,7 +25,7 @@ class TestCSPFramework(unittest.TestCase):
         with fluid.While(steps=n):
             right = fluid.make_channel(dtype=int)
             with fluid.go():
-                self.helper(left, right)
+                fluid.send(left, 1 + fluid.recv(right))
             left = right
 
         with fluid.go():
