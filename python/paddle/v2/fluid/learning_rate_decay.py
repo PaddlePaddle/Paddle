@@ -14,6 +14,7 @@
 
 import layers
 from framework import Variable
+from initializer import init_on_cpu
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
@@ -54,11 +55,14 @@ def exponential_decay(learning_rate,
     if not isinstance(global_step, Variable):
         raise ValueError("global_step is required for exponential_decay.")
 
-    # update learning_rate
-    div_res = global_step / decay_steps
-    if staircase:
-        div_res = layers.floor(x=div_res)
-    return learning_rate * (decay_rate**div_res)
+    with init_on_cpu():
+        # update learning_rate
+        div_res = global_step / decay_steps
+        if staircase:
+            div_res = layers.floor(x=div_res)
+        decayed_lr = learning_rate * (decay_rate**div_res)
+
+    return decayed_lr
 
 
 def natural_exp_decay(learning_rate,
@@ -88,10 +92,13 @@ def natural_exp_decay(learning_rate,
     if not isinstance(global_step, Variable):
         raise ValueError("global_step is required for natural_exp_decay.")
 
-    div_res = global_step / decay_steps
-    if staircase:
-        div_res = layers.floor(x=div_res)
-    return learning_rate * layers.exp(x=(-1 * decay_rate * div_res))
+    with init_on_cpu():
+        div_res = global_step / decay_steps
+        if staircase:
+            div_res = layers.floor(x=div_res)
+        decayed_lr = learning_rate * layers.exp(x=(-1 * decay_rate * div_res))
+
+    return decayed_lr
 
 
 def inverse_time_decay(learning_rate,
@@ -121,11 +128,14 @@ def inverse_time_decay(learning_rate,
     if not isinstance(global_step, Variable):
         raise ValueError("global_step is required for inverse_time_decay.")
 
-    div_res = global_step / decay_steps
-    if staircase:
-        div_res = layers.floor(x=div_res)
+    with init_on_cpu():
+        div_res = global_step / decay_steps
+        if staircase:
+            div_res = layers.floor(x=div_res)
 
-    return learning_rate / (1 + decay_rate * div_res)
+        decayed_lr = learning_rate / (1 + decay_rate * div_res)
+
+    return decayed_lr
 
 
 def polynomial_decay(learning_rate,
@@ -160,22 +170,27 @@ def polynomial_decay(learning_rate,
     if not isinstance(global_step, Variable):
         raise ValueError("global_step is required for inverse_time_decay.")
 
-    if cycle:
-        div_res = layers.ceil(x=(global_step / decay_steps))
-        zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
-        one_var = layers.fill_constant(shape=[1], dtype='float32', value=1.0)
+    with init_on_cpu():
+        if cycle:
+            div_res = layers.ceil(x=(global_step / decay_steps))
+            zero_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=0.0)
+            one_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=1.0)
 
-        with layers.Switch() as switch:
-            with switch.case(layers.equal(x=global_step, y=zero_var)):
-                layers.assign(input=one_var, output=div_res)
-        decay_steps = decay_steps * div_res
-    else:
-        decay_steps_var = layers.fill_constant(
-            shape=[1], dtype='float32', value=float(decay_steps))
-        global_step = layers.elementwise_min(x=global_step, y=decay_steps_var)
+            with layers.Switch() as switch:
+                with switch.case(layers.equal(x=global_step, y=zero_var)):
+                    layers.assign(input=one_var, output=div_res)
+            decay_steps = decay_steps * div_res
+        else:
+            decay_steps_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=float(decay_steps))
+            global_step = layers.elementwise_min(
+                x=global_step, y=decay_steps_var)
 
-    return (learning_rate - end_learning_rate) * \
-           ((1 - global_step / decay_steps) ** power) + end_learning_rate
+        decayed_lr = (learning_rate - end_learning_rate) * \
+                     ((1 - global_step / decay_steps) ** power) + end_learning_rate
+    return decayed_lr
 
 
 def piecewise_decay(global_step, boundaries, values):
@@ -200,24 +215,27 @@ def piecewise_decay(global_step, boundaries, values):
     if not isinstance(global_step, Variable):
         raise ValueError("global_step is required for piecewise_decay.")
 
-    lr = layers.create_global_var(
-        shape=[1],
-        value=0.0,
-        dtype='float32',
-        persistable=True,
-        name="learning_rate")
+    with init_on_cpu():
+        lr = layers.create_global_var(
+            shape=[1],
+            value=0.0,
+            dtype='float32',
+            persistable=True,
+            name="learning_rate")
 
-    with layers.Switch() as switch:
-        for i in range(len(boundaries)):
-            boundary_val = layers.fill_constant(
-                shape=[1], dtype='float32', value=float(boundaries[i]))
-            value_var = layers.fill_constant(
-                shape=[1], dtype='float32', value=float(values[i]))
-            with switch.case(layers.less_than(global_step, boundary_val)):
-                layers.assign(value_var, lr)
-        last_value_var = layers.fill_constant(
-            shape=[1], dtype='float32', value=float(values[len(values) - 1]))
-        with switch.default():
-            layers.assign(last_value_var, lr)
+        with layers.Switch() as switch:
+            for i in range(len(boundaries)):
+                boundary_val = layers.fill_constant(
+                    shape=[1], dtype='float32', value=float(boundaries[i]))
+                value_var = layers.fill_constant(
+                    shape=[1], dtype='float32', value=float(values[i]))
+                with switch.case(layers.less_than(global_step, boundary_val)):
+                    layers.assign(value_var, lr)
+            last_value_var = layers.fill_constant(
+                shape=[1],
+                dtype='float32',
+                value=float(values[len(values) - 1]))
+            with switch.default():
+                layers.assign(last_value_var, lr)
 
     return lr

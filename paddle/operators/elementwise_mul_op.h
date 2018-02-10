@@ -34,7 +34,8 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx, x, y, axis, z);
+    ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          MulFunctor<T>(), z);
   }
 };
 
