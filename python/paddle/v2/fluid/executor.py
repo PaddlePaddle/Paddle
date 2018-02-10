@@ -47,27 +47,13 @@ def as_numpy(tensor):
         return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
     lod = tensor.lod()
-    tensor_data = np.array(tensor)
-    if len(lod) == 0:
-        ans = tensor_data
-    else:
-        raise RuntimeError("LoD Calculate lacks unit tests and buggy")
-    # elif len(lod) == 1:
-    #     ans = []
-    #     idx = 0
-    #     while idx < len(lod) - 1:
-    #         ans.append(tensor_data[lod[idx]:lod[idx + 1]])
-    #         idx += 1
-    # else:
-    #     for l in reversed(lod):
-    #         ans = []
-    #         idx = 0
-    #         while idx < len(l) - 1:
-    #             ans.append(tensor_data[l[idx]:l[idx + 1]])
-    #             idx += 1
-    #         tensor_data = ans
-    #     ans = tensor_data
-    return ans
+    if len(lod) > 0:
+        raise RuntimeError(
+            "Some of your featched tensors hold LoD information. \
+            They can not be completely cast to Python ndarray. \
+            Please set the parameter 'return_numpy' as 'False' to \
+            return LoDTensor itself directly.")
+    return np.array(tensor)
 
 
 def has_feed_operators(block, feed_targets, feed_holder_name):
@@ -306,7 +292,6 @@ class Executor(object):
             core.get_fetch_variable(scope, fetch_var_name, i)
             for i in xrange(len(fetch_list))
         ]
-
         if return_numpy:
             outs = as_numpy(outs)
         return outs
