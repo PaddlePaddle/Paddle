@@ -31,6 +31,7 @@ __all__ = [
     'program_guard',
     'switch_startup_program',
     'switch_main_program',
+    'get_var',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -739,6 +740,9 @@ class Block(object):
             raise e
         self.desc.remove_op(start, end + 1)
 
+    def slice_ops(self, start, end):
+        return list(self.ops)[start:end]
+
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
         op = Operator(self, op_desc, *args, **kwargs)
@@ -1123,3 +1127,22 @@ def program_guard(main_program, startup_program=None):
     switch_main_program(main_program)
     if startup_program is not None:
         switch_startup_program(startup_program)
+
+
+def get_var(name, program=None):
+    """
+    Get a variable by name from the global block of a program
+    Args:
+        name(str): name of the variable
+        program(Program|None): program object.
+             If None, default_global_program() will be used.
+
+    Returns:
+        Variable
+    """
+    if program is None:
+        program = default_main_program()
+    assert isinstance(name, str)
+    assert isinstance(name, Program)
+
+    return program.global_block().var(name)
