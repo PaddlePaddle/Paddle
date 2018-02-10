@@ -18,6 +18,8 @@ import sys
 
 import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
+import math
+import sys
 
 # need to fix random seed and training data to compare the loss
 # value accurately calculated by the default and the memory optimization
@@ -152,7 +154,10 @@ for pass_id in range(PASS_NUM):
         print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
             pass_acc))
         # this model is slow, so if we can train two mini batch, we think it works properly.
+
         if i > 2:
             exit(0)
+        if math.isnan(float(loss)):
+            sys.exit("got NaN loss, training failed.")
         i += 1
 exit(1)
