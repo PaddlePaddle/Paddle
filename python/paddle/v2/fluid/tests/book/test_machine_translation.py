@@ -317,9 +317,6 @@ def infer_for_train_main(use_cuda, save_dirname=None):
     print("Inference shape: ", np_data.shape)
 
 
-#   print("Inference results: ", np_data)
-
-
 # This function tests for loading a model using fluid.io.save_inference_model
 # after calling decode_main. This is just for checking a general flow of saving 
 # a model which has the beam_search op and loading it successfully. 
@@ -374,7 +371,8 @@ def infer_for_decode_main(use_cuda, save_dirname=None):
 def train_main(use_cuda, is_sparse):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    save_dirname = "machine_translation" + "_train.inference.model"
+    # Repeated train in name, for consistent cmake in inference
+    save_dirname = "machine_translation_train" + "_train.inference.model"
     train_main_and_save_model(use_cuda, is_sparse, save_dirname)
     infer_for_train_main(use_cuda, save_dirname)
 
@@ -382,7 +380,8 @@ def train_main(use_cuda, is_sparse):
 def decode_main(use_cuda, is_sparse):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    save_dirname = "machine_translation" + "_decode.inference.model"
+    # Repeated decode in name, for consistent cmake in inference
+    save_dirname = "machine_translation_decode" + "_decode.inference.model"
     decode_main_and_save_model(use_cuda, is_sparse, save_dirname)
     infer_for_decode_main(use_cuda, save_dirname)
 
