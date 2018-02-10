@@ -14,6 +14,7 @@
 
 import collections
 import contextlib
+import re
 
 import numpy as np
 
@@ -30,6 +31,7 @@ __all__ = [
     'program_guard',
     'switch_startup_program',
     'switch_main_program',
+    'get_var',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -239,20 +241,30 @@ class Variable(object):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
+    def to_string(self, throw_on_error, with_details=False):
         """
         Get debug string.
 
         Args:
             throw_on_error(bool): True if raise an exception when self is not
                 intialized.
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
 
         Returns(str): The debug string.
 
         """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
         protostr = self.desc.serialize_to_string()
         proto = framework_pb2.VarDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+        res_str = _debug_string_(proto, throw_on_error)
+        if with_details:
+            additional_attr = ("error_clip", "stop_gradient")
+            for attr_name in additional_attr:
+                res_str += "%s: %s\n" % (attr_name,
+                                         str(getattr(self, attr_name)))
+        return res_str
 
     __repr__ = __str__
 
@@ -440,9 +452,8 @@ class Operator(object):
             if not given == need:
                 raise ValueError(("Incorrect setting for output(s) of "
                                   "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type, ", ".join(str(e)
-                                                  for e in need), ", ".join(
-                                                      str(e) for e in given)))
+                                 (type, ", ".join(str(e) for e in need),
+                                  ", ".join(str(e) for e in given)))
 
             for out_proto in proto.outputs:
                 out_args = outputs[out_proto.name]
@@ -478,7 +489,8 @@ class Operator(object):
         no_kernel_op_set = {
             'feed', 'fetch', 'save', 'load', 'recurrent',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
-            'recv', 'parallel_do'
+            'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
+            'load_combine'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -629,10 +641,36 @@ class Block(object):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
-        protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.BlockDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            re_add_indent = re.compile(r"\n(.)")
+            res_str = "blocks {\n  idx: %d\n  parent_idx: %d" % (
+                self.idx, self.parent_idx)
+            for var in self.vars.itervalues():
+                res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
+                    r"\n    \1", var.to_string(throw_on_error, with_details))
+            for op in self.ops:
+                res_str += "\n  ops {\n    %s  }" % re_add_indent.sub(
+                    r"\n    \1", op.to_string(throw_on_error))
+            res_str += "\n}"
+        else:
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.BlockDesc.FromString(str(protostr))
+            res_str = _debug_string_(proto, throw_on_error)
+        return res_str
 
     __repr__ = __str__
 
@@ -701,6 +739,9 @@ class Block(object):
         except Exception, e:
             raise e
         self.desc.remove_op(start, end + 1)
+
+    def slice_ops(self, start, end):
+        return list(self.ops)[start:end]
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
@@ -796,10 +837,29 @@ class Program(object):
     def __str__(self):
         return self.to_string(True)
 
-    def to_string(self, throw_on_error):
-        protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.ProgramDesc.FromString(str(protostr))
-        return _debug_string_(proto, throw_on_error)
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            res_str = ""
+            for block in self.blocks:
+                res_str += block.to_string(throw_on_error, with_details)
+        else:
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+            res_str = _debug_string_(proto, throw_on_error)
+        return res_str
 
     def get_desc(self):
         return self.desc
@@ -950,6 +1010,36 @@ class Parameter(Variable):
 
         self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
 
+    def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        if with_details:
+            res_str = Variable.to_string(self, throw_on_error, True)
+            additional_attr = ("trainable", "optimize_attr", "regularizer",
+                               "gradient_clip_attr")
+            for attr_name in additional_attr:
+                res_str += "%s: %s\n" % (attr_name,
+                                         str(getattr(self, attr_name)))
+        else:
+            res_str = Variable.to_string(self, throw_on_error, False)
+        return res_str
+
+    __repr__ = __str__
+
 
 # program is a global instance.
 _main_program_ = Program()
@@ -1037,3 +1127,22 @@ def program_guard(main_program, startup_program=None):
     switch_main_program(main_program)
     if startup_program is not None:
         switch_startup_program(startup_program)
+
+
+def get_var(name, program=None):
+    """
+    Get a variable by name from the global block of a program
+    Args:
+        name(str): name of the variable
+        program(Program|None): program object.
+             If None, default_global_program() will be used.
+
+    Returns:
+        Variable
+    """
+    if program is None:
+        program = default_main_program()
+    assert isinstance(name, str)
+    assert isinstance(name, Program)
+
+    return program.global_block().var(name)
