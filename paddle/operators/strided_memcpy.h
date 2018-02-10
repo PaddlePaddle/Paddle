@@ -50,7 +50,7 @@ inline void StridedMemcpy(const platform::DeviceContext& dev_ctx, const T* src,
 // NOTE: The src and dst tensor should have the same elements
 // except the specified axis.
 template <typename T>
-inline void StridedNumelCopyWithAxis(const framework::ExecutionContext& ctx,
+inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
                                      int64_t axis, T* dst,
                                      const framework::DDim& dst_stride_numel,
                                      const T* src,
@@ -88,7 +88,7 @@ inline void StridedNumelCopyWithAxis(const framework::ExecutionContext& ctx,
       auto& gpu_place = boost::get<platform::CUDAPlace>(place);
       auto& cuda_ctx =
           reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
-      memory::Copy(cpu_place, dst + i * dst_after, cpu_place,
+      memory::Copy(gpu_place, dst + i * dst_after, gpu_place,
                    src + i * src_after, sizeof(T) * src_after,
                    cuda_ctx.stream());
 #else
