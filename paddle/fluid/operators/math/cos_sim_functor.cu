@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/math/cos_sim_functor.h"
-#include "paddle/platform/cuda_helper.h"
+#include "paddle/fluid/operators/math/cos_sim_functor.h"
+#include "paddle/fluid/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {

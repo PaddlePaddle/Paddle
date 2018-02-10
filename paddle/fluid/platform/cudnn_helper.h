@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "paddle/platform/dynload/cudnn.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/macros.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace platform {

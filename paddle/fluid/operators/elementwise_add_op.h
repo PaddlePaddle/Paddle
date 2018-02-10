@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/operators/elementwise_op_function.h"
+#include "paddle/fluid/operators/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {

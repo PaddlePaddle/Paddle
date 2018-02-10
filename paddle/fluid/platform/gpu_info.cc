@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 #include "gflags/gflags.h"
 
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/platform/enforce.h"
 
 DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
               "Default use 92% of GPU memory for PaddlePaddle,"

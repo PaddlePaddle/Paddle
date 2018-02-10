@@ -20,9 +20,9 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/type_defs.h"
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

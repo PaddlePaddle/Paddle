@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cctype>
 #include <ostream>
 
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

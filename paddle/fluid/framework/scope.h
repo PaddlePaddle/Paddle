@@ -19,8 +19,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/framework/variable.h"
-#include "paddle/platform/macros.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {

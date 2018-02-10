@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <memory>
 #include <vector>
-#include "paddle/framework/block_desc.h"
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/proto_desc.h"
-#include "paddle/platform/macros.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/proto_desc.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {

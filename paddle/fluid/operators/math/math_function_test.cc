@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "gtest/gtest.h"
 
 TEST(math_function, gemm_notrans_cblas) {

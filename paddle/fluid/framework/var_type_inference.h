@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/type_defs.h"
+#include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
 namespace framework {

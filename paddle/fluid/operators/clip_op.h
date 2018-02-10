@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/platform/transform.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {

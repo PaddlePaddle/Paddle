@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-#include "paddle/framework/init.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/op_info.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/elementwise_op_function.h"
-#include "paddle/operators/math/math_function.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/framework/init.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {

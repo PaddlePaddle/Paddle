@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/tensor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace framework {

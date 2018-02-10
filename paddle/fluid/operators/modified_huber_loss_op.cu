@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <thrust/for_each.h>
 #include <thrust/tuple.h>
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/modified_huber_loss_op.h"
-#include "paddle/platform/hostdevice.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/modified_huber_loss_op.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {

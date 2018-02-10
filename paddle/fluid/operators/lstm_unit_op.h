@@ -18,7 +18,7 @@ https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op.h
 
 #pragma once
 #include "glog/logging.h"
-#include "paddle/framework/op_registry.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {

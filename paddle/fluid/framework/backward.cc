@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/backward.h"
-#include "paddle/operators/net_op.h"
+#include "paddle/fluid/framework/backward.h"
+#include "paddle/fluid/operators/net_op.h"
 
 #include <deque>
 #include <list>
 #include <memory>
 #include <unordered_set>
 
-#include "paddle/framework/block_desc.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/net_op.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/net_op.h"
 
 namespace paddle {
 namespace framework {

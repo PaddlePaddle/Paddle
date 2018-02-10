@@ -15,8 +15,8 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/framework/mixed_vector.h"
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 template <typename T>
 using vec = paddle::framework::Vector<T>;

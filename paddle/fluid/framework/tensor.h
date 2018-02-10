@@ -20,12 +20,12 @@ limitations under the License. */
 #include <typeindex>
 #include <vector>
 
-#include "paddle/framework/data_layout.h"
-#include "paddle/framework/ddim.h"
-#include "paddle/memory/memory.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/place.h"
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 
@@ -224,4 +224,4 @@ inline void Tensor::switch_place(platform::Place new_place) {
 }  // namespace framework
 }  // namespace paddle
 
-#include "paddle/framework/tensor_impl.h"
+#include "paddle/fluid/framework/tensor_impl.h"

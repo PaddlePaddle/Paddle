@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 #include <map>
-#include "paddle/framework/selected_rows.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {

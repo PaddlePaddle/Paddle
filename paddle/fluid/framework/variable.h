@@ -17,7 +17,7 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

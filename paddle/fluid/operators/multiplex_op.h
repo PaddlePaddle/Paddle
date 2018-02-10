@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/memory/memcpy.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace paddle {
 namespace operators {

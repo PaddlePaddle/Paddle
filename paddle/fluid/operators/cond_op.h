@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/framework/ddim.h"
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/operators/net_op.h"
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/net_op.h"
 
 namespace paddle {
 namespace operators {

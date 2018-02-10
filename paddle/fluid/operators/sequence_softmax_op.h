@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/softmax.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/softmax.h"
 
 namespace paddle {
 namespace operators {

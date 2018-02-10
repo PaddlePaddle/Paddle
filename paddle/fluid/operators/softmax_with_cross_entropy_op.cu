@@ -14,7 +14,7 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
-#include "paddle/operators/softmax_with_cross_entropy_op.h"
+#include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
 
 namespace paddle {
 namespace operators {

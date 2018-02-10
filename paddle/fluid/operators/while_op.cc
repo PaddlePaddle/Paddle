@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
-#include "paddle/framework/executor.h"
-#include "paddle/framework/lod_tensor_array.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/operator.h"
-#include "paddle/operators/detail/safe_ref.h"
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {

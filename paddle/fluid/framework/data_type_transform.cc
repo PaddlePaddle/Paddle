@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/data_type_transform.h"
+#include "paddle/fluid/framework/data_type_transform.h"
 
-#include "paddle/framework/selected_rows.h"
-#include "paddle/platform/transform.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace framework {

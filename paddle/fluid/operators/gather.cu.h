@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/tensor.h"
-#include "paddle/platform/place.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {

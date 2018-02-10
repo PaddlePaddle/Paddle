@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/adagrad_op.h"
+#include "paddle/fluid/operators/adagrad_op.h"
 
 #include <cmath>
 
-#include "paddle/operators/math/math_function.h"
-#include "paddle/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {

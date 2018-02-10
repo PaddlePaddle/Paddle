@@ -22,17 +22,17 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"  // For VLOG
-#include "paddle/framework/attribute.h"
-#include "paddle/framework/block_desc.h"
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/op_info.h"
-#include "paddle/framework/op_kernel_type.h"
-#include "paddle/framework/scope.h"
-#include "paddle/framework/selected_rows.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/variant.h"
+#include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/Error.h"
 
 namespace paddle {

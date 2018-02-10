@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include "paddle/framework/data_type.h"
-#include "paddle/operators/math/math_function.h"
-#include "paddle/operators/math/math_function_impl.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/math_function_impl.h"
 
 namespace paddle {
 namespace operators {

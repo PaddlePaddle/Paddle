@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <time.h>
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/inference/io.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/inference/io.h"
 
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor& input,

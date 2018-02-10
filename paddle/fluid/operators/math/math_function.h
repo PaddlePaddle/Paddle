@@ -47,11 +47,11 @@ int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
 
 #include <cmath>
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/tensor.h"
-#include "paddle/framework/tensor_util.h"
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {

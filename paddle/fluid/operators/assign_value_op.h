@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {

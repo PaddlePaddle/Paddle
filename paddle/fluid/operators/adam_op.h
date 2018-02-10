@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/detail/safe_ref.h"
-#include "paddle/operators/math/selected_rows_functor.h"
-#include "paddle/platform/for_range.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {

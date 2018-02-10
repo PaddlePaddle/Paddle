@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/selected_rows.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/selected_rows.h"
 
 namespace paddle {
 namespace operators {

@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <numeric>
 
-#include "paddle/framework/lod_rank_table.h"
-#include "paddle/framework/lod_tensor_array.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/memory/memcpy.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/framework/lod_rank_table.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {

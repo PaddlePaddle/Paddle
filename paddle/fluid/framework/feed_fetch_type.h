@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
-#include "paddle/framework/lod_tensor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {

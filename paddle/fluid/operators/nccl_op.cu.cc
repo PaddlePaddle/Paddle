@@ -11,9 +11,9 @@ limitations under the License. */
 
 #include <functional>
 
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/nccl/nccl_gpu_common.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 
 namespace paddle {
 namespace operators {

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/memory/memcpy.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {

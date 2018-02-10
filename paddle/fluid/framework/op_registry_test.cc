@@ -15,7 +15,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/framework/op_registry.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace pd = paddle::framework;
 

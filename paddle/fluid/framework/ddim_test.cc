@@ -15,7 +15,7 @@ limitations under the License. */
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/framework/ddim.h"
+#include "paddle/fluid/framework/ddim.h"
 
 TEST(DDim, Equality) {
   // construct a DDim from an initialization list

@@ -14,19 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/scope.h"
-#include "paddle/framework/selected_rows.h"
-#include "paddle/framework/var_type.h"
-#include "paddle/operators/detail/simple_block_queue.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/detail/simple_block_queue.h"
 
-#include "paddle/operators/detail/send_recv.grpc.pb.h"
-#include "paddle/operators/detail/send_recv.pb.h"
+#include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/detail/send_recv.pb.h"
 
 #include <grpc++/grpc++.h>
 #include <grpc/support/log.h>
 #include <thread>
-#include "paddle/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {

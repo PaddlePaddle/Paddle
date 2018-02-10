@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <set>
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/op_registry.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {

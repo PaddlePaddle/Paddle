@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <math.h>
 #include <stdlib.h>
-#include "paddle/platform/device_context.h"
-#include "paddle/platform/hostdevice.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <math.h>
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/hostdevice.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 #ifdef __AVX__
 #include <immintrin.h>

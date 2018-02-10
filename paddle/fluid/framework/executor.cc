@@ -12,19 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/executor.h"
+#include "paddle/fluid/framework/executor.h"
 
 #include <set>
 
 #include "gflags/gflags.h"
-#include "paddle/framework/feed_fetch_method.h"
-#include "paddle/framework/feed_fetch_type.h"
-#include "paddle/framework/lod_rank_table.h"
-#include "paddle/framework/lod_tensor_array.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/reader.h"
-#include "paddle/platform/place.h"
-#include "paddle/platform/profiler.h"
+#include "paddle/fluid/framework/feed_fetch_method.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/lod_rank_table.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,

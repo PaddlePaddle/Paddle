@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/memory/detail/memory_block.h"
+#include "paddle/fluid/memory/detail/memory_block.h"
 
 #include <stddef.h>
 

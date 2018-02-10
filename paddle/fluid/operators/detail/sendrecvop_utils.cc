@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {

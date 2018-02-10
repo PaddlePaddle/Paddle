@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 #include <math.h>
 #include <type_traits>
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/elementwise_op_function.h"
-#include "paddle/platform/transform.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {

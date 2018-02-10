@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 #include <string>
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/memory/memcpy.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 

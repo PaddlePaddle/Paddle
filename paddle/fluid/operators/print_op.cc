@@ -15,8 +15,8 @@
 #include <algorithm>
 #include <ctime>
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/variable.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace operators {

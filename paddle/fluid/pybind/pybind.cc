@@ -12,35 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pybind/protobuf.h"
+#include "paddle/fluid/pybind/protobuf.h"
 
 #include <mutex>  // for call_once
 #include <unordered_map>
-#include "paddle/framework/backward.h"
-#include "paddle/framework/executor.h"
-#include "paddle/framework/feed_fetch_method.h"
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/init.h"
-#include "paddle/framework/lod_rank_table.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/lod_tensor_array.h"
-#include "paddle/framework/prune.h"
-#include "paddle/framework/selected_rows.h"
-#include "paddle/operators/cond_op.h"
-#include "paddle/operators/net_op.h"
-#include "paddle/platform/enforce.h"
-#include "paddle/platform/place.h"
-#include "paddle/platform/profiler.h"
-#include "paddle/pybind/const_value.h"
-#include "paddle/pybind/exception.h"
-#include "paddle/pybind/pybind.h"
-#include "paddle/pybind/tensor_py.h"
+#include "paddle/fluid/framework/backward.h"
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/feed_fetch_method.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/init.h"
+#include "paddle/fluid/framework/lod_rank_table.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/prune.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/cond_op.h"
+#include "paddle/fluid/operators/net_op.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/pybind/const_value.h"
+#include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/pybind.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/operators/nccl/nccl_gpu_common.h"
-#include "paddle/platform/cuda_profiler.h"
-#include "paddle/platform/gpu_info.h"
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#include "paddle/fluid/platform/cuda_profiler.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #endif
 
 // disable auto conversion to list in Python

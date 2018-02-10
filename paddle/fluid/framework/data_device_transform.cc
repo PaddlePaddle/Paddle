@@ -11,7 +11,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/framework/data_device_transform.h"
+#include "paddle/fluid/framework/data_device_transform.h"
 
 namespace paddle {
 namespace framework {

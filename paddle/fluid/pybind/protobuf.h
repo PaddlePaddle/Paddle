@@ -17,7 +17,7 @@ limitations under the License. */
 #include <Python.h>
 #include <fstream>
 #include <vector>
-#include "paddle/platform/variant.h"
+#include "paddle/fluid/platform/variant.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"

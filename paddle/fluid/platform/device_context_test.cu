@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/platform/device_context.h"
 
 #include "glog/logging.h"
 

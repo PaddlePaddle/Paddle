@@ -17,14 +17,14 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/framework/data_type.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/scope.h"
-#include "paddle/framework/selected_rows.h"
-#include "paddle/framework/var_type.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/var_type.h"
 
-#include "paddle/operators/detail/send_recv.grpc.pb.h"
-#include "paddle/operators/detail/send_recv.pb.h"
+#include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/detail/send_recv.pb.h"
 
 namespace paddle {
 namespace operators {

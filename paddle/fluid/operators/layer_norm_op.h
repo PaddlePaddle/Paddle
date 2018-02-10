@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
 
-#include "paddle/operators/elementwise_op_function.h"
-#include "paddle/operators/math/math_function.h"
+#include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {

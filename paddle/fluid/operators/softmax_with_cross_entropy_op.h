@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/cross_entropy.h"
-#include "paddle/operators/math/softmax.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/operators/math/softmax.h"
 
 namespace paddle {
 namespace operators {

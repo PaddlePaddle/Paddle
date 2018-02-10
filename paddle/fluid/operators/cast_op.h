@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/data_type.h"
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/platform/transform.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {

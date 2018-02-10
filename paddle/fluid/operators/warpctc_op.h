@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/math_function.h"
-#include "paddle/operators/math/sequence_padding.h"
-#include "paddle/operators/math/sequence_scale.h"
-#include "paddle/platform/dynload/warpctc.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/sequence_padding.h"
+#include "paddle/fluid/operators/math/sequence_scale.h"
+#include "paddle/fluid/platform/dynload/warpctc.h"
 
 namespace paddle {
 namespace operators {

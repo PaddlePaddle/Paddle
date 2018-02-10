@@ -16,7 +16,7 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "paddle/framework/variable.h"
+#include "paddle/fluid/framework/variable.h"
 
 TEST(Variable, GetMutable) {
   using paddle::framework::Variable;

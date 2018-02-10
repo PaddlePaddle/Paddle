@@ -17,7 +17,7 @@ limitations under the License. */
 #include <list>
 #include <mutex>
 #include <vector>
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace platform {

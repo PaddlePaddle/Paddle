@@ -15,12 +15,12 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <stdio.h>
-#include "paddle/framework/init.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/platform/assert.h"
 
-#include <gtest/gtest.h>
-#include <paddle/platform/place.h>
+#include "gtest/gtest.h"
+#include "paddle/fluid/framework/init.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/place.h"
 
 __global__ void test(size_t* a, int size) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;

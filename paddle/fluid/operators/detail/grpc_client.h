@@ -25,12 +25,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/framework/data_type.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/scope.h"
-#include "paddle/framework/selected_rows.h"
-#include "paddle/operators/detail/sendrecvop_utils.h"
-#include "paddle/operators/detail/simple_block_queue.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/simple_block_queue.h"
 
 namespace paddle {
 namespace operators {

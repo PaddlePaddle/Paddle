@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
-#include "paddle/memory/memcpy.h"
-#include "paddle/memory/memory.h"
-#include "paddle/platform/hostdevice.h"
-#include "paddle/platform/transform.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/platform/transform.h"
 
 template <typename T>
 class Scale {

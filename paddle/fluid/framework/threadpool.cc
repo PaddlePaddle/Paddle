@@ -12,9 +12,9 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/framework/threadpool.h"
+#include "paddle/fluid/framework/threadpool.h"
 
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

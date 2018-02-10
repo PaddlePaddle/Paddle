@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/framework/op_registry.h"
-#include "paddle/platform/for_range.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/for_range.h"
 
 template <typename T>
 inline HOSTDEVICE T IOUSimilarity(T xmin1, T ymin1, T xmax1, T ymax1, T xmin2,

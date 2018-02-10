@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <typeindex>
-#include "paddle/framework/framework.pb.h"
-#include "paddle/platform/enforce.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {

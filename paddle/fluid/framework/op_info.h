@@ -18,9 +18,9 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/framework/attribute.h"
-#include "paddle/framework/type_defs.h"
-#include "paddle/platform/macros.h"
+#include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {

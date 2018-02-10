@@ -18,8 +18,8 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "paddle/platform/assert.h"
-#include "paddle/platform/hostdevice.h"
+#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace framework {

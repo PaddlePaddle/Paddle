@@ -14,8 +14,8 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
-#include "paddle/operators/math/softmax.h"
-#include "paddle/operators/math/softmax_impl.h"
+#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/operators/math/softmax_impl.h"
 
 namespace paddle {
 namespace operators {

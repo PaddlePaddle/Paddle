@@ -19,14 +19,14 @@ limitations under the License. */
 
 #include <unistd.h>
 
-#include "paddle/framework/executor.h"
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/lod_tensor.h"
-#include "paddle/framework/op_registry.h"
-#include "paddle/framework/proto_desc.h"
-#include "paddle/operators/detail/grpc_server.h"
-#include "paddle/operators/detail/sendrecvop_utils.h"
-#include "paddle/operators/detail/simple_block_queue.h"
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/proto_desc.h"
+#include "paddle/fluid/operators/detail/grpc_server.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/simple_block_queue.h"
 #include "paddle/string/printf.h"
 
 namespace paddle {

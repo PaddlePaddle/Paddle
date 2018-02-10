@@ -18,8 +18,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 
-#include "paddle/framework/operator.h"
-#include "paddle/framework/program_desc.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {

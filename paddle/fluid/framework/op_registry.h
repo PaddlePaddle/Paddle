@@ -22,14 +22,14 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "glog/logging.h"  // For VLOG()
-#include "paddle/framework/attribute.h"
-#include "paddle/framework/details/op_registry.h"
-#include "paddle/framework/framework.pb.h"
-#include "paddle/framework/grad_op_desc_maker.h"
-#include "paddle/framework/op_desc.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/scope.h"
-#include "paddle/framework/shape_inference.h"
+#include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/details/op_registry.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/grad_op_desc_maker.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/shape_inference.h"
 
 namespace paddle {
 namespace framework {

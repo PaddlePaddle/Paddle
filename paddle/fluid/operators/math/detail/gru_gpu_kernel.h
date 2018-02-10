@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <type_traits>
-#include "paddle/operators/math/detail/activation_functions.h"
-#include "paddle/operators/math/gru_compute.h"
-#include "paddle/platform/cuda_helper.h"
-#include "paddle/platform/device_context.h"
+#include "paddle/fluid/operators/math/detail/activation_functions.h"
+#include "paddle/fluid/operators/math/gru_compute.h"
+#include "paddle/fluid/platform/cuda_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {

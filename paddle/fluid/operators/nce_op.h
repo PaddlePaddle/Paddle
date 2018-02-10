@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <math.h>
 #include <random>
-#include "paddle/framework/eigen.h"
-#include "paddle/framework/op_registry.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 namespace paddle {
 namespace operators {

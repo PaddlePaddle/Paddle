@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "paddle/framework/op_registry.h"
-#include "paddle/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {

@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/memory/memory.h"
-#include "paddle/memory/detail/memory_block.h"
-#include "paddle/memory/detail/meta_data.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/memory/detail/memory_block.h"
+#include "paddle/fluid/memory/detail/meta_data.h"
 
-#include "paddle/platform/cpu_info.h"
-#include "paddle/platform/gpu_info.h"
-#include "paddle/platform/place.h"
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 
 #include <gtest/gtest.h>
 #include <unordered_map>

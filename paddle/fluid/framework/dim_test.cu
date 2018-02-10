@@ -15,7 +15,7 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-#include "paddle/framework/dim.h"
+#include "paddle/fluid/framework/dim.h"
 
 __global__ void test(paddle::framework::Dim<2>* o) {
   o[0] = paddle::framework::make_dim(5, 6);

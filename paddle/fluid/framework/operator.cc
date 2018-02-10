@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/framework/data_transform.h"
-#include "paddle/framework/executor.h"
-#include "paddle/framework/operator.h"
-#include "paddle/framework/shape_inference.h"
-#include "paddle/framework/var_type.h"
+#include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/var_type.h"
 
 DECLARE_bool(benchmark);
 
