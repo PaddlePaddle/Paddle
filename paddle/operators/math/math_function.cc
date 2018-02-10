@@ -331,6 +331,12 @@ template struct RowwiseAdd<platform::CPUDeviceContext, double>;
 template struct ColwiseSum<platform::CPUDeviceContext, float>;
 template struct ColwiseSum<platform::CPUDeviceContext, double>;
 
+template struct RowwiseSum<platform::CPUDeviceContext, float>;
+template struct RowwiseSum<platform::CPUDeviceContext, double>;
+
+template struct RowwiseMean<platform::CPUDeviceContext, float>;
+template struct RowwiseMean<platform::CPUDeviceContext, double>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

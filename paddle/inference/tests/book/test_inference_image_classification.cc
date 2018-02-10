@@ -29,11 +29,15 @@ TEST(inference, image_classification) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
+  int64_t batch_size = 1;
+
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
-  SetupTensor<float>(
-      input, {1, 3, 32, 32}, static_cast<float>(0), static_cast<float>(1));
+  SetupTensor<float>(input,
+                     {batch_size, 3, 32, 32},
+                     static_cast<float>(0),
+                     static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -42,8 +46,7 @@ TEST(inference, image_classification) {
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
-  TestInference<paddle::platform::CPUPlace, float>(
-      dirname, cpu_feeds, cpu_fetchs1);
+  TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -52,8 +55,7 @@ TEST(inference, image_classification) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
-  TestInference<paddle::platform::CUDAPlace, float>(
-      dirname, cpu_feeds, cpu_fetchs2);
+  TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);

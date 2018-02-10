@@ -52,7 +52,7 @@ struct SizeOfTypeFunctor<HEAD, TAIL...> {
 };
 
 static inline size_t SizeOfType(std::type_index type) {
-  SizeOfTypeFunctor<int, float, double, int16_t, int64_t, bool> functor;
+  SizeOfTypeFunctor<int, float, double, int16_t, int64_t, bool, size_t> functor;
   size_t size = functor(type);
   PADDLE_ENFORCE(size != 0UL, "Cannot get size of type %s", type.name());
   return size;
@@ -61,15 +61,15 @@ static inline size_t SizeOfType(std::type_index type) {
 inline void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
-  PADDLE_ENFORCE_GE(
-      holder_->size(), memory_size() + offset_,
+  PADDLE_ENFORCE_LE(
+      numel() * SizeOfType(type()), memory_size(),
       "Tensor's dims_ is out of bound. Call Tensor::mutable_data "
       "first to re-allocate memory.\n"
       "or maybe the required data-type mismatches the data already stored.");
 }
 
 inline size_t Tensor::memory_size() const {
-  return holder_ == nullptr ? 0UL : numel() * SizeOfType(type());
+  return holder_ == nullptr ? 0UL : holder_->size() - offset_;
 }
 
 template <typename T>
