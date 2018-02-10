@@ -18,6 +18,54 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
+// Test for testing inference using "train_main" in python
+TEST(inference, machine_translation_train) {
+  if (FLAGS_dirname.empty()) {
+    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
+  }
+
+  LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
+  std::string dirname = FLAGS_dirname;
+  // 0. Call `paddle::framework::InitDevices()` initialize all the devices
+  // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
+
+  int64_t dict_size = 30000;  // Hard-coded number of unique tokens
+
+  // Setup init_ids and init_scores
+  paddle::framework::LoDTensor input_seqeuence, target_sequence;
+  paddle::framework::LoD lod{{0, 5}};
+
+  SetupLoDTensor(input_sequence, lod, static_cast<int64_t>(0), dict_size - 1);
+  SetupLoDTensor(target_sequence, lod, static_cast<int64_t>(0), dict_size - 1);
+
+  std::vector<paddle::framework::LoDTensor*> cpu_feeds;
+  cpu_feeds.push_back(&input_sequence);
+  cpu_feeds.push_back(&target_sequence);
+
+  paddle::framework::LoDTensor output1;
+  std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+  cpu_fetchs1.push_back(&output1);
+
+  // Run inference on CPU
+  TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
+  LOG(INFO) << output1.lod();
+  LOG(INFO) << output1.dims();
+
+#ifdef PADDLE_WITH_CUDA
+  paddle::framework::LoDTensor output2;
+  std::vector<paddle::framework::LoDTensor*> cpu_fetchs2;
+  cpu_fetchs2.push_back(&output2);
+
+  // Run inference on CUDA GPU
+  TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
+  LOG(INFO) << output2.lod();
+  LOG(INFO) << output2.dims();
+
+  CheckError<float>(output1, output2);
+#endif
+}
+
+// Test for testing inference using "decode_main" in python
 TEST(inference, machine_translation_decode) {
   if (FLAGS_dirname.empty()) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
