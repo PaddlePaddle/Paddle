@@ -361,8 +361,6 @@ class DistributeTranspiler:
             j = idx - 1
             while j >= 0:
                 prev_op = all_ops[j]
-                # prev_output_names = [o.name for o in prev_op.outputs.values()]
-                # prev_input_names = [o.name for o in prev_op.inputs.values()]
                 # NOTE(typhoonzero): consider list input/output
                 prev_output_names = prev_op.desc.output_arg_names()
                 prev_input_names = prev_op.desc.input_arg_names()
@@ -535,14 +533,6 @@ class DistributeTranspiler:
             attrs={
                 "OptimizeBlock": optimize_block,
                 "endpoint": endpoint,
-                # "ParamList": [
-                #     p.name
-                #     for p in self.param_grad_ep_mapping[endpoint]["params"]
-                # ],
-                # "GradList": [
-                #     p.name
-                #     for p in self.param_grad_ep_mapping[endpoint]["grads"]
-                # ],
                 "Fanin": self.trainers
             })
         pserver_program.sync_with_cpp()
