@@ -18,6 +18,7 @@ import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
 import paddle.v2.fluid as fluid
+from paddle.v2.fluid.initializer import init_on_cpu
 import contextlib
 import time
 import unittest
@@ -167,7 +168,16 @@ def train(use_cuda, save_dirname=None):
 
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
+    global_step = fluid.layers.create_global_var(
+        shape=[1], value=0, dtype='float32', force_cpu=True, persistable=True)
+    sgd_optimizer = fluid.optimizer.SGD(
+        learning_rate=fluid.learning_rate_decay.exponential_decay(
+            learning_rate=0.0001,
+            global_step=global_step,
+            decay_steps=100000,
+            decay_rate=0.5,
+            staircase=True),
+        global_step=global_step)
     sgd_optimizer.minimize(avg_cost)
 
     # TODO(qiao)
