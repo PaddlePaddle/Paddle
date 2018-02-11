@@ -761,17 +761,6 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
 
-        def _clear_op_io_for_var(name):
-            for op in self.ops:
-                for k in op.inputs.keys():
-
-                    if op.inputs[k].name == name:
-                        op.inputs[k] = None
-                for k in op.outputs.keys():
-                    if op.outputs[k].name == name:
-                        op.outputs[k] = None
-
-        _clear_op_io_for_var(name)
         self.desc.rename_var(name, new_name)
         d = self.desc.find_var(new_name)
         var = None
@@ -797,17 +786,6 @@ class Block(object):
         # rename the python side, sync_with_cpp will only add
         # new vars/ops to python side.
         self.vars[new_name] = var
-        for op in self.ops:
-            print("### rename op i/o ", name, op.inputs)
-            if op.inputs:
-                for k in op.inputs.keys():
-                    if op.inputs[k] == None:
-                        print("rename input: ", name, var)
-                        op.inputs[k] = var
-            if op.outputs:
-                for k in op.outputs.keys():
-                    if op.outputs[k] == None:
-                        op.outputs[k] = var
         del self.vars[name]
         self.sync_with_cpp()
 
@@ -901,7 +879,6 @@ class Block(object):
         for p in other.iter_parameters():
             assert isinstance(p, Parameter)
             v = self.vars.get(p.name, None)
-            print("var shape to copy", v, p)
             if v is None:
                 raise ValueError("copy_param_info_from should be invoked with "
                                  "same topology")
