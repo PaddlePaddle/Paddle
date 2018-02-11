@@ -49,11 +49,11 @@ class TestPythonOperatorOverride(unittest.TestCase):
         # compare func to check
         compare_fns = [
             lambda _a, _b: _a == _b,
-            lambda _a, _b: _a < _b,
-            lambda _a, _b: _a > _b,
-            lambda _a, _b: _a <= _b,
-            lambda _a, _b: _a >= _b,
             lambda _a, _b: _a != _b,
+            lambda _a, _b: _a < _b,
+            lambda _a, _b: _a <= _b,
+            lambda _a, _b: _a > _b,
+            lambda _a, _b: _a >= _b,
         ]
 
         # places to check
