@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,8 +16,19 @@ All layers just related to the detection neural network.
 """
 
 from ..layer_helper import LayerHelper
+from ..param_attr import ParamAttr
+from ..framework import Variable
+from layer_function_generator import autodoc
+from tensor import concat
+from ops import reshape
+from ..nets import img_conv_with_bn
+from nn import transpose
+import math
 
-__all__ = ['detection_output', ]
+__all__ = [
+    'detection_output',
+    'multi_box_head',
+]
 
 
 def detection_output(scores,
@@ -114,3 +125,147 @@ def detection_output(scores,
             'nms_eta': 1.0
         })
     return nmsed_outs
+
+
+def multi_box_head(inputs,
+                   num_classes,
+                   min_sizes=None,
+                   max_sizes=None,
+                   min_ratio=None,
+                   max_ratio=None,
+                   aspect_ratios=None,
+                   flip=False,
+                   share_location=True,
+                   kernel_size=1,
+                   pad=1,
+                   stride=1,
+                   use_batchnorm=False,
+                   base_size=None,
+                   name=None):
+    """
+    **Multi Box Head**
+
+    input many Variable, and return mbox_loc, mbox_conf
+
+    Args:
+       inputs(list): The list of input Variables, the format
+            of all Variables is NCHW.
+       num_classes(int): The number of calss.
+       min_sizes(list, optional, default=None): The length of
+            min_size is used to compute the the number of prior box.
+            If the min_size is None, it will be computed according
+            to min_ratio and max_ratio.
+       max_sizes(list, optional, default=None): The length of max_size
+            is used to compute the the number of prior box.
+       min_ratio(int): If the min_sizes is None, min_ratio and min_ratio
+            will be used to compute the min_sizes and max_sizes.
+       max_ratio(int): If the min_sizes is None, min_ratio and min_ratio
+            will be used to compute the min_sizes and max_sizes.
+       aspect_ratios(list): The number of the aspect ratios is used to
+            compute the number of prior box.
+       base_size(int): the base_size is used to get min_size
+            and max_size according to min_ratio and max_ratio.
+       flip(bool, optional, default=False): Whether to flip
+            aspect ratios.
+       name(str, optional, None): Name of the prior box layer.
+
+    Returns:
+
+        mbox_loc(Variable): the output prior boxes of PriorBoxOp. The layout is
+             [num_priors, 4]. num_priors is the total box count of each
+              position of inputs.
+        mbox_conf(Variable): the expanded variances of PriorBoxOp. The layout
+             is [num_priors, 4]. num_priors is the total box count of each
+             position of inputs
+
+    Examples:
+        .. code-block:: python
+
+
+    """
+
+    assert isinstance(inputs, list), 'inputs should be a list.'
+
+    if min_sizes is not None:
+        assert len(inputs) == len(min_sizes)
+
+    if max_sizes is not None:
+        assert len(inputs) == len(max_sizes)
+
+    if min_sizes is None:
+        # if min_sizes is None, min_sizes and max_sizes
+        #  will be set according to max_ratio and min_ratio
+        assert max_ratio is not None and min_ratio is not None
+        min_sizes = []
+        max_sizes = []
+        num_layer = len(inputs)
+        step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
+        for ratio in xrange(min_ratio, max_ratio + 1, step):
+            min_sizes.append(base_size * ratio / 100.)
+            max_sizes.append(base_size * (ratio + step) / 100.)
+        min_sizes = [base_size * .10] + min_sizes
+        max_sizes = [base_size * .20] + max_sizes
+
+    if aspect_ratios is not None:
+        assert len(inputs) == len(aspect_ratios)
+
+    mbox_locs = []
+    mbox_confs = []
+    for i, input in enumerate(inputs):
+        min_size = min_sizes[i]
+        if type(min_size) is not list:
+            min_size = [min_size]
+
+        max_size = []
+        if max_sizes is not None:
+            max_size = max_sizes[i]
+            if type(max_size) is not list:
+                max_size = [max_size]
+            if max_size:
+                assert len(max_size) == len(
+                    min_size), "max_size and min_size should have same length."
+
+        aspect_ratio = []
+        if aspect_ratios is not None:
+            aspect_ratio = aspect_ratios[i]
+            if type(aspect_ratio) is not list:
+                aspect_ratio = [aspect_ratio]
+
+        num_priors_per_location = 0
+        if max_sizes is not None:
+            num_priors_per_location = len(min_size) + len(aspect_ratio) * len(
+                min_size) + len(max_size)
+        else:
+            num_priors_per_location = len(min_size) + len(aspect_ratio) * len(
+                min_size)
+        if flip:
+            num_priors_per_location += len(aspect_ratio) * len(min_size)
+
+        # mbox_loc
+        num_loc_output = num_priors_per_location * 4
+        if share_location:
+            num_loc_output *= num_classes
+
+        mbox_loc = img_conv_with_bn(
+            input=input,
+            conv_num_filter=num_loc_output,
+            conv_padding=pad,
+            conv_stride=stride,
+            conv_filter_size=kernel_size,
+            conv_with_batchnorm=use_batchnorm)
+        mbox_loc = transpose(mbox_loc, perm=[0, 2, 3, 1])
+        mbox_locs.append(mbox_loc)
+
+        #    get the number of prior box
+        num_conf_output = num_priors_per_location * num_classes
+        conf_loc = img_conv_with_bn(
+            input=input,
+            conv_num_filter=num_conf_output,
+            conv_padding=pad,
+            conv_stride=stride,
+            conv_filter_size=kernel_size,
+            conv_with_batchnorm=use_batchnorm)
+        conf_loc = transpose(conf_loc, perm=[0, 2, 3, 1])
+        mbox_confs.append(conf_loc)
+
+    return mbox_locs, mbox_confs

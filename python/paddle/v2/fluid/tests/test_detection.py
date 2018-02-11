@@ -13,7 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
+import paddle.v2.fluid as fluid
+import paddle.v2.fluid.core as core
+import paddle.v2.fluid.layers as layers
+import paddle.v2.fluid.layers.detection as detection
+from paddle.v2.fluid.framework import Program, program_guard
 import unittest
+import numpy as np
 
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.framework import Program, program_guard
@@ -47,6 +53,61 @@ class TestBook(unittest.TestCase):
                 scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv)
             self.assertIsNotNone(out)
         print(str(program))
+
+
+class TestMultiBoxHead(unittest.TestCase):
+    def test_prior_box(self):
+        data_shape = [3, 224, 224]
+        mbox_locs, mbox_confs = self.multi_box_output(data_shape)
+        # print mbox_locs.shape
+        # print mbox_confs.shape
+        # assert len(box.shape) == 2
+        # assert box.shape == var.shape
+        # assert box.shape[1] == 4
+
+    def multi_box_output(self, data_shape):
+        images = fluid.layers.data(
+            name='pixel', shape=data_shape, dtype='float32')
+        conv1 = fluid.layers.conv2d(
+            input=images,
+            num_filters=3,
+            filter_size=3,
+            stride=2,
+            use_cudnn=False)
+        conv2 = fluid.layers.conv2d(
+            input=conv1,
+            num_filters=3,
+            filter_size=3,
+            stride=2,
+            use_cudnn=False)
+        conv3 = fluid.layers.conv2d(
+            input=conv2,
+            num_filters=3,
+            filter_size=3,
+            stride=2,
+            use_cudnn=False)
+        conv4 = fluid.layers.conv2d(
+            input=conv3,
+            num_filters=3,
+            filter_size=3,
+            stride=2,
+            use_cudnn=False)
+        conv5 = fluid.layers.conv2d(
+            input=conv4,
+            num_filters=3,
+            filter_size=3,
+            stride=2,
+            use_cudnn=False)
+
+        mbox_locs, mbox_confs = detection.multi_box_head(
+            inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
+            num_classes=21,
+            min_ratio=20,
+            max_ratio=90,
+            aspect_ratios=[[2.], [2., 3.], [2., 3.], [2., 3.], [2.], [2.]],
+            base_size=300,
+            flip=True)
+        return mbox_locs, mbox_confs
 
 
 if __name__ == '__main__':
