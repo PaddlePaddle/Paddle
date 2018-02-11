@@ -16,10 +16,11 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "paddle/framework/init.h"
-#include "paddle/memory/memory.h"
+#include "paddle/fluid/framework/init.h"
+#include "paddle/fluid/memory/memory.h"
 
 int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
   std::string gflags_env;
   for (int i = 0; i < argc; ++i) {
@@ -35,7 +36,6 @@ int main(int argc, char** argv) {
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
-  testing::InitGoogleTest(&argc, argv);
   paddle::memory::Used(paddle::platform::CPUPlace());
 
 #ifdef PADDLE_WITH_CUDA
