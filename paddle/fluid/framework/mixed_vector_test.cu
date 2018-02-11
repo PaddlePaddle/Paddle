@@ -27,10 +27,10 @@ TEST(mixed_vector, CPU_VECTOR) {
   for (int i = 0; i < 10; ++i) {
     tmp.push_back(i);
   }
-  ASSERT_EQ(tmp.size(), 10);
+  ASSERT_EQ(tmp.size(), 10UL);
   vec<int> tmp2;
   tmp2 = tmp;
-  ASSERT_EQ(tmp2.size(), 10);
+  ASSERT_EQ(tmp2.size(), 10UL);
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(tmp2[i], i);
     ASSERT_EQ(tmp2[i], tmp[i]);
@@ -59,7 +59,7 @@ TEST(mixed_vector, GPU_VECTOR) {
   for (int i = 0; i < 10; ++i) {
     tmp.push_back(i);
   }
-  ASSERT_EQ(tmp.size(), 10);
+  ASSERT_EQ(tmp.size(), 10UL);
   paddle::platform::CUDAPlace gpu(0);
 
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu)>>>(tmp.MutableData(gpu));
@@ -80,7 +80,7 @@ TEST(mixed_vector, MultiGPU) {
   for (int i = 0; i < 10; ++i) {
     tmp.push_back(i);
   }
-  ASSERT_EQ(tmp.size(), 10);
+  ASSERT_EQ(tmp.size(), 10UL);
   paddle::platform::CUDAPlace gpu0(0);
   paddle::platform::SetDeviceId(0);
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu0)>>>(tmp.MutableData(gpu0));
