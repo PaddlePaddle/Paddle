@@ -41,5 +41,62 @@ inline void StridedMemcpy(const platform::DeviceContext& dev_ctx, const T* src,
   StridedCopyDimVisitor<T> func(dev_ctx, src, src_stride, dst_stride, dst);
   boost::apply_visitor(func, dst_dim);
 }
+
+// Strided numel memory copy from src to dst by the specified axis
+//
+// For example, for a tensor dims [4, 20, 100], the strieded numel is
+// [8000, 2000, 100]
+//
+// NOTE: The src and dst tensor should have the same elements
+// except the specified axis.
+template <typename T>
+inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
+                                     int64_t axis, T* dst,
+                                     const framework::DDim& dst_stride_numel,
+                                     const T* src,
+                                     const framework::DDim& src_stride_numel) {
+  int64_t before = dst_stride_numel[0] / dst_stride_numel[axis];
+  int64_t src_after = src_stride_numel[axis];
+  int64_t dst_after = dst_stride_numel[axis];
+  auto place = ctx.GetPlace();
+
+  PADDLE_ENFORCE_EQ(src_stride_numel.size(), dst_stride_numel.size(),
+                    "src and dst tensor should have the same dims size.");
+
+  for (int64_t i = 0; i < axis; ++i) {
+    if (i < axis) {
+      PADDLE_ENFORCE_EQ(src_stride_numel[i] / src_stride_numel[axis],
+                        dst_stride_numel[i] / dst_stride_numel[axis],
+                        "src and dst should have the same elements "
+                        "except the specified axis.");
+    } else if (i == axis) {
+      continue;
+    } else {
+      PADDLE_ENFORCE_EQ(src_stride_numel[i], dst_stride_numel[i],
+                        "src and dst should have the same elements "
+                        "except the specified axis.");
+    }
+  }
+
+  for (int64_t i = 0; i < before; ++i) {
+    if (platform::is_cpu_place(place)) {
+      auto& cpu_place = boost::get<platform::CPUPlace>(place);
+      memory::Copy(cpu_place, dst + i * dst_after, cpu_place,
+                   src + i * src_after, sizeof(T) * src_after);
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      auto& gpu_place = boost::get<platform::CUDAPlace>(place);
+      auto& cuda_ctx =
+          reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
+      memory::Copy(gpu_place, dst + i * dst_after, gpu_place,
+                   src + i * src_after, sizeof(T) * src_after,
+                   cuda_ctx.stream());
+#else
+      PADDLE_THROW("Paddle is not compiled with GPU");
+#endif
+    }
+  }
+}
+
 }  // namespace operators
 }  // namespace paddle

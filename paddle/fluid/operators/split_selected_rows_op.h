@@ -55,6 +55,7 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
       auto rows_idx = outs_rows_idx[i];
+      outs[i]->set_height(height_sections[i]);
       if (rows_idx.size() > 0) {
         auto dims = x->GetCompleteDims();
         dims[0] = rows_idx.size();
