@@ -741,9 +741,75 @@ class Block(object):
         """
         if not self.has_var(name):
             raise ValueError("var %s is not in current" % name)
+        v = self.var(name)
+        stop_gradient = None
+        trainable = None
+        optimize_attr = None
+        regularizer = None
+        gradient_clip_attr = None
+        error_clip = None
+        if type(v) == Parameter:
+            stop_gradient = v.stop_gradient
+            trainable = v.trainable
+            optimize_attr = v.optimize_attr
+            regularizer = v.regularizer
+            gradient_clip_attr = v.gradient_clip_attr
+            error_clip = v.error_clip
+        elif type(v) == Variable:
+            error_clip = v.error_clip
+            stop_gradient = v.stop_gradient
+        else:
+            raise ValueError("unsupported var type: %s", type(v))
+
+        def _clear_op_io_for_var(name):
+            for op in self.ops:
+                for k in op.inputs.keys():
+
+                    if op.inputs[k].name == name:
+                        op.inputs[k] = None
+                for k in op.outputs.keys():
+                    if op.outputs[k].name == name:
+                        op.outputs[k] = None
+
+        _clear_op_io_for_var(name)
         self.desc.rename_var(name, new_name)
+        d = self.desc.find_var(new_name)
+        var = None
+        if type(v) == Parameter:
+            var = Parameter(
+                self,
+                d.shape(),
+                d.dtype(),
+                name=new_name,
+                stop_gradient=stop_gradient,
+                trainable=trainable,
+                optimize_attr=optimize_attr,
+                regularizer=regularizer,
+                gradient_clip_attr=gradient_clip_attr,
+                error_clip=error_clip)
+        elif type(v) == Variable:
+            var = Variable(
+                self,
+                name=new_name,
+                error_clip=error_clip,
+                stop_gradient=stop_gradient)
+
+        # rename the python side, sync_with_cpp will only add
+        # new vars/ops to python side.
+        self.vars[new_name] = var
+        for op in self.ops:
+            print("### rename op i/o ", name, op.inputs)
+            if op.inputs:
+                for k in op.inputs.keys():
+                    if op.inputs[k] == None:
+                        print("rename input: ", name, var)
+                        op.inputs[k] = var
+            if op.outputs:
+                for k in op.outputs.keys():
+                    if op.outputs[k] == None:
+                        op.outputs[k] = var
+        del self.vars[name]
         self.sync_with_cpp()
-        print("renamed var: ", self.var(new_name))
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()

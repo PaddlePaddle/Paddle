@@ -42,28 +42,30 @@ bool BlockDesc::HasVar(const std::string &name) const {
   return vars_.find(name) != vars_.end();
 }
 
-void BlockDesc::RenameVar(const std::string &old_name,
-                          const std::string &new_name) {
-  if (this->HasVar(old_name)) {
-    auto *var = this->Var(old_name);
-    var->SetName(new_name);
-    vars_[new_name].reset(var);
-    vars_.erase(old_name);
-    // rename inputs and outputs
-    for (const auto &op : ops_) {
-      auto *it = op.get();
-      for (auto in_name : it->InputArgumentNames()) {
-        if (in_name == old_name) {
-          it->RenameInput(old_name, new_name);
-        }
-      }
-      for (auto out_name : it->OutputArgumentNames()) {
-        if (out_name == old_name) {
-          it->RenameOutput(old_name, new_name);
-        }
-      }
-    }
+VarDesc *BlockDesc::RenameVar(const std::string &old_name,
+                              const std::string &new_name) {
+  if (!this->HasVar(old_name)) {
+    return nullptr;
   }
+  need_update_ = true;
+  auto *var = this->Var(old_name);
+  VarDesc *new_var = new VarDesc(*(var->Proto()));
+  new_var->SetName(new_name);
+  // new_var->SetShape(var->GetShape());
+  // new_var->SetType(var->GetType());
+  // new_var->SetDataType(var->GetDataType());
+  // new_var->SetLoDLevel(var->GetLoDLevel());
+  // new_var->SetPersistable(var->Persistable());
+
+  vars_[new_name].reset(new_var);
+
+  // rename inputs and outputs
+  for (const auto &op : ops_) {
+    auto *it = op.get();
+    it->Rename(old_name, new_name);
+  }
+  vars_.erase(old_name);
+  return new_var;
 }
 
 VarDesc *BlockDesc::FindVarRecursive(const std::string &name) const {
