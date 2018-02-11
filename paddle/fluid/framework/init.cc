@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/string/piece.h"
+#include "paddle/fluid/string/piece.h"
 
 namespace paddle {
 namespace framework {

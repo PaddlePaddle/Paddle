@@ -22,7 +22,106 @@ from ops import reshape
 from operator import mul
 import math
 
-__all__ = ['prior_box', ]
+__all__ = [
+    'detection_output',
+    'prior_box',
+]
+
+
+def detection_output(scores,
+                     loc,
+                     prior_box,
+                     prior_box_var,
+                     background_label=0,
+                     nms_threshold=0.3,
+                     nms_top_k=400,
+                     keep_top_k=200,
+                     score_threshold=0.01,
+                     nms_eta=1.0):
+    """
+    **Detection Output Layer**
+
+    This layer applies the NMS to the output of network and computes the 
+    predict bounding box location. The output's shape of this layer could
+    be zero if there is no valid bounding box.
+
+    Args:
+        scores(Variable): A 3-D Tensor with shape [N, C, M] represents the
+            predicted confidence predictions. N is the batch size, C is the
+            class number, M is number of bounding boxes. For each category
+            there are total M scores which corresponding M bounding boxes.
+        loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+            predicted locations of M bounding bboxes. N is the batch size,
+            and each bounding box has four coordinate values and the layout
+            is [xmin, ymin, xmax, ymax].
+        prior_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
+            each box is represented as [xmin, ymin, xmax, ymax],
+            [xmin, ymin] is the left top coordinate of the anchor box,
+            if the input is image feature map, they are close to the origin
+            of the coordinate system. [xmax, ymax] is the right bottom
+            coordinate of the anchor box.
+        prior_box_var(Variable): A 2-D Tensor with shape [M, 4] holds M group
+            of variance.
+        background_label(float): The index of background label,
+            the background label will be ignored. If set to -1, then all
+            categories will be considered.
+        nms_threshold(float): The threshold to be used in NMS.
+        nms_top_k(int): Maximum number of detections to be kept according
+            to the confidences aftern the filtering detections based on
+            score_threshold.
+        keep_top_k(int): Number of total bboxes to be kept per image after
+            NMS step. -1 means keeping all bboxes after NMS step.
+        score_threshold(float): Threshold to filter out bounding boxes with
+            low confidence score. If not provided, consider all boxes.
+        nms_eta(float): The parameter for adaptive NMS.
+
+    Returns:
+        The detected bounding boxes which are a Tensor.
+
+    Examples:
+        .. code-block:: python
+
+        pb = layers.data(name='prior_box', shape=[10, 4],
+                         append_batch_size=False, dtype='float32')
+        pbv = layers.data(name='prior_box_var', shape=[10, 4],
+                          append_batch_size=False, dtype='float32')
+        loc = layers.data(name='target_box', shape=[21, 4],
+                          append_batch_size=False, dtype='float32')
+        scores = layers.data(name='scores', shape=[2, 21, 10],
+                          append_batch_size=False, dtype='float32')
+        nmsed_outs = fluid.layers.detection_output(scores=scores,
+                                       loc=loc,
+                                       prior_box=pb,
+                                       prior_box_var=pbv)
+    """
+
+    helper = LayerHelper("detection_output", **locals())
+    decoded_box = helper.create_tmp_variable(dtype=loc.dtype)
+    helper.append_op(
+        type="box_coder",
+        inputs={
+            'PriorBox': prior_box,
+            'PriorBoxVar': prior_box_var,
+            'TargetBox': loc
+        },
+        outputs={'OutputBox': decoded_box},
+        attrs={'code_type': 'decode_center_size'})
+    nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
+
+    helper.append_op(
+        type="multiclass_nms",
+        inputs={'Scores': scores,
+                'BBoxes': decoded_box},
+        outputs={'Out': nmsed_outs},
+        attrs={
+            'background_label': 0,
+            'nms_threshold': nms_threshold,
+            'nms_top_k': nms_top_k,
+            'keep_top_k': keep_top_k,
+            'score_threshold': score_threshold,
+            'nms_eta': 1.0
+        })
+    return nmsed_outs
 
 
 def prior_box(inputs,
@@ -47,7 +146,7 @@ def prior_box(inputs,
     Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     The details of this algorithm, please refer the section 2.2 of SSD paper
     (SSD: Single Shot MultiBox Detector)<https://arxiv.org/abs/1512.02325>`_ .
-
+    
     Args:
        inputs(list): The list of input Variables, the format of all Variables is NCHW.
        image(Variable): The input image data of PriorBoxOp, the layout is NCHW.
@@ -73,7 +172,7 @@ def prior_box(inputs,
        max_sizes(list, optional, default=None): If `len(inputs) <=2`, max_sizes must
             be set up, and the length of min_sizes should equal to the length of inputs.
        name(str, optional, None): Name of the prior box layer.
-
+    
     Returns:
         boxes(Variable): the output prior boxes of PriorBoxOp. The layout is
              [num_priors, 4]. num_priors is the total box count of each
@@ -81,20 +180,19 @@ def prior_box(inputs,
         Variances(Variable): the expanded variances of PriorBoxOp. The layout
              is [num_priors, 4]. num_priors is the total box count of each
              position of inputs
-
+    
     Examples:
         .. code-block:: python
-
-          prior_boxes(
+    
+          prior_box(
              inputs = [conv1, conv2, conv3, conv4, conv5, conv6],
              image = data,
              min_ratio = 20, # 0.20
              max_ratio = 90, # 0.90
-             steps = [8., 16., 32., 64., 100., 300.],
-             aspect_ratios = [[2.], [2., 3.], [2., 3.], [2., 3.], [2.], [2.]],
-             base_size = 300,
              offset = 0.5,
+             base_size = 300,
              variance = [0.1,0.1,0.1,0.1],
+             aspect_ratios = [[2.], [2., 3.], [2., 3.], [2., 3.], [2.], [2.]],
              flip=True,
              clip=True)
     """
