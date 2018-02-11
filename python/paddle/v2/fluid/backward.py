@@ -223,9 +223,10 @@ def _callback_lookup_(op):
         param_grad_names = [n + "@GRAD" for n in param_names]
 
         class ParallelDoCallBack(object):
-            def __init__(self, param_grad_names):
+            def __init__(self, param_grad_names, parallel_scopes_name):
                 self.has_inserted_nccl_init = False
                 self.param_grad_names = param_grad_names
+                self.parallel_scopes_name = parallel_scopes_name
 
             def __call__(self, block, context):
                 if not self.has_inserted_nccl_init:
@@ -242,7 +243,8 @@ def _callback_lookup_(op):
                     #     inputs={},
                     #     outputs={'Communicator': [self.nccl_com]})
                     op_desc = _create_op_desc_(
-                        "ncclInit", {},
+                        "ncclInit",
+                        {"parallel_scopes": self.parallel_scopes_name},
                         {"Communicator": ['nccl_com__do_not_change_']}, {})
                     # block.desc.append_op().copy_from(op_desc)
                     print(serialize_op_decs(op_desc))
@@ -281,7 +283,8 @@ def _callback_lookup_(op):
                                 {"Out": [o_argu]}, {})
                             block.desc.append_op().copy_from(op_desc)
 
-        return ParallelDoCallBack(param_grad_names)
+        return ParallelDoCallBack(param_grad_names,
+                                  op.output("parallel_scopes"))
     else:
         return None
 
