@@ -309,34 +309,6 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
-    def test_detection_output(self):
-        program = Program()
-        with program_guard(program):
-            pb = layers.data(
-                name='prior_box',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32')
-            pbv = layers.data(
-                name='prior_box_var',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32')
-            loc = layers.data(
-                name='target_box',
-                shape=[21, 4],
-                append_batch_size=False,
-                dtype='float32')
-            scores = layers.data(
-                name='scores',
-                shape=[2, 21, 10],
-                append_batch_size=False,
-                dtype='float32')
-            out = layers.detection_output(
-                scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv)
-            self.assertIsNotNone(out)
-        print(str(program))
-
 
 if __name__ == '__main__':
     unittest.main()

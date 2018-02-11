@@ -16,10 +16,6 @@ All layers just related to the detection neural network.
 """
 
 from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant
-from ..framework import Variable
-from ..param_attr import ParamAttr
-from layer_function_generator import autodoc
 
 __all__ = ['detection_output', ]
 
