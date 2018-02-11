@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/simple_block_queue.h"
-#include "paddle/string/printf.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
@@ -98,6 +98,7 @@ class ListenAndServOp : public framework::OperatorBase {
       // the gradients arrives, just add suffix 0~n and merge the gradient.
       rpc_service_->SetCond(0);
       size_t recv_var_cnt = 0;
+      size_t update_param_cnt = 0;
       int batch_barrier = 0;
       while (batch_barrier != fan_in) {
         const detail::MessageWithName &v = rpc_service_->Get();
@@ -122,11 +123,10 @@ class ListenAndServOp : public framework::OperatorBase {
         }
       }
       VLOG(3) << "recv " << recv_var_cnt << " parmeters for one barrier.";
-      // TODO(Yancey1989): merge SelectedRows variables here
       if (exit_flag) {
         rpc_service_->ShutDown();
       }
-
+      VLOG(3) << "run optimize graph...";
       try {
         executor.Run(*program, &recv_scope, block->ID(), /*global_block*/
                      false /*create_local_scope*/, false /*create_vars*/);
@@ -134,7 +134,7 @@ class ListenAndServOp : public framework::OperatorBase {
         LOG(ERROR) << "run sub program error " << e.what();
       }
       rpc_service_->SetCond(1);
-      rpc_service_->WaitClientGet(recv_var_cnt);
+      rpc_service_->WaitClientGet(update_param_cnt);
       grads_counter_.clear();
     }  // while(true)
   }

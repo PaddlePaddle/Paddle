@@ -15,7 +15,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/string/piece.h"
+#include "paddle/fluid/string/piece.h"
 
 using StringPiece = paddle::string::Piece;
 using paddle::string::HasPrefix;

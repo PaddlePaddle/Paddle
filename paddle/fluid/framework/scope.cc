@@ -18,7 +18,7 @@ limitations under the License. */
 #include <mutex>   // for call_once
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/string/printf.h"
+#include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(benchmark, false,
             "Doing memory benchmark. It will make deleting scope synchronized, "
