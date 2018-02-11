@@ -53,6 +53,7 @@ class TestPythonOperatorOverride(unittest.TestCase):
             lambda _a, _b: _a > _b,
             lambda _a, _b: _a <= _b,
             lambda _a, _b: _a >= _b,
+            lambda _a, _b: _a != _b,
         ]
 
         # places to check

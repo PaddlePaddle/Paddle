@@ -154,8 +154,9 @@ def monkey_patch_variable():
         ("__rpow__", "elementwise_pow", True),
             # for logical compare
         ("__eq__", "equal", False),
+        ("__ne__", "not_equal", False),
         ("__lt__", "less_than", False),
-        ("__le__", "less_equal", False), ):
+        ("__le__", "less_equal", False)):
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse))
 
