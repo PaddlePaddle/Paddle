@@ -51,15 +51,15 @@ def main(use_cuda):
     if use_cuda:  # prior_box only support CPU.
         return
 
-    box, var = prior_box_output(data_shape=[3, 224, 224])
+    data_shape = [3, 224, 224]
+    box, var = prior_box_output(data_shape)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
     batch = [128]
 
-    for i in range(1):
-        # print("iteration : %d" % i)
+    for _ in range(1):
         x = np.random.random(batch + data_shape).astype("float32")
         tensor_x = core.LoDTensor()
         tensor_x.set(x, place)
@@ -75,12 +75,10 @@ def main(use_cuda):
 
 class TestFitALine(unittest.TestCase):
     def test_cpu(self):
-        with self.program_scope_guard():
-            main(use_cuda=False)
+        main(use_cuda=False)
 
     def test_cuda(self):
-        with self.program_scope_guard():
-            main(use_cuda=True)
+        main(use_cuda=True)
 
 
 if __name__ == '__main__':
