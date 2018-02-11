@@ -21,8 +21,6 @@ from ..framework import Variable
 from ..param_attr import ParamAttr
 from layer_function_generator import autodoc
 from tensor import concat
-import math
-from operator import mul
 
 __all__ = [
     'fc',
@@ -66,8 +64,6 @@ __all__ = [
     'nce',
     'beam_search',
     'row_conv',
-    'reshape_with_axis',
-    'flatten',
     'multiplex',
     'layer_norm',
 ]
@@ -3094,87 +3090,4 @@ def multiplex(inputs, index):
         inputs={'X': inputs,
                 'Ids': index},
         outputs={'Out': [out]})
-    return out
-
-
-def reshape_with_axis(input, axis):
-    """
-    **ReshapeWithAxis Layer**
-
-    ReshapeWithAxis is used to merge adjacent dimensions according to axis.
-
-    Args:
-       input(variable): The input tensor.
-       axis(list): The axis which is used to merge the adjacent dimensions.
-
-    Returns:
-        Variable: A tensor variable.
-
-    Examples:
-        .. code-block:: python
-
-          x = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
-          reshaped = fluid.layers.reshape_with_axis(input=x, axis=[2])
-          reshaped.shape
-            >> [-1, 1024]
-          reshaped = fluid.layers.reshape_with_axis(input=x, axis=[1,3])
-          reshaped.shape
-            >> [-1, 96, 32]
-    """
-    assert isinstance(axis, list), "axis should be list."
-    assert len(input.shape) > len(
-        axis), "the length of axis should be litter than input.shape's."
-    input_shape = input.shape
-    temp = 0
-    for ax in axis:
-        assert ax < len(input.shape) and ax > 0, \
-            'The data of Axis should be between 1 and len(input.shape)'
-        assert ax > temp, 'Axis should be incremented sequence'
-        temp = ax
-    axis += [len(input.shape)]
-
-    new_shape = []
-    for i in range(len(axis) - 1):
-        new_shape += [reduce(mul, input_shape[axis[i]:axis[i + 1]], 1)]
-    new_shape = [-1] + new_shape
-
-    helper = LayerHelper('reshape', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype())
-    helper.append_op(
-        type='reshape',
-        inputs={'X': [input]},
-        outputs={'Out': [out]},
-        attrs={'shape': new_shape})
-    return out
-
-
-def flatten(input, axis=1):
-    """
-    **Flatten Layer**
-    ReshapeWithAxis is used to merge adjacent dimensions according to axis.
-    Args:
-       input(variable): The input tensor.
-       axis(int):
-    Returns:
-        Variable: A tensor variable.
-    Examples:
-        .. code-block:: python
-          x = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
-          reshaped = fluid.layers.reshape_with_axis(input=x, axis=2)
-          reshaped.shape
-            >> [-1, 1024]
-    """
-    assert len(input.shape) > axis and axis > 0, \
-        "the axis should be litter than input.shape's."
-    input_shape = input.shape
-
-    new_shape = [-1, reduce(mul, input_shape[axis:len(input_shape)], 1)]
-
-    helper = LayerHelper('reshape', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype())
-    helper.append_op(
-        type='reshape',
-        inputs={'X': [input]},
-        outputs={'Out': [out]},
-        attrs={'shape': new_shape})
     return out
