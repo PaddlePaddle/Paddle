@@ -118,8 +118,6 @@ EOF
         make -j `nproc` gen_proto_py
         make -j `nproc` paddle_python
         make -j `nproc` paddle_docs paddle_docs_cn paddle_api_docs
-        make -j `nproc` print_operators_doc
-        paddle/pybind/print_operators_doc > doc/en/html/operators.json
         popd
     fi
 

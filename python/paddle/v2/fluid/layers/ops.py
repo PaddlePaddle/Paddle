@@ -67,6 +67,8 @@ __all__ = [
     'logical_or',
     'logical_xor',
     'logical_not',
+    'uniform_random',
+    'cumsum',
 ] + __activations__
 
 for _OP in set(__all__):
