@@ -3116,15 +3116,18 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
     
     1) Hard label (one-hot label, so every sample has exactly one class)
     
-        $$Loss_j =  -\text{Logit}_{Label_j} +
-        \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right),
-        j = 1,..., K$$
+    .. math::
+
+        loss_j =  -\\text{logit}_{label_j} +
+        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logit}_i)\\right), j = 1,..., K
     
     2) Soft label (each sample can have a distribution over all classes)
+
+    .. math::
     
-        $$Loss_j =  -\sum_{i=0}^{K}\text{Label}_i \left(\text{Logit}_i -
-        \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right)\right),
-        j = 1,...,K$$
+        loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
+        \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
+        \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
 
     Args:
         logits (Variable): The unscaled log probabilities, which is a 2-D tensor
@@ -3172,16 +3175,16 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
             l1 loss op with shape [batch_size, dim1, ..., dimN].
         y (Variable): A tensor with rank at least 2. The target value of smooth
             l1 loss op with same shape as x.
-        inside_weight(Variable|None):  A tensor with rank at least 2. This
+        inside_weight (Variable|None):  A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
             the result of (x - y) will be multiplied by this tensor element by
             element.
-        outside_weight(Variable|None): A tensor with rank at least 2. This
+        outside_weight (Variable|None): A tensor with rank at least 2. This
             input is optional and should have same shape with x. If provided,
             the out smooth l1 loss will be multiplied by this tensor element
             by element.
-        sigma(float): Hyper parameter of smooth l1 loss op. A float scalar with
-            default value 1.0.
+        sigma (float|None): Hyper parameter of smooth l1 loss op. A float scalar
+            with default value 1.0.
     Returns:
         Variable: A tensor with rank be 2. The output smooth l1 loss with
             shape [batch_size, 1].
