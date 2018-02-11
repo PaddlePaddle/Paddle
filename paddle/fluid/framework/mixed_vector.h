@@ -37,9 +37,8 @@ class Vector {
 
   // Fill vector with value. The vector size is `count`.
   explicit Vector(size_t count, const T& value = T()) {
-    if (count == 0) {
-      InitEmpty();
-    } else {
+    InitEmpty();
+    if (count != 0) {
       resize(count);
       T* ptr = begin();
       for (size_t i = 0; i < count; ++i) {

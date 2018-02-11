@@ -15,6 +15,7 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "mixed_vector.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -89,5 +90,12 @@ TEST(mixed_vector, MultiGPU) {
   multiply_10<<<1, 1, 0, GetCUDAStream(gpu1)>>>(gpu1_ptr);
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(tmp[i], i * 100);
+  }
+}
+
+TEST(mixed_vector, InitWithCount) {
+  paddle::framework::Vector<int> vec(10, 10);
+  for (int i = 0; i < 10; ++i) {
+    ASSERT_EQ(vec[i], 10);
   }
 }
