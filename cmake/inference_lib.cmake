@@ -22,6 +22,7 @@ function(copy TARGET)
         else()
             add_custom_command(TARGET ${TARGET} PRE_BUILD COMMAND cp "${src}" "${dst}")
         endif()
+        add_custom_command(TARGET ${TARGET} COMMENT "copying ${src} -> ${dst}")
     endforeach()
 endfunction()
 
@@ -53,11 +54,11 @@ IF(NOT PROTOBUF_FOUND)
 ENDIF(NOT PROTOBUF_FOUND)
 
 # paddle fluid module
-set(src_dir "${PADDLE_SOURCE_DIR}/paddle")
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/paddle")
+set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
+set(dst_dir "${CMAKE_INSTALL_PREFIX}/paddle/fluid")
 set(module "framework")
 copy(framework_lib DEPS framework_py_proto 
-  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/framework/framework.pb.h
+  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module}
 )
 
@@ -69,7 +70,7 @@ copy(memory_lib
 
 set(module "inference")
 copy(inference_lib DEPENDS paddle_fluid_shared
-  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/inference/libpaddle_fluid.so
+  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.so
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}
 )
 
