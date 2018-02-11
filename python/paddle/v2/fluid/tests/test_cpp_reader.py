@@ -21,7 +21,8 @@ block = prog.current_block()
 
 random_reader = block.create_var(
     type=fluid.core.VarDesc.VarType.READER, name="RandomDataGenerator")
-random_reader.desc.set_lod_levels([0, 0])
+random_reader.desc.set_dtypes(
+    [fluid.core.DataType.FP32, fluid.core.DataType.FP32])
 
 create_random_data_generator_op = block.append_op(
     type="create_random_data_generator",
@@ -30,11 +31,11 @@ create_random_data_generator_op = block.append_op(
         "shape_concat": [1, 2, 1, 1],
         "ranks": [2, 2],
         "min": 0.0,
-        "max": 1.0
+        "max": 1.0,
+        'lod_levels': [0, 0]
     })
 shuffle_reader = block.create_var(
     type=fluid.core.VarDesc.VarType.READER, name="ShuffleReader")
-shuffle_reader.desc.set_lod_levels([0, 0])
 
 create_shuffle_reader_op = block.append_op(
     type="create_shuffle_reader",
@@ -44,7 +45,6 @@ create_shuffle_reader_op = block.append_op(
 
 batch_reader = block.create_var(
     type=fluid.core.VarDesc.VarType.READER, name="BatchReader")
-batch_reader.desc.set_lod_levels([1, 1])
 
 create_batch_reader_op = block.append_op(
     type="create_batch_reader",
@@ -62,13 +62,9 @@ read_op = block.append_op(
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
 
-[res1, res2] = exe.run(prog, fetch_list=[out1, out2], return_numpy=False)
+[res1, res2] = exe.run(prog, fetch_list=[out1, out2])
 
-test_pass = res1.lod() == [range(0, 11)] and res1.lod() == [
-    range(0, 11)
-] and np.array(res1).shape == (10, 2) and np.array(res2).shape == (10, 1)
-
-if not test_pass:
+if not (res1.shape == (10, 2) and res2.shape == (10, 1)):
     exit(1)
 
 exit(0)
