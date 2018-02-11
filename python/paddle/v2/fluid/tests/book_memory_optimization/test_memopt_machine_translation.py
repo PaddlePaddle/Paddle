@@ -19,6 +19,8 @@ import paddle.v2.fluid.core as core
 import paddle.v2.fluid.framework as framework
 import paddle.v2.fluid.layers as layers
 from paddle.v2.fluid.executor import Executor
+import math
+import sys
 
 dict_size = 30000
 source_dict_dim = target_dict_dim = dict_size
@@ -137,6 +139,8 @@ def main():
                   " avg_cost=" + str(avg_cost_val))
             if batch_id > 2:
                 exit(0)
+            if math.isnan(float(avg_cost_val)):
+                sys.exit("got NaN loss, training failed.")
             batch_id += 1
 
 
