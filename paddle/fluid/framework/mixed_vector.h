@@ -106,9 +106,11 @@ class Vector {
   // std::vector iterator methods. Based on CPU data access method
   size_t size() const { return size_; }
 
-  T* begin() { return size() == 0 ? &EmptyDummy() : &this->operator[](0); }
+  T* begin() { return capacity() == 0 ? &EmptyDummy() : &this->operator[](0); }
 
-  T* end() { return size() == 0 ? &EmptyDummy() : &this->operator[](size()); }
+  T* end() {
+    return capacity() == 0 ? &EmptyDummy() : &this->operator[](size());
+  }
 
   T& front() { return *begin(); }
 
@@ -119,11 +121,11 @@ class Vector {
   }
 
   const T* begin() const {
-    return size() == 0 ? &EmptyDummy() : &this->operator[](0);
+    return capacity() == 0 ? &EmptyDummy() : &this->operator[](0);
   }
 
   const T* end() const {
-    return size() == 0 ? &EmptyDummy() : &this->operator[](size());
+    return capacity() == 0 ? &EmptyDummy() : &this->operator[](size());
   }
 
   const T* cbegin() const { return begin(); }
