@@ -85,7 +85,7 @@ class ListenAndServOp : public framework::OperatorBase {
     rpc_service_->SetScope(&recv_scope);
     rpc_service_->SetDevCtx(&dev_ctx);
     auto ins = Inputs("X");
-    auto fan_in = ins.size();
+    auto fan_in = Attr<int>("Fanin");
 
     auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
     auto *program = block->Program();
@@ -163,6 +163,8 @@ from send_op and send back variables to recv_op.
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
     AddAttr<framework::BlockDesc *>(kOptimizeBlock,
                                     "BlockID to run on server side.");
+    AddAttr<int>("Fanin", "How many clients send to this server.")
+        .SetDefault(1);
   }
 };
 
