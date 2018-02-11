@@ -19,30 +19,28 @@ from ..layer_helper import LayerHelper
 from ..framework import Variable
 from tensor import concat
 from ops import reshape
+from operator import mul
 import math
 
-__all__ = [
-    'prior_box',
-    'prior_boxes',
-]
+__all__ = ['prior_box', ]
 
 
-def prior_boxes(inputs,
-                image,
-                min_ratio,
-                max_ratio,
-                aspect_ratios,
-                base_size,
-                steps=None,
-                step_w=None,
-                step_h=None,
-                offset=0.5,
-                variance=[0.1, 0.1, 0.1, 0.1],
-                flip=False,
-                clip=False,
-                min_sizes=None,
-                max_sizes=None,
-                name=None):
+def prior_box(inputs,
+              image,
+              min_ratio,
+              max_ratio,
+              aspect_ratios,
+              base_size,
+              steps=None,
+              step_w=None,
+              step_h=None,
+              offset=0.5,
+              variance=[0.1, 0.1, 0.1, 0.1],
+              flip=False,
+              clip=False,
+              min_sizes=None,
+              max_sizes=None,
+              name=None):
     """
     **Prior_boxes**
 
@@ -140,9 +138,10 @@ def prior_boxes(inputs,
     def _reshape_with_axis_(input, axis=1):
         if not (axis > 0 and axis < len(input.shape)):
             raise ValueError(
-                "The axis should be smaller than the arity of input's shape.")
+                "The axis should be smaller than the arity of input and bigger than 0."
+            )
         new_shape = [-1, reduce(mul, input.shape[axis:len(input.shape)], 1)]
-        out = reshape([input], shape=new_shape)
+        out = reshape(x=input, shape=new_shape)
         return out
 
     assert isinstance(inputs, list), 'inputs should be a list.'
