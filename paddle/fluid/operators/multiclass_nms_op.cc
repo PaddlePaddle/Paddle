@@ -38,22 +38,22 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
 
-    PADDLE_ENFORCE_EQ(box_dims.size(), 2,
-                      "The rank of Input(BBoxes) must be 2.");
+    PADDLE_ENFORCE_EQ(box_dims.size(), 3,
+                      "The rank of Input(BBoxes) must be 3.");
     PADDLE_ENFORCE_EQ(score_dims.size(), 3,
                       "The rank of Input(Scores) must be 3.");
-    PADDLE_ENFORCE_EQ(box_dims[1], 4,
+    PADDLE_ENFORCE_EQ(box_dims[2], 4,
                       "The 2nd dimension of Input(BBoxes) must be 4, "
                       "represents the layout of coordinate "
                       "[xmin, ymin, xmax, ymax]");
-    PADDLE_ENFORCE_EQ(box_dims[0], score_dims[2],
+    PADDLE_ENFORCE_EQ(box_dims[1], score_dims[2],
                       "The 1st dimensiong of Input(BBoxes) must be equal to "
                       "3rd dimension of Input(Scores), which represents the "
                       "predicted bboxes.");
 
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
-    ctx->SetOutputDim("Out", {box_dims[0], 6});
+    ctx->SetOutputDim("Out", {box_dims[1], 6});
   }
 
  protected:
@@ -260,15 +260,20 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int64_t batch_size = score_dims[0];
     int64_t class_num = score_dims[1];
     int64_t predict_dim = score_dims[2];
+    int64_t box_dim = boxes->dims()[2];
 
     std::vector<std::map<int, std::vector<int>>> all_indices;
     std::vector<size_t> batch_starts = {0};
     for (int64_t i = 0; i < batch_size; ++i) {
       Tensor ins_score = scores->Slice(i, i + 1);
       ins_score.Resize({class_num, predict_dim});
+
+      Tensor ins_boxes = boxes->Slice(i, i + 1);
+      ins_boxes.Resize({predict_dim, box_dim});
+
       std::map<int, std::vector<int>> indices;
       int num_nmsed_out = 0;
-      MultiClassNMS(ctx, ins_score, *boxes, indices, num_nmsed_out);
+      MultiClassNMS(ctx, ins_score, ins_boxes, indices, num_nmsed_out);
       all_indices.push_back(indices);
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
     }
@@ -282,11 +287,15 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       for (int64_t i = 0; i < batch_size; ++i) {
         Tensor ins_score = scores->Slice(i, i + 1);
         ins_score.Resize({class_num, predict_dim});
+
+        Tensor ins_boxes = boxes->Slice(i, i + 1);
+        ins_boxes.Resize({predict_dim, box_dim});
+
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
           Tensor out = outs->Slice(s, e);
-          MultiClassOutput(ins_score, *boxes, all_indices[i], &out);
+          MultiClassOutput(ins_score, ins_boxes, all_indices[i], &out);
         }
       }
     }
@@ -303,9 +312,9 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
   MultiClassNMSOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("BBoxes",
-             "(Tensor) A 2-D Tensor with shape [M, 4] represents the "
-             "predicted locations of M bounding bboxes. Each bounding box "
-             "has four coordinate values and the layout is "
+             "(Tensor) A 3-D Tensor with shape [N, M, 4] represents the "
+             "predicted locations of M bounding bboxes, N is the batch size. "
+             "Each bounding box has four coordinate values and the layout is "
              "[xmin, ymin, xmax, ymax].");
     AddInput("Scores",
              "(Tensor) A 3-D Tensor with shape [N, C, M] represents the "
