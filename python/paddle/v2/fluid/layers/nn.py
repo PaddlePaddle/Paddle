@@ -66,7 +66,6 @@ __all__ = [
     'row_conv',
     'multiplex',
     'layer_norm',
-    'softmax_with_cross_entropy',
 ]
 
 
@@ -3143,68 +3142,4 @@ def multiplex(inputs, index):
         inputs={'X': inputs,
                 'Ids': index},
         outputs={'Out': [out]})
-    return out
-
-
-def softmax_with_cross_entropy(logits, label, soft_label=False, **kwargs):
-    """
-    **Softmax With Cross Entropy Operator.**
-    
-    Cross entropy loss with softmax is used as the output layer extensively. This
-    operator computes the softmax normalized values for each row of the input
-    tensor, after which cross-entropy loss is computed. This provides a more
-    numerically stable gradient.
-    
-    Because this operator performs a softmax on logits internally, it expects
-    unscaled logits. This operator should not be used with the output of
-    softmax operator since that would produce incorrect results.
-    
-    When the attribute soft_label is set false, this operators expects mutually
-    exclusive hard labels, each sample in a batch is in exactly one class with a
-    probability of 1.0. Each sample in the batch will have a single label.
-    
-    The equation is as follows:
-    
-    1) Hard label (one-hot label, so every sample has exactly one class)
-    
-        $$Loss_j =  -\text{Logit}_{Label_j} +
-        \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right),
-        j = 1,..., K$$
-    
-    2) Soft label (each sample can have a distribution over all classes)
-    
-        $$Loss_j =  -\sum_{i=0}^{K}\text{Label}_i \left(\text{Logit}_i -
-        \log\left(\sum_{i=0}^{K}\exp(\text{Logit}_i)\right)\right),
-        j = 1,...,K$$
-
-    Args:
-        logits (Variable): The unscaled log probabilities, which is a 2-D tensor
-            with shape [N x K]. N is the batch_size, and K is the class number.
-        label (Variable): The ground truth which is a 2-D tensor. If soft_label
-            is set to false, Label is a Tensor<int64> with shape [N x 1]. If
-            soft_label is set to true, Label is a Tensor<float/double> with
-        soft_label (bool): A flag to indicate whether to interpretate the given
-            labels as soft labels. By default, `soft_label` is set to False.
-    Returns:
-        Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
-
-    Examples:
-        .. code-block:: python
-
-            data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            fc = fluid.layers.fc(input=data, size=100)
-            out = fluid.layers.softmax_with_cross_entropy(logits=fc, label=label)
-    """
-
-    helper = LayerHelper('softmax_with_cross_entropy', **kwargs)
-    softmax = helper.create_tmp_variable(dtype=logits.dtype)
-    loss = helper.create_tmp_variable(dtype=logits.dtype)
-    helper.append_op(
-        type='softmax_with_cross_entropy',
-        inputs={'Logits': logits,
-                'Label': label},
-        outputs={'Softmax': softmax,
-                 'Loss': loss},
-        attrs={'soft_label': soft_label})
     return out
