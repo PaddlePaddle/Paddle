@@ -110,6 +110,10 @@ class Vector {
 
   T* end() { return size() == 0 ? &EmptyDummy() : &this->operator[](size()); }
 
+  const T* cbegin() const { return begin(); }
+
+  const T* cend() const { return end(); }
+
   T& front() { return *begin(); }
 
   T& back() {
@@ -249,9 +253,9 @@ class Vector {
 
   bool operator==(const Vector<T>& other) const {
     if (size() != other.size()) return false;
-    auto it1 = begin();
-    auto it2 = other.begin();
-    for (; it1 < end(); ++it1, ++it2) {
+    auto it1 = cbegin();
+    auto it2 = other.cbegin();
+    for (; it1 < cend(); ++it1, ++it2) {
       if (*it1 != *it2) {
         return false;
       }
