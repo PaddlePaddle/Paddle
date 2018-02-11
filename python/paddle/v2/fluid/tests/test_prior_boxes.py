@@ -33,7 +33,7 @@ def prior_box_output(data_shape):
     conv5 = fluid.layers.conv2d(
         input=conv4, num_filters=3, filter_size=3, stride=2, use_cudnn=False)
 
-    box, var = detection.prior_boxes(
+    box, var = detection.prior_box(
         inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
         image=images,
         min_ratio=20,
@@ -57,20 +57,22 @@ def main(use_cuda):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
-    batch = [128]
+    batch = [4]  # batch is not used in the prior_box.
+
+    assert box.shape[1] == 4
+    assert var.shape[1] == 4
+    assert box.shape == var.shape
+    assert len(box.shape) == 2
 
     for _ in range(1):
         x = np.random.random(batch + data_shape).astype("float32")
         tensor_x = core.LoDTensor()
         tensor_x.set(x, place)
-        box, var = exe.run(fluid.default_main_program(),
-                           feed={'pixel': tensor_x},
-                           fetch_list=[box, var])
-        box_arr = np.array(box)
-        var_arr = np.array(var)
-        assert box_arr.shape[1] == 4
-        assert var_arr.shape[1] == 4
-        assert box_arr.shape[0] == var_arr.shape[0]
+        boxes, vars = exe.run(fluid.default_main_program(),
+                              feed={'pixel': tensor_x},
+                              fetch_list=[box, var])
+        assert vars.shape == var.shape
+        assert boxes.shape == box.shape
 
 
 class TestFitALine(unittest.TestCase):
