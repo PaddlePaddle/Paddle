@@ -247,8 +247,9 @@ class Vector {
 
   bool operator==(const Vector<T>& other) const {
     if (size() != other.size()) return false;
-    for (const T *it1 = cbegin(), it2 = other.cbegin(); it1 < cend();
-         ++it1, ++it2) {
+    auto it1 = cbegin();
+    auto it2 = other.cbegin();
+    for (; it1 < cend(); ++it1, ++it2) {
       if (*it1 != *it2) {
         return false;
       }
