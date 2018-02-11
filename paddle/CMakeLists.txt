@@ -11,7 +11,6 @@ if(MOBILE_INFERENCE)
 else()
   add_subdirectory(pserver)
   add_subdirectory(trainer)
-  add_subdirectory(string)
   add_subdirectory(scripts)
 
   if(WITH_C_API)

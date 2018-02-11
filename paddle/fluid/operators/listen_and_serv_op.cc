@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/simple_block_queue.h"
-#include "paddle/string/printf.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
@@ -101,11 +101,15 @@ class ListenAndServOp : public framework::OperatorBase {
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
+    // Record received sparse variables, so that
+    // we could reset those after execute optimize program
+    std::vector<framework::Variable *> sparse_vars;
     while (!exit_flag) {
       // Get from multiple trainers, we don't care about the order in which
       // the gradients arrives, just add suffix 0~n and merge the gradient.
       rpc_service_->SetCond(0);
       size_t recv_var_cnt = 0;
+      size_t update_param_cnt = 0;
       int batch_barrier = 0;
       while (batch_barrier != fan_in) {
         const detail::MessageWithName &v = rpc_service_->Get();
@@ -126,13 +130,14 @@ class ListenAndServOp : public framework::OperatorBase {
           std::string param_var_name;
           if (it != grad_list.end()) {
             param_var_name = param_list[it - grad_list.begin()];
+            update_param_cnt++;
+            VLOG(3) << "received grad: " << grad_var_name
+                    << " updating param: " << param_var_name;
           } else {
-            LOG(ERROR) << "grad has no paired param:" << grad_var_name;
+            VLOG(3) << "received variable: " << grad_var_name
+                    << " no need to update param";
           }
-          VLOG(3) << "received grad: " << grad_var_name
-                  << " updating param: " << param_var_name;
-
-          if (fan_in > 1) {
+          if (fan_in > 1 && !param_var_name.empty()) {
             grad_var_name = this->GetGradVarNameForTrainer(grad_var_name);
           }
           auto *var = recv_scope.FindVar(grad_var_name);
@@ -141,23 +146,35 @@ class ListenAndServOp : public framework::OperatorBase {
             PADDLE_THROW("Can not find server side var");
           }
           detail::DeserializeFromMessage(v.second, dev_ctx, var);
+          if (var->IsType<framework::SelectedRows>()) {
+            sparse_vars.push_back(var);
+          }
         }
       }
       VLOG(3) << "recv " << recv_var_cnt << " parmeters for one barrier.";
-      // TODO(Yancey1989): merge SelectedRows variables here
       if (exit_flag) {
         rpc_service_->ShutDown();
       }
-
+      VLOG(3) << "run optimize graph...";
       try {
         executor.Run(*program, &recv_scope, block->ID(), /*global_block*/
                      false /*create_local_scope*/, false /*create_vars*/);
       } catch (std::exception &e) {
         LOG(ERROR) << "run sub program error " << e.what();
       }
+
+      // Reset the received sparse variables, the sum operator would not
+      // sum the input sparse variables which rows is empty at the next
+      // mini-batch.
+      // TOOD(Yancey1989): move the reset action into an operator, we couldn't
+      // have any hide logic in the operator.
+      for (auto &var : sparse_vars) {
+        var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
+      }
       rpc_service_->SetCond(1);
-      rpc_service_->WaitClientGet(recv_var_cnt);
+      rpc_service_->WaitClientGet(update_param_cnt);
       grads_counter_.clear();
+      sparse_vars.clear();
     }  // while(true)
   }
 

@@ -37,9 +37,8 @@ class Vector {
 
   // Fill vector with value. The vector size is `count`.
   explicit Vector(size_t count, const T& value = T()) {
-    if (count == 0) {
-      InitEmpty();
-    } else {
+    InitEmpty();
+    if (count != 0) {
       resize(count);
       T* ptr = begin();
       for (size_t i = 0; i < count; ++i) {
@@ -121,6 +120,10 @@ class Vector {
 
   const T* begin() const { return &this->operator[](0); }
   const T* end() const { return &this->operator[](size()); }
+
+  const T* cbegin() const { return begin(); }
+
+  const T* cend() const { return end(); }
 
   const T& back() const {
     auto it = end();
@@ -244,7 +247,9 @@ class Vector {
 
   bool operator==(const Vector<T>& other) const {
     if (size() != other.size()) return false;
-    for (auto it1 = begin(), it2 = other.begin(); it1 < end(); ++it1, ++it2) {
+    auto it1 = cbegin();
+    auto it2 = other.cbegin();
+    for (; it1 < cend(); ++it1, ++it2) {
       if (*it1 != *it2) {
         return false;
       }
