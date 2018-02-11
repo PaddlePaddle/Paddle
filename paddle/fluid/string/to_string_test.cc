@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/string/to_string.h"
+#include "to_string.h"
 #include <gtest/gtest.h>
 
 constexpr char kOutputString[] = "User Defined Output";
 class UserDefinedClass {
-public:
+ public:
 };
 
 std::ostream& operator<<(std::ostream& s, const UserDefinedClass& ins) {
