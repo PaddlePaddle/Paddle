@@ -22,44 +22,55 @@ import paddle.v2.fluid as fluid
 
 
 class TestPythonOperatorOverride(unittest.TestCase):
-    def check_result(self, fn, x_val, y_val, place, dtype):
+    def check_result(self, fn, place, dtype):
         shape = [9, 10]
 
-        x_data = np.full(shape, x_val).astype(dtype)
-        y_data = np.full(shape, y_val).astype(dtype)
+        x_data = np.random.random(size=shape).astype(dtype)
+        y_data = np.random.random(size=shape).astype(dtype)
         python_out = fn(x_data, y_data)
 
         x_var = layers.create_global_var(
-            shape=shape, value=x_val, dtype=dtype, persistable=True)
+            name='x', shape=shape, value=0.0, dtype=dtype, persistable=True)
         y_var = layers.create_global_var(
-            shape=shape, value=y_val, dtype=dtype, persistable=True)
+            name='y', shape=shape, value=0.0, dtype=dtype, persistable=True)
         out = fn(x_var, y_var)
 
         exe = fluid.Executor(place)
 
         exe.run(fluid.default_startup_program())
         fluid_out = exe.run(fluid.default_main_program(),
-                            feed=[],
+                            feed={'x': x_data,
+                                  'y': y_data},
                             fetch_list=[out])
 
         np.testing.assert_array_equal(python_out, fluid_out[0])
 
     def test_override(self):
-        cpu_place = fluid.CPUPlace()
-        test_data = [(lambda _a, _b: _a == _b, 0.1, 1.1, cpu_place, 'float32'),
-                     (lambda _a, _b: _a == _b, 1.2, 1.1, cpu_place, 'float32'),
-                     (lambda _a, _b: _a < _b, 0.1, 1.1, cpu_place, 'float32'),
-                     (lambda _a, _b: _a < _b, 2.1, 1.1, cpu_place, 'float32'),
-                     (lambda _a, _b: _a <= _b, 0.1, 1.1, cpu_place, 'float32'),
-                     (lambda _a, _b: _a <= _b, 1.1, 1.1, cpu_place, 'float32'),
-                     (lambda _a, _b: _a >= _b, 1.1, 1.1, cpu_place, 'float32')]
+        # compare func to check
+        compare_fns = [
+            lambda _a, _b: _a == _b,
+            lambda _a, _b: _a == _b,
+            lambda _a, _b: _a < _b,
+            lambda _a, _b: _a < _b,
+            lambda _a, _b: _a <= _b,
+            lambda _a, _b: _a <= _b,
+            lambda _a, _b: _a >= _b,
+        ]
 
-        main_program = framework.Program()
-        startup_program = framework.Program()
+        # places to check
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
 
-        with framework.program_guard(main_program, startup_program):
-            for fn, x_val, y_val, place, dtype in test_data:
-                self.check_result(fn, x_val, y_val, place, dtype)
+        # dtypes to check
+        dtypes = ['int32', 'float32']
+
+        for place in places:
+            for dtype in dtypes:
+                for compare_fn in compare_fns:
+                    with framework.program_guard(framework.Program(),
+                                                 gframework.Program()):
+                        self.check_result(compare_fn, place, dtype)
 
 
 if __name__ == '__main__':
