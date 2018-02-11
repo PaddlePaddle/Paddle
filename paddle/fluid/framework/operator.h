@@ -291,6 +291,12 @@ class ExecutionContext {
     return *reinterpret_cast<const DeviceContextType*>(&device_context_);
   }
 
+  template <typename DeviceContextType>
+  DeviceContextType& device_context() {
+    return *reinterpret_cast<DeviceContextType*>(
+        const_cast<platform::DeviceContext*>(&device_context_));
+  }
+
   const platform::DeviceContext& device_context() const {
     return device_context_;
   }
