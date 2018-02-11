@@ -44,6 +44,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename AttrType>
 class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SmoothL1LossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
@@ -72,10 +73,10 @@ class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(Tensor, default Tensor<float>) A tensor with rank be 2. "
               "The output smooth l1 loss with shape [batch_size, 1].");
-    AddAttr<float>("sigma",
-                   "Hyper parameter of smooth l1 loss op."
-                   "A float scalar with default value 1.0.")
-        .SetDefault(1.0);
+    AddAttr<AttrType>("sigma",
+                      "Hyper parameter of smooth l1 loss op."
+                      "A float scalar with default value 3.0.")
+        .SetDefault(3.0);
     AddComment(R"DOC(
 Smooth L1 Loss Operator.
 
@@ -132,8 +133,9 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(smooth_l1_loss, ops::SmoothL1LossOp, ops::SmoothL1LossOpMaker,
-            smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
+REGISTER_OP(smooth_l1_loss, ops::SmoothL1LossOp,
+            ops::SmoothL1LossOpMaker<float>, smooth_l1_loss_grad,
+            ops::SmoothL1LossGradOp);
 REGISTER_OP_CPU_KERNEL(
     smooth_l1_loss,
     ops::SmoothL1LossKernel<paddle::platform::CPUDeviceContext, float>);
