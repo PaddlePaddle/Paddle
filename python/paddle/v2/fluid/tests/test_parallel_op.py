@@ -175,7 +175,9 @@ class ParallelOpTest(BaseParallelForTest):
     def test_simple_fc(self):
         self.run_test(
             callback=self.__network__,
-            feed={'img': numpy.random.random(size=(8, 784)).astype('float32')},
+            feed={
+                'img': numpy.random.random(size=(51, 784)).astype('float32')
+            },
             fetch=['fc1.w@GRAD'])
 
     def test_fc_with_tiny_data(self):

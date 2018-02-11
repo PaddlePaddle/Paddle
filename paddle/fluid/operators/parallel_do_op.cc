@@ -151,7 +151,6 @@ class ParallelDoOp : public framework::OperatorBase {
     }
     WaitOnPlaces(places);
 
-    //    PADDLE_ENFORCE_EQ(places.size(), sub_scopes.size());
     std::vector<std::future<void>> workers;
     workers.reserve(places.size());
     for (size_t place_idx = 0; place_idx < sub_scopes.size(); ++place_idx) {
@@ -219,21 +218,18 @@ class ParallelDoGradOp : public framework::OperatorBase {
     auto &sub_scopes = scope.FindVar(Input(kParallelScopes))
                            ->Get<std::vector<framework::Scope *>>();
     auto &places = scope.FindVar(Input(kPlaces))->Get<platform::PlaceList>();
-    //    PADDLE_ENFORCE_EQ(places.size(), sub_scopes.size());
 
     // feed output@grad
     SplitTensorAndMoveTensorToScopes(
         scope, const_cast<std::vector<framework::Scope *> *>(&sub_scopes),
         places, Inputs(framework::GradVarName(kOutputs)));
     WaitOnPlaces(places);
-    LOG(INFO) << "places " << places.size();
 
     // exe run
     std::vector<std::future<void>> workers;
     for (size_t i = 0; i < sub_scopes.size(); ++i) {
       auto &place = places[i];
       auto *cur_scope = sub_scopes[i];
-      LOG(INFO) << place;
 
       // execute
       workers.emplace_back(framework::Async([program, cur_scope, place, block] {
@@ -242,7 +238,6 @@ class ParallelDoGradOp : public framework::OperatorBase {
                      false /*create_local_scope*/);
       }));
     }
-    LOG(INFO) << "places " << places.size();
     for (auto &worker : workers) {
       worker.wait();
     }
