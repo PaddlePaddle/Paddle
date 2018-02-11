@@ -110,10 +110,6 @@ class Vector {
 
   T* end() { return size() == 0 ? &EmptyDummy() : &this->operator[](size()); }
 
-  const T* cbegin() const { return begin(); }
-
-  const T* cend() const { return end(); }
-
   T& front() { return *begin(); }
 
   T& back() {
@@ -125,9 +121,14 @@ class Vector {
   const T* begin() const {
     return size() == 0 ? &EmptyDummy() : &this->operator[](0);
   }
+
   const T* end() const {
     return size() == 0 ? &EmptyDummy() : &this->operator[](size());
   }
+
+  const T* cbegin() const { return begin(); }
+
+  const T* cend() const { return end(); }
 
   const T& back() const {
     auto it = end();
@@ -244,10 +245,8 @@ class Vector {
   // implicit cast operator. Vector can be cast to std::vector implicitly.
   operator std::vector<T>() const {
     std::vector<T> result;
-    if (size() != 0) {
-      result.resize(size());
-      std::copy(begin(), end(), result.begin());
-    }
+    result.resize(size());
+    std::copy(begin(), end(), result.begin());
     return result;
   }
 
