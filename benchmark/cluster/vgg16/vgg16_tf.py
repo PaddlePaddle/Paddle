@@ -214,7 +214,7 @@ class VGG16Model(object):
         return fc3
 
 
-def run_benchmark():
+def run_benchmark(cluster, server):
     """Run benchmark on cifar10 or flowers."""
 
     if args.data_set == "cifar10":
@@ -230,7 +230,12 @@ def run_benchmark():
 
     device = '/cpu:0' if args.device == 'CPU' else '/device:GPU:0'
 
-    with tf.device(device):
+    #with tf.device(device):
+    with tf.device(
+            tf.train.replica_device_setter(
+                worker_device="/job:worker/task:%d" % args.task_index,
+                cluster=cluster)):
+
         images = tf.placeholder(tf.float32, shape=dat_shape)
         labels = tf.placeholder(tf.int64, shape=(None, ))
         is_training = tf.placeholder('bool')
@@ -284,37 +289,47 @@ def run_benchmark():
         intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
     config.gpu_options.allow_growth = True
 
-    with tf.Session(config=config) as sess:
-        init_g = tf.global_variables_initializer()
-        init_l = tf.local_variables_initializer()
-        sess.run(init_g)
-        sess.run(init_l)
-        iters, num_samples, start_time = 0, 0, 0.0
-        for pass_id in range(args.num_passes):
-            # train
-            num_samples = 0
-            start_time = time.time()
-            for batch_id, data in enumerate(train_reader()):
-                train_images = np.array(
-                    map(lambda x: np.transpose(x[0].reshape(raw_shape),
-                    axes=[1, 2, 0]) if args.data_format == 'NHWC' else x[0], data)).astype("float32")
-                train_labels = np.array(map(lambda x: x[1], data)).astype(
-                    'int64')
-                _, loss, acc = sess.run([train_op, avg_loss, accuracy],
-                                        feed_dict={
-                                            images: train_images,
-                                            labels: train_labels,
-                                            is_training: True
-                                        })
-                iters += 1
-                print("Pass = %d, Iters = %d, Loss = %f, Accuracy = %f" %
-                      (pass_id, iters, loss, acc))
-                num_samples += len(data)
-            train_elapsed = time.time() - start_time
-            # test
-            pass_test_acc = test()
-            print("Pass = %d, Train speed = %f imgs/s, Test accuracy = %f\n" %
-                  (pass_id, num_samples / train_elapsed, pass_test_acc))
+    # The StopAtStepHook handles stopping after running given steps.
+    hooks = [tf.train.StopAtStepHook(last_step=1000000)]
+
+    #with tf.Session(config=config) as sess:
+    with tf.train.MonitoredTrainingSession(
+            master=server.target,
+            is_chief=(FLAGS.task_index == 0),
+            checkpoint_dir="/tmp/train_logs",
+            config=config,
+            hooks=hooks) as sess:
+        while not sess.should_stop():
+            init_g = tf.global_variables_initializer()
+            init_l = tf.local_variables_initializer()
+            sess.run(init_g)
+            sess.run(init_l)
+            iters, num_samples, start_time = 0, 0, 0.0
+            for pass_id in range(args.num_passes):
+                # train
+                num_samples = 0
+                start_time = time.time()
+                for batch_id, data in enumerate(train_reader()):
+                    train_images = np.array(
+                        map(lambda x: np.transpose(x[0].reshape(raw_shape),
+                        axes=[1, 2, 0]) if args.data_format == 'NHWC' else x[0], data)).astype("float32")
+                    train_labels = np.array(map(lambda x: x[1], data)).astype(
+                        'int64')
+                    _, loss, acc = sess.run([train_op, avg_loss, accuracy],
+                                            feed_dict={
+                                                images: train_images,
+                                                labels: train_labels,
+                                                is_training: True
+                                            })
+                    iters += 1
+                    print("Pass = %d, Iters = %d, Loss = %f, Accuracy = %f" %
+                          (pass_id, iters, loss, acc))
+                    num_samples += len(data)
+                train_elapsed = time.time() - start_time
+                # test
+                pass_test_acc = test()
+                print("Pass = %d, Train speed = %f imgs/s, Test accuracy = %f\n"
+                      % (pass_id, num_samples / train_elapsed, pass_test_acc))
 
 
 def print_arguments():
@@ -345,4 +360,4 @@ if __name__ == '__main__':
         server.join()
     elif args.training_role == "TRAINER":
         print("start worker")
-        #run_benchmark()
+        run_benchmark(cluster)

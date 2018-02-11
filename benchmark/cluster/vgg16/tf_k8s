@@ -1,7 +1,4 @@
 #!/bin/bash
-
-set -x
-
 check_trainer_ret() {
   ret=$1
   stdbuf -oL echo "job returned $ret...setting pod return message..."
