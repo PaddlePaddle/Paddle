@@ -29,7 +29,7 @@ import optimizer
 import learning_rate_decay
 import backward
 import regularizer
-from param_attr import ParamAttr
+from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace
 from distribute_transpiler import DistributeTranspiler
@@ -41,11 +41,26 @@ import profiler
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + [
-    'io', 'initializer', 'layers', 'nets', 'optimizer', 'learning_rate_decay',
-    'backward', 'regularizer', 'LoDTensor', 'CPUPlace', 'CUDAPlace', 'Tensor',
-    'ParamAttr'
-    'DataFeeder', 'clip', 'SimpleDistributeTranspiler', 'DistributeTranspiler',
-    'memory_optimize', 'profiler'
+    'io',
+    'initializer',
+    'layers',
+    'nets',
+    'optimizer',
+    'learning_rate_decay',
+    'backward',
+    'regularizer',
+    'LoDTensor',
+    'CPUPlace',
+    'CUDAPlace',
+    'Tensor',
+    'ParamAttr',
+    'WeightNormParamAttr',
+    'DataFeeder',
+    'clip',
+    'SimpleDistributeTranspiler',
+    'DistributeTranspiler',
+    'memory_optimize',
+    'profiler',
 ]
 
 
