@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "unsupported/Eigen/CXX11/Tensor"
 
-#include "paddle/platform/hostdevice.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 #ifdef __GNUC__
 #define PADDLE_GNUC_VER (__GNUC__ * 10 + __GNUC_MINOR__)
