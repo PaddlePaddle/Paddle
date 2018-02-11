@@ -35,12 +35,12 @@ class TestBook(unittest.TestCase):
                 dtype='float32')
             loc = layers.data(
                 name='target_box',
-                shape=[21, 4],
+                shape=[20, 4],
                 append_batch_size=False,
                 dtype='float32')
             scores = layers.data(
                 name='scores',
-                shape=[2, 21, 10],
+                shape=[2, 20, 10],
                 append_batch_size=False,
                 dtype='float32')
             out = layers.detection_output(
