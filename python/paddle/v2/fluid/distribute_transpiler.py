@@ -175,6 +175,7 @@ class DistributeTranspiler:
             shape=[0])
 
         # create send_op
+        print("send inputs: ", send_inputs)
         send_op = program.global_block().append_op(
             type="send",
             inputs={"X": send_inputs},
@@ -204,12 +205,12 @@ class DistributeTranspiler:
             block_map[varname].append((long(offset), long(size)))
         for varname, splited in block_map.iteritems():
             orig_var = program.global_block().var(varname)
-
             if len(splited) == 1:
                 # rename var to the trainer_id var
                 new_var_name = "%s.trainer_%d" % \
                     (orig_var.name, self.trainer_id)
                 program.global_block().rename_var(varname, new_var_name)
+                print("renaming OK...", varname, new_var_name)
                 var_mapping[varname] = \
                     [program.global_block().var(new_var_name)]
                 continue
@@ -375,7 +376,10 @@ class DistributeTranspiler:
         new_inputs = dict()
         # update param/grad shape first, then other inputs like
         # moment can use the updated shape
+        print("mark1")
         for key in opt_op.input_names:
+            # print("opt type: ", opt_op.type)
+            # print("opt op input: ", key)
             if key == "Grad":
                 grad_block = None
                 for g in self.param_grad_ep_mapping[endpoint]["grads"]:
@@ -422,6 +426,7 @@ class DistributeTranspiler:
 
                 new_inputs[key] = tmpvar
 
+        print("mark2")
         for key in opt_op.input_names:
             if key in ["Param", "Grad"]:
                 continue
@@ -453,6 +458,7 @@ class DistributeTranspiler:
             inputs=new_inputs,
             outputs=outputs,
             attrs=opt_op.attrs)
+        print("mark3")
 
     def _append_pserver_non_opt_ops(self, program, pserver_program, opt_op):
         # Append the ops for parameters that do not need to be optimized/updated
@@ -523,6 +529,11 @@ class DistributeTranspiler:
         optimize_sub_program = Program()
         # Iterate through the ops and append ops as needed
         for idx, opt_op in enumerate(self.optimize_ops):
+            print("mark0")
+            print(opt_op.inputs.keys())
+            for v in opt_op.inputs.values():
+                print(v.name)
+                print(v.shape)
             is_op_on_pserver = self._is_op_on_pserver(endpoint,
                                                       self.optimize_ops, idx)
             if not is_op_on_pserver:
