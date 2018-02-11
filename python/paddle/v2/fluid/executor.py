@@ -164,7 +164,17 @@ def fetch_var(name, scope=None, return_numpy=True):
 
 
 class Executor(object):
-    def __init__(self, places):
+    def __init__(self, places=None):
+        if places is None:
+            if core.is_compile_gpu():
+                if core.get_cuda_device_count() > 0:
+                    places = [core.GPUPlace()]
+                else:
+                    # TODO(tonyyang-svail): print warning here
+                    places = [core.CPUPlace()]
+            else:
+                places = [core.CPUPlace()]
+
         if not isinstance(places, list) and not isinstance(places, tuple):
             places = [places]
 
