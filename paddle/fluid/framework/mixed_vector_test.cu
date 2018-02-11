@@ -15,7 +15,6 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "mixed_vector.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
