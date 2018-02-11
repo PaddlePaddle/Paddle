@@ -137,7 +137,7 @@ def batched_multiclass_nms(boxes, scores, background, score_threshold,
     det_outs = []
     lod = [0]
     for n in range(batch_size):
-        nmsed_outs, nmsed_num = multiclass_nms(boxes, scores[n], background,
+        nmsed_outs, nmsed_num = multiclass_nms(boxes[n], scores[n], background,
                                                score_threshold, nms_threshold,
                                                nms_top_k, keep_top_k)
         lod.append(lod[-1] + nmsed_num)
@@ -145,7 +145,7 @@ def batched_multiclass_nms(boxes, scores, background, score_threshold,
 
         for c, indices in nmsed_outs.iteritems():
             for idx in indices:
-                xmin, ymin, xmax, ymax = boxes[idx][:]
+                xmin, ymin, xmax, ymax = boxes[n][idx][:]
                 det_outs.append([c, scores[n][c][idx], xmin, ymin, xmax, ymax])
 
     return det_outs, lod
@@ -179,9 +179,9 @@ class TestMulticlassNMSOp(OpTest):
         scores = np.reshape(scores, (N, M, C))
         scores = np.transpose(scores, (0, 2, 1))
 
-        boxes = np.random.random((M, BOX_SIZE)).astype('float32')
-        boxes[:, 0:2] = boxes[:, 0:2] * 0.5
-        boxes[:, 2:4] = boxes[:, 2:4] * 0.5 + 0.5
+        boxes = np.random.random((N, M, BOX_SIZE)).astype('float32')
+        boxes[:, :, 0:2] = boxes[:, :, 0:2] * 0.5
+        boxes[:, :, 2:4] = boxes[:, :, 2:4] * 0.5 + 0.5
 
         nmsed_outs, lod = batched_multiclass_nms(boxes, scores, background,
                                                  score_threshold, nms_threshold,
