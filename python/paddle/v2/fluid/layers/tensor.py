@@ -1,26 +1,29 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
+from ..initializer import Constant, force_init_on_cpu
 from ..core import DataType
 import numpy
 
 __all__ = [
     'create_tensor',
     'create_parameter',
+    'create_global_var',
     'cast',
     'concat',
     'sums',
@@ -32,13 +35,15 @@ __all__ = [
 ]
 
 
-def create_tensor(dtype, name=None):
+def create_tensor(dtype, name=None, persistable=False):
     helper = LayerHelper("create_tensor", **locals())
-    return helper.create_variable(name=helper.name, dtype=dtype)
+    return helper.create_variable(
+        name=helper.name, dtype=dtype, persistable=persistable)
 
 
 def create_parameter(shape,
                      dtype,
+                     name=None,
                      attr=None,
                      is_bias=False,
                      default_initializer=None):
@@ -57,11 +62,38 @@ def create_parameter(shape,
     Returns:
         Parameter: the created parameter
     """
-    helper = LayerHelper("create_parameter")
+    helper = LayerHelper("create_parameter", **locals())
     if attr is None:
-        attr = ParamAttr()
+        attr = ParamAttr(name=name)
     return helper.create_parameter(attr, shape, dtype, is_bias,
                                    default_initializer)
+
+
+def create_global_var(shape,
+                      value,
+                      dtype,
+                      persistable=False,
+                      force_cpu=False,
+                      name=None):
+    """
+    Create a global variable. such as global_step
+    Args:
+        shape(list[int]): shape of the variable
+        value(float): the value of the variable
+        dtype(string): element type of the parameter
+        persistable(bool): if this variable is persistable
+        force_cpu(bool): force this variable to be on CPU
+
+    Returns:
+        Variable: the created Variable
+    """
+    helper = LayerHelper("global_var", **locals())
+    var = helper.create_global_variable(
+        dtype=dtype, shape=shape, persistable=persistable, name=name)
+    helper.set_variable_initializer(
+        var, initializer=Constant(
+            value=float(value), force_cpu=force_cpu))
+    return var
 
 
 def cast(x, dtype):
@@ -207,6 +239,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         dtype(np.dtype|core.DataType|str): Data type of the output tensor.
         value(float): The constant value used to initialize the output tensor.
         out(Variable): The output tensor.
+        force_cpu(True|False): data should be on CPU if set true.
 
     Returns:
         Variable: The tensor variable storing the output.
@@ -228,7 +261,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             'shape': shape,
             'dtype': out.dtype,
             'value': float(value),
-            'force_cpu': force_cpu
+            'force_cpu': force_cpu or force_init_on_cpu()
         })
     out.stop_gradient = True
     return out
@@ -283,7 +316,7 @@ def fill_constant_batch_size_like(input,
     return out
 
 
-def ones(shape, dtype):
+def ones(shape, dtype, force_cpu=False):
     """
     **ones**
 
@@ -307,7 +340,7 @@ def ones(shape, dtype):
     return fill_constant(value=1.0, **locals())
 
 
-def zeros(shape, dtype):
+def zeros(shape, dtype, force_cpu=False):
     """
     **zeros**
 

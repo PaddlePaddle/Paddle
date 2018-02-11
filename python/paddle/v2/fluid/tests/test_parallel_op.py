@@ -1,23 +1,21 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 
 import paddle.v2.fluid as fluid
 import numpy
-import sys
-# TODO(dzhwinter): get places op check need to be enhanced.
-sys.exit(0)
 
 
 class BaseParallelForTest(unittest.TestCase):
@@ -55,7 +53,7 @@ class BaseParallelForTest(unittest.TestCase):
             fetch=fetch,
             place=cpu,
             use_parallel=True)
-        if fluid.core.is_compile_gpu():
+        if fluid.core.is_compiled_with_cuda():
             gpu = fluid.CUDAPlace(0)
             result_gpu = self._run_test_impl_(
                 callback=callback,
@@ -151,24 +149,53 @@ class BaseParallelForTest(unittest.TestCase):
 
 
 class ParallelOpTest(BaseParallelForTest):
+    @staticmethod
+    def __network__():
+        x = fluid.layers.data(shape=[784], dtype='float32', name='img')
+        x = yield x
+        hidden = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+        loss = fluid.layers.mean(x=hidden)
+        yield loss
+
     def test_simple_fc(self):
-        def __network__():
-            x = fluid.layers.data(shape=[784], dtype='float32', name='img')
-            # FIXME: This is a bug of parallel.do
-            x.stop_gradient = False
-            x = yield x
-            hidden = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-            loss = fluid.layers.mean(x=hidden)
-            yield loss
-
         self.run_test(
-            callback=__network__,
+            callback=self.__network__,
             feed={
-                'img':
-                numpy.random.random(size=(128 * 3, 784)).astype('float32')
+                'img': numpy.random.random(size=(51, 784)).astype('float32')
             },
-            fetch='fc1.w@GRAD')
+            fetch=['fc1.w@GRAD'])
+
+    def test_fc_with_tiny_data(self):
+        self.run_test(
+            callback=self.__network__,
+            feed={'img': numpy.random.random(size=(1, 784)).astype('float32')},
+            fetch=['fc1.w@GRAD'])
 
 
-if __name__ == '__main__':
-    unittest.main()
+class ParallelOpTestMultipleInput(BaseParallelForTest):
+    @staticmethod
+    def __network__():
+        x = fluid.layers.data(
+            shape=[784], dtype='float32', name='img1', stop_gradient=False)
+        y = fluid.layers.data(
+            shape=[784], dtype='float32', name='img2', stop_gradient=False)
+        yield [x, y]
+        x = x + y
+        hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+        hidden2 = fluid.layers.fc(input=hidden1, size=200, param_attr='fc2.w')
+        hidden3 = fluid.layers.fc(input=hidden2, size=200, param_attr='fc3.w')
+        loss = fluid.layers.mean(x=hidden3)
+        yield loss
+
+    def test_simple_fc(self):
+        self.run_test(
+            callback=self.__network__,
+            feed={
+                'img1': numpy.random.random(size=(51, 784)).astype('float32'),
+                'img2': numpy.random.random(size=(51, 784)).astype('float32')
+            },
+            fetch=['fc1.w@GRAD', 'fc2.w@GRAD', 'fc3.w@GRAD'])
+
+
+#if __name__ == '__main__':
+#    unittest.main()

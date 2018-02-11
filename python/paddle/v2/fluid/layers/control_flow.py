@@ -1,31 +1,54 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
-from ..layer_helper import LayerHelper, unique_name
-from ..framework import Program, Variable, Operator
-from .. import core
-from tensor import assign, fill_constant
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import contextlib
-from ..registry import autodoc
+
+from layer_function_generator import autodoc
+from tensor import assign, fill_constant
+from .. import core
+from ..framework import Program, Variable, Operator
+from ..layer_helper import LayerHelper, unique_name
+from ops import logical_and, logical_not, logical_or
 
 __all__ = [
-    'split_lod_tensor', 'merge_lod_tensor', 'BlockGuard',
-    'BlockGuardWithCompletion', 'StaticRNNMemoryLink', 'WhileGuard', 'While',
-    'lod_rank_table', 'max_sequence_len', 'topk', 'lod_tensor_to_array',
-    'array_to_lod_tensor', 'increment', 'array_write', 'create_array',
-    'less_than', 'array_read', 'shrink_memory', 'array_length', 'IfElse',
-    'DynamicRNN', 'ConditionalBlock', 'StaticRNN', 'reorder_lod_tensor_by_rank',
-    'ParallelDo', 'Print'
+    'split_lod_tensor',
+    'merge_lod_tensor',
+    'BlockGuard',
+    'BlockGuardWithCompletion',
+    'StaticRNNMemoryLink',
+    'WhileGuard',
+    'While',
+    'Switch',
+    'lod_rank_table',
+    'max_sequence_len',
+    'topk',
+    'lod_tensor_to_array',
+    'array_to_lod_tensor',
+    'increment',
+    'array_write',
+    'create_array',
+    'less_than',
+    'equal',
+    'array_read',
+    'shrink_memory',
+    'array_length',
+    'IfElse',
+    'DynamicRNN',
+    'ConditionalBlock',
+    'StaticRNN',
+    'reorder_lod_tensor_by_rank',
+    'ParallelDo',
+    'Print',
 ]
 
 
@@ -254,21 +277,21 @@ class ParallelDo(object):
         parent_block = self.parent_block()
 
         local_inputs = set()
-
-        for op in current_block.ops:
-            for oname in op.output_names:
-                for out_var_name in op.output(oname):
-                    local_inputs.add(out_var_name)
-
+        params = list()
         for var in self.inputs:
             local_inputs.add(var.name)
 
-        params = list()
         for op in current_block.ops:
             for iname in op.input_names:
                 for in_var_name in op.input(iname):
                     if in_var_name not in local_inputs:
                         params.append(in_var_name)
+
+            for oname in op.output_names:
+                for out_var_name in op.output(oname):
+                    local_inputs.add(out_var_name)
+
+        params = list(set(params))
 
         return [parent_block.var(name) for name in params]
 
@@ -749,7 +772,7 @@ def topk(input, k):
           array = fluid.layers.topk(x, k)
     """
     helper = LayerHelper('topk', **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.data_type)
+    topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype='int64')
     helper.append_op(
         type='top_k',
@@ -952,6 +975,36 @@ def less_than(x, y, cond=None, **ignored):
     return cond
 
 
+def equal(x, y, cond=None, **ignored):
+    """
+    **equal**
+
+    This layer returns the truth value of :math:`x == y` elementwise.
+
+    Args:
+        x(Variable): First operand of *equal*
+        y(Variable): Second operand of *equal*
+        cond(Variable|None): Optional output variable to store the result of *equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *equal*.
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.equal(x=label, y=limit)
+    """
+    helper = LayerHelper("equal", **locals())
+    if cond is None:
+        cond = helper.create_tmp_variable(dtype='bool')
+        cond.stop_gradient = True
+
+    helper.append_op(
+        type='equal', inputs={'X': [x],
+                              'Y': [y]}, outputs={'Out': [cond]})
+    return cond
+
+
 def array_read(array, i):
     """This function performs the operation to read the data in as an
     LOD_TENSOR_ARRAY.
@@ -1042,11 +1095,12 @@ class ConditionalBlockGuard(BlockGuard):
 
 
 class ConditionalBlock(object):
-    def __init__(self, inputs, name=None):
+    def __init__(self, inputs, is_scalar_condition=False, name=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
                 raise TypeError("Each input should be variable")
         self.inputs = inputs
+        self.is_scalar_condition = is_scalar_condition
         self.helper = LayerHelper('conditional_block', name=name)
 
     def block(self):
@@ -1091,7 +1145,66 @@ class ConditionalBlock(object):
             },
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
-            attrs={'sub_block': inside_block})
+            attrs={
+                'sub_block': inside_block,
+                'is_scalar_condition': self.is_scalar_condition
+            })
+
+
+class Switch(object):
+    def __init__(self, name=None):
+        self.helper = LayerHelper('switch', name=name)
+        self.inside_scope = False
+        self.pre_not_conditions = []
+
+    def case(self, condition):
+        """create a new block for this condition
+        """
+        if not self.inside_scope:
+            raise ValueError("case should be called inside with")
+
+        if len(self.pre_not_conditions) == 0:
+            cond_block = ConditionalBlock([condition], is_scalar_condition=True)
+            not_cond = logical_not(x=condition)
+            self.pre_not_conditions.append(not_cond)
+        else:
+            pre_cond_num = len(self.pre_not_conditions)
+            pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
+            new_not_cond = logical_and(
+                x=pre_not_cond, y=logical_not(x=condition))
+            self.pre_not_conditions.append(new_not_cond)
+            cond_block = ConditionalBlock(
+                [logical_and(
+                    x=pre_not_cond, y=condition)],
+                is_scalar_condition=True)
+
+        return ConditionalBlockGuard(cond_block)
+
+    def default(self):
+        """create a default case for this switch
+        """
+        pre_cond_num = len(self.pre_not_conditions)
+        if pre_cond_num == 0:
+            raise ValueError("there should be at least one condition")
+        cond_block = ConditionalBlock(
+            [self.pre_not_conditions[pre_cond_num - 1]],
+            is_scalar_condition=True)
+        return ConditionalBlockGuard(cond_block)
+
+    def __enter__(self):
+        """
+        set flag that now is inside switch.block {}
+        :return:
+        """
+        self.inside_scope = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.inside_scope = False
+        if exc_type is not None:
+            return False  # re-raise exception
+
+        return True
 
 
 class IfElseBlockGuard(object):
@@ -1457,7 +1570,7 @@ class DynamicRNN(object):
                 method))
 
 
-@autodoc
+@autodoc()
 def reorder_lod_tensor_by_rank(x, rank_table):
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
     helper.is_instance('x', Variable)
