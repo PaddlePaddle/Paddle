@@ -120,11 +120,12 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-    VLOG(3) << op->DebugStringEx(local_scope);
+    //    VLOG(3) << op->DebugStringEx(local_scope);
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::RecordEvent record_event(op->Type(), pool.Get(place_));
 
+    VLOG(3) << op->Type();
     op->Run(*local_scope, place_);
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
