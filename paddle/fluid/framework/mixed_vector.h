@@ -240,7 +240,7 @@ class Vector {
   // implicit cast operator. Vector can be cast to std::vector implicitly.
   operator std::vector<T>() const {
     std::vector<T> result;
-    if (size() == 0) {
+    if (size() != 0) {
       result.resize(size());
       std::copy(begin(), end(), result.begin());
     }
