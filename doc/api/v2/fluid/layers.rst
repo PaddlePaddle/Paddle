@@ -323,6 +323,12 @@ batch_norm
 ..  autofunction:: paddle.v2.fluid.layers.batch_norm
     :noindex:
 
+layer_norm
+----------
+
+..  autofunction:: paddle.v2.fluid.layers.layer_norm
+    :noindex:
+
 beam_search_decode
 ------------------
 

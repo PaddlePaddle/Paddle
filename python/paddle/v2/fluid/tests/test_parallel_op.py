@@ -197,8 +197,5 @@ class ParallelOpTestMultipleInput(BaseParallelForTest):
             fetch=['fc1.w@GRAD', 'fc2.w@GRAD', 'fc3.w@GRAD'])
 
 
-if __name__ == '__main__':
-    # FIXME(tonyyang-svail):
-    #   This test always fail on MultiGPU CI
-    exit(0)
-    unittest.main()
+#if __name__ == '__main__':
+#    unittest.main()
