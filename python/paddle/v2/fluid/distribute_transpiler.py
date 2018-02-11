@@ -424,7 +424,7 @@ class DistributeTranspiler:
         # change output's ParamOut variable
         outputs = self._get_output_map_from_op(self.program.global_block().vars,
                                                opt_op)
-        opt_op.outputs["ParamOut"] = new_inputs["Param"]
+        outputs["ParamOut"] = new_inputs["Param"]
 
         optimize_block.append_op(
             type=opt_op.type,
