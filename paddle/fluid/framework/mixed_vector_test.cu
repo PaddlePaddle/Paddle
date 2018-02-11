@@ -98,3 +98,9 @@ TEST(mixed_vector, InitWithCount) {
     ASSERT_EQ(vec[i], 10);
   }
 }
+
+TEST(mixed_vector, ForEach) {
+  vec<int> tmp;
+  for (auto& v : tmp) {
+  }
+}
