@@ -106,9 +106,9 @@ class Vector {
   // std::vector iterator methods. Based on CPU data access method
   size_t size() const { return size_; }
 
-  T* begin() { return &this->operator[](0); }
+  T* begin() { return size() == 0 ? &EmptyDummy() : &this->operator[](0); }
 
-  T* end() { return &this->operator[](size()); }
+  T* end() { return size() == 0 ? &EmptyDummy() : &this->operator[](size()); }
 
   T& front() { return *begin(); }
 
@@ -118,12 +118,12 @@ class Vector {
     return *it;
   }
 
-  const T* begin() const { return &this->operator[](0); }
-  const T* end() const { return &this->operator[](size()); }
-
-  const T* cbegin() const { return begin(); }
-
-  const T* cend() const { return end(); }
+  const T* begin() const {
+    return size() == 0 ? &EmptyDummy() : &this->operator[](0);
+  }
+  const T* end() const {
+    return size() == 0 ? &EmptyDummy() : &this->operator[](size());
+  }
 
   const T& back() const {
     auto it = end();
@@ -240,16 +240,18 @@ class Vector {
   // implicit cast operator. Vector can be cast to std::vector implicitly.
   operator std::vector<T>() const {
     std::vector<T> result;
-    result.resize(size());
-    std::copy(begin(), end(), result.begin());
+    if (size() == 0) {
+      result.resize(size());
+      std::copy(begin(), end(), result.begin());
+    }
     return result;
   }
 
   bool operator==(const Vector<T>& other) const {
     if (size() != other.size()) return false;
-    auto it1 = cbegin();
-    auto it2 = other.cbegin();
-    for (; it1 < cend(); ++it1, ++it2) {
+    auto it1 = begin();
+    auto it2 = other.begin();
+    for (; it1 < end(); ++it1, ++it2) {
       if (*it1 != *it2) {
         return false;
       }
@@ -356,6 +358,11 @@ class Vector {
           .Get(boost::get<platform::CUDAPlace>(place))
           ->Wait();
     }
+  }
+
+  static T& EmptyDummy() {
+    static T dummy = T();
+    return dummy;
   }
 
   mutable int flag_;
