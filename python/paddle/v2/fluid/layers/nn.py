@@ -2392,10 +2392,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
-def edit_distance(input,
-                  label,
-                  normalized=False,
-                  ignored_tokens=None,
+def edit_distance(input, label, normalized=True, ignored_tokens=None,
                   name=None):
     """
     EditDistance operator computes the edit distances between a batch of
