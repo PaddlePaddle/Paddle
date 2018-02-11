@@ -226,14 +226,12 @@ class EditDistance(Evaluator):
         for epoch in PASS_NUM:
             distance_evaluator.reset(exe)
             for data in batches:
-                loss, sum_distance = exe.run(fetch_list=[cost] + distance_evaluator.metrics)
-                avg_distance = distance_evaluator.eval(exe)
-            pass_distance = distance_evaluator.eval(exe)
+                loss = exe.run(fetch_list=[cost])
+            distance, sequence_error = distance_evaluator.eval(exe)
 
         In the above example:
-        'sum_distance' is the sum of the batch's edit distance.
-        'avg_distance' is the average of edit distance from the firt batch to the current batch.
-        'pass_distance' is the average of edit distance from all the pass.
+        'distance' is the average of the edit distance rate in a pass.
+        'sequence_error' is the sequence error rate in a pass.
 
     """
 
@@ -257,7 +255,6 @@ class EditDistance(Evaluator):
         compare_result_int = layers.cast(x=compare_result, dtype='int')
         seq_right_count = layers.reduce_sum(compare_result_int)
         seq_error_count = layers.elementwise_sub(x=seq_num, y=seq_right_count)
-        #error = layers.cast(x=error, dtype='float32')
         total_distance = layers.reduce_sum(distances)
         layers.sums(
             input=[self.total_distance, total_distance],
