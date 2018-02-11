@@ -91,6 +91,9 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
+  /*! \brief  Return random generator in the device context. */
+  curandGenerator_t curand_handle() const;
+
  private:
   CUDAPlace place_;
 
@@ -100,6 +103,7 @@ class CUDADeviceContext : public DeviceContext {
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
+  curandGenerator_t curand_gen_;
 };
 
 template <>
