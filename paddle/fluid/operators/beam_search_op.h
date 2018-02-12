@@ -204,8 +204,9 @@ class BeamSearchOp : public framework::OperatorBase {
     PADDLE_THROW("Not Implemented");
   }
 
-  void Run(const framework::Scope& scope,
-           const platform::Place& dev_place) const override {
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));
     auto pre_ids_var = scope.FindVar(Input("pre_ids"));
