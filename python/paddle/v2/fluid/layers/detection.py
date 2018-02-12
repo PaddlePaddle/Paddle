@@ -19,7 +19,6 @@ from ..layer_helper import LayerHelper
 from ..framework import Variable
 from tensor import concat
 from ops import reshape
-from operator import mul
 import math
 
 __all__ = [
@@ -143,43 +142,50 @@ def prior_box(inputs,
     """
     **Prior_boxes**
 
-    Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
-    The details of this algorithm, please refer the section 2.2 of SSD paper
-    (SSD: Single Shot MultiBox Detector)<https://arxiv.org/abs/1512.02325>`_ .
+    Generate prior boxes for SSD(Single Shot MultiBox Detector)
+    algorithm. The details of this algorithm, please refer the
+    section 2.2 of SSD paper (SSD: Single Shot MultiBox Detector)
+    <https://arxiv.org/abs/1512.02325>`_ .
     
     Args:
-       inputs(list): The list of input Variables, the format of all Variables is NCHW.
-       image(Variable): The input image data of PriorBoxOp, the layout is NCHW.
+       inputs(list): The list of input Variables, the format
+            of all Variables is NCHW.
+       image(Variable): The input image data of PriorBoxOp,
+            the layout is NCHW.
        min_ratio(int): the min ratio of generated prior boxes.
        max_ratio(int): the max ratio of generated prior boxes.
-       aspect_ratios(list): the aspect ratios of generated prior boxes.
-            The length of input and aspect_ratios must be equal.
-       base_size(int): the base_size is used to get min_size and max_size
-            according to min_ratio and max_ratio.
-       step_w(list, optional, default=None): Prior boxes step across width.
-            If step_w[i] == 0.0, the prior boxes step across width of the inputs[i]
-            will be automatically calculated.
-       step_h(list, optional, default=None): Prior boxes step across height,
-            If step_h[i] == 0.0, the prior boxes step across height of the inputs[i]
-            will be automatically calculated.
+       aspect_ratios(list): the aspect ratios of generated prior
+            boxes. The length of input and aspect_ratios must be equal.
+       base_size(int): the base_size is used to get min_size
+            and max_size according to min_ratio and max_ratio.
+       step_w(list, optional, default=None): Prior boxes step
+            across width. If step_w[i] == 0.0, the prior boxes step
+            across width of the inputs[i] will be automatically calculated.
+       step_h(list, optional, default=None): Prior boxes step
+            across height, If step_h[i] == 0.0, the prior boxes
+            step across height of the inputs[i] will be automatically calculated.
        offset(float, optional, default=0.5): Prior boxes center offset.
        variance(list, optional, default=[0.1, 0.1, 0.1, 0.1]): the variances
             to be encoded in prior boxes.
-       flip(bool, optional, default=False): Whether to flip aspect ratios.
-       clip(bool, optional, default=False): Whether to clip out-of-boundary boxes.
-       min_sizes(list, optional, default=None): If `len(inputs) <=2`, min_sizes must
-            be set up, and the length of min_sizes should equal to the length of inputs.
-       max_sizes(list, optional, default=None): If `len(inputs) <=2`, max_sizes must
-            be set up, and the length of min_sizes should equal to the length of inputs.
+       flip(bool, optional, default=False): Whether to flip
+            aspect ratios.
+       clip(bool, optional, default=False): Whether to clip
+            out-of-boundary boxes.
+       min_sizes(list, optional, default=None): If `len(inputs) <=2`,
+            min_sizes must be set up, and the length of min_sizes
+            should equal to the length of inputs.
+       max_sizes(list, optional, default=None): If `len(inputs) <=2`,
+            max_sizes must be set up, and the length of min_sizes
+            should equal to the length of inputs.
        name(str, optional, None): Name of the prior box layer.
     
     Returns:
-        boxes(Variable): the output prior boxes of PriorBoxOp. The layout is
-             [num_priors, 4]. num_priors is the total box count of each
-              position of inputs.
-        Variances(Variable): the expanded variances of PriorBoxOp. The layout
-             is [num_priors, 4]. num_priors is the total box count of each
-             position of inputs
+        boxes(Variable): the output prior boxes of PriorBoxOp.
+             The layout is [num_priors, 4]. num_priors is the total
+             box count of each position of inputs.
+        Variances(Variable): the expanded variances of PriorBoxOp.
+             The layout is [num_priors, 4]. num_priors is the total
+             box count of each position of inputs
     
     Examples:
         .. code-block:: python
@@ -235,10 +241,11 @@ def prior_box(inputs,
 
     def _reshape_with_axis_(input, axis=1):
         if not (axis > 0 and axis < len(input.shape)):
-            raise ValueError(
-                "The axis should be smaller than the arity of input and bigger than 0."
-            )
-        new_shape = [-1, reduce(mul, input.shape[axis:len(input.shape)], 1)]
+            raise ValueError("The axis should be smaller than "
+                             "the arity of input and bigger than 0.")
+        new_shape = [
+            -1, reduce(lambda x, y: x * y, input.shape[axis:len(input.shape)])
+        ]
         out = reshape(x=input, shape=new_shape)
         return out
 
