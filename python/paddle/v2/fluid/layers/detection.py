@@ -17,9 +17,9 @@ All layers just related to the detection neural network.
 
 from layer_function_generator import generate_layer_fn
 from ..layer_helper import LayerHelper
-import nn as nn
-import ops as ops
-from tensor import concat
+import nn
+import ops
+import tensor
 import math
 
 __all__ = [
@@ -331,13 +331,13 @@ def prior_box(inputs,
             reshaped_boxes.append(_reshape_with_axis_(box_results[i], axis=3))
             reshaped_vars.append(_reshape_with_axis_(var_results[i], axis=3))
 
-        box = concat(reshaped_boxes)
-        var = concat(reshaped_vars)
+        box = tensor.concat(reshaped_boxes)
+        var = tensor.concat(reshaped_vars)
 
     return box, var
 
 
-def bipartite_match(similarity_matrix, name=None):
+def bipartite_match(dist_matrix, name=None):
     """
     **Bipartite matchint operator**
 
@@ -360,36 +360,34 @@ def bipartite_match(similarity_matrix, name=None):
     If Tensor, the height of ColToRowMatchIndices is 1.
 
     Args:
-        similarity_matrix(Variable): This input is a 2-D LoDTensor with shape
+        dist_matrix(Variable): This input is a 2-D LoDTensor with shape
             [K, M]. It is pair-wise distance matrix between the entities
             represented by each row and each column. For example, assumed one
             entity is A with shape [K], another entity is B with shape [M]. The
-            DistMat[i][j] is the distance between A[i] and B[j]. The bigger
+            dist_matirx[i][j] is the distance between A[i] and B[j]. The bigger
             the distance is, the better macthing the pairs are. Please note,
             This tensor can contain LoD information to represent a batch of
             inputs. One instance of this batch can contain different numbers of
             entities.
     Returns:
         match_indices(Variable): A 2-D Tensor with shape [N, M] in int type.
-            N is the batch size. If ColToRowMatchIndices[i][j] is -1, it
+            N is the batch size. If match_indices[i][j] is -1, it
             means B[j] does not match any entity in i-th instance.
             Otherwise, it means B[j] is matched to row
-            ColToRowMatchIndices[i][j] in i-th instance. The row number of
-            i-th instance is saved in ColToRowMatchIndices[i][j].
+            match_indices[i][j] in i-th instance. The row number of
+            i-th instance is saved in match_indices[i][j].
         match_distance(Variable): A 2-D Tensor with shape [N, M] in float type.
-            N is batch size. If ColToRowMatchIndices[i][j] is -1,
-            ColToRowMatchDist[i][j] is also -1.0. Otherwise, assumed
-            ColToRowMatchIndices[i][j] = d, and the row offsets of each instance
-            are called LoD. Then ColToRowMatchDist[i][j] = DistMat[d+LoD[i]][j].
+            N is batch size. If match_indices[i][j] is -1,
+            match_distance[i][j] is also -1.0. Otherwise, assumed
+            match_distance[i][j] = d, and the row offsets of each instance
+            are called LoD. Then match_distance[i][j] = dist_matrix[d+LoD[i]][j].
     """
     helper = LayerHelper('bipartite_match', **locals())
-    dtype = helper.input_dtype()
-
     match_indices = helper.create_tmp_variable(dtype='int32')
-    match_distance = helper.create_tmp_variable(dtype=dtype)
+    match_distance = helper.create_tmp_variable(dtype=dist_matrix.dtype)
     helper.append_op(
         type='bipartite_match',
-        inputs={'DistMat': similarity_matrix},
+        inputs={'DistMat': dist_matrix},
         outputs={
             'ColToRowMatchIndices': match_indices,
             'ColToRowMatchDist': match_distance
@@ -576,8 +574,7 @@ def ssd_loss(location,
     """
 
     helper = LayerHelper('ssd_loss', **locals())
-    dtype = helper.input_dtype()
-    if mining_type == 'hard_example':
+    if mining_type != 'max_negative':
         raise ValueError("Only support mining_type == max_negative now.")
 
     num, num_prior, num_class = confidence.shape
@@ -599,12 +596,14 @@ def ssd_loss(location,
     # 2.2. Compute confidence loss.
     # Reshape confidence to 2D tensor.
     confidence = __reshape_to_2d(confidence)
+    target_label = tensor.cast(x=target_label, dtype='int64')
     target_label = __reshape_to_2d(target_label)
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
 
     # 3. Mining hard examples
     conf_loss = ops.reshape(x=conf_loss, shape=(num, num_prior))
     neg_indices = helper.create_tmp_variable(dtype='int32')
+    dtype = matched_indices.dtype
     updated_matched_indices = helper.create_tmp_variable(dtype=dtype)
     helper.append_op(
         type='mine_hard_examples',
@@ -645,6 +644,7 @@ def ssd_loss(location,
     # 5. Compute loss.
     # 5.1 Compute confidence loss.
     target_label = __reshape_to_2d(target_label)
+    target_label = tensor.cast(x=target_label, dtype='int64')
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
     target_conf_weight = __reshape_to_2d(target_conf_weight)
     conf_loss = conf_loss * target_conf_weight

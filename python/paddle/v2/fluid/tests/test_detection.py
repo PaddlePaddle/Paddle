@@ -34,7 +34,7 @@ class TestDetection(unittest.TestCase):
                 dtype='float32')
             loc = layers.data(
                 name='target_box',
-                shape=[10, 4],
+                shape=[20, 4],
                 append_batch_size=False,
                 dtype='float32')
             scores = layers.data(
@@ -46,7 +46,42 @@ class TestDetection(unittest.TestCase):
                 scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv)
             self.assertIsNotNone(out)
             self.assertEqual(out.shape[-1], 6)
-        #print(str(program))
+        print(str(program))
+
+    def test_detection_api(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[4], dtype='float32')
+            y = layers.data(name='y', shape=[4], dtype='float32')
+            z = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
+            iou = layers.iou_similarity(x=x, y=y)
+            bcoder = layers.box_coder(
+                prior_box=x,
+                prior_box_var=y,
+                target_box=z,
+                code_type='encode_center_size')
+            self.assertIsNotNone(iou)
+            self.assertIsNotNone(bcoder)
+
+            matched_indices, matched_dist = layers.bipartite_match(iou)
+            self.assertIsNotNone(matched_indices)
+            self.assertIsNotNone(matched_dist)
+
+            gt = layers.data(
+                name='gt', shape=[1, 1], dtype='int32', lod_level=1)
+            trg, trg_weight = layers.target_assign(
+                gt, matched_indices, mismatch_value=0)
+            self.assertIsNotNone(trg)
+            self.assertIsNotNone(trg_weight)
+
+            gt2 = layers.data(
+                name='gt2', shape=[10, 4], dtype='float32', lod_level=1)
+            trg, trg_weight = layers.target_assign(
+                gt2, matched_indices, mismatch_value=0)
+            self.assertIsNotNone(trg)
+            self.assertIsNotNone(trg_weight)
+
+        print(str(program))
 
     def test_ssd_loss(self):
         program = Program()
@@ -70,7 +105,7 @@ class TestDetection(unittest.TestCase):
             loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
             self.assertIsNotNone(loss)
             self.assertEqual(loss.shape[-1], 1)
-        #print(str(program))
+        print(str(program))
 
 
 class TestPriorBox(unittest.TestCase):
