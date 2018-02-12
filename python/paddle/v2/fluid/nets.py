@@ -194,7 +194,7 @@ def scaled_dot_product_attention(queries,
 
     Returns:
 
-        Variable: A 3-D Tensor computed by multi-head scaled dot product
+        Variable: A 3-D Tensor computed by multi-head scaled dot product \
                   attention.
 
     Raises:
@@ -333,6 +333,7 @@ def scaled_dot_product_attention(queries,
             x=product, shape=[-1, product.shape[-1]], act="softmax"),
         shape=product.shape)
     if dropout_rate:
-        weights = layers.dropout(x, dropout_prob=dropout_rate, is_test=False)
+        weights = layers.dropout(
+            weights, dropout_prob=dropout_rate, is_test=False)
     ctx_multiheads = layers.matmul(weights, v)
     return __combine_heads(ctx_multiheads)
