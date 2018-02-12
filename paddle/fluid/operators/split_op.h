@@ -38,7 +38,7 @@ class SplitOpKernel : public framework::OpKernel<T> {
       auto out_stride = framework::stride_numel(out->dims());
       StridedNumelCopyWithAxis<T>(ctx.device_context(), axis, out->data<T>(),
                                   out_stride, in->data<T>() + input_offset,
-                                  in_stride);
+                                  in_stride, out_stride[axis]);
       input_offset += out_stride[axis];
     }
   }
