@@ -18,7 +18,6 @@ __all__ = [
     "sequence_conv_pool",
     "glu",
     "scaled_dot_product_attention",
-    "img_conv_with_bn",
 ]
 
 
@@ -106,38 +105,6 @@ def img_conv_group(input,
         pool_stride=pool_stride,
         use_cudnn=use_cudnn)
     return pool_out
-
-
-def img_conv_with_bn(input,
-                     conv_num_filter,
-                     conv_padding=1,
-                     conv_filter_size=3,
-                     conv_stride=1,
-                     conv_act=None,
-                     param_attr=None,
-                     conv_with_batchnorm=False,
-                     conv_batchnorm_drop_rate=0.0,
-                     use_cudnn=True):
-    """
-    Image Convolution Group, Used for vgg net.
-    """
-    conv2d = layers.conv2d(
-        input=input,
-        num_filters=conv_num_filter,
-        filter_size=conv_filter_size,
-        padding=conv_padding,
-        stride=conv_stride,
-        param_attr=param_attr,
-        act=conv_act,
-        use_cudnn=use_cudnn)
-
-    if conv_with_batchnorm:
-        conv2d = layers.batch_norm(input=conv2d)
-        drop_rate = conv_batchnorm_drop_rate
-        if abs(drop_rate) > 1e-5:
-            conv2d = layers.dropout(x=conv2d, dropout_prob=drop_rate)
-
-    return conv2d
 
 
 def sequence_conv_pool(input,
