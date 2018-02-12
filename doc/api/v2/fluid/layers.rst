@@ -109,6 +109,18 @@ less_than
 ..  autofunction:: paddle.v2.fluid.layers.less_than
     :noindex:
 
+equal
+---------
+
+..  autofunction:: paddle.v2.fluid.layers.equal
+    :noindex:
+
+less_equal
+---------
+
+..  autofunction:: paddle.v2.fluid.layers.less_equal
+    :noindex:
+
 array_read
 ----------
 

@@ -38,6 +38,7 @@ __all__ = [
     'array_write',
     'create_array',
     'less_than',
+    'less_equal',
     'equal',
     'array_read',
     'shrink_memory',
@@ -943,6 +944,36 @@ def create_array(dtype):
         name="{0}.out".format(helper.name),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         dtype=dtype)
+
+
+def less_equal(x, y, cond=None, **ignored):
+    """
+    **Less equal**
+
+    This layer returns the truth value of :math:`x <= y` elementwise.
+
+    Args:
+        x(Variable): First operand of *less_equal*
+        y(Variable): Second operand of *less_equal*
+        cond(Variable|None): Optional output variable to store the result of *less_equal*
+
+    Returns:
+        Variable: The tensor variable storing the output of *less_equal*.
+
+    Examples:
+        .. code-block:: python
+
+          less = fluid.layers.less_equal(x=label, y=limit)
+    """
+    helper = LayerHelper("less_equal", **locals())
+    if cond is None:
+        cond = helper.create_tmp_variable(dtype='bool')
+        cond.stop_gradient = True
+
+    helper.append_op(
+        type='less_equal', inputs={'X': [x],
+                                   'Y': [y]}, outputs={'Out': [cond]})
+    return cond
 
 
 def less_than(x, y, cond=None, **ignored):
