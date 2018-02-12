@@ -13,7 +13,6 @@ PaddlePaddle提供pip和Docker的安装方式：
 
    pip_install_cn.rst
    docker_install_cn.rst
-   build_cn.md
 
 编译流程
 ++++++++

@@ -161,8 +161,8 @@ class TestBook(unittest.TestCase):
                 label=label,
                 chunk_scheme="IOB",
                 num_chunk_types=(label_dict_len - 1) / 2)
-            self.assertNotEqual(crf, None)
-            self.assertNotEqual(crf_decode, None)
+            self.assertFalse(crf is None)
+            self.assertFalse(crf_decode is None)
 
         print(str(program))
 
