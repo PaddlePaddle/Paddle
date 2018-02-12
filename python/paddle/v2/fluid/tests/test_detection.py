@@ -47,7 +47,7 @@ class TestBook(unittest.TestCase):
             out = layers.detection_output(
                 scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv)
             self.assertIsNotNone(out)
-        print(str(program))
+        # print(str(program))
 
 
 class TestPriorBox(unittest.TestCase):
@@ -62,36 +62,11 @@ class TestPriorBox(unittest.TestCase):
     def prior_box_output(self, data_shape):
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32')
-        conv1 = fluid.layers.conv2d(
-            input=images,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
-        conv2 = fluid.layers.conv2d(
-            input=conv1,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
-        conv3 = fluid.layers.conv2d(
-            input=conv2,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
-        conv4 = fluid.layers.conv2d(
-            input=conv3,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
-        conv5 = fluid.layers.conv2d(
-            input=conv4,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
+        conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+        conv2 = fluid.layers.conv2d(conv1, 3, 3, 2)
+        conv3 = fluid.layers.conv2d(conv2, 3, 3, 2)
+        conv4 = fluid.layers.conv2d(conv3, 3, 3, 2)
+        conv5 = fluid.layers.conv2d(conv4, 3, 3, 2)
 
         box, var = detection.prior_box(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
@@ -112,39 +87,17 @@ class TestMultiBoxHead(unittest.TestCase):
         data_shape = [3, 224, 224]
         mbox_locs, mbox_confs = self.multi_box_output(data_shape)
 
+        for loc, conf in zip(mbox_locs, mbox_confs):
+            assert loc.shape[1:3] == conf.shape[1:3]
+
     def multi_box_output(self, data_shape):
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32')
-        conv1 = fluid.layers.conv2d(
-            input=images,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
-        conv2 = fluid.layers.conv2d(
-            input=conv1,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
-        conv3 = fluid.layers.conv2d(
-            input=conv2,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
-        conv4 = fluid.layers.conv2d(
-            input=conv3,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
-        conv5 = fluid.layers.conv2d(
-            input=conv4,
-            num_filters=3,
-            filter_size=3,
-            stride=2,
-            use_cudnn=False)
+        conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+        conv2 = fluid.layers.conv2d(conv1, 3, 3, 2)
+        conv3 = fluid.layers.conv2d(conv2, 3, 3, 2)
+        conv4 = fluid.layers.conv2d(conv3, 3, 3, 2)
+        conv5 = fluid.layers.conv2d(conv4, 3, 3, 2)
 
         mbox_locs, mbox_confs = detection.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
