@@ -37,7 +37,7 @@ class TestDetectionMAPOp(OpTest):
 
             self.inputs = {
                 'Label': (self.label, self.label_lod),
-                'Detection': (self.detect, self.detect_lod),
+                'DetectRes': (self.detect, self.detect_lod),
                 'PosCount': self.class_pos_count,
                 'TruePos': (self.true_pos, self.true_pos_lod),
                 'FalsePos': (self.false_pos, self.false_pos_lod)
@@ -45,7 +45,7 @@ class TestDetectionMAPOp(OpTest):
         else:
             self.inputs = {
                 'Label': (self.label, self.label_lod),
-                'Detection': (self.detect, self.detect_lod),
+                'DetectRes': (self.detect, self.detect_lod),
             }
 
         self.attrs = {
@@ -61,9 +61,9 @@ class TestDetectionMAPOp(OpTest):
 
         self.outputs = {
             'MAP': self.mAP,
-            'OutPosCount': self.out_class_pos_count,
-            'OutTruePos': (self.out_true_pos, self.out_true_pos_lod),
-            'OutFalsePos': (self.out_false_pos, self.out_false_pos_lod)
+            'AccumPosCount': self.out_class_pos_count,
+            'AccumTruePos': (self.out_true_pos, self.out_true_pos_lod),
+            'AccumFalsePos': (self.out_false_pos, self.out_false_pos_lod)
         }
 
     def init_test_case(self):
@@ -175,9 +175,7 @@ class TestDetectionMAPOp(OpTest):
             false_pos[label].append([score, fp])
 
         for (label, label_pos_num) in label_count.items():
-            if label_pos_num == 0 or label not in true_pos:
-                continue
-
+            if label_pos_num == 0 or label not in true_pos: continue
             label_true_pos = true_pos[label]
             label_false_pos = false_pos[label]
 

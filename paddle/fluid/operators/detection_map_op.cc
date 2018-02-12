@@ -24,25 +24,28 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Detection"),
-                   "Input(Detection) of DetectionMAPOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("DetectRes"),
+                   "Input(DetectRes) of DetectionMAPOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
                    "Input(Label) of DetectionMAPOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutPosCount"),
-                   "Output(OutPosCount) of DetectionMAPOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutTruePos"),
-                   "Output(OutTruePos) of DetectionMAPOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutFalsePos"),
-                   "Output(OutFalsePos) of DetectionMAPOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("AccumPosCount"),
+        "Output(AccumPosCount) of DetectionMAPOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("AccumTruePos"),
+        "Output(AccumTruePos) of DetectionMAPOp should not be null.");
+    PADDLE_ENFORCE(
+        ctx->HasOutput("AccumFalsePos"),
+        "Output(AccumFalsePos) of DetectionMAPOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MAP"),
                    "Output(MAP) of DetectionMAPOp should not be null.");
 
-    auto det_dims = ctx->GetInputDim("Detection");
+    auto det_dims = ctx->GetInputDim("DetectRes");
     PADDLE_ENFORCE_EQ(det_dims.size(), 2UL,
-                      "The rank of Input(Detection) must be 2, "
+                      "The rank of Input(DetectRes) must be 2, "
                       "the shape is [N, 6].");
     PADDLE_ENFORCE_EQ(det_dims[1], 6UL,
-                      "The shape is of Input(Detection) [N, 6].");
+                      "The shape is of Input(DetectRes) [N, 6].");
     auto label_dims = ctx->GetInputDim("Label");
     PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
                       "The rank of Input(Label) must be 2, "
@@ -50,8 +53,17 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(label_dims[1], 6UL,
                       "The shape is of Input(Label) [N, 6].");
 
-    auto map_dim = framework::make_ddim({1});
-    ctx->SetOutputDim("MAP", map_dim);
+    if (ctx->HasInput("PosCount")) {
+      PADDLE_ENFORCE(ctx->HasInput("TruePos"),
+                     "Input(TruePos) of DetectionMAPOp should not be null when "
+                     "Input(TruePos) is not null.");
+      PADDLE_ENFORCE(
+          ctx->HasInput("FalsePos"),
+          "Input(FalsePos) of DetectionMAPOp should not be null when "
+          "Input(FalsePos) is not null.");
+    }
+
+    ctx->SetOutputDim("MAP", framework::make_ddim({1}));
   }
 
  protected:
@@ -59,7 +71,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(
-            ctx.Input<framework::Tensor>("Detection")->type()),
+            ctx.Input<framework::Tensor>("DetectRes")->type()),
         ctx.device_context());
   }
 };
@@ -68,6 +80,14 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   DetectionMAPOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("DetectRes",
+             "(LoDTensor) A 2-D LoDTensor with shape [M, 6] represents the "
+             "detections. Each row has 6 values: "
+             "[label, confidence, xmin, ymin, xmax, ymax], M is the total "
+             "number of detect results in this mini-batch. For each instance, "
+             "the offsets in first dimension are called LoD, the number of "
+             "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
+             "no detected data.");
     AddInput("Label",
              "(LoDTensor) A 2-D LoDTensor with shape[N, 6] represents the"
              "Labeled ground-truth data. Each row has 6 values: "
@@ -76,38 +96,43 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
              "instance, the offsets in first dimension are called LoD, "
              "the number of offset is N + 1, if LoD[i + 1] - LoD[i] == 0, "
              "means there is no ground-truth data.");
-    AddInput("Detection",
-             "(LoDTensor) A 2-D LoDTensor with shape [M, 6] represents the "
-             "detections. Each row has 6 values: "
-             "[label, confidence, xmin, ymin, xmax, ymax], M is the total "
-             "number of detections in this mini-batch. For each instance, "
-             "the offsets in first dimension are called LoD, the number of "
-             "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
-             "no detected data.");
     AddInput("PosCount",
              "(Tensor) A tensor with shape [Ncls, 1], store the "
-             "input positive example count of each class.")
+             "input positive example count of each class, Ncls is the count of "
+             "input classification. "
+             "This input is used to pass the AccumPosCount generated by the "
+             "previous mini-batch when the multi mini-batches cumulative "
+             "calculation carried out. "
+             "When the input(PosCount) is empty, the cumulative "
+             "calculation is not carried out, and only the results of the "
+             "current mini-batch are calculated.")
         .AsDispensable();
     AddInput("TruePos",
-             "(LodTensor) A 2-D LodTensor with shape [Ntp, 2], store the "
-             "input true positive example of each class.")
+             "(LoDTensor) A 2-D LoDTensor with shape [Ntp, 2], store the "
+             "input true positive example of each class."
+             "This input is used to pass the AccumTruePos generated by the "
+             "previous mini-batch when the multi mini-batches cumulative "
+             "calculation carried out. ")
         .AsDispensable();
     AddInput("FalsePos",
-             "(LodTensor) A 2-D LodTensor with shape [Nfp, 2], store the "
-             "input false positive example of each class.")
+             "(LoDTensor) A 2-D LoDTensor with shape [Nfp, 2], store the "
+             "input false positive example of each class."
+             "This input is used to pass the AccumFalsePos generated by the "
+             "previous mini-batch when the multi mini-batches cumulative "
+             "calculation carried out. ")
         .AsDispensable();
-    AddOutput("OutPosCount",
+    AddOutput("AccumPosCount",
               "(Tensor) A tensor with shape [Ncls, 1], store the "
               "positive example count of each class. It combines the input "
               "input(PosCount) and the positive example count computed from "
               "input(Detection) and input(Label).");
-    AddOutput("OutTruePos",
-              "(LodTensor) A LodTensor with shape [Ntp', 2], store the "
+    AddOutput("AccumTruePos",
+              "(LoDTensor) A LoDTensor with shape [Ntp', 2], store the "
               "true positive example of each class. It combines the "
               "input(TruePos) and the true positive examples computed from "
               "input(Detection) and input(Label).");
-    AddOutput("OutFalsePos",
-              "(LodTensor) A LodTensor with shape [Nfp', 2], store the "
+    AddOutput("AccumFalsePos",
+              "(LoDTensor) A LoDTensor with shape [Nfp', 2], store the "
               "false positive example of each class. It combines the "
               "input(FalsePos) and the false positive examples computed from "
               "input(Detection) and input(Label).");
@@ -115,10 +140,11 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor) A tensor with shape [1], store the mAP evaluate "
               "result of the detection.");
 
-    AddAttr<float>("overlap_threshold",
-                   "(float) "
-                   "The jaccard overlap threshold of detection output and "
-                   "ground-truth data.")
+    AddAttr<float>(
+        "overlap_threshold",
+        "(float) "
+        "The lower bound jaccard overlap threshold of detection output and "
+        "ground-truth data.")
         .SetDefault(.3f);
     AddAttr<bool>("evaluate_difficult",
                   "(bool, default true) "

@@ -54,7 +54,7 @@ template <typename Place, typename T>
 class DetectionMAPOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in_detect = ctx.Input<framework::LoDTensor>("Detection");
+    auto* in_detect = ctx.Input<framework::LoDTensor>("DetectRes");
     auto* in_label = ctx.Input<framework::LoDTensor>("Label");
     auto* out_map = ctx.Output<framework::Tensor>("MAP");
 
@@ -62,9 +62,9 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto* in_true_pos = ctx.Input<framework::LoDTensor>("TruePos");
     auto* in_false_pos = ctx.Input<framework::LoDTensor>("FalsePos");
 
-    auto* out_pos_count = ctx.Output<framework::Tensor>("OutPosCount");
-    auto* out_true_pos = ctx.Output<framework::LoDTensor>("OutTruePos");
-    auto* out_false_pos = ctx.Output<framework::LoDTensor>("OutFalsePos");
+    auto* out_pos_count = ctx.Output<framework::Tensor>("AccumPosCount");
+    auto* out_true_pos = ctx.Output<framework::LoDTensor>("AccumTruePos");
+    auto* out_false_pos = ctx.Output<framework::LoDTensor>("AccumFalsePos");
 
     float overlap_threshold = ctx.Attr<float>("overlap_threshold");
     float evaluate_difficult = ctx.Attr<bool>("evaluate_difficult");
@@ -265,28 +265,22 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       label_pos_count[i] = pos_count_data[i];
     }
 
-    const T* true_pos_data = input_true_pos.data<T>();
-    auto true_pos_data_lod = input_true_pos.lod();
-    for (int i = 0; i < true_pos_data_lod.size(); ++i) {
-      for (int j = true_pos_data_lod[0][i]; j < true_pos_data_lod[0][i + 1];
-           ++j) {
-        T score = true_pos_data[j * 2];
-        int flag = 1;
-        if (true_pos_data[j * 2 + 1] < kEPS) flag = 0;
-        true_pos[i].push_back(std::make_pair(score, flag));
+    auto SetData = [](const framework::LoDTensor& pos_tensor,
+                      std::map<int, std::vector<std::pair<T, int>>>& pos) {
+      const T* pos_data = pos_tensor.data<T>();
+      auto pos_data_lod = pos_tensor.lod();
+      for (int i = 0; i < pos_data_lod.size(); ++i) {
+        for (int j = pos_data_lod[0][i]; j < pos_data_lod[0][i + 1]; ++j) {
+          T score = pos_data[j * 2];
+          int flag = 1;
+          if (pos_data[j * 2 + 1] < kEPS) flag = 0;
+          pos[i].push_back(std::make_pair(score, flag));
+        }
       }
-    }
-    const T* false_pos_data = input_false_pos.data<T>();
-    auto false_pos_data_lod = input_false_pos.lod();
-    for (int i = 0; i < false_pos_data_lod.size(); ++i) {
-      for (int j = false_pos_data_lod[0][i]; j < false_pos_data_lod[0][i + 1];
-           ++j) {
-        T score = false_pos_data[j * 2];
-        int flag = 1;
-        if (false_pos_data[j * 2 + 1] < kEPS) flag = 0;
-        false_pos[i].push_back(std::make_pair(score, flag));
-      }
-    }
+    };
+
+    SetData(input_true_pos, true_pos);
+    SetData(input_false_pos, false_pos);
     return;
   }
 
