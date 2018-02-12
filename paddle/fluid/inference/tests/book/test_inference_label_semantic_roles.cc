@@ -32,16 +32,42 @@ TEST(inference, label_semantic_roles) {
   paddle::framework::LoDTensor word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1,
       ctx_p2, mark;
   paddle::framework::LoD lod{{0, 4, 10}};
+  int64_t word_dict_len = 44068;
+  int64_t predicate_dict_len = 3162;
+  int64_t mark_dict_len = 2;
 
-  SetupLoDTensor(word, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(
-      predicate, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_n2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_n1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_0, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_p1, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(ctx_p2, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(mark, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(word,
+                 lod,
+                 static_cast<int64_t>(0),
+                 static_cast<int64_t>(word_dict_len - 1));
+  SetupLoDTensor(predicate,
+                 lod,
+                 static_cast<int64_t>(0),
+                 static_cast<int64_t>(predicate_dict_len - 1));
+  SetupLoDTensor(ctx_n2,
+                 lod,
+                 static_cast<int64_t>(0),
+                 static_cast<int64_t>(word_dict_len - 1));
+  SetupLoDTensor(ctx_n1,
+                 lod,
+                 static_cast<int64_t>(0),
+                 static_cast<int64_t>(word_dict_len - 1));
+  SetupLoDTensor(ctx_0,
+                 lod,
+                 static_cast<int64_t>(0),
+                 static_cast<int64_t>(word_dict_len - 1));
+  SetupLoDTensor(ctx_p1,
+                 lod,
+                 static_cast<int64_t>(0),
+                 static_cast<int64_t>(word_dict_len - 1));
+  SetupLoDTensor(ctx_p2,
+                 lod,
+                 static_cast<int64_t>(0),
+                 static_cast<int64_t>(word_dict_len - 1));
+  SetupLoDTensor(mark,
+                 lod,
+                 static_cast<int64_t>(0),
+                 static_cast<int64_t>(mark_dict_len - 1));
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&word);

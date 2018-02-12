@@ -93,7 +93,7 @@ def create_random_lodtensor(lod, place, low, high):
     return res
 
 
-def train(word_dict, net_method, use_cuda, save_dirname=None):
+def train(word_dict, nn_type, use_cuda, save_dirname=None):
     BATCH_SIZE = 128
     PASS_NUM = 5
     dict_dim = len(word_dict)
@@ -102,6 +102,11 @@ def train(word_dict, net_method, use_cuda, save_dirname=None):
     data = fluid.layers.data(
         name="words", shape=[1], dtype="int64", lod_level=1)
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+
+    if nn_type == "conv":
+        net_method = convolution_net
+    else:
+        net_method = stacked_lstm_net
     cost, acc_out, prediction = net_method(
         data, label, input_dim=dict_dim, class_dim=class_dim)
 
@@ -132,7 +137,7 @@ def train(word_dict, net_method, use_cuda, save_dirname=None):
         net_method.__name__))
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(word_dict, use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
@@ -146,10 +151,11 @@ def infer(use_cuda, save_dirname=None):
     [inference_program, feed_target_names,
      fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
+    word_dict_len = len(word_dict)
+
     lod = [0, 4, 10]
-    word_dict = paddle.dataset.imdb.word_dict()
     tensor_words = create_random_lodtensor(
-        lod, place, low=0, high=len(word_dict) - 1)
+        lod, place, low=0, high=word_dict_len - 1)
 
     # Construct feed as a dictionary of {feed_target_name: feed_target_data}
     # and results will contain a list of data corresponding to fetch_targets.
@@ -164,15 +170,15 @@ def infer(use_cuda, save_dirname=None):
     print("Inference results: ", np_data)
 
 
-def main(word_dict, net_method, use_cuda):
+def main(word_dict, nn_type, use_cuda):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
-    save_dirname = "understand_sentiment.inference.model"
+    save_dirname = "understand_sentiment_" + nn_type + ".inference.model"
 
-    train(word_dict, net_method, use_cuda, save_dirname)
-    infer(use_cuda, save_dirname)
+    train(word_dict, nn_type, use_cuda, save_dirname)
+    infer(word_dict, use_cuda, save_dirname)
 
 
 class TestUnderstandSentiment(unittest.TestCase):
@@ -191,19 +197,19 @@ class TestUnderstandSentiment(unittest.TestCase):
 
     def test_conv_cpu(self):
         with self.new_program_scope():
-            main(self.word_dict, net_method=convolution_net, use_cuda=False)
+            main(self.word_dict, nn_type="conv", use_cuda=False)
 
     def test_stacked_lstm_cpu(self):
         with self.new_program_scope():
-            main(self.word_dict, net_method=stacked_lstm_net, use_cuda=False)
+            main(self.word_dict, nn_type="lstm", use_cuda=False)
 
     def test_conv_gpu(self):
         with self.new_program_scope():
-            main(self.word_dict, net_method=convolution_net, use_cuda=True)
+            main(self.word_dict, nn_type="conv", use_cuda=True)
 
     def test_stacked_lstm_gpu(self):
         with self.new_program_scope():
-            main(self.word_dict, net_method=stacked_lstm_net, use_cuda=True)
+            main(self.word_dict, nn_type="lstm", use_cuda=True)
 
 
 if __name__ == '__main__':
