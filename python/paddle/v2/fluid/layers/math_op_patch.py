@@ -117,6 +117,7 @@ def monkey_patch_variable():
 
             tmp_name = unique_tmp_name()
             out = self.block.create_var(name=tmp_name, dtype=lhs_dtype)
+
             self.block.append_op(
                 type=op_type,
                 inputs={'X': [self],
@@ -151,7 +152,12 @@ def monkey_patch_variable():
         ("__div__", "elementwise_div", False),
         ("__rdiv__", "elementwise_div", True),
         ("__pow__", "elementwise_pow", False),
-        ("__rpow__", "elementwise_pow", True)):
+        ("__rpow__", "elementwise_pow", True),
+            # for logical compare
+        ("__eq__", "equal", False),
+        ("__ne__", "not_equal", False),
+        ("__lt__", "less_than", False),
+        ("__le__", "less_equal", False)):
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse))
 

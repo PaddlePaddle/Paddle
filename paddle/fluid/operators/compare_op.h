@@ -48,6 +48,14 @@ struct EqualFunctor {
   }
 };
 
+template <typename T>
+struct NotEqualFunctor {
+  using ELEM_TYPE = T;
+  HOSTDEVICE bool operator()(const T& a, const T& b) const {
+    return !EqualFunctor<T>()(a, b);
+  }
+};
+
 template <typename DeviceContext, typename Functor>
 class CompareOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {

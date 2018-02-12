@@ -2,7 +2,7 @@
 |---|---|
 | backyes | Yan-Fei Wang |
 | beckett1124 | Bin Qi |
-| Canpio | Jia-Yi Feng |
+| JiayiFeng | Jia-Yi Feng |
 | chengxiaohua1105 | Xiao-Hua Cheng |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |

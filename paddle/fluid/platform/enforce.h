@@ -23,8 +23,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/string/printf.h"
-#include "paddle/string/to_string.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/to_string.h"
 
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle
