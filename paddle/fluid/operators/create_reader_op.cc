@@ -84,7 +84,7 @@ class CreateFileReaderInferVarType : public framework::VarTypeInference {
                   framework::BlockDesc* block) const override {
     std::string reader_name = op_desc.Output("Out")[0];
     framework::VarDesc* reader = block->FindVarRecursive(reader_name);
-    reader->SetType(framework::proto::VarDesc::type::READER);
+    reader->SetType(framework::proto::VarType::READER);
   }
 };
 
@@ -97,7 +97,7 @@ class CreateDecoratedReaderInferVarType : public framework::VarTypeInference {
     framework::VarDesc* in_reader = block->FindVarRecursive(in_reader_name);
     std::string out_reader_name = op_desc.Output("Out")[0];
     framework::VarDesc* out_reader = block->FindVarRecursive(out_reader_name);
-    out_reader->SetType(framework::proto::VarDesc::type::READER);
+    out_reader->SetType(framework::proto::VarType::READER);
     out_reader->SetDataTypes(in_reader->GetDataTypes());
   }
 };
