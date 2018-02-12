@@ -138,42 +138,48 @@ def infer(use_cuda, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    # Use fluid.io.load_inference_model to obtain the inference program desc,
-    # the feed_target_names (the names of variables that will be feeded
-    # data using feed operators), and the fetch_targets (variables that
-    # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    word_dict = paddle.dataset.imikolov.build_dict()
-    dict_size = len(word_dict)
+        word_dict = paddle.dataset.imikolov.build_dict()
+        dict_size = len(word_dict)
 
-    # Setup inputs, by creating 4 words, the lod of which should be [0, 1]
-    lod = [0, 1]
-    first_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    second_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    third_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
-    fourth_word = create_random_lodtensor(lod, place, low=0, high=dict_size - 1)
+        # Setup inputs, by creating 4 words, the lod of which should be [0, 1]
+        lod = [0, 1]
+        first_word = create_random_lodtensor(
+            lod, place, low=0, high=dict_size - 1)
+        second_word = create_random_lodtensor(
+            lod, place, low=0, high=dict_size - 1)
+        third_word = create_random_lodtensor(
+            lod, place, low=0, high=dict_size - 1)
+        fourth_word = create_random_lodtensor(
+            lod, place, low=0, high=dict_size - 1)
 
-    assert feed_target_names[0] == 'firstw'
-    assert feed_target_names[1] == 'secondw'
-    assert feed_target_names[2] == 'thirdw'
-    assert feed_target_names[3] == 'forthw'
+        assert feed_target_names[0] == 'firstw'
+        assert feed_target_names[1] == 'secondw'
+        assert feed_target_names[2] == 'thirdw'
+        assert feed_target_names[3] == 'forthw'
 
-    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-    # and results will contain a list of data corresponding to fetch_targets.
-    results = exe.run(inference_program,
-                      feed={
-                          feed_target_names[0]: first_word,
-                          feed_target_names[1]: second_word,
-                          feed_target_names[2]: third_word,
-                          feed_target_names[3]: fourth_word
-                      },
-                      fetch_list=fetch_targets,
-                      return_numpy=False)
-    print(results[0].lod())
-    np_data = np.array(results[0])
-    print("Inference Shape: ", np_data.shape)
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        results = exe.run(inference_program,
+                          feed={
+                              feed_target_names[0]: first_word,
+                              feed_target_names[1]: second_word,
+                              feed_target_names[2]: third_word,
+                              feed_target_names[3]: fourth_word
+                          },
+                          fetch_list=fetch_targets,
+                          return_numpy=False)
+        print(results[0].lod())
+        np_data = np.array(results[0])
+        print("Inference Shape: ", np_data.shape)
 
 
 def main(use_cuda, is_sparse, is_parallel):

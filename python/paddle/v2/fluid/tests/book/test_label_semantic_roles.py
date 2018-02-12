@@ -252,50 +252,60 @@ def infer(use_cuda, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    # Use fluid.io.load_inference_model to obtain the inference program desc,
-    # the feed_target_names (the names of variables that will be feeded 
-    # data using feed operators), and the fetch_targets (variables that 
-    # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    lod = [0, 4, 10]
-    word = create_random_lodtensor(lod, place, low=0, high=word_dict_len - 1)
-    pred = create_random_lodtensor(lod, place, low=0, high=pred_dict_len - 1)
-    ctx_n2 = create_random_lodtensor(lod, place, low=0, high=word_dict_len - 1)
-    ctx_n1 = create_random_lodtensor(lod, place, low=0, high=word_dict_len - 1)
-    ctx_0 = create_random_lodtensor(lod, place, low=0, high=word_dict_len - 1)
-    ctx_p1 = create_random_lodtensor(lod, place, low=0, high=word_dict_len - 1)
-    ctx_p2 = create_random_lodtensor(lod, place, low=0, high=word_dict_len - 1)
-    mark = create_random_lodtensor(lod, place, low=0, high=mark_dict_len - 1)
+        lod = [0, 4, 10]
+        word = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        pred = create_random_lodtensor(
+            lod, place, low=0, high=pred_dict_len - 1)
+        ctx_n2 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        ctx_n1 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        ctx_0 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        ctx_p1 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        ctx_p2 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        mark = create_random_lodtensor(
+            lod, place, low=0, high=mark_dict_len - 1)
 
-    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-    # and results will contain a list of data corresponding to fetch_targets.
-    assert feed_target_names[0] == 'word_data'
-    assert feed_target_names[1] == 'verb_data'
-    assert feed_target_names[2] == 'ctx_n2_data'
-    assert feed_target_names[3] == 'ctx_n1_data'
-    assert feed_target_names[4] == 'ctx_0_data'
-    assert feed_target_names[5] == 'ctx_p1_data'
-    assert feed_target_names[6] == 'ctx_p2_data'
-    assert feed_target_names[7] == 'mark_data'
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        assert feed_target_names[0] == 'word_data'
+        assert feed_target_names[1] == 'verb_data'
+        assert feed_target_names[2] == 'ctx_n2_data'
+        assert feed_target_names[3] == 'ctx_n1_data'
+        assert feed_target_names[4] == 'ctx_0_data'
+        assert feed_target_names[5] == 'ctx_p1_data'
+        assert feed_target_names[6] == 'ctx_p2_data'
+        assert feed_target_names[7] == 'mark_data'
 
-    results = exe.run(inference_program,
-                      feed={
-                          feed_target_names[0]: word,
-                          feed_target_names[1]: pred,
-                          feed_target_names[2]: ctx_n2,
-                          feed_target_names[3]: ctx_n1,
-                          feed_target_names[4]: ctx_0,
-                          feed_target_names[5]: ctx_p1,
-                          feed_target_names[6]: ctx_p2,
-                          feed_target_names[7]: mark
-                      },
-                      fetch_list=fetch_targets,
-                      return_numpy=False)
-    print(results[0].lod())
-    np_data = np.array(results[0])
-    print("Inference Shape: ", np_data.shape)
+        results = exe.run(inference_program,
+                          feed={
+                              feed_target_names[0]: word,
+                              feed_target_names[1]: pred,
+                              feed_target_names[2]: ctx_n2,
+                              feed_target_names[3]: ctx_n1,
+                              feed_target_names[4]: ctx_0,
+                              feed_target_names[5]: ctx_p1,
+                              feed_target_names[6]: ctx_p2,
+                              feed_target_names[7]: mark
+                          },
+                          fetch_list=fetch_targets,
+                          return_numpy=False)
+        print(results[0].lod())
+        np_data = np.array(results[0])
+        print("Inference Shape: ", np_data.shape)
 
 
 def main(use_cuda):
