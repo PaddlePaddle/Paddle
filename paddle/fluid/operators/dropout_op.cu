@@ -23,16 +23,20 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename AttrType>
-__global__ RandomGenerator(const size_t n, const int seed,
-                           const AttrType dropout_prob, const T* src,
-                           T* mask_data, T* dst) {
+__global__ void RandomGenerator(const size_t n, const int seed,
+                                const AttrType dropout_prob, const T* src,
+                                T* mask_data, T* dst) {
   thrust::minstd_rand rng;
   rng.seed(seed);
   thrust::uniform_real_distribution<AttrType> dist(0, 1);
-  rng.discard(n);
+
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < n; idx += blockDim.x * blockIdx.x) {
-    mask_data[idx] = dist(rng) < dropout_prob;
+  for (; idx < n; idx += blockDim.x * gridDim.x) {
+    if (dist(rng) < dropout_prob) {
+      mask_data[idx] = static_cast<T>(0);
+    } else {
+      mask_data[idx] = static_cast<T>(1);
+    }
     dst[idx] = mask_data[idx] * src[idx];
   }
 }
@@ -53,12 +57,12 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
 
     auto& place = *context.template device_context<Place>().eigen_device();
-    if (!cotext.Attr<bool>("is_test")) {
+    if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
       size_t size = framework::product(mask->dims());
-      int x_data = x->mutable_data<T>(context.GetPlace());
-      int y_data = y->mutable_data<T>(context.GetPlace());
+      auto* x_data = x->data<T>();
+      auto* y_data = y->mutable_data<T>(context.GetPlace());
 
       std::random_device rnd;
       int seed =
