@@ -28,8 +28,11 @@ import device
 from device import *
 import math_op_patch
 from math_op_patch import *
+import detection
+from detection import *
 
 __all__ = []
+__all__ += math_op_patch.__all__
 __all__ += detection.__all__
 __all__ += nn.__all__
 __all__ += io.__all__
@@ -37,4 +40,4 @@ __all__ += tensor.__all__
 __all__ += control_flow.__all__
 __all__ += ops.__all__
 __all__ += device.__all__
-__all__ += math_op_patch.__all__
+__all__ += detection.__all__

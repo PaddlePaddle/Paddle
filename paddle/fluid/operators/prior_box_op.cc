@@ -38,8 +38,8 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LT(input_dims[3], image_dims[3],
                       "The width of input must smaller than image.");
 
-    auto min_sizes = ctx->Attrs().Get<std::vector<int>>("min_sizes");
-    auto max_sizes = ctx->Attrs().Get<std::vector<int>>("max_sizes");
+    auto min_sizes = ctx->Attrs().Get<std::vector<float>>("min_sizes");
+    auto max_sizes = ctx->Attrs().Get<std::vector<float>>("max_sizes");
     auto variances = ctx->Attrs().Get<std::vector<float>>("variances");
     auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
     bool flip = ctx->Attrs().Get<bool>("flip");
@@ -47,15 +47,15 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     std::vector<float> aspect_ratios_vec;
     ExpandAspectRatios(aspect_ratios, flip, aspect_ratios_vec);
 
-    int num_priors = aspect_ratios_vec.size() * min_sizes.size();
+    size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
     if (max_sizes.size() > 0) {
       PADDLE_ENFORCE_EQ(max_sizes.size(), min_sizes.size(),
                         "The number of min_size and max_size must be equal.");
-      for (size_t i = 0; i < min_sizes.size(); ++i) {
+      num_priors += max_sizes.size();
+      for (size_t i = 0; i < max_sizes.size(); ++i) {
         PADDLE_ENFORCE_GT(max_sizes[i], min_sizes[i],
                           "max_size[%d] must be greater than min_size[%d].", i,
                           i);
-        num_priors += 1;
       }
     }
 
@@ -90,20 +90,20 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
               "H is the height of input, W is the width of input, num_priors "
               "is the box count of each position.");
 
-    AddAttr<std::vector<int>>("min_sizes",
-                              "(vector<int>) List of min sizes "
-                              "of generated prior boxes.")
-        .AddCustomChecker([](const std::vector<int>& min_sizes) {
+    AddAttr<std::vector<float>>("min_sizes",
+                                "(vector<float>) List of min sizes "
+                                "of generated prior boxes.")
+        .AddCustomChecker([](const std::vector<float>& min_sizes) {
           PADDLE_ENFORCE_GT(min_sizes.size(), 0,
                             "Size of min_sizes must be at least 1.");
           for (size_t i = 0; i < min_sizes.size(); ++i) {
-            PADDLE_ENFORCE_GT(min_sizes[i], 0,
+            PADDLE_ENFORCE_GT(min_sizes[i], 0.0,
                               "min_sizes[%d] must be positive.", i);
           }
         });
-    AddAttr<std::vector<int>>(
+    AddAttr<std::vector<float>>(
         "max_sizes",
-        "(vector<int>) List of max sizes of generated prior boxes.");
+        "(vector<float>) List of max sizes of generated prior boxes.");
     AddAttr<std::vector<float>>(
         "aspect_ratios",
         "(vector<float>) List of aspect ratios of generated prior boxes.");
@@ -125,16 +125,16 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
 
     AddAttr<float>("step_w",
-                   "Prior boxes step across width, 0 for auto calculation.")
+                   "Prior boxes step across width, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_w) {
-          PADDLE_ENFORCE_GT(step_w, 0.0, "step_w should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_w, 0.0, "step_w should be larger than 0.");
         });
     AddAttr<float>("step_h",
-                   "Prior boxes step across height, 0 for auto calculation.")
+                   "Prior boxes step across height, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_h) {
-          PADDLE_ENFORCE_GT(step_h, 0.0, "step_h should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_h, 0.0, "step_h should be larger than 0.");
         });
 
     AddAttr<float>("offset",
