@@ -31,8 +31,10 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
   os << "{";
   for (auto &v : lod) {
     os << "{";
-    for (auto &i : v) {
-      os << i << ",";
+    if (v.size() != 0) {
+      for (auto &i : v) {
+        os << i << ",";
+      }
     }
     os << "}";
   }
