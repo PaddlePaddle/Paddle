@@ -1,6 +1,5 @@
 #   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
+# # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
@@ -16,14 +15,67 @@ import paddle.v2 as paddle
 import paddle.v2.fluid as fluid
 import unittest
 import os
+import numpy as np
 import math
 import sys
 
 
-def main(use_cuda, is_sparse, parallel):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
+def create_random_lodtensor(lod, place, low, high):
+    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
+    res = fluid.LoDTensor()
+    res.set(data, place)
+    res.set_lod([lod])
+    return res
+
+
+def infer(use_cuda, save_dirname=None):
+    if save_dirname is None:
         return
 
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    word_dict = paddle.dataset.imikolov.build_dict()
+    dict_size = len(word_dict) - 1
+
+    # Setup input, by creating 4 words, and setting up lod required for 
+    # lookup_table_op
+    lod = [0, 1]
+    first_word = create_random_lodtensor(lod, place, low=0, high=dict_size)
+    second_word = create_random_lodtensor(lod, place, low=0, high=dict_size)
+    third_word = create_random_lodtensor(lod, place, low=0, high=dict_size)
+    fourth_word = create_random_lodtensor(lod, place, low=0, high=dict_size)
+
+    assert feed_target_names[0] == 'firstw'
+    assert feed_target_names[1] == 'secondw'
+    assert feed_target_names[2] == 'thirdw'
+    assert feed_target_names[3] == 'forthw'
+
+    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+    # and results will contain a list of data corresponding to fetch_targets.
+    results = exe.run(inference_program,
+                      feed={
+                          feed_target_names[0]: first_word,
+                          feed_target_names[1]: second_word,
+                          feed_target_names[2]: third_word,
+                          feed_target_names[3]: fourth_word
+                      },
+                      fetch_list=fetch_targets,
+                      return_numpy=False)
+    print(results[0].lod())
+    np_data = np.array(results[0])
+    print("Inference Shape: ", np_data.shape)
+    print("Inference results: ", np_data)
+
+
+def train(use_cuda, is_sparse, parallel, save_dirname):
     PASS_NUM = 100
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256
@@ -67,7 +119,7 @@ def main(use_cuda, is_sparse, parallel):
                                        act='softmax')
         cost = fluid.layers.cross_entropy(input=predict_word, label=words[4])
         avg_cost = fluid.layers.mean(x=cost)
-        return avg_cost
+        return avg_cost, predict_word
 
     word_dict = paddle.dataset.imikolov.build_dict()
     dict_size = len(word_dict)
@@ -79,13 +131,13 @@ def main(use_cuda, is_sparse, parallel):
     next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
 
     if not parallel:
-        avg_cost = __network__(
+        avg_cost, predict_word = __network__(
             [first_word, second_word, third_word, forth_word, next_word])
     else:
         places = fluid.layers.get_places()
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
-            avg_cost = __network__(
+            avg_cost, predict_word = __network__(
                 map(pd.read_input, [
                     first_word, second_word, third_word, forth_word, next_word
                 ]))
@@ -113,11 +165,23 @@ def main(use_cuda, is_sparse, parallel):
                                   feed=feeder.feed(data),
                                   fetch_list=[avg_cost])
             if avg_cost_np[0] < 5.0:
+                if save_dirname is not None:
+                    fluid.io.save_inference_model(save_dirname, [
+                        'firstw', 'secondw', 'thirdw', 'forthw'
+                    ], [predict_word], exe)
                 return
             if math.isnan(float(avg_cost_np[0])):
                 sys.exit("got NaN loss, training failed.")
 
     raise AssertionError("Cost is too large {0:2.2}".format(avg_cost_np[0]))
+
+
+def main(use_cuda, is_sparse, parallel):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+    save_dirname = "word2vec.inference.model"
+    train(use_cuda, is_sparse, parallel, save_dirname)
+    infer(use_cuda, save_dirname)
 
 
 FULL_TEST = os.getenv('FULL_TEST',
@@ -142,7 +206,8 @@ def inject_test_method(use_cuda, is_sparse, parallel):
             with fluid.program_guard(prog, startup_prog):
                 main(use_cuda=use_cuda, is_sparse=is_sparse, parallel=parallel)
 
-    if use_cuda and is_sparse and parallel:
+    # run only 2 cases: use_cuda is either True or False
+    if is_sparse == False and parallel == False:
         fn = __impl__
     else:
         # skip the other test when on CI server
