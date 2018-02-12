@@ -127,6 +127,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
+  PADDLE_ENFORCE(
+      curandCreateGenerator(&curand_gen_, CURAND_RNG_PSEUDO_DEFAULT));
   if (dynload::HasCUDNN()) {
     PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
     PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
@@ -138,6 +140,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
+  PADDLE_ENFORCE(curandDestroyGenerator(curand_gen_));
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
   if (cudnn_handle_ != nullptr) {
     PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
@@ -165,6 +168,10 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
+
+curandGenerator_t CUDADeviceContext::curand_handle() const {
+  return curand_gen_;
+}
 
 #endif
 

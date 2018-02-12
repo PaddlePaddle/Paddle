@@ -42,6 +42,16 @@ struct MaskGenerator {
   }
 };
 
+template <typename T, typename AttrType>
+struct MaxFunctor {
+  AttrType dropout_prob;
+  inline HOSTDEVICE MaxFunctor(AttrType dropout_prob)
+      : dropout_prob(dropout_prob) {}
+  inline HOSTDEVICE bool operator()(T e) {
+    return e < static_cast<T>(dropout_prob);
+  }
+};
+
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
@@ -67,10 +77,17 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       int seed =
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
 
+      auto& dev_ctx =
+          (*const_cast<framework::ExecutionContext*>(&context))
+              .template device_context<platform::CUDADeviceContext>();
+      // auto& dev_ctx = const_cast<platform::CUDADeviceContext>(ctx);
+      curandGenerator_t gen = dev_ctx.curand_handle();
+      PADDLE_ENFORCE(curandSetPseudoRandomGeneratorSeed(gen, seed));
+      PADDLE_ENFORCE(curandGenerateUniform(gen, mask_data, size));
       thrust::counting_iterator<unsigned int> index_sequence_begin(0);
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(mask_data),
-                        MaskGenerator<T, AttrType>(dropout_prob, seed));
+                        MaxFunctor<T, AttrType>(dropout_prob));
       auto M = EigenMatrix<T>::Reshape(*mask, 1);
       Y.device(place) = X * M;
     } else {
