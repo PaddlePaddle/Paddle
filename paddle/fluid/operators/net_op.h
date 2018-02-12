@@ -66,6 +66,7 @@ class NetOp : public framework::OperatorBase {
    */
   void Run(const framework::Scope& scope,
            const platform::Place& place) const override {
+    framework::OperatorBase::Run(scope, place);
     for (auto& op : ops_) {
       op->Run(scope, place);
     }

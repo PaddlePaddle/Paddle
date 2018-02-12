@@ -29,6 +29,7 @@ class MaxSeqenceLenOp : public framework::OperatorBase {
 
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
     auto *out =

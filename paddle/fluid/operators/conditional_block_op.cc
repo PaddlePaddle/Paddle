@@ -67,6 +67,7 @@ class ConditionalBlockOp : public ConditionalOp {
       : ConditionalOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     auto xs = InputTensors(scope);
 
     bool need_run;
@@ -130,6 +131,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
       : ConditionalOp(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     auto xs = this->InputTensors(scope);
 
     bool need_run;

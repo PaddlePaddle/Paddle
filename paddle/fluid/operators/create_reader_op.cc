@@ -108,6 +108,7 @@ class CreateRandomDataGeneratorOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
+    framework::OperatorBase::Run(scope, dev_place);
     const auto& shape_concat = Attr<std::vector<int>>("shape_concat");
     const auto& ranks = Attr<std::vector<int>>("ranks");
     PADDLE_ENFORCE(!shape_concat.empty() && !ranks.empty());
@@ -157,6 +158,7 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
+    framework::OperatorBase::Run(scope, dev_place);
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))
@@ -189,6 +191,7 @@ class CreateBatchReaderOp : public framework::OperatorBase {
   using framework::OperatorBase::OperatorBase;
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
+    framework::OperatorBase::Run(scope, dev_place);
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))

@@ -25,6 +25,7 @@ class LoDRankTableOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();

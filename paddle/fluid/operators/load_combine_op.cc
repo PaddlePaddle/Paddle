@@ -28,6 +28,7 @@ class LoadCombineOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    OperatorBase::Run(scope, place);
     auto filename = Attr<std::string>("file_path");
 
     std::ifstream fin(filename);

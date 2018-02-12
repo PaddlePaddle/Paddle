@@ -39,6 +39,7 @@ class GetPlacesOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
   void Run(const framework::Scope &scope,
            const platform::Place &place) const override {
+    OperatorBase::Run(scope, place);
     bool is_gpu;
     if (Attr<std::string>("device_type") == "AUTO") {
       is_gpu = platform::is_gpu_place(place);

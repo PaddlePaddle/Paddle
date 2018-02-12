@@ -225,6 +225,17 @@ void OperatorBase::GenerateTemporaryNames() {
   }
 }
 
+void OperatorBase::Run(const Scope& scope, const platform::Place& place) const {
+  if (platform::is_gpu_place(place)) {
+#ifndef PADDLE_WITH_CUDA
+    PADDLE_THROW("Cannot run operator on place %s", place);
+#else
+    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+    platform::SetDeviceId(dev_id);
+#endif
+  }
+}
+
 static bool VarIsTensor(const Variable* var) {
   return var->IsType<LoDTensor>() || var->IsType<SelectedRows>();
 }
@@ -481,6 +492,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
 void OperatorWithKernel::Run(const Scope& scope,
                              const platform::Place& place) const {
+  OperatorBase::Run(scope, place);
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

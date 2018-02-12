@@ -206,6 +206,7 @@ class BeamSearchOp : public framework::OperatorBase {
 
   void Run(const framework::Scope& scope,
            const platform::Place& dev_place) const override {
+    OperatorBase::Run(scope, dev_place);
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));
     auto pre_ids_var = scope.FindVar(Input("pre_ids"));
