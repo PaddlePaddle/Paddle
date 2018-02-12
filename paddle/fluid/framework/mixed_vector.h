@@ -132,10 +132,6 @@ class Vector {
 
   const T* cend() const { return end(); }
 
-  const T* cbegin() const { return begin(); }
-
-  const T* cend() const { return end(); }
-
   const T& back() const {
     auto it = end();
     --it;
