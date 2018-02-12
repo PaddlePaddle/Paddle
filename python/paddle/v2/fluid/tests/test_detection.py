@@ -13,13 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
 import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.layers.detection as detection
 from paddle.v2.fluid.framework import Program, program_guard
 import unittest
-import numpy as np
 
 
 class TestDetection(unittest.TestCase):
@@ -74,7 +70,7 @@ class TestDetection(unittest.TestCase):
             loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
             self.assertIsNotNone(loss)
             self.assertEqual(loss.shape[-1], 1)
-        print(str(program))
+        #print(str(program))
 
 
 class TestPriorBox(unittest.TestCase):
@@ -87,40 +83,39 @@ class TestPriorBox(unittest.TestCase):
         assert box.shape[1] == 4
 
     def prior_box_output(self, data_shape):
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32')
-        conv1 = fluid.layers.conv2d(
+        images = layers.data(name='pixel', shape=data_shape, dtype='float32')
+        conv1 = layers.conv2d(
             input=images,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
-        conv2 = fluid.layers.conv2d(
+        conv2 = layers.conv2d(
             input=conv1,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
-        conv3 = fluid.layers.conv2d(
+        conv3 = layers.conv2d(
             input=conv2,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
-        conv4 = fluid.layers.conv2d(
+        conv4 = layers.conv2d(
             input=conv3,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
-        conv5 = fluid.layers.conv2d(
+        conv5 = layers.conv2d(
             input=conv4,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
 
-        box, var = detection.prior_box(
+        box, var = layers.prior_box(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
             image=images,
             min_ratio=20,
