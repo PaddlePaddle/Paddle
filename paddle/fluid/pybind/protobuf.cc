@@ -232,7 +232,7 @@ void BindVarDsec(py::module &m) {
       .def("persistable", &VarDesc::Persistable)
       .def("set_persistable", &VarDesc::SetPersistable);
 
-  py::enum_<proto::VarDesc::VarType>(var_desc, "VarType", "")
+  py::enum_<proto::VarType::Type>(var_desc, "VarType", "")
       .value("LOD_TENSOR", proto::VarDesc::LOD_TENSOR)
       .value("SELECTED_ROWS", proto::VarDesc::SELECTED_ROWS)
       .value("FEED_MINIBATCH", proto::VarDesc::FEED_MINIBATCH)
