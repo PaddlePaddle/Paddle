@@ -17,3 +17,4 @@ limitations under the License. */
 REGISTER_LOGICAL_KERNEL(less_than, CUDA, paddle::operators::LessThanFunctor);
 REGISTER_LOGICAL_KERNEL(less_equal, CUDA, paddle::operators::LessEqualFunctor);
 REGISTER_LOGICAL_KERNEL(equal, CUDA, paddle::operators::EqualFunctor);
+REGISTER_LOGICAL_KERNEL(not_equal, CUDA, paddle::operators::NotEqualFunctor);

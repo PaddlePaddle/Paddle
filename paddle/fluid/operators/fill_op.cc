@@ -42,8 +42,10 @@ class FillOp : public framework::OperatorBase {
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto &out =
         detail::Ref(detail::Ref(scope.FindVar(Output("Out")),
                                 "Cannot find variable %s", Output("Out"))
