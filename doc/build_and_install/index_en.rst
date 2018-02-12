@@ -13,8 +13,6 @@ You can choose either pip or Docker to complete your install:
 
    pip_install_en.rst
    docker_install_en.rst
-   build_en.md
-
 
 Build from Source
 -----------------
