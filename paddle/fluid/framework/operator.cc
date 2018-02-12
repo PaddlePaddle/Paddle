@@ -64,6 +64,18 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 }
 
+void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+  if (platform::is_gpu_place(place)) {
+#ifndef PADDLE_WITH_CUDA
+    PADDLE_THROW("Cannot run operator on place %s", place);
+#else
+    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+    platform::SetDeviceId(dev_id);
+#endif
+  }
+  RunImpl(scope, place);
+}
+
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
   PADDLE_ENFORCE_LE(ins.size(), 1UL,
@@ -479,8 +491,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const Scope& scope_;
 };
 
-void OperatorWithKernel::Run(const Scope& scope,
-                             const platform::Place& place) const {
+void OperatorWithKernel::RunImpl(const Scope& scope,
+                                 const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

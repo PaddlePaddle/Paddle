@@ -25,7 +25,10 @@ namespace framework {
 class CosineOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope, const platform::Place& place) const override {}
+
+ private:
+  void RunImpl(const Scope& scope,
+               const platform::Place& place) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -44,7 +47,10 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 class MyTestOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope, const platform::Place& place) const override {}
+
+ private:
+  void RunImpl(const Scope& scope,
+               const platform::Place& place) const override {}
 };
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {

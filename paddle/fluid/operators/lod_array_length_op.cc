@@ -25,8 +25,10 @@ class LoDArrayLengthOp : public framework::OperatorBase {
                    const framework::VariableNameMap &outputs,
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &out =
         *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
