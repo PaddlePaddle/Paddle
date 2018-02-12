@@ -177,32 +177,105 @@ def ssd_loss(location,
              prior_box,
              prior_box_var=None,
              background_label=0,
-             neg_pos_ratio=3.0,
              overlap_threshold=0.5,
+             neg_pos_ratio=3.0,
              neg_overlap=0.5,
              loc_loss_weight=1.0,
              conf_loss_weight=1.0,
+             match_type='per_prediction',
              mining_type='max_negative',
-             sample_size=None,
-             name=None):
+             sample_size=None):
     """
-    **Multi-box loss operation for object dection algorithm of SSD**
-    This operation is to compute dection loss for SSD, which is 
+    **Multi-box loss layer for object dection algorithm of SSD**
 
-    TODO (Dang qingqing) add more doc.
+    This layer is to compute dection loss for SSD given the location offset
+    predictions, confidence predictions, prior boxes and ground-truth boudding
+    boxes and labels, and the type of hard example mining. The returned loss
+    is a weighted sum of the localization loss (or regression loss) and
+    confidence loss (or classification loss) by performing the following steps:
+
+    1. Find matched boundding box by bipartite matching algorithm.
+      1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
+      1.2 Compute matched boundding box by bipartite matching algorithm.
+    2. Compute confidence for mining hard examples
+      2.1. Get the target label based on matched indices.
+      2.2. Compute confidence loss.
+    3. Apply hard example mining to get the negative example indices and update
+       the matched indices.
+    4. Assign classification and regression targets
+      4.1. Encoded bbox according to the prior boxes.
+      4.2. Assign regression targets.
+      4.3. Assign classification targets.
+    5. Compute the overall objective loss.
+      5.1 Compute confidence loss.
+      5.1 Compute localization loss.
+      5.3 Compute the overall weighted loss.
+
     Args:
-        location (Variable): The location predictions is a 3D Tensor with
-            shape [N, Np, 4].
-        confidence (Variable): The confidence predictions is a 3D Tensor
-            with shape [N, Np, C].
+        location (Variable): The location predictions are a 3D Tensor with
+            shape [N, Np, 4], N is the batch size, Np is total number of
+            predictions for each instance. 4 is the number of coordinate values,
+            the layout is [xmin, ymin, xmax, ymax].
+        confidence (Variable): The confidence predictions are a 3D Tensor
+            with shape [N, Np, C], N and Np are the same as they are in
+            `location`, C is the class number.
+        gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+            bboxes of mini-batch input.
+        gt_label (Variable): The ground-truth labels are a 2D LoDTensor
+            with shape [Ng, 1].
+        prior_box (Variable): The prior boxes are a 2D Tensor with shape [Np, 4].
+        prior_box_var (Variable): The variance of prior boxes are a 2D Tensor
+            with shape [Np, 4].
+        background_label (int): The index of background label, 0 by default.
+        overlap_threshold (float): If match_type is 'per_prediction', use
+            `overlap_threshold` to determine the extra matching bboxes when
+             finding matched boxes. 0.5 by default.
+        neg_pos_ratio (float): The ratio of the negative boxes to the positive
+            boxes, used only when mining_type is max_negative, 3.0 by defalut.
+        neg_overlap (float): The negative overlap upper bound for the unmatched
+            predictions. Use only when mining_type is max_negative,
+            0.5 by default.
+        sample_size (int): The max sample size of negative box, used only when
+            mining_type is hard_example.
+        loc_loss_weight (float): Weight for localization loss, 1.0 by default.
+        conf_loss_weight (float): Weight for confidence loss, 1.0 by default.
+        match_type (str): The type of matching method during training, should
+            be 'bipartite' or 'per_prediction'.
+        mining_type (str): The hard example mining type, should be 'hard_example'
+            or 'max_negative', now only support `max_negative`.
 
     Returns:
-        Variable:
+        Variable: The weighted sum of the localization loss and confidence loss,
+            with shape [N * Np, 1], N and Np are the same as they are
+            in `location`.
+
+    Raises:
+        ValueError: If mining_type is 'hard_example', now only support
+            mining type of `max_negative`.
 
     Examples:
         .. code-block:: python
 
+            pb = layers.data(
+                name='prior_box',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            pbv = layers.data(
+                name='prior_box_var',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
+            scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
+            gt_box = layers.data(
+                name='gt_box', shape=[4], lod_level=1, dtype='float32')
+            gt_label = layers.data(
+                name='gt_label', shape=[1], lod_level=1, dtype='float32')
+            loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
     """
+
     helper = LayerHelper('ssd_loss', **locals())
     dtype = helper.input_dtype()
     if mining_type == 'hard_example':
@@ -248,13 +321,13 @@ def ssd_loss(location,
         },
         attrs={
             'neg_pos_ratio': neg_pos_ratio,
-            'neg_dist_threshold': overlap_threshold,
+            'neg_dist_threshold': neg_pos_ratio,
             'mining_type': mining_type,
             'sample_size': sample_size,
         })
 
     # 4. Assign classification and regression targets
-    # 4.1. Encoded bbox according to a prior box
+    # 4.1. Encoded bbox according to the prior boxes.
     encoded_bbox = box_coder(
         prior_box=prior_box,
         prior_box_var=prior_box_var,
@@ -270,14 +343,14 @@ def ssd_loss(location,
         negative_indices=neg_indices,
         mismatch_value=background_label)
 
-    # 5. Compute loss
-    # 5.1 compute confidence loss
+    # 5. Compute loss.
+    # 5.1 Compute confidence loss.
     target_label = __reshape_to_2d(target_label)
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
     target_conf_weight = __reshape_to_2d(target_conf_weight)
     conf_loss = conf_loss * target_conf_weight
 
-    # 5.2 compute regression loss
+    # 5.2 Compute regression loss.
     location = __reshape_to_2d(location)
     target_bbox = __reshape_to_2d(target_bbox)
 
@@ -285,6 +358,7 @@ def ssd_loss(location,
     target_loc_weight = __reshape_to_2d(target_loc_weight)
     loc_loss = loc_loss * target_loc_weight
 
+    # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     return loss
 

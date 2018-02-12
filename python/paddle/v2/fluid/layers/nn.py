@@ -66,8 +66,6 @@ __all__ = [
     'row_conv',
     'multiplex',
     'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
 ]
 
 
@@ -3093,35 +3091,3 @@ def multiplex(inputs, index):
                 'Ids': index},
         outputs={'Out': [out]})
     return out
-
-
-def softmax_with_cross_entropy(logits, label, soft_label=False):
-    helper = LayerHelper('softmax_with_cross_entropy', **locals())
-    softmax = helper.create_tmp_variable(dtype=logits.dtype)
-    loss = helper.create_tmp_variable(dtype=logits.dtype)
-    helper.append_op(
-        type='softmax_with_cross_entropy',
-        inputs={'Logits': logits,
-                'Label': label},
-        outputs={'Softmax': softmax,
-                 'Loss': loss},
-        attrs={'soft_label': soft_label})
-    return loss
-
-
-def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
-    helper = LayerHelper('smooth_l1_loss', **locals())
-    diff = helper.create_tmp_variable(dtype=x.dtype)
-    loss = helper.create_tmp_variable(dtype=x.dtype)
-    helper.append_op(
-        type='smooth_l1_loss',
-        inputs={
-            'X': x,
-            'Y': y,
-            'InsideWeight': inside_weight,
-            'OutsideWeight': outside_weight
-        },
-        outputs={'Diff': diff,
-                 'Out': loss},
-        attrs={'sigma': sigma})
-    return loss

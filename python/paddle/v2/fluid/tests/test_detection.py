@@ -67,11 +67,11 @@ class TestDetection(unittest.TestCase):
             gt_box = layers.data(
                 name='gt_box', shape=[4], lod_level=1, dtype='float32')
             gt_label = layers.data(
-                name='gt_label', shape=[1], lod_level=1, dtype='float32')
+                name='gt_label', shape=[1], lod_level=1, dtype='int32')
             loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
             self.assertIsNotNone(loss)
             self.assertEqual(loss.shape[-1], 1)
-        #print(str(program))
+        print(str(program))
 
 
 if __name__ == '__main__':
