@@ -144,30 +144,32 @@ def infer(word_dict, use_cuda, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    # Use fluid.io.load_inference_model to obtain the inference program desc,
-    # the feed_target_names (the names of variables that will be feeded 
-    # data using feed operators), and the fetch_targets (variables that 
-    # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    word_dict_len = len(word_dict)
+        word_dict_len = len(word_dict)
 
-    lod = [0, 4, 10]
-    tensor_words = create_random_lodtensor(
-        lod, place, low=0, high=word_dict_len - 1)
+        lod = [0, 4, 10]
+        tensor_words = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
 
-    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-    # and results will contain a list of data corresponding to fetch_targets.
-    assert feed_target_names[0] == "words"
-    results = exe.run(inference_program,
-                      feed={feed_target_names[0]: tensor_words},
-                      fetch_list=fetch_targets,
-                      return_numpy=False)
-    print(results[0].lod())
-    np_data = np.array(results[0])
-    print("Inference Shape: ", np_data.shape)
-    print("Inference results: ", np_data)
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        assert feed_target_names[0] == "words"
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: tensor_words},
+                          fetch_list=fetch_targets,
+                          return_numpy=False)
+        print(results[0].lod())
+        np_data = np.array(results[0])
+        print("Inference Shape: ", np_data.shape)
+        print("Inference results: ", np_data)
 
 
 def main(word_dict, nn_type, use_cuda):
