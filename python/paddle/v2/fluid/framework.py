@@ -400,9 +400,6 @@ class Operator(object):
         """
         self.block = block
         self.desc = desc
-        # for clone a new operator
-        self.inputs = inputs
-        self.outputs = outputs
         self.attrs = attrs
         if len(self.desc.type()) != 0:
             return

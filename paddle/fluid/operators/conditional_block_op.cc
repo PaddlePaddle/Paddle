@@ -65,8 +65,10 @@ class ConditionalBlockOp : public ConditionalOp {
                      const framework::VariableNameMap &outputs,
                      const framework::AttributeMap &attrs)
       : ConditionalOp(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     auto xs = InputTensors(scope);
 
     bool need_run;
@@ -128,8 +130,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
                          const framework::VariableNameMap &outputs,
                          const framework::AttributeMap &attrs)
       : ConditionalOp(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     auto xs = this->InputTensors(scope);
 
     bool need_run;
