@@ -71,7 +71,7 @@
 
 #include <iostream>
 #include <sstream>
-#include "paddle/string/tinyformat/tinyformat.h"  // https://github.com/c42f/tinyformat
+#include "tinyformat/tinyformat.h"  // https://github.com/c42f/tinyformat
 
 namespace paddle {
 namespace string {

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <chrono>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
@@ -27,18 +28,18 @@ class SplitOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    auto in_stride = framework::stride(in->dims());
+    auto in_stride = framework::stride_numel(in->dims());
     int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
-    const size_t n = outs.size();
+    auto place = ctx.GetPlace();
+
     size_t input_offset = 0;
-    for (size_t i = 0; i < n; i++) {
-      auto& out = outs[i];
+    for (auto& out : outs) {
       out->mutable_data<T>(ctx.GetPlace());
-      size_t axis_dim = out->dims()[axis];
-      auto out_stride = framework::stride(out->dims());
-      StridedMemcpy<T>(ctx.device_context(), in->data<T>() + input_offset,
-                       in_stride, out->dims(), out_stride, out->data<T>());
-      input_offset += axis_dim * in_stride[axis];
+      auto out_stride = framework::stride_numel(out->dims());
+      StridedNumelCopyWithAxis<T>(ctx.device_context(), axis, out->data<T>(),
+                                  out_stride, in->data<T>() + input_offset,
+                                  in_stride);
+      input_offset += out_stride[axis];
     }
   }
 };

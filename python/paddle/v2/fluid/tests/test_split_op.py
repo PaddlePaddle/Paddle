@@ -20,11 +20,11 @@ from op_test import OpTest
 class TestSplitOp(OpTest):
     def setUp(self):
         self.op_type = "split"
-        axis = 0
-        x = np.random.random((4, 2, 5)).astype('float32')
-        out = np.split(x, [1, 3], axis)
+        axis = 1
+        x = np.random.random((4, 5, 6)).astype('float32')
+        out = np.split(x, [2, 3], axis)
         self.inputs = {'X': x}
-        self.attrs = {'axis': axis, 'sections': [1, 2, 1]}
+        self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
         self.outputs = {'Out': [('out%d' % i, out[i]) \
             for i in xrange(len(out))]}
 

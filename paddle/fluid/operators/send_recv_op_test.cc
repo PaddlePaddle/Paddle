@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/string/printf.h"
+#include "paddle/fluid/string/printf.h"
 
 USE_NO_KERNEL_OP(send);
 USE_NO_KERNEL_OP(listen_and_serv);

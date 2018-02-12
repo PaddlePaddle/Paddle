@@ -64,9 +64,7 @@ exe = fluid.Executor(place)
 
 [res1, res2] = exe.run(prog, fetch_list=[out1, out2])
 
-test_pass = res1.shape == (10, 2) and res2.shape == (10, 1)
-
-if not test_pass:
+if not (res1.shape == (10, 2) and res2.shape == (10, 1)):
     exit(1)
 
 exit(0)
