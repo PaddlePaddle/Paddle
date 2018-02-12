@@ -121,6 +121,7 @@ def split_dense_variable(var_list,
                 block_size += dim1 - remains
         # update split_count after aligning
         split_count = int(math.ceil(var_numel / float(block_size)))
+        print("###split var ", var.name, var.shape, block_size, split_count)
         for block_id in xrange(split_count):
             curr_block_size = min(block_size, var_numel - (
                 (block_id) * block_size))
@@ -255,6 +256,7 @@ class DistributeTranspiler:
                 splited_shape = [rows]
                 if len(orig_shape) >= 2:
                     splited_shape.extend(orig_shape[1:])
+                print("###splited: ", size, rows, splited_shape)
                 var = program.global_block().create_var(
                     name="%s.block%d" % (varname, i),
                     psersistable=False,
@@ -262,6 +264,7 @@ class DistributeTranspiler:
                     type=orig_var.type,
                     shape=splited_shape)  # flattend splited var
                 var_mapping[varname].append(var)
+                print("###created split var ", var)
         return var_mapping
 
     def _clone_var(self, block, var):
@@ -528,6 +531,8 @@ class DistributeTranspiler:
         """
         # step5
         pserver_program = Program()
+        print("param mapping on pserver: #### ",
+              self.param_grad_ep_mapping[endpoint]["params"])
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
             self._clone_var(pserver_program.global_block(), v)
         for v in self.param_grad_ep_mapping[endpoint]["grads"]:
