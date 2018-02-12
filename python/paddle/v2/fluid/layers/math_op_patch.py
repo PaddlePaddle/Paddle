@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -152,7 +152,12 @@ def monkey_patch_variable():
         ("__div__", "elementwise_div", False),
         ("__rdiv__", "elementwise_div", True),
         ("__pow__", "elementwise_pow", False),
-        ("__rpow__", "elementwise_pow", True)):
+        ("__rpow__", "elementwise_pow", True),
+            # for logical compare
+        ("__eq__", "equal", False),
+        ("__ne__", "not_equal", False),
+        ("__lt__", "less_than", False),
+        ("__le__", "less_equal", False)):
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse))
 

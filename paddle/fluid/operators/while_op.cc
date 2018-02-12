@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,8 +39,9 @@ class WhileOp : public framework::OperatorBase {
           const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
@@ -99,8 +100,9 @@ class WhileGradOp : public framework::OperatorBase {
               const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
