@@ -24,8 +24,9 @@ class WriteToArrayOp : public ArrayOp {
                  const framework::AttributeMap &attrs)
       : ArrayOp(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
     auto &x_tensor = x->Get<framework::LoDTensor>();
@@ -122,8 +123,10 @@ class ReadFromArrayOp : public ArrayOp {
                   const framework::VariableNameMap &outputs,
                   const framework::AttributeMap &attrs)
       : ArrayOp(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x != nullptr, "X must be set");
     auto &x_array = x->Get<framework::LoDTensorArray>();

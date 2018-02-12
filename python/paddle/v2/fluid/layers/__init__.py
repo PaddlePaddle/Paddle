@@ -16,8 +16,6 @@ import ops
 from ops import *
 import nn
 from nn import *
-import detection
-from detection import *
 import io
 from io import *
 import tensor
@@ -33,7 +31,6 @@ from detection import *
 
 __all__ = []
 __all__ += math_op_patch.__all__
-__all__ += detection.__all__
 __all__ += nn.__all__
 __all__ += io.__all__
 __all__ += tensor.__all__

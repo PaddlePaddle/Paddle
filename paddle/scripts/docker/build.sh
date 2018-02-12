@@ -204,6 +204,17 @@ function gen_capi_package() {
   fi
 }
 
+function gen_fluid_inference_lib() {
+    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+    cat <<EOF
+    ========================================
+    Building fluid inference library ...
+    ========================================
+EOF
+        make inference_lib_dist
+    fi
+}
+
 set -xe
 
 cmake_gen ${PYTHON_ABI:-""}
@@ -212,6 +223,7 @@ run_test
 gen_docs
 gen_dockerfile
 gen_capi_package
+gen_fluid_inference_lib
 
 if [[ ${WITH_C_API:-OFF} == "ON" ]]; then
   printf "PaddlePaddle C-API libraries was generated on build/paddle.tgz\n" 

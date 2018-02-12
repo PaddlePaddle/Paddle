@@ -237,6 +237,8 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("UpdatedMatchIndices", idx_dims);
+    // The first dimension of NegIndices will be set correcttly in Compute.
+    ctx->SetOutputDim("NegIndices", {-1, 1});
   }
 
  protected:
