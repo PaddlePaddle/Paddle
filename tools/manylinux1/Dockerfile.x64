@@ -52,3 +52,5 @@ RUN wget -O /opt/swig-2.0.12.tar.gz https://sourceforge.net/projects/swig/files/
 
 RUN mkdir -p /src && cd /src && git clone https://github.com/NVIDIA/nccl.git nccl && cd nccl &&\
     make -j `nproc` install <NCCL_MAKE_OPTS>  && cd .. && rm -rf nccl
+
+CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]

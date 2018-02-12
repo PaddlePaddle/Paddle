@@ -193,7 +193,7 @@ void CondOp::MergeDataFromSubnet(const framework::Scope& scope,
   }
 }
 
-void CondOp::Run(const Scope& scope, const platform::Place& place) const {
+void CondOp::RunImpl(const Scope& scope, const platform::Place& place) const {
   // get device context from pool
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(place);
