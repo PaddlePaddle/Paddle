@@ -15,11 +15,17 @@
 All layers just related to the detection neural network.
 """
 
-from ..layer_helper import LayerHelper
 from layer_function_generator import generate_layer_fn
-import paddle.v2.fluid.layers as layers
+from ..layer_helper import LayerHelper
+import nn as nn
+import ops as ops
 
-__all__ = ['detection_output', ]
+__all__ = [
+    'bipartite_match',
+    'target_assign',
+    'detection_output',
+    'ssd_loss',
+]
 
 __auto__ = [
     'iou_similarity',
@@ -155,13 +161,13 @@ def target_assign(input,
         type='target_assign',
         inputs={
             'X': input,
-            'MatchedIndices': matched_indices,
+            'MatchIndices': matched_indices,
             'NegIndices': negative_indices
         },
         outputs={'Out': out,
                  'OutWeight': out_weight},
         attrs={'mismatch_value': mismatch_value})
-    return target, target_weight
+    return out, out_weight
 
 
 def ssd_loss(location,
@@ -170,7 +176,6 @@ def ssd_loss(location,
              gt_label,
              prior_box,
              prior_box_var=None,
-             num_classes=None,
              background_label=0,
              neg_pos_ratio=3.0,
              overlap_threshold=0.5,
@@ -203,25 +208,30 @@ def ssd_loss(location,
     if mining_type == 'hard_example':
         raise ValueError("Only support mining_type == max_negative now.")
 
-    def reshape_to_2d(var):
-        return layers.reshape(var, shape=[-1, var.shape[-1]])
+    num, num_prior, num_class = confidence.shape
+
+    def __reshape_to_2d(var):
+        return ops.reshape(x=var, shape=[-1, var.shape[-1]])
 
     # 1. Find matched boundding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
-    iou_similarity = iou_similarity(x=gt_box, y=prior_box)
+    iou = iou_similarity(x=gt_box, y=prior_box)
     #   1.2 Compute matched boundding box by bipartite matching algorithm.
-    matched_indices, matched_dist = bipartite_match(iou_similarity)
+    matched_indices, matched_dist = bipartite_match(iou)
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
+    gt_label = ops.reshape(x=gt_label, shape=gt_label.shape + (1, ))
     target_label, _ = target_assign(
         gt_label, matched_indices, mismatch_value=background_label)
     # 2.2. Compute confidence loss.
     # Reshape confidence to 2D tensor.
-    confidence = reshape_to_2d(confidence)
-    conf_loss = layers.softmax_with_cross_entropy(confidence, target_label)
+    confidence = __reshape_to_2d(confidence)
+    target_label = __reshape_to_2d(target_label)
+    conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
 
     # 3. Mining hard examples
+    conf_loss = ops.reshape(x=conf_loss, shape=(num, num_prior))
     neg_indices = helper.create_tmp_variable(dtype='int32')
     updated_matched_indices = helper.create_tmp_variable(dtype=dtype)
     helper.append_op(
@@ -245,10 +255,10 @@ def ssd_loss(location,
 
     # 4. Assign classification and regression targets
     # 4.1. Encoded bbox according to a prior box
-    encoded_bbox = layers.box_coder(
-        priorbox=prior_box,
-        priorboxvar=priorbox_var,
-        targetbox=gt_box,
+    encoded_bbox = box_coder(
+        prior_box=prior_box,
+        prior_box_var=prior_box_var,
+        target_box=gt_box,
         code_type='encode_center_size')
     # 4.2. Assign regression targets
     target_bbox, target_loc_weight = target_assign(
@@ -262,16 +272,18 @@ def ssd_loss(location,
 
     # 5. Compute loss
     # 5.1 compute confidence loss
-    target_label = reshape_to_2d(target_label)
-    conf_loss = layers.softmax_with_cross_entropy(confidence, target_label)
-    trg_conf_weight = reshape_to_2d(target_conf_weight)
+    target_label = __reshape_to_2d(target_label)
+    conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
+    target_conf_weight = __reshape_to_2d(target_conf_weight)
     conf_loss = conf_loss * target_conf_weight
 
     # 5.2 compute regression loss
-    location = reshape_to_2d(location)
-    target_bbox = reshape_to_2d(target_bbox)
-    loc_loss = layers.smooth_l1(location, target_label)
-    loc_loss = loc_loss * target_bbox_weight
+    location = __reshape_to_2d(location)
+    target_bbox = __reshape_to_2d(target_bbox)
+
+    loc_loss = nn.smooth_l1(location, target_bbox)
+    target_loc_weight = __reshape_to_2d(target_loc_weight)
+    loc_loss = loc_loss * target_loc_weight
 
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     return loss
@@ -345,10 +357,10 @@ def detection_output(scores,
     """
 
     helper = LayerHelper("detection_output", **locals())
-    decoded_box = layers.box_coder(
-        priorbox=prior_box,
-        priorboxvar=priorbox_var,
-        targetbox=loc,
+    decoded_box = box_coder(
+        prior_box=prior_box,
+        prior_box_var=prior_box_var,
+        target_box=loc,
         code_type='decode_center_size')
 
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
