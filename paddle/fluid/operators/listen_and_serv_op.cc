@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -82,8 +82,8 @@ class ListenAndServOp : public framework::OperatorBase {
     return string::Sprintf("%s.trainer_%d", varname, grads_counter_[varname]++);
   }
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     framework::Scope &recv_scope = scope.NewScope();

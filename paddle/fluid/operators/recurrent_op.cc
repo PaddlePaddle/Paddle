@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -226,8 +226,9 @@ class RecurrentOp : public RecurrentBase {
               const framework::AttributeMap &attrs)
       : RecurrentBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
     VLOG(3) << "Static RNN input sequence length = " << seq_len;
     StepScopes scopes = CreateStepScopes(scope, seq_len);
@@ -315,8 +316,9 @@ class RecurrentGradOp : public RecurrentBase {
                   const framework::AttributeMap &attrs)
       : RecurrentBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto seq_len = static_cast<size_t>(GetSequenceLength(scope));
     StepScopes scopes = CreateStepScopes(scope, seq_len);
     auto reverse = Attr<bool>(kReverse);
