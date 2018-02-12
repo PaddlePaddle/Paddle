@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/string/to_string.h"
+#include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"

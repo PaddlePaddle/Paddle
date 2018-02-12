@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -15,7 +15,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/string/piece.h"
+#include "paddle/fluid/string/piece.h"
 
 using StringPiece = paddle::string::Piece;
 using paddle::string::HasPrefix;

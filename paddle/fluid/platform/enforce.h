@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/string/printf.h"
-#include "paddle/string/to_string.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/to_string.h"
 
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle

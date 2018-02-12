@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -71,8 +71,10 @@ class AssignOp : public framework::OperatorBase {
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) {
       return;

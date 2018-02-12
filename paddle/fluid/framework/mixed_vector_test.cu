@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -96,5 +96,11 @@ TEST(mixed_vector, InitWithCount) {
   paddle::framework::Vector<int> vec(10, 10);
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(vec[i], 10);
+  }
+}
+
+TEST(mixed_vector, ForEach) {
+  vec<int> tmp;
+  for (auto& v : tmp) {
   }
 }

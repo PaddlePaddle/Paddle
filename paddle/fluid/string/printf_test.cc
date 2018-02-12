@@ -1,4 +1,4 @@
-//  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+//  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/string/printf.h"
+#include "printf.h"
 
 #include <string>
 
@@ -24,6 +24,6 @@ TEST(StringPrintf, StringPrintf) {
   long hour = 14;
   int min = 44;
   EXPECT_EQ(std::string("Wednesday, July 27, 14:44"),
-            paddle::string::Sprintf(
-                "%s, %s %d, %.2d:%.2d", weekday, month, day, hour, min));
+            paddle::string::Sprintf("%s, %s %d, %.2d:%.2d", weekday, month, day,
+                                    hour, min));
 }

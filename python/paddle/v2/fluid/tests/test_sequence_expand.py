@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -70,6 +70,21 @@ class TestSequenceExpandCase3(TestSequenceExpand):
         x_lod = [[0, 1, 2, 3, 4]]
         y_data = np.random.uniform(0.1, 1, [6, 1]).astype('float32')
         y_lod = [[0, 2, 4, 4, 6]]
+        self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
+
+
+class TestSequenceExpandCase4(TestSequenceExpand):
+    def set_data(self):
+        x_data = np.array(
+            [0.1, 0.3, 0.2, 0.15, 0.25, 0.2, 0.15, 0.25, 0.1, 0.3]).reshape(
+                [2, 5]).astype('float32')
+        x_lod = [[
+            0,
+            1,
+            2,
+        ]]
+        y_data = np.random.uniform(0.1, 1, [2, 1]).astype('float32')
+        y_lod = [[0, 1, 2], [0, 1, 2]]
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 

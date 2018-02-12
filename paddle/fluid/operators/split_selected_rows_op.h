@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
       auto rows_idx = outs_rows_idx[i];
+      outs[i]->set_height(height_sections[i]);
       if (rows_idx.size() > 0) {
         auto dims = x->GetCompleteDims();
         dims[0] = rows_idx.size();
