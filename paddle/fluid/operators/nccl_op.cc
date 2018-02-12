@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,8 +29,9 @@ class NCCLInitOp : public framework::OperatorBase {
              const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kParallelScopes)),
                             "Can not find variable '%s' in the scope.",
                             kParallelScopes);

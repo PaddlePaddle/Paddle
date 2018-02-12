@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -237,6 +237,8 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("UpdatedMatchIndices", idx_dims);
+    // The first dimension of NegIndices will be set correcttly in Compute.
+    ctx->SetOutputDim("NegIndices", {-1, 1});
   }
 
  protected:

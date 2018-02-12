@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,8 +24,10 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
                     const framework::VariableNameMap &outputs,
                     const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     auto mem_var_name = Input("X");
     auto *mem_var = scope.FindVar(mem_var_name);
     PADDLE_ENFORCE(mem_var != nullptr,
@@ -76,8 +78,10 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
                         const framework::VariableNameMap &outputs,
                         const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     auto out_grad_var_name = Input(framework::GradVarName("Out"));
     auto *out_grad_var = scope.FindVar(out_grad_var_name);
 

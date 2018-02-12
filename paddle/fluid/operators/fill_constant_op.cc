@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,8 +33,10 @@ class FillConstantInferShape : public framework::InferShapeBase {
 class FillConstantOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     auto data_type =
         static_cast<framework::proto::DataType>(Attr<int>("dtype"));
     auto value = Attr<float>("value");

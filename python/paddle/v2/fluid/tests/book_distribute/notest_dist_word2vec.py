@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -99,7 +99,7 @@ elif training_role == "TRAINER":
     exe.run(fluid.default_startup_program())
     for pass_id in range(PASS_NUM):
         for data in train_reader():
-            avg_cost_np = exe.run(fluid.default_main_program(),
+            avg_cost_np = exe.run(t.get_trainer_program(),
                                   feed=feeder.feed(data),
                                   fetch_list=[avg_cost])
             print("avg_cost_np", avg_cost_np)

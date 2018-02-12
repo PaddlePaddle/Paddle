@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -25,7 +25,10 @@ namespace framework {
 class CosineOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope, const platform::Place& place) const override {}
+
+ private:
+  void RunImpl(const Scope& scope,
+               const platform::Place& place) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -44,7 +47,10 @@ class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
 class MyTestOp : public OperatorBase {
  public:
   using OperatorBase::OperatorBase;
-  void Run(const Scope& scope, const platform::Place& place) const override {}
+
+ private:
+  void RunImpl(const Scope& scope,
+               const platform::Place& place) const override {}
 };
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {

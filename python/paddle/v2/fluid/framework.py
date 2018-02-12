@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -400,9 +400,6 @@ class Operator(object):
         """
         self.block = block
         self.desc = desc
-        # for clone a new operator
-        self.inputs = inputs
-        self.outputs = outputs
         self.attrs = attrs
         if len(self.desc.type()) != 0:
             return

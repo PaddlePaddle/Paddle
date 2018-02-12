@@ -106,8 +106,10 @@ template <typename T>
 class CreateRandomDataGeneratorOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
-  void Run(const framework::Scope& scope,
-           const platform::Place& dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {
     const auto& shape_concat = Attr<std::vector<int>>("shape_concat");
     const auto& ranks = Attr<std::vector<int>>("ranks");
     PADDLE_ENFORCE(!shape_concat.empty() && !ranks.empty());
@@ -155,8 +157,10 @@ class CreateRandomDataGeneratorOpMaker
 class CreateShuffleReaderOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
-  void Run(const framework::Scope& scope,
-           const platform::Place& dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))
@@ -187,8 +191,10 @@ class CreateShuffleReaderOpMaker : public framework::OpProtoAndCheckerMaker {
 class CreateBatchReaderOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
-  void Run(const framework::Scope& scope,
-           const platform::Place& dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))

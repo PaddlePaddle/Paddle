@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -116,7 +116,9 @@ class SumKernel : public framework::OpKernel<T> {
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {
         auto &sel_row = get_selected_row(i);
-
+        if (!sel_row.value().IsInitialized() || sel_row.rows().size() == 0) {
+          continue;
+        }
         PADDLE_ENFORCE_EQ(out->height(), sel_row.height());
         functor(context.template device_context<DeviceContext>(), sel_row,
                 offset, out);
