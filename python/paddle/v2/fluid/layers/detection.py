@@ -151,36 +151,36 @@ def prior_box(inputs,
     <https://arxiv.org/abs/1512.02325>`_ .
 
     Args:
-       inputs(list): The list of input Variables, the format
+       inputs(list|tuple): The list of input Variables, the format
             of all Variables is NCHW.
        image(Variable): The input image data of PriorBoxOp,
             the layout is NCHW.
        min_ratio(int): the min ratio of generated prior boxes.
        max_ratio(int): the max ratio of generated prior boxes.
-       aspect_ratios(list): the aspect ratios of generated prior
+       aspect_ratios(list|tuple): the aspect ratios of generated prior
             boxes. The length of input and aspect_ratios must be equal.
        base_size(int): the base_size is used to get min_size
             and max_size according to min_ratio and max_ratio.
-       step_w(list, optional, default=None): Prior boxes step
+       step_w(list|tuple|None): Prior boxes step
             across width. If step_w[i] == 0.0, the prior boxes step
             across width of the inputs[i] will be automatically calculated.
-       step_h(list, optional, default=None): Prior boxes step
+       step_h(list|tuple|None): Prior boxes step
             across height, If step_h[i] == 0.0, the prior boxes
             step across height of the inputs[i] will be automatically calculated.
        offset(float, optional, default=0.5): Prior boxes center offset.
-       variance(list, optional, default=[0.1, 0.1, 0.1, 0.1]): the variances
+       variance(list|tuple|[0.1, 0.1, 0.1, 0.1]): the variances
             to be encoded in prior boxes.
-       flip(bool, optional, default=False): Whether to flip
+       flip(bool|False): Whether to flip
             aspect ratios.
        clip(bool, optional, default=False): Whether to clip
             out-of-boundary boxes.
-       min_sizes(list, optional, default=None): If `len(inputs) <=2`,
+       min_sizes(list|tuple|None): If `len(inputs) <=2`,
             min_sizes must be set up, and the length of min_sizes
             should equal to the length of inputs.
-       max_sizes(list, optional, default=None): If `len(inputs) <=2`,
+       max_sizes(list|tuple|None): If `len(inputs) <=2`,
             max_sizes must be set up, and the length of min_sizes
             should equal to the length of inputs.
-       name(str, optional, None): Name of the prior box layer.
+       name(str|None): Name of the prior box layer.
 
     Returns:
         boxes(Variable): the output prior boxes of PriorBox.
@@ -252,7 +252,16 @@ def prior_box(inputs,
         out = ops.reshape(x=input, shape=new_shape)
         return out
 
-    assert isinstance(inputs, list), 'inputs should be a list.'
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    def _is_list_or_tuple_and_equal(data, length, err_info):
+        if not (_is_list_or_tuple_(data) and len(data) == length):
+            raise ValueError(err_info)
+
+    if not _is_list_or_tuple_(inputs):
+        raise ValueError('inputs should be a list or tuple.')
+
     num_layer = len(inputs)
 
     if num_layer <= 2:
@@ -269,26 +278,25 @@ def prior_box(inputs,
         max_sizes = [base_size * .20] + max_sizes
 
     if aspect_ratios:
-        if not (isinstance(aspect_ratios, list) and
-                len(aspect_ratios) == num_layer):
-            raise ValueError(
-                'aspect_ratios should be list and the length of inputs '
-                'and aspect_ratios should be the same.')
+        _is_list_or_tuple_and_equal(
+            aspect_ratios, num_layer,
+            'aspect_ratios should be list and the length of inputs '
+            'and aspect_ratios should be the same.')
     if step_h:
-        if not (isinstance(step_h, list) and len(step_h) == num_layer):
-            raise ValueError(
-                'step_h should be list and the length of inputs and '
-                'step_h should be the same.')
+        _is_list_or_tuple_and_equal(
+            step_h, num_layer,
+            'step_h should be list and the length of inputs and '
+            'step_h should be the same.')
     if step_w:
-        if not (isinstance(step_w, list) and len(step_w) == num_layer):
-            raise ValueError(
-                'step_w should be list and the length of inputs and '
-                'step_w should be the same.')
+        _is_list_or_tuple_and_equal(
+            step_w, num_layer,
+            'step_w should be list and the length of inputs and '
+            'step_w should be the same.')
     if steps:
-        if not (isinstance(steps, list) and len(steps) == num_layer):
-            raise ValueError(
-                'steps should be list and the length of inputs and '
-                'step_w should be the same.')
+        _is_list_or_tuple_and_equal(
+            steps, num_layer,
+            'steps should be list and the length of inputs and '
+            'step_w should be the same.')
         step_w = steps
         step_h = steps
 
@@ -298,13 +306,13 @@ def prior_box(inputs,
         min_size = min_sizes[i]
         max_size = max_sizes[i]
         aspect_ratio = []
-        if not isinstance(min_size, list):
+        if not _is_list_or_tuple_(min_size):
             min_size = [min_size]
-        if not isinstance(max_size, list):
+        if not _is_list_or_tuple_(max_size):
             max_size = [max_size]
         if aspect_ratios:
             aspect_ratio = aspect_ratios[i]
-            if not isinstance(aspect_ratio, list):
+            if not _is_list_or_tuple_(aspect_ratio):
                 aspect_ratio = [aspect_ratio]
 
         box, var = _prior_box_(input, image, min_size, max_size, aspect_ratio,
@@ -354,26 +362,26 @@ def multi_box_head(inputs,
     MultiBox Detector)<https://arxiv.org/abs/1512.02325>`_ .
 
     Args:
-       inputs(list): The list of input Variables, the format
+       inputs(list|tuple): The list of input Variables, the format
             of all Variables is NCHW.
-       num_classes(int): The number of calss.
-       min_sizes(list, optional, default=None): The length of
-            min_size is used to compute the the number of prior box.
+       num_classes(int): The number of classes.
+       min_sizes(list|tuple|None): The number of
+            min_sizes is used to compute the number of predicted box.
             If the min_size is None, it will be computed according
             to min_ratio and max_ratio.
-       max_sizes(list, optional, default=None): The length of max_size
-            is used to compute the the number of prior box.
-       min_ratio(int): If the min_sizes is None, min_ratio and min_ratio
+       max_sizes(list|tuple|None): The number of max_sizes
+            is used to compute the the number of predicted box.
+       min_ratio(int|None): If the min_sizes is None, min_ratio and max_ratio
             will be used to compute the min_sizes and max_sizes.
-       max_ratio(int): If the min_sizes is None, min_ratio and min_ratio
+       max_ratio(int|None): If the min_sizes is None, max_ratio and min_ratio
             will be used to compute the min_sizes and max_sizes.
-       aspect_ratios(list): The number of the aspect ratios is used to
+       aspect_ratios(list|tuple): The number of the aspect ratios is used to
             compute the number of prior box.
        base_size(int): the base_size is used to get min_size
             and max_size according to min_ratio and max_ratio.
-       flip(bool, optional, default=False): Whether to flip
+       flip(bool|False): Whether to flip
             aspect ratios.
-       name(str, optional, None): Name of the prior box layer.
+       name(str|None): Name of the prior box layer.
 
     Returns:
 
@@ -397,52 +405,33 @@ def multi_box_head(inputs,
                 flip=True)
     """
 
-    def _conv_with_bn_(input,
-                       conv_num_filter,
-                       conv_padding=1,
-                       conv_filter_size=3,
-                       conv_stride=1,
-                       conv_act=None,
-                       param_attr=None,
-                       conv_with_batchnorm=False,
-                       conv_batchnorm_drop_rate=0.0,
-                       use_cudnn=True):
+    def _is_equal_(len1, len2, err_info):
+        if not (len1 == len2):
+            raise ValueError(err_info)
 
-        conv2d = nn.conv2d(
-            input=input,
-            num_filters=conv_num_filter,
-            filter_size=conv_filter_size,
-            padding=conv_padding,
-            stride=conv_stride,
-            param_attr=param_attr,
-            act=conv_act,
-            use_cudnn=use_cudnn)
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
 
-        if conv_with_batchnorm:
-            conv2d = nn.batch_norm(input=conv2d)
-            drop_rate = conv_batchnorm_drop_rate
-            if abs(drop_rate) > 1e-5:
-                conv2d = nn.dropout(x=conv2d, dropout_prob=drop_rate)
-
-        return conv2d
-
-    if not (isinstance(inputs, list)):
-        raise ValueError('inputs should be a list.')
+    if not _is_list_or_tuple_(inputs):
+        raise ValueError('inputs should be a list or tuple.')
 
     if min_sizes is not None:
-        if not (len(inputs) == len(min_sizes)):
-            raise ValueError('the length of min_sizes '
-                             'and inputs should be the same.')
+        _is_equal_(
+            len(inputs),
+            len(min_sizes), 'the length of min_sizes '
+            'and inputs should be equal.')
 
     if max_sizes is not None:
-        if not (len(inputs) == len(max_sizes)):
-            raise ValueError('the length of max_sizes '
-                             'and inputs should be the same.')
+        _is_equal_(
+            len(inputs),
+            len(max_sizes), 'the length of max_sizes '
+            'and inputs should be equal.')
 
     if aspect_ratios is not None:
-        if not (len(inputs) == len(aspect_ratios)):
-            raise ValueError('the length of aspect_ratios '
-                             'and inputs should be the same.')
+        _is_equal_(
+            len(inputs),
+            len(aspect_ratios), 'the length of aspect_ratios '
+            'and inputs should be equal.')
 
     if min_sizes is None:
         # If min_sizes is None, min_sizes and max_sizes
@@ -464,22 +453,23 @@ def multi_box_head(inputs,
     mbox_confs = []
     for i, input in enumerate(inputs):
         min_size = min_sizes[i]
-        if type(min_size) is not list:
+        if not _is_list_or_tuple_(min_size):
             min_size = [min_size]
 
         max_size = []
         if max_sizes is not None:
             max_size = max_sizes[i]
-            if type(max_size) is not list:
+            if not _is_list_or_tuple_(max_size):
                 max_size = [max_size]
-            if not (len(max_size) == len(min_size)):
-                raise ValueError(
-                    'max_size and min_size should have same length.')
+            _is_equal_(
+                len(max_size),
+                len(min_size),
+                'the length of max_size and min_size should be equal.')
 
         aspect_ratio = []
         if aspect_ratios is not None:
             aspect_ratio = aspect_ratios[i]
-            if type(aspect_ratio) is not list:
+            if not _is_list_or_tuple_(aspect_ratio):
                 aspect_ratio = [aspect_ratio]
 
         # get the number of prior box on each location
@@ -499,25 +489,24 @@ def multi_box_head(inputs,
         if share_location:
             num_loc_output *= num_classes
 
-        mbox_loc = _conv_with_bn_(
+        mbox_loc = nn.conv2d(
             input=input,
-            conv_num_filter=num_loc_output,
-            conv_padding=pad,
-            conv_stride=stride,
-            conv_filter_size=kernel_size,
-            conv_with_batchnorm=use_batchnorm)
+            num_filters=num_loc_output,
+            filter_size=kernel_size,
+            padding=pad,
+            stride=stride)
+
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
         mbox_locs.append(mbox_loc)
 
         # get conf_loc
         num_conf_output = num_priors_per_location * num_classes
-        conf_loc = _conv_with_bn_(
+        conf_loc = nn.conv2d(
             input=input,
-            conv_num_filter=num_conf_output,
-            conv_padding=pad,
-            conv_stride=stride,
-            conv_filter_size=kernel_size,
-            conv_with_batchnorm=use_batchnorm)
+            num_filters=num_conf_output,
+            filter_size=kernel_size,
+            padding=pad,
+            stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
         mbox_confs.append(conf_loc)
 
