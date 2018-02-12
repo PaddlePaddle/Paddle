@@ -68,7 +68,7 @@ namespace paddle {
 // memory access of float16 struct and also makes float16 compatible
 // with CUDA half, ARM float16_t, and Eigen::half data types.
 struct PADDLE_ALIGN(2) float16 {
-public:
+ public:
   uint16_t x;
 
   // Constructors
@@ -319,7 +319,7 @@ public:
     return static_cast<double>(float(*this));
   }
 
-private:
+ private:
   union Bits {
     float f;
     int32_t si;
@@ -485,8 +485,7 @@ HOST inline float16 operator+(const float16& a, const float16& b) {
       "st1 {v0.h}[0], [%[res_ptr]]\n"
       :  // outputs
       :  // inputs
-      [a_ptr] "r"(&(a.x)),
-      [b_ptr] "r"(&(b.x)),
+      [a_ptr] "r"(&(a.x)), [b_ptr] "r"(&(b.x)),
       [res_ptr] "r"(&(res.x))
       :  // clobbers
       "memory", "v0", "v1");
@@ -502,8 +501,7 @@ HOST inline float16 operator-(const float16& a, const float16& b) {
       "st1 {v0.h}[0], [%[res_ptr]]\n"
       :  // outputs
       :  // inputs
-      [a_ptr] "r"(&(a.x)),
-      [b_ptr] "r"(&(b.x)),
+      [a_ptr] "r"(&(a.x)), [b_ptr] "r"(&(b.x)),
       [res_ptr] "r"(&(res.x))
       :  // clobbers
       "memory", "v0", "v1");
@@ -519,8 +517,7 @@ HOST inline float16 operator*(const float16& a, const float16& b) {
       "st1 {v0.h}[0], [%[res_ptr]]\n"
       :  // outputs
       :  // inputs
-      [a_ptr] "r"(&(a.x)),
-      [b_ptr] "r"(&(b.x)),
+      [a_ptr] "r"(&(a.x)), [b_ptr] "r"(&(b.x)),
       [res_ptr] "r"(&(res.x))
       :  // clobbers
       "memory", "v0", "v1");
@@ -536,8 +533,7 @@ HOST inline float16 operator/(const float16& a, const float16& b) {
       "st1 {v0.h}[0], [%[res_ptr]]\n"
       :  // outputs
       :  // inputs
-      [a_ptr] "r"(&(a.x)),
-      [b_ptr] "r"(&(b.x)),
+      [a_ptr] "r"(&(a.x)), [b_ptr] "r"(&(b.x)),
       [res_ptr] "r"(&(res.x))
       :  // clobbers
       "memory", "v0", "v1");
@@ -588,8 +584,7 @@ HOST inline bool operator==(const float16& a, const float16& b) {
       "st1 {v0.h}[0], [%[res_ptr]]\n"
       :  // outputs
       :  // inputs
-      [a_ptr] "r"(&(a.x)),
-      [b_ptr] "r"(&(b.x)),
+      [a_ptr] "r"(&(a.x)), [b_ptr] "r"(&(b.x)),
       [res_ptr] "r"(&res)
       :  // clobbers
       "memory", "v0", "v1");
@@ -609,8 +604,7 @@ HOST inline bool operator<(const float16& a, const float16& b) {
       "st1 {v0.h}[0], [%[res_ptr]]\n"
       :  // outputs
       :  // inputs
-      [a_ptr] "r"(&(a.x)),
-      [b_ptr] "r"(&(b.x)),
+      [a_ptr] "r"(&(a.x)), [b_ptr] "r"(&(b.x)),
       [res_ptr] "r"(&res)
       :  // clobbers
       "memory", "v0", "v1");
@@ -626,8 +620,7 @@ HOST inline bool operator<=(const float16& a, const float16& b) {
       "st1 {v0.h}[0], [%[res_ptr]]\n"
       :  // outputs
       :  // inputs
-      [a_ptr] "r"(&(a.x)),
-      [b_ptr] "r"(&(b.x)),
+      [a_ptr] "r"(&(a.x)), [b_ptr] "r"(&(b.x)),
       [res_ptr] "r"(&res)
       :  // clobbers
       "memory", "v0", "v1");
@@ -643,8 +636,7 @@ HOST inline bool operator>(const float16& a, const float16& b) {
       "st1 {v0.h}[0], [%[res_ptr]]\n"
       :  // outputs
       :  // inputs
-      [a_ptr] "r"(&(a.x)),
-      [b_ptr] "r"(&(b.x)),
+      [a_ptr] "r"(&(a.x)), [b_ptr] "r"(&(b.x)),
       [res_ptr] "r"(&res)
       :  // clobbers
       "memory", "v0", "v1");
@@ -660,8 +652,7 @@ HOST inline bool operator>=(const float16& a, const float16& b) {
       "st1 {v0.h}[0], [%[res_ptr]]\n"
       :  // outputs
       :  // inputs
-      [a_ptr] "r"(&(a.x)),
-      [b_ptr] "r"(&(b.x)),
+      [a_ptr] "r"(&(a.x)), [b_ptr] "r"(&(b.x)),
       [res_ptr] "r"(&res)
       :  // clobbers
       "memory", "v0", "v1");
