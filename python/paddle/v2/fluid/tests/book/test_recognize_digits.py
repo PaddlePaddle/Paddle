@@ -78,7 +78,12 @@ def conv_net(img, label):
     return loss_net(conv_pool_2, label)
 
 
-def train(nn_type, use_cuda, parallel, save_dirname, save_param_filename):
+def train(nn_type,
+          use_cuda,
+          parallel,
+          save_dirname=None,
+          model_filename=None,
+          params_filename=None):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
@@ -146,7 +151,8 @@ def train(nn_type, use_cuda, parallel, save_dirname, save_param_filename):
                         fluid.io.save_inference_model(
                             save_dirname, ["img"], [prediction],
                             exe,
-                            save_file_name=save_param_filename)
+                            model_filename=model_filename,
+                            params_filename=params_filename)
                     return
                 else:
                     print(
@@ -158,7 +164,10 @@ def train(nn_type, use_cuda, parallel, save_dirname, save_param_filename):
     raise AssertionError("Loss of recognize digits is too large")
 
 
-def infer(use_cuda, save_dirname=None, param_filename=None):
+def infer(use_cuda,
+          save_dirname=None,
+          model_filename=None,
+          params_filename=None):
     if save_dirname is None:
         return
 
@@ -171,8 +180,9 @@ def infer(use_cuda, save_dirname=None, param_filename=None):
         # the feed_target_names (the names of variables that will be feeded
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
-        [inference_program, feed_target_names, fetch_targets
-         ] = fluid.io.load_inference_model(save_dirname, exe, param_filename)
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(
+             save_dirname, exe, model_filename, params_filename)
 
         # The input's dimension of conv should be 4-D or 5-D.
         # Use normilized image pixels as input data, which should be in the range [-1.0, 1.0].
@@ -189,25 +199,27 @@ def infer(use_cuda, save_dirname=None, param_filename=None):
 
 
 def main(use_cuda, parallel, nn_type, combine):
+    save_dirname = None
+    model_filename = None
+    params_filename = None
     if not use_cuda and not parallel:
         save_dirname = "recognize_digits_" + nn_type + ".inference.model"
-        save_filename = None
         if combine == True:
-            save_filename = "__params_combined__"
-    else:
-        save_dirname = None
-        save_filename = None
+            model_filename = "__model_combined__"
+            params_filename = "__params_combined__"
 
     train(
         nn_type=nn_type,
         use_cuda=use_cuda,
         parallel=parallel,
         save_dirname=save_dirname,
-        save_param_filename=save_filename)
+        model_filename=model_filename,
+        params_filename=params_filename)
     infer(
         use_cuda=use_cuda,
         save_dirname=save_dirname,
-        param_filename=save_filename)
+        model_filename=model_filename,
+        params_filename=params_filename)
 
 
 class TestRecognizeDigits(unittest.TestCase):
