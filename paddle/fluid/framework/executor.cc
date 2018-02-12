@@ -36,7 +36,7 @@ namespace framework {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
-static void CreateTensor(Variable* var, proto::VarType var_type) {
+static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
