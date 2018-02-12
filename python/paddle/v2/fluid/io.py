@@ -212,7 +212,7 @@ def load_vars(executor,
                 type='load_combine',
                 inputs={},
                 outputs={"Out": load_var_list},
-                attrs={'file_path': os.path.join(dirname, load_file_name)})
+                attrs={'input_str': os.path.join(dirname, load_file_name)})
 
         executor.run(load_prog)
 
