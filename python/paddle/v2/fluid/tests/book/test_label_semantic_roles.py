@@ -296,7 +296,6 @@ def infer(use_cuda, save_dirname=None):
     print(results[0].lod())
     np_data = np.array(results[0])
     print("Inference Shape: ", np_data.shape)
-    print("Inference results: ", np_data)
 
 
 def main(use_cuda):
