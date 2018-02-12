@@ -13,16 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
 import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.layers.detection as detection
 from paddle.v2.fluid.framework import Program, program_guard
 import unittest
-import numpy as np
 
 
-class TestBook(unittest.TestCase):
+class TestDetection(unittest.TestCase):
     def test_detection_output(self):
         program = Program()
         with program_guard(program):
@@ -49,6 +45,66 @@ class TestBook(unittest.TestCase):
             out = layers.detection_output(
                 scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv)
             self.assertIsNotNone(out)
+            self.assertEqual(out.shape[-1], 6)
+        print(str(program))
+
+    def test_detection_api(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[4], dtype='float32')
+            y = layers.data(name='y', shape=[4], dtype='float32')
+            z = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
+            iou = layers.iou_similarity(x=x, y=y)
+            bcoder = layers.box_coder(
+                prior_box=x,
+                prior_box_var=y,
+                target_box=z,
+                code_type='encode_center_size')
+            self.assertIsNotNone(iou)
+            self.assertIsNotNone(bcoder)
+
+            matched_indices, matched_dist = layers.bipartite_match(iou)
+            self.assertIsNotNone(matched_indices)
+            self.assertIsNotNone(matched_dist)
+
+            gt = layers.data(
+                name='gt', shape=[1, 1], dtype='int32', lod_level=1)
+            trg, trg_weight = layers.target_assign(
+                gt, matched_indices, mismatch_value=0)
+            self.assertIsNotNone(trg)
+            self.assertIsNotNone(trg_weight)
+
+            gt2 = layers.data(
+                name='gt2', shape=[10, 4], dtype='float32', lod_level=1)
+            trg, trg_weight = layers.target_assign(
+                gt2, matched_indices, mismatch_value=0)
+            self.assertIsNotNone(trg)
+            self.assertIsNotNone(trg_weight)
+
+        print(str(program))
+
+    def test_ssd_loss(self):
+        program = Program()
+        with program_guard(program):
+            pb = layers.data(
+                name='prior_box',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            pbv = layers.data(
+                name='prior_box_var',
+                shape=[10, 4],
+                append_batch_size=False,
+                dtype='float32')
+            loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
+            scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
+            gt_box = layers.data(
+                name='gt_box', shape=[4], lod_level=1, dtype='float32')
+            gt_label = layers.data(
+                name='gt_label', shape=[1], lod_level=1, dtype='int32')
+            loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
+            self.assertIsNotNone(loss)
+            self.assertEqual(loss.shape[-1], 1)
         print(str(program))
 
 
@@ -62,40 +118,39 @@ class TestPriorBox(unittest.TestCase):
         assert box.shape[1] == 4
 
     def prior_box_output(self, data_shape):
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32')
-        conv1 = fluid.layers.conv2d(
+        images = layers.data(name='pixel', shape=data_shape, dtype='float32')
+        conv1 = layers.conv2d(
             input=images,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
-        conv2 = fluid.layers.conv2d(
+        conv2 = layers.conv2d(
             input=conv1,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
-        conv3 = fluid.layers.conv2d(
+        conv3 = layers.conv2d(
             input=conv2,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
-        conv4 = fluid.layers.conv2d(
+        conv4 = layers.conv2d(
             input=conv3,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
-        conv5 = fluid.layers.conv2d(
+        conv5 = layers.conv2d(
             input=conv4,
             num_filters=3,
             filter_size=3,
             stride=2,
             use_cudnn=False)
 
-        box, var = detection.prior_box(
+        box, var = layers.prior_box(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
             image=images,
             min_ratio=20,
