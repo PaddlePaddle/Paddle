@@ -1,32 +1,45 @@
 Build from Sources
 ==========================
 
+.. _requirements:
+
+Requirements
+----------------
+
+To build PaddlePaddle, you need
+
+1. A computer -- Linux, Windows, MacOS.
+1. Docker.
+
+Nothing else.  Not even Python and GCC, because you can install all build tools into a Docker image. 
+We run all the tools by running this image.
+
 .. _build_step:
 
 How To Build
 ----------------
 
-PaddlePaddle mainly uses `CMake <https://cmake.org>`_ and GCC, G++ as compile
-tools. We recommend you to use our pre-built Docker image to run the build
-to avoid installing dependencies by yourself. We have several build environment
-Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ .
-
-If you choose not to use Docker image for your build, you need to install the
-below `Compile Dependencies`_ before run the build.
-
-Then run:
+You need to use Docker to build PaddlePaddle
+to avoid installing dependencies by yourself. We have several pre-built
+Docker images `here <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ ,
+Or you can build your own image from source as the optional step below:
 
 .. code-block:: bash
 
+   # 1. clone the source code
    git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
-   # run the following command to build a CPU-Only binaries if you are using docker
+   # 2. Optional: build development docker image from source
+   docker build -t paddle:dev .
+   # 3. Run the following command to build a CPU-Only binaries
    docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x /paddle/paddle/scripts/docker/build.sh
-   # else run these commands
-   mkdir build
-   cd build
-   cmake -DWITH_GPU=OFF -DWITH_TESTING=OFF ..
-   make
+   # 4. Or, use your built Docker image to build PaddlePaddle (must run step 2)
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev
+
+NOTE: The above command try to mount the current working directory (root directory of source code)
+into :code:`/paddle` directory inside docker container. If you are using your own image
+(Step 4) it will run default entry-point :code:`build.sh` , so you could omit the last
+command in step 3.
 
 When the compile finishes, you can get the output whl package under
 build/python/dist, then you can choose to install the whl on local
@@ -61,22 +74,75 @@ Set :code:`WITH_GPU=ON` Can also run tests on GPU.
 
    docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=ON" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 bash -x paddle/paddle/scripts/docker/build.sh
 
-If you don't use Docker, just run ctest will start the tests:
+If you wish to run only one unit test, like :code:`test_sum_op`:
 
 .. code-block:: bash
 
-   mkdir build
-   cd build
-   cmake -DWITH_GPU=OFF -DWITH_TESTING=ON ..
-   make
-   ctest
-   # run a single test like test_mul_op
-   ctest -R test_mul_op
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=ON" -e "RUN_TEST=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 /bin/bash
+   bash /paddle/paddle/scripts/docker/build.sh
+   cd /paddle/build
+   ctest -R test_sum_op -V
 
+.. _faq_docker:
+
+Frequently Asked Questions
+----------------
+
+- What is Docker?
+
+  If you haven't heard of it, consider it something like Python's virtualenv.
+
+- Docker or virtual machine?
+
+  Some people compare Docker with VMs, but Docker doesn't virtualize any hardware nor running a guest OS, which means there is no compromise on the performance.
+
+- Why Docker?
+
+  Using a Docker image of build tools standardizes the building environment, which makes it easier for others to reproduce your problems and to help.
+
+  Also, some build tools don't run on Windows or Mac or BSD, but Docker runs almost everywhere, so developers can use whatever computer they want.
+
+- Can I choose not to use Docker?
+
+  Sure, you don't have to install build tools into a Docker image; instead, you can install them on your local computer.  This document exists because Docker would make the development way easier.
+
+- How difficult is it to learn Docker?
+
+    It takes you ten minutes to read [an introductory article](https://docs.docker.com/get-started) and saves you more than one hour to install all required build tools, configure them, especially when new versions of PaddlePaddle require some new tools.  Not even to mention the time saved when other people trying to reproduce the issue you have.
+
+- Can I use my favorite IDE?
+
+  Yes, of course.  The source code resides on your local computer, and you can edit it using whatever editor you like.
+
+  Many PaddlePaddle developers are using Emacs.  They add the following few lines into their `~/.emacs` configure file:
+
+  ```emacs
+  (global-set-key "\C-cc" 'compile)
+  (setq compile-command
+   "docker run --rm -it -v $(git rev-parse --show-toplevel):/paddle paddle:dev")
+  ```
+
+  so they could type `Ctrl-C` and `c` to build PaddlePaddle from source.
+
+- Does Docker do parallel building?
+
+  Our building Docker image runs a [Bash script](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/scripts/docker/build.sh), which calls `make -j$(nproc)` to starts as many processes as the number of your CPU cores.
+
+- Docker requires sudo
+
+  An owner of a computer has the administrative privilege, a.k.a., sudo, and Docker requires this privilege to work properly.  If you use a shared computer for development, please ask the administrator to install and configure Docker.  We will do our best to support rkt, another container technology that doesn't require sudo.
+
+- Docker on Windows/MacOS builds slowly
+
+  On Windows and MacOS, Docker containers run in a Linux VM.  You might want to give this VM some more memory and CPUs so to make the building efficient.  Please refer to [this issue](https://github.com/PaddlePaddle/Paddle/issues/627) for details.
+
+- Not enough disk space
+
+  Examples in this article use option `--rm` with the `docker run` command.  This option ensures that stopped containers do not exist on hard disks.  We can use `docker ps -a` to list all containers, including stopped.  Sometimes `docker build` generates some intermediate dangling images, which also take disk space.  To clean them, please refer to [this article](https://zaiste.net/posts/removing_docker_containers/).
 
 .. _compile_deps:
 
-Compile Dependencies
+Appendix: Compile Dependencies
 ----------------
 
 PaddlePaddle need the following dependencies when compiling, other dependencies
@@ -97,17 +163,13 @@ will be downloaded automatically.
 
 .. _build_options:
 
-Build Options
+Appendix: Build Options
 ----------------
 
 Build options include whether build binaries for CPU or GPU, which BLAS
 library to use etc. You may pass these settings when running cmake.
 For detailed cmake tutorial please refer to `here <https://cmake.org/cmake-tutorial>`_ 。
 
-.. _build_options_bool:
-
-Bool Type Options
-----------------
 
 You can add :code:`-D` argument to pass such options, like:
 
