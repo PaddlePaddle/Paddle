@@ -48,8 +48,8 @@ class SendOp : public framework::OperatorBase {
          const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope& scope,
-           const platform::Place& place) const override {
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const override {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
