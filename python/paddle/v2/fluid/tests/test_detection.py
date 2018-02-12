@@ -54,8 +54,12 @@ class TestBook(unittest.TestCase):
 
 class TestPriorBox(unittest.TestCase):
     def test_prior_box(self):
-        self.check_prior_box(use_cuda=False)
-        self.check_prior_box(use_cuda=True)
+        data_shape = [3, 224, 224]
+        box, var = self.prior_box_output(data_shape)
+
+        assert len(box.shape) == 2
+        assert box.shape == var.shape
+        assert box.shape[1] == 4
 
     def prior_box_output(self, data_shape):
         images = fluid.layers.data(
@@ -103,32 +107,6 @@ class TestPriorBox(unittest.TestCase):
             flip=True,
             clip=True)
         return box, var
-
-    def check_prior_box(self, use_cuda):
-        if use_cuda:  # prior_box only support CPU.
-            return
-
-        data_shape = [3, 224, 224]
-        box, var = self.prior_box_output(data_shape)
-
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        batch = [4]  # batch is not used in the prior_box.
-
-        assert box.shape[1] == 4
-        assert var.shape[1] == 4
-        assert box.shape == var.shape
-        assert len(box.shape) == 2
-
-        x = np.random.random(batch + data_shape).astype("float32")
-        tensor_x = core.LoDTensor()
-        tensor_x.set(x, place)
-        boxes, vars = exe.run(fluid.default_main_program(),
-                              feed={'pixel': tensor_x},
-                              fetch_list=[box, var])
-        assert vars.shape == var.shape
-        assert boxes.shape == box.shape
 
 
 if __name__ == '__main__':
