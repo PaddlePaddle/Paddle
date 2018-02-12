@@ -16,13 +16,10 @@ function(copy TARGET)
     foreach(index RANGE ${len})
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
-        add_custom_command(TARGET ${TARGET} PRE_BUILD COMMAND mkdir -p "${dst}")
-        if(IS_DIRECTORY ${src})
-            add_custom_command(TARGET ${TARGET} PRE_BUILD COMMAND cp -r "${src}" "${dst}")
-        else()
-            add_custom_command(TARGET ${TARGET} PRE_BUILD COMMAND cp "${src}" "${dst}")
-        endif()
-        add_custom_command(TARGET ${TARGET} COMMENT "copying ${src} -> ${dst}")
+        add_custom_command(TARGET ${TARGET} PRE_BUILD 
+          COMMAND mkdir -p "${dst}"
+          COMMAND cp -r "${src}" "${dst}"
+          COMMENT "copying ${src} -> ${dst}")
     endforeach()
 endfunction()
 
