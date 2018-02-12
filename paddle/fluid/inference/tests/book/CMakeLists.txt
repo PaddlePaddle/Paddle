@@ -29,7 +29,7 @@ inference_test(image_classification ARGS vgg resnet)
 inference_test(label_semantic_roles)
 inference_test(recognize_digits ARGS mlp)
 inference_test(recommender_system)
-inference_test(rnn_encoder_decoder)
+#inference_test(rnn_encoder_decoder)
 inference_test(understand_sentiment)
 inference_test(word2vec)
 
