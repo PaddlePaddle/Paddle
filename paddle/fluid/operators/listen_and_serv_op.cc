@@ -82,8 +82,8 @@ class ListenAndServOp : public framework::OperatorBase {
     return string::Sprintf("%s.trainer_%d", varname, grads_counter_[varname]++);
   }
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     framework::Scope &recv_scope = scope.NewScope();
