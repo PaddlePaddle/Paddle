@@ -130,8 +130,6 @@ class Tensor {
   inline void set_layout(const DataLayout layout) { layout_ = layout; }
 
  private:
-  friend class LoDTensor;
-
   /**
    * @note    Placeholder hides type T, so it doesn't appear as a template
    *          parameter of Variable.
