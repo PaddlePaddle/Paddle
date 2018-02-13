@@ -151,7 +151,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
 
     for (int n = 0; n < batch_size; ++n) {
       std::map<int, std::vector<Box>> boxes;
-      for (int i = label_index[n]; i < label_index[n + 1]; ++i) {
+      for (size_t i = label_index[n]; i < label_index[n + 1]; ++i) {
         Box box(labels(i, 2), labels(i, 3), labels(i, 4), labels(i, 5));
         int label = labels(i, 0);
         auto is_difficult = labels(i, 1);
@@ -167,7 +167,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto detect_index = detect_lod[0];
     for (int n = 0; n < batch_size; ++n) {
       std::map<int, std::vector<std::pair<T, Box>>> boxes;
-      for (int i = detect_index[n]; i < detect_index[n + 1]; ++i) {
+      for (size_t i = detect_index[n]; i < detect_index[n + 1]; ++i) {
         Box box(detect(i, 2), detect(i, 3), detect(i, 4), detect(i, 5));
         int label = detect(i, 0);
         auto score = detect(i, 1);
@@ -269,8 +269,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
                       std::map<int, std::vector<std::pair<T, int>>>& pos) {
       const T* pos_data = pos_tensor.data<T>();
       auto pos_data_lod = pos_tensor.lod();
-      for (int i = 0; i < pos_data_lod.size(); ++i) {
-        for (int j = pos_data_lod[0][i]; j < pos_data_lod[0][i + 1]; ++j) {
+      for (size_t i = 0; i < pos_data_lod.size(); ++i) {
+        for (size_t j = pos_data_lod[0][i]; j < pos_data_lod[0][i + 1]; ++j) {
           T score = pos_data[j * 2];
           int flag = 1;
           if (pos_data[j * 2 + 1] < kEPS) flag = 0;
