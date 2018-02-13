@@ -72,10 +72,12 @@ block0 {
        sgd(w1, w1_grad)
 }
 block1 {
+  parent_block: 0
   vars: data, h1, h2, loss
   ops: fc, fc, softmax
 }
 block2 {
+  parent_block: 1
   vars: data_grad, h1_grad, h2_grad, loss_gard, w1_grad, w2_grad
   ops: softmax_grad,
        fc_grad
@@ -122,6 +124,7 @@ block0 {
   parallel_do(block1)
 }
 block1 {
+  parent_block: 0
   vars: w1, w2
   ops: init(w1), init(w2)
 }
@@ -137,16 +140,19 @@ block0 {
        
 }
 block1 {
+  parent_block: 0
   vars: data, h1, h2, loss
   ops: fc, fc, softmax
 }
 block2 {
+  parent_block: 1
   vars: data_grad, h1_grad, h2_grad, loss_gard, w1_grad, w2_grad
   ops: softmax_grad,
        fc_grad, allreduce(places, scopes, w1_grad),
        fc_grad, allreduce(places, scopes, w2_grad)
 }
 block3 {
+  parent_block: 0
   vars: lr
   ops: sgd(w2, w2_grad),
        sgd(w1, w1_grad)
