@@ -57,7 +57,7 @@ class VarDesc {
  public:
   explicit VarDesc(const std::string &name) {
     desc_.set_name(name);
-    desc_.set_type(proto::VarDesc::LOD_TENSOR);
+    desc_.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
   }
 
   explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
@@ -96,19 +96,19 @@ class VarDesc {
 
   std::vector<int32_t> GetLoDLevels() const;
 
-  proto::VarDesc::VarType GetType() const;
+  proto::VarType::Type GetType() const;
 
-  void SetType(proto::VarDesc::VarType type);
+  void SetType(proto::VarType::Type type);
 
   bool Persistable() const { return desc_.persistable(); }
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
  private:
-  const proto::TensorDesc &tensor_desc() const;
-  std::vector<proto::TensorDesc> tensor_descs() const;
-  proto::TensorDesc *mutable_tensor_desc();
-  std::vector<proto::TensorDesc *> mutable_tensor_descs();
+  const proto::VarType::TensorDesc &tensor_desc() const;
+  std::vector<proto::VarType::TensorDesc> tensor_descs() const;
+  proto::VarType::TensorDesc *mutable_tensor_desc();
+  std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
   proto::VarDesc desc_;
 };

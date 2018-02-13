@@ -45,7 +45,7 @@ class ReadInferVarType : public framework::VarTypeInference {
     PADDLE_ENFORCE_EQ(dtypes.size(), out_names.size());
     for (size_t i = 0; i < dtypes.size(); ++i) {
       framework::VarDesc& out = block->FindRecursiveOrCreateVar(out_names[i]);
-      out.SetType(framework::proto::VarDesc::LOD_TENSOR);
+      out.SetType(framework::proto::VarType::LOD_TENSOR);
       out.SetDataType(dtypes[i]);
     }
   }
