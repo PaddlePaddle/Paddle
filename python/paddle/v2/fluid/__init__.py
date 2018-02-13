@@ -29,6 +29,7 @@ import optimizer
 import learning_rate_decay
 import backward
 import regularizer
+import concurrency
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace
@@ -40,7 +41,7 @@ import profiler
 
 Tensor = LoDTensor
 
-__all__ = framework.__all__ + executor.__all__ + [
+__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'io',
     'initializer',
     'layers',
