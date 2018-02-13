@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -225,7 +225,7 @@ inline void SerializeToStream(std::ostream& os, const Tensor& tensor,
   {  // the 2nd field, tensor description
      // int32_t  size
      // void*    protobuf message
-    proto::TensorDesc desc;
+    proto::VarType::TensorDesc desc;
     desc.set_data_type(framework::ToDataType(tensor.type()));
     auto dims = framework::vectorize(tensor.dims());
     auto* pb_dims = desc.mutable_dims();
@@ -290,7 +290,7 @@ inline void DeserializeFromStream(std::istream& is, Tensor* tensor,
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
-  proto::TensorDesc desc;
+  proto::VarType::TensorDesc desc;
   {  // int32_t size
      // proto buffer
     int32_t size;
