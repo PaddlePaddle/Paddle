@@ -232,16 +232,16 @@ void BindVarDsec(py::module &m) {
       .def("persistable", &VarDesc::Persistable)
       .def("set_persistable", &VarDesc::SetPersistable);
 
-  py::enum_<proto::VarDesc::VarType>(var_desc, "VarType", "")
-      .value("LOD_TENSOR", proto::VarDesc::LOD_TENSOR)
-      .value("SELECTED_ROWS", proto::VarDesc::SELECTED_ROWS)
-      .value("FEED_MINIBATCH", proto::VarDesc::FEED_MINIBATCH)
-      .value("FETCH_LIST", proto::VarDesc::FETCH_LIST)
-      .value("STEP_SCOPES", proto::VarDesc::STEP_SCOPES)
-      .value("LOD_RANK_TABLE", proto::VarDesc::LOD_RANK_TABLE)
-      .value("LOD_TENSOR_ARRAY", proto::VarDesc::LOD_TENSOR_ARRAY)
-      .value("PLACE_LIST", proto::VarDesc::PLACE_LIST)
-      .value("READER", proto::VarDesc::READER);
+  py::enum_<proto::VarType::Type>(var_desc, "VarType", "")
+      .value("LOD_TENSOR", proto::VarType::LOD_TENSOR)
+      .value("SELECTED_ROWS", proto::VarType::SELECTED_ROWS)
+      .value("FEED_MINIBATCH", proto::VarType::FEED_MINIBATCH)
+      .value("FETCH_LIST", proto::VarType::FETCH_LIST)
+      .value("STEP_SCOPES", proto::VarType::STEP_SCOPES)
+      .value("LOD_RANK_TABLE", proto::VarType::LOD_RANK_TABLE)
+      .value("LOD_TENSOR_ARRAY", proto::VarType::LOD_TENSOR_ARRAY)
+      .value("PLACE_LIST", proto::VarType::PLACE_LIST)
+      .value("READER", proto::VarType::READER);
 }
 
 void BindOpDesc(py::module &m) {

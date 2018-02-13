@@ -53,11 +53,11 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-    if (in_var->GetType() != proto::VarDesc::LOD_TENSOR) {
+    if (in_var->GetType() != proto::VarType::LOD_TENSOR) {
       VLOG(3) << "input " << in << " is not LodTensor";
       return;
     }
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarDesc::LOD_TENSOR,
+    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
                       "The %d-th output of Output(%s) must be LoDTensor.", j,
                       out);
     out_var->SetLoDLevel(in_var->GetLoDLevel());
@@ -66,7 +66,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   bool IsRuntime() const override;
 
  protected:
-  proto::VarDesc::VarType GetVarType(const std::string &name) const override;
+  proto::VarType::Type GetVarType(const std::string &name) const override;
 
   DDim GetDim(const std::string &name) const override;
 
@@ -388,7 +388,7 @@ void OpDesc::InferVarType(BlockDesc *block) const {
     for (auto &out_pair : this->outputs_) {
       for (auto &out_var_name : out_pair.second) {
         block->FindRecursiveOrCreateVar(out_var_name)
-            .SetType(proto::VarDesc::LOD_TENSOR);
+            .SetType(proto::VarType::LOD_TENSOR);
       }
     }
   }
@@ -507,7 +507,7 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
 
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
 
-proto::VarDesc::VarType CompileTimeInferShapeContext::GetVarType(
+proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {
   return block_.FindVarRecursive(name)->GetType();
 }

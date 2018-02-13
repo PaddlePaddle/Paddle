@@ -138,7 +138,7 @@ class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
   void operator()(const framework::OpDesc &op_desc,
                   framework::BlockDesc *block) const override {
     for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(framework::proto::VarDesc::LOD_TENSOR_ARRAY);
+      block->Var(out_var)->SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
     }
   }
 };
