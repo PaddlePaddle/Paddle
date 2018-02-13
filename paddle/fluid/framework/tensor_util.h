@@ -112,7 +112,7 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 }
 
 template <typename T>
-void TesnorToVector(const Tensor& src, std::vector<T>* dst) {
+void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<T>());
   auto size = src.numel() * sizeof(T);
 

@@ -17,9 +17,9 @@
 namespace paddle {
 namespace framework {
 
-void Copy(const Tensor& src, const platform::Place& dst_place,
-          const platform::DeviceContext& ctx, Tensor* dst) {
-  VLOG(3) << "Copy " << src.dims() << " from " << src.place() << " to "
+void TensorCopy(const Tensor& src, const platform::Place& dst_place,
+                const platform::DeviceContext& ctx, Tensor* dst) {
+  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
   src.check_memory_size();
 
@@ -74,7 +74,8 @@ void Copy(const Tensor& src, const platform::Place& dst_place,
 #endif
 }
 
-void Copy(const Tensor& src, const platform::Place& dst_place, Tensor* dst) {
+void TensorCopy(const Tensor& src, const platform::Place& dst_place,
+                Tensor* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   if (platform::is_gpu_place(src.place())) {
@@ -254,8 +255,8 @@ struct DeserializedDataFunctor {
   platform::Place place_;
 };
 
-inline void TensorFromStream(std::istream& is, Tensor* tensor,
-                             const platform::DeviceContext& dev_ctx) {
+void TensorFromStream(std::istream& is, Tensor* tensor,
+                      const platform::DeviceContext& dev_ctx) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");

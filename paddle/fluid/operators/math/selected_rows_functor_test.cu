@@ -67,7 +67,7 @@ TEST(selected_rows_functor, gpu_add) {
   EXPECT_EQ(out_rows[6], 9);
 
   Tensor out_cpu;
-  Copy(*out_value, cpu_place, ctx, &out_cpu);
+  TensorCopy(*out_value, cpu_place, ctx, &out_cpu);
   ctx.Wait();
 
   auto* out_cpu_data = out_cpu.data<float>();
@@ -94,7 +94,7 @@ TEST(selected_rows_functor, gpu_add) {
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
 
   Tensor tensor2_cpu;
-  Copy(*tensor2, cpu_place, ctx, &tensor2_cpu);
+  TensorCopy(*tensor2, cpu_place, ctx, &tensor2_cpu);
   ctx.Wait();
 
   auto* tensor2_cpu_data = tensor2_cpu.data<float>();
@@ -167,7 +167,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   EXPECT_EQ(out_rows[6], 9);
 
   Tensor out_cpu;
-  Copy(*out_value, cpu_place, ctx, &out_cpu);
+  TensorCopy(*out_value, cpu_place, ctx, &out_cpu);
   ctx.Wait();
 
   auto* out_cpu_data = out_cpu.data<float>();
@@ -191,7 +191,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   add_to_tensor_functor(ctx, *output, tensor1.get());
 
   Tensor tensor1_cpu;
-  Copy(*tensor1, cpu_place, ctx, &tensor1_cpu);
+  TensorCopy(*tensor1, cpu_place, ctx, &tensor1_cpu);
   ctx.Wait();
 
   auto* tensor1_cpu_data = tensor1_cpu.data<float>();
