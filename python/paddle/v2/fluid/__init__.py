@@ -29,12 +29,12 @@ import optimizer
 import learning_rate_decay
 import backward
 import regularizer
-import concurrency
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace
 from distribute_transpiler import DistributeTranspiler
 from distribute_transpiler_simple import SimpleDistributeTranspiler
+from concurrency import *
 import clip
 from memory_optimization_transpiler import memory_optimize
 import profiler
