@@ -22,13 +22,13 @@ TEST(ProgramDesc, copy_ctor) {
   ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
   auto* x = global_block->Var("X");
-  x->SetType(proto::VarDesc_VarType_LOD_TENSOR);
+  x->SetType(proto::VarType::LOD_TENSOR);
   x->SetLoDLevel(0);
   x->SetDataType(proto::FP32);
   x->SetShape({1000, 784});
 
   auto* y = global_block->Var("Y");
-  y->SetType(proto::VarDesc_VarType_LOD_TENSOR);
+  y->SetType(proto::VarType::LOD_TENSOR);
   y->SetLoDLevel(0);
   y->SetDataType(proto::FP32);
   y->SetShape({784, 100});
@@ -39,7 +39,7 @@ TEST(ProgramDesc, copy_ctor) {
   op->SetInput("Y", {y->Name()});
 
   auto* out = global_block->Var("Out");
-  out->SetType(proto::VarDesc_VarType_LOD_TENSOR);
+  out->SetType(proto::VarType::LOD_TENSOR);
   op->SetOutput("Y", {out->Name()});
 
   ProgramDesc program_copy(program);
@@ -84,13 +84,13 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
   ProgramDesc program_origin;
   auto* global_block = program_origin.MutableBlock(0);
   auto* x = global_block->Var("X");
-  x->SetType(proto::VarDesc_VarType_LOD_TENSOR);
+  x->SetType(proto::VarType::LOD_TENSOR);
   x->SetLoDLevel(0);
   x->SetDataType(proto::FP32);
   x->SetShape({1000, 784});
 
   auto* y = global_block->Var("Y");
-  y->SetType(proto::VarDesc_VarType_LOD_TENSOR);
+  y->SetType(proto::VarType::LOD_TENSOR);
   y->SetLoDLevel(0);
   y->SetDataType(proto::FP32);
   y->SetShape({784, 100});
@@ -101,7 +101,7 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
   op->SetInput("Y", {y->Name()});
 
   auto* out = global_block->Var("Out");
-  out->SetType(proto::VarDesc_VarType_LOD_TENSOR);
+  out->SetType(proto::VarType::LOD_TENSOR);
   op->SetOutput("Y", {out->Name()});
 
   std::string binary_str;

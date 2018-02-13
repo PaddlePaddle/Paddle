@@ -36,24 +36,24 @@ namespace framework {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
-static void CreateTensor(Variable* var, proto::VarDesc::VarType var_type) {
-  if (var_type == proto::VarDesc::LOD_TENSOR) {
+static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
+  if (var_type == proto::VarType::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
-  } else if (var_type == proto::VarDesc::SELECTED_ROWS) {
+  } else if (var_type == proto::VarType::SELECTED_ROWS) {
     var->GetMutable<SelectedRows>();
-  } else if (var_type == proto::VarDesc::FEED_MINIBATCH) {
+  } else if (var_type == proto::VarType::FEED_MINIBATCH) {
     var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarDesc::FETCH_LIST) {
+  } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarDesc::STEP_SCOPES) {
+  } else if (var_type == proto::VarType::STEP_SCOPES) {
     var->GetMutable<std::vector<framework::Scope>>();
-  } else if (var_type == proto::VarDesc::LOD_RANK_TABLE) {
+  } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
-  } else if (var_type == proto::VarDesc::LOD_TENSOR_ARRAY) {
+  } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
     var->GetMutable<LoDTensorArray>();
-  } else if (var_type == proto::VarDesc::PLACE_LIST) {
+  } else if (var_type == proto::VarType::PLACE_LIST) {
     var->GetMutable<platform::PlaceList>();
-  } else if (var_type == proto::VarDesc::READER) {
+  } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
   } else if (var_type == proto::VarDesc::NCCL_COM) {
     // GetMutable will be called in ncclInit
@@ -184,7 +184,7 @@ static bool has_feed_operators(
     auto var = block->FindVar(feed_holder_name);
     PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
                             feed_holder_name);
-    PADDLE_ENFORCE_EQ(var->GetType(), proto::VarDesc::FEED_MINIBATCH,
+    PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FEED_MINIBATCH,
                       "'%s' variable should be 'FEED_MINIBATCH' type",
                       feed_holder_name);
   }
@@ -224,7 +224,7 @@ static bool has_fetch_operators(
     auto var = block->FindVar(fetch_holder_name);
     PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
                             fetch_holder_name);
-    PADDLE_ENFORCE_EQ(var->GetType(), proto::VarDesc::FETCH_LIST,
+    PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FETCH_LIST,
                       "'%s' variable should be 'FETCH_LIST' type",
                       fetch_holder_name);
   }
@@ -243,7 +243,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   if (!has_feed_operators(global_block, feed_targets, feed_holder_name)) {
     // create feed_holder variable
     auto* feed_holder = global_block->Var(feed_holder_name);
-    feed_holder->SetType(proto::VarDesc::FEED_MINIBATCH);
+    feed_holder->SetType(proto::VarType::FEED_MINIBATCH);
     feed_holder->SetPersistable(true);
 
     int i = 0;
@@ -276,7 +276,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   if (!has_fetch_operators(global_block, fetch_targets, fetch_holder_name)) {
     // create fetch_holder variable
     auto* fetch_holder = global_block->Var(fetch_holder_name);
-    fetch_holder->SetType(proto::VarDesc::FETCH_LIST);
+    fetch_holder->SetType(proto::VarType::FETCH_LIST);
     fetch_holder->SetPersistable(true);
 
     int i = 0;

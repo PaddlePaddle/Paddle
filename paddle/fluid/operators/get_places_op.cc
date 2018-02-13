@@ -98,7 +98,7 @@ class GetPlacesInferVarType : public framework::VarTypeInference {
                   framework::BlockDesc *block) const override {
     for (auto &o_name : op_desc.Output("Out")) {
       block->FindRecursiveOrCreateVar(o_name).SetType(
-          framework::proto::VarDesc::PLACE_LIST);
+          framework::proto::VarType::PLACE_LIST);
     }
   }
 };

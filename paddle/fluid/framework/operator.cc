@@ -477,7 +477,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  proto::VarDesc::VarType GetVarType(const std::string& name) const override {
+  proto::VarType::Type GetVarType(const std::string& name) const override {
     auto* var = scope_.FindVar(name);
     return ToVarType(var->Type());
   }

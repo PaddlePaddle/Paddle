@@ -174,7 +174,7 @@ def Print(input,
         print_tensor_type (bool): Print the tensor type.
         print_tensor_shape (bool): Print the tensor shape.
         print_tensor_lod (bool): Print the tensor lod.
-        print_phase (bool): Which phase to displace, including 'forward',
+        print_phase (str): Which phase to displace, including 'forward',
                 'backward' and 'both'. If set to 'backward' or 'both', will
                 print the gradients of input tensor.
 
