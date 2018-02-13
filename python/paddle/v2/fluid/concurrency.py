@@ -19,48 +19,48 @@ from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper
 
 
-class RoutineGuard(BlockGuard):
-    def __init__(self, routine_op):
-        if not isinstance(routine_op, Routine):
-            raise TypeError("RoutineGuard takes a routine op")
-        super(RoutineGuard, self).__init__(routine_op.helper.main_program)
-        self.routine_op = routine_op
+class GoGuard(BlockGuard):
+    def __init__(self, go_op):
+        if not isinstance(go_op, Go):
+            raise TypeError("GoGuard takes a go op")
+        super(GoGuard, self).__init__(go_op.helper.main_program)
+        self.go_op = go_op
 
     def __enter__(self):
-        return super(RoutineGuard, self).__enter__()
+        return super(GoGuard, self).__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
-        self.routine_op.complete()
-        return super(RoutineGuard, self).__exit__(exc_type, exc_val, exc_tb)
+        self.go_op.complete()
+        return super(GoGuard, self).__exit__(exc_type, exc_val, exc_tb)
 
 
-class Routine(object):
+class Go(object):
 
     def __init__(self, name=None):
-        self.helper = LayerHelper("routine", name=name)
+        self.helper = LayerHelper("go", name=name)
 
     def block(self):
-        return RoutineGuard(self)
+        return GoGuard(self)
 
     def complete(self):
         main_program = self.helper.main_program
-        routine_block = main_program.current_block()
+        go_block = main_program.current_block()
         parent_block = main_program.block(main_program.current_block()
                                           .parent_idx)
 
         x_name_list = set()
         out_vars = set()
-        for op in routine_block.ops:
+        for op in go_block.ops:
             # Iterate over all operators, get all the inputs
-            # and add as input to the routine operator.
+            # and add as input to the Go operator.
             for iname in op.input_names:
                 for in_var_name in op.input(iname):
                     x_name_list.add(in_var_name)
 
             # Iterate over all operators , get all the outputs
-            # add to the output list of routine operator only if
+            # add to the output list of Go operator only if
             # they exist in the parent block.
             for oname in op.output_names:
                 for out_var_name in op.output(oname):
@@ -68,9 +68,9 @@ class Routine(object):
                         out_vars.add(parent_block.var(out_var_name))
 
         parent_block.append_op(
-            type='routine',
+            type='go',
             inputs={
                 'X': [parent_block.var(x_name) for x_name in x_name_list]
             },
             outputs={'Out': out_vars},
-            attrs={'sub_block': routine_block})
+            attrs={'sub_block': go_block})
