@@ -25,6 +25,7 @@ class TestRoutineOp(unittest.TestCase):
             fluid.send(ch, True)
 
         result = fluid.recv(ch)
+        fluid.close_channel(ch)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
