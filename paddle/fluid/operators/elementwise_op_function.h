@@ -314,7 +314,6 @@ EIGEN_FUNCTOR(Div, EIGEN_DIV);
 template <typename DeviceContext, typename T, typename functor,
           typename broadcastfunctor, typename broadcast2functor>
 void ElementwiseGradCompute(const framework::ExecutionContext& ctx,
-
                             const framework::Tensor* x,
                             const framework::Tensor* y,
                             const framework::Tensor* out,
