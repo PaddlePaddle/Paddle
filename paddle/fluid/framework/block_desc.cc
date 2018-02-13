@@ -51,14 +51,7 @@ VarDesc *BlockDesc::RenameVar(const std::string &old_name,
   auto *var = this->Var(old_name);
   VarDesc *new_var = new VarDesc(*(var->Proto()));
   new_var->SetName(new_name);
-  // new_var->SetShape(var->GetShape());
-  // new_var->SetType(var->GetType());
-  // new_var->SetDataType(var->GetDataType());
-  // new_var->SetLoDLevel(var->GetLoDLevel());
-  // new_var->SetPersistable(var->Persistable());
-
   vars_[new_name].reset(new_var);
-
   // rename inputs and outputs
   for (const auto &op : ops_) {
     auto *it = op.get();
