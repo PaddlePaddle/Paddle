@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.executor import Executor
@@ -22,18 +20,18 @@ from paddle.v2.fluid.executor import Executor
 
 class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
-        counter = layers.zeros(shape=[1], dtype='int64')
-        counter = layers.increment(counter)
+        ch = fluid.make_channel(dtype=bool)
+        with fluid.Go():
+            fluid.send(ch, True)
 
-        routine_op = fluid.Routine()
-        with routine_op.block():
-            counter = layers.increment(counter)
+        result = fluid.recv(ch)
+        fluid.close_channel(ch)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
 
-        outs = exe.run(fetch_list=[counter])
-        self.assertEqual(2, np.sum(outs[0]))
+        outs = exe.run(fetch_list=[result])
+        self.assertEqual(outs[0], True)
 
 
 if __name__ == '__main__':
