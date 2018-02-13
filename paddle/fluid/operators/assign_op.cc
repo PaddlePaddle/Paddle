@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -115,8 +115,8 @@ class AssignInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     if (context->HasInput("X")) {
       auto type = context->GetInputsVarType("X")[0];
-      if (type == framework::proto::VarDesc_VarType_SELECTED_ROWS ||
-          type == framework::proto::VarDesc_VarType_LOD_TENSOR) {
+      if (type == framework::proto::VarType::SELECTED_ROWS ||
+          type == framework::proto::VarType::LOD_TENSOR) {
         context->SetOutputDim("Out", context->GetInputDim("X"));
       }
     }

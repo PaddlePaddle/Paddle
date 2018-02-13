@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -477,7 +477,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  proto::VarDesc::VarType GetVarType(const std::string& name) const override {
+  proto::VarType::Type GetVarType(const std::string& name) const override {
     auto* var = scope_.FindVar(name);
     return ToVarType(var->Type());
   }

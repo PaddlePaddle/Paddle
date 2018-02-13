@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -240,10 +240,10 @@ class BeamSearchInferVarType : public framework::VarTypeInference {
   void operator()(const framework::OpDesc &op_desc,
                   framework::BlockDesc *block) const override {
     for (auto &o : op_desc.Output("selected_ids")) {
-      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
+      block->Var(o)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
     for (auto &o : op_desc.Output("selected_scores")) {
-      block->Var(o)->SetType(framework::proto::VarDesc::LOD_TENSOR);
+      block->Var(o)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
   }
 };
