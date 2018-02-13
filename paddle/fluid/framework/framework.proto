@@ -101,25 +101,8 @@ enum DataType {
   FP64 = 6;
 }
 
-message TensorDesc {
-  required DataType data_type = 1;
-  repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
-}
-
-message LoDTensorDesc {
-  required TensorDesc tensor = 1;
-  optional int32 lod_level = 2 [ default = 0 ];
-}
-
-message LoDTensorArrayDesc {
-  required TensorDesc tensor = 1;
-  optional int32 lod_level = 2 [ default = 0 ];
-}
-
-message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
-
-message VarDesc {
-  enum VarType {
+message VarType {
+  enum Type {
     LOD_TENSOR = 1;
     SELECTED_ROWS = 2;
     FEED_MINIBATCH = 3;
@@ -130,13 +113,35 @@ message VarDesc {
     PLACE_LIST = 8;
     READER = 9;
   }
+
+  required Type type = 1;
+
+  message TensorDesc {
+    required DataType data_type = 1;
+    repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
+  }
+  optional TensorDesc selected_rows = 2;
+
+  message LoDTensorDesc {
+    required TensorDesc tensor = 1;
+    optional int32 lod_level = 2 [ default = 0 ];
+  }
+  optional LoDTensorDesc lod_tensor = 3;
+
+  message LoDTensorArrayDesc {
+    required TensorDesc tensor = 1;
+    optional int32 lod_level = 2 [ default = 0 ];
+  }
+  optional LoDTensorArrayDesc tensor_array = 4;
+
+  message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
+  optional ReaderDesc reader = 5;
+}
+
+message VarDesc {
   required string name = 1;
   required VarType type = 2;
   optional bool persistable = 3 [ default = false ];
-  optional LoDTensorDesc lod_tensor = 4;
-  optional TensorDesc selected_rows = 5;
-  optional LoDTensorArrayDesc tensor_array = 6;
-  optional ReaderDesc reader = 7;
 }
 
 message BlockDesc {
