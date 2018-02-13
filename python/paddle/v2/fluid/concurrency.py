@@ -12,39 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # TODO: Variables: make_channel
 # TODO: Operators: send, close_channel, recv, go, select
 from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper
 
+__all__ = ['Go']
 
-class GoGuard(BlockGuard):
-    def __init__(self, go_op):
-        if not isinstance(go_op, Go):
-            raise TypeError("GoGuard takes a go op")
-        super(GoGuard, self).__init__(go_op.helper.main_program)
-        self.go_op = go_op
+
+class Go(BlockGuard):
+    def __init__(self, name=None):
+        self.helper = LayerHelper("go", name=name)
+        super(Go, self).__init__(self.helper.main_program)
 
     def __enter__(self):
-        return super(GoGuard, self).__enter__()
+        super(Go, self).__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
-        self.go_op.complete()
-        return super(GoGuard, self).__exit__(exc_type, exc_val, exc_tb)
+        self.construct_go_op()
+        return super(Go, self).__exit__(exc_type, exc_val, exc_tb)
 
-
-class Go(object):
-
-    def __init__(self, name=None):
-        self.helper = LayerHelper("go", name=name)
-
-    def block(self):
-        return GoGuard(self)
-
-    def complete(self):
+    def construct_go_op(self):
         main_program = self.helper.main_program
         go_block = main_program.current_block()
         parent_block = main_program.block(main_program.current_block()
@@ -69,8 +59,6 @@ class Go(object):
 
         parent_block.append_op(
             type='go',
-            inputs={
-                'X': [parent_block.var(x_name) for x_name in x_name_list]
-            },
+            inputs={'X': [parent_block.var(x_name) for x_name in x_name_list]},
             outputs={'Out': out_vars},
             attrs={'sub_block': go_block})
