@@ -51,7 +51,8 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #ifdef PADDLE_WITH_CUDA
-      framework::Copy(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
+      framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx,
+                            cpu_mask.get());
 #else
       PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
 #endif

@@ -83,7 +83,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   } else {
     dev_ctx = pool.Get(dst_place);
   }
-  Copy(src, dst_place, *dev_ctx, dst);
+  TensorCopy(src, dst_place, *dev_ctx, dst);
 }
 
 template <typename Predicate, typename DevCtx>
@@ -139,7 +139,7 @@ struct AnyVisitor : public boost::static_visitor<bool> {
     tmp.mutable_data<bool>(cpu);
     auto gpuctx = platform::DeviceContextPool::Instance().Get(gpu);
     gpuctx->Wait();
-    Copy(out, cpu, *gpuctx, &tmp);
+    TensorCopy(out, cpu, *gpuctx, &tmp);
     gpuctx->Wait();
     return GetResult(tmp, cpu);
   }
@@ -286,7 +286,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
       is.read(static_cast<char*>(buf), cpu_tensor.memory_size());
       auto dst_place = dev_ctx.GetPlace();
-      framework::Copy(cpu_tensor, dst_place, dev_ctx, tensor);
+      framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
       PADDLE_THROW("Unexpected branch");
 #endif
