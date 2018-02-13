@@ -41,6 +41,7 @@ This implementation allows to write mixed device program like this
 # get embedding feature on CPU
 feature = some_cpu_only_op(data)
 
+gpu_places = get_place(use_gpu=True)
 # parallel processing on multiple GPUs
 pd = ParallelDo(gpu_places)
 with pd.do():
@@ -49,6 +50,38 @@ with pd.do():
     write_output(activation)
 prediction = pd()
 loss = cross_entropy(prediction, label)
+```
+
+And the programDesc are like the following
+
+```
+# start_program will be run by executor(CPUPlace), all w1, w2 will be allocated on CPU
+start_program
+{
+  vars: w1, w2
+  ops: init(w1), init(w2)
+}
+
+main_program
+{
+block0 {
+  vars: data, places, w1, w2
+  ops: data, get_place, parallel_do(block1),
+       parallel_do_grad(block2),
+       sgd(w2, w2_grad),
+       sgd(w1, w1_grad)
+}
+block1 {
+  vars: data, h1, h2, loss
+  ops: fc, fc, softmax
+}
+block2 {
+  vars: data_grad, h1_grad, h2_grad, loss_gard, w1_grad, w2_grad
+  ops: softmax_grad,
+       fc_grad
+       fc_grad
+}
+}
 ```
 
 ## Proformance Imporvement
@@ -78,6 +111,47 @@ We can avoid this step by making each device have a copy of the parameter. This 
     1. `allreduce` operators need to be called in async mode to achieve maximum throughput
 1. apply gradients related op(i.e. cliping, normalization, decay, sgd) on different devices in parallel
 
-By doing so, we also avoided "backward: accumulate param@grad from different devices to the first device"
+By doing so, we also avoided "backward: accumulate param@grad from different devices to the first device".
+And the ProgramDesc looks like the following
+
+```
+# w1, w2 will be allocated on all GPUs
+start_program
+{
+block0 {
+  parallel_do(block1)
+}
+block1 {
+  vars: w1, w2
+  ops: init(w1), init(w2)
+}
+}
+
+main_program
+{
+block0 {
+  vars: data, places, w1, w2
+  ops: data, get_place, parallel_do(block1),
+       parallel_do_grad(block2),      # append_backward
+       parallel_do(block3)            # append_optimization
+       
+}
+block1 {
+  vars: data, h1, h2, loss
+  ops: fc, fc, softmax
+}
+block2 {
+  vars: data_grad, h1_grad, h2_grad, loss_gard, w1_grad, w2_grad
+  ops: softmax_grad,
+       fc_grad, allreduce(places, scopes, w1_grad),
+       fc_grad, allreduce(places, scopes, w2_grad)
+}
+block3 {
+  vars: lr
+  ops: sgd(w2, w2_grad),
+       sgd(w1, w1_grad)
+}
+}
+```
 
 
