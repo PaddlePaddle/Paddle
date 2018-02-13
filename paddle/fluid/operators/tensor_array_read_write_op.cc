@@ -108,7 +108,7 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
     auto out_name = op_desc.Output("Out")[0];
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
     auto &out = block->FindRecursiveOrCreateVar(out_name);
-    out.SetType(framework::proto::VarDesc::LOD_TENSOR_ARRAY);
+    out.SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
     auto *x = block->FindVarRecursive(x_name);
     if (x != nullptr) {
       out.SetDataType(x->GetDataType());

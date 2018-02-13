@@ -35,14 +35,14 @@ class SumOpVarTypeInference : public VarTypeInference {
  public:
   void operator()(const OpDesc &op_desc, BlockDesc *block) const override {
     auto &inputs = op_desc.Input("X");
-    auto default_var_type = proto::VarDesc::SELECTED_ROWS;
+    auto default_var_type = proto::VarType::SELECTED_ROWS;
 
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string &name) {
-          return block->Var(name)->GetType() == proto::VarDesc::LOD_TENSOR;
+          return block->Var(name)->GetType() == proto::VarType::LOD_TENSOR;
         });
     if (any_input_is_lod_tensor) {
-      default_var_type = proto::VarDesc::LOD_TENSOR;
+      default_var_type = proto::VarType::LOD_TENSOR;
     }
 
     auto out_var_name = op_desc.Output("Out").front();
@@ -67,19 +67,19 @@ TEST(InferVarType, sum_op) {
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
 
-  prog.MutableBlock(0)->Var("test_a")->SetType(proto::VarDesc::SELECTED_ROWS);
-  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarDesc::SELECTED_ROWS);
-  prog.MutableBlock(0)->Var("test_c")->SetType(proto::VarDesc::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test_a")->SetType(proto::VarType::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test_c")->SetType(proto::VarType::SELECTED_ROWS);
   prog.MutableBlock(0)->Var("test_out");
 
   op->InferVarType(prog.MutableBlock(0));
 
-  ASSERT_EQ(proto::VarDesc::SELECTED_ROWS,
+  ASSERT_EQ(proto::VarType::SELECTED_ROWS,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
-  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarDesc::LOD_TENSOR);
+  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::LOD_TENSOR);
   op->InferVarType(prog.MutableBlock(0));
-  ASSERT_EQ(proto::VarDesc::LOD_TENSOR,
+  ASSERT_EQ(proto::VarType::LOD_TENSOR,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 }
 
@@ -90,14 +90,14 @@ TEST(InferVarType, sum_op_without_infer_var_type) {
   op->SetInput("X", {"test2_a", "test2_b", "test2_c"});
   op->SetOutput("Out", {"test2_out"});
 
-  prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarDesc::SELECTED_ROWS);
-  prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarDesc::SELECTED_ROWS);
-  prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarDesc::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test2_a")->SetType(proto::VarType::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test2_b")->SetType(proto::VarType::SELECTED_ROWS);
+  prog.MutableBlock(0)->Var("test2_c")->SetType(proto::VarType::SELECTED_ROWS);
   prog.MutableBlock(0)->Var("test2_out");
 
   op->InferVarType(prog.MutableBlock(0));
 
-  ASSERT_EQ(proto::VarDesc_VarType_LOD_TENSOR,
+  ASSERT_EQ(proto::VarType_Type_LOD_TENSOR,
             prog.MutableBlock(0)->Var("test2_out")->GetType());
 }
 
