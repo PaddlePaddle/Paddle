@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 # TODO: Variables: make_channel
 # TODO: Operators: send, close_channel, recv, go, select
 from layers.control_flow import BlockGuard
@@ -71,5 +72,5 @@ class Routine(object):
             inputs={
                 'X': [parent_block.var(x_name) for x_name in x_name_list]
             },
-            outputs={'Out': out_vars,
+            outputs={'Out': out_vars},
             attrs={'sub_block': routine_block})
