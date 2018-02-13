@@ -50,7 +50,7 @@ start_tf_trainer(){
   trainer_id=$(python /root/k8s_tools.py fetch_trainer_id ${label})
 
   cmd="${ENTRY} --ps_hosts=${g_pservers} --worker_hosts=${g_trainers} \
-  --training_role=${TRAINING_ROLE} --task_index=${trainer_id}"
+  --training_role=${TRAINING_ROLE} --task_index=${trainer_id} --batch_size=${BATCH_SIZE}"
 
   stdbuf -oL sh -c "cd ${TRAINER_PACKAGE} && ${cmd}"
   check_trainer_ret $?

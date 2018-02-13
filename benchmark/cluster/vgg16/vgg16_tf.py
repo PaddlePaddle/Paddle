@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""VGG16 benchmark in TensorFlow"""
+"""VGG16 benchmark in TensorFlow
+You can get distribution example structure here:
+https://medium.com/clusterone/how-to-write-distributed-tensorflow-code-with-an-example-on-tensorport-70bf3306adcb
+"""
+
 import tensorflow as tf
 import paddle.v2 as paddle
 import numpy as np
@@ -214,7 +218,7 @@ class VGG16Model(object):
         return fc3
 
 
-def run_benchmark(cluster, server):
+def run_benchmark(cluster_spec, server):
     """Run benchmark on cifar10 or flowers."""
 
     if args.data_set == "cifar10":
@@ -228,14 +232,11 @@ def run_benchmark(cluster, server):
         dat_shape = (None, 224, 224, 3) if args.data_format == 'NHWC' else (
             None, 3, 224, 224)
 
-    device = '/cpu:0' if args.device == 'CPU' else '/device:GPU:0'
+    device = tf.train.replica_device_setter(
+        worker_device="/job:worker/task:{}".format(args.task_index),
+        cluster=cluster_spec)
 
-    #with tf.device(device):
-    with tf.device(
-            tf.train.replica_device_setter(
-                worker_device="/job:worker/task:%d" % args.task_index,
-                cluster=cluster)):
-
+    with tf.device(device):
         images = tf.placeholder(tf.float32, shape=dat_shape)
         labels = tf.placeholder(tf.int64, shape=(None, ))
         is_training = tf.placeholder('bool')
@@ -290,15 +291,15 @@ def run_benchmark(cluster, server):
     config.gpu_options.allow_growth = True
 
     # The StopAtStepHook handles stopping after running given steps.
-    hooks = [tf.train.StopAtStepHook(last_step=1000000)]
+    #hooks = [tf.train.StepCounterHook(last_step=1000000)]
 
     #with tf.Session(config=config) as sess:
     with tf.train.MonitoredTrainingSession(
             master=server.target,
-            is_chief=(FLAGS.task_index == 0),
+            is_chief=(args.task_index == 0),
             checkpoint_dir="/tmp/train_logs",
-            config=config,
-            hooks=hooks) as sess:
+            config=config) as sess:
+        #hooks=hooks) as sess:
         while not sess.should_stop():
             init_g = tf.global_variables_initializer()
             init_l = tf.local_variables_initializer()
@@ -340,24 +341,24 @@ def print_arguments():
 
 
 if __name__ == '__main__':
+    print_arguments()
+
     ps_hosts = args.ps_hosts.split(",")
     worker_hosts = args.worker_hosts.split(",")
 
     # Create a cluster from the parameter server and worker hosts.
-    cluster = tf.train.ClusterSpec({
+    cluster_spec = tf.train.ClusterSpec({
         "PSERVER": ps_hosts,
         "TRAINER": worker_hosts
     })
 
     # Create and start a server for the local task.
     server = tf.train.Server(
-        cluster, job_name=args.training_role, task_index=args.task_index)
-
-    print_arguments()
+        cluster_spec, job_name=args.training_role, task_index=args.task_index)
 
     if args.training_role == "PSERVER":
         print("start pserver")
         server.join()
     elif args.training_role == "TRAINER":
         print("start worker")
-        run_benchmark(cluster)
+        run_benchmark(cluster_spec, server)

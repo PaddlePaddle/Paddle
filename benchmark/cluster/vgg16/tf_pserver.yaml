@@ -34,6 +34,8 @@ spec:
           value: "PSERVER"
         - name: TRAINERS_NUM
           value: "1"
+        - name: BATCH_SIZE
+          value: "128"
         - name: TRAINER_PACKAGE
           value: "/workspace"
         - name: NUM_PASSES

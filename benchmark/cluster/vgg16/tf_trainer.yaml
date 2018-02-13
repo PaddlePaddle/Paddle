@@ -33,6 +33,8 @@ spec:
           value: "python vgg16_tf.py"
         - name: PSERVERS_NUM
           value: "1"
+        - name: BATCH_SIZE
+          value: "128"
         - name: TRAINERS_NUM
           value: "1"
         - name: TRAINER_PACKAGE
