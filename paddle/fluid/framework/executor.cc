@@ -55,7 +55,7 @@ static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarDesc::NCCL_COM) {
+  } else if (var_type == proto::VarType::NCCL_COM) {
     // GetMutable will be called in ncclInit
   } else {
     PADDLE_THROW(
