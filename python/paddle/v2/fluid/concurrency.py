@@ -17,7 +17,13 @@
 from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper
 
-__all__ = ['Go']
+__all__ = [
+    'Go',
+    'make_channel',
+    'channel_send',
+    'channel_recv',
+    'channel_close',
+]
 
 
 class Go(BlockGuard):
@@ -62,3 +68,19 @@ class Go(BlockGuard):
             inputs={'X': [parent_block.var(x_name) for x_name in x_name_list]},
             outputs={'Out': out_vars},
             attrs={'sub_block': go_block})
+
+
+def make_channel(dtype, size=0):
+    return True
+
+
+def channel_send(channel, value):
+    return True
+
+
+def channel_recv(channel):
+    return True
+
+
+def channel_close(channel):
+    return True
