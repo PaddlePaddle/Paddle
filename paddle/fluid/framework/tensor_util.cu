@@ -87,7 +87,7 @@ inline bool Any(const framework::Tensor& tensor, Predicate predicate) {
   return platform::VisitPlace(place, visitor);
 }
 
-struct HasNANPredicate {
+struct ContainsNANPredicate {
   template <typename T>
   auto operator()(const T& eigen_vec) const
       -> decltype(std::declval<T>().isnan()) {
@@ -96,12 +96,12 @@ struct HasNANPredicate {
   }
 };
 
-bool HasNAN(const framework::Tensor& tensor) {
-  HasNANPredicate predicate;
+bool TensorContainsNAN(const framework::Tensor& tensor) {
+  ContainsNANPredicate predicate;
   return Any(tensor, predicate);
 }
 
-struct HasInfPredicate {
+struct ContainsInfPredicate {
   template <typename T>
   auto operator()(const T& eigen_vec) const
       -> decltype(std::declval<T>().isinf()) {
@@ -110,8 +110,8 @@ struct HasInfPredicate {
   }
 };
 
-bool HasInf(const framework::Tensor& tensor) {
-  HasInfPredicate predicate;
+bool TensorContainsInf(const framework::Tensor& tensor) {
+  ContainsInfPredicate predicate;
   return Any(tensor, predicate);
 }
 

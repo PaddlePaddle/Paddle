@@ -106,8 +106,8 @@ class MergeLoDTensorOp : public framework::OperatorBase {
         continue;
       }
       auto slice = out->Slice(out_offset, out_offset + len);
-      framework::Copy(input->Slice(start_offset, end_offset), place, dev_ctx,
-                      &slice);
+      framework::TensorCopy(input->Slice(start_offset, end_offset), place,
+                            dev_ctx, &slice);
       out_offset += len;
       (*in_idx) += 1;
     }

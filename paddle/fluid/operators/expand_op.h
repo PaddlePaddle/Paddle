@@ -126,7 +126,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
       auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      framework::Copy(*in0, context.GetPlace(), context.device_context(), out0);
+      framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
+                            out0);
     } else {
       switch (dims) {
         REP_EXPAND_GRAD_TEMPLATE(72)

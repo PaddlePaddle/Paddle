@@ -232,7 +232,7 @@ TEST(CopyToVector, Tensor) {
 #endif
 }
 
-TEST(HasNAN, CPU) {
+TEST(TensorContainsNAN, CPU) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor src;
@@ -240,11 +240,12 @@ TEST(HasNAN, CPU) {
   buf[0] = 0.0;
   buf[1] = NAN;
   buf[2] = 0.0;
-
-  ASSERT_TRUE(HasNAN(src));
+  ASSERT_TRUE(TensorContainsNAN(src));
+  buf[1] = 0.0;
+  ASSERT_FALSE(TensorContainsNAN(src));
 }
 
-TEST(HasInf, CPU) {
+TEST(TensorContainsInf, CPU) {
   using namespace paddle::framework;
   using namespace paddle::platform;
   Tensor src;
@@ -252,7 +253,9 @@ TEST(HasInf, CPU) {
   buf[0] = 1.0;
   buf[1] = INFINITY;
   buf[2] = 0.0;
-  ASSERT_TRUE(HasInf(src));
+  ASSERT_TRUE(TensorContainsInf(src));
+  buf[1] = 1.0;
+  ASSERT_FALSE(TensorContainsInf(src));
 }
 
 TEST(Tensor, SerializeAndDeserialize) {

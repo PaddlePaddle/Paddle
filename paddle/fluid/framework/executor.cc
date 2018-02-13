@@ -73,8 +73,10 @@ static void CheckTensorNANOrInf(const std::string& name,
       tensor.type().hash_code() != typeid(double).hash_code()) {
     return;
   }
-  PADDLE_ENFORCE(!framework::HasInf(tensor), "Tensor %s has Inf", name);
-  PADDLE_ENFORCE(!framework::HasNAN(tensor), "Tensor %s has NAN", name);
+  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
+                 "Tensor %s contains Inf", name);
+  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
+                 "Tensor %s contains NAN", name);
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,

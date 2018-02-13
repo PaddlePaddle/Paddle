@@ -94,9 +94,9 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
             platform::DeviceContextPool::Instance();
         auto &dev_ctx = *pool.Get(place);
 
-        framework::Copy(x.Slice(static_cast<int>(each_range.begin),
-                                static_cast<int>(each_range.end)),
-                        x.place(), dev_ctx, &slice);
+        framework::TensorCopy(x.Slice(static_cast<int>(each_range.begin),
+                                      static_cast<int>(each_range.end)),
+                              x.place(), dev_ctx, &slice);
         offset += len;
       }
     }
