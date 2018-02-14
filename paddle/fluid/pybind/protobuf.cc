@@ -195,14 +195,14 @@ void BindBlockDesc(py::module &m) {
 }
 
 void BindVarDsec(py::module &m) {
-  py::enum_<proto::DataType>(m, "DataType", "")
-      .value("BOOL", proto::DataType::BOOL)
-      .value("INT16", proto::DataType::INT16)
-      .value("INT32", proto::DataType::INT32)
-      .value("INT64", proto::DataType::INT64)
-      .value("FP16", proto::DataType::FP16)
-      .value("FP32", proto::DataType::FP32)
-      .value("FP64", proto::DataType::FP64);
+  py::enum_<proto::VarType::Type>(m, "DataType", "")
+      .value("BOOL", proto::VarType::Type::BOOL)
+      .value("INT16", proto::VarType::Type::INT16)
+      .value("INT32", proto::VarType::Type::INT32)
+      .value("INT64", proto::VarType::Type::INT64)
+      .value("FP16", proto::VarType::Type::FP16)
+      .value("FP32", proto::VarType::Type::FP32)
+      .value("FP64", proto::VarType::Type::FP64);
 
   py::class_<VarDesc> var_desc(m, "VarDesc", "");
   var_desc
