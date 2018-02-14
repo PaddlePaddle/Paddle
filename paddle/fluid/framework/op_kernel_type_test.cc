@@ -23,7 +23,7 @@ TEST(OpKernelType, ToString) {
   using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
 
-  OpKernelType op_kernel_type(proto::VarType::FP32, CPUPlace(), DataLayout::kNCHW,
+  OpKernelType op_kernel_type(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
                               LibraryType::kCUDNN);
 
   ASSERT_EQ(paddle::framework::KernelTypeToString(op_kernel_type),
@@ -39,9 +39,9 @@ TEST(OpKernelType, Hash) {
   using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
 
-  OpKernelType op_kernel_type_1(proto::VarType::FP32, CPUPlace(), DataLayout::kNCHW,
+  OpKernelType op_kernel_type_1(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
                                 LibraryType::kCUDNN);
-  OpKernelType op_kernel_type_2(proto::VarType::FP32, CUDAPlace(0), DataLayout::kNCHW,
+  OpKernelType op_kernel_type_2(DataType::FP32, CUDAPlace(0), DataLayout::kNCHW,
                                 LibraryType::kCUDNN);
 
   OpKernelType::Hash hasher;
