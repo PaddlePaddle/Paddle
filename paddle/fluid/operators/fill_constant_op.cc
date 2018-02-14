@@ -64,7 +64,7 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::proto::VarType::Type::FP32);
+        .SetDefault(framework::proto::VarType::FP32);
     AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
