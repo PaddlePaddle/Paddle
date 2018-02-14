@@ -68,6 +68,7 @@ __all__ = [
     'layer_norm',
     'softmax_with_cross_entropy',
     'smooth_l1',
+    'one_hot',
 ]
 
 
@@ -3212,3 +3213,34 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
                  'Out': loss},
         attrs={'sigma': sigma})
     return loss
+
+def one_hot(input,
+            depth):
+    """
+    One Hot Operator. This operator creates the one-hot representations for input
+    index values. The following example will help to explain the function of this
+    operator:
+    X is a LoDTensor:
+      X.lod = [[0, 1, 4]]
+      X.shape = [4, 1]
+      X.data = [[1], [1], [3], [0]]
+    set depth = 4
+    Out is a LoDTensor:
+      Out.lod = [[0, 1, 4]]
+      Out.shape = [4, 4]
+      Out.data = [[0., 1., 0., 0.],
+                  [0., 1., 0., 0.],
+                  [0., 0., 0., 1.],
+                  [1., 0., 0., 0.]]
+    )
+    
+    """
+    helper = LayerHelper("one_hot", **locals())
+    one_hot_out = helper.create_tmp_variable(dtype='float32')
+    helper.append_op(
+        type="one_hot",
+        inputs={'X': input},
+        attrs={'depth': depth},
+        outputs={'Out': one_hot_out})
+    return one_hot_out
+
