@@ -55,7 +55,7 @@ class NCCLInitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::proto::DataType::FP32);
+        .SetDefault(framework::proto::VarType::FP32);
     AddComment(R"DOC(
 NCCLInit Operator.
 
