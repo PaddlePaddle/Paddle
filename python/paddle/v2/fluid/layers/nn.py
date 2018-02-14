@@ -3250,4 +3250,3 @@ def one_hot(input, depth):
         attrs={'depth': depth},
         outputs={'Out': one_hot_out})
     return one_hot_out
-
