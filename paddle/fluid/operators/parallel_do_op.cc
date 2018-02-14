@@ -78,7 +78,7 @@ inline void CopyOrShare(const framework::Variable &src,
       dst->GetMutable<LoDTensor>()->ShareDataWith(src.Get<LoDTensor>());
       dst->GetMutable<LoDTensor>()->set_lod(src.Get<LoDTensor>().lod());
     } else {
-      Copy(src.Get<LoDTensor>(), dst_place, dst->GetMutable<LoDTensor>());
+      TensorCopy(src.Get<LoDTensor>(), dst_place, dst->GetMutable<LoDTensor>());
     }
   } else if (src.IsType<SelectedRows>()) {
     auto &src_sr = src.Get<SelectedRows>();
@@ -88,7 +88,7 @@ inline void CopyOrShare(const framework::Variable &src,
       dst_sr->mutable_value()->ShareDataWith(src_sr.value());
       dst_sr->set_rows(src_sr.rows());
     } else {
-      Copy(src_sr.value(), dst_place, dst_sr->mutable_value());
+      TensorCopy(src_sr.value(), dst_place, dst_sr->mutable_value());
     }
   } else {
     PADDLE_THROW("Expect LoDTensor/SelectedRows, get %s", src.Type().name());
@@ -146,7 +146,7 @@ class ParallelDoOp : public framework::OperatorBase {
         auto &place = places[i];
         auto *sub_scope = sub_scopes[i];
         auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
-        framework::Copy(src, place, dst);
+        framework::TensorCopy(src, place, dst);
       }
     }
     WaitOnPlaces(places);
