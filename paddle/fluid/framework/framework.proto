@@ -117,6 +117,7 @@ message VarType {
   required Type type = 1;
 
   message TensorDesc {
+    // Should only be PODType. Is enforced in C++
     required Type data_type = 1;
     repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
   }
