@@ -3214,6 +3214,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
         attrs={'sigma': sigma})
     return loss
 
+
 def one_hot(input, depth):
     """
     One Hot Operator. This operator creates the one-hot representations for input
