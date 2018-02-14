@@ -73,7 +73,7 @@ class SumOp : public framework::OperatorWithKernel {
                         "Sum operator should have at least one tensor");
 
       return framework::OpKernelType(
-          static_cast<framework::proto::DataType>(dtype), ctx.device_context());
+          static_cast<framework::proto::VarType::Type>(dtype), ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
       return framework::OpKernelType(
           framework::ToDataType(
