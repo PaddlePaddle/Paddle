@@ -65,19 +65,19 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
   auto ctx = pool.Get(in.place());
 
   switch (src_type) {
-    case proto::DataType::FP32:
+    case proto::VarType::FP32:
       framework::VisitDataType(dst_type, CastDataType<float>(in, out, ctx));
       break;
-    case proto::DataType::FP64:
+    case proto::VarType::FP64:
       framework::VisitDataType(dst_type, CastDataType<double>(in, out, ctx));
       break;
-    case proto::DataType::INT32:
+    case proto::VarType::INT32:
       framework::VisitDataType(dst_type, CastDataType<int>(in, out, ctx));
       break;
-    case proto::DataType::INT64:
+    case proto::VarType::INT64:
       framework::VisitDataType(dst_type, CastDataType<int64_t>(in, out, ctx));
       break;
-    case proto::DataType::BOOL:
+    case proto::VarType::BOOL:
       framework::VisitDataType(dst_type, CastDataType<bool>(in, out, ctx));
       break;
     default:
