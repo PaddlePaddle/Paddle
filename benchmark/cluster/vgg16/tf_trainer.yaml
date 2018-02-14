@@ -27,10 +27,11 @@ spec:
           value: "32036"
         - name: JOB_NAME
           value: vgg16job
-        - name: TRAINING_ROLE
-          value: "TRAINER"
+        - name: TF_JOB_NAME 
+          value: "worker"
         - name: ENTRY
-          value: "python vgg16_tf.py"
+          #value: "python vgg16_tf.py"
+          value: "python minist_tf.py"
         - name: PSERVERS_NUM
           value: "1"
         - name: BATCH_SIZE

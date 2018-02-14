@@ -25,13 +25,14 @@ spec:
         - name: PORT
           value: "32036"
         - name: ENTRY
-          value: "python vgg16_tf.py"
+          #value: "python vgg16_tf.py"
+          value: "python minist_tf.py"
         - name: JOB_NAME
           value: vgg16job
         - name: PSERVERS_NUM
           value: "1"
-        - name: TRAINING_ROLE
-          value: "PSERVER"
+        - name: TF_JOB_NAME 
+          value: "ps"
         - name: TRAINERS_NUM
           value: "1"
         - name: BATCH_SIZE

@@ -27,8 +27,8 @@ wait_running_pods(){
   stdbuf -oL python /root/k8s_tools.py wait_pods_running ${pserver_label} ${PSERVERS_NUM}
   stdbuf -oL python /root/k8s_tools.py wait_pods_running ${trainer_label} ${TRAINERS_NUM}
 
-  g_pservers=$(python /root/k8s_tools.py fetch_pserver_ips ${pserver_label} ${PORT})
-  g_trainers=$(python /root/k8s_tools.py fetch_trainer_ips ${trainer_label} ${PORT})
+  g_pservers=$(python /root/k8s_tools.py fetch_pserver_ips ${pserver_label} ${PORT} Running)
+  g_trainers=$(python /root/k8s_tools.py fetch_trainer_ips ${trainer_label} ${PORT} Running)
 }
 
 start_tf_pserver(){
@@ -38,7 +38,7 @@ start_tf_pserver(){
   pserver_id=$(python /root/k8s_tools.py fetch_pserver_id ${label})
 
   cmd="${ENTRY} --ps_hosts=${g_pservers} --worker_hosts=${g_trainers} \
-  --training_role=${TRAINING_ROLE} --task_index=${pserver_id}"
+  --job_name=${TF_JOB_NAME} --task_index=${pserver_id}"
 
   stdbuf -oL sh -c "cd ${TRAINER_PACKAGE} && ${cmd}"
 }
@@ -50,14 +50,14 @@ start_tf_trainer(){
   trainer_id=$(python /root/k8s_tools.py fetch_trainer_id ${label})
 
   cmd="${ENTRY} --ps_hosts=${g_pservers} --worker_hosts=${g_trainers} \
-  --training_role=${TRAINING_ROLE} --task_index=${trainer_id} --batch_size=${BATCH_SIZE}"
+  --job_name=${TF_JOB_NAME} --task_index=${trainer_id} --batch_size=${BATCH_SIZE}"
 
   stdbuf -oL sh -c "cd ${TRAINER_PACKAGE} && ${cmd}"
   check_trainer_ret $?
 }
 
 start_tf(){
-    if [[ "${TRAINING_ROLE}" == "TRAINER" ]]; then
+    if [[ "${TF_JOB_NAME}" == "worker" ]]; then
         start_tf_trainer
     else
         start_tf_pserver

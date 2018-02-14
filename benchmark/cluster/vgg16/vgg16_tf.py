@@ -233,7 +233,8 @@ def run_benchmark(cluster_spec, server):
             None, 3, 224, 224)
 
     device = tf.train.replica_device_setter(
-        worker_device="/job:worker/task:{}".format(args.task_index),
+        worker_device="/job:TRAINER/task:{}".format(args.task_index),
+        ps_device="/job:PSERVER/cpu:0",
         cluster=cluster_spec)
 
     with tf.device(device):
@@ -253,8 +254,9 @@ def run_benchmark(cluster_spec, server):
 
         optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        global_step = tf.contrib.framework.get_or_create_global_step()
         with tf.control_dependencies(update_ops):
-            train_op = optimizer.minimize(avg_loss)
+            train_op = optimizer.minimize(avg_loss, global_step=global_step)
 
     # data reader
     train_reader = paddle.batch(
@@ -291,18 +293,18 @@ def run_benchmark(cluster_spec, server):
     config.gpu_options.allow_growth = True
 
     # The StopAtStepHook handles stopping after running given steps.
-    #hooks = [tf.train.StepCounterHook(last_step=1000000)]
+    hooks = [tf.train.StopAtStepHook(last_step=1000000)]
+    init_g = tf.global_variables_initializer()
+    init_l = tf.local_variables_initializer()
 
     #with tf.Session(config=config) as sess:
     with tf.train.MonitoredTrainingSession(
             master=server.target,
             is_chief=(args.task_index == 0),
             checkpoint_dir="/tmp/train_logs",
-            config=config) as sess:
-        #hooks=hooks) as sess:
+            config=config,
+            hooks=hooks) as sess:
         while not sess.should_stop():
-            init_g = tf.global_variables_initializer()
-            init_l = tf.local_variables_initializer()
             sess.run(init_g)
             sess.run(init_l)
             iters, num_samples, start_time = 0, 0, 0.0
