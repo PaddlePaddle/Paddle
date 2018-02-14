@@ -196,7 +196,7 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
         // dy_dx
         ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(
             ctx, &d_y, scale, /*axis*/ 1, MulFunctor<T>(), &temp);
-        framework::Copy(temp, ctx.GetPlace(), ctx.device_context(), d_x);
+        framework::TensorCopy(temp, ctx.GetPlace(), ctx.device_context(), d_x);
 
         // dy_dmean_dx
         row_mean(dev_ctx, temp, &temp_vec);
@@ -208,7 +208,7 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
             ctx, &temp, &temp_norm, /*axis*/ 0, MulFunctor<T>(), &temp);
       } else {
         // dy_dx
-        framework::Copy(d_y, ctx.GetPlace(), ctx.device_context(), d_x);
+        framework::TensorCopy(d_y, ctx.GetPlace(), ctx.device_context(), d_x);
 
         // dy_dmean_dx
         row_mean(dev_ctx, d_y, &temp_vec);

@@ -291,7 +291,7 @@ class RecurrentOp : public RecurrentBase {
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             // Explicit copy output since the local RNN scope can be destroyed
             // early.
-            framework::Copy(src_tensor, place, dev_ctx, &dst_out);
+            framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
           });
 
       scopes.Next();
@@ -378,7 +378,7 @@ class RecurrentGradOp : public RecurrentBase {
           auto *cur_grad_var = cur_scope.Var(cur_grad);
           auto cur_grad_tensor =
               cur_grad_var->GetMutable<framework::LoDTensor>();
-          framework::Copy(ex_tensor, place, dev_ctx, cur_grad_tensor);
+          framework::TensorCopy(ex_tensor, place, dev_ctx, cur_grad_tensor);
         }
       }
 
@@ -452,7 +452,7 @@ class RecurrentGradOp : public RecurrentBase {
             }
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
-            framework::Copy(inside, place, dev_ctx, &dst);
+            framework::TensorCopy(inside, place, dev_ctx, &dst);
           });
       VLOG(5) << "Link outside gradient finished ";
 
@@ -465,7 +465,7 @@ class RecurrentGradOp : public RecurrentBase {
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
               outside->mutable_data(place, inside.type());
-              framework::Copy(inside, place, dev_ctx, outside);
+              framework::TensorCopy(inside, place, dev_ctx, outside);
             });
         VLOG(5) << "Link initialize state gradient finished ";
       }

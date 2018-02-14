@@ -157,8 +157,8 @@ TEST(Operator, CPUtoGPU) {
   auto dev_ctx = pool.Get(cuda_place);
 
   paddle::framework::Tensor output_tensor;
-  Copy(output2->Get<LoDTensor>(), paddle::platform::CPUPlace(), *dev_ctx,
-       &output_tensor);
+  TensorCopy(output2->Get<LoDTensor>(), paddle::platform::CPUPlace(), *dev_ctx,
+             &output_tensor);
 
   dev_ctx->Wait();
   float* output2_ptr = output_tensor.data<float>();
