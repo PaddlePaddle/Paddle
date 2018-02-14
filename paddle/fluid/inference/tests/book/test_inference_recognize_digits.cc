@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
@@ -23,6 +24,9 @@ TEST(inference, recognize_digits) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
 
+  using paddle::platform::Event;
+  using paddle::platform::EventKind;
+
   LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
   std::string dirname = FLAGS_dirname;
 
@@ -30,6 +34,9 @@ TEST(inference, recognize_digits) {
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
   int64_t batch_size = 1;
+
+  // Add a start_event
+  Event start_event1(EventKind::kPushRange, "setup_input", 0, nullptr);
 
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
@@ -45,8 +52,17 @@ TEST(inference, recognize_digits) {
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
+  Event stop_event1(EventKind::kPopRange, "setup_input", 0, nullptr);
+  LOG(INFO) << "Setting up input takes: "
+            << start_event1.CpuElapsedMs(stop_event1) << std::endl;
+
   // Run inference on CPU
+  Event start_event2(EventKind::kPushRange, "run_inference", 0, nullptr);
   TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
+  Event stop_event2(EventKind::kPopRange, "run_inference", 0, nullptr);
+  LOG(INFO) << "Running inference: " << start_event2.CpuElapsedMs(stop_event2)
+            << std::endl;
+
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
