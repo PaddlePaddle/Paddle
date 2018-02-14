@@ -65,7 +65,8 @@ class OneHotCUDAKernel : public framework::OpKernel<T> {
     int depth = context.Attr<int>("depth");
 
     framework::VisitDataType(
-        static_cast<framework::proto::DataType>(context.Attr<int>("dtype")),
+        static_cast<framework::proto::VarType::Type>(
+            context.Attr<int>("dtype")),
         OneHotOpCUDAFunctor<DeviceContext, T>(
             in, out, depth, context.template device_context<DeviceContext>()));
   }
