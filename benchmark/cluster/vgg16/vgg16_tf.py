@@ -62,7 +62,7 @@ parser.add_argument(
     default="",
     help="Comma-separated list of hostname:port pairs")
 parser.add_argument(
-    "--training_role", type=str, default="", help="One of 'TRAINER', 'PSERVER'")
+    "--job_name", type=str, default="", help="One of 'worker', 'ps'")
 # Flags for defining the tf.train.Server
 parser.add_argument(
     "--task_index", type=int, default=0, help="Index of task within the job")
@@ -233,8 +233,7 @@ def run_benchmark(cluster_spec, server):
             None, 3, 224, 224)
 
     device = tf.train.replica_device_setter(
-        worker_device="/job:TRAINER/task:{}".format(args.task_index),
-        ps_device="/job:PSERVER/cpu:0",
+        worker_device="/job:worker/task:{}".format(args.task_index),
         cluster=cluster_spec)
 
     with tf.device(device):
@@ -254,9 +253,14 @@ def run_benchmark(cluster_spec, server):
 
         optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        global_step = tf.contrib.framework.get_or_create_global_step()
+        global_step = tf.Variable(0)
+        #global_step = tf.contrib.framework.get_or_create_global_step()
         with tf.control_dependencies(update_ops):
             train_op = optimizer.minimize(avg_loss, global_step=global_step)
+
+        saver = tf.train.Saver()
+        summary_op = tf.summary.merge_all()
+        init_op = tf.initialize_all_variables()
 
     # data reader
     train_reader = paddle.batch(
@@ -292,47 +296,64 @@ def run_benchmark(cluster_spec, server):
         intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
     config.gpu_options.allow_growth = True
 
+    # Create a "supervisor", which oversees the training process.
+    sv = tf.train.Supervisor(
+        is_chief=(args.task_index == 0),
+        logdir="/tmp/train_logs",
+        init_op=init_op,
+        summary_op=summary_op,
+        saver=saver,
+        global_step=global_step,
+        save_model_secs=600)
+
     # The StopAtStepHook handles stopping after running given steps.
-    hooks = [tf.train.StopAtStepHook(last_step=1000000)]
-    init_g = tf.global_variables_initializer()
-    init_l = tf.local_variables_initializer()
+    #hooks = [tf.train.StopAtStepHook(last_step=1000000)]
+    #init_g = tf.global_variables_initializer()
+    #init_l = tf.local_variables_initializer()
 
     #with tf.Session(config=config) as sess:
-    with tf.train.MonitoredTrainingSession(
-            master=server.target,
-            is_chief=(args.task_index == 0),
-            checkpoint_dir="/tmp/train_logs",
-            config=config,
-            hooks=hooks) as sess:
-        while not sess.should_stop():
-            sess.run(init_g)
-            sess.run(init_l)
-            iters, num_samples, start_time = 0, 0, 0.0
-            for pass_id in range(args.num_passes):
-                # train
-                num_samples = 0
-                start_time = time.time()
-                for batch_id, data in enumerate(train_reader()):
-                    train_images = np.array(
-                        map(lambda x: np.transpose(x[0].reshape(raw_shape),
-                        axes=[1, 2, 0]) if args.data_format == 'NHWC' else x[0], data)).astype("float32")
-                    train_labels = np.array(map(lambda x: x[1], data)).astype(
-                        'int64')
-                    _, loss, acc = sess.run([train_op, avg_loss, accuracy],
-                                            feed_dict={
-                                                images: train_images,
-                                                labels: train_labels,
-                                                is_training: True
-                                            })
-                    iters += 1
-                    print("Pass = %d, Iters = %d, Loss = %f, Accuracy = %f" %
-                          (pass_id, iters, loss, acc))
-                    num_samples += len(data)
-                train_elapsed = time.time() - start_time
-                # test
-                pass_test_acc = test()
-                print("Pass = %d, Train speed = %f imgs/s, Test accuracy = %f\n"
-                      % (pass_id, num_samples / train_elapsed, pass_test_acc))
+    #with tf.train.MonitoredTrainingSession(
+    #        master=server.target,
+    #        is_chief=(args.task_index == 0),
+    #        checkpoint_dir="/tmp/train_logs",
+    #        config=config,
+    #        hooks=hooks) as sess:
+    with sv.managed_session(server.target) as sess:
+        #step = 0
+        #while not sv.should_stop():
+        #sess.run(init_g)
+        #sess.run(init_l)
+        iters, num_samples, start_time = 0, 0, 0.0
+        for pass_id in range(args.num_passes):
+            # train
+            num_samples = 0
+            start_time = time.time()
+            for batch_id, data in enumerate(train_reader()):
+                iter_begin_time = time.time()
+                train_images = np.array(
+                    map(lambda x: np.transpose(x[0].reshape(raw_shape),
+                    axes=[1, 2, 0]) if args.data_format == 'NHWC' else x[0], data)).astype("float32")
+                train_labels = np.array(map(lambda x: x[1], data)).astype(
+                    'int64')
+                _, loss, acc = sess.run([train_op, avg_loss, accuracy],
+                                        feed_dict={
+                                            images: train_images,
+                                            labels: train_labels,
+                                            is_training: True
+                                        })
+                iters += 1
+                print(
+                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, speed=%.2f imgs/sec"
+                    % (pass_id, iters, loss, acc,
+                       len(data) / (time.time() - iter_begin_time)))
+                num_samples += len(data)
+            train_elapsed = time.time() - start_time
+            # test
+            pass_test_acc = test()
+            print("Pass = %d, Train speed = %f imgs/s, Test accuracy = %f\n" %
+                  (pass_id, num_samples / train_elapsed, pass_test_acc))
+
+    sv.stop()
 
 
 def print_arguments():
@@ -350,17 +371,17 @@ if __name__ == '__main__':
 
     # Create a cluster from the parameter server and worker hosts.
     cluster_spec = tf.train.ClusterSpec({
-        "PSERVER": ps_hosts,
-        "TRAINER": worker_hosts
+        "ps": ps_hosts,
+        "worker": worker_hosts
     })
 
     # Create and start a server for the local task.
     server = tf.train.Server(
-        cluster_spec, job_name=args.training_role, task_index=args.task_index)
+        cluster_spec, job_name=args.job_name, task_index=args.task_index)
 
-    if args.training_role == "PSERVER":
+    if args.job_name == "ps":
         print("start pserver")
         server.join()
-    elif args.training_role == "TRAINER":
+    elif args.job_name == "worker":
         print("start worker")
         run_benchmark(cluster_spec, server)

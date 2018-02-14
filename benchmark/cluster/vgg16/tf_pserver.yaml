@@ -25,8 +25,8 @@ spec:
         - name: PORT
           value: "32036"
         - name: ENTRY
-          #value: "python vgg16_tf.py"
-          value: "python minist_tf.py"
+          value: "python vgg16_tf.py"
+          #value: "python minist_tf.py"
         - name: JOB_NAME
           value: vgg16job
         - name: PSERVERS_NUM
