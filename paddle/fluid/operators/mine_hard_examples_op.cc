@@ -67,7 +67,8 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
     auto out_match_indices =
         ctx.Output<framework::Tensor>("UpdatedMatchIndices");
 
-    framework::Copy(*in_matched_indices, ctx.GetPlace(), out_match_indices);
+    framework::TensorCopy(*in_matched_indices, ctx.GetPlace(),
+                          out_match_indices);
 
     int batch_size = in_matched_indices->dims()[0];
     int prior_num = in_matched_indices->dims()[1];

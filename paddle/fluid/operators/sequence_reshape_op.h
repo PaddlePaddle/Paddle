@@ -61,7 +61,7 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::Copy(*in, context.GetPlace(), out);
+    framework::TensorCopy(*in, context.GetPlace(), out);
     out->Resize({static_cast<int64_t>(out->lod()[0].back()), out_width});
   }
 };
@@ -77,7 +77,7 @@ class SequenceReshapeGradKernel : public framework::OpKernel<T> {
         context.Output<LoDTensor>(framework::GradVarName("X"));
 
     xg_tensor_ptr->mutable_data<T>(context.GetPlace());
-    framework::Copy(*outg_tensor_ptr, context.GetPlace(), xg_tensor_ptr);
+    framework::TensorCopy(*outg_tensor_ptr, context.GetPlace(), xg_tensor_ptr);
     xg_tensor_ptr->Resize(x_tensor_ptr->dims());
   }
 };

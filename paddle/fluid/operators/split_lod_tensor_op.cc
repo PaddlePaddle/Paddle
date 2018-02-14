@@ -55,7 +55,8 @@ class SplitLoDTensorOp : public framework::OperatorBase {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #ifdef PADDLE_WITH_CUDA
-      framework::Copy(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
+      framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx,
+                            cpu_mask.get());
 #else
       PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
 #endif
@@ -113,9 +114,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
         // out[offset: offset+len] = x[each_range.begin: each_range.end]
         auto slice = out->Slice(static_cast<int>(offset),
                                 static_cast<int>(offset + len));
-        framework::Copy(x.Slice(static_cast<int>(each_range.begin),
-                                static_cast<int>(each_range.end)),
-                        x.place(), dev_ctx, &slice);
+        framework::TensorCopy(x.Slice(static_cast<int>(each_range.begin),
+                                      static_cast<int>(each_range.end)),
+                              x.place(), dev_ctx, &slice);
         offset += len;
       }
     }
