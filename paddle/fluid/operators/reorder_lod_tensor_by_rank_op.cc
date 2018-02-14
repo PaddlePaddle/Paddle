@@ -170,7 +170,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
-    framework::Copy(x_sliced, out_sliced.place(), dev_ctx, &out_sliced);
+    framework::TensorCopy(x_sliced, out_sliced.place(), dev_ctx, &out_sliced);
     out_offset += len;
     return out_offset;
   }

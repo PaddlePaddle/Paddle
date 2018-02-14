@@ -64,7 +64,6 @@ class ThreadPool {
     Task task([fn]() -> std::unique_ptr<platform::EnforceNotMet> {
       try {
         fn();
-        return nullptr;
       } catch (platform::EnforceNotMet ex) {
         return std::unique_ptr<platform::EnforceNotMet>(
             new platform::EnforceNotMet(ex));
@@ -73,6 +72,7 @@ class ThreadPool {
             << "Unexpected exception is catched in thread pool. All "
                "throwable exception in Fluid should be an EnforceNotMet.";
       }
+      return nullptr;
     });
     std::future<std::unique_ptr<platform::EnforceNotMet>> f = task.get_future();
     tasks_.push(std::move(task));

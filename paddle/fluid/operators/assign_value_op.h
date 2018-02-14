@@ -41,7 +41,7 @@ class AssignValueKernel : public framework::OpKernel<T> {
         break;
     }
     auto values = ctx.Attr<std::vector<T>>(value_name);
-    framework::CopyFromVector(values, ctx.device_context(), out);
+    framework::TensorFromVector(values, ctx.device_context(), out);
     out->Resize(framework::make_ddim(shape));
   }
 };
