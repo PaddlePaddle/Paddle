@@ -117,7 +117,7 @@ message VarType {
   required Type type = 1;
 
   message TensorDesc {
-    required DataType data_type = 1;
+    required Type data_type = 1;
     repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
   }
   optional TensorDesc selected_rows = 2;
