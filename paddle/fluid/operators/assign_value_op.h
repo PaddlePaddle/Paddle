@@ -30,10 +30,10 @@ class AssignValueKernel : public framework::OpKernel<T> {
     int dtype = ctx.Attr<int>("dtype");
     const char* value_name = nullptr;
     switch (dtype) {
-      case framework::proto::DataType::INT32:
+      case framework::proto::VarType::Type::INT32:
         value_name = "int32_values";
         break;
-      case framework::proto::DataType::FP32:
+      case framework::proto::VarType::Type::FP32:
         value_name = "fp32_values";
         break;
       default:
