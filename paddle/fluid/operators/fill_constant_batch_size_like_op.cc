@@ -65,7 +65,7 @@ class FillConstantBatchSizeLikeOpMaker
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::proto::VarType::Type::FP32);
+        .SetDefault(framework::proto::VarType::FP32);
     AddInput("Input",
              "(Tensor) Tensor "
              "whose dim_idx th dimension is used to specify the batch_size");
