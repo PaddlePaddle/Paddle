@@ -13,7 +13,7 @@ AddInput(kParameters, "Parameters are duplicated over different devices")
 AddInput(kPlaces, "Devices used for parallel processing");
 AddOutput(kOutputs, "Outputs needed to be merged from different devices").AsDuplicable();
 AddOutput(kParallelScopes,
-          "Container for all local variables in forward pass.");
+          "Scopes for all local variables in forward pass. One scope for each device");
 AddAttr<framework::BlockDesc *>(kParallelBlock,
                                 "List of operaters to be executed in parallel");
 ```
@@ -33,6 +33,7 @@ In the backward pass
   ||||   Compute backward pass in parallel
   |      accumulate param@grad from different devices to the first device
   |      Merge input@grad from different devices
+  |      Copy param@grad to the place of parallel_do_op
 ```
 
 This implementation allows to write mixed device program like this
@@ -47,7 +48,7 @@ pd = ParallelDo(gpu_places)
 with pd.do():
     read_input(feature)
     prediction = my_net(feature)
-    write_output(activation)
+    write_output(prediction)
 prediction = pd()
 loss = cross_entropy(prediction, label)
 ```
@@ -98,7 +99,7 @@ looks like this.
 ```python
 pd = ParallelDo(gpu_places)
 with pd.do():
-    feature = pre_fetch(gpu_places)
+    feature = get_data_from_prefetch_queue(gpu_places)
     prediction = my_net(feature)
     write_output(activation)
 ```
