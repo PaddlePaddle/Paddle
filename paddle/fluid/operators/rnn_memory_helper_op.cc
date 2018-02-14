@@ -66,7 +66,7 @@ class RNNMemoryHelperOpInfoMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::proto::DataType::FP32);
+        .SetDefault(framework::proto::VarType::Type::FP32);
     AddComment("");
   }
 };
@@ -126,7 +126,7 @@ class RNNMemoryHelperGradOpInfoMaker
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::proto::DataType::FP32);
+        .SetDefault(framework::proto::VarType::Type::FP32);
     AddComment("");
   }
 };
