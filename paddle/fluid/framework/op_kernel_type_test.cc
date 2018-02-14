@@ -18,12 +18,12 @@ limitations under the License. */
 
 TEST(OpKernelType, ToString) {
   using OpKernelType = paddle::framework::OpKernelType;
-  using DataType = paddle::framework::proto::DataType;
+  using DataType = paddle::framework::proto::VarType::Type;
   using CPUPlace = paddle::platform::CPUPlace;
   using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
 
-  OpKernelType op_kernel_type(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
+  OpKernelType op_kernel_type(proto::VarType::FP32, CPUPlace(), DataLayout::kNCHW,
                               LibraryType::kCUDNN);
 
   ASSERT_EQ(paddle::framework::KernelTypeToString(op_kernel_type),
@@ -33,15 +33,15 @@ TEST(OpKernelType, ToString) {
 
 TEST(OpKernelType, Hash) {
   using OpKernelType = paddle::framework::OpKernelType;
-  using DataType = paddle::framework::proto::DataType;
+  using DataType = paddle::framework::proto::VarType::Type;
   using CPUPlace = paddle::platform::CPUPlace;
   using CUDAPlace = paddle::platform::CUDAPlace;
   using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
 
-  OpKernelType op_kernel_type_1(DataType::FP32, CPUPlace(), DataLayout::kNCHW,
+  OpKernelType op_kernel_type_1(proto::VarType::FP32, CPUPlace(), DataLayout::kNCHW,
                                 LibraryType::kCUDNN);
-  OpKernelType op_kernel_type_2(DataType::FP32, CUDAPlace(0), DataLayout::kNCHW,
+  OpKernelType op_kernel_type_2(proto::VarType::FP32, CUDAPlace(0), DataLayout::kNCHW,
                                 LibraryType::kCUDNN);
 
   OpKernelType::Hash hasher;
