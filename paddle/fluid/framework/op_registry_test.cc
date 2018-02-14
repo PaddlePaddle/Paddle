@@ -226,7 +226,7 @@ class OpWithKernelTest : public OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(proto::DataType::FP32, ctx.device_context());
+    return framework::OpKernelType(proto::VarType::FP32, ctx.device_context());
   }
 };
 
@@ -291,7 +291,7 @@ class OpWithMultiKernelTest : public OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        proto::DataType::FP32, platform::CUDAPlace(0), DataLayout::kAnyLayout,
+        proto::VarType::FP32, platform::CUDAPlace(0), DataLayout::kAnyLayout,
         framework::LibraryType::kCUDNN);
   }
 };
