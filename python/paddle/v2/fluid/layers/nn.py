@@ -3241,7 +3241,6 @@ def one_hot(input,
         type="one_hot",
         inputs={'X': input},
         attrs={'depth': depth},
-        outputs={'Out': one_hot_out}
-        )
+        outputs={'Out': one_hot_out})
     return one_hot_out
 
