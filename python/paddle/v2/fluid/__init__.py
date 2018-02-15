@@ -34,7 +34,8 @@ from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace
 from distribute_transpiler import DistributeTranspiler
 from distribute_transpiler_simple import SimpleDistributeTranspiler
-from concurrency import Go
+from concurrency import (Go, make_channel, channel_send, channel_recv,
+                         channel_close)
 import clip
 from memory_optimization_transpiler import memory_optimize
 import profiler
