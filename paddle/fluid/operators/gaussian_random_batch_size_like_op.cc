@@ -26,7 +26,7 @@ class GaussianRandomBatchSizeLikeOp : public BatchSizeLikeOp {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        static_cast<framework::proto::DataType>(ctx.Attr<int>("dtype")),
+        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
 };
@@ -53,7 +53,7 @@ class GaussianRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
     AddAttr<int>("dtype",
                  "(int, default 5(FP32)) "
                  "Output data type.")
-        .SetDefault(framework::proto::DataType::FP32);
+        .SetDefault(framework::proto::VarType::FP32);
 
     AddComment(R"DOC(
 GaussianRandom Operator.
