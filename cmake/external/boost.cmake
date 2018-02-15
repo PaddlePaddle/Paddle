@@ -15,9 +15,16 @@
 include(ExternalProject)
 
 set(BOOST_PROJECT       "extern_boost")
+# To release PaddlePaddle as a pip package, we have to follow the
+# manylinux1 standard, which features as old Linux kernels and
+# compilers as possible and recommends CentOS 5. Indeed, the earliest
+# CentOS version that works with NVIDIA CUDA is CentOS 6.  And a new
+# version of boost, say, 1.66.0, doesn't build on CentOS 6.  We
+# checked that the devtools package of CentOS 6 installs boost 1.41.0.
+# So we use 1.41.0 here.
 set(BOOST_VER           "1.41.0")
 set(BOOST_TAR           "boost_1_41_0")
-set(BOOST_URL           "http://sourceforge.net/projects/boost/files/boost/${BOOST_VER}/${BOOST_TAR}.tar.gz")
+set(BOOST_URL           "http://paddlepaddledeps.s3-website-us-west-1.amazonaws.com/${BOOST_TAR}.tar.gz")
 set(BOOST_SOURCES_DIR ${THIRD_PARTY_PATH}/boost)
 set(BOOST_DOWNLOAD_DIR  "${BOOST_SOURCES_DIR}/src/${BOOST_PROJECT}")
 set(BOOST_INCLUDE_DIR "${BOOST_DOWNLOAD_DIR}/${BOOST_TAR}" CACHE PATH "boost include directory." FORCE)
