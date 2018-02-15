@@ -248,7 +248,11 @@ class OpTest(unittest.TestCase):
 
         return feed_map
 
-    def check_output_with_place(self, place, atol):
+    def calc_output(self, place):
+        outs, _ = self._calc_output(place)
+        return outs
+
+    def _calc_output(self, place):
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
         program = Program()
@@ -281,7 +285,10 @@ class OpTest(unittest.TestCase):
                        feed=feed_map,
                        fetch_list=fetch_list,
                        return_numpy=False)
+        return outs, fetch_list
 
+    def check_output_with_place(self, place, atol):
+        outs, fetch_list = self._calc_output(place)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
@@ -339,6 +346,15 @@ class OpTest(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_output_with_place(place, atol)
+
+    def check_output_customized(self, checker):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            outs = self.calc_output(place)
+            outs = [np.array(out) for out in outs]
+            checker(outs)
 
     def __assert_is_close(self, numeric_grads, analytic_grads, names,
                           max_relative_error, msg_prefix):

@@ -13,42 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fill_constant_batch_size_like_op.h"
+#include "paddle/fluid/operators/batch_size_like.h"
 
 namespace paddle {
 namespace operators {
 
-class FillConstantBatchSizeLikeOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput("Input"),
-        "Input(Input) of FillConstantBatchSizeLikeOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of FillConstantBatchSizeLikeOp should not be null.");
-
-    auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    PADDLE_ENFORCE_GT(shape.size(), 0);
-    std::vector<int64_t> shape_int64(shape.size(), 0);
-    std::transform(shape.begin(), shape.end(), shape_int64.begin(),
-                   [](int a) { return static_cast<int64_t>(a); });
-    auto output_dim = framework::make_ddim(shape_int64);
-
-    int input_dim_idx = ctx->Attrs().Get<int>("input_dim_idx");
-    PADDLE_ENFORCE_GE(input_dim_idx, 0);
-    PADDLE_ENFORCE_GT(ctx->GetInputDim("Input").size(), input_dim_idx);
-
-    int output_dim_idx = ctx->Attrs().Get<int>("output_dim_idx");
-    PADDLE_ENFORCE_GE(output_dim_idx, 0);
-    PADDLE_ENFORCE_GT(static_cast<int>(shape.size()), output_dim_idx);
-
-    output_dim[output_dim_idx] = ctx->GetInputDim("Input")[input_dim_idx];
-    ctx->SetOutputDim("Out", output_dim);
-  }
-
+class FillConstantBatchSizeLikeOp : public BatchSizeLikeOp {
  protected:
+  using BatchSizeLikeOp::BatchSizeLikeOp;
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
@@ -57,11 +29,10 @@ class FillConstantBatchSizeLikeOp : public framework::OperatorWithKernel {
   }
 };
 
-class FillConstantBatchSizeLikeOpMaker
-    : public framework::OpProtoAndCheckerMaker {
+class FillConstantBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
  public:
   FillConstantBatchSizeLikeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+      : BatchSizeLikeOpMaker(proto, op_checker) {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
