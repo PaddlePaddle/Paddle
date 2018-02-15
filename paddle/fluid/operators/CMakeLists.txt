@@ -176,6 +176,20 @@ op_library(pool_op SRCS pool_op.cc DEPS pooling)
 op_library(conv_transpose_op SRCS conv_transpose_op.cc DEPS vol2col)
 endif()
 
+cc_library(batch_size_like SRCS batch_size_like.cc DEPS op_registry)
+
+op_library(fill_constant_batch_size_like_op
+  SRCS fill_constant_batch_size_like_op.cc fill_constant_batch_size_like_op.cu.cc
+  DEPS batch_size_like)
+
+op_library(uniform_random_batch_size_like_op
+  SRCS uniform_random_batch_size_like_op.cc
+  DEPS batch_size_like uniform_random_op)
+
+op_library(gaussian_random_batch_size_like_op
+  SRCS gaussian_random_batch_size_like_op.cc
+  DEPS batch_size_like gaussian_random_op)
+
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)

@@ -66,6 +66,9 @@ __all__ = [
     'logical_xor',
     'logical_not',
     'uniform_random',
+    'uniform_random_batch_size_like',
+    'gaussian_random',
+    'gaussian_random_batch_size_like',
     'cumsum',
 ] + __activations__
 
