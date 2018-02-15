@@ -234,7 +234,6 @@ def _callback_lookup_(op):
                         "ncclInit",
                         {"parallel_scopes": self.parallel_scopes_name},
                         {"Communicator": ['nccl_com__do_not_change_']}, {})
-                    print(serialize_op_decs(op_desc))
                     block.program.global_block().desc.append_op().copy_from(
                         op_desc)
                     self.has_inserted_nccl_init = True
@@ -285,9 +284,7 @@ def _append_backward_ops_(block,
             val(str): corresponding forward variable name
         callback(callable object): a callable object used to decorate new generated grad ops
     """
-    if callbacks is None:
-        callbacks = []
-    else:
+    if callbacks is not None:
         assert (isinstance(callbacks, list))
         for cb in callbacks:
             if not hasattr(cb, '__call__'):
@@ -302,12 +299,17 @@ def _append_backward_ops_(block,
         if op.has_attr("sub_block"):
             sub_block = program.block(op.block_attr("sub_block"))
             grad_sub_block = program.create_block(parent_idx=sub_block.idx)
-            if callbacks is None:
-                callbacks = [_callback_lookup_(op)]
+            cb = _callback_lookup_(op)
+            if cb is not None:
+                if callbacks is None:
+                    new_callbacks = [cb]
+                else:
+                    new_callbacks = callbacks + [_callback_lookup_(op)]
+                _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+                                      no_grad_dict, grad_to_var, new_callbacks)
             else:
-                callbacks.append(_callback_lookup_(op))
-            _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
-                                  no_grad_dict, grad_to_var, callbacks)
+                _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+                                      no_grad_dict, grad_to_var, callbacks)
             grad_sub_block_list.append(grad_sub_block.desc)
 
         # Getting op's corresponding grad_op
@@ -327,8 +329,10 @@ def _append_backward_ops_(block,
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
         grad_to_var["__current_op_desc__"] = new_op_desc
-        for cb in callbacks:
-            cb(block=target_block, context=grad_to_var)
+        if callbacks is not None:
+            assert (isinstance(callbacks, list))
+            for cb in callbacks:
+                cb(block=target_block, context=grad_to_var)
 
 
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
@@ -408,7 +412,8 @@ def _get_stop_gradients_(program):
     return no_grad_dict
 
 
-def append_backward(loss, parameter_list=None, no_grad_set=None, callback=None):
+def append_backward(loss, parameter_list=None, no_grad_set=None,
+                    callbacks=None):
     """
     Append backward part to main_program
 
@@ -424,6 +429,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None, callback=None):
         (list[(Variable,Variable)]): list of (parameter, gradient) pair.
     """
     assert isinstance(loss, framework.Variable)
+    if callbacks is not None:
+        isinstance(callbacks, list)
 
     program = loss.block.program
     if no_grad_set is None:
@@ -451,7 +458,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None, callback=None):
     no_grad_dict[0].update(map(_append_grad_suffix_, block_no_grad_set))
 
     _append_backward_ops_(root_block, op_path, root_block, no_grad_dict,
-                          grad_to_var, callback)
+                          grad_to_var, callbacks)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
