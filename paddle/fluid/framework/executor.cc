@@ -126,6 +126,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     platform::RecordEvent record_event(op->Type(), pool.Get(place_));
 
     op->Run(*local_scope, place_);
+    // Wait current device context.
     VLOG(3) << op->DebugStringEx(local_scope);
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
