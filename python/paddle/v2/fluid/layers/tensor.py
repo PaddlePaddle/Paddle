@@ -17,7 +17,7 @@ from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
-from ..core import DataType
+from ..core import VarDesc
 import numpy
 
 __all__ = [
@@ -199,10 +199,10 @@ def assign(input, output):
             attrs={'scale': 1.0})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == DataType.FP32:
+        if dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
-        elif dtype == DataType.INT32:
+        elif dtype == VarDesc.VarType.INT32:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
         else:
