@@ -236,7 +236,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     Args:
         shape(tuple|list|None): Shape of the output tensor.
-        dtype(np.dtype|core.DataType|str): Data type of the output tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor.
         value(float): The constant value used to initialize the output tensor.
         out(Variable): The output tensor.
         force_cpu(True|False): data should be on CPU if set true.
@@ -285,7 +285,7 @@ def fill_constant_batch_size_like(input,
     Args:
         input(Variable): Tensor whose dimensions will be used to get batch size
         shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
         value(float): Constant value to initialize the output tensor
         input_dim_idx(int): Index of input's batch size dimension
         output_dim_idx(int): Index of output's batch size dimension
@@ -327,7 +327,7 @@ def ones(shape, dtype, force_cpu=False):
 
     Args:
         shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
 
     Returns:
         Variable: The tensor variable storing the output
@@ -351,7 +351,7 @@ def zeros(shape, dtype, force_cpu=False):
 
     Args:
         shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
 
     Returns:
         Variable: The tensor variable storing the output
