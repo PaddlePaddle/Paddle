@@ -67,7 +67,6 @@ class CompareOpKernel
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Input<Tensor>("Y");
     auto* z = context.Output<Tensor>("Out");
-    z->mutable_data<T>(context.GetPlace());
     int axis = context.Attr<int>("axis");
     ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, axis,
                                                           Functor(), z);
