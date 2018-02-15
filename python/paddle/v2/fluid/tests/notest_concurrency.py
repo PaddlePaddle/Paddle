@@ -22,10 +22,10 @@ class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
         ch = fluid.make_channel(dtype=bool)
         with fluid.Go():
-            fluid.send(ch, True)
+            fluid.channel_send(ch, True)
 
-        result = fluid.recv(ch)
-        fluid.close_channel(ch)
+        result = fluid.channel_recv(ch)
+        fluid.channel_close(ch)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
