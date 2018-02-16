@@ -23,8 +23,7 @@ set(BOOST_PROJECT       "extern_boost")
 # checked that the devtools package of CentOS 6 installs boost 1.41.0.
 # So we use 1.41.0 here.
 set(BOOST_VER           "1.41.0")
-set(BOOST_TAR           "boost_1_41_0")
-set(BOOST_URL           "http://paddlepaddledeps.s3-website-us-west-1.amazonaws.com/${BOOST_TAR}.tar.gz")
+set(BOOST_URL           "https://github.com/boostorg/boost")
 set(BOOST_SOURCES_DIR ${THIRD_PARTY_PATH}/boost)
 set(BOOST_DOWNLOAD_DIR  "${BOOST_SOURCES_DIR}/src/${BOOST_PROJECT}")
 set(BOOST_INCLUDE_DIR "${BOOST_DOWNLOAD_DIR}/${BOOST_TAR}" CACHE PATH "boost include directory." FORCE)
@@ -36,8 +35,7 @@ ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${BOOST_URL} -c -q -O ${BOOST_TAR}.tar.gz
-                          && tar zxf ${BOOST_TAR}.tar.gz
+    DOWNLOAD_COMMAND      git clone --branch boost-${BOOST_VER} ${BOOST_URL}
     DOWNLOAD_NO_PROGRESS  1
     PREFIX                ${BOOST_SOURCES_DIR}
     CONFIGURE_COMMAND     ""
