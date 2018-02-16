@@ -28,8 +28,8 @@ using Tensor = framework::Tensor;
 
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
-inline int OutputSize(int input_size, int filter_size, int dilation,
-                      int padding, int stride) {
+inline int ConvOutputSize(int input_size, int filter_size, int dilation,
+                          int padding, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
   const int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
   return output_size;
