@@ -1,16 +1,16 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-Indicesou may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   Indicesou may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+   http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
@@ -98,16 +98,16 @@ class DetectionOutputKernel : public framework::OpKernel<T> {
     T* conf_data = conf_tensor.data<T>();
     if (platform::is_gpu_place(context.GetPlace())) {
       loc_cpu.mutable_data<T>(loc_tensor.dims(), platform::CPUPlace());
-      framework::Copy(loc_tensor, platform::CPUPlace(),
-                      context.device_context(), &loc_cpu);
+      framework::TensorCopy(loc_tensor, platform::CPUPlace(),
+                            context.device_context(), &loc_cpu);
       loc_data = loc_cpu.data<T>();
       conf_cpu.mutable_data<T>(conf_tensor.dims(), platform::CPUPlace());
-      framework::Copy(conf_tensor, platform::CPUPlace(),
-                      context.device_context(), &conf_cpu);
+      framework::TensorCopy(conf_tensor, platform::CPUPlace(),
+                            context.device_context(), &conf_cpu);
       conf_data = conf_cpu.data<T>();
       priorbox_cpu.mutable_data<T>(in_priorbox->dims(), platform::CPUPlace());
-      framework::Copy(*in_priorbox, platform::CPUPlace(),
-                      context.device_context(), &priorbox_cpu);
+      framework::TensorCopy(*in_priorbox, platform::CPUPlace(),
+                            context.device_context(), &priorbox_cpu);
       priorbox_data = priorbox_cpu.data<T>();
     }
     // get decode bboxes
@@ -158,8 +158,8 @@ class DetectionOutputKernel : public framework::OpKernel<T> {
                                 batch_size, all_indices, all_decoded_bboxes,
                                 out_data);
     if (platform::is_gpu_place(context.GetPlace())) {
-      framework::Copy(out_cpu, platform::CUDAPlace(), context.device_context(),
-                      out);
+      framework::TensorCopy(out_cpu, platform::CUDAPlace(),
+                            context.device_context(), out);
     }
   }
 };

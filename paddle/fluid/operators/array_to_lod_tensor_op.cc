@@ -112,8 +112,8 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
             platform::DeviceContextPool::Instance();
         auto &dev_ctx = *pool.Get(place);
 
-        framework::Copy(x[x_idx].Slice(start_offset, end_offset), place,
-                        dev_ctx, &slice);
+        framework::TensorCopy(x[x_idx].Slice(start_offset, end_offset), place,
+                              dev_ctx, &slice);
         out_offset += len;
       }
     }
