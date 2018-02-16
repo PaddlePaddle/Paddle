@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-int OutputSizePool(int input_size, int filter_size, int padding, int stride) {
+int PoolOutputSize(int input_size, int filter_size, int padding, int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;
 }
@@ -55,7 +55,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
   for (size_t i = 0; i < ksize.size(); ++i) {
     output_shape.push_back(
-        OutputSizePool(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
+        PoolOutputSize(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   ctx->ShareLoD("X", "Out");
