@@ -112,6 +112,7 @@ message VarType {
     LOD_TENSOR_ARRAY = 13;
     PLACE_LIST = 14;
     READER = 15;
+    CHANNEL = 16;
   }
 
   required Type type = 1;
