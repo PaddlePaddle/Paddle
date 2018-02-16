@@ -80,13 +80,14 @@ class VarDesc {
 
   std::vector<std::vector<int64_t>> GetShapes() const;
 
-  void SetDataType(proto::DataType data_type);
+  void SetDataType(proto::VarType::Type data_type);
 
-  void SetDataTypes(const std::vector<proto::DataType> &multiple_data_type);
+  void SetDataTypes(
+      const std::vector<proto::VarType::Type> &multiple_data_type);
 
-  proto::DataType GetDataType() const;
+  proto::VarType::Type GetDataType() const;
 
-  std::vector<proto::DataType> GetDataTypes() const;
+  std::vector<proto::VarType::Type> GetDataTypes() const;
 
   void SetLoDLevel(int32_t lod_level);
 

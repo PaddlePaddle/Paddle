@@ -62,6 +62,7 @@ limitations under the License. */
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 
 namespace paddle {
+namespace platform {
 
 // Use PADDLE_ALIGNED(2) to ensure that each float16 will be allocated
 // and aligned at least on a 2-byte boundary, which leads to efficient
@@ -71,11 +72,21 @@ struct PADDLE_ALIGN(2) float16 {
  public:
   uint16_t x;
 
-  // Constructors
-  HOSTDEVICE inline float16() : x(0) {}
+  // The following defaulted special class member functions
+  // are added to make float16 pass the std::is_trivial test
+  HOSTDEVICE inline float16() = default;
 
-  HOSTDEVICE inline float16(const float16& h) : x(h.x) {}
+  HOSTDEVICE inline float16(const float16&) = default;
 
+  HOSTDEVICE inline float16& operator=(const float16&) = default;
+
+  HOSTDEVICE inline float16(float16&&) = default;
+
+  HOSTDEVICE inline float16& operator=(float16&&) = default;
+
+  HOSTDEVICE inline ~float16() = default;
+
+// Constructors
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline explicit float16(const half& h) {
 #if CUDA_VERSION >= 9000
@@ -135,11 +146,6 @@ struct PADDLE_ALIGN(2) float16 {
   template <class T>
   HOSTDEVICE inline explicit float16(const T& val)
       : x(float16(static_cast<float>(val)).x) {}
-
-  HOSTDEVICE inline float16& operator=(const float16& rhs) {
-    x = rhs.x;
-    return *this;
-  }
 
 // Assignment operators
 #ifdef PADDLE_CUDA_FP16
@@ -727,4 +733,25 @@ HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
   return float(a) >= float(b);
 }
 #endif
+
+}  // namespace platform
 }  // namespace paddle
+
+namespace std {
+
+// Override the std::is_pod::value for float16
+// The reason is that different compilers implemented std::is_pod based on
+// different C++ standards. float16 class is a plain old data in C++11 given
+// that it is both trivial and standard_layout.
+// However, std::is_pod in nvcc 8.0 host c++ compiler follows C++0x and is
+// more restricted in that you cannot provide any customized
+// constructor in float16. Hence, we override is_pod here following C++11
+// so that .cu files can be successfully compiled by nvcc.
+template <>
+struct is_pod<paddle::platform::float16> {
+  static const bool value =
+      is_trivial<paddle::platform::float16>::value &&
+      is_standard_layout<paddle::platform::float16>::value;
+};
+
+}  // namespace std

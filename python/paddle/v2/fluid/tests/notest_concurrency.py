@@ -12,28 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
 import unittest
-import numpy as np
+import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
+from paddle.v2.fluid.executor import Executor
 
 
-class TestCastOp(op_test.OpTest):
-    def setUp(self):
-        ipt = np.random.random(size=[10, 10])
-        self.inputs = {'X': ipt.astype('float32')}
-        self.outputs = {'Out': ipt.astype('float64')}
-        self.attrs = {
-            'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP64)
-        }
-        self.op_type = 'cast'
+class TestRoutineOp(unittest.TestCase):
+    def test_simple_routine(self):
+        ch = fluid.make_channel(dtype=bool)
+        with fluid.Go():
+            fluid.channel_send(ch, True)
 
-    def test_check_output(self):
-        self.check_output()
+        result = fluid.channel_recv(ch)
+        fluid.channel_close(ch)
 
-    def test_grad(self):
-        self.check_grad(['X'], ['Out'])
+        cpu = core.CPUPlace()
+        exe = Executor(cpu)
+
+        outs = exe.run(fetch_list=[result])
+        self.assertEqual(outs[0], True)
 
 
 if __name__ == '__main__':

@@ -68,7 +68,7 @@ def _infer_var_data_type_(grad_var_name, block):
         fwd_var = block.desc.find_var_recursive(fwd_name.encode("ascii"))
         grad_var.set_dtype(fwd_var.dtype())
     else:
-        grad_var.set_dtype(core.DataType.FP32)
+        grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
 
 def _all_in_set_(cands, s):

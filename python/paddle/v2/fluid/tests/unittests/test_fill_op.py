@@ -26,7 +26,7 @@ class TestFillOp(OpTest):
         self.attrs = {
             'value': val.flatten().tolist(),
             'shape': [100, 200],
-            'dtype': int(core.DataType.FP64)
+            'dtype': int(core.VarDesc.VarType.FP64)
         }
         self.outputs = {'Out': val.astype('float64')}
 

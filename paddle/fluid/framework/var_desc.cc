@@ -87,12 +87,12 @@ std::vector<std::vector<int64_t>> VarDesc::GetShapes() const {
   return res;
 }
 
-void VarDesc::SetDataType(proto::DataType data_type) {
+void VarDesc::SetDataType(proto::VarType::Type data_type) {
   mutable_tensor_desc()->set_data_type(data_type);
 }
 
 void VarDesc::SetDataTypes(
-    const std::vector<proto::DataType> &multiple_data_type) {
+    const std::vector<proto::VarType::Type> &multiple_data_type) {
   if (multiple_data_type.size() != GetTensorDescNum()) {
     VLOG(3) << "WARNING: The number of given data types("
             << multiple_data_type.size()
@@ -108,13 +108,13 @@ void VarDesc::SetDataTypes(
   }
 }
 
-proto::DataType VarDesc::GetDataType() const {
+proto::VarType::Type VarDesc::GetDataType() const {
   return tensor_desc().data_type();
 }
 
-std::vector<proto::DataType> VarDesc::GetDataTypes() const {
+std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
   std::vector<proto::VarType::TensorDesc> descs = tensor_descs();
-  std::vector<proto::DataType> res;
+  std::vector<proto::VarType::Type> res;
   res.reserve(descs.size());
   for (const auto &tensor_desc : descs) {
     res.push_back(tensor_desc.data_type());

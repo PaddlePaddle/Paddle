@@ -64,7 +64,7 @@ Paper: http://www.matthewzeiler.com/wp-content/uploads/2017/07/iccv2011.pdf
   }
 };
 
-int OutputSize(int input_size, int ksize, int padding, int stride) {
+int UnpoolOutputSize(int input_size, int ksize, int padding, int stride) {
   int output_size = (input_size - 1) * stride - 2 * padding + ksize;
   return output_size;
 }
@@ -101,8 +101,8 @@ class UnpoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims);
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
-      output_shape.push_back(
-          OutputSize(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
+      output_shape.push_back(UnpoolOutputSize(in_x_dims[i + 2], ksize[i],
+                                              paddings[i], strides[i]));
     }
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
