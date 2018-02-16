@@ -40,7 +40,7 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
   if (paddle::platform::is_cpu_place(*place)) {
     seq = cpu_seq;
   } else {
-    Copy(cpu_seq, *place, *context, &seq);
+    TensorCopy(cpu_seq, *place, *context, &seq);
     seq.set_lod(lod);
   }
 
@@ -63,7 +63,7 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
   if (paddle::platform::is_cpu_place(*place)) {
     cpu_seq_back = seq_back;
   } else {
-    Copy(seq_back, paddle::platform::CPUPlace(), *context, &cpu_seq_back);
+    TensorCopy(seq_back, paddle::platform::CPUPlace(), *context, &cpu_seq_back);
     cpu_seq_back.set_lod(lod);
   }
 

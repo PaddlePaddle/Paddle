@@ -179,7 +179,7 @@ class TensorPrintOp : public framework::OperatorBase {
     } else {
       // copy data to cpu to print
       platform::CPUPlace place;
-      framework::Copy(in_tensor, place, &printed_tensor);
+      framework::TensorCopy(in_tensor, place, &printed_tensor);
     }
 
     Formater formater;

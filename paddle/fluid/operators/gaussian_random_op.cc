@@ -88,7 +88,9 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("seed",
                  "(int, default 0) "
                  "Random seed of generator."
-                 "0 means use system wide seed.")
+                 "0 means use system wide seed."
+                 "Note that if seed is not 0, this operator will always "
+                 "generate the same random numbers every time.")
         .SetDefault(0);
     AddAttr<int>("dtype",
                  "(int, default 5(FP32)) "
@@ -110,4 +112,8 @@ Used to initialize tensors with gaussian random generator.
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(gaussian_random, ops::GaussianRandomOp,
                              ops::GaussianRandomOpMaker);
-REGISTER_OP_CPU_KERNEL(gaussian_random, ops::CPUGaussianRandomKernel<float>);
+REGISTER_OP_CPU_KERNEL(gaussian_random, ops::CPUGaussianRandomKernel<float>,
+                       ops::CPUGaussianRandomKernel<double>);
+REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
+                       ops::CPUGaussianRandomKernel<float>,
+                       ops::CPUGaussianRandomKernel<double>);

@@ -28,7 +28,7 @@ class ReshapeKernel : public framework::OpKernel<T> {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto out_dims = out->dims();
     out->mutable_data<T>(ctx.GetPlace());
-    framework::Copy(*in, ctx.GetPlace(), ctx.device_context(), out);
+    framework::TensorCopy(*in, ctx.GetPlace(), ctx.device_context(), out);
     out->Resize(out_dims);
   }
 };
@@ -42,7 +42,7 @@ class ReshapeGradKernel : public framework::OpKernel<T> {
     d_x->mutable_data<T>(ctx.GetPlace());
 
     auto in_dims = d_x->dims();
-    framework::Copy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
+    framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
     d_x->Resize(in_dims);
   }
 };

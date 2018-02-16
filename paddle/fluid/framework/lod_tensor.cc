@@ -46,7 +46,7 @@ std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
 
   if (!platform::is_cpu_place(t.place())) {
     LoDTensor tt;
-    framework::Copy(t, platform::CPUPlace(), &tt);
+    framework::TensorCopy(t, platform::CPUPlace(), &tt);
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(t.place());
     dev_ctx.Wait();
@@ -255,7 +255,7 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
     }
   }
   // the 3st field, Tensor
-  SerializeToStream(os, static_cast<Tensor>(tensor), dev_ctx);
+  TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx);
 }
 
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
@@ -282,7 +282,7 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     }
   }
   // the 3st filed, Tensor
-  DeserializeFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
+  TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
@@ -308,14 +308,14 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     if (lod().empty()) {
       auto src = Slice(begin, end);
       auto &dst_place = places[i];
-      framework::Copy(src, dst_place, &dst);
+      framework::TensorCopy(src, dst_place, &dst);
     } else {
       auto lod_and_offset = GetSubLoDAndAbsoluteOffset(lod(), begin, end, 0);
 
       auto &offset = lod_and_offset.second;
       auto src = Slice(offset.first, offset.second);
       auto &dst_place = places[i];
-      framework::Copy(src, dst_place, &dst);
+      framework::TensorCopy(src, dst_place, &dst);
 
       LoD my_lod;
       for (auto &l : lod_and_offset.first) {
@@ -369,7 +369,7 @@ void LoDTensor::MergeLoDTensor(
   for (auto *src : lod_tensors) {
     int end = begin + src->dims()[0];
     auto dst = Slice(begin, end);
-    framework::Copy(*src, dst_place, &dst);
+    framework::TensorCopy(*src, dst_place, &dst);
     begin = end;
   }
 }
