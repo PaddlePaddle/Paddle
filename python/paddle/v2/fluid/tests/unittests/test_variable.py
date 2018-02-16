@@ -20,7 +20,7 @@ import numpy as np
 
 class TestVariable(unittest.TestCase):
     def test_np_dtype_convert(self):
-        DT = core.DataType
+        DT = core.VarDesc.VarType
         convert = convert_np_dtype_to_dtype_
         self.assertEqual(DT.FP32, convert(np.float32))
         self.assertEqual(DT.FP16, convert("float16"))
@@ -36,13 +36,13 @@ class TestVariable(unittest.TestCase):
         w = b.create_var(
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w")
         self.assertNotEqual(str(w), "")
-        self.assertEqual(core.DataType.FP64, w.dtype)
+        self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
-        self.assertEqual(core.DataType.FP64, w.dtype)
+        self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual(0, w.lod_level)

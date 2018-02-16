@@ -91,34 +91,35 @@ message OpProto {
   required string comment = 5;
 }
 
-enum DataType {
-  BOOL = 0;
-  INT16 = 1;
-  INT32 = 2;
-  INT64 = 3;
-  FP16 = 4;
-  FP32 = 5;
-  FP64 = 6;
-}
-
 message VarType {
   enum Type {
-    LOD_TENSOR = 1;
-    SELECTED_ROWS = 2;
-    FEED_MINIBATCH = 3;
-    FETCH_LIST = 4;
-    STEP_SCOPES = 5;
-    LOD_RANK_TABLE = 6;
-    LOD_TENSOR_ARRAY = 7;
-    PLACE_LIST = 8;
-    READER = 9;
-    NCCL_COM = 10;
+    // Pod Types
+    BOOL = 0;
+    INT16 = 1;
+    INT32 = 2;
+    INT64 = 3;
+    FP16 = 4;
+    FP32 = 5;
+    FP64 = 6;
+
+    // Other types that may need additional descriptions
+    LOD_TENSOR = 7;
+    SELECTED_ROWS = 8;
+    FEED_MINIBATCH = 9;
+    FETCH_LIST = 10;
+    STEP_SCOPES = 11;
+    LOD_RANK_TABLE = 12;
+    LOD_TENSOR_ARRAY = 13;
+    PLACE_LIST = 14;
+    READER = 15;
+    NCCL_COM = 16;
   }
 
   required Type type = 1;
 
   message TensorDesc {
-    required DataType data_type = 1;
+    // Should only be PODType. Is enforced in C++
+    required Type data_type = 1;
     repeated int64 dims = 2; // [UNK, 640, 480] is saved as [-1, 640, 480]
   }
   optional TensorDesc selected_rows = 2;

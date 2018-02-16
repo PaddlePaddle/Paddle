@@ -36,7 +36,7 @@ class TestParameter(unittest.TestCase):
         self.assertIsNotNone(param)
         self.assertEqual('fc.w', param.name)
         self.assertEqual((784, 100), param.shape)
-        self.assertEqual(core.DataType.FP32, param.dtype)
+        self.assertEqual(core.VarDesc.VarType.FP32, param.dtype)
         self.assertEqual(0, param.block.idx)
         exe = Executor(core.CPUPlace())
         p = exe.run(main_program, fetch_list=[param])[0]

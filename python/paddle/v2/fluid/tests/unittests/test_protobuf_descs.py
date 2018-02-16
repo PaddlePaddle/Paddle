@@ -131,8 +131,8 @@ class TestVarDesc(unittest.TestCase):
         block = program_desc.block(0)
         var = block.var('my_var')
         var.set_type(core.VarDesc.VarType.LOD_TENSOR)
-        var.set_dtype(core.DataType.INT32)
-        self.assertEqual(core.DataType.INT32, var.dtype())
+        var.set_dtype(core.VarDesc.VarType.INT32)
+        self.assertEqual(core.VarDesc.VarType.INT32, var.dtype())
         self.assertEqual(core.VarDesc.VarType.LOD_TENSOR, var.type())
 
     def test_multiple_dtype(self):
@@ -141,7 +141,8 @@ class TestVarDesc(unittest.TestCase):
         var = block.var('my_reader')
         var.set_type(core.VarDesc.VarType.READER)
         src_types = [
-            core.DataType.INT32, core.DataType.FP64, core.DataType.FP32
+            core.VarDesc.VarType.INT32, core.VarDesc.VarType.FP64,
+            core.VarDesc.VarType.FP32
         ]
         var.set_dtypes(src_types)
         self.assertEqual(src_types, var.dtypes())
