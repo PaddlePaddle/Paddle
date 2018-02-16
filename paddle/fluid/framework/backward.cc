@@ -341,7 +341,7 @@ static void CreateGradVarInBlock(
       auto* param = block_desc->FindVarRecursive(pname);
       auto* grad = block_desc->FindVar(arg);
       if (param == nullptr) {
-        grad->SetDataType(proto::DataType::FP32);
+        grad->SetDataType(proto::VarType::FP32);
       } else {
         grad->SetDataType(param->GetDataType());
       }

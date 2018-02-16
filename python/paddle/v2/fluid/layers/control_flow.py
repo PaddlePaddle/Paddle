@@ -612,7 +612,7 @@ class While(object):
         if not isinstance(cond, Variable):
             raise TypeError("condition should be a variable")
         assert isinstance(cond, Variable)
-        if cond.dtype != core.DataType.BOOL:
+        if cond.dtype != core.VarDesc.VarType.BOOL:
             raise TypeError("condition should be a bool variable")
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError("condition should be a bool scalar")

@@ -24,13 +24,13 @@ TEST(ProgramDesc, copy_ctor) {
   auto* x = global_block->Var("X");
   x->SetType(proto::VarType::LOD_TENSOR);
   x->SetLoDLevel(0);
-  x->SetDataType(proto::FP32);
+  x->SetDataType(proto::VarType::FP32);
   x->SetShape({1000, 784});
 
   auto* y = global_block->Var("Y");
   y->SetType(proto::VarType::LOD_TENSOR);
   y->SetLoDLevel(0);
-  y->SetDataType(proto::FP32);
+  y->SetDataType(proto::VarType::FP32);
   y->SetShape({784, 100});
 
   auto* op = global_block->AppendOp();
@@ -86,13 +86,13 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
   auto* x = global_block->Var("X");
   x->SetType(proto::VarType::LOD_TENSOR);
   x->SetLoDLevel(0);
-  x->SetDataType(proto::FP32);
+  x->SetDataType(proto::VarType::FP32);
   x->SetShape({1000, 784});
 
   auto* y = global_block->Var("Y");
   y->SetType(proto::VarType::LOD_TENSOR);
   y->SetLoDLevel(0);
-  y->SetDataType(proto::FP32);
+  y->SetDataType(proto::VarType::FP32);
   y->SetShape({784, 100});
 
   auto* op = global_block->AppendOp();

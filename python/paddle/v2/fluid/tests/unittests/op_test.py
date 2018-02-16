@@ -119,9 +119,9 @@ def get_numeric_gradient(place,
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.get_dims())
     tensor_to_check_dtype = tensor_to_check.dtype()
-    if tensor_to_check_dtype == core.DataType.FP32:
+    if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == core.DataType.FP64:
+    elif tensor_to_check_dtype == core.VarDesc.VarType.FP64:
         tensor_to_check_dtype = np.float64
     else:
         raise ValueError("Not supported data type " + str(

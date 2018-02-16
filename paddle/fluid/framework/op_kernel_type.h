@@ -40,12 +40,12 @@ struct OpKernelType {
   // place, data_type, library_type kinds less than 2^8
   constexpr static int LEFT_SHIFT = 8;
 
-  proto::DataType data_type_;
+  proto::VarType::Type data_type_;
   DataLayout data_layout_;
   platform::Place place_;
   LibraryType library_type_;
 
-  OpKernelType(proto::DataType data_type, platform::Place place,
+  OpKernelType(proto::VarType::Type data_type, platform::Place place,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain)
       : data_type_(data_type),
@@ -53,7 +53,7 @@ struct OpKernelType {
         place_(place),
         library_type_(library_type) {}
 
-  OpKernelType(proto::DataType data_type,
+  OpKernelType(proto::VarType::Type data_type,
                const platform::DeviceContext& dev_ctx,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain)
