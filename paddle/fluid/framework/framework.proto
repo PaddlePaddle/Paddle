@@ -137,6 +137,12 @@ message VarType {
 
   message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
   optional ReaderDesc reader = 5;
+
+  message ChannelDesc {
+    required Type data_type = 1;
+    required int64 capacity = 2;
+  }
+  optional ChannelDesc channel = 6;
 }
 
 message VarDesc {
