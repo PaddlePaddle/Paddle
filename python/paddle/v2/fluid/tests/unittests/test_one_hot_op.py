@@ -38,7 +38,7 @@ class TestOneHotOp(OpTest):
             out[i, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod)}
-        self.attrs = {'depth': depth, 'dtype': int(core.DataType.FP32)}
+        self.attrs = {'depth': depth, 'dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):

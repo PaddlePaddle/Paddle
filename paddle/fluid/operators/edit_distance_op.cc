@@ -42,7 +42,7 @@ class EditDistanceOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(framework::proto::DataType::FP32,
+    return framework::OpKernelType(framework::proto::VarType::FP32,
                                    ctx.device_context());
   }
 };

@@ -221,7 +221,7 @@ def embedding(input,
             :math:`padding_idx < 0`, the padding_idx to use in lookup is
             :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
-        dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \

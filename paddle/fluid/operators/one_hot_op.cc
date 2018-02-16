@@ -60,7 +60,7 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype",
                  "An integer to specify the data type of one-hot "
                  "vector. The default value is FP32.")
-        .SetDefault(paddle::framework::proto::DataType::FP32);
+        .SetDefault(paddle::framework::proto::VarType::FP32);
     AddComment(R"DOC(
 One Hot Operator. This operator creates the one-hot representations for input
 index values. The following example will help to explain the function of this

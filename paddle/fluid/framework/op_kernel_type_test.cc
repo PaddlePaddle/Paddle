@@ -18,7 +18,7 @@ limitations under the License. */
 
 TEST(OpKernelType, ToString) {
   using OpKernelType = paddle::framework::OpKernelType;
-  using DataType = paddle::framework::proto::DataType;
+  using DataType = paddle::framework::proto::VarType;
   using CPUPlace = paddle::platform::CPUPlace;
   using DataLayout = paddle::framework::DataLayout;
   using LibraryType = paddle::framework::LibraryType;
@@ -33,7 +33,7 @@ TEST(OpKernelType, ToString) {
 
 TEST(OpKernelType, Hash) {
   using OpKernelType = paddle::framework::OpKernelType;
-  using DataType = paddle::framework::proto::DataType;
+  using DataType = paddle::framework::proto::VarType;
   using CPUPlace = paddle::platform::CPUPlace;
   using CUDAPlace = paddle::platform::CUDAPlace;
   using DataLayout = paddle::framework::DataLayout;
