@@ -35,7 +35,7 @@ TEST(inference, recognize_digits) {
 
   int64_t batch_size = 1;
 
-  // Add a start_event
+  // Add a start_event: setting up input
   Event start_event1(EventKind::kPushRange, "setup_input", 0, nullptr);
 
   paddle::framework::LoDTensor input;
@@ -53,15 +53,20 @@ TEST(inference, recognize_digits) {
   cpu_fetchs1.push_back(&output1);
 
   Event stop_event1(EventKind::kPopRange, "setup_input", 0, nullptr);
-  LOG(INFO) << "Setting up input takes: "
-            << start_event1.CpuElapsedMs(stop_event1) << std::endl;
+  std::cout << "Setting_input: " << start_event1.CpuElapsedMs(stop_event1)
+            << std::endl;
+  // LOG(INFO) << "Setting up input takes: "
+  //          << start_event1.CpuElapsedMs(stop_event1) << std::endl;
 
   // Run inference on CPU
   Event start_event2(EventKind::kPushRange, "run_inference", 0, nullptr);
   TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
   Event stop_event2(EventKind::kPopRange, "run_inference", 0, nullptr);
-  LOG(INFO) << "Running inference: " << start_event2.CpuElapsedMs(stop_event2)
+  std::cout << "Running_inference: " << start_event2.CpuElapsedMs(stop_event2)
             << std::endl;
+  // LOG(INFO) << "Running inference: " <<
+  // start_event2.CpuElapsedMs(stop_event2)
+  //          << std::endl;
 
   LOG(INFO) << output1.dims();
 
