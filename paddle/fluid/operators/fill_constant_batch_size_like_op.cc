@@ -37,19 +37,6 @@ class FillConstantBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::proto::VarType::FP32);
-    AddInput("Input",
-             "(Tensor) Tensor "
-             "whose dim_idx th dimension is used to specify the batch_size");
-    AddOutput("Out",
-              "(Tensor) Tensor of specified shape will be filled "
-              "with the specified value");
-    AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
-    AddAttr<int>("input_dim_idx",
-                 "(int, default 0) The index of input's batch size dimension")
-        .SetDefault(0);
-    AddAttr<int>("output_dim_idx",
-                 "(int, default 0) The index of output's batch size dimension")
-        .SetDefault(0);
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
     AddComment(R"DOC(
