@@ -126,7 +126,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::RecordEvent record_event(op->Type(), pool.Get(place_));
 
-    VLOG(3) << op->DebugStringEx(local_scope);
+    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
 
     if (FLAGS_benchmark) {
