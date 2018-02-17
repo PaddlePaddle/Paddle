@@ -112,6 +112,7 @@ message VarType {
     LOD_TENSOR_ARRAY = 13;
     PLACE_LIST = 14;
     READER = 15;
+    CHANNEL = 16;
   }
 
   required Type type = 1;
@@ -137,6 +138,12 @@ message VarType {
 
   message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
   optional ReaderDesc reader = 5;
+
+  message ChannelDesc {
+    required Type data_type = 1;
+    required int64 capacity = 2;
+  }
+  optional ChannelDesc channel = 6;
 }
 
 message VarDesc {
