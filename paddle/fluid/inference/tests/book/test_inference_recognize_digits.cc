@@ -77,7 +77,7 @@ TEST(inference, recognize_digits_combine) {
   // Use normilized image pixels as input data,
   // which should be in the range [-1.0, 1.0].
   SetupTensor<float>(
-      input, {1, 28, 28}, static_cast<float>(-1), static_cast<float>(1));
+      input, {1, 1, 28, 28}, static_cast<float>(-1), static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
