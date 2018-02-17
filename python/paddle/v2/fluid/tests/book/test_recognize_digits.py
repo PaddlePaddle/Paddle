@@ -155,7 +155,6 @@ def train(nn_type, use_cuda, parallel, save_dirname, save_param_filename):
                                float(avg_loss_val), float(acc_val)))
                     if math.isnan(float(avg_loss_val)):
                         sys.exit("got NaN loss, training failed.")
-            exit(0)
     raise AssertionError("Loss of recognize digits is too large")
 
 
@@ -231,14 +230,10 @@ def inject_test_method(use_cuda, parallel, nn_type, combine):
 
 
 def inject_all_tests():
-    for use_cuda in [True]:
-        for parallel in [True]:
-            for nn_type in ['mlp']:
+    for use_cuda in (False, True):
+        for parallel in (False, True):
+            for nn_type in ('mlp', 'conv'):
                 inject_test_method(use_cuda, parallel, nn_type, True)
-    # for use_cuda in (False, True):
-    #     for parallel in (False, True):
-    #         for nn_type in ('mlp', 'conv'):
-    #             inject_test_method(use_cuda, parallel, nn_type, True)
 
     # One unit-test for saving parameters as separate files
     inject_test_method(False, False, 'mlp', False)
