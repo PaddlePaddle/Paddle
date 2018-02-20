@@ -16,7 +16,8 @@
 # TODO: Operators: send, close_channel, recv, go, select
 from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper
-import paddle.v2.fluid.core as core
+import paddle.v2.fluid.core as corefrom paddle.v2.fluid.op import Operator
+from paddle.v2.fluid.op import Operator
 
 __all__ = [
     'Go',
@@ -80,7 +81,7 @@ def make_channel(dtype, name, capacity=0):
         capacity=capacity)
 
 
-def channel_send(channel, value):
+def channel_send(channel, value, block):
     # 1. the variable channel should be a desc ?
     # 2. how do we cast value as a variable and pass it to an Op
     # 3. we need to check that the Type of value and channel is same
@@ -92,16 +93,43 @@ def channel_send(channel, value):
     program = Program()
     block = program.current_block()
 
-    return True
+    channel_send_op = block.append_op(
+            type="channel_send",
+            inputs={
+                "Channel": channel,
+                "Val": value,
+            })
+
+    return channel_send_op
 
 
 def channel_recv(channel):
     program = Program()
     block = program.current_block()
-    return True
+
+    channel_recv_op = block.append_op(
+            type="channel_recv",
+            inputs={
+                "Channel": channel,
+            },
+            outputs={
+                "Val": x,
+            })
+
+    return channel_recv_op
 
 
 def channel_close(channel):
-    # Do we need an operator for this ?
-    # Also update notest_concurrency.py
-    return True
+    program = Program()
+    block = program.current_block()
+
+    channel_close_op = block.append_op(
+            type="channel_close",
+            inputs={
+                "Channel": channel,
+            },
+            outputs={
+                "Val": x,
+            })
+
+    return channel_close_op
