@@ -122,6 +122,18 @@ std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
   return res;
 }
 
+void VarDesc::SetCapacity(int64_t capacity) {
+  switch (desc_.type().type()) {
+    case proto::VarType::CHANNEL:
+      desc_.mutable_type()->mutable_channel()->set_capacity(capacity);
+      break;
+    default:
+      PADDLE_THROW(
+          "Setting 'capacity' is not supported by the type of var %s.",
+          this->Name());
+  }
+}
+
 void VarDesc::SetLoDLevel(int32_t lod_level) {
   switch (desc_.type().type()) {
     case proto::VarType::LOD_TENSOR:

@@ -85,6 +85,8 @@ class VarDesc {
   void SetDataTypes(
       const std::vector<proto::VarType::Type> &multiple_data_type);
 
+  void SetCapacity(int64_t capacity);
+
   proto::VarType::Type GetDataType() const;
 
   std::vector<proto::VarType::Type> GetDataTypes() const;
