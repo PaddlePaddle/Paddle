@@ -67,12 +67,25 @@ class BaseParallelForTest(unittest.TestCase):
                 fetch=fetch,
                 place=gpu,
                 use_parallel=True)
+            result_gpu_nccl = self._run_test_impl_(
+                callback=callback,
+                feed=feed,
+                fetch=fetch,
+                place=gpu,
+                use_parallel=True,
+                use_nccl=True)
             self._assert_same_(fetch, result_cpu, result_cpu_parallel,
-                               result_gpu, result_gpu_parallel)
+                               result_gpu, result_gpu_parallel, result_gpu_nccl)
         else:
             self._assert_same_(fetch, result_cpu, result_cpu_parallel)
 
-    def _run_test_impl_(self, callback, feed, fetch, place, use_parallel=False):
+    def _run_test_impl_(self,
+                        callback,
+                        feed,
+                        fetch,
+                        place,
+                        use_parallel=False,
+                        use_nccl=False):
         """
         Run a single test, returns the fetch values
         Args:
@@ -96,7 +109,7 @@ class BaseParallelForTest(unittest.TestCase):
             # Automatically insert parallel do if use_parallel = True
             if use_parallel:
                 places = fluid.layers.get_places()
-                pd = fluid.layers.ParallelDo(places)
+                pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
                 data = next(generator)
 
                 if isinstance(data, fluid.Variable):
@@ -137,7 +150,9 @@ class BaseParallelForTest(unittest.TestCase):
         """
 
         def _impl_(a, b, fetch_id, item_id):
-            item_str = ['CPU', 'ParallelCPU', 'GPU', 'ParallelGPU']
+            item_str = [
+                'CPU', 'ParallelCPU', 'GPU', 'ParallelGPU', 'ParallelGPUNCCL'
+            ]
             flag = numpy.allclose(a, b, rtol=0.1, atol=1e-3)
             self.assertTrue(flag,
                             "The {0} are different in {1}, {2} vs {3}".format(
@@ -198,5 +213,5 @@ class ParallelOpTestMultipleInput(BaseParallelForTest):
             fetch=['fc1.w@GRAD', 'fc2.w@GRAD', 'fc3.w@GRAD'])
 
 
-#if __name__ == '__main__':
-#    unittest.main()
+if __name__ == '__main__':
+    unittest.main()
