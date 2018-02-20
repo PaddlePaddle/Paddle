@@ -24,6 +24,9 @@ TEST(inference, recognize_digits) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
   }
 
+  using paddle::platform::DeviceContext;
+  using paddle::platform::CUDADeviceContext;
+  using paddle::platform::CUDAPlace;
   using paddle::platform::Event;
   using paddle::platform::EventKind;
 
@@ -75,8 +78,15 @@ TEST(inference, recognize_digits) {
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs2;
   cpu_fetchs2.push_back(&output2);
 
+  DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(0));
+  Event start_event_gpu1(EventKind::kPushRange, "gpu_run_inf", 0, dev_ctx);
+  EXPECT_TRUE(start_event_gpu1.has_cuda() == true);
+
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
+  Event stop_event_gpu1(EventKind::kPopRange, "gpu_run_inf", 0, dev_ctx);
+  std::cout << "Running_inference_gpu: "
+            << start_event_gpu1.CudaElapsedMs(stop_event_gpu1) << std::endl;
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);
@@ -98,7 +108,7 @@ TEST(inference, recognize_digits_combine) {
   // Use normilized image pixels as input data,
   // which should be in the range [-1.0, 1.0].
   SetupTensor<float>(
-      input, {1, 28, 28}, static_cast<float>(-1), static_cast<float>(1));
+      input, {1, 1, 28, 28}, static_cast<float>(-1), static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
