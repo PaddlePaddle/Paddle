@@ -30,10 +30,10 @@ class AssignValueKernel : public framework::OpKernel<T> {
     int dtype = ctx.Attr<int>("dtype");
     const char* value_name = nullptr;
     switch (dtype) {
-      case framework::proto::DataType::INT32:
+      case framework::proto::VarType::INT32:
         value_name = "int32_values";
         break;
-      case framework::proto::DataType::FP32:
+      case framework::proto::VarType::FP32:
         value_name = "fp32_values";
         break;
       default:
@@ -41,7 +41,7 @@ class AssignValueKernel : public framework::OpKernel<T> {
         break;
     }
     auto values = ctx.Attr<std::vector<T>>(value_name);
-    framework::CopyFromVector(values, ctx.device_context(), out);
+    framework::TensorFromVector(values, ctx.device_context(), out);
     out->Resize(framework::make_ddim(shape));
   }
 };

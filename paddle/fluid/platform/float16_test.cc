@@ -10,10 +10,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/framework/init.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 
 #include <gtest/gtest.h>
 
 namespace paddle {
+namespace platform {
 
 TEST(float16, conversion_cpu) {
   // Explicit conversion from Eigen::half
@@ -54,13 +57,9 @@ TEST(float16, conversion_cpu) {
   EXPECT_EQ(float16(true).x, 0x3c00);
   EXPECT_EQ(float16(false).x, 0x0000);
 
-  // Default constructor
-  float16 v_def;
-  EXPECT_EQ(v_def.x, 0x0000);
-
   // Assignment operator
   float16 v_assign;
-  v_assign = v_def;
+  v_assign = float16(0);
   EXPECT_EQ(v_assign.x, 0x0000);
   v_assign = Eigen::half(1.0f);
   EXPECT_EQ(v_assign.x, 0x3c00);
@@ -116,4 +115,27 @@ TEST(float16, comparison_cpu) {
   EXPECT_FALSE(float16(-0.0f) > float16(0.0f));
 }
 
+TEST(float16, lod_tensor_cpu) {
+  framework::LoDTensor lod_tensor;
+
+  std::vector<float16> input_data = {float16(1.0f), float16(0.5f),
+                                     float16(0.33333f), float16(0.0f)};
+  EXPECT_EQ(input_data[0].x, 0x3c00);
+  EXPECT_EQ(input_data[1].x, 0x3800);
+  EXPECT_EQ(input_data[2].x, 0x3555);
+  EXPECT_EQ(input_data[3].x, 0x0000);
+
+  lod_tensor.Resize({4, 1});
+  lod_tensor.set_lod(framework::LoD({{0, 2, 4}}));
+  float16* data_ptr = lod_tensor.mutable_data<float16>(CPUPlace());
+
+  EXPECT_NE(data_ptr, nullptr);
+  EXPECT_EQ(input_data.size(), static_cast<size_t>(lod_tensor.numel()));
+  for (size_t i = 0; i < input_data.size(); ++i) {
+    data_ptr[i] = input_data[i];
+    EXPECT_EQ(data_ptr[i].x, input_data[i].x);
+  }
+}
+
+}  // namespace platform
 }  // namespace paddle

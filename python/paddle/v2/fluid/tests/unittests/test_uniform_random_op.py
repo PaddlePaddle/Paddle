@@ -13,14 +13,11 @@
 # limitations under the License.
 
 import unittest
-import numpy
-
-from paddle.v2.fluid.op import Operator
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid as fluid
+import numpy as np
+from op_test import OpTest
 
 
-class TestUniformRandomOp(unittest.TestCase):
+class TestUniformRandomOp(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
         self.inputs = {}
@@ -30,35 +27,20 @@ class TestUniformRandomOp(unittest.TestCase):
             "max": 10.0,
             "seed": 10
         }
-        self.outputs = ["Out"]
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
 
-    def test_cpu(self):
-        self.uniform_random_test(place=core.CPUPlace())
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
 
-    def test_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.uniform_random_test(place=core.CUDAPlace(0))
-
-    def uniform_random_test(self, place):
-        program = fluid.Program()
-        block = program.global_block()
-        vout = block.create_var(name="Out")
-        op = block.append_op(
-            type=self.op_type, outputs={"Out": vout}, attrs=self.attrs)
-
-        op.desc.infer_var_type(block.desc)
-        op.desc.infer_shape(block.desc)
-
-        fetch_list = []
-        for var_name in self.outputs:
-            fetch_list.append(block.var(var_name))
-
-        exe = fluid.Executor(place)
-        outs = exe.run(program, fetch_list=fetch_list)
-
+    def verify_output(self, outs):
         tensor = outs[0]
-
-        self.assertAlmostEqual(tensor.mean(), 2.5, delta=0.1)
+        hist, _ = np.histogram(outs[0], range=(-5, 10))
+        hist = hist.astype("float32")
+        hist /= float(outs[0].size)
+        prob = 0.1 * np.ones((10))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
 if __name__ == "__main__":

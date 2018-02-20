@@ -66,13 +66,13 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
-      framework::Copy(*offset, platform::CPUPlace(), ctx.device_context(),
-                      &offset_cpu);
+      framework::TensorCopy(*offset, platform::CPUPlace(), ctx.device_context(),
+                            &offset_cpu);
       offset_data = offset_cpu.data<int64_t>();
 
       length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
-      framework::Copy(*length, platform::CPUPlace(), ctx.device_context(),
-                      &length_cpu);
+      framework::TensorCopy(*length, platform::CPUPlace(), ctx.device_context(),
+                            &length_cpu);
       length_data = length_cpu.data<int64_t>();
     }
 
@@ -127,13 +127,13 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
-      framework::Copy(*offset, platform::CPUPlace(), ctx.device_context(),
-                      &offset_cpu);
+      framework::TensorCopy(*offset, platform::CPUPlace(), ctx.device_context(),
+                            &offset_cpu);
       offset_data = offset_cpu.data<int64_t>();
 
       length_cpu.mutable_data<T>(length->dims(), platform::CPUPlace());
-      framework::Copy(*length, platform::CPUPlace(), ctx.device_context(),
-                      &length_cpu);
+      framework::TensorCopy(*length, platform::CPUPlace(), ctx.device_context(),
+                            &length_cpu);
       length_data = length_cpu.data<int64_t>();
     }
 

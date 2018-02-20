@@ -89,7 +89,7 @@ class Evaluator(object):
 
         Args:
             suffix(str): the state suffix.
-            dtype(str|core.DataType): the state data type
+            dtype(str|core.VarDesc.VarType): the state data type
             shape(tuple|list): the shape of state
 
         Returns: State variable
