@@ -239,7 +239,8 @@ void BindVarDsec(py::module &m) {
       .value("LOD_RANK_TABLE", proto::VarType::LOD_RANK_TABLE)
       .value("LOD_TENSOR_ARRAY", proto::VarType::LOD_TENSOR_ARRAY)
       .value("PLACE_LIST", proto::VarType::PLACE_LIST)
-      .value("READER", proto::VarType::READER);
+      .value("READER", proto::VarType::READER)
+      .value("NCCL_COM", proto::VarType::NCCL_COM);
 }
 
 void BindOpDesc(py::module &m) {

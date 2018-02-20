@@ -30,6 +30,7 @@ static constexpr char kOutputs[] = "outputs";
 static constexpr char kParallelScopes[] = "parallel_scopes";
 
 static constexpr char kParallelBlock[] = "sub_block";
+static constexpr char kUseNCCL[] = "use_nccl";
 
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
@@ -194,6 +195,8 @@ class ParallelDoOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(kOutputs, "").AsDuplicable();
     AddOutput(kParallelScopes, "");
     AddAttr<framework::BlockDesc *>(kParallelBlock, "");
+    AddAttr<bool>(kUseNCCL, "true if we use nccl on backward")
+        .SetDefault(false);
     AddComment(R"DOC(
 ParallelDo Operator.
 )DOC");
@@ -216,7 +219,6 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
     auto &sub_scopes = scope.FindVar(Input(kParallelScopes))
                            ->Get<std::vector<framework::Scope *>>();
-
     auto &places = scope.FindVar(Input(kPlaces))->Get<platform::PlaceList>();
 
     // feed output@grad
@@ -243,7 +245,24 @@ class ParallelDoGradOp : public framework::OperatorBase {
     }
     WaitOnPlaces(places);
 
-    AccumulateGrad(scope, place, sub_scopes, places);
+    // NCCL allreduce op will be added by backward,
+    // so no need to explicitly accumulate grad
+    if (!(Attr<bool>(kUseNCCL))) {
+      AccumulateGrad(scope, place, sub_scopes, places);
+    } else {
+      for (auto &place : places) {
+        PADDLE_ENFORCE(platform::is_gpu_place(place),
+                       "NCCL only supports cuda place");
+      }
+    }
+    for (auto &s : Outputs(framework::GradVarName(kParameters))) {
+      if (s == "@EMPTY@") {
+        continue;
+      }
+      VLOG(3) << "Moving " << s;
+      CopyOrShare(*sub_scopes[0]->FindVar(s), place, scope.FindVar(s));
+    }
+    WaitOnPlaces(places);
   }
 
   void AccumulateGrad(const framework::Scope &scope,
@@ -251,6 +270,9 @@ class ParallelDoGradOp : public framework::OperatorBase {
                       const std::vector<framework::Scope *> &sub_scopes,
                       const platform::PlaceList &places) const {
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
+      if (s == "@EMPTY@") {
+        continue;
+      }
       VLOG(3) << "Accumulating " << s;
       if (s == framework::kEmptyVarName) continue;
       std::string tmp_name;

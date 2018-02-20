@@ -55,11 +55,13 @@ static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
+  } else if (var_type == proto::VarType::NCCL_COM) {
+    // GetMutable will be called in ncclInit
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER]",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, NCCL_COM]",
         var_type);
   }
 }
@@ -120,14 +122,13 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-    VLOG(4) << op->DebugStringEx(local_scope);
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::RecordEvent record_event(op->Type(), pool.Get(place_));
 
+    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
-    // Wait current device context.
-    VLOG(3) << op->DebugStringEx(local_scope);
+
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);
