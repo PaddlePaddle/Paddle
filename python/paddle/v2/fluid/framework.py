@@ -167,6 +167,7 @@ class Variable(object):
                  shape=None,
                  dtype=None,
                  lod_level=None,
+                 capacity=None,
                  persistable=None,
                  error_clip=None,
                  stop_gradient=False,
@@ -236,6 +237,14 @@ class Variable(object):
                         "The previous persistable is {1}; the new "
                         "persistable is {2}. They are not matched".format(
                             self.name, self.persistable, persistable))
+
+        if capacity is not None:
+            if is_new_var:
+                self.desc.set_capacity(capacity)
+            else:
+                # TODO(abhinavarora) : Compare with set capacity once,
+                # get_capacity is implemented
+                pass
 
         self.block.vars[name] = self
         self.op = None

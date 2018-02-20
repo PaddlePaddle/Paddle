@@ -72,17 +72,16 @@ class Go(BlockGuard):
             attrs={'sub_block': go_block})
 
 
-def make_channel(dtype, size=0):
+def make_channel(dtype, capacity=0, name):
     # 1. how to set the size ? expose a method called set_capacity ? like
     # Tensor (tis will mean we have to expose it as a class).
     # 2. what should we return ? desc ?
-    program = Program()
-    block = program.current_block()
-    channel_setup = block.create_var(type=core.VarDesc.VarType.CHANNEL,
-                                     name="ChannelSetUp")
-    channel_setup.desc.set_dtype(dtype)
-    channel_setup.desc.set_capacity(size)
-    return channel_setup
+    helper = LayerHelper('make_channel', **locals())
+    return helper.create_variable(
+        type=core.VarDesc.VarType.CHANNEL,
+        name=name,
+        dtype=dtype,
+        capacity=capacity)
 
 
 def channel_send(channel, value):
