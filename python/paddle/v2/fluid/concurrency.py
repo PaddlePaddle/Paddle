@@ -16,7 +16,6 @@
 # TODO: Operators: send, close_channel, recv, go, select
 from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper
-from paddle.v2.fluid.framework import Program
 import paddle.v2.fluid.core as core
 
 __all__ = [
@@ -72,7 +71,7 @@ class Go(BlockGuard):
             attrs={'sub_block': go_block})
 
 
-def make_channel(dtype, capacity=0, name):
+def make_channel(dtype, name, capacity=0):
     helper = LayerHelper('make_channel', **locals())
     return helper.create_variable(
         type=core.VarDesc.VarType.CHANNEL,
