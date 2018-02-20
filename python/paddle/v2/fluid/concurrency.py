@@ -16,6 +16,8 @@
 # TODO: Operators: send, close_channel, recv, go, select
 from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper
+from paddle.v2.fluid.framework import Program
+import paddle.v2.fluid.core as core
 
 __all__ = [
     'Go',
@@ -71,16 +73,40 @@ class Go(BlockGuard):
 
 
 def make_channel(dtype, size=0):
-    return True
+    # 1. how to set the size ? expose a method called set_capacity ? like
+    # Tensor (tis will mean we have to expose it as a class).
+    # 2. what should we return ? desc ?
+    program = Program()
+    block = program.current_block()
+    channel_setup = block.create_var(type=core.VarDesc.VarType.CHANNEL,
+                                     name="ChannelSetUp")
+    channel_setup.desc.set_dtype(dtype)
+    channel_setup.desc.set_capacity(size)
+    return channel_setup
 
 
 def channel_send(channel, value):
+    # 1. the variable channel should be a desc ?
+    # 2. how do we cast value as a variable and pass it to an Op
+    # 3. we need to check that the Type of value and channel is same
+    # 4. do we construct an op here as well ? Append block descs as we do in
+    # https://github.com/PaddlePaddle/Paddle/blob/c7ad26d6a4a37c6a2f0a59408e93fda23315cf94/python/paddle/v2/fluid/tests/test_cpp_reader.py ?
+    # 5. assume and fix the inputs and outputs of the Op and send it along
+    # 6. then implement the Op with the same.
+    # Do the same for receive Op as well
+    program = Program()
+    block = program.current_block()
+
     return True
 
 
 def channel_recv(channel):
+    program = Program()
+    block = program.current_block()
     return True
 
 
 def channel_close(channel):
+    # Do we need an operator for this ?
+    # Also update notest_concurrency.py
     return True
