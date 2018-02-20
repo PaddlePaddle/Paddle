@@ -256,7 +256,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
       }
     }
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
-      if (s == "@EMPTY@") {
+      if (s == framework::kEmptyVarName) {
         continue;
       }
       VLOG(3) << "Moving " << s;
@@ -270,7 +270,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
                       const std::vector<framework::Scope *> &sub_scopes,
                       const platform::PlaceList &places) const {
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
-      if (s == "@EMPTY@") {
+      if (s == framework::kEmptyVarName) {
         continue;
       }
       VLOG(3) << "Accumulating " << s;
