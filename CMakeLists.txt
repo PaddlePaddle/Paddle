@@ -54,6 +54,7 @@ option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 # TODO: Only compile PaddlePaddle fluid version by WITH_FLUID option. 
 option(WITH_FLUID       "Compile PaddlePaddle fluid only(TODO)"         ON)
+option(WITH_FLUID_PROFILER "Compile PaddlePaddle with operators execution measuring)" OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
@@ -124,6 +125,11 @@ else()
     message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
     set(WITH_MKLDNN OFF)
 endif()
+
+if (WITH_FLUID_PROFILER)
+add_definitions(-DFLUID_PROFILER)
+endif()
+
 
 ########################################################################################
 

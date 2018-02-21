@@ -14,7 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 
+#ifdef FLUID_PROFILER
+#include <x86intrin.h>
+#include <fstream>
+#include <iostream>
 #include <set>
+#include <sstream>
+#endif
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/channel.h"
@@ -33,6 +39,96 @@ DEFINE_bool(check_nan_inf, false,
 
 namespace paddle {
 namespace framework {
+
+#ifdef FLUID_PROFILER
+static Perf watcher;
+
+Perf::Perf(void) : m_tsc(0) {
+  auto process = [](std::string& line, uint64_t* out_tsc) -> bool {
+    if (line.find("model name") == std::string::npos) {
+      return false;
+    }
+
+    // format is model name : <CPU model>
+    // we want to extract CPU model only
+    auto it = line.find(":");
+    auto model_name = line.substr(it);
+    std::cout << "MODEL: " << model_name << std::endl;
+    it = line.find("@");
+    float tsc_clock = stof(line.substr(it + 1)) * 1000000000.0f;
+    std::cout << "TSC: " << tsc_clock << std::endl;
+    *out_tsc = tsc_clock;
+    return true;
+  };
+
+  std::ifstream infile("/proc/cpuinfo");
+  std::string line;
+  bool run = true;
+  while (run && std::getline(infile, line)) {
+    run = !process(line, &m_tsc);
+  }
+}
+
+void Perf::addEntry(const std::string& name, uint64_t diff) {
+  // Ignore block operators eg. while, while_grad
+  std::vector<std::string> exclude_list;
+  exclude_list.emplace_back("while");
+  exclude_list.emplace_back("while_grad");
+
+  for (auto& exclude_item : exclude_list) {
+    if (name.compare(exclude_item) == 0) return;
+  }
+
+  auto it = m_my_map.find(name);
+  if (it != m_my_map.end()) {
+    float tmpVal = m_my_map[name].avg_perf;
+    m_my_map[name].avg_perf =
+        tmpVal + ((float)(diff)-tmpVal) / (float)m_my_map[name].num_ops;
+    m_my_map[name].total_time += diff;
+    m_my_map[name].num_ops += 1;
+  } else {
+    m_my_map[name].avg_perf = (float)(diff);
+    m_my_map[name].total_time = diff;
+    m_my_map[name].num_ops = 1;
+    m_my_map[name].op_type = name;
+  }
+}
+
+Perf::~Perf() {
+  std::vector<entity> sorted_ops;
+  float total_average_execution_time = 0.0f;
+  for (auto& item : m_my_map) {
+    const float total_op_execution_time =
+        ((item.second.total_time) * 1000.0f) / (float)m_tsc;
+    const float average_execution_time =
+        ((item.second.avg_perf) * 1000.0f) / (float)m_tsc;
+    total_average_execution_time += total_op_execution_time;
+    sorted_ops.push_back({item.first, item.second.num_ops,
+                          average_execution_time,
+                          (uint64_t)total_op_execution_time});
+  }
+
+  // Sort in descending order
+  std::sort(sorted_ops.begin(), sorted_ops.end(),
+            [](const entity& a, const entity& b) -> bool {
+              return a.total_time > b.total_time;
+            });
+
+  // Print sorted operators
+  for (auto& op_item : sorted_ops) {
+    std::cout << "Operator[" << op_item.op_type << "]: "
+              << "totalExec: " << op_item.total_time << " ms"
+              << " Ratio[totalExec/total_time]: "
+              << 100.0f * op_item.total_time / total_average_execution_time
+              << " %"
+              << " aveExec[ms]: " << op_item.avg_perf
+              << " Num Execs: " << op_item.num_ops << std::endl;
+  }
+
+  std::cout << "Total average execution time: " << total_average_execution_time
+            << "ms" << std::endl;
+}
+#endif
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
@@ -126,7 +222,14 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
 
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
+#ifdef FLUID_PROFILER
+    uint64_t t0 = __rdtsc();
+#endif
     op->Run(*local_scope, place_);
+#ifdef FLUID_PROFILER
+    uint64_t t1 = __rdtsc();
+    watcher.addEntry(op->Type(), t1 - t0);
+#endif
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "

@@ -20,16 +20,39 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include <map>
+#include <string>
+
 namespace paddle {
 namespace framework {
+
+#ifdef FLUID_PROFILER
+class Perf {
+  struct entity {
+    std::string op_type;
+    uint64_t num_ops;
+    float avg_perf;
+    uint64_t total_time;
+  };
+
+ public:
+  Perf();
+  ~Perf();
+  void addEntry(const std::string &name, uint64_t diff);
+
+ private:
+  uint64_t m_tsc;
+  std::map<std::string, struct entity> m_my_map;
+};
+#endif
 
 class Executor {
  public:
   // TODO(dzhwinter) : Do not rely on this function, it will be removed
-  explicit Executor(const platform::DeviceContext& device)
+  explicit Executor(const platform::DeviceContext &device)
       : Executor(device.GetPlace()) {}
 
-  explicit Executor(const platform::Place& place);
+  explicit Executor(const platform::Place &place);
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
@@ -38,14 +61,15 @@ class Executor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDesc&, Scope*, int, bool create_local_scope = true,
+
+  void Run(const ProgramDesc &, Scope *, int, bool create_local_scope = true,
            bool create_vars = true);
 
-  void Run(const ProgramDesc& program, Scope* scope,
-           std::map<std::string, const LoDTensor*>& feed_targets,
-           std::map<std::string, LoDTensor*>& fetch_targets,
-           const std::string& feed_holder_name = "feed",
-           const std::string& fetch_holder_name = "fetch");
+  void Run(const ProgramDesc &program, Scope *scope,
+           std::map<std::string, const LoDTensor *> &feed_targets,
+           std::map<std::string, LoDTensor *> &fetch_targets,
+           const std::string &feed_holder_name = "feed",
+           const std::string &fetch_holder_name = "fetch");
 
  private:
   const platform::Place place_;
