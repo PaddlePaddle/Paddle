@@ -152,7 +152,7 @@ class Variable(object):
         shape(tuple|list|None): The shape of variable. -1 means the batch size.
             Some kinds of variable do not contain shape, just set it to None.
         dtype(np.dtype|core.VarDesc.VarType|str): The data type of variable.
-        lod_level(int): The level of lod tensor. 0 means there is not a time
+        lod_level(int): The level of lod tensor. 0 means it is not a time
             series data.
         persistable(bool): True if the variable should be saved as check point.
             Defaults to False.
@@ -342,7 +342,7 @@ class OpProtoHolder(object):
     def __init__(self):
         assert not hasattr(
             self.__class__,
-            '_instance'), 'Please use `instance()` to get OpProtoHolder opject!'
+            '_instance'), 'Please use `instance()` to get OpProtoHolder object!'
         op_protos = get_all_op_protos()
         self.op_proto_map = {}
         for proto in op_protos:
@@ -364,8 +364,8 @@ class OpProtoHolder(object):
 
 class Operator(object):
     """
-    Python Operator class. The operator represents the build in instructs in a
-    Block. Users can use the build in instructs to describe their neural
+    Python Operator class. The operator represents the build in instructions in a
+    Block. Users can use the build in instructions to describe their neural
     network.
     """
 
@@ -418,29 +418,28 @@ class Operator(object):
                     return True
             return False
 
-        if inputs is not None:
-            for in_proto in proto.inputs:
-                found = find_name(inputs, in_proto.name)
-                assert found or in_proto.dispensable, "Input {} not found".format(
-                    in_proto.name)
+        for in_proto in proto.inputs:
+            found = find_name(inputs, in_proto.name)
+            assert found or in_proto.dispensable, "Input {} not found".format(
+                in_proto.name)
 
-                if found:
-                    in_args = inputs[in_proto.name]
-                    if not isinstance(in_args, list):
-                        in_args = [in_args]
-                    if not in_proto.duplicable and len(in_args) > 1:
-                        raise ValueError(
-                            "Input %s expects only one input, but %d are given."
-                            % (in_proto.name, len(in_args)))
-                    in_arg_names = []
-                    for arg in in_args:
-                        if isinstance(arg, basestring):
-                            in_arg_names.append(arg)
-                        else:
-                            in_arg_names.append(arg.name)
-                    self.desc.set_input(in_proto.name, in_arg_names)
-                else:
-                    self.desc.set_input(in_proto.name, [])
+            if found:
+                in_args = inputs[in_proto.name]
+                if not isinstance(in_args, list):
+                    in_args = [in_args]
+                if not in_proto.duplicable and len(in_args) > 1:
+                    raise ValueError(
+                        "Input %s expects only one input, but %d are given." %
+                        (in_proto.name, len(in_args)))
+                in_arg_names = []
+                for arg in in_args:
+                    if isinstance(arg, basestring):
+                        in_arg_names.append(arg)
+                    else:
+                        in_arg_names.append(arg.name)
+                self.desc.set_input(in_proto.name, in_arg_names)
+            else:
+                self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
             given = set()
