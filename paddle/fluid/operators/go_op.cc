@@ -14,13 +14,16 @@ limitations under the License. */
 
 #include <vector>
 #include <thread>
-#include <unistd.h>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/variable.h"
+
 
 namespace paddle {
 namespace operators {
+
+using StepScopeVar = std::vector<framework::Scope *>;
 
 static constexpr char kBlock[] = "sub_block";
 static constexpr char kX[] = "X";
@@ -38,36 +41,80 @@ class GoOp : public  framework::OperatorBase {
       std::cout << "THIS IS MY TEST THREAD" << std::endl;
     }
 
+    //
+    void ExecuteOnThread(const framework::Executor& executor,
+                         const framework::Scope &scope) const {
+        // /*,
+        //             framework::Scope &current_scope,
+        //             framework::ProgramDesc *program,
+        //             framework::BlockDesc *block*/
+// executor->Run(*program, current_scope, block->ID(),
+//                    false /*create_local_scope*/);
+          for (int i=0; i < 10; ++i) {
+            std::cout << "THIS IS MY TEST THREAD" << i << std::endl;
+            usleep(1000000);
+          }
+
+        // std::cout << Inputs(kX).size() << std::endl;
+        std::cout << scope.LocalVarNames().size() << std::endl;
+    }
     void RunImpl(const framework::Scope &scope,
                  const platform::Place &dev_place) const override {
       framework::Executor executor(dev_place);
-      auto *block = Attr<framework::BlockDesc *>(kBlock);
-      auto *program = block->Program();
-      auto &current_scope = scope.NewScope();
-//      std::thread go_thread(&GoOp::ExecuteOnThread, &executor,
-//                            current_scope, program, block);
-//      std::thread th_(&GoOp::TestFunc123, this);
-//      th_.join();
+      // auto *block = Attr<framework::BlockDesc *>(kBlock);
+      // auto *program = block->Program();
+
+        // TODO(varunarora): Consider moving this to scope.h.
+        const framework::Scope* root_scope = &scope;
+        const framework::Scope* parent_scope = &(root_scope->parent());
+
+        while (parent_scope != nullptr) {
+            root_scope = parent_scope;
+            parent_scope = &(parent_scope->parent());
+            std::cout << "New parent scope: " << parent_scope << std::endl;
+        }
+        std::cout << "Found root scope: ";
+        std::cout << root_scope << std::endl;
+        std::cout << root_scope->LocalVarNames().size() << std::endl;
+
+        framework::Scope& new_scope = root_scope->NewScope();
+
+        // Add all the inputs to a new
+        auto &inputs = Inputs(kX);
+        for (size_t i = 0; i < inputs.size(); i++) {
+            std::cout << inputs.at(i) << std::endl;
+            /*framework::Variable* new_var = */
+            new_scope.Var(inputs.at(i));
+        }
+
+        // std::cout << new_scope.LocalVarNames().size() << std::endl;
+
+        // Loop through all the local scope variables.
+        std::vector<std::string> new_scope_variables = (
+                new_scope.LocalVarNames());
+        for (size_t j = 0; j < new_scope_variables.size(); j++) {
+            std::cout << new_scope.FindVar(
+                    new_scope_variables[j]) << std::endl;
+
+        }
+        // std::thread go_thread([=]{ExecuteOnThread(executor, scope);});
+
+//        std::thread send_thread = std::thread{[&]() {
+//            for (int i=0; i < 10; ++i) {
+//                std::cout << "THIS IS MY TEST THREAD" << i << std::endl;
+//                usleep(1000000);
+//            }
 //
-      std::thread send_thread = std::thread{[&]() {
-//          for (int i=0; i < 500; ++i) {
-//            std::cout << "THIS IS MY TEST THREAD" << i << std::endl;
-//            usleep(1000000);
-//          }
-          executor.Run(*program, &current_scope, block->ID(),
-                       false /*create_local_scope*/);
-      }};
-      std::cout << "OUTSIDE THREAD" << std::endl;
-      send_thread.detach();
+//        std::cout << scope.LocalVarNames().size() << std::endl;
+//            executor.Run(*program, &current_scope, block->ID(),
+//                       false /*create_local_scope*/);
+//      }};
+
+        std::cout << "OUTSIDE THREAD" << std::endl;
+        // send_thread.detach();
+        // go_thread.detach();
+        // go_thread.join();
     }
-//
-//    void ExecuteOnThread(framework::Executor* executor,
-//                         framework::Scope *current_scope,
-//                         framework::ProgramDesc *program,
-//                         framework::BlockDesc *block) {
-//      executor->Run(*program, current_scope, block->ID(),
-//                    false /*create_local_scope*/);
-//    }
 };
 
 
