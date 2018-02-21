@@ -60,60 +60,42 @@ class GoOp : public  framework::OperatorBase {
     }
     void RunImpl(const framework::Scope &scope,
                  const platform::Place &dev_place) const override {
-      framework::Executor executor(dev_place);
-      // auto *block = Attr<framework::BlockDesc *>(kBlock);
-      // auto *program = block->Program();
+        framework::Executor executor(dev_place);
 
-        // TODO(varunarora): Consider moving this to scope.h.
+        // std::thread go_thread([=]{ExecuteOnThread(executor, scope);});
+        // go_thread.detach();
+
+        /*
+         * Determine the global scope. Create a new child scope.
+         * Within the child scope, add all the local variables relevant
+         * to that scope.
+         *
+         * Now go through all the inputs to the op to ensure that
+         * all of them are in the newly created scope.
+         * */
+
+        // TODO(varunarora): Consider moving this root scope lookup to scope.h.
         const framework::Scope* root_scope = &scope;
         const framework::Scope* parent_scope = &(root_scope->parent());
 
         while (parent_scope != nullptr) {
             root_scope = parent_scope;
             parent_scope = &(parent_scope->parent());
-            std::cout << "New parent scope: " << parent_scope << std::endl;
         }
-        std::cout << "Found root scope: ";
-        std::cout << root_scope << std::endl;
-        std::cout << root_scope->LocalVarNames().size() << std::endl;
 
         framework::Scope& new_scope = root_scope->NewScope();
 
-        // Add all the inputs to a new
+        auto *block = Attr<framework::BlockDesc *>(kBlock);
+        for (auto& var : block->AllVars()) {
+            new_scope.Var(var->Name());
+        }
+
         auto &inputs = Inputs(kX);
         for (size_t i = 0; i < inputs.size(); i++) {
-            std::cout << inputs.at(i) << std::endl;
-            /*framework::Variable* new_var = */
-            new_scope.Var(inputs.at(i));
+            PADDLE_ENFORCE_NOT_NULL(new_scope.FindVar(inputs.at(i)),
+                                    "All variables used in the go block "
+                                    "should be created outside any block");
         }
-
-        // std::cout << new_scope.LocalVarNames().size() << std::endl;
-
-        // Loop through all the local scope variables.
-        std::vector<std::string> new_scope_variables = (
-                new_scope.LocalVarNames());
-        for (size_t j = 0; j < new_scope_variables.size(); j++) {
-            std::cout << new_scope.FindVar(
-                    new_scope_variables[j]) << std::endl;
-
-        }
-        // std::thread go_thread([=]{ExecuteOnThread(executor, scope);});
-
-//        std::thread send_thread = std::thread{[&]() {
-//            for (int i=0; i < 10; ++i) {
-//                std::cout << "THIS IS MY TEST THREAD" << i << std::endl;
-//                usleep(1000000);
-//            }
-//
-//        std::cout << scope.LocalVarNames().size() << std::endl;
-//            executor.Run(*program, &current_scope, block->ID(),
-//                       false /*create_local_scope*/);
-//      }};
-
-        std::cout << "OUTSIDE THREAD" << std::endl;
-        // send_thread.detach();
-        // go_thread.detach();
-        // go_thread.join();
     }
 };
 
