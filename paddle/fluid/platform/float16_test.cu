@@ -13,6 +13,8 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/utils/Logging.h"
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
@@ -108,6 +110,7 @@ limitations under the License. */
 
 #ifdef PADDLE_CUDA_FP16
 namespace paddle {
+namespace platform {
 
 #if CUDA_VERSION < 9000
 ARITHMETIC_KERNEL(Add, +)
@@ -209,5 +212,35 @@ TEST(float16, conversion_on_gpu) {
   EXPECT_EQ(v_assign.x, 0x3c00);
 }
 
+TEST(float16, lod_tensor_on_gpu) {
+  framework::LoDTensor src_tensor;
+  framework::LoDTensor gpu_tensor;
+  framework::LoDTensor dst_tensor;
+
+  float16* src_ptr = src_tensor.mutable_data<float16>(
+      framework::make_ddim({2, 2}), CPUPlace());
+
+  float16 arr[4] = {float16(1.0f), float16(0.5f), float16(0.33333f),
+                    float16(0.0f)};
+  memcpy(src_ptr, arr, 4 * sizeof(float16));
+
+  // CPU LoDTensor to GPU LoDTensor
+  CUDAPlace gpu_place(0);
+  CUDADeviceContext gpu_ctx(gpu_place);
+  framework::TensorCopy(src_tensor, gpu_place, gpu_ctx, &gpu_tensor);
+
+  // GPU LoDTensor to CPU LoDTensor
+  framework::TensorCopy(gpu_tensor, CPUPlace(), gpu_ctx, &dst_tensor);
+
+  // Sync before comparing LoDTensors
+  gpu_ctx.Wait();
+  const float16* dst_ptr = dst_tensor.data<float16>();
+  ASSERT_NE(src_ptr, dst_ptr);
+  for (size_t i = 0; i < 4; ++i) {
+    EXPECT_EQ(src_ptr[i].x, dst_ptr[i].x);
+  }
+}
+
+}  // namespace platform
 }  // namespace paddle
 #endif  // PADDLE_CUDA_FP16

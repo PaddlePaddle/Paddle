@@ -22,7 +22,7 @@ block = prog.current_block()
 random_reader = block.create_var(
     type=fluid.core.VarDesc.VarType.READER, name="RandomDataGenerator")
 random_reader.desc.set_dtypes(
-    [fluid.core.DataType.FP32, fluid.core.DataType.FP32])
+    [fluid.core.VarDesc.VarType.FP32, fluid.core.VarDesc.VarType.FP32])
 
 create_random_data_generator_op = block.append_op(
     type="create_random_data_generator",

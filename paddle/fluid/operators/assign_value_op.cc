@@ -36,7 +36,8 @@ class AssignValueOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::proto::DataType(ctx.Attr<int>("dtype")), ctx.GetPlace());
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
+        ctx.GetPlace());
   }
 };
 
@@ -49,8 +50,8 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(vector<int>) "
                               "Shape of values.");
     AddAttr<int>("dtype", "data type of values")
-        .InEnum({framework::proto::DataType::INT32,
-                 framework::proto::DataType::FP32});
+        .InEnum({framework::proto::VarType::INT32,
+                 framework::proto::VarType::FP32});
     AddAttr<std::vector<float>>("fp32_values", "store the float values")
         .SetDefault({});
     AddAttr<std::vector<int>>("int32_values", "store the int values")

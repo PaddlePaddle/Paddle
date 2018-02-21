@@ -32,11 +32,11 @@ TEST(DataTypeTransform, CPUTransform) {
     ptr[i] = i / 3;
   }
 
-  auto kernel_fp32 = OpKernelType(proto::DataType::FP32, place,
+  auto kernel_fp32 = OpKernelType(proto::VarType::FP32, place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_fp64 = OpKernelType(proto::DataType::FP64, place,
+  auto kernel_fp64 = OpKernelType(proto::VarType::FP64, place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_int32 = OpKernelType(proto::DataType::INT32, place,
+  auto kernel_int32 = OpKernelType(proto::VarType::INT32, place,
                                    DataLayout::kAnyLayout, LibraryType::kPlain);
 
   TransDataType(kernel_fp32, kernel_fp64, in, &out);

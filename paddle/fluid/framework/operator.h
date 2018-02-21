@@ -394,9 +394,9 @@ class OperatorWithKernel : public OperatorBase {
       const OpKernelType& expected_kernel_type) const;
 
  private:
-  // indicate kernel DataType by input data. Defaultly all input data must be
+  // indicate kernel DataType by input data. By default all input data must be
   // same.
-  proto::DataType IndicateDataType(const ExecutionContext& ctx) const;
+  proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
 };
 

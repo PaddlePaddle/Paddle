@@ -41,10 +41,10 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     int img_height = in_dim[2];
     int img_width = in_dim[3];
 
-    int output_height = OutputSize(img_height, kernels[0], paddings[0],
-                                   paddings[2], strides[0]);
-    int output_width =
-        OutputSize(img_width, kernels[1], paddings[1], paddings[3], strides[1]);
+    int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
+                                         paddings[2], strides[0]);
+    int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
+                                        paddings[3], strides[1]);
 
     ctx->SetOutputDim("Out", {batch_size * output_height * output_width,
                               img_channels * kernels[0] * kernels[1]});

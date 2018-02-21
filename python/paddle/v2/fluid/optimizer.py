@@ -225,7 +225,7 @@ class Optimizer(object):
         `create_optimization_pass()` into one.
         """
         params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                       error_clip_callback)
+                                       [error_clip_callback])
 
         params_grads = append_gradient_clip_ops(params_grads)
 
