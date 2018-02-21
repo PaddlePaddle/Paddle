@@ -88,7 +88,13 @@ std::vector<std::vector<int64_t>> VarDesc::GetShapes() const {
 }
 
 void VarDesc::SetDataType(proto::VarType::Type data_type) {
-  mutable_tensor_desc()->set_data_type(data_type);
+  switch (desc_.type().type()) {
+    case proto::VarType::CHANNEL:
+      mutable_channel_desc()->set_data_type(data_type);
+      break;
+    default:
+      mutable_tensor_desc()->set_data_type(data_type);
+  }
 }
 
 void VarDesc::SetDataTypes(
@@ -109,7 +115,13 @@ void VarDesc::SetDataTypes(
 }
 
 proto::VarType::Type VarDesc::GetDataType() const {
-  return tensor_desc().data_type();
+  switch (desc_.type().type()) {
+    case proto::VarType::CHANNEL:
+      return mutable_channel_desc().data_type();
+      break;
+    default:
+      return tensor_desc().data_type();
+  }
 }
 
 std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
@@ -128,9 +140,8 @@ void VarDesc::SetCapacity(int64_t capacity) {
       desc_.mutable_type()->mutable_channel()->set_capacity(capacity);
       break;
     default:
-      PADDLE_THROW(
-          "Setting 'capacity' is not supported by the type of var %s.",
-          this->Name());
+      PADDLE_THROW("Setting 'capacity' is not supported by the type of var %s.",
+                   this->Name());
   }
 }
 
