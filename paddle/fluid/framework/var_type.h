@@ -39,7 +39,7 @@ inline proto::VarType::Type ToVarType(std::type_index type) {
   }
 }
 
-inline std::type_index ToTypeIndex(proto::VarType::Type var_type) {
+inline std::type_index ToTypeId(proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
     return typeid(LoDTensor);
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
@@ -50,12 +50,18 @@ inline std::type_index ToTypeIndex(proto::VarType::Type var_type) {
     return typeid(SelectedRows);
   } else if (var_type == proto::VarType::READER) {
     return typeid(ReaderHolder);
+  } else if (var_type == proto::VarType::FP32) {
+    return typeid(float);
+  } else if (var_type == proto::VarType::FP64) {
+    return typeid(double);
+  } else if (var_type == proto::VarType::INT32) {
+    return typeid(int);
+  } else if (var_type == proto::VarType::INT64) {
+    return typeid(int64_t);
+  } else if (var_type == proto::VarType::BOOL) {
+    return typeid(bool);
   } else {
-    PADDLE_THROW(
-        "Variable type %d is not in "
-        "[LOD_TENSOR, LOD_RANK_TABLE, LOD_TENSOR_ARRAY, "
-        "SELECTED_ROWS, READER]",
-        var_type);
+    PADDLE_THROW("Variable type %d is not supported", var_type);
   }
 }
 
