@@ -239,6 +239,7 @@ void BindVarDsec(py::module &m) {
       .value("STEP_SCOPES", proto::VarType::STEP_SCOPES)
       .value("LOD_RANK_TABLE", proto::VarType::LOD_RANK_TABLE)
       .value("LOD_TENSOR_ARRAY", proto::VarType::LOD_TENSOR_ARRAY)
+      .value("CHANNEL", proto::VarType::CHANNEL)
       .value("PLACE_LIST", proto::VarType::PLACE_LIST)
       .value("READER", proto::VarType::READER);
 }
