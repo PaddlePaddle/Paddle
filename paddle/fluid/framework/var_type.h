@@ -39,6 +39,26 @@ inline proto::VarType::Type ToVarType(std::type_index type) {
   }
 }
 
+inline std::type_index ToTypeIndex(proto::VarType::Type var_type) {
+  if (var_type == proto::VarType::LOD_TENSOR) {
+    return typeid(LoDTensor);
+  } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
+    return typeid(LoDRankTable);
+  } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
+    return typeid(LoDTensorArray);
+  } else if (var_type == proto::VarType::SELECTED_ROWS) {
+    return typeid(SelectedRows);
+  } else if (var_type == proto::VarType::READER) {
+    return typeid(ReaderHolder);
+  } else {
+    PADDLE_THROW(
+        "Variable type %d is not in "
+        "[LOD_TENSOR, LOD_RANK_TABLE, LOD_TENSOR_ARRAY, "
+        "SELECTED_ROWS, READER]",
+        var_type);
+  }
+}
+
 template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (ToVarType(var.Type())) {
