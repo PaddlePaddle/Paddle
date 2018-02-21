@@ -365,7 +365,8 @@ def settings(batch_size,
              regularization=None,
              is_async=False,
              model_average=None,
-             gradient_clipping_threshold=None):
+             gradient_clipping_threshold=None,
+             async_lagged_grad_discard_ratio=None):
     """
     Set the optimization method, learning rate, batch size, and other training
     settings. The currently supported algorithms are SGD and Async-SGD.
@@ -396,6 +397,10 @@ def settings(batch_size,
                                         value larger than some value, will be
                                         clipped.
     :type gradient_clipping_threshold: float
+    :param async_lagged_grad_discard_ratio: async sgd gradient commit control,
+          when async_lagged_grad_discard_ratio * num_gradient_servers commit passed, 
+          current async gradient will be discard silently.
+    :type async_lagged_grad_discard_ratio: float
     """
     if isinstance(regularization, BaseRegularization):
         regularization = [regularization]
@@ -409,7 +414,7 @@ def settings(batch_size,
     args = [
         'batch_size', 'learning_rate', 'learning_rate_decay_a',
         'learning_rate_decay_b', 'learning_rate_schedule', 'learning_rate_args',
-        'gradient_clipping_threshold'
+        'gradient_clipping_threshold', 'async_lagged_grad_discard_ratio'
     ]
     kwargs = dict()
     kwargs['algorithm'] = algorithm
