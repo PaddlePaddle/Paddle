@@ -418,30 +418,31 @@ class Operator(object):
                     return True
             return False
 
-        for in_proto in proto.inputs:
-            found = find_name(inputs, in_proto.name)
-            assert found or in_proto.dispensable, "Input {} not found".format(
-                in_proto.name)
+        if inputs is not None:
+            for in_proto in proto.inputs:
+                found = find_name(inputs, in_proto.name)
+                assert found or in_proto.dispensable, "Input {} not found".format(
+                    in_proto.name)
 
-            if found:
-                in_args = inputs[in_proto.name]
-                if not isinstance(in_args, list):
-                    in_args = [in_args]
-                if not in_proto.duplicable and len(in_args) > 1:
-                    raise ValueError(
-                        "Input %s expects only one input, but %d are given." %
-                        (in_proto.name, len(in_args)))
-                in_arg_names = []
-                for arg in in_args:
-                    if isinstance(arg, basestring):
-                        in_arg_names.append(arg)
-                    else:
-                        assert (isinstance(arg, Variable),
-                                "Input of an operator must be variables.")
-                        in_arg_names.append(arg.name)
-                self.desc.set_input(in_proto.name, in_arg_names)
-            else:
-                self.desc.set_input(in_proto.name, [])
+                if found:
+                    in_args = inputs[in_proto.name]
+                    if not isinstance(in_args, list):
+                        in_args = [in_args]
+                    if not in_proto.duplicable and len(in_args) > 1:
+                        raise ValueError(
+                            "Input %s expects only one input, but %d are given."
+                            % (in_proto.name, len(in_args)))
+                    in_arg_names = []
+                    for arg in in_args:
+                        if isinstance(arg, basestring):
+                            in_arg_names.append(arg)
+                        else:
+                            assert (isinstance(arg, Variable),
+                                    "Input of an operator must be variables.")
+                            in_arg_names.append(arg.name)
+                    self.desc.set_input(in_proto.name, in_arg_names)
+                else:
+                    self.desc.set_input(in_proto.name, [])
 
         if outputs is not None:
             given = set()
