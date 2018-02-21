@@ -16,8 +16,6 @@ limitations under the License. */
 #include <thread>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/variable.h"
 
 
 namespace paddle {
@@ -37,41 +35,28 @@ class GoOp : public  framework::OperatorBase {
             : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
   private:
-    void TestFunc123() {
-      std::cout << "THIS IS MY TEST THREAD" << std::endl;
+    void ExecuteOnThread(framework::Executor& executor,
+                         const framework::ProgramDesc *program,
+                         framework::Scope *scope,
+                         framework::BlockDesc *block) {
+
+         executor.Run(*program, scope, block->ID(),
+                      false /*create_local_scope*/);
+
     }
 
-    //
-    void ExecuteOnThread(const framework::Executor& executor,
-                         const framework::Scope &scope) const {
-        // /*,
-        //             framework::Scope &current_scope,
-        //             framework::ProgramDesc *program,
-        //             framework::BlockDesc *block*/
-// executor->Run(*program, current_scope, block->ID(),
-//                    false /*create_local_scope*/);
-          for (int i=0; i < 10; ++i) {
-            std::cout << "THIS IS MY TEST THREAD" << i << std::endl;
-            usleep(1000000);
-          }
-
-        // std::cout << Inputs(kX).size() << std::endl;
-        std::cout << scope.LocalVarNames().size() << std::endl;
-    }
     void RunImpl(const framework::Scope &scope,
                  const platform::Place &dev_place) const override {
         framework::Executor executor(dev_place);
-
-        // std::thread go_thread([=]{ExecuteOnThread(executor, scope);});
-        // go_thread.detach();
-
         /*
          * Determine the global scope. Create a new child scope.
          * Within the child scope, add all the local variables relevant
          * to that scope.
          *
          * Now go through all the inputs to the op to ensure that
-         * all of them are in the newly created scope.
+         * all of them are in the newly created scope. This is important
+         * to ensure that they don't get destroyed when the parent scope
+         * is deleted.
          * */
 
         // TODO(varunarora): Consider moving this root scope lookup to scope.h.
@@ -96,6 +81,11 @@ class GoOp : public  framework::OperatorBase {
                                     "All variables used in the go block "
                                     "should be created outside any block");
         }
+
+        // Now execute the go op with the newly created scope.
+        std::thread go_thread([=]{ExecuteOnThread(
+                executor, block->Program(), &new_scope, block);});
+        go_thread.detach();
     }
 };
 
