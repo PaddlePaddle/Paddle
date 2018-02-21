@@ -88,13 +88,7 @@ std::vector<std::vector<int64_t>> VarDesc::GetShapes() const {
 }
 
 void VarDesc::SetDataType(proto::VarType::Type data_type) {
-  switch (desc_.type().type()) {
-    case proto::VarType::CHANNEL:
-      mutable_channel_desc()->set_data_type(data_type);
-      break;
-    default:
-      mutable_tensor_desc()->set_data_type(data_type);
-  }
+   mutable_tensor_desc()->set_data_type(data_type);
 }
 
 void VarDesc::SetDataTypes(
@@ -115,13 +109,7 @@ void VarDesc::SetDataTypes(
 }
 
 proto::VarType::Type VarDesc::GetDataType() const {
-  switch (desc_.type().type()) {
-    case proto::VarType::CHANNEL:
-      return mutable_channel_desc().data_type();
-      break;
-    default:
-      return tensor_desc().data_type();
-  }
+  return tensor_desc().data_type();
 }
 
 std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
@@ -224,6 +212,8 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
       return desc_.type().lod_tensor().tensor();
     case proto::VarType::LOD_TENSOR_ARRAY:
       return desc_.type().tensor_array().tensor();
+    case proto::VarType::CHANNEL:
+      return desc_.type().channel();
     default:
       PADDLE_THROW(
           "Getting 'tensor_desc' is not supported by the type of var %s.",
@@ -259,6 +249,8 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
       return desc_.mutable_type()->mutable_lod_tensor()->mutable_tensor();
     case proto::VarType::LOD_TENSOR_ARRAY:
       return desc_.mutable_type()->mutable_tensor_array()->mutable_tensor();
+    case proto::VarType::CHANNEL:
+      return desc_.mutable_type()->mutable_channel();
     default:
       PADDLE_THROW(
           "Getting 'mutable_tensor_desc' is not supported by the type of var "
