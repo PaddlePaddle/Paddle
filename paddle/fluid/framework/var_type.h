@@ -42,34 +42,6 @@ inline proto::VarType::Type ToVarType(std::type_index type) {
   }
 }
 
-inline std::type_index ToTypeId(proto::VarType::Type var_type) {
-  if (var_type == proto::VarType::LOD_TENSOR) {
-    return typeid(LoDTensor);
-  } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
-    return typeid(LoDRankTable);
-  } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
-    return typeid(LoDTensorArray);
-  } else if (var_type == proto::VarType::SELECTED_ROWS) {
-    return typeid(SelectedRows);
-  } else if (var_type == proto::VarType::READER) {
-    return typeid(ReaderHolder);
-  } else if (var_type == proto::VarType::CHANNEL) {
-    return typeid(ChannelHolder);
-  } else if (var_type == proto::VarType::FP32) {
-    return typeid(float);
-  } else if (var_type == proto::VarType::FP64) {
-    return typeid(double);
-  } else if (var_type == proto::VarType::INT32) {
-    return typeid(int);
-  } else if (var_type == proto::VarType::INT64) {
-    return typeid(int64_t);
-  } else if (var_type == proto::VarType::BOOL) {
-    return typeid(bool);
-  } else {
-    PADDLE_THROW("Variable type %d is not supported", var_type);
-  }
-}
-
 template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (ToVarType(var.Type())) {
