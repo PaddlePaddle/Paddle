@@ -70,65 +70,17 @@ class Go(BlockGuard):
             attrs={'sub_block': go_block})
 
 
-def make_channel(dtype, name, capacity=0):
-    # helper = LayerHelper('make_channel', **locals())
-    # channel = helper.create_variable(type=core.VarDesc.VarType.CHANNEL)
-    #
-    # program = Program()
-    # block = program.current_block()
-    # create_channel_op = block.append_op(
-    #     type="create_channel",
-    #     inputs={
-    #         "data_type": dtype,
-    #         "name": name,
-    #     },
-    #     outputs={"channel": channel},
-    #     attrs={"capacity": capacity})
-    #
-    # return create_channel_op
+def make_channel(dtype, size=0):
     return True
 
 
 def channel_send(channel, value):
-    # program = Program()
-    # block = program.current_block()
-    # return_value = False
-    # channel_send_op = block.append_op(
-    #     type="channel_send",
-    #     inputs={
-    #         "Channel": channel,
-    #         "Val": value,
-    #     },
-    #     outputs={"result": return_value})
-    #
-    # return channel_send_op
     return True
 
 
 def channel_recv(channel):
-    # program = Program()
-    # block = program.current_block()
-    #
-    # return_value = False
-    # channel_recv_op = block.append_op(
-    #     type="channel_recv",
-    #     inputs={"Channel": channel, },
-    #     outputs={"Val": x,
-    #              "result": return_value})
-    #
-    # return channel_recv_op
     return True
 
 
 def channel_close(channel):
-    # program = Program()
-    # block = program.current_block()
-    #
-    # return_value = False
-    # channel_close_op = block.append_op(
-    #     type="channel_close",
-    #     inputs={"Channel": channel, },
-    #     outputs={"result": return_value, })
-    #
-    # return channel_close_op
     return True
