@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/vol2col.h"
 
+#include "paddle/fluid/platform/profiler.h"
+
 namespace paddle {
 namespace operators {
 
@@ -83,6 +85,12 @@ template <typename DeviceContext, typename T>
 class GemmConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    const paddle::platform::DeviceContext* dev_ctx_prof = nullptr;
+
+    paddle::platform::Event start_event1(
+        paddle::platform::EventKind::kPushRange, "conv2d_cpu_bm", 0,
+        dev_ctx_prof);
+
     const Tensor* input = context.Input<Tensor>("Input");
     // The filter will be reshaped in the calculations,
     // so here use an assignment operation,
@@ -181,6 +189,10 @@ class GemmConvKernel : public framework::OpKernel<T> {
                                        false, T(1.0), &out_slice, T(0.0));
       }
     }
+    paddle::platform::Event stop_event1(paddle::platform::EventKind::kPopRange,
+                                        "conv2d_cpu_bm", 0, dev_ctx_prof);
+    LOG(INFO) << "CPU_conv2d: " << start_event1.CpuElapsedMs(stop_event1)
+              << std::endl;
   }
 };
 

@@ -18,6 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
+#include "paddle/fluid/platform/profiler.h"
+
 namespace paddle {
 namespace operators {
 
@@ -27,6 +29,19 @@ template <typename DeviceContext, typename T>
 class MulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    const paddle::platform::DeviceContext* dev_ctx_prof = nullptr;
+    std::string event_string = "mul_cpu_bm";
+    std::string log_string = "CPU";
+    if (platform::is_gpu_place(context.GetPlace())) {
+      dev_ctx_prof = platform::DeviceContextPool::Instance().Get(
+          paddle::platform::CUDAPlace(0));
+      event_string = "mul_gpu_bm";
+      log_string = "GPU";
+    }
+
+    paddle::platform::Event start_event1(
+        paddle::platform::EventKind::kPushRange, event_string, 0, dev_ctx_prof);
+
     const Tensor* x = context.Input<Tensor>("X");
     const Tensor* y = context.Input<Tensor>("Y");
     Tensor* z = context.Output<Tensor>("Out");
@@ -52,6 +67,11 @@ class MulKernel : public framework::OpKernel<T> {
     if (z_dim.size() != 2) {
       z->Resize(z_dim);
     }
+
+    paddle::platform::Event stop_event1(paddle::platform::EventKind::kPopRange,
+                                        event_string, 0, dev_ctx_prof);
+    LOG(INFO) << log_string + "_mul: " << start_event1.CpuElapsedMs(stop_event1)
+              << std::endl;
   }
 };
 

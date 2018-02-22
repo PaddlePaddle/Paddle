@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -34,6 +35,20 @@ class ActivationKernel
     auto& Out = detail::Ref(context.Output<framework::Tensor>("Out"),
                             "Cannot get output tensor Out, variable name = %s",
                             context.op().Output("Out"));
+
+    const paddle::platform::DeviceContext* dev_ctx_prof = nullptr;
+    std::string event_string = "activation_cpu_bm";
+    std::string log_string = "CPU";
+    if (platform::is_gpu_place(context.GetPlace())) {
+      dev_ctx_prof = platform::DeviceContextPool::Instance().Get(
+          paddle::platform::CUDAPlace(0));
+      event_string = "activation_gpu_bm";
+      log_string = "GPU";
+    }
+
+    paddle::platform::Event start_event1(
+        paddle::platform::EventKind::kPushRange, event_string, 0, dev_ctx_prof);
+
     Out.mutable_data<T>(context.GetPlace());
     auto x = framework::EigenVector<T>::Flatten(X);
     auto out = framework::EigenVector<T>::Flatten(Out);
@@ -46,6 +61,11 @@ class ActivationKernel
       *attr.second = context.Attr<float>(attr.first);
     }
     functor(*place, x, out);
+
+    paddle::platform::Event stop_event1(paddle::platform::EventKind::kPopRange,
+                                        event_string, 0, dev_ctx_prof);
+    LOG(INFO) << log_string + "_activation: "
+              << start_event1.CpuElapsedMs(stop_event1) << std::endl;
   }
 };
 

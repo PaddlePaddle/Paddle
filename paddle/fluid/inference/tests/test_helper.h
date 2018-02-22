@@ -15,6 +15,7 @@ limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/profiler.h"
 
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor& input,
@@ -96,6 +97,14 @@ void TestInference(const std::string& dirname,
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
 
+  using paddle::platform::DeviceContext;
+  using paddle::platform::Event;
+  using paddle::platform::EventKind;
+
+  const DeviceContext* dev_ctx = nullptr;
+
+  Event start_event1(EventKind::kPushRange, "run_inference", 0, dev_ctx);
+
   // 2. Initialize the inference_program and load parameters
   std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
   if (IsCombined) {
@@ -135,6 +144,10 @@ void TestInference(const std::string& dirname,
 
   // 6. Run the inference program
   executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+
+  Event stop_event1(EventKind::kPopRange, "run_inference", 0, dev_ctx);
+  LOG(INFO) << "Running_inference: " << start_event1.CpuElapsedMs(stop_event1)
+            << std::endl;
 
   delete scope;
 }

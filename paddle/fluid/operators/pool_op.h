@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
 
+#include "paddle/fluid/platform/profiler.h"
+
 namespace paddle {
 namespace operators {
 
@@ -60,6 +62,12 @@ template <typename DeviceContext, typename T>
 class PoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    const paddle::platform::DeviceContext* dev_ctx_prof = nullptr;
+
+    paddle::platform::Event start_event1(
+        paddle::platform::EventKind::kPushRange, "pool2d_cpu_bm", 0,
+        dev_ctx_prof);
+
     const Tensor* in_x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
 
@@ -112,6 +120,11 @@ class PoolKernel : public framework::OpKernel<T> {
       } break;
       default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
     }
+
+    paddle::platform::Event stop_event1(paddle::platform::EventKind::kPopRange,
+                                        "pool2d_cpu_bm", 0, dev_ctx_prof);
+    LOG(INFO) << "CPU_pool2d: " << start_event1.CpuElapsedMs(stop_event1)
+              << std::endl;
   }
 };
 

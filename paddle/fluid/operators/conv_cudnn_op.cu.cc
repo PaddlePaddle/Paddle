@@ -37,6 +37,13 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
+
+    auto* dev_ctx_prof = platform::DeviceContextPool::Instance().Get(
+        paddle::platform::CUDAPlace(0));
+    paddle::platform::Event start_event_gpu1(
+        paddle::platform::EventKind::kPushRange, "gpu_run_conv_cudnn", 0,
+        dev_ctx_prof);
+
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -141,8 +148,15 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           cudnn_conv_desc, algo, cudnn_workspace, workspace_size_in_bytes,
           &beta, cudnn_output_desc, output_data + i * group_offset_out));
     }
+
     // Release the cudnn workspace
     paddle::memory::Free(gpu, cudnn_workspace);
+
+    paddle::platform::Event stop_event_gpu1(
+        paddle::platform::EventKind::kPopRange, "gpu_run_conv_cudnn", 0,
+        dev_ctx_prof);
+    LOG(INFO) << "GPU_conv2d_cudnn: "
+              << start_event_gpu1.CudaElapsedMs(stop_event_gpu1) << std::endl;
   }
 };
 
