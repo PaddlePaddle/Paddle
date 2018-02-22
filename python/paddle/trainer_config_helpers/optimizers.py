@@ -361,12 +361,12 @@ def settings(batch_size,
              learning_rate_decay_b=0.,
              learning_rate_schedule='poly',
              learning_rate_args='',
+             async_lagged_grad_discard_ratio=1.5,
              learning_method=None,
              regularization=None,
              is_async=False,
              model_average=None,
-             gradient_clipping_threshold=None,
-             async_lagged_grad_discard_ratio=None):
+             gradient_clipping_threshold=None):
     """
     Set the optimization method, learning rate, batch size, and other training
     settings. The currently supported algorithms are SGD and Async-SGD.
