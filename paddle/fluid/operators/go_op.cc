@@ -35,19 +35,18 @@ class GoOp : public  framework::OperatorBase {
             : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
   private:
-    void ExecuteOnThread(framework::Executor& executor,
-                         const framework::ProgramDesc *program,
-                         framework::Scope *scope,
-                         framework::BlockDesc *block) {
-
-         executor.Run(*program, scope, block->ID(),
-                      false /*create_local_scope*/);
-
-    }
+//    void ExecuteOnThread(const framework::Executor& executor,
+//                         const framework::ProgramDesc *program,
+//                         framework::Scope *scope,
+//                         framework::BlockDesc *block) const {
+//      executor.Run(*program, scope, block->ID(),
+//                   false /*create_local_scope*/);
+//
+//    }
 
     void RunImpl(const framework::Scope &scope,
                  const platform::Place &dev_place) const override {
-        framework::Executor executor(dev_place);
+//        framework::Executor executor(dev_place);
         /*
          * Determine the global scope. Create a new child scope.
          * Within the child scope, add all the local variables relevant
@@ -68,23 +67,30 @@ class GoOp : public  framework::OperatorBase {
             parent_scope = &(parent_scope->parent());
         }
 
-        framework::Scope& new_scope = root_scope->NewScope();
-
         auto *block = Attr<framework::BlockDesc *>(kBlock);
-        for (auto& var : block->AllVars()) {
-            new_scope.Var(var->Name());
-        }
-
-        auto &inputs = Inputs(kX);
-        for (size_t i = 0; i < inputs.size(); i++) {
-            PADDLE_ENFORCE_NOT_NULL(new_scope.FindVar(inputs.at(i)),
-                                    "All variables used in the go block "
-                                    "should be created outside any block");
-        }
 
         // Now execute the go op with the newly created scope.
-        std::thread go_thread([=]{ExecuteOnThread(
-                executor, block->Program(), &new_scope, block);});
+        std::thread go_thread([=] {
+            framework::Executor executor(dev_place);
+            const framework::ProgramDesc *program = block->Program();
+
+            framework::Scope& new_scope = root_scope->NewScope();
+
+            for (auto& var : block->AllVars()) {
+              new_scope.Var(var->Name());
+            }
+
+            auto &inputs = Inputs(kX);
+            for (size_t i = 0; i < inputs.size(); i++) {
+              PADDLE_ENFORCE_NOT_NULL(new_scope.FindVar(inputs.at(i)),
+                                      "All variables used in the go block "
+                                      "should be created outside any block");
+            }
+
+            executor.Run(*program, &new_scope, block->ID(),
+                         false /*create_local_scope*/);
+        });
+
         go_thread.detach();
     }
 };
