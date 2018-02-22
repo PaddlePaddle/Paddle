@@ -78,7 +78,7 @@ class ChannelHolder {
     if (!IsInitialized()) return false;
     PADDLE_ENFORCE_EQ(holder_->Type(), std::type_index(typeid(T)));
     Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-    return channel != nullptr ? channel->Send(data) : false;
+    return channel != nullptr ? channel->Receive(data) : false;
   }
 
   void close() {
