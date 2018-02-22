@@ -20,6 +20,7 @@ limitations under the License. */
 
 #ifdef __NVCC__
 #include <thrust/iterator/iterator_adaptor.h>
+constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 #endif
 
 #include "paddle/fluid/operators/math/math_function.h"
@@ -376,13 +377,13 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
     if (dy) {
       shm[tid] += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
     }
-    i += 1024;
+    i += ELEMWISE_MAX_BLOCK_DIM;
   } while (i < h);
 
   if (dy) {
     __syncthreads();
 
-    h = h > 1024 ? 1024 : h;
+    h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
 
     // Sum, could be optimized
     if (threadIdx.x == 0) {
@@ -399,7 +400,7 @@ static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T* x,
                                        const T* y, const T* out, const T* dout,
                                        int h, int w, DX_OP dx_op, DY_OP dy_op,
                                        T* dx, T* dy) {
-  int block_size = std::min(1024, h);
+  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
   int gird_size = w;
   int shared_mem_size = block_size * sizeof(T);
   ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, shared_mem_size,
@@ -463,13 +464,13 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
       shm[tid] += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
     }
 
-    ttid += 1024;
+    ttid += ELEMWISE_MAX_BLOCK_DIM;
   }
 
   if (dy) {
     __syncthreads();
     int h = pre * post;
-    h = h > 1024 ? 1024 : h;
+    h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
 
     // Sum, could be optimized
     if (tid == 0) {
@@ -486,7 +487,7 @@ static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T* x,
                                        const T* y, const T* out, const T* dout,
                                        int pre, int n, int post, DX_OP dx_op,
                                        DY_OP dy_op, T* dx, T* dy) {
-  int block_size = std::min(1024, pre * post);
+  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
   int gird_size = n;
   int shared_mem_size = block_size * sizeof(T);
   ElemwiseGradBroadcast2CUDAKernel<<<gird_size, block_size, shared_mem_size,
