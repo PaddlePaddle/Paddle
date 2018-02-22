@@ -170,6 +170,14 @@ void BindBlockDesc(py::module &m) {
            [](BlockDesc &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.HasVar(name);
+           },
+           py::return_value_policy::reference)
+      .def("rename_var",
+           [](BlockDesc &self, const py::bytes &byte_name,
+              const py::bytes &byte_name_new) {
+             std::string name = byte_name;
+             std::string new_name = byte_name_new;
+             self.RenameVar(name, new_name);
            })
       .def("has_var_recursive",
            [](BlockDesc &self, py::bytes byte_name) {
@@ -198,7 +206,7 @@ void BindVarDsec(py::module &m) {
   py::class_<VarDesc> var_desc(m, "VarDesc", "");
   var_desc
       .def("name",
-           [](const VarDesc &self) {
+           [](VarDesc &self) {
              py::bytes name = self.Name();
              return name;
            },
