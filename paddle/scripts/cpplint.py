@@ -58,6 +58,7 @@ _USAGE = """
 Syntax: cpplint.py [--verbose=#] [--output=vs7] [--filter=-x,+y,...]
                    [--counting=total|toplevel|detailed] [--root=subdir]
                    [--linelength=digits]
+                   [--write-success=success_status_file]
         <file> [file] ...
 
   The style guidelines this tries to follow are those in
@@ -498,6 +499,8 @@ _line_length = 80
 # The allowed extensions for file names
 # This is set by --extensions flag.
 _valid_extensions = set(['cc', 'h', 'cpp', 'cu', 'cuh'])
+
+_write_success = None
 
 
 def ParseNolintSuppressions(filename, raw_line, linenum, error):
@@ -6337,7 +6340,7 @@ def ParseArguments(args):
     try:
         (opts, filenames) = getopt.getopt(args, '', [
             'help', 'output=', 'verbose=', 'counting=', 'filter=', 'root=',
-            'linelength=', 'extensions='
+            'linelength=', 'extensions=', 'write-success='
         ])
     except getopt.GetoptError:
         PrintUsage('Invalid arguments.')
@@ -6382,6 +6385,9 @@ def ParseArguments(args):
                 _valid_extensions = set(val.split(','))
             except ValueError:
                 PrintUsage('Extensions must be comma seperated list.')
+        elif opt == '--write-success':
+            global _write_success
+            _write_success = val
 
     if not filenames:
         PrintUsage('No files were specified.')
@@ -6407,6 +6413,10 @@ def main():
     for filename in filenames:
         ProcessFile(filename, _cpplint_state.verbose_level)
     _cpplint_state.PrintErrorCounts()
+
+    if _cpplint_state.error_count == 0 and _write_success is not None:
+        with open(_write_success, 'a'):
+            os.utime(_write_success, None)
 
     sys.exit(_cpplint_state.error_count > 0)
 

@@ -18,7 +18,6 @@ limitations under the License. */
 #include <fstream>
 
 #include "paddle/math/SIMDFunctions.h"
-
 #include "paddle/parameter/AverageOptimizer.h"
 #include "paddle/parameter/FirstOrderOptimizer.h"
 #include "paddle/parameter/OptimizerFunctions.h"
@@ -26,6 +25,7 @@ limitations under the License. */
 #include "paddle/parameter/ParameterOptimizer.h"
 #include "paddle/parameter/ParameterUpdateFunctions.h"
 #include "paddle/parameter/Regularizer.h"
+#include "paddle/parameter/ThreadLocalBuffer.h"
 #include "paddle/utils/Flags.h"
 #include "paddle/utils/GlobalConstants.h"
 #include "paddle/utils/Stat.h"
@@ -217,10 +217,6 @@ void ParameterServer2::setConfig(const SetConfigRequest& request,
 
   SetConfigResponse response;
   callback(response);
-
-  /// always defined, barrier slowest node function need it.
-  statSet_.reset(new StatSet("ParameterServer" +
-                             str::to_string(static_cast<int>(serverId_))));
 }
 
 real bufferSum(const std::vector<ParameterServer2::Buffer>& buffers) {
@@ -369,50 +365,7 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
                                    std::vector<Buffer>* outputBuffers) {
   VLOG(1) << "pserver: addGradient";
 
-  // forwardbackward delta from all trainers
-  // indicate the fluctuation caused by forwardbackward.
-  if (!numPassFinishClients_) {
-    REGISTER_BARRIER_DELTA_SERVER_SET(
-        *statSet_,
-        "forwardbackwardDelta",
-        FLAGS_num_gradient_servers,
-        request.trainer_id(),
-        request.forwardbackward_time(),
-        isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
-  }
-
   {
-    /// approximately pure network overhead
-    REGISTER_TIMER_DYNAMIC_SET(
-        "pushRecv", timeToMicroSecond(*handleRequestBegin_), -1, *statSet_);
-  }
-
-#ifndef PADDLE_DISABLE_TIMER
-  gettimeofday(&(*addGradBegin_), nullptr);
-#endif
-
-  /// barrier fluctuation caused by network and previous forwardbackward
-  if (!numPassFinishClients_) {
-    REGISTER_BARRIER_TIMER_SERVER_SET(
-        *statSet_,
-        "handleReqBegin",
-        FLAGS_num_gradient_servers,
-        request.trainer_id(),
-        (*handleRequestBegin_),
-        isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
-  }
-
-  if (!numPassFinishClients_) {
-    REGISTER_BARRIER_TIMER_SERVER(
-        *statSet_,
-        "addGradBegin",
-        FLAGS_num_gradient_servers,
-        request.trainer_id(),
-        isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
-  }
-
-  {
-    REGISTER_TIMER_DYNAMIC("addGradCore", -1, *statSet_);
     ReadLockGuard guard(parameterMutex_);
     int bufferIndex = 0;
     for (const auto& block : request.blocks()) {
@@ -444,15 +397,6 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
       std::lock_guard<std::mutex> guard(*info.lock);
       simd::addTo(gradientSumBuffer, gradientBuffer, size);
     }
-
-    if (!numPassFinishClients_) {
-      REGISTER_BARRIER_TIMER_SERVER(
-          *statSet_,
-          "addGradCoreFinish",
-          FLAGS_num_gradient_servers,
-          request.trainer_id(),
-          isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
-    }
   }
   if (request.batch_status() == BATCH_FINISH ||
       request.batch_status() == BATCH_START_AND_FINISH) {
@@ -461,47 +405,12 @@ void ParameterServer2::addGradient(const SendParameterRequest& request,
     VLOG(1) << "num samples: " << numSamplesProcessed_
             << ", new cost:" << cost_;
 
-    /// numPassFinishClients_ means some trainer has entered finishPass
-    if (!numPassFinishClients_) {
-      REGISTER_SLOW_NODES_PROBE(
-          *statSet_,
-          "SLOW_NODES",
-          FLAGS_num_gradient_servers,
-          request.trainer_id(),
-          isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
-    }
-
     /// notify doOperation gradient ready
     gradientReadyBarrier_.wait();
 
-    /// if wait pass finish does not start, do check
-    if (!numPassFinishClients_) {
-      CHECK_BARRIER_TIMER(*statSet_,
-                          "SLOW_NODES",
-                          FLAGS_num_gradient_servers,
-                          isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
-    }
-
-    /// barrier performance while all parameter add is finished
-    /// can indicate the fluctation caused by computation at pserver.
-    if (!numPassFinishClients_) {
-      REGISTER_BARRIER_TIMER_SERVER(
-          *statSet_,
-          "paraReady",
-          FLAGS_num_gradient_servers,
-          request.trainer_id(),
-          isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
-    }
     /// wait doOperation finish
     parameterReadyBarrier_.wait();
     VLOG(1) << "start send back";
-    {
-      /// total time except overhead of network.
-      REGISTER_TIMER_DYNAMIC_SET("sendParaNoRecvNoSend",
-                                 timeToMicroSecond(*addGradBegin_),
-                                 -1,
-                                 *statSet_);
-    }
   }
 }
 
@@ -543,57 +452,6 @@ bool ParameterServer2::asyncGrdientCommitCheckAndStat(
   return commitGradient;
 }
 
-void ParameterServer2::printAsyncGradientCommitStatAndReset() {
-  std::stringstream statFormat;
-  if (asyncUpdateSteps_) {
-    statFormat << "async discard gradients stat: " << std::endl;
-    statFormat << "serverId: " << serverId_
-               << " serverType: " << isSparseServer_
-               << " total updates: " << asyncUpdateSteps_
-               << " discard updates: " << asyncLaggedGradientsNum_
-               << " discard ratio: "
-               << (real)asyncLaggedGradientsNum_ / (real)asyncUpdateSteps_;
-    statFormat << std::endl;
-    statFormat << std::endl;
-
-    statFormat << "Async Gradient Update Steps distribution: " << std::endl
-               << "Sample: 1:1912(0.00284449) means "
-               << "the updates step=1 count 1912 times "
-               << "and account for 0.284449% of total updates" << std::endl;
-    size_t index = 0;
-    for (const auto& stat : asyncUpdateStat_) {
-      statFormat << index << ":" << stat << "("
-                 << (real)stat / (real)asyncUpdateSteps_ << ") ";
-      index++;
-    }
-    statFormat << std::endl;
-    statFormat << std::endl;
-
-    statFormat << "Async Gradient Discard based on trainer_id: " << std::endl
-               << "Sample: 2:22(0.0016363) means "
-               << "total discarded updates from trainer_id=2 count 22 "
-               << "and account for 0.16363% of all updates from trainer_id=2"
-               << std::endl;
-    for (auto i = 0; i < FLAGS_num_gradient_servers; i++) {
-      real ratio =
-          (real)asyncTrainerDiscardStat_[i] /
-          (real)(asyncTrainerCommitStat_[i] + asyncTrainerDiscardStat_[i]);
-      statFormat << i << ":" << asyncTrainerDiscardStat_[i] << "(" << ratio
-                 << ")"
-                 << " ";
-    }
-    LOG(INFO) << statFormat.str();
-
-    /// reset stat
-    asyncUpdateSteps_ = 0;
-    asyncTrainerSteps_.assign(asyncTrainerSteps_.size(), 0);
-    asyncLaggedGradientsNum_ = 0;
-    asyncUpdateStat_.assign(asyncUpdateStat_.size(), 0);
-    asyncTrainerDiscardStat_.assign(asyncTrainerDiscardStat_.size(), 0);
-    asyncTrainerCommitStat_.assign(asyncTrainerCommitStat_.size(), 0);
-  }
-}
-
 static ThreadLocal<std::vector<bool>> localBlockBitset_;
 
 void ParameterServer2::asyncSGD(const SendParameterRequest& request,
@@ -618,7 +476,7 @@ void ParameterServer2::asyncSGD(const SendParameterRequest& request,
 
   bool commitGradient = asyncGrdientCommitCheckAndStat(request);
 
-  VectorPtr* vecs = Parameter::getTlsTempBufs();
+  VectorPtr* vecs = parameter::getThreadLocalBuffer();
   size_t bufferIndex = 0;
   for (const auto& block : request.blocks()) {
     int64_t offset = getBlockOffset(block);
@@ -695,7 +553,6 @@ void ParameterServer2::asyncSGD(const SendParameterRequest& request,
   if (request.trainer_id() == 0) {
     /// batchId_ is approximately equal to "real batchId_"
     batchId_++;
-    tuningAsyncsgdMidOutput();
   }
 }
 
@@ -881,34 +738,6 @@ void ParameterServer2::sendParameter(const SendParameterRequest& request,
         }
         (*requestVec_).clear();
         (*callbackVec_).clear();
-
-        /// barrier perfromance while all data are send finished.
-        /// indicates network flucatuation for big message.
-        if (!numPassFinishClients_) {
-          REGISTER_BARRIER_TIMER_SERVER(
-              *statSet_,
-              "sendParamFinish",
-              FLAGS_num_gradient_servers,
-              request.trainer_id(),
-              isSparseServer_ ? "_sparseUpdater" : "_denseUpdater");
-        }
-        /// all time exhausted in parameterServer for big message.
-        /// it contains network and computation at pserver.
-        {
-          /// total time including overhead of network.
-          REGISTER_TIMER_DYNAMIC_SET("sendParaTotal",
-                                     timeToMicroSecond(*handleRequestBegin_),
-                                     -1,
-                                     *statSet_);
-        }
-        /// all time exhausted in pserverServer except recieve network.
-        {
-          /// total time except overhead of network receive
-          REGISTER_TIMER_DYNAMIC_SET("sendParaNoRecv",
-                                     timeToMicroSecond(*addGradBegin_),
-                                     -1,
-                                     *statSet_);
-        }
       }
       break;
     case PSERVER_UPDATE_MODE_SET_PARAM:
@@ -1051,15 +880,15 @@ void ParameterServer2::clearUnusedSegments(CpuVector* vec) {
 }
 
 void ParameterServer2::parallelExecForEachBlock(ExecFunc func) {
-  SyncThreadPool::execHelper(syncThreadPool_.get(),
-                             [&](int tid, size_t numThreads) {
-                               int64_t numBlocks = blockIdMap_.size();
-                               VectorPtr* vecs = Parameter::getTlsTempBufs();
-                               for (int64_t blockId = tid; blockId < numBlocks;
-                                    blockId += numThreads) {
-                                 func(blockId, vecs);
-                               }
-                             });
+  SyncThreadPool::execHelper(
+      syncThreadPool_.get(), [&](int tid, size_t numThreads) {
+        int64_t numBlocks = blockIdMap_.size();
+        VectorPtr* vecs = parameter::getThreadLocalBuffer();
+        for (int64_t blockId = tid; blockId < numBlocks;
+             blockId += numThreads) {
+          func(blockId, vecs);
+        }
+      });
 }
 
 void ParameterServer2::blockTraverse(
@@ -1088,8 +917,6 @@ void ParameterServer2::op_SGD(const Operation& operation,
   }
 
   {
-    REGISTER_TIMER_DYNAMIC("op_SGD", -1, *statSet_);
-
     parallelExecForEachBlock([&](int64_t blockId, const VectorPtr vecs[]) {
       BlockInfo& info = blockInfos_[blockId];
       const ParameterConfig& config = getParameterConfig(blockId);
@@ -1113,7 +940,6 @@ void ParameterServer2::op_SGD(const Operation& operation,
   }
 
   batchId_++;
-  tuningSgdMidOutput();
 }
 
 void ParameterServer2::op_start_pass(const Operation& operation,
@@ -1146,8 +972,6 @@ void ParameterServer2::op_finish_pass(const Operation& operation,
     /// finish pass
     info.optimizer->finishPass();
   });
-
-  tuningSgdFinished();
   batchId_ = 0;
 }
 
@@ -1208,8 +1032,8 @@ void ParameterServer2::loadValueVector(const LoadValueRequest& request,
   Parameter::Header header;
   CHECK(fs.read(reinterpret_cast<char*>(&header), sizeof(header)))
       << "Fail to read parameters in pserver";
-  CHECK_EQ(header.version, Parameter::kFormatVersion)
-      << "Incorrect format version: " << header.version;
+  CHECK(Parameter::isHeaderFormatSupported(header.format))
+      << "Incorrect format version: " << header.format;
   CHECK_EQ(header.size, (size_t)size_)
       << "The size (" << header.size << ") in the file does not match the size "
       << "(" << size_ << ") of the pserver: " << serverId_;
@@ -1239,7 +1063,8 @@ void ParameterServer2::saveValueVector(const SaveValueRequest& request,
   CpuVector& vec = vectors_[PARAMETER_APPLY] ? *vectors_[PARAMETER_APPLY]
                                              : *vectors_[PARAMETER_VALUE];
   Parameter::Header header;
-  header.version = Parameter::kFormatVersion;
+  // TODO(TJ): save param headerFormat_
+  header.format = PARAM_FORMAT_ORIGINAL;
   header.valueSize = sizeof(real);
   header.size = size_;
 
@@ -1515,7 +1340,6 @@ void ParameterServer2::asyncFinishPass(const SynchronizeRequest& request,
   callback(SynchronizeResponse());
 
   if (request.trainer_id() == 0) {
-    tuningAsyncsgdFinished();
     batchId_ = 0;
   }
 }
@@ -1572,44 +1396,6 @@ void ParameterServer2::releaseMatrix(const ReleaseMatrixRequest& request,
     mat.swap(matrices_[request.handle()]);
   }
   callback(response);
-}
-
-void ParameterServer2::tuningSgdMidOutput() {
-  if (batchId_ && batchId_ % FLAGS_log_period_server == 0) {
-    LOG(INFO) << "======== Batch=" << batchId_ << "=======";
-    statSet_->setThreadInfo(true);
-    statSet_->printAllStatus();
-    /// not reset raw data for reducing the overhead of performance tuning
-    statSet_->reset(false);
-  }
-}
-
-void ParameterServer2::tuningSgdFinished() {
-  LOG(INFO) << "======== Batch=" << batchId_ << " pass END"
-            << "=======";
-  statSet_->setThreadInfo(true);
-  statSet_->printAllStatus();
-  /**
-   * reset raw data at end of pass since some raw data could be not
-   * complete. Otherwise the raw data will pollute next pass performance
-   * tuning
-   */
-  statSet_->reset();
-}
-
-void ParameterServer2::tuningAsyncsgdMidOutput() {
-#ifndef PADDLE_DISABLE_TIMER
-  if (batchId_ && batchId_ % FLAGS_log_period_server == 0) {
-    LOG(INFO) << "======== [not accurate] Batch=" << batchId_ << "=======";
-    printAsyncGradientCommitStatAndReset();
-  }
-#endif
-}
-
-void ParameterServer2::tuningAsyncsgdFinished() {
-  LOG(INFO) << "======== [not accurate] Batch=" << batchId_ << " pass END"
-            << "=======";
-  printAsyncGradientCommitStatAndReset();
 }
 
 }  // namespace paddle

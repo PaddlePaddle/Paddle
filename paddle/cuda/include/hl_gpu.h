@@ -25,7 +25,9 @@ limitations under the License. */
 #include "hl_matrix.h"
 #include "hl_sequence.h"
 #include "hl_sparse.h"
+#ifndef PADDLE_MOBILE_INFERENCE
 #include "hl_warpctc_wrap.h"
+#endif
 
 #ifdef HPPL_STUB_FUNC
 #include "stub/hl_aggregate_stub.h"

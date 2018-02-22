@@ -98,8 +98,19 @@ void SubSequenceLayer::forward(PassType passType) {
   CHECK_EQ(numSequences2, numSequences3);
 
   MatrixPtr inputValue = input.value;
-  IVectorPtr offsetValue = offsetSeq.ids;
-  IVectorPtr sizeValue = sizeSeq.ids;
+  IVectorPtr offsetValue;
+  IVectorPtr sizeValue;
+
+  if (useGpu_) {
+    // copy to cpu
+    IVector::resizeOrCreate(offsetValue, offsetSeq.ids->getSize(), false);
+    IVector::resizeOrCreate(sizeValue, sizeSeq.ids->getSize(), false);
+    offsetValue->copyFrom(*offsetSeq.ids);
+    sizeValue->copyFrom(*sizeSeq.ids);
+  } else {
+    offsetValue = offsetSeq.ids;
+    sizeValue = sizeSeq.ids;
+  }
 
   CHECK_EQ(offsetValue->getSize(), numSequences1);
   CHECK_EQ(sizeValue->getSize(), numSequences1);
@@ -176,8 +187,21 @@ void SubSequenceLayer::backward(const UpdateCallback& callback) {
   size_t numSequences1 = startPositions1->getSize() - 1;
   const int* starts1 = startPositions1->getData();
 
-  IVectorPtr offsetValue = getInput(1).ids;
-  IVectorPtr sizeValue = getInput(2).ids;
+  const Argument& offsetSeq = getInput(1);
+  const Argument& sizeSeq = getInput(2);
+  IVectorPtr offsetValue;
+  IVectorPtr sizeValue;
+
+  if (useGpu_) {
+    // copy to cpu
+    IVector::resizeOrCreate(offsetValue, offsetSeq.ids->getSize(), false);
+    IVector::resizeOrCreate(sizeValue, sizeSeq.ids->getSize(), false);
+    offsetValue->copyFrom(*offsetSeq.ids);
+    sizeValue->copyFrom(*sizeSeq.ids);
+  } else {
+    offsetValue = offsetSeq.ids;
+    sizeValue = sizeSeq.ids;
+  }
 
   int* offsets = offsetValue->getData();
   int* sizes = sizeValue->getData();

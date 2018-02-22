@@ -30,6 +30,8 @@ layers {
       stride_y: 1
       output_y: 48
       img_size_y: 48
+      dilation: 1
+      dilation_y: 1
     }
   }
   bias_parameter_name: "___conv_0__.wbias"
@@ -105,6 +107,8 @@ layers {
       stride_y: 1
       output_y: 24
       img_size_y: 24
+      dilation: 1
+      dilation_y: 1
     }
   }
   bias_parameter_name: "___conv_1__.wbias"
@@ -153,8 +157,6 @@ layers {
       img_size_y: 0
     }
   }
-  height: 24
-  width: 24
 }
 layers {
   name: "__fc_layer_0__"
@@ -165,8 +167,6 @@ layers {
     input_layer_name: "__block_expand_layer_0__"
     input_parameter_name: "___fc_layer_0__.w0"
   }
-  height: 24
-  width: 24
 }
 parameters {
   name: "___conv_0__.w0"

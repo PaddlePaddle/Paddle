@@ -13,22 +13,18 @@
 # serve to show the default.
 import sys
 import os, subprocess
+sys.path.insert(0, os.path.abspath('@PADDLE_SOURCE_DIR@/python'))
 import shlex
 from recommonmark import parser, transform
-try:
-   import py_paddle
-   import paddle
-   import paddle.v2
-except ImportError:
-   print("Must install paddle python package before generating documentation")
-   sys.exit(1)
+import paddle
+import paddle.v2
 
 MarkdownParser = parser.CommonMarkParser
 AutoStructify = transform.AutoStructify
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-templates_path = ["@PROJ_ROOT@/doc_theme/templates"]
+templates_path = ["@PADDLE_SOURCE_DIR@/doc_theme/templates"]
 
 # -- General configuration ------------------------------------------------
 
@@ -124,7 +120,7 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['@PROJ_ROOT@/doc_theme/static']
+html_static_path = ['@PADDLE_SOURCE_DIR@/doc_theme/static']
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = project + 'doc'

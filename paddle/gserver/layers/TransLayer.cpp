@@ -56,7 +56,14 @@ void TransLayer::backward(const UpdateCallback& callback) {
     return;
   }
   MatrixPtr preGrad = getInputGrad(0);
-  outputGrad->transpose(preGrad, false);
+  if (preGrad) {
+    MatrixPtr transGrad = Matrix::create(preGrad->getHeight(),
+                                         preGrad->getWidth(),
+                                         /* trans= */ false,
+                                         preGrad->useGpu());
+    outputGrad->transpose(transGrad, false);
+    preGrad->add(*transGrad);
+  }
 }
 
 }  // namespace paddle

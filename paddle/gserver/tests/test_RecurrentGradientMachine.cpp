@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <paddle/gserver/gradientmachines/GradientMachine.h>
+#include <paddle/parameter/ParameterUpdateFunctions.h>
 #include <paddle/trainer/Trainer.h>
 #include <paddle/trainer/TrainerInternal.h>
 #include <paddle/utils/PythonUtil.h>
@@ -149,6 +150,15 @@ TEST(RecurrentGradientMachine, rnn_multi_unequalength_input) {
   for (bool useGpu : {false, true}) {
     test("gserver/tests/sequence_rnn_multi_unequalength_inputs.py",
          "gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py",
+         1e-6,
+         useGpu);
+  }
+}
+
+TEST(RecurrentGradientMachine, rnn_mixed_input) {
+  for (bool useGpu : {false, true}) {
+    test("gserver/tests/sequence_rnn_mixed_inputs.py",
+         "gserver/tests/sequence_rnn_matched_inputs.py",
          1e-6,
          useGpu);
   }

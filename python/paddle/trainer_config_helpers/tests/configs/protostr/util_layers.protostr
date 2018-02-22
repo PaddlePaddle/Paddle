@@ -22,6 +22,9 @@ layers {
   inputs {
     input_layer_name: "b"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__concat_0__"
@@ -34,6 +37,9 @@ layers {
   inputs {
     input_layer_name: "b"
   }
+  height: 0
+  width: 0
+  depth: 1
 }
 layers {
   name: "__concat_1__"

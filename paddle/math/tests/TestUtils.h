@@ -37,7 +37,7 @@ limitations under the License. */
  *
  *  AutoCompare test;
  *  test.cmpWithoutArg<I...>(function, height, width)
-*/
+ */
 
 #include <gtest/gtest.h>
 #include "TensorCheck.h"

@@ -18,21 +18,21 @@ limitations under the License. */
 namespace paddle {
 
 TEST(CrossMapNormal, real) {
-  for (size_t numSamples : {5, 32}) {
-    for (size_t channels : {1, 5, 32}) {
-      for (size_t imgSizeH : {5, 33, 100}) {
-        for (size_t imgSizeW : {5, 32, 96}) {
-          for (size_t size : {1, 2, 3, 5, 7}) {
+  for (size_t numSamples : {5}) {
+    for (size_t channels : {1, 5}) {
+      for (size_t imgSizeH : {5, 33}) {
+        for (size_t imgSizeW : {5, 32}) {
+          for (size_t size : {1, 3}) {
             VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
                     << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW
                     << " size=" << size;
 
             // init Test object
-            FunctionCompare test("CrossMapNormal",
-                                 FuncConfig()
-                                     .set("size", size)
-                                     .set("scale", (real)1.5)
-                                     .set("pow", (real)0.5));
+            CpuGpuFuncCompare test("CrossMapNormal",
+                                   FuncConfig()
+                                       .set("size", size)
+                                       .set("scale", (real)1.5)
+                                       .set("pow", (real)0.5));
             // prepare input arguments
             TensorShape shape{numSamples, channels, imgSizeH, imgSizeW};
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
@@ -48,20 +48,20 @@ TEST(CrossMapNormal, real) {
 }
 
 TEST(CrossMapNormalGrad, real) {
-  for (size_t numSamples : {5, 32}) {
-    for (size_t channels : {1, 5, 32}) {
-      for (size_t imgSizeH : {5, 33, 100}) {
-        for (size_t imgSizeW : {5, 32, 96}) {
-          for (size_t size : {1, 2, 3, 5, 7}) {
+  for (size_t numSamples : {5}) {
+    for (size_t channels : {1, 5}) {
+      for (size_t imgSizeH : {5, 33}) {
+        for (size_t imgSizeW : {5, 32}) {
+          for (size_t size : {1, 3}) {
             VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
                     << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW
                     << " size=" << size;
 
-            FunctionCompare test("CrossMapNormalGrad",
-                                 FuncConfig()
-                                     .set("size", size)
-                                     .set("scale", (real)1.5)
-                                     .set("pow", (real)0.5));
+            CpuGpuFuncCompare test("CrossMapNormalGrad",
+                                   FuncConfig()
+                                       .set("size", size)
+                                       .set("scale", (real)1.5)
+                                       .set("pow", (real)0.5));
             TensorShape shape{numSamples, channels, imgSizeH, imgSizeW};
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
