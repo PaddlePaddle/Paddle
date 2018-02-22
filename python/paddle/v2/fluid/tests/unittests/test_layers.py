@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 
+import paddle.v2.fluid.backward as backward
 import paddle.v2.fluid.layers as layers
 import paddle.v2.fluid.nets as nets
 from paddle.v2.fluid.framework import Program, program_guard, default_main_program
@@ -32,7 +33,7 @@ class TestBook(unittest.TestCase):
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = layers.mean(x=cost)
             self.assertIsNotNone(avg_cost)
-            program.append_backward(avg_cost)
+            backward.append_backward(avg_cost)
 
         print(str(program))
 
@@ -94,7 +95,7 @@ class TestBook(unittest.TestCase):
             cost = layers.cross_entropy(input=predict, label=label)
             avg_cost = layers.mean(x=cost)
 
-            program.append_backward(avg_cost)
+            backward.append_backward(avg_cost)
 
         print(str(program))
 
