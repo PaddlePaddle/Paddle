@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,13 +20,13 @@ from backward import _rename_arg_
 from . import core
 
 dtype_to_size = {
-    core.DataType.FP16: 2,
-    core.DataType.FP32: 4,
-    core.DataType.FP64: 8,
-    core.DataType.INT16: 2,
-    core.DataType.INT32: 4,
-    core.DataType.INT64: 8,
-    core.DataType.BOOL: 1
+    core.VarDesc.VarType.FP16: 2,
+    core.VarDesc.VarType.FP32: 4,
+    core.VarDesc.VarType.FP64: 8,
+    core.VarDesc.VarType.INT16: 2,
+    core.VarDesc.VarType.INT32: 4,
+    core.VarDesc.VarType.INT64: 8,
+    core.VarDesc.VarType.BOOL: 1
 }
 
 

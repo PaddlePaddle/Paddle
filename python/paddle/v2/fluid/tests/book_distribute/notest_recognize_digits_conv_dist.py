@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,14 +58,19 @@ trainers = int(os.getenv("TRAINERS"))  # total trainer count
 current_endpoint = os.getenv("SERVER_ENDPOINT")  # current pserver endpoint
 training_role = os.getenv("TRAINING_ROLE",
                           "TRAINER")  # get the training role: trainer/pserver
+if not current_endpoint:
+    print("need env SERVER_ENDPOINT")
+    exit(1)
+
 t = fluid.DistributeTranspiler()
 t.transpile(
-    optimize_ops, params_grads, pservers=pserver_endpoints, trainers=trainers)
+    optimize_ops,
+    params_grads,
+    0,
+    pservers=pserver_endpoints,
+    trainers=trainers)
 
 if training_role == "PSERVER":
-    if not current_endpoint:
-        print("need env SERVER_ENDPOINT")
-        exit(1)
     pserver_prog = t.get_pserver_program(current_endpoint)
     pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
     exe.run(pserver_startup)

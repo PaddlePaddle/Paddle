@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ class MultiplexGPUKernel : public framework::OpKernel<T> {
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    Copy(*ids, platform::CPUPlace(), ctx.device_context(), &index_t_cpu);
+    TensorCopy(*ids, platform::CPUPlace(), ctx.device_context(), &index_t_cpu);
     auto* index = index_t_cpu.data<int32_t>();
     auto stream = ctx.cuda_device_context().stream();
     platform::CUDAPlace place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
@@ -69,7 +69,7 @@ class MultiplexGradGPUKernel : public framework::OpKernel<T> {
     auto cols = ins[0]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
-    Copy(*ids, platform::CPUPlace(), ctx.device_context(), &index_t_cpu);
+    TensorCopy(*ids, platform::CPUPlace(), ctx.device_context(), &index_t_cpu);
     auto* index = index_t_cpu.data<int32_t>();
 
     auto stream = ctx.cuda_device_context().stream();

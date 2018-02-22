@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ def _infer_var_data_type_(grad_var_name, block):
         fwd_var = block.desc.find_var_recursive(fwd_name.encode("ascii"))
         grad_var.set_dtype(fwd_var.dtype())
     else:
-        grad_var.set_dtype(core.DataType.FP32)
+        grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
 
 def _all_in_set_(cands, s):
@@ -199,12 +199,76 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
     return op_descs
 
 
+import proto.framework_pb2 as framework_pb2
+
+
+def serialize_op_decs(op_desc):
+    protostr = op_desc.serialize_to_string()
+    proto = framework_pb2.OpDesc.FromString(str(protostr))
+    return proto.__str__()
+
+
+def _callback_lookup_(op):
+    """
+    Only used in _append_backward_ops_
+    Build and returns a callback function for certain op. For example
+
+    parallel_do:           AllReduce
+
+    :param op:
+    :return: callback function
+    """
+    if op.type == 'parallel_do' and op.attr('use_nccl'):
+        param_names = set(op.input('parameters'))
+        param_grad_names = [n + "@GRAD" for n in param_names]
+
+        class ParallelDoCallBack(object):
+            def __init__(self, param_grad_names, parallel_scopes_name):
+                self.has_inserted_nccl_init = False
+                self.param_grad_names = param_grad_names
+                self.parallel_scopes_name = parallel_scopes_name
+
+            def __call__(self, block, context):
+                if not self.has_inserted_nccl_init:
+                    op_desc = _create_op_desc_(
+                        "ncclInit",
+                        {"parallel_scopes": self.parallel_scopes_name},
+                        {"Communicator": ['nccl_com__do_not_change_']}, {})
+                    block.program.global_block().desc.append_op().copy_from(
+                        op_desc)
+                    self.has_inserted_nccl_init = True
+
+                current_op_desc = context["__current_op_desc__"]
+                for o_param in current_op_desc.output_names():
+                    for o_argu in current_op_desc.output(o_param):
+                        if o_argu in self.param_grad_names:
+                            allreduce_out_name = o_argu + "__nccl_all_reduce__"
+                            op_desc = _create_op_desc_(
+                                "ncclAllReduce", {
+                                    "X": [o_argu],
+                                    "Communicator":
+                                    ['nccl_com__do_not_change_']
+                                }, {"Out": [allreduce_out_name]},
+                                {"reduction": "ncclSum"})
+                            block.desc.append_op().copy_from(op_desc)
+
+                            op_desc = _create_op_desc_(
+                                "assign", {"X": [allreduce_out_name]},
+                                {"Out": [o_argu]}, {})
+                            block.desc.append_op().copy_from(op_desc)
+
+        return ParallelDoCallBack(param_grad_names,
+                                  op.output("parallel_scopes"))
+    else:
+        return None
+
+
 def _append_backward_ops_(block,
                           ops,
                           target_block,
                           no_grad_dict,
                           grad_to_var,
-                          callback=None):
+                          callbacks=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -220,14 +284,11 @@ def _append_backward_ops_(block,
             val(str): corresponding forward variable name
         callback(callable object): a callable object used to decorate new generated grad ops
     """
-    if callback is None:
-
-        def empty_callback(block, context):
-            pass
-
-        callback = empty_callback
-    elif not hasattr(callback, '__call__'):
-        raise ValueError("'callback' must be a callable object.")
+    if callbacks is not None:
+        assert (isinstance(callbacks, list))
+        for cb in callbacks:
+            if not hasattr(cb, '__call__'):
+                raise ValueError("'callback' must be a callable object.")
 
     # grad_op_descs holds created grad_op, and will be appended to target_block
     grad_op_descs = []
@@ -238,8 +299,17 @@ def _append_backward_ops_(block,
         if op.has_attr("sub_block"):
             sub_block = program.block(op.block_attr("sub_block"))
             grad_sub_block = program.create_block(parent_idx=sub_block.idx)
-            _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
-                                  no_grad_dict, grad_to_var)
+            cb = _callback_lookup_(op)
+            if cb is not None:
+                if callbacks is None:
+                    new_callbacks = [cb]
+                else:
+                    new_callbacks = callbacks + [_callback_lookup_(op)]
+                _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+                                      no_grad_dict, grad_to_var, new_callbacks)
+            else:
+                _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+                                      no_grad_dict, grad_to_var, callbacks)
             grad_sub_block_list.append(grad_sub_block.desc)
 
         # Getting op's corresponding grad_op
@@ -258,7 +328,11 @@ def _append_backward_ops_(block,
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
-        callback(block=target_block, context=grad_to_var)
+        grad_to_var["__current_op_desc__"] = new_op_desc
+        if callbacks is not None:
+            assert (isinstance(callbacks, list))
+            for cb in callbacks:
+                cb(block=target_block, context=grad_to_var)
 
 
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
@@ -296,6 +370,9 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
+        # ncclInit dones't need to set data_type
+        if op_desc.type() == 'ncclInit':
+            continue
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
                 _infer_var_data_type_(arg, block)
@@ -335,7 +412,8 @@ def _get_stop_gradients_(program):
     return no_grad_dict
 
 
-def append_backward(loss, parameter_list=None, no_grad_set=None, callback=None):
+def append_backward(loss, parameter_list=None, no_grad_set=None,
+                    callbacks=None):
     """
     Append backward part to main_program
 
@@ -351,6 +429,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None, callback=None):
         (list[(Variable,Variable)]): list of (parameter, gradient) pair.
     """
     assert isinstance(loss, framework.Variable)
+    if callbacks is not None:
+        isinstance(callbacks, list)
 
     program = loss.block.program
     if no_grad_set is None:
@@ -378,7 +458,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None, callback=None):
     no_grad_dict[0].update(map(_append_grad_suffix_, block_no_grad_set))
 
     _append_backward_ops_(root_block, op_path, root_block, no_grad_dict,
-                          grad_to_var, callback)
+                          grad_to_var, callbacks)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have

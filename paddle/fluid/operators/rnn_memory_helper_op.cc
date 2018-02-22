@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ class RNNMemoryHelperOpInfoMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::proto::DataType::FP32);
+        .SetDefault(framework::proto::VarType::FP32);
     AddComment("");
   }
 };
@@ -126,7 +126,7 @@ class RNNMemoryHelperGradOpInfoMaker
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::proto::DataType::FP32);
+        .SetDefault(framework::proto::VarType::FP32);
     AddComment("");
   }
 };

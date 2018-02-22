@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -330,10 +330,10 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
         continue;
       }
       auto dims = ctx->GetInputsElementDim(kX, i);
-      if (var_types[i] == framework::proto::VarDesc::LOD_TENSOR) {
+      if (var_types[i] == framework::proto::VarType::LOD_TENSOR) {
         names_to_set.push_back(pg_names[i]);
         dims_to_set.push_back(dims);
-      } else if (var_types[i] == framework::proto::VarDesc::LOD_TENSOR_ARRAY) {
+      } else if (var_types[i] == framework::proto::VarType::LOD_TENSOR_ARRAY) {
         // not sure how to set the dim of LOD_TENSOR_ARRAY
         names_to_set.push_back(pg_names[i]);
         dims_to_set.push_back(dims);

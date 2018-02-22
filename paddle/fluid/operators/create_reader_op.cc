@@ -84,7 +84,7 @@ class CreateFileReaderInferVarType : public framework::VarTypeInference {
                   framework::BlockDesc* block) const override {
     std::string reader_name = op_desc.Output("Out")[0];
     framework::VarDesc* reader = block->FindVarRecursive(reader_name);
-    reader->SetType(framework::proto::VarDesc::READER);
+    reader->SetType(framework::proto::VarType::READER);
   }
 };
 
@@ -97,7 +97,7 @@ class CreateDecoratedReaderInferVarType : public framework::VarTypeInference {
     framework::VarDesc* in_reader = block->FindVarRecursive(in_reader_name);
     std::string out_reader_name = op_desc.Output("Out")[0];
     framework::VarDesc* out_reader = block->FindVarRecursive(out_reader_name);
-    out_reader->SetType(framework::proto::VarDesc::READER);
+    out_reader->SetType(framework::proto::VarType::READER);
     out_reader->SetDataTypes(in_reader->GetDataTypes());
   }
 };
@@ -147,7 +147,7 @@ class CreateRandomDataGeneratorOpMaker
     AddComment(R"DOC(
       CreateRandomDataGenerator Operator
 
-      This Op creates a random reader. 
+      This Op creates a random reader.
       The reader generates random data instead of really reading from files.
       Generated data follow an uniform distribution between 'min' and 'max'.
     )DOC");
@@ -183,7 +183,7 @@ class CreateShuffleReaderOpMaker : public framework::OpProtoAndCheckerMaker {
       CreateShuffleReader Operator
 
       A shuffle reader takes another reader as its 'underlying reader'
-      and yields the underlying reader's outputs in a shuffled order. 
+      and yields the underlying reader's outputs in a shuffled order.
     )DOC");
   }
 };
@@ -218,8 +218,8 @@ class CreateBatchReaderOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
       CreateBatchReader Operator
 
-      A batch reader takes another reader as its 'underlying reader', 
-      gathers the underlying reader's outputs and then yields them in batches. 
+      A batch reader takes another reader as its 'underlying reader',
+      gathers the underlying reader's outputs and then yields them in batches.
     )DOC");
   }
 };

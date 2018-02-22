@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -477,7 +477,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  proto::VarDesc::VarType GetVarType(const std::string& name) const override {
+  proto::VarType::Type GetVarType(const std::string& name) const override {
     auto* var = scope_.FindVar(name);
     return ToVarType(var->Type());
   }
@@ -569,7 +569,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
-proto::DataType OperatorWithKernel::IndicateDataType(
+proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
@@ -595,7 +595,7 @@ proto::DataType OperatorWithKernel::IndicateDataType(
     }
   }
   PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
-  return static_cast<proto::DataType>(data_type);
+  return static_cast<proto::VarType::Type>(data_type);
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,6 +40,25 @@ VarDesc *BlockDesc::FindVar(const std::string &name) const {
 
 bool BlockDesc::HasVar(const std::string &name) const {
   return vars_.find(name) != vars_.end();
+}
+
+VarDesc *BlockDesc::RenameVar(const std::string &old_name,
+                              const std::string &new_name) {
+  if (!this->HasVar(old_name)) {
+    return nullptr;
+  }
+  need_update_ = true;
+  auto *var = this->Var(old_name);
+  VarDesc *new_var = new VarDesc(*(var->Proto()));
+  new_var->SetName(new_name);
+  vars_[new_name].reset(new_var);
+  // rename inputs and outputs
+  for (const auto &op : ops_) {
+    auto *it = op.get();
+    it->Rename(old_name, new_name);
+  }
+  vars_.erase(old_name);
+  return new_var;
 }
 
 VarDesc *BlockDesc::FindVarRecursive(const std::string &name) const {

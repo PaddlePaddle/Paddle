@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -174,7 +174,7 @@ def Print(input,
         print_tensor_type (bool): Print the tensor type.
         print_tensor_shape (bool): Print the tensor shape.
         print_tensor_lod (bool): Print the tensor lod.
-        print_phase (bool): Which phase to displace, including 'forward',
+        print_phase (str): Which phase to displace, including 'forward',
                 'backward' and 'both'. If set to 'backward' or 'both', will
                 print the gradients of input tensor.
 
@@ -237,12 +237,13 @@ class ParallelDo(object):
     ParallelDo class is used to create a ParallelDo.
     """
 
-    def __init__(self, places, name=None):
+    def __init__(self, places, use_nccl=False, name=None):
         self.helper = LayerHelper("parallel_do", name=name)
         self.inputs = []
         self.places = places
         self.outputs = []
         self.status = StaticRNN.BEFORE_RNN_BLOCK
+        self.use_nccl = use_nccl
 
     def do(self):
         return BlockGuardWithCompletion(self)
@@ -325,7 +326,8 @@ class ParallelDo(object):
             },
             outputs={'outputs': outputs,
                      'parallel_scopes': [step_scope]},
-            attrs={'sub_block': current_block})
+            attrs={'sub_block': current_block,
+                   'use_nccl': self.use_nccl})
 
 
 class BlockGuardWithCompletion(BlockGuard):
@@ -612,7 +614,7 @@ class While(object):
         if not isinstance(cond, Variable):
             raise TypeError("condition should be a variable")
         assert isinstance(cond, Variable)
-        if cond.dtype != core.DataType.BOOL:
+        if cond.dtype != core.VarDesc.VarType.BOOL:
             raise TypeError("condition should be a bool variable")
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError("condition should be a bool scalar")

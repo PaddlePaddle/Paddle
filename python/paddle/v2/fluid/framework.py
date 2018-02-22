@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,24 +67,24 @@ def convert_np_dtype_to_dtype_(np_dtype):
     Args:
         np_dtype(np.dtype): the data type in numpy
 
-    Returns(core.DataType): the data type in Paddle
+    Returns(core.VarDesc.VarType): the data type in Paddle
 
     """
     dtype = np.dtype(np_dtype)
     if dtype == np.float32:
-        return core.DataType.FP32
+        return core.VarDesc.VarType.FP32
     elif dtype == np.float64:
-        return core.DataType.FP64
+        return core.VarDesc.VarType.FP64
     elif dtype == np.float16:
-        return core.DataType.FP16
+        return core.VarDesc.VarType.FP16
     elif dtype == np.int32:
-        return core.DataType.INT32
+        return core.VarDesc.VarType.INT32
     elif dtype == np.int16:
-        return core.DataType.INT16
+        return core.VarDesc.VarType.INT16
     elif dtype == np.int64:
-        return core.DataType.INT64
+        return core.VarDesc.VarType.INT64
     elif dtype == np.bool:
-        return core.DataType.BOOL
+        return core.VarDesc.VarType.BOOL
     else:
         raise ValueError("Not supported numpy dtype " + str(dtype))
 
@@ -93,16 +93,19 @@ def dtype_is_floating(dtype):
     """
     Check the data type is floating or not.
     Args:
-        dtype(np.dtype|core.DataType): data type.
+        dtype(np.dtype|core.VarDesc.VarType): data type.
             Could be numpy format or Paddle format
 
     Returns(bool): True if data type is a float value
 
     """
-    if not isinstance(dtype, core.DataType):
+    if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    return dtype in [core.DataType.FP16, core.DataType.FP32, core.DataType.FP64]
+    return dtype in [
+        core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32,
+        core.VarDesc.VarType.FP64
+    ]
 
 
 def _debug_string_(proto, throw_on_error=True):
@@ -148,7 +151,7 @@ class Variable(object):
             framework.proto for details.
         shape(tuple|list|None): The shape of variable. -1 means the batch size.
             Some kinds of variable do not contain shape, just set it to None.
-        dtype(np.dtype|core.DataType|str): The data type of variable.
+        dtype(np.dtype|core.VarDesc.VarType|str): The data type of variable.
         lod_level(int): The level of lod tensor. 0 means there is not a time
             series data.
         persistable(bool): True if the variable should be saved as check point.
@@ -200,7 +203,7 @@ class Variable(object):
                         "shape is {1}; the new shape is {2}. They are not "
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
-            if not isinstance(dtype, core.DataType):
+            if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
                 self.desc.set_dtype(dtype)
@@ -282,6 +285,10 @@ class Variable(object):
     @property
     def name(self):
         return self.desc.name()
+
+    @name.setter
+    def name(self, new_name):
+        self.desc.set_name(new_name)
 
     @property
     def shape(self):
@@ -400,9 +407,6 @@ class Operator(object):
         """
         self.block = block
         self.desc = desc
-        # for clone a new operator
-        self.inputs = inputs
-        self.outputs = outputs
         self.attrs = attrs
         if len(self.desc.type()) != 0:
             return
@@ -490,7 +494,7 @@ class Operator(object):
             'feed', 'fetch', 'save', 'load', 'recurrent',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
-            'load_combine'
+            'load_combine', 'ncclInit'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -531,6 +535,12 @@ class Operator(object):
         """
         return self.desc.input(name)
 
+    def rename_input(self, old_name, new_name):
+        self.desc.rename_input(old_name, new_name)
+
+    def rename_output(self, old_name, new_name):
+        self.desc.rename_output(old_name, new_name)
+
     @property
     def input_names(self):
         """
@@ -539,6 +549,14 @@ class Operator(object):
 
         """
         return self.desc.input_names()
+
+    @property
+    def input_arg_names(self):
+        return self.desc.input_arg_names()
+
+    @property
+    def output_arg_names(self):
+        return self.desc.output_arg_names()
 
     def output(self, name):
         """
@@ -716,6 +734,60 @@ class Block(object):
 
     def has_var(self, name):
         return name in self.vars
+
+    def rename_var(self, name, new_name):
+        """
+        Rename variable in vars and ops' inputs and outputs
+        """
+        if not self.has_var(name):
+            raise ValueError("var %s is not in current" % name)
+        v = self.var(name)
+        stop_gradient = None
+        trainable = None
+        optimize_attr = None
+        regularizer = None
+        gradient_clip_attr = None
+        error_clip = None
+        if type(v) == Parameter:
+            stop_gradient = v.stop_gradient
+            trainable = v.trainable
+            optimize_attr = v.optimize_attr
+            regularizer = v.regularizer
+            gradient_clip_attr = v.gradient_clip_attr
+            error_clip = v.error_clip
+        elif type(v) == Variable:
+            error_clip = v.error_clip
+            stop_gradient = v.stop_gradient
+        else:
+            raise ValueError("unsupported var type: %s", type(v))
+
+        self.desc.rename_var(name, new_name)
+        d = self.desc.find_var(new_name)
+        var = None
+        if type(v) == Parameter:
+            var = Parameter(
+                self,
+                d.shape(),
+                d.dtype(),
+                name=new_name,
+                stop_gradient=stop_gradient,
+                trainable=trainable,
+                optimize_attr=optimize_attr,
+                regularizer=regularizer,
+                gradient_clip_attr=gradient_clip_attr,
+                error_clip=error_clip)
+        elif type(v) == Variable:
+            var = Variable(
+                self,
+                name=new_name,
+                error_clip=error_clip,
+                stop_gradient=stop_gradient)
+
+        # rename the python side, sync_with_cpp will only add
+        # new vars/ops to python side.
+        self.vars[new_name] = var
+        del self.vars[name]
+        self.sync_with_cpp()
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()

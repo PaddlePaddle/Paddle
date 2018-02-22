@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -149,7 +149,8 @@ class ContextProjectFunctor {
             Tensor out_t_sub = out_t.Slice(k * context_length,
                                            k * context_length + padding_size);
             Tensor w_sub = padding_data.Slice(k, k + padding_size);
-            framework::Copy(w_sub, context.GetPlace(), context, &out_t_sub);
+            framework::TensorCopy(w_sub, context.GetPlace(), context,
+                                  &out_t_sub);
           }
         }
         if (down_pad > 0) {  // add down pad
@@ -179,7 +180,8 @@ class ContextProjectFunctor {
                 (down_pad_begin_row + t) * context_length);
             Tensor w_sub = padding_data.Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
-            framework::Copy(w_sub, context.GetPlace(), context, &out_t_sub);
+            framework::TensorCopy(w_sub, context.GetPlace(), context,
+                                  &out_t_sub);
           }
         }
         out_t.Resize({sequence_height, context_length * sequence_width});

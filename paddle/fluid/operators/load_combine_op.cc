@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ class LoadCombineOp : public framework::OperatorBase {
         out_var->Clear();
         tensor = out_var->GetMutable<framework::LoDTensor>();
         tensor->set_lod(cpu_tensor.lod());
-        Copy(cpu_tensor, place, dev_ctx, tensor);
+        TensorCopy(cpu_tensor, place, dev_ctx, tensor);
       }
     }
   }

@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ class Evaluator(object):
 
         Args:
             suffix(str): the state suffix.
-            dtype(str|core.DataType): the state data type
+            dtype(str|core.VarDesc.VarType): the state data type
             shape(tuple|list): the shape of state
 
         Returns: State variable

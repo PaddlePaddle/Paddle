@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -394,9 +394,9 @@ class OperatorWithKernel : public OperatorBase {
       const OpKernelType& expected_kernel_type) const;
 
  private:
-  // indicate kernel DataType by input data. Defaultly all input data must be
+  // indicate kernel DataType by input data. By default all input data must be
   // same.
-  proto::DataType IndicateDataType(const ExecutionContext& ctx) const;
+  proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
 };
 

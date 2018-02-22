@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -137,8 +137,8 @@ class SumKernel : public framework::OpKernel<T> {
               out_array.resize(i + 1);
             }
             if (out_array[i].numel() == 0) {
-              framework::Copy(in_array[i], in_array[i].place(),
-                              context.device_context(), &out_array[i]);
+              framework::TensorCopy(in_array[i], in_array[i].place(),
+                                    context.device_context(), &out_array[i]);
               out_array[i].set_lod(in_array[i].lod());
             } else {
               PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
