@@ -15,9 +15,9 @@ limitations under the License. */
 #include <thread>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/block_desc.h"
 
 USE_NO_KERNEL_OP(go);
 USE_NO_KERNEL_OP(sum);
@@ -25,12 +25,14 @@ USE_NO_KERNEL_OP(sum);
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-void InitTensorsInScope(f::Scope &scope, p::CPUPlace &place) {
+namespace paddle {
+namespace framework {
+void InitTensorsInScope(Scope &scope, p::CPUPlace &place) {
   p::CPUDeviceContext ctx(place);
   for (int i = 0; i < 2; ++i) {
     auto var_name = paddle::string::Sprintf("x%d", i);
     auto var = scope.Var(var_name);
-    auto tensor = var->GetMutable<f::LoDTensor>();
+    auto tensor = var->GetMutable<LoDTensor>();
     tensor->Resize({10, 10});
     float *expect = tensor->mutable_data<float>(place);
     for (int64_t i = 0; i < tensor->numel(); ++i) {
@@ -39,19 +41,19 @@ void InitTensorsInScope(f::Scope &scope, p::CPUPlace &place) {
   }
 
   auto out_var = scope.Var("Out");
-  auto out_tensor = out_var->GetMutable<f::LoDTensor>();
+  auto out_tensor = out_var->GetMutable<LoDTensor>();
   out_tensor->Resize({10, 10});
   out_tensor->mutable_data<float>(place);  // allocate
 }
 
-void AddOp(const std::string &type, const f::VariableNameMap &inputs,
-           const f::VariableNameMap &outputs, f::AttributeMap attrs,
-           f::BlockDesc *block) {
+void AddOp(const std::string &type, const VariableNameMap &inputs,
+           const VariableNameMap &outputs, AttributeMap attrs,
+           BlockDesc *block) {
   // insert output
   for (auto kv : outputs) {
     for (auto v : kv.second) {
-      block->Var(v);
-      // var->SetDataType(f::proto::DataType::FP32);
+      auto var = block->Var(v);
+      var->SetDataType(proto::VarType::FP32);
     }
   }
 
@@ -68,24 +70,23 @@ void AddOp(const std::string &type, const f::VariableNameMap &inputs,
 }
 
 TEST(Concurrency, Go_Op) {
-  f::Scope scope;
+  Scope scope;
   p::CPUPlace place;
 
   InitTensorsInScope(scope, place);
 
-  f::ProgramDesc program;
-  f::BlockDesc *block = program.MutableBlock(0);
+  ProgramDesc program;
+  BlockDesc *block = program.MutableBlock(0);
 
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, block);
 
-  f::AttributeMap attrs;
+  AttributeMap attrs;
   attrs.insert({"sub_block", block});
 
-  auto go_op = f::OpRegistry::CreateOp("go", {{"X", {"x0", "x1"}}},
-                                       {{"Out", {"Out"}}}, attrs);
-  std::cout << "GOING INTO THREAD" << std::endl << std::flush;
+  auto go_op = OpRegistry::CreateOp("go", {{"X", {"x0", "x1"}}},
+                                    {{"Out", {"Out"}}}, attrs);
   go_op->Run(scope, place);
-  std::cout << "GOING INTO SLEEP" << std::endl << std::flush;
-  usleep(100000000);
-  std::cout << "GOING DONE" << std::endl << std::flush;
+  usleep(1000000);  // TODO(thuan): Replace this command with channel receive
 }
+}  // namespace framework
+}  // namespace paddle

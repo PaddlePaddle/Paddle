@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <vector>
 #include <thread>
+#include <vector>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
-
 
 namespace paddle {
 namespace operators {
@@ -27,98 +26,86 @@ static constexpr char kBlock[] = "sub_block";
 static constexpr char kX[] = "X";
 static constexpr char kOutputs[] = "Out";
 
-class GoOp : public  framework::OperatorBase {
-  public:
-    GoOp(const std::string &type, const framework::VariableNameMap &inputs,
-         const framework::VariableNameMap &outputs,
-         const framework::AttributeMap &attrs)
-            : framework::OperatorBase(type, inputs, outputs, attrs) {}
+class GoOp : public framework::OperatorBase {
+ public:
+  GoOp(const std::string &type, const framework::VariableNameMap &inputs,
+       const framework::VariableNameMap &outputs,
+       const framework::AttributeMap &attrs)
+      : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
-  private:
-//    void ExecuteOnThread(const framework::Executor& executor,
-//                         const framework::ProgramDesc *program,
-//                         framework::Scope *scope,
-//                         framework::BlockDesc *block) const {
-//      executor.Run(*program, scope, block->ID(),
-//                   false /*create_local_scope*/);
-//
-//    }
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
+    /*
+     * Determine the global scope. Create a new child scope.
+     * Within the child scope, add all the local variables relevant
+     * to that scope.
+     *
+     * Now go through all the inputs to the op to ensure that
+     * all of them are in the newly created scope. This is important
+     * to ensure that they don't get destroyed when the parent scope
+     * is deleted.
+     * */
 
-    void RunImpl(const framework::Scope &scope,
-                 const platform::Place &dev_place) const override {
-//        framework::Executor executor(dev_place);
-        /*
-         * Determine the global scope. Create a new child scope.
-         * Within the child scope, add all the local variables relevant
-         * to that scope.
-         *
-         * Now go through all the inputs to the op to ensure that
-         * all of them are in the newly created scope. This is important
-         * to ensure that they don't get destroyed when the parent scope
-         * is deleted.
-         * */
+    // TODO(varunarora): Consider moving this root scope lookup to scope.h.
+    const framework::Scope *root_scope = &scope;
+    const framework::Scope *parent_scope = &(root_scope->parent());
 
-        // TODO(varunarora): Consider moving this root scope lookup to scope.h.
-        const framework::Scope* root_scope = &scope;
-        const framework::Scope* parent_scope = &(root_scope->parent());
-
-        while (parent_scope != nullptr) {
-            root_scope = parent_scope;
-            parent_scope = &(parent_scope->parent());
-        }
-
-        auto *block = Attr<framework::BlockDesc *>(kBlock);
-
-        // Now execute the go op with the newly created scope.
-        std::thread go_thread([=] {
-            framework::Executor executor(dev_place);
-            const framework::ProgramDesc *program = block->Program();
-
-            framework::Scope& new_scope = root_scope->NewScope();
-
-            for (auto& var : block->AllVars()) {
-              new_scope.Var(var->Name());
-            }
-
-            auto &inputs = Inputs(kX);
-            for (size_t i = 0; i < inputs.size(); i++) {
-              PADDLE_ENFORCE_NOT_NULL(new_scope.FindVar(inputs.at(i)),
-                                      "All variables used in the go block "
-                                      "should be created outside any block");
-            }
-
-            executor.Run(*program, &new_scope, block->ID(),
-                         false /*create_local_scope*/);
-        });
-
-        go_thread.detach();
+    while (parent_scope != nullptr) {
+      root_scope = parent_scope;
+      parent_scope = &(parent_scope->parent());
     }
+
+    auto *block = Attr<framework::BlockDesc *>(kBlock);
+
+    // Now execute the go op with the newly created scope.
+    std::thread go_thread([=] {
+      framework::Executor executor(dev_place);
+      const framework::ProgramDesc *program = block->Program();
+
+      framework::Scope &new_scope = root_scope->NewScope();
+
+      for (auto &var : block->AllVars()) {
+        new_scope.Var(var->Name());
+      }
+
+      auto &inputs = Inputs(kX);
+      for (size_t i = 0; i < inputs.size(); i++) {
+        PADDLE_ENFORCE_NOT_NULL(new_scope.FindVar(inputs.at(i)),
+                                "All variables used in the go block "
+                                "should be created in the global scope");
+      }
+
+      executor.Run(*program, &new_scope, block->ID(),
+                   false /*create_local_scope*/);
+    });
+
+    go_thread.detach();
+  }
 };
 
-
 class GoOpMaker : public framework::OpProtoAndCheckerMaker {
-  public:
-    GoOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-            : OpProtoAndCheckerMaker(proto, op_checker) {
-      AddInput(kX,
-               "A set of variables, which are required by operators inside the "
-                       "block of Go Op.")
-              .AsDuplicable();
-      AddOutput(kOutputs,
-                "A set of variables, which will be assigned with values "
-                        "generated by the operators inside the block of Go Op.")
-              .AsDuplicable();
-      AddAttr<framework::BlockDesc *>(kBlock,
-                                      "The block inside GoOp");
-      AddComment(R"DOC(
+ public:
+  GoOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput(kX,
+             "A set of variables, which are required by operators inside the "
+             "block of Go Op.")
+        .AsDuplicable();
+    AddOutput(kOutputs,
+              "A set of variables, which will be assigned with values "
+              "generated by the operators inside the block of Go Op.")
+        .AsDuplicable();
+    AddAttr<framework::BlockDesc *>(kBlock, "The block inside GoOp");
+    AddComment(R"DOC(
 )DOC");
-    }
+  }
 };
 
 // TODO(thuan): Look into Gradient Operator for GO_OP
 
-}   // namespace operators
-}   // namespace paddle
+}  // namespace operators
+}  // namespace paddle
 
 REGISTER_OPERATOR(go, paddle::operators::GoOp,
                   paddle::framework::EmptyGradOpMaker,
