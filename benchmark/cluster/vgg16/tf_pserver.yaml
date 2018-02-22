@@ -1,13 +1,13 @@
 apiVersion: extensions/v1beta1
 kind: ReplicaSet
 metadata:
-  name: vgg16job-pserver
+  name: vgg16job-tf-pserver
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        tf-job-pserver: vgg16job
+        tf-job-pserver: vgg16job-tf
     spec:
       hostNetwork: true
       imagePullSecrets:
@@ -27,7 +27,7 @@ spec:
         - name: ENTRY
           value: "python vgg16_tf.py"
         - name: JOB_NAME
-          value: vgg16job
+          value: vgg16job-tf
         - name: PSERVERS_NUM
           value: "1"
         - name: TF_JOB_NAME 
