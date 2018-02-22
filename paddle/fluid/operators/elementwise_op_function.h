@@ -399,7 +399,7 @@ static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T* x,
                                        const T* y, const T* out, const T* dout,
                                        int h, int w, DX_OP dx_op, DY_OP dy_op,
                                        T* dx, T* dy) {
-  int block_size = std::max(1024, h);
+  int block_size = std::min(1024, h);
   int gird_size = w;
   int shared_mem_size = block_size * sizeof(T);
   ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, shared_mem_size,
@@ -486,7 +486,7 @@ static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T* x,
                                        const T* y, const T* out, const T* dout,
                                        int pre, int n, int post, DX_OP dx_op,
                                        DY_OP dy_op, T* dx, T* dy) {
-  int block_size = std::max(1024, pre * post);
+  int block_size = std::min(1024, pre * post);
   int gird_size = n;
   int shared_mem_size = block_size * sizeof(T);
   ElemwiseGradBroadcast2CUDAKernel<<<gird_size, block_size, shared_mem_size,
