@@ -155,6 +155,8 @@ void BindBlockDesc(py::module &m) {
   py::class_<BlockDesc>(m, "BlockDesc", "")
       .def_property_readonly("id", &BlockDesc::ID)
       .def_property_readonly("parent", &BlockDesc::Parent)
+      .def("get_forward_block_idx", &BlockDesc::ForwardBlockID)
+      .def("set_forward_block_idx", &BlockDesc::SetForwardBlockID)
       .def("append_op", &BlockDesc::AppendOp,
            py::return_value_policy::reference)
       .def("prepend_op", &BlockDesc::PrependOp,

@@ -679,6 +679,13 @@ class Block(object):
         return self.desc.parent
 
     @property
+    def forward_block_idx(self):
+        return self.desc.get_forward_block_idx()
+
+    def set_forward_block_idx(self, idx):
+        self.desc.set_forward_block_idx(idx)
+
+    @property
     def idx(self):
         return self.desc.id
 
@@ -695,11 +702,22 @@ class Block(object):
             return self.var(name)
         else:
             if self.idx == 0:
-                raise ValueError("var %s is not in block(%d) nor its parents." %
-                                 name, self.idx)
+                raise ValueError(
+                    "var {0} is not in block({1}) nor its parents.".format(
+                        name, self.idx))
             else:
-                parent_block = self.program.block(self.parent_idx)
-                return parent_block.var_recursive(name)
+                # DFS
+                try:
+                    parent_block = self.program.block(self.parent_idx)
+                    return parent_block.var_recursive(name)
+                except ValueError:
+                    fwd_block = self.program.block(
+                        self.forward_block_idx
+                    ) if self.forward_block_idx != -1 else None
+                    if fwd_block is not None:
+                        return fwd_block.var_recursive(name)
+                    else:
+                        raise
 
     def all_parameters(self):
         return list(self.iter_parameters())
