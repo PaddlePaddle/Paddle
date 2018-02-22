@@ -779,19 +779,19 @@ namespace numext {
 template <>
 EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE bool(isnan)(
     const paddle::platform::float16& a) {
-  return (paddle::platform::float16::isnan)(a);
+  return (paddle::platform::isnan)(a);
 }
 
 template <>
 EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE bool(isinf)(
     const paddle::platform::float16& a) {
-  return (paddle::platform::float16::isinf)(h);
+  return (paddle::platform::isinf)(a);
 }
 
 template <>
 EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE bool(isfinite)(
     const paddle::platform::float16& a) {
-  return (paddle::platform::float16::isfinite)(h);
+  return (paddle::platform::isfinite)(a);
 }
 
 }  // namespace numext

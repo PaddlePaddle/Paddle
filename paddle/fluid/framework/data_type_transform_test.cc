@@ -56,6 +56,8 @@ TEST(DataTypeTransform, CPUFloat16) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
+  auto place = CPUPlace();
+
   auto kernel_fp16 = OpKernelType(proto::VarType::FP16, place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
   auto kernel_fp32 = OpKernelType(proto::VarType::FP32, place,
@@ -68,8 +70,6 @@ TEST(DataTypeTransform, CPUFloat16) {
                                    DataLayout::kAnyLayout, LibraryType::kPlain);
   auto kernel_bool = OpKernelType(proto::VarType::BOOL, place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-
-  auto place = CPUPlace();
 
   Tensor in;
   Tensor out;
@@ -89,25 +89,25 @@ TEST(DataTypeTransform, CPUFloat16) {
   }
 
   TransDataType(kernel_fp16, kernel_fp64, in, &out);
-  float* out_data_double = out.data<double>();
+  double* out_data_double = out.data<double>();
   for (int i = 0; i < data_number; ++i) {
     ASSERT_EQ(out_data_double[i], static_cast<double>(ptr[i]));
   }
 
   TransDataType(kernel_fp16, kernel_int32, in, &out);
-  float* out_data_int = out.data<int>();
+  int* out_data_int = out.data<int>();
   for (int i = 0; i < data_number; ++i) {
     ASSERT_EQ(out_data_int[i], static_cast<int>(ptr[i]));
   }
 
   TransDataType(kernel_fp16, kernel_int64, in, &out);
-  float* out_data_int64 = out.data<int64_t>();
+  int64_t* out_data_int64 = out.data<int64_t>();
   for (int i = 0; i < data_number; ++i) {
     ASSERT_EQ(out_data_int64[i], static_cast<int64_t>(ptr[i]));
   }
 
   TransDataType(kernel_fp16, kernel_bool, in, &out);
-  float* out_data_bool = out.data<bool>();
+  bool* out_data_bool = out.data<bool>();
   for (int i = 0; i < data_number; ++i) {
     ASSERT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
   }
