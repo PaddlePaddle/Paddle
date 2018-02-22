@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ class FeedOp : public framework::OperatorBase {
     if (platform::is_same_place(feed_item.place(), place)) {
       out_item->ShareDataWith(feed_item);
     } else {
-      framework::Copy(feed_item, place, dev_ctx, out_item);
+      framework::TensorCopy(feed_item, place, dev_ctx, out_item);
     }
     out_item->set_lod(feed_item.lod());
   }

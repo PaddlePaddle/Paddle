@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,24 +67,24 @@ def convert_np_dtype_to_dtype_(np_dtype):
     Args:
         np_dtype(np.dtype): the data type in numpy
 
-    Returns(core.DataType): the data type in Paddle
+    Returns(core.VarDesc.VarType): the data type in Paddle
 
     """
     dtype = np.dtype(np_dtype)
     if dtype == np.float32:
-        return core.DataType.FP32
+        return core.VarDesc.VarType.FP32
     elif dtype == np.float64:
-        return core.DataType.FP64
+        return core.VarDesc.VarType.FP64
     elif dtype == np.float16:
-        return core.DataType.FP16
+        return core.VarDesc.VarType.FP16
     elif dtype == np.int32:
-        return core.DataType.INT32
+        return core.VarDesc.VarType.INT32
     elif dtype == np.int16:
-        return core.DataType.INT16
+        return core.VarDesc.VarType.INT16
     elif dtype == np.int64:
-        return core.DataType.INT64
+        return core.VarDesc.VarType.INT64
     elif dtype == np.bool:
-        return core.DataType.BOOL
+        return core.VarDesc.VarType.BOOL
     else:
         raise ValueError("Not supported numpy dtype " + str(dtype))
 
@@ -93,16 +93,19 @@ def dtype_is_floating(dtype):
     """
     Check the data type is floating or not.
     Args:
-        dtype(np.dtype|core.DataType): data type.
+        dtype(np.dtype|core.VarDesc.VarType): data type.
             Could be numpy format or Paddle format
 
     Returns(bool): True if data type is a float value
 
     """
-    if not isinstance(dtype, core.DataType):
+    if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    return dtype in [core.DataType.FP16, core.DataType.FP32, core.DataType.FP64]
+    return dtype in [
+        core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32,
+        core.VarDesc.VarType.FP64
+    ]
 
 
 def _debug_string_(proto, throw_on_error=True):
@@ -148,7 +151,7 @@ class Variable(object):
             framework.proto for details.
         shape(tuple|list|None): The shape of variable. -1 means the batch size.
             Some kinds of variable do not contain shape, just set it to None.
-        dtype(np.dtype|core.DataType|str): The data type of variable.
+        dtype(np.dtype|core.VarDesc.VarType|str): The data type of variable.
         lod_level(int): The level of lod tensor. 0 means there is not a time
             series data.
         persistable(bool): True if the variable should be saved as check point.
@@ -200,7 +203,7 @@ class Variable(object):
                         "shape is {1}; the new shape is {2}. They are not "
                         "matched.".format(self.name, old_shape, shape))
         if dtype is not None:
-            if not isinstance(dtype, core.DataType):
+            if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
             if is_new_var:
                 self.desc.set_dtype(dtype)
@@ -400,9 +403,6 @@ class Operator(object):
         """
         self.block = block
         self.desc = desc
-        # for clone a new operator
-        self.inputs = inputs
-        self.outputs = outputs
         self.attrs = attrs
         if len(self.desc.type()) != 0:
             return
@@ -490,7 +490,7 @@ class Operator(object):
             'feed', 'fetch', 'save', 'load', 'recurrent',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
-            'load_combine'
+            'load_combine', 'ncclInit'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)

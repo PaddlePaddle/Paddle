@@ -12,7 +12,7 @@ with newer version compilers cannot work with those with older
 versions.  The suggested building environment is as old as CentOS 5.
 However, PaddlePaddle relies on CUDA, and the earlies version of
 [CentOS works with CUDA is 6](https://hub.docker.com/r/nvidia/cuda/).
-So, here we provide a Docker image basing on CentOS 6 and CUDA for
+So, here we provide a Docker image based on CentOS 6 and CUDA for
 building PaddlePaddle and making the release supports "as-manylinux as
 possible."  or "sufficiently many Linux" according to [this
 discussion](https://mail.python.org/pipermail/wheel-builders/2016-July/000175.html).

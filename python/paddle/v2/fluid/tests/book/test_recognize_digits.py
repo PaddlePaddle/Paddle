@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -141,7 +141,7 @@ def train(nn_type, use_cuda, parallel, save_dirname, save_param_filename):
                 # get test acc and loss
                 acc_val = numpy.array(acc_set).mean()
                 avg_loss_val = numpy.array(avg_loss_set).mean()
-                if float(acc_val) > 0.85:  # test acc > 85%
+                if float(acc_val) > 0.2:  # Smaller value to increase CI speed
                     if save_dirname is not None:
                         fluid.io.save_inference_model(
                             save_dirname, ["img"], [prediction],
@@ -235,8 +235,9 @@ def inject_all_tests():
             for nn_type in ('mlp', 'conv'):
                 inject_test_method(use_cuda, parallel, nn_type, True)
 
-    # One unit-test for saving parameters as separate files
+    # Two unit-test for saving parameters as separate files
     inject_test_method(False, False, 'mlp', False)
+    inject_test_method(False, False, 'conv', False)
 
 
 inject_all_tests()

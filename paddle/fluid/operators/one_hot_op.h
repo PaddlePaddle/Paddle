@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,7 +58,8 @@ class OneHotKernel : public framework::OpKernel<T> {
     int depth = context.Attr<int>("depth");
 
     framework::VisitDataType(
-        static_cast<framework::proto::DataType>(context.Attr<int>("dtype")),
+        static_cast<framework::proto::VarType::Type>(
+            context.Attr<int>("dtype")),
         OneHotOpFunctor<DeviceContext, T>(
             in, out, depth, context.template device_context<DeviceContext>()));
   }

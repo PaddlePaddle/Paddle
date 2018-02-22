@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -226,7 +226,7 @@ class OpWithKernelTest : public OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(proto::DataType::FP32, ctx.device_context());
+    return framework::OpKernelType(proto::VarType::FP32, ctx.device_context());
   }
 };
 
@@ -290,9 +290,9 @@ class OpWithMultiKernelTest : public OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        proto::DataType::FP32, platform::CUDAPlace(0), DataLayout::kAnyLayout,
-        framework::LibraryType::kCUDNN);
+    return framework::OpKernelType(proto::VarType::FP32, platform::CUDAPlace(0),
+                                   DataLayout::kAnyLayout,
+                                   framework::LibraryType::kCUDNN);
   }
 };
 

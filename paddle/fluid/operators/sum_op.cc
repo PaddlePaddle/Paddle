@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -29,7 +29,7 @@ class SumOp : public framework::OperatorWithKernel {
                    "Output(Out) of SumOp should not be null.");
     if (ctx->IsRuntime() &&
         ctx->GetOutputsVarType("Out")[0] ==
-            framework::proto::VarDesc::LOD_TENSOR_ARRAY) {
+            framework::proto::VarType::LOD_TENSOR_ARRAY) {
       return;  // skip runtime infershape when is tensor array;
     }
 
@@ -73,7 +73,8 @@ class SumOp : public framework::OperatorWithKernel {
                         "Sum operator should have at least one tensor");
 
       return framework::OpKernelType(
-          static_cast<framework::proto::DataType>(dtype), ctx.device_context());
+          static_cast<framework::proto::VarType::Type>(dtype),
+          ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
       return framework::OpKernelType(
           framework::ToDataType(
@@ -118,7 +119,7 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
   void operator()(const framework::OpDesc& op_desc,
                   framework::BlockDesc* block) const override {
     auto& inputs = op_desc.Input("X");
-    auto var_type = framework::proto::VarDesc::SELECTED_ROWS;
+    auto var_type = framework::proto::VarType::SELECTED_ROWS;
 
     for (auto& name : op_desc.Input("X")) {
       VLOG(10) << name << " "
@@ -128,12 +129,12 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
     bool any_input_is_lod_tensor = std::any_of(
         inputs.begin(), inputs.end(), [block](const std::string& name) {
           return block->FindRecursiveOrCreateVar(name).GetType() ==
-                 framework::proto::VarDesc::LOD_TENSOR;
+                 framework::proto::VarType::LOD_TENSOR;
         });
 
     auto is_tensor_array = [block](const std::string& name) {
       return block->FindRecursiveOrCreateVar(name).GetType() ==
-             framework::proto::VarDesc::LOD_TENSOR_ARRAY;
+             framework::proto::VarType::LOD_TENSOR_ARRAY;
     };
 
     bool any_input_is_tensor_array =
@@ -151,9 +152,9 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
         PADDLE_ENFORCE(all_inputs_are_tensor_array,
                        "Not all inputs are tensor array:\n%s", os.str());
       }
-      var_type = framework::proto::VarDesc::LOD_TENSOR_ARRAY;
+      var_type = framework::proto::VarType::LOD_TENSOR_ARRAY;
     } else if (any_input_is_lod_tensor) {
-      var_type = framework::proto::VarDesc::LOD_TENSOR;
+      var_type = framework::proto::VarType::LOD_TENSOR;
     }
 
     auto out_var_name = op_desc.Output("Out").front();

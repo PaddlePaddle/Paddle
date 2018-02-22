@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,7 +51,8 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #ifdef PADDLE_WITH_CUDA
-      framework::Copy(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
+      framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx,
+                            cpu_mask.get());
 #else
       PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
 #endif
@@ -106,8 +107,8 @@ class MergeLoDTensorOp : public framework::OperatorBase {
         continue;
       }
       auto slice = out->Slice(out_offset, out_offset + len);
-      framework::Copy(input->Slice(start_offset, end_offset), place, dev_ctx,
-                      &slice);
+      framework::TensorCopy(input->Slice(start_offset, end_offset), place,
+                            dev_ctx, &slice);
       out_offset += len;
       (*in_idx) += 1;
     }

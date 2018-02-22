@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ class FetchOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(src_item.place());
 
-    Copy(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
+    TensorCopy(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
     dev_ctx.Wait();
     dst_item.set_lod(src_item.lod());
 

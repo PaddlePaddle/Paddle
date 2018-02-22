@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ class FillConstantOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     auto data_type =
-        static_cast<framework::proto::DataType>(Attr<int>("dtype"));
+        static_cast<framework::proto::VarType::Type>(Attr<int>("dtype"));
     auto value = Attr<float>("value");
     auto force_cpu = Attr<bool>("force_cpu");
     auto &out =
@@ -64,7 +64,7 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype",
                  "(int, default 5 (FP32)) "
                  "Output data type")
-        .SetDefault(framework::proto::DataType::FP32);
+        .SetDefault(framework::proto::VarType::FP32);
     AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);

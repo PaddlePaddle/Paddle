@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,13 +27,13 @@ class DataToLoDTensorConverter(object):
         self.place = place
         self.lod_level = lod_level
         self.shape = shape
-        if dtype == core.DataType.FP32:
+        if dtype == core.VarDesc.VarType.FP32:
             self.dtype = 'float32'
-        elif dtype == core.DataType.INT64:
+        elif dtype == core.VarDesc.VarType.INT64:
             self.dtype = 'int64'
-        elif dtype == core.DataType.FP64:
+        elif dtype == core.VarDesc.VarType.FP64:
             self.dtype = 'float64'
-        elif dtype == core.DataType.INT32:
+        elif dtype == core.VarDesc.VarType.INT32:
             self.dtype = 'int32'
         else:
             raise ValueError("dtype must be any of [int32, float32, int64, "
@@ -107,6 +107,9 @@ class DataFeeder(object):
                     dtype=dtype))
 
         for each_sample in iterable:
+            assert len(each_sample) == len(converter), (
+                "The number of fields in data (%s) does not match " +
+                "len(feed_list) (%s)") % (len(each_sample), len(converter))
             for each_converter, each_slot in six.zip(converter, each_sample):
                 each_converter.feed(each_slot)
         ret_dict = {}

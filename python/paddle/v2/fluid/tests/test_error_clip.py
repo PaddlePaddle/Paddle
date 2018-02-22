@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ prog_clip.block(0).var(hidden1.name).set_error_clip(
 avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
 fluid.backward.append_backward(loss=avg_cost)
 fluid.backward.append_backward(
-    loss=avg_cost_clip, callback=fluid.clip.error_clip_callback)
+    loss=avg_cost_clip, callbacks=[fluid.clip.error_clip_callback])
 
 hidden1_grad = prog.block(0).var(hidden1.name + "@GRAD")
 hidden1_grad_clip = prog_clip.block(0).var(hidden1.name + "@GRAD")

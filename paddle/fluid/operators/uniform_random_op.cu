@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,5 +64,8 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_CUDA_KERNEL(uniform_random,
+                        paddle::operators::GPUUniformRandomKernel<float>,
+                        paddle::operators::GPUUniformRandomKernel<double>);
+REGISTER_OP_CUDA_KERNEL(uniform_random_batch_size_like,
                         paddle::operators::GPUUniformRandomKernel<float>,
                         paddle::operators::GPUUniformRandomKernel<double>);
