@@ -31,7 +31,6 @@ spec:
           value: "worker"
         - name: ENTRY
           value: "python vgg16_tf.py"
-          #value: "python minist_tf.py"
         - name: PSERVERS_NUM
           value: "1"
         - name: BATCH_SIZE

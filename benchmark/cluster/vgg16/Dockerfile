@@ -1,5 +1,3 @@
-#FROM nvidia/cuda:8.0-cudnn5-runtime-ubuntu16.04
-#RUN apt-get update && apt-get install -y python
 FROM paddlepaddle/paddle:latest-dev
 RUN pip install -U kubernetes opencv-python &&   apt-get update -y &&   apt-get install -y iputils-ping libgtk2.0-dev
 

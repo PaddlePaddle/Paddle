@@ -11,10 +11,12 @@ spec:
     spec:
       hostNetwork: true
       imagePullSecrets:
-      - name: job-registry-secret
+      #- name: job-registry-secret
+      - name: gongweibaobaidusecret
       containers:
       - name: pserver
-        image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
+        #image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
+        image: "registry.baidu.com/gongweibao/test/fluid_benchmark:vgg16"
         imagePullPolicy: Always
         ports:
         - name: jobport-30236
@@ -38,6 +40,8 @@ spec:
           value: "/workspace"
         - name: PADDLE_INIT_PORT
           value: "30236"
+        - name: PORT
+          value: "6174"
         - name: PADDLE_INIT_NICS
           value: "xgbe0"
         - name: PADDLE_INIT_TRAINER_COUNT

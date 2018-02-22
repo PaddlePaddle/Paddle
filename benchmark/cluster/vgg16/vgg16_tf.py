@@ -306,35 +306,19 @@ def run_benchmark(cluster_spec, server):
         global_step=global_step,
         save_model_secs=600)
 
-    # The StopAtStepHook handles stopping after running given steps.
-    #hooks = [tf.train.StopAtStepHook(last_step=1000000)]
-    #init_g = tf.global_variables_initializer()
-    #init_l = tf.local_variables_initializer()
-
-    #with tf.Session(config=config) as sess:
-    #with tf.train.MonitoredTrainingSession(
-    #        master=server.target,
-    #        is_chief=(args.task_index == 0),
-    #        checkpoint_dir="/tmp/train_logs",
-    #        config=config,
-    #        hooks=hooks) as sess:
     with sv.managed_session(server.target) as sess:
-        #step = 0
-        #while not sv.should_stop():
-        #sess.run(init_g)
-        #sess.run(init_l)
         iters, num_samples, start_time = 0, 0, 0.0
         for pass_id in range(args.num_passes):
             # train
             num_samples = 0
             start_time = time.time()
             for batch_id, data in enumerate(train_reader()):
-                iter_begin_time = time.time()
                 train_images = np.array(
                     map(lambda x: np.transpose(x[0].reshape(raw_shape),
                     axes=[1, 2, 0]) if args.data_format == 'NHWC' else x[0], data)).astype("float32")
                 train_labels = np.array(map(lambda x: x[1], data)).astype(
                     'int64')
+                iter_begin_time = time.time()
                 _, loss, acc = sess.run([train_op, avg_loss, accuracy],
                                         feed_dict={
                                             images: train_images,

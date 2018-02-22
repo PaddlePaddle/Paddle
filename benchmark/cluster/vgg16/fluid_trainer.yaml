@@ -11,11 +11,13 @@ spec:
         paddle-job: vgg16job
     spec:
       imagePullSecrets:
-        - name: job-registry-secret
+      #- name: job-registry-secret
+      - name: gongweibaobaidusecret
       hostNetwork: true
       containers:
       - name: trainer
-        image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
+        #image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
+        image: "registry.baidu.com/gongweibao/test/fluid_benchmark:vgg16"
         imagePullPolicy: Always
         command: ["paddle_k8s", "start_fluid"]
         env:
@@ -35,6 +37,8 @@ spec:
           value: "/workspace"
         - name: PADDLE_INIT_PORT
           value: "30236"
+        - name: PORT
+          value: "6174"
         - name: PADDLE_INIT_NICS
           value: "xgbe0"
         - name: PADDLE_INIT_TRAINER_COUNT
