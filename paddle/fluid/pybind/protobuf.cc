@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/protobuf.h"
 #include <deque>
 #include <iostream>
-#include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -121,23 +120,6 @@ void BindProgramDesc(py::module &m) {
            })
       .def("append_block", &ProgramDesc::AppendBlock,
            py::return_value_policy::reference)
-      .def("append_backward",
-           [](ProgramDesc &program_desc, const VarDesc &target,
-              const std::unordered_set<std::string> &no_grad_vars) {
-             ParamGradInfoMap param_grad_map =
-                 AppendBackward(program_desc, target, no_grad_vars);
-             std::unordered_map<
-                 std::string, std::tuple<std::string /* grad_var_name */,
-                                         int /* block_idx */, int /* op_idx */>>
-                 retv;
-             for (auto it = param_grad_map.begin(); it != param_grad_map.end();
-                  ++it) {
-               const auto &grad_info = it->second;
-               retv[it->first] = std::make_tuple(
-                   grad_info.name_, grad_info.block_idx_, grad_info.op_idx_);
-             }
-             return retv;
-           })
       .def("block", &ProgramDesc::MutableBlock,
            py::return_value_policy::reference)
       .def("num_blocks", &ProgramDesc::Size)

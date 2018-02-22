@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <mutex>  // for call_once
 #include <unordered_map>
-#include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -340,11 +339,6 @@ All parameter, weight, gradient are variables in Paddle.
                                    desc.InitializationErrorString());
                     return OpRegistry::CreateOp(desc);
                   })
-      .def("backward",
-           [](const OperatorBase &forwardOp,
-              const std::unordered_set<std::string> &no_grad_vars) {
-             return Backward(forwardOp, no_grad_vars).release();
-           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) { self.Run(scope, place); })
