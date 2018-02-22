@@ -19,6 +19,7 @@ from paddle.v2.fluid.executor import Executor
 import numpy
 import time
 
+
 class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
         ch = fluid.make_channel(dtype=bool)
@@ -42,10 +43,7 @@ class TestRoutineOp(unittest.TestCase):
         for i in xrange(3):
             d.append(numpy.random.random(size=[10]).astype('float32'))
 
-        outs = exe.run(
-            feed={'d0': d[0]},
-            fetch_list=[]
-        )
+        outs = exe.run(feed={'d0': d[0]}, fetch_list=[])
 
         while True:
             time.sleep(10)
