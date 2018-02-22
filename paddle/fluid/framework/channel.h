@@ -53,10 +53,14 @@ void CloseChannel(Channel<T>* ch) {
   ch->Close();
 }
 
-/**
-  * @note    ChannelHolder is used as channel's' unified wrapper, making it
-  *          easier to access different types of channels in Variables.
-  */
+/*
+ * The ChannelHolder class serves two main purposes:
+ * 1. It acts as a unified wrapper for the different kinds of
+ *    channels, i.e. Buffered and Unbuffered channels. This is
+ *    similar to the ReaderHolder class.
+ * 2. It also helps us in TypeHiding. This is similar to the
+ *    PlaceHolder implementations in variable.h and tensor.h.
+ */
 class ChannelHolder {
  public:
   template <typename T>
