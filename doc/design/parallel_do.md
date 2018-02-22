@@ -24,7 +24,7 @@ A vanilla implementation of parallel_do can be shown as the following (`|` means
 ```
 In the forward pass
   |      Split input onto different devices
-  |      Copy parameter to onto different devices
+  |      Copy parameter onto different devices
   ||||   Compute forward pass in parallel
   |      Merge output from different devices
 
@@ -87,7 +87,7 @@ block2 {
 }
 ```
 
-## Proformance Imporvement
+## Performance Imporvement
 
 There are serial places we can make this parallel_do faster.
 
