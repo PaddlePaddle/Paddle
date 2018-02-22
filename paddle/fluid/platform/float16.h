@@ -734,6 +734,22 @@ HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
 }
 #endif
 
+HOSTDEVICE inline bool(isinf)(const float16& a) {
+  return (a.x & 0x7fff) == 0x7c00;
+}
+
+HOSTDEVICE inline bool(isnan)(const float16& a) {
+#if defined(PADDLE_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hisnan(half(a));
+#else
+  return (a.x & 0x7fff) > 0x7c00;
+#endif
+}
+
+HOSTDEVICE inline bool(isfinite)(const float16& a) {
+  return !((isinf)(a)) && !((isnan)(a));
+}
+
 }  // namespace platform
 }  // namespace paddle
 
@@ -755,3 +771,29 @@ struct is_pod<paddle::platform::float16> {
 };
 
 }  // namespace std
+
+#ifdef __CUDA_ARCH__
+namespace Eigen {
+namespace numext {
+
+template <>
+EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE bool(isnan)(
+    const paddle::platform::float16& a) {
+  return (paddle::platform::float16::isnan)(a);
+}
+
+template <>
+EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE bool(isinf)(
+    const paddle::platform::float16& a) {
+  return (paddle::platform::float16::isinf)(h);
+}
+
+template <>
+EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE bool(isfinite)(
+    const paddle::platform::float16& a) {
+  return (paddle::platform::float16::isfinite)(h);
+}
+
+}  // namespace numext
+}  // namespace Eigen
+#endif  // __CUDA_ARCH__
