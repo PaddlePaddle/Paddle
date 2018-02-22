@@ -46,11 +46,25 @@ VarDesc *BlockDesc::FindVarRecursive(const std::string &name) const {
   if (name == kEmptyVarName) return nullptr;
 
   auto it = vars_.find(name);
-  if (it == vars_.end()) {
-    return Parent() == kNoneBlockIndex ? nullptr
-                                       : ParentBlock()->FindVarRecursive(name);
+  if (it != vars_.end()) {
+    return it->second.get();
   }
-  return it->second.get();
+
+  BlockDesc *tmp = ParentBlock();
+
+  if (tmp != nullptr) {
+    auto ptr = tmp->FindVarRecursive(name);
+    if (ptr != nullptr) {
+      return ptr;
+    }
+  }
+
+  tmp = ForwardBlock();
+  if (tmp != nullptr) {
+    return tmp->FindVarRecursive(name);
+  }
+
+  return nullptr;
 }
 
 VarDesc &BlockDesc::FindRecursiveOrCreateVar(const std::string &name_bytes) {
@@ -136,10 +150,7 @@ void BlockDesc::Flush() {
 }
 
 BlockDesc *BlockDesc::ParentBlock() const {
-  if (this->desc_->parent_idx() == kNoneBlockIndex) {
-    return nullptr;
-  }
-  return prog_->MutableBlock(static_cast<size_t>(this->desc_->parent_idx()));
+  return prog_->MutableBlock(static_cast<size_t>(desc_->parent_idx()));
 }
 
 proto::BlockDesc *BlockDesc::Proto() {
@@ -184,6 +195,17 @@ void BlockDesc::ClearPBVars() {
     // we do not own the VarDesc, so release the ownership.
     vars->ReleaseLast();
   }
+}
+
+void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
+  PADDLE_ENFORCE(!desc_->has_forward_block_idx(),
+                 "Parent block ID has been set to %d. Cannot set to %d",
+                 desc_->forward_block_idx(), forward_block_id);
+  desc_->set_forward_block_idx(forward_block_id);
+}
+
+BlockDesc *BlockDesc::ForwardBlock() const {
+  return prog_->MutableBlock(static_cast<size_t>(desc_->forward_block_idx()));
 }
 
 }  // namespace framework
