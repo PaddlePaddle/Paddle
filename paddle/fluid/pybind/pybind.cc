@@ -17,6 +17,7 @@ limitations under the License. */
 #include <mutex>  // for call_once
 #include <unordered_map>
 #include "paddle/fluid/framework/backward.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -24,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/cond_op.h"
@@ -206,11 +206,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_selected_rows",
            [](Variable &self) -> SelectedRows * {
              return self.GetMutable<SelectedRows>();
-           },
-           py::return_value_policy::reference)
-      .def("get_channel",
-           [][](Variable &self) -> Channel * {
-             return self.GetMutable<Channel>();
            },
            py::return_value_policy::reference)
       .def("get_lod_tensor_array",

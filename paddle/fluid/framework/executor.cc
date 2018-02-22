@@ -17,10 +17,10 @@ limitations under the License. */
 #include <set>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
@@ -57,7 +57,7 @@ static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
   } else if (var_type == proto::VarType::CHANNEL) {
-    var->GetMutable<Channel>();
+    var->GetMutable<ChannelHolder>();
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
