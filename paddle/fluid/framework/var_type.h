@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -34,6 +35,8 @@ inline proto::VarType::Type ToVarType(std::type_index type) {
     return proto::VarType_Type_SELECTED_ROWS;
   } else if (type.hash_code() == typeid(ReaderHolder).hash_code()) {
     return proto::VarType_Type_READER;
+  } else if (type.hash_code() == typeid(ChannelHolder).hash_code()) {
+    return proto::VarType_Type_CHANNEL;
   } else {
     PADDLE_THROW("ToVarType:Unsupported type %s", type.name());
   }
@@ -50,6 +53,8 @@ inline std::type_index ToTypeId(proto::VarType::Type var_type) {
     return typeid(SelectedRows);
   } else if (var_type == proto::VarType::READER) {
     return typeid(ReaderHolder);
+  } else if (var_type == proto::VarType::CHANNEL) {
+    return typeid(ChannelHolder);
   } else if (var_type == proto::VarType::FP32) {
     return typeid(float);
   } else if (var_type == proto::VarType::FP64) {
@@ -82,6 +87,9 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
       return;
     case proto::VarType_Type_READER:
       visitor(var.Get<ReaderHolder>());
+      return;
+    case proto::VarType_Type_CHANNEL:
+      visitor(var.Get<ChannelHolder>());
       return;
     default:
       PADDLE_THROW("Not supported visit type, %d", ToVarType(var.Type()));

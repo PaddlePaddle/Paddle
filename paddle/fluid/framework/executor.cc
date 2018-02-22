@@ -17,6 +17,7 @@ limitations under the License. */
 #include <set>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
@@ -55,11 +56,13 @@ static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
+  } else if (var_type == proto::VarType::CHANNEL) {
+    var->GetMutable<ChannelHolder>();
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER]",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL]",
         var_type);
   }
 }

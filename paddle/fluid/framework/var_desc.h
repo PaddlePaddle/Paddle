@@ -108,8 +108,10 @@ class VarDesc {
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
  private:
+  const proto::VarType::ChannelDesc &channel_desc() const;
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;
+  proto::VarType::ChannelDesc *mutable_channel_desc();
   proto::VarType::TensorDesc *mutable_tensor_desc();
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
