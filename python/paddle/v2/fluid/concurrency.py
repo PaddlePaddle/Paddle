@@ -16,8 +16,7 @@
 # TODO: Operators: send, close_channel, recv, go, select
 from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper
-import paddle.v2.fluid.core as corefrom paddle.v2.fluid.op import Operator
-from paddle.v2.fluid.op import Operator
+import paddle.v2.fluid.core as core
 
 __all__ = [
     'Go',
@@ -74,31 +73,33 @@ class Go(BlockGuard):
 
 def make_channel(dtype, name, capacity=0):
     helper = LayerHelper('make_channel', **locals())
-    return helper.create_variable(
-        type=core.VarDesc.VarType.CHANNEL,
-        name=name,
-        dtype=dtype,
-        capacity=capacity)
+    channel = helper.create_variable(type=core.VarDesc.VarType.CHANNEL)
 
-
-def channel_send(channel, value, block):
-    # 1. the variable channel should be a desc ?
-    # 2. how do we cast value as a variable and pass it to an Op
-    # 3. we need to check that the Type of value and channel is same
-    # 4. do we construct an op here as well ? Append block descs as we do in
-    # https://github.com/PaddlePaddle/Paddle/blob/c7ad26d6a4a37c6a2f0a59408e93fda23315cf94/python/paddle/v2/fluid/tests/test_cpp_reader.py ?
-    # 5. assume and fix the inputs and outputs of the Op and send it along
-    # 6. then implement the Op with the same.
-    # Do the same for receive Op as well
     program = Program()
     block = program.current_block()
+    create_channel_op = block.append_op(
+        type="create_channel",
+        inputs={
+            "data_type": dtype,
+            "name": name,
+        },
+        outputs={"channel": channel},
+        attrs={"capacity": capacity})
 
+    return create_channel_op
+
+
+def channel_send(channel, value):
+    program = Program()
+    block = program.current_block()
+    return_value = False
     channel_send_op = block.append_op(
-            type="channel_send",
-            inputs={
-                "Channel": channel,
-                "Val": value,
-            })
+        type="channel_send",
+        inputs={
+            "Channel": channel,
+            "Val": value,
+        },
+        outputs={"result": return_value})
 
     return channel_send_op
 
@@ -107,14 +108,12 @@ def channel_recv(channel):
     program = Program()
     block = program.current_block()
 
+    return_value = False
     channel_recv_op = block.append_op(
-            type="channel_recv",
-            inputs={
-                "Channel": channel,
-            },
-            outputs={
-                "Val": x,
-            })
+        type="channel_recv",
+        inputs={"Channel": channel, },
+        outputs={"Val": x,
+                 "result": return_value})
 
     return channel_recv_op
 
@@ -123,13 +122,10 @@ def channel_close(channel):
     program = Program()
     block = program.current_block()
 
+    return_value = False
     channel_close_op = block.append_op(
-            type="channel_close",
-            inputs={
-                "Channel": channel,
-            },
-            outputs={
-                "Val": x,
-            })
+        type="channel_close",
+        inputs={"Channel": channel, },
+        outputs={"result": return_value, })
 
     return channel_close_op
