@@ -327,7 +327,7 @@ def run_benchmark(cluster_spec, server):
                                         })
                 iters += 1
                 print(
-                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, speed=%.2f imgs/sec"
+                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, Speed=%.2f imgs/sec"
                     % (pass_id, iters, loss, acc,
                        len(data) / (time.time() - iter_begin_time)))
                 num_samples += len(data)

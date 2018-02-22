@@ -3,7 +3,7 @@ kind: ReplicaSet
 metadata:
   name: vgg16job-tf-pserver
 spec:
-  replicas: 1
+  replicas: 10
   template:
     metadata:
       labels:
@@ -29,11 +29,11 @@ spec:
         - name: JOB_NAME
           value: vgg16job-tf
         - name: PSERVERS_NUM
-          value: "1"
+          value: "10"
         - name: TF_JOB_NAME 
           value: "ps"
         - name: TRAINERS_NUM
-          value: "1"
+          value: "20"
         - name: BATCH_SIZE
           value: "128"
         - name: TRAINER_PACKAGE

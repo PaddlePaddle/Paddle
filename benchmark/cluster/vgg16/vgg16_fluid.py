@@ -180,8 +180,9 @@ def main():
                     iters += 1
                     num_samples += len(data)
                     print(
-                        "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, spent %f"
-                        % (pass_id, iters, loss, acc, time.time() - ts)
+                        "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, Speed = %.2f img/s"
+                        % (pass_id, iters, loss, acc,
+                           len(data) / (time.time() - ts))
                     )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
