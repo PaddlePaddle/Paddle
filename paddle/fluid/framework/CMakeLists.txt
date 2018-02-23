@@ -96,3 +96,4 @@ cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_contex
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
       
 cc_test(channel_test SRCS channel_test.cc)
+cc_test(tuple_test SRCS tuple_test.cc )
