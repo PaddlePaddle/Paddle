@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 
 USE_NO_KERNEL_OP(go);
-USE_NO_KERNEL_OP(sum);
+USE_NO_KERNEL_OP(elementwise_add);
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
@@ -33,16 +33,14 @@ void InitTensorsInScope(Scope &scope, p::CPUPlace &place) {
     auto var_name = paddle::string::Sprintf("x%d", i);
     auto var = scope.Var(var_name);
     auto tensor = var->GetMutable<LoDTensor>();
-    tensor->Resize({10, 10});
+    tensor->Resize({1, 1});
     float *expect = tensor->mutable_data<float>(place);
-    for (int64_t i = 0; i < tensor->numel(); ++i) {
-      expect[i] = static_cast<float>(i);
-    }
+    expect[0] = static_cast<float>(10+1*i);
   }
 
   auto out_var = scope.Var("Out");
   auto out_tensor = out_var->GetMutable<LoDTensor>();
-  out_tensor->Resize({10, 10});
+  out_tensor->Resize({1, 1});
   out_tensor->mutable_data<float>(place);  // allocate
 }
 
@@ -78,15 +76,25 @@ TEST(Concurrency, Go_Op) {
   ProgramDesc program;
   BlockDesc *block = program.MutableBlock(0);
 
-  AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, block);
+  std::cout << (scope.FindVar("x0"))->Get<LoDTensor>() << std::endl;
+  std::cout << (scope.FindVar("x1"))->Get<LoDTensor>() << std::endl;
+
+  AddOp("elementwise_add", {{"X", {"x0"}}, {"Y", {"x1"}}}, {{"Out", {"Out"}}}, {}, block);
 
   AttributeMap attrs;
   attrs.insert({"sub_block", block});
 
   auto go_op = OpRegistry::CreateOp("go", {{"X", {"x0", "x1"}}},
                                     {{"Out", {"Out"}}}, attrs);
+
+  const LoDTensor &tensor = (scope.FindVar("Out"))->Get<LoDTensor>();
+  auto *data = tensor.data<float>();
+
   go_op->Run(scope, place);
-  usleep(1000000);  // TODO(thuan): Replace this command with channel receive
+
+  EXPECT_EQ(data[0], 0);
+  usleep(100000);  // TODO(thuan): Replace this command with channel receive
+  EXPECT_EQ(data[0], 21);
 }
 }  // namespace framework
 }  // namespace paddle
