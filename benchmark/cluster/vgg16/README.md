@@ -18,7 +18,7 @@
 | -- | -- | -- | -- | -- |
 | PaddlePaddle Fluid | 15.44 | 16.32 | 16.74 | 16.79 |
 | PaddlePaddle v2 | 15.97 | 17.04 | 17.60 | 17.83 |
-| TensorFlow | - | - | - | - |
+| TensorFlow | 9.09 | 9.10 | 9.24 | - |
 
 ### Different Batch Size
 
