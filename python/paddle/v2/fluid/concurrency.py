@@ -16,7 +16,7 @@
 # TODO: Operators: send, close_channel, recv, go, select
 from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper
-
+import core
 __all__ = [
     'Go',
     'make_channel',
@@ -70,17 +70,66 @@ class Go(BlockGuard):
             attrs={'sub_block': go_block})
 
 
-def make_channel(dtype, size=0):
-    return True
+def make_channel(dtype, name, capacity=0):
+    helper = LayerHelper('make_channel', **locals())
+    main_program = helper.main_program
+    make_channel_block = main_program.current_block()
+
+    channel = helper.create_variable(type=core.VarDesc.VarType.CHANNEL)
+    create_channel_op = make_channel_block.append_op(
+        type="create_channel",
+        inputs={
+            "data_type": dtype,
+            "name": name,
+        },
+        outputs={"channel": channel},
+        attrs={"capacity": capacity})
+
+    return create_channel_op
 
 
 def channel_send(channel, value):
-    return True
+    helper = LayerHelper('channel_send', **locals())
+    main_program = helper.main_program
+    channel_send_block = main_program.current_block()
+    return_value = False
+
+    channel_send_op = channel_send_block.append_op(
+        type="channel_send",
+        inputs={
+            "Channel": channel,
+            "Val": value,
+        },
+        outputs={"result": return_value})
+
+    return channel_send_op
 
 
 def channel_recv(channel):
-    return True
+    helper = LayerHelper('channel_recv', **locals())
+    main_program = helper.main_program
+    channel_recv_block = main_program.current_block()
+    return_value = False
+    x = None
+
+    channel_recv_op = channel_recv_block.append_op(
+        type="channel_recv",
+        inputs={"Channel": channel, },
+        outputs={"Val": x,
+                 "result": return_value})
+
+    return channel_recv_op
 
 
 def channel_close(channel):
-    return True
+    helper = LayerHelper('channel_close', **locals())
+    main_program = helper.main_program
+    channel_close_block = main_program.current_block()
+
+    return_value = False
+    channel_close_op = channel_close_block.append_op(
+        type="channel_close",
+        inputs={"Channel": channel, },
+        outputs={"result": return_value, })
+
+    return channel_close_op
