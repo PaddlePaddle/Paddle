@@ -74,17 +74,12 @@ struct PADDLE_ALIGN(2) float16 {
 
   // The following defaulted special class member functions
   // are added to make float16 pass the std::is_trivial test
-  HOSTDEVICE inline float16() = default;
-
-  HOSTDEVICE inline float16(const float16&) = default;
-
-  HOSTDEVICE inline float16& operator=(const float16&) = default;
-
-  HOSTDEVICE inline float16(float16&&) = default;
-
-  HOSTDEVICE inline float16& operator=(float16&&) = default;
-
-  HOSTDEVICE inline ~float16() = default;
+  float16() = default;
+  float16(const float16& o) = default;
+  float16& operator=(const float16& o) = default;
+  float16(float16&& o) = default;
+  float16& operator=(float16&& o) = default;
+  ~float16() = default;
 
 // Constructors
 #ifdef PADDLE_CUDA_FP16
