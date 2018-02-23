@@ -20,6 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 
 USE_NO_KERNEL_OP(go);
+USE_NO_KERNEL_OP(channel_close);
+USE_NO_KERNEL_OP(channel_create);
+USE_NO_KERNEL_OP(channel_recv);
+USE_NO_KERNEL_OP(channel_send);
 USE_NO_KERNEL_OP(elementwise_add);
 
 namespace f = paddle::framework;
@@ -35,7 +39,7 @@ void InitTensorsInScope(Scope &scope, p::CPUPlace &place) {
     auto tensor = var->GetMutable<LoDTensor>();
     tensor->Resize({1, 1});
     float *expect = tensor->mutable_data<float>(place);
-    expect[0] = static_cast<float>(10+1*i);
+    expect[0] = static_cast<float>(10 + 1 * i);
   }
 
   auto out_var = scope.Var("Out");
@@ -68,7 +72,8 @@ TEST(Concurrency, Go_Op) {
   ProgramDesc program;
   BlockDesc *block = program.MutableBlock(0);
 
-  AddOp("elementwise_add", {{"X", {"x0"}}, {"Y", {"x1"}}}, {{"Out", {"Out"}}}, {}, block);
+  AddOp("elementwise_add", {{"X", {"x0"}}, {"Y", {"x1"}}}, {{"Out", {"Out"}}},
+        {}, block);
 
   AttributeMap attrs;
   attrs.insert({"sub_block", block});
