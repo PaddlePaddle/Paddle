@@ -11,15 +11,11 @@ ENV https_proxy=""
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
 
-# k8s
+# tf k8s
 RUN pip install tensorflow==1.4.0
 ADD tf_k8s /usr/bin
 RUN chmod +x /usr/bin/tf_k8s
-ADD vgg16_tf.py minist_tf.py /workspace/
-
-#tf minist
-ADD minist/*.gz /tmp/mnist-data/
-ADD minist_tf.py /workspace/
+ADD vgg16_tf.py /workspace/
 
 # below lines may change a lot for debugging
 #ADD https://raw.githubusercontent.com/PaddlePaddle/cloud/develop/docker/paddle_k8s /usr/bin

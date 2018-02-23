@@ -307,6 +307,10 @@ def run_benchmark(cluster_spec, server):
         save_model_secs=600)
 
     with sv.managed_session(server.target) as sess:
+        ds = sess.list_devices()
+        for d in ds:
+            print(d.name)
+
         iters, num_samples, start_time = 0, 0, 0.0
         for pass_id in range(args.num_passes):
             # train
