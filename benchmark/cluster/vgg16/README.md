@@ -10,8 +10,7 @@
 
 ### Single Node Single Thread
 
-- PServer Count: 10
-- Trainer Count: 20
+- Environment variable: `MKL_NUM_THREADS=1`
 - Metrics: samples / sec
 
 | Batch Size | 32 | 64 | 128 | 256 |
