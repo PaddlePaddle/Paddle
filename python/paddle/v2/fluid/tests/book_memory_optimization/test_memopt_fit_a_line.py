@@ -24,15 +24,21 @@ import sys
 fluid.default_startup_program().random_seed = 111
 
 x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-
-y_predict = fluid.layers.fc(input=x, size=1, act=None)
-
 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-avg_cost = fluid.layers.mean(x=cost)
+places = fluid.layers.get_places(device_count=2, device_type='CPU')
+pd = fluid.layers.ParallelDo(places)
+with pd.do():
+    x_ = pd.read_input(x)
+    y_ = pd.read_input(y)
+    y_predict = fluid.layers.fc(input=x_, size=1, act=None)
+    cost = fluid.layers.square_error_cost(input=y_predict, label=y_)
+    avg_cost = fluid.layers.mean(x=cost)
+    pd.write_output(avg_cost)
 
-sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+cost = pd()
+avg_cost = fluid.layers.mean(x=cost)
+sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 sgd_optimizer.minimize(avg_cost)
 
 fluid.memory_optimize(fluid.default_main_program())
@@ -65,6 +71,7 @@ for pass_id in range(PASS_NUM):
 
         if avg_loss_value[0] < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
+        print avg_loss_value[0]
         if math.isnan(float(avg_loss_value)):
             sys.exit("got NaN loss, training failed.")
 exit(1)
