@@ -11,12 +11,11 @@ spec:
         tf-job-trainer: vgg16job-tf
     spec:
       imagePullSecrets:
-      #- name: job-registry-secret
-      - name: gongweibaobaidusecret
+      - name: job-registry-secret
       hostNetwork: true
       containers:
       - name: trainer
-        image: "registry.baidu.com/gongweibao/test/fluid_benchmark:vgg16"
+        image: "registry.baidu.com/paddlepaddle/fluid_benchmark_tf:vgg16"
         imagePullPolicy: Always
         command: ["tf_k8s", "start_tf"]
         ports:
@@ -30,7 +29,8 @@ spec:
         - name: TF_JOB_NAME 
           value: "worker"
         - name: ENTRY
-          value: "python vgg16_tf.py"
+          #value: "python vgg16_tf.py"
+          value: "python distribute.py"
         - name: PSERVERS_NUM
           value: "10"
         - name: BATCH_SIZE

@@ -24,4 +24,5 @@ ADD paddle_k8s /usr/bin
 RUN chmod +x /usr/bin/paddle_k8s
 ADD k8s_tools.py /root
 ADD vgg16_fluid.py vgg16_v2.py /workspace/
+ADD distribute.py /workspace/
 

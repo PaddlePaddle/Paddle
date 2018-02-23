@@ -11,11 +11,10 @@ spec:
     spec:
       hostNetwork: true
       imagePullSecrets:
-      #- name: job-registry-secret
-      - name: gongweibaobaidusecret
+      - name: job-registry-secret
       containers:
       - name: pserver
-        image: "registry.baidu.com/gongweibao/test/fluid_benchmark:vgg16"
+        image: "registry.baidu.com/paddlepaddle/fluid_benchmark_tf:vgg16"
         imagePullPolicy: Always
         command: ["tf_k8s", "start_tf"]
         ports:
@@ -25,7 +24,8 @@ spec:
         - name: PORT
           value: "32036"
         - name: ENTRY
-          value: "python vgg16_tf.py"
+          #value: "python vgg16_tf.py"
+          value: "python distribute.py"
         - name: JOB_NAME
           value: vgg16job-tf
         - name: PSERVERS_NUM

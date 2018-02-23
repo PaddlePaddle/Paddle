@@ -253,14 +253,13 @@ def run_benchmark(cluster_spec, server):
 
         optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        global_step = tf.Variable(0)
-        #global_step = tf.contrib.framework.get_or_create_global_step()
+        global_step = tf.Variable(0, name='global_step', trainable=False)
         with tf.control_dependencies(update_ops):
             train_op = optimizer.minimize(avg_loss, global_step=global_step)
 
         saver = tf.train.Saver()
         summary_op = tf.summary.merge_all()
-        init_op = tf.initialize_all_variables()
+        init_op = tf.global_variables_initializer()
 
     # data reader
     train_reader = paddle.batch(
