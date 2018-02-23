@@ -17,6 +17,7 @@ limitations under the License. */
 #include <mutex>  // for call_once
 #include <unordered_map>
 #include "paddle/fluid/framework/backward.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
