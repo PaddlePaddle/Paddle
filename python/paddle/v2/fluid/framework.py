@@ -435,9 +435,7 @@ class Operator(object):
                     in_arg_names = []
                     for arg in in_args:
                         if isinstance(arg, basestring):
-                            assert (
-                                False,
-                                "Allowing plain string as varaible is insane")
+                            assert False, "Allowing plain string as varaible is insane"
                             in_arg_names.append(arg)
                         else:
                             in_arg_names.append(arg.name)
