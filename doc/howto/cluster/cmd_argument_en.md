@@ -156,6 +156,6 @@ adagrad = paddle.optimizer.AdaGrad(
 ```
 
 - `is_async`: Is Async-SGD or not.
-- `async_lagged_grad_discard_ratio`: For async sgd gradient commit control.
+- `async_lagged_grad_discard_ratio`: For async SGD gradient commit control.
   when `async_lagged_grad_discard_ratio * num_gradient_servers` commit passed,
   current async gradient will be discard silently.
