@@ -47,14 +47,6 @@ void InitTensorsInScope(Scope &scope, p::CPUPlace &place) {
 void AddOp(const std::string &type, const VariableNameMap &inputs,
            const VariableNameMap &outputs, AttributeMap attrs,
            BlockDesc *block) {
-  // insert output
-  for (auto kv : outputs) {
-    for (auto v : kv.second) {
-      auto var = block->Var(v);
-      var->SetDataType(proto::VarType::FP32);
-    }
-  }
-
   // insert op
   auto op = block->AppendOp();
   op->SetType(type);
@@ -75,9 +67,6 @@ TEST(Concurrency, Go_Op) {
 
   ProgramDesc program;
   BlockDesc *block = program.MutableBlock(0);
-
-  std::cout << (scope.FindVar("x0"))->Get<LoDTensor>() << std::endl;
-  std::cout << (scope.FindVar("x1"))->Get<LoDTensor>() << std::endl;
 
   AddOp("elementwise_add", {{"X", {"x0"}}, {"Y", {"x1"}}}, {{"Out", {"Out"}}}, {}, block);
 
