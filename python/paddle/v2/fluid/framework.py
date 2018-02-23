@@ -434,10 +434,10 @@ class Operator(object):
                             % (in_proto.name, len(in_args)))
                     in_arg_names = []
                     for arg in in_args:
-                        assert isinstance(
-                            arg,
-                            Variable), "Input of an operator must be variables."
-                        in_arg_names.append(arg.name)
+                        if isinstance(arg, basestring):
+                            in_arg_names.append(arg)
+                        else:
+                            in_arg_names.append(arg.name)
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
