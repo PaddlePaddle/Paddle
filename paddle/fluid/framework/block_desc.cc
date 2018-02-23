@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
+#include <queue>
+
 namespace paddle {
 namespace framework {
 
@@ -45,23 +47,33 @@ bool BlockDesc::HasVar(const std::string &name) const {
 VarDesc *BlockDesc::FindVarRecursive(const std::string &name) const {
   if (name == kEmptyVarName) return nullptr;
 
-  auto it = vars_.find(name);
-  if (it != vars_.end()) {
-    return it->second.get();
-  }
+  std::queue<const BlockDesc *> frontier;
+  std::unordered_set<const BlockDesc *> visited;
 
-  BlockDesc *tmp = ParentBlock();
+  frontier.push(this);
 
-  if (tmp != nullptr) {
-    auto ptr = tmp->FindVarRecursive(name);
-    if (ptr != nullptr) {
-      return ptr;
+  while (!frontier.empty()) {  // BFS
+    auto cur = frontier.front();
+    frontier.pop();
+    if (visited.count(cur) != 0) {
+      continue;
     }
-  }
+    auto var = cur->FindVar(name);
+    if (var != nullptr) {
+      return var;
+    }
 
-  tmp = ForwardBlock();
-  if (tmp != nullptr) {
-    return tmp->FindVarRecursive(name);
+    auto fwd = cur->ForwardBlock();
+    auto parent = cur->ParentBlock();
+
+    if (fwd != nullptr) {
+      frontier.push(fwd);
+    }
+    if (parent != nullptr) {
+      frontier.push(parent);
+    }
+
+    visited.insert(cur);
   }
 
   return nullptr;
