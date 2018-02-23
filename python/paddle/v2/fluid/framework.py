@@ -697,6 +697,13 @@ class Block(object):
         return self.desc.parent
 
     @property
+    def forward_block_idx(self):
+        return self.desc.get_forward_block_idx()
+
+    def set_forward_block_idx(self, idx):
+        self.desc.set_forward_block_idx(idx)
+
+    @property
     def idx(self):
         return self.desc.id
 
@@ -709,15 +716,32 @@ class Block(object):
         return v
 
     def var_recursive(self, name):
-        if self.has_var(name):
-            return self.var(name)
-        else:
-            if self.idx == 0:
-                raise ValueError("var %s is not in block(%d) nor its parents." %
-                                 name, self.idx)
-            else:
-                parent_block = self.program.block(self.parent_idx)
-                return parent_block.var_recursive(name)
+        frontier = list()
+        visited = set()
+
+        frontier.append(self)
+
+        prog = self.program
+
+        while len(frontier) != 0:  # BFS
+            cur = frontier[0]
+            frontier = frontier[1:]
+
+            if id(cur) in visited:
+                continue
+
+            if cur.has_var(name):
+                return cur.var(name)
+
+            if cur.parent_idx != -1:
+                frontier.append(prog.block(cur.parent_idx))
+
+            if cur.forward_block_idx != -1:
+                frontier.append(prog.block(cur.forward_block_idx))
+
+            visited.add(id(cur))
+
+        raise ValueError("Var {0} is not found recursively".format(name))
 
     def all_parameters(self):
         return list(self.iter_parameters())
