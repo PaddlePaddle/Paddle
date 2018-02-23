@@ -143,7 +143,8 @@ test.txt-00002
 
 ## 异步 SGD 更新
 
-您可以修改 `optimize` 的参数来支持异步SGD更新，示例如下：
+我们可以通过设置 `optimize` 的参数使之支持异步SGD更新。
+例如，设置 `AdaGrad` optimize 的 `is_async` 和 `async_lagged_grad_discard_ratio` 参数：
 
 ```python
 adagrad = paddle.optimizer.AdaGrad(

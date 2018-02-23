@@ -144,7 +144,8 @@ Your workspace may looks like:
 
 ## Async SGD Update
 
-You can modify the parameters of `optimize` to support Async SGD update, for example:
+We can set some parameters of the optimizer to make it support async SGD update.
+For example, we can set the `is_async` and `async_lagged_grad_discard_ratio` of the `AdaGrad` optimizer:
 
 ```python
 adagrad = paddle.optimizer.AdaGrad(

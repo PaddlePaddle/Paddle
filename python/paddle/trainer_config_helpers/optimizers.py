@@ -397,9 +397,9 @@ def settings(batch_size,
                                         value larger than some value, will be
                                         clipped.
     :type gradient_clipping_threshold: float
-    :param async_lagged_grad_discard_ratio: async sgd gradient commit control,
+    :param async_lagged_grad_discard_ratio: async SGD gradient commit control,
           when async_lagged_grad_discard_ratio * num_gradient_servers commit passed, 
-          current async gradient will be discard silently.
+          the current async SGD gradient is discarded.
     :type async_lagged_grad_discard_ratio: float
     """
     if isinstance(regularization, BaseRegularization):
