@@ -70,7 +70,7 @@ class Go(BlockGuard):
             attrs={'sub_block': go_block})
 
 
-def make_channel(dtype, name, capacity=0):
+def make_channel(dtype, capacity=0):
     helper = LayerHelper('make_channel', **locals())
     main_program = helper.main_program
     make_channel_block = main_program.current_block()
@@ -78,7 +78,7 @@ def make_channel(dtype, name, capacity=0):
     channel = helper.create_variable(type=core.VarDesc.VarType.CHANNEL)
     create_channel_op = make_channel_block.append_op(
         type="channel_create",
-        outputs={"Channel": channel},
+        outputs={"Output": channel},
         attrs={"data_type": dtype,
                "capacity": capacity})
 
@@ -89,13 +89,15 @@ def channel_send(channel, value):
     helper = LayerHelper('channel_send', **locals())
     main_program = helper.main_program
     channel_send_block = main_program.current_block()
-    return_value = False
+    status = helper.create_variable(type=core.VarDesc.VarType.TENSOR)
 
     channel_send_op = channel_send_block.append_op(
-        type="channel_send", inputs={
+        type="channel_send",
+        inputs={
             "Channel": channel,
             "Val": value,
-        })
+        },
+        outputs={"Status": status})
 
     return channel_send_op
 
@@ -105,11 +107,13 @@ def channel_recv(channel, dtype):
     main_program = helper.main_program
     channel_recv_block = main_program.current_block()
     return_value = helper.create_variable(type=dtype)
+    status = helper.create_variable(type=core.VarDesc.VarType.TENSOR)
 
     channel_recv_op = channel_recv_block.append_op(
         type="channel_recv",
         inputs={"Channel": channel},
-        outputs={"Output": return_value})
+        outputs={"Output": return_value,
+                 "Status": status})
 
     return channel_recv_op
 
@@ -121,6 +125,6 @@ def channel_close(channel):
 
     return_value = False
     channel_close_op = channel_close_block.append_op(
-        type="channel_close", inputs={"Channel": channel, })
+        type="channel_close", inputs={"Channel": channel})
 
     return channel_close_op
