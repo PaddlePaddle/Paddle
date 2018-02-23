@@ -8,9 +8,12 @@
 - cpu MHz		: 2101.000
 - cache size	: 20480 KB
 
+### Blas settings
+
+Setting environment variable: `MKL_NUM_THREADS=1`.
+
 ### Single Node Single Thread
 
-- Environment variable: `MKL_NUM_THREADS=1`
 - Metrics: samples / sec
 
 | Batch Size | 32 | 64 | 128 | 256 |
@@ -23,7 +26,6 @@
 
 - PServer Count: 10
 - Trainer Count: 20
-- Per trainer CPU Core: 1
 - Metrics: samples / sec
 
 | Batch Size | 32 | 64 | 128 | 256 |
