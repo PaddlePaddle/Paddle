@@ -652,7 +652,8 @@ class While(object):
         parent_block.append_op(
             type='while',
             inputs={
-                'X': [parent_block.var(x_name) for x_name in x_name_list],
+                'X':
+                [parent_block.var_recursive(x_name) for x_name in x_name_list],
                 'Condition': [self.cond_var]
             },
             outputs={'Out': out_vars,
