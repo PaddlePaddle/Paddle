@@ -16,21 +16,13 @@ import unittest
 import paddle.v2.fluid as fluid
 import paddle.v2.fluid.core as core
 from paddle.v2.fluid.executor import Executor
-import numpy
-import time
 
 
 class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
-        ch = fluid.make_channel(dtype=bool)
-        d0 = fluid.layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32')
-        i = fluid.layers.zeros(shape=[1], dtype='int64')
-        data_array = fluid.layers.array_write(x=d0, i=i)
-
+        ch = fluid.make_channel(
+            dtype=core.VarDesc.VarType.BOOL, name="CreateChannel")
         with fluid.Go():
-            d = fluid.layers.array_read(array=data_array, i=i)
-
             fluid.channel_send(ch, True)
 
         result = fluid.channel_recv(ch)
@@ -39,16 +31,8 @@ class TestRoutineOp(unittest.TestCase):
         cpu = core.CPUPlace()
         exe = Executor(cpu)
 
-        d = []
-        for i in xrange(3):
-            d.append(numpy.random.random(size=[10]).astype('float32'))
-
-        outs = exe.run(feed={'d0': d[0]}, fetch_list=[])
-
-        while True:
-            time.sleep(10)
-
-        #self.assertEqual(outs[0], True)
+        outs = exe.run(fetch_list=[result])
+        self.assertEqual(outs[0], True)
 
 
 if __name__ == '__main__':

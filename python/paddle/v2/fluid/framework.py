@@ -167,6 +167,7 @@ class Variable(object):
                  shape=None,
                  dtype=None,
                  lod_level=None,
+                 capacity=None,
                  persistable=None,
                  error_clip=None,
                  stop_gradient=False,
@@ -237,6 +238,14 @@ class Variable(object):
                         "persistable is {2}. They are not matched".format(
                             self.name, self.persistable, persistable))
 
+        if capacity is not None:
+            if is_new_var:
+                self.desc.set_capacity(capacity)
+            else:
+                # TODO(abhinavarora) : Compare with set capacity once,
+                # get_capacity is implemented
+                pass
+
         self.block.vars[name] = self
         self.op = None
         self.stop_gradient = stop_gradient
@@ -285,10 +294,6 @@ class Variable(object):
     @property
     def name(self):
         return self.desc.name()
-
-    @name.setter
-    def name(self, new_name):
-        self.desc.set_name(new_name)
 
     @property
     def shape(self):
@@ -535,12 +540,6 @@ class Operator(object):
         """
         return self.desc.input(name)
 
-    def rename_input(self, old_name, new_name):
-        self.desc.rename_input(old_name, new_name)
-
-    def rename_output(self, old_name, new_name):
-        self.desc.rename_output(old_name, new_name)
-
     @property
     def input_names(self):
         """
@@ -549,14 +548,6 @@ class Operator(object):
 
         """
         return self.desc.input_names()
-
-    @property
-    def input_arg_names(self):
-        return self.desc.input_arg_names()
-
-    @property
-    def output_arg_names(self):
-        return self.desc.output_arg_names()
 
     def output(self, name):
         """
@@ -758,60 +749,6 @@ class Block(object):
 
     def has_var(self, name):
         return name in self.vars
-
-    def rename_var(self, name, new_name):
-        """
-        Rename variable in vars and ops' inputs and outputs
-        """
-        if not self.has_var(name):
-            raise ValueError("var %s is not in current" % name)
-        v = self.var(name)
-        stop_gradient = None
-        trainable = None
-        optimize_attr = None
-        regularizer = None
-        gradient_clip_attr = None
-        error_clip = None
-        if type(v) == Parameter:
-            stop_gradient = v.stop_gradient
-            trainable = v.trainable
-            optimize_attr = v.optimize_attr
-            regularizer = v.regularizer
-            gradient_clip_attr = v.gradient_clip_attr
-            error_clip = v.error_clip
-        elif type(v) == Variable:
-            error_clip = v.error_clip
-            stop_gradient = v.stop_gradient
-        else:
-            raise ValueError("unsupported var type: %s", type(v))
-
-        self.desc.rename_var(name, new_name)
-        d = self.desc.find_var(new_name)
-        var = None
-        if type(v) == Parameter:
-            var = Parameter(
-                self,
-                d.shape(),
-                d.dtype(),
-                name=new_name,
-                stop_gradient=stop_gradient,
-                trainable=trainable,
-                optimize_attr=optimize_attr,
-                regularizer=regularizer,
-                gradient_clip_attr=gradient_clip_attr,
-                error_clip=error_clip)
-        elif type(v) == Variable:
-            var = Variable(
-                self,
-                name=new_name,
-                error_clip=error_clip,
-                stop_gradient=stop_gradient)
-
-        # rename the python side, sync_with_cpp will only add
-        # new vars/ops to python side.
-        self.vars[new_name] = var
-        del self.vars[name]
-        self.sync_with_cpp()
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
