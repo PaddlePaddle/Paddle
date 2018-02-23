@@ -2,7 +2,7 @@ from paddle.trainer_config_helpers import *
 
 settings(batch_size=1000, learning_rate=1e-5)
 
-data = data_layer(name='data', size=2304, height=48, width=42)
+data = data_layer(name='data', size=2016, height=48, width=42)
 
 conv = img_conv_layer(
     input=data,
@@ -13,8 +13,7 @@ conv = img_conv_layer(
     act=LinearActivation(),
     bias_attr=True)
 
-pool = img_pool_layer(
-    input=conv, num_channels=8, pool_size=2, stride=2, pool_type=MaxPooling())
+pool = img_pool_layer(input=conv, pool_size=2, stride=2, pool_type=MaxPooling())
 
 pad = pad_layer(input=pool, pad_c=[2, 3], pad_h=[1, 2], pad_w=[3, 1])
 

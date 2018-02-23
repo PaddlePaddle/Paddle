@@ -1,0 +1,39 @@
+type: "nn"
+layers {
+  name: "x"
+  type: "data"
+  size: 128
+  active_type: ""
+}
+layers {
+  name: "y"
+  type: "data"
+  size: 128
+  active_type: ""
+}
+layers {
+  name: "__l2_distance_layer_0__"
+  type: "l2_distance"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "x"
+  }
+  inputs {
+    input_layer_name: "y"
+  }
+}
+input_layer_names: "x"
+input_layer_names: "y"
+output_layer_names: "__l2_distance_layer_0__"
+sub_models {
+  name: "root"
+  layer_names: "x"
+  layer_names: "y"
+  layer_names: "__l2_distance_layer_0__"
+  input_layer_names: "x"
+  input_layer_names: "y"
+  output_layer_names: "__l2_distance_layer_0__"
+  is_recurrent_layer_group: false
+}
+

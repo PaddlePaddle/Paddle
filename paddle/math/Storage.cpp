@@ -17,9 +17,13 @@ limitations under the License. */
 #include "paddle/utils/StringUtil.h"
 #include "paddle/utils/Util.h"
 
+#ifndef PADDLE_MOBILE_INFERENCE
 DEFINE_int32(pool_limit_size,
              536870912,
              "maximum memory size managed by a memory pool, default is 512M");
+#else
+DEFINE_int32(pool_limit_size, 0, "default is 0");
+#endif
 
 namespace paddle {
 
@@ -32,9 +36,7 @@ static InitFunction __init_storage_engine([]() { StorageEngine::singleton(); },
 StorageEngine::StorageEngine() : cpuAllocator_(nullptr) {}
 
 StorageEngine::~StorageEngine() {
-  if (cpuAllocator_) {
-    delete cpuAllocator_;
-  }
+  delete cpuAllocator_;
   for (auto it : gpuAllocator_) {
     delete it;
   }

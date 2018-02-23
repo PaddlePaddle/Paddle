@@ -28,6 +28,8 @@ layers {
       stride_y: 1
       output_y: 227
       img_size_y: 256
+      dilation: 1
+      dilation_y: 1
     }
   }
   bias_parameter_name: "___conv_0__.wbias"
@@ -62,6 +64,8 @@ layers {
   moving_average_fraction: 0.9
   height: 227
   width: 227
+  depth: 1
+  epsilon: 1e-05
 }
 layers {
   name: "__crmnorm_0__"

@@ -21,12 +21,42 @@ layers {
   }
 }
 layers {
+  name: "__sqrt_0__"
+  type: "mixed"
+  size: 100
+  active_type: "sqrt"
+  inputs {
+    input_layer_name: "__exp_0__"
+    proj_conf {
+      type: "identity"
+      name: "___sqrt_0__.w0"
+      input_size: 100
+      output_size: 100
+    }
+  }
+}
+layers {
+  name: "__reciprocal_0__"
+  type: "mixed"
+  size: 100
+  active_type: "reciprocal"
+  inputs {
+    input_layer_name: "__sqrt_0__"
+    proj_conf {
+      type: "identity"
+      name: "___reciprocal_0__.w0"
+      input_size: 100
+      output_size: 100
+    }
+  }
+}
+layers {
   name: "__log_0__"
   type: "mixed"
   size: 100
   active_type: "log"
   inputs {
-    input_layer_name: "__exp_0__"
+    input_layer_name: "__reciprocal_0__"
     proj_conf {
       type: "identity"
       name: "___log_0__.w0"
@@ -351,6 +381,8 @@ sub_models {
   name: "root"
   layer_names: "data"
   layer_names: "__exp_0__"
+  layer_names: "__sqrt_0__"
+  layer_names: "__reciprocal_0__"
   layer_names: "__log_0__"
   layer_names: "__abs_0__"
   layer_names: "__sigmoid_0__"

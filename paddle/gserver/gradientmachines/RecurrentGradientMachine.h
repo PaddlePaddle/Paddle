@@ -107,18 +107,18 @@ public:
       DropCallback;
 
   /**
-    * @brief NormOrDropNodeCallback
-    *
-    * Normalize a path's probabilities or just drop it by modifying path.logProb
-    *
-    * The first parameter is sequence index in a batch
-    *
-    * The second parameter is path.ids
-    *
-    * The third parameter is probabilites for each node in this path.
-    *
-    * The fourth parameter is the probability of the whole path.
-    */
+   * @brief NormOrDropNodeCallback
+   *
+   * Normalize a path's probabilities or just drop it by modifying path.logProb
+   *
+   * The first parameter is sequence index in a batch
+   *
+   * The second parameter is path.ids
+   *
+   * The third parameter is probabilites for each node in this path.
+   *
+   * The fourth parameter is the probability of the whole path.
+   */
   typedef std::function<void(
       int seqId, const std::vector<int>&, std::vector<real>&, real*)>
       NormOrDropNodeCallback;
@@ -190,6 +190,11 @@ public:
     std::vector<int> ids;
 
     /**
+     * @brief idsProb, log probability of each generated word.
+     */
+    std::vector<real> idsProb;
+
+    /**
      * @brief logProb, current probability of path.
      */
     real logProb;
@@ -228,11 +233,13 @@ public:
      */
     Path(Path& old, int newId, real logProb, int machineId, int topIndex)
         : ids(old.ids),
+          idsProb(old.idsProb),
           logProb(old.logProb + logProb),
           machineId(machineId),
           topIndex(topIndex),
           seqId(old.seqId) {
       ids.push_back(newId);
+      idsProb.push_back(logProb);
       if (!old.probHistory.empty()) {
         this->probHistory = old.probHistory;
         // probHistory store current prob, not sum
@@ -284,6 +291,16 @@ public:
   }
 
 protected:
+  std::vector<Argument::SeqInfo> commonSeqInfo_;
+  ICpuGpuVectorPtr sequenceStartPositions_;
+  void calcSequenceStartPositions();
+  void checkInputConsistency(int inlinkId,
+                             const std::vector<Argument::SeqInfo>& seqInfo);
+  void reorganizeInput(PassType passType);
+  void reorganizeOutput(PassType passType);
+  void connectFrames(PassType passType);
+  void calcNumSequencesAtEachStep();
+
   void resizeOrCreateFrames(int numFrames);
   void resizeBootFrame(int numSequences);
 
@@ -295,8 +312,7 @@ protected:
     std::string linkName;
     LayerPtr inLayer;
     std::vector<LayerPtr> agents;  // Scatter Agents to reform batch input
-    bool hasSubseq;
-    Argument outArg;  // scatter output argument
+    Argument outArg;               // scatter output argument
   };
   std::vector<InFrameLine> inFrameLines_;
 
@@ -318,7 +334,6 @@ protected:
     std::vector<LayerPtr> agents;
     std::vector<LayerPtr> scatterAgents;  // scatter agent used by beam search
     Argument outArg;                      // scatter output argument
-    bool is_sequence;
     // Different memoryFrameLine have different element as follows
     IVectorPtr allIds;  // scattered id of realLayer
     ICpuGpuVectorPtr
@@ -330,30 +345,57 @@ protected:
   // and all outFrameLines(outlinks) share the info with one inFrameLine,
   // which is assigned by targetInfoInlinkId_.
   struct Info {
-    IVectorPtr allIds;         // scattered id of realLayer
-    std::vector<int> idIndex;  // index of allIds
+    // The original positions in the original batch
+    IVectorPtr allIds;  // scattered id of realLayer [batchSize]
+
+    // index of allIds for each step [maxSequenceLength_]
+    // idIndex[i] is the total length of the first i sequences
+    std::vector<int> idIndex;
+
     ICpuGpuVectorPtr
         sequenceStartPositions;         // scattered sequenceStartPositions
     std::vector<int> seqStartPosIndex;  // index of sequenceStartPositions
   };
-  std::vector<Info> info_;
+  std::vector<Info> info_;  // for input
 
   // numSeqs_[i] is the number sequences which is longer than i (for sequence
   // data) or has more than i subsequences (for subsequence data)
+  // Equivalently, numSeqs_[i] is the number of sequences at step i;
   std::vector<int> numSeqs_;
 
   std::vector<std::vector<Argument::SeqInfo>> seqInfos_;
 
-  // the id of inlink which share info with outlinks
-  int targetInfoInlinkId_;
+  void checkOutputConsistency(OutFrameLine& outFrameLine);
 
   /* create scattered id infomation for all realLayer of inFrameLines one time.
-  *  If hasSubseq, will also create scattered sequenceStartPositions infomation
-  *  for all realLayer of inFrameLines one time.
-  */
+   *  If hasSubseq, will also create scattered sequenceStartPositions infomation
+   *  for all realLayer of inFrameLines one time.
+   */
   void createInFrameInfo(int inlinks_id,
                          const Argument& input,
                          PassType passType);
+  void createInFrameInfo_nonseq(int inlinks_id,
+                                const Argument& input,
+                                PassType passType);
+  void createInFrameInfo_seq(int inlinks_id,
+                             const Argument& input,
+                             PassType passType);
+  void createInFrameInfo_subseq(int inlinks_id,
+                                const Argument& input,
+                                PassType passType);
+
+  void createOutFrameInfo(OutFrameLine& outFrameLine,
+                          Info& info,
+                          ICpuGpuVectorPtr& sequenceStartPositions,
+                          ICpuGpuVectorPtr& subSequenceStartPositions);
+  void createOutFrameInfo_seq(OutFrameLine& outFrameLine,
+                              Info& info,
+                              ICpuGpuVectorPtr& sequenceStartPositions,
+                              ICpuGpuVectorPtr& subSequenceStartPositions);
+  void createOutFrameInfo_subseq(OutFrameLine& outFrameLine,
+                                 Info& info,
+                                 ICpuGpuVectorPtr& sequenceStartPositions,
+                                 ICpuGpuVectorPtr& subSequenceStartPositions);
 
   void createMemoryFrameInfo(MemoryFrameLine* memoryFrameLine,
                              PassType passType);
@@ -376,9 +418,11 @@ protected:
 
   struct Generator {
     GeneratorConfig config;
-    std::vector<int> ids;  // store generated sequences
-    Argument outArg;       // final output argument
+    std::vector<int> ids;       // store generated sequences
+    std::vector<real> idsProb;  // log probability of each generated word
+    Argument outArg;            // final output argument
   };
+  bool generating_;
   Generator generator_;
 
   std::vector<std::unique_ptr<NeuralNetwork>> frames_;
@@ -386,16 +430,12 @@ protected:
   NeuralNetwork* rootNetwork_;
   bool reversed_;
 
-  // if hasSubseq: max number of sentences(subseq)in batchsize samples
-  // else: max number of tokens in batchsize samples(sentences)
-  int maxSequenceLength_;
+  int maxSequenceLength_;  // Max top-level length
   bool useGpu_;
   bool stopBeamSearch_;
 
   std::vector<int>
       parameterIds_;  // parameters actually used by this Layer Group
-
-  std::unique_ptr<Evaluator> evaluator_;  // frame printers in this layer group
 
   // store final argument of outFrameLines_
   std::vector<Argument> dataArgs_;
@@ -432,15 +472,43 @@ private:
   void copyDataOutlinkFrame(size_t machineCur);
 
   /*
-   * @brief In generation, if the layer group has more than 1 outlink, outlinks
-   * except the first one are data outlinks. This function creates the data
-   * outlinks.
-   * @note In beam search, only one generated sequence with the hightest log
-   * probabilites are retained.
-   * @param machineIdVec : select a row of output matrix in each frame
-   * that the generation process expanded.
+   * @brief In generation, if the layer group has more than 1 outlink, outlink
+   * except the first one is a data outlink. In RecurrentLayerGroup, each time
+   * step is a separate Network, outputs of a layer inside the
+   * RecurrentLayerGroup are stored in separate Arguments. If one layer is
+   * specified as an outlink of RecurrentLayerGroup. This function will
+   * collect outputs in each time step of each generated sequence which are
+   * dispersed in separate Arguments to form a new single Argument as output of
+   * RecurrentLayerGroup.
    */
-  void createDataOutlink(std::vector<int>& machineIdVec);
+  void createDataOutlink();
+
+  /*
+   * @brief decide to select how many rows from the Matrix stored the forward
+   * pass results from a start position.
+   *
+   * @param isSeq: a flag indicating whetehr the layer to be output of the
+   * RecurrentGradientMachine is a sequence or not
+   * @param outArgs: all of the the returned Arguments of the forward pass
+   * during the generation process.
+   * @param copySize: the returned result, number of rows to select from the
+   * Matrix stored the forward pass results from a start position.
+   */
+  void createDataOutlinkCopySizeInfo(bool isSeq,
+                                     std::vector<Argument>& outArgs,
+                                     std::vector<int>& copySize);
+
+  /*
+   * @brief decide index of the start row for each time step of a generated
+   * sequence in Matrix stored the entire beam search batch's forward pass
+   * results.
+   *
+   * @param isSeq: a flag indicating whether the layer to be output of the
+   * RecurrentGradientMachine is a sequence or not
+   * @param outArgs: all of the returned Arguments of the forward pass
+   * during the generation process.
+   */
+  void createDataOutlinkSelRowsInfo(bool isSeq, std::vector<Argument>& outArgs);
 
   /*
    * @brief used in beam search, connect previous frame to form recurrent link
@@ -503,6 +571,7 @@ private:
   std::vector<int> topIds_;
   std::vector<int> seqIds_;
   std::vector<int> batchMachineIdVec_;
+  std::vector<int> batchMachineStartPos_;
   std::vector<std::vector<Path>> finalPaths_;
   std::vector<real> minFinalPathLogProb_;
   BeamSearchControlCallbacks* beamSearchCtrlCallbacks_;

@@ -12,6 +12,7 @@ img_conv = img_conv_layer(
     num_filters=64,
     filter_size=(32, 32),
     padding=(1, 1),
+    dilation=(1, 1),
     stride=(1, 1),
     act=LinearActivation())
 img_bn = batch_norm_layer(input=img_conv, act=ReluActivation())

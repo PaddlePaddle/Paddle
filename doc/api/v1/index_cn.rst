@@ -21,7 +21,7 @@ Model Config API
     trainer_config_helpers/optimizers.rst
     trainer_config_helpers/data_sources.rst
     trainer_config_helpers/layers.rst
-    trainer_config_helpers/activations.rst 
+    trainer_config_helpers/activations.rst
     trainer_config_helpers/poolings.rst
     trainer_config_helpers/networks.rst
     trainer_config_helpers/evaluators.rst

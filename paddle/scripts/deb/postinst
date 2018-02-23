@@ -1,6 +1,0 @@
-#!/bin/bash
-set -e
-echo "Post install paddle debian package."
-echo "Install some python package used for paddle. You can run "
-echo "  pip install /usr/opt/paddle/share/wheels/*.whl to install them."
-find /usr/ -name '*paddle*.whl' | xargs pip install

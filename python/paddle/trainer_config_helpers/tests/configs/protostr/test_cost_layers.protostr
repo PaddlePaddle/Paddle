@@ -168,6 +168,20 @@ layers {
   coeff: 1.0
 }
 layers {
+  name: "__huber_regression_cost_0__"
+  type: "huber_regression"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+  }
+  inputs {
+    input_layer_name: "labels"
+  }
+  coeff: 1.0
+  delta: 1.0
+}
+layers {
   name: "huber_probs"
   type: "data"
   size: 1
@@ -180,8 +194,8 @@ layers {
   active_type: ""
 }
 layers {
-  name: "__huber_cost_0__"
-  type: "huber"
+  name: "__huber_classification_cost_0__"
+  type: "huber_classification"
   size: 1
   active_type: ""
   inputs {
@@ -215,6 +229,22 @@ layers {
   }
   coeff: 1.0
 }
+layers {
+  name: "__nce_layer_0__"
+  type: "nce"
+  size: 1
+  active_type: "sigmoid"
+  inputs {
+    input_layer_name: "__fc_layer_0__"
+    input_parameter_name: "___nce_layer_0__.w0"
+  }
+  inputs {
+    input_layer_name: "labels"
+  }
+  bias_parameter_name: "___nce_layer_0__.wbias"
+  num_classes: 5000
+  num_neg_samples: 10
+}
 parameters {
   name: "___fc_layer_0__.w0"
   size: 800
@@ -245,6 +275,26 @@ parameters {
   initial_strategy: 0
   initial_smart: true
 }
+parameters {
+  name: "___nce_layer_0__.w0"
+  size: 20000
+  initial_mean: 0.0
+  initial_std: 0.0141421356237
+  dims: 5000
+  dims: 4
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___nce_layer_0__.wbias"
+  size: 5000
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 5000
+  initial_strategy: 0
+  initial_smart: false
+}
 input_layer_names: "input"
 input_layer_names: "labels"
 input_layer_names: "crf_label"
@@ -264,9 +314,11 @@ output_layer_names: "__rank_cost_0__"
 output_layer_names: "__lambda_cost_0__"
 output_layer_names: "__cross_entropy_0__"
 output_layer_names: "__cross_entropy_with_selfnorm_0__"
-output_layer_names: "__huber_cost_0__"
+output_layer_names: "__huber_regression_cost_0__"
+output_layer_names: "__huber_classification_cost_0__"
 output_layer_names: "__multi_binary_label_cross_entropy_0__"
 output_layer_names: "__sum_cost_0__"
+output_layer_names: "__nce_layer_0__"
 sub_models {
   name: "root"
   layer_names: "input"
@@ -287,11 +339,13 @@ sub_models {
   layer_names: "__lambda_cost_0__"
   layer_names: "__cross_entropy_0__"
   layer_names: "__cross_entropy_with_selfnorm_0__"
+  layer_names: "__huber_regression_cost_0__"
   layer_names: "huber_probs"
   layer_names: "huber_label"
-  layer_names: "__huber_cost_0__"
+  layer_names: "__huber_classification_cost_0__"
   layer_names: "__multi_binary_label_cross_entropy_0__"
   layer_names: "__sum_cost_0__"
+  layer_names: "__nce_layer_0__"
   input_layer_names: "input"
   input_layer_names: "labels"
   input_layer_names: "crf_label"
@@ -311,9 +365,11 @@ sub_models {
   output_layer_names: "__lambda_cost_0__"
   output_layer_names: "__cross_entropy_0__"
   output_layer_names: "__cross_entropy_with_selfnorm_0__"
-  output_layer_names: "__huber_cost_0__"
+  output_layer_names: "__huber_regression_cost_0__"
+  output_layer_names: "__huber_classification_cost_0__"
   output_layer_names: "__multi_binary_label_cross_entropy_0__"
   output_layer_names: "__sum_cost_0__"
+  output_layer_names: "__nce_layer_0__"
   is_recurrent_layer_group: false
 }
 

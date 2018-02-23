@@ -18,14 +18,6 @@ limitations under the License. */
 
 #ifndef __NVCC__
 
-#include "paddle/math/MathFunctions.h"
-
-#ifndef PADDLE_TYPE_DOUBLE
-#define     CBLAS_GEMM     paddle::gemm<float>
-#else
-#define     CBLAS_GEMM     paddle::gemm<double>
-#endif
-
 template<class OpResetOutput>
 void hl_naive_gru_forward_reset_output(OpResetOutput opResetOutput,
                                        real *gateValue,
@@ -208,51 +200,6 @@ inline void forward_final_output(OpFinalOutput opFinalOutput,
       value.prevOutValue += frameSize;
     }
   }
-}
-
-template<class OpResetOutput, class OpFinalOutput>
-void hl_cpu_gru_forward(OpResetOutput opResetOutput,
-                        OpFinalOutput opFinalOutput,
-                        hl_gru_value value,
-                        int frameSize,
-                        int batchSize,
-                        hl_activation_mode_t active_node,
-                        hl_activation_mode_t active_gate) {
-  if (value.prevOutValue) {
-    CBLAS_GEMM(CblasNoTrans,
-               CblasNoTrans,
-               batchSize,
-               2 * frameSize,
-               frameSize,
-               1,
-               value.prevOutValue,
-               frameSize,
-               value.gateWeight,
-               frameSize * 2,
-               1,
-               value.gateValue,
-               frameSize * 3);
-  }
-
-  forward_reset_output(opResetOutput, value, frameSize, batchSize, active_gate);
-
-  if (value.prevOutValue) {
-    CBLAS_GEMM(CblasNoTrans,
-               CblasNoTrans,
-               batchSize,
-               frameSize,
-               frameSize,
-               1,
-               value.resetOutputValue,
-               frameSize,
-               value.stateWeight,
-               frameSize,
-               1,
-               value.gateValue + frameSize * 2,
-               frameSize * 3);
-  }
-
-  forward_final_output(opFinalOutput, value, frameSize, batchSize, active_node);
 }
 
 template<class OpStateGrad>
@@ -521,86 +468,6 @@ inline void backward_reset_grad(OpResetGrad opResetGrad,
     grad.resetOutputGrad += frameSize;
     if (grad.prevOutGrad) {
       grad.prevOutGrad += frameSize;
-    }
-  }
-}
-
-template<class OpStateGrad, class OpResetGrad>
-void hl_cpu_gru_backward(OpStateGrad opStateGrad,
-                         OpResetGrad opResetGrad,
-                         hl_gru_value value,
-                         hl_gru_grad  grad,
-                         int frameSize,
-                         int batchSize,
-                         hl_activation_mode_t active_node,
-                         hl_activation_mode_t active_gate) {
-  backward_state_grad(opStateGrad, value, grad,
-    frameSize, batchSize, active_node);
-
-  if (value.prevOutValue && grad.prevOutGrad) {
-    CBLAS_GEMM(CblasNoTrans,
-               CblasTrans,
-               batchSize,
-               frameSize,
-               frameSize,
-               1,
-               grad.gateGrad + frameSize * 2,
-               frameSize * 3,
-               value.stateWeight,
-               frameSize,
-               0,
-               grad.resetOutputGrad,
-               frameSize);
-
-    if (grad.stateWeightGrad) {
-      CBLAS_GEMM(CblasTrans,
-                 CblasNoTrans,
-                 frameSize,
-                 frameSize,
-                 batchSize,
-                 1,
-                 value.resetOutputValue,
-                 frameSize,
-                 grad.gateGrad + frameSize * 2,
-                 frameSize * 3,
-                 1,
-                 grad.stateWeightGrad,
-                 frameSize);
-    }
-  }
-
-  backward_reset_grad(opResetGrad, value, grad,
-    frameSize, batchSize, active_gate);
-
-  if (grad.prevOutGrad && value.prevOutValue) {
-    CBLAS_GEMM(CblasNoTrans,
-               CblasTrans,
-               batchSize,
-               frameSize,
-               frameSize * 2,
-               1,
-               grad.gateGrad,
-               frameSize * 3,
-               value.gateWeight,
-               frameSize * 2,
-               1,
-               grad.prevOutGrad,
-               frameSize);
-
-    if (grad.gateWeightGrad) {
-      CBLAS_GEMM(CblasTrans,
-                 CblasNoTrans,
-                 frameSize,
-                 frameSize * 2,
-                 batchSize,
-                 1,
-                 value.prevOutValue,
-                 frameSize,
-                 grad.gateGrad,
-                 frameSize * 3,
-                 1,
-                 grad.gateWeightGrad,
-                 frameSize * 2);
     }
   }
 }

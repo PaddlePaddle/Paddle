@@ -24,20 +24,7 @@ def __initialize__():
         if each_subnetwork in ['inputs', 'outputs']:
             continue
         func = getattr(conf_nw, each_subnetwork)
-        if hasattr(func, 'argspec'):
-            argspec = func.argspec
-        else:
-            argspec = inspect.getargspec(func)
-        if each_subnetwork == 'simple_attention':
-            parents = ['encoded_sequence', 'encoded_proj', 'decoder_state']
-        else:
-            parents = filter(lambda x: x.startswith('input'), argspec.args)
-        assert len(parents) != 0, each_subnetwork
-        v2_subnet = __convert_to_v2__(
-            each_subnetwork,
-            parent_names=parents,
-            is_default_name='name' in argspec.args)
-        globals()[each_subnetwork] = v2_subnet
+        globals()[each_subnetwork] = func
         globals()[each_subnetwork].__name__ = each_subnetwork
         global __all__
         __all__.append(each_subnetwork)

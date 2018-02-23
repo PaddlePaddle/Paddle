@@ -328,6 +328,208 @@ public:
   INLINE T operator()(const T a, const T b) const { return a < b ? b : a; }
 };
 
+#ifdef PADDLE_USE_SSE3
+#ifndef PADDLE_TYPE_DOUBLE
+template <>
+class add<__m128> {
+public:
+  INLINE __m128 operator()(const __m128 a, const __m128 b) const {
+    return _mm_add_ps(a, b);
+  }
+};
+
+template <>
+class add_scale<__m128> {
+private:
+  const __m128 p1;
+  const __m128 p2;
+
+public:
+  INLINE add_scale(const __m128 s1, const __m128 s2) : p1(s1), p2(s2) {}
+  INLINE __m128 operator()(const __m128 a, const __m128 b) const {
+    return _mm_add_ps(_mm_mul_ps(p1, a), _mm_mul_ps(p2, b));
+  }
+};
+
+template <>
+class sub<__m128> {
+public:
+  INLINE __m128 operator()(const __m128 a, const __m128 b) const {
+    return _mm_sub_ps(a, b);
+  }
+};
+
+template <>
+class mul<__m128> {
+public:
+  INLINE __m128 operator()(const __m128 a, const __m128 b) const {
+    return _mm_mul_ps(a, b);
+  }
+};
+
+template <>
+class div<__m128> {
+public:
+  INLINE __m128 operator()(const __m128 a, const __m128 b) const {
+    return _mm_div_ps(a, b);
+  }
+};
+
+template <>
+class min<__m128> {
+public:
+  INLINE __m128 operator()(const __m128 a, const __m128 b) const {
+    return _mm_min_ps(a, b);
+  }
+};
+
+template <>
+class max<__m128> {
+public:
+  INLINE __m128 operator()(const __m128 a, const __m128 b) const {
+    return _mm_max_ps(a, b);
+  }
+};
+#else
+template <>
+class add<__m128d> {
+public:
+  INLINE __m128d operator()(const __m128d a, const __m128d b) const {
+    return _mm_add_pd(a, b);
+  }
+};
+
+template <>
+class add_scale<__m128d> {
+private:
+  const __m128d p1;
+  const __m128d p2;
+
+public:
+  INLINE add_scale(const __m128d s1, const __m128d s2) : p1(s1), p2(s2) {}
+  INLINE __m128d operator()(const __m128d a, const __m128d b) const {
+    return _mm_add_pd(_mm_mul_pd(p1, a), _mm_mul_pd(p2, b));
+  }
+};
+
+template <>
+class sub<__m128d> {
+public:
+  INLINE __m128d operator()(const __m128d a, const __m128d b) const {
+    return _mm_sub_pd(a, b);
+  }
+};
+
+template <>
+class mul<__m128d> {
+public:
+  INLINE __m128d operator()(const __m128d a, const __m128d b) const {
+    return _mm_mul_pd(a, b);
+  }
+};
+
+template <>
+class div<__m128d> {
+public:
+  INLINE __m128d operator()(const __m128d a, const __m128d b) const {
+    return _mm_div_pd(a, b);
+  }
+};
+
+template <>
+class min<__m128d> {
+public:
+  INLINE __m128d operator()(const __m128d a, const __m128d b) const {
+    return _mm_min_pd(a, b);
+  }
+};
+
+template <>
+class max<__m128d> {
+public:
+  INLINE __m128d operator()(const __m128d a, const __m128d b) const {
+    return _mm_max_pd(a, b);
+  }
+};
+#endif  // PADDLE_TYPE_DOUBLE
+#endif  // PADDLE_USE_SSE3
+
+#ifdef PADDLE_USE_NEON
+#ifndef PADDLE_TYPE_DOUBLE
+template <>
+class add<float32x4_t> {
+public:
+  INLINE float32x4_t operator()(const float32x4_t a,
+                                const float32x4_t b) const {
+    return vaddq_f32(a, b);
+  }
+};
+
+template <>
+class add_scale<float32x4_t> {
+private:
+  const float32x4_t p1;
+  const float32x4_t p2;
+
+public:
+  INLINE add_scale(const float32x4_t s1, const float32x4_t s2)
+      : p1(s1), p2(s2) {}
+  INLINE float32x4_t operator()(const float32x4_t a,
+                                const float32x4_t b) const {
+    return vaddq_f32(vmulq_f32(p1, a), vmulq_f32(p2, b));
+  }
+};
+
+template <>
+class sub<float32x4_t> {
+public:
+  INLINE float32x4_t operator()(const float32x4_t a,
+                                const float32x4_t b) const {
+    return vsubq_f32(a, b);
+  }
+};
+
+template <>
+class mul<float32x4_t> {
+public:
+  INLINE float32x4_t operator()(const float32x4_t a,
+                                const float32x4_t b) const {
+    return vmulq_f32(a, b);
+  }
+};
+
+template <>
+class div<float32x4_t> {
+public:
+  INLINE float32x4_t operator()(const float32x4_t a,
+                                const float32x4_t b) const {
+    float32x4_t tmp = vrecpeq_f32(b);
+    return vmulq_f32(a, tmp);
+  }
+};
+
+template <>
+class min<float32x4_t> {
+public:
+  INLINE float32x4_t operator()(const float32x4_t a,
+                                const float32x4_t b) const {
+    return vminq_f32(a, b);
+  }
+};
+
+template <>
+class max<float32x4_t> {
+public:
+  INLINE float32x4_t operator()(const float32x4_t a,
+                                const float32x4_t b) const {
+    return vmaxq_f32(a, b);
+  }
+};
+#else
+#error To be implemented
+#endif  // PADDLE_TYPE_DOUBLE
+#endif  // PADDLE_USE_NEON
+
 }  // namespace binary
 }  // namespace hppl
 

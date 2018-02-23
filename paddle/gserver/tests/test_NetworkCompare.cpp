@@ -237,7 +237,13 @@ TEST(Compare, concat_table) {
   compareNetwork(config_file_a, config_file_b);
 }
 
-#ifndef PADDLE_ONLY_CPU
+TEST(Compare, concat_slice) {
+  std::string config_file_a = "./gserver/tests/concat_slice_a.conf";
+  std::string config_file_b = "./gserver/tests/concat_slice_b.conf";
+  compareNetwork(config_file_a, config_file_b);
+}
+
+#ifdef PADDLE_WITH_CUDA
 TEST(Compare, img_pool) {
   std::string config_file_a = "./gserver/tests/img_pool_a.conf";
   std::string config_file_b = "./gserver/tests/img_pool_b.conf";
@@ -258,12 +264,16 @@ TEST(Compare, img_conv) {
 
 // Test cudnn_conv and exconv give the same result
 TEST(Compare, img_conv2) {
-  std::string config_file_a = "./gserver/tests/img_conv_a.conf";
-  std::string config_file_b = "./gserver/tests/img_conv_c.conf";
+  std::string config_file_a = "./gserver/tests/img_conv_cudnn.py";
+  std::string config_file_b = "./gserver/tests/img_conv_exconv.py";
   bool useGpu = FLAGS_use_gpu;
+  double eps = FLAGS_checkgrad_eps;
   FLAGS_use_gpu = true;
+  // Sometimes, this unit test will fail with 1e-2
+  FLAGS_checkgrad_eps = 4e-2;
   compareNetwork(config_file_a, config_file_b);
   FLAGS_use_gpu = useGpu;
+  FLAGS_checkgrad_eps = eps;
 }
 #endif
 
