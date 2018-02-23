@@ -17,6 +17,8 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -25,7 +27,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-typedef boost::variant<int, int64_t, float, double, std::string, Tensor>
+typedef boost::variant<int, int64_t, float, double, std::string, Tensor,
+                       LoDTensor /*, ChannelHolder*/>
     ElementVar;
 
 class Tuple {
@@ -55,9 +58,9 @@ bool Tuple::isSameType(Tuple& t) const {
     return false;
   }
   for (size_t j = 0; j < tuple_size; ++j) {
-    auto tuple1 = get(j);
-    auto tuple2 = t.get(j);
-    if (tuple1.type() != tuple2.type()) return false;
+    auto type1 = get(j).which();
+    auto type2 = t.get(j).which();
+    if (type1 != type2) return false;
   }
   return true;
 }
