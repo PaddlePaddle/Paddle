@@ -491,7 +491,7 @@ class Operator(object):
 
         self.desc.check_attrs()
         no_kernel_op_set = {
-            'feed', 'fetch', 'save', 'load', 'recurrent',
+            'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
             'load_combine', 'ncclInit'

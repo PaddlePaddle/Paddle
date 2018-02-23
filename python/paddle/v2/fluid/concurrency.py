@@ -47,7 +47,7 @@ class Go(BlockGuard):
                                           .parent_idx)
 
         x_name_list = set()
-        out_vars = set()
+        out_vars = []
         for op in go_block.ops:
             # Iterate over all operators, get all the inputs
             # and add as input to the Go operator.
