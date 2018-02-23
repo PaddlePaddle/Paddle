@@ -12,6 +12,7 @@ ENV https_proxy=""
 ENV LD_LIBRARY_PATH=/usr/local/lib
 
 # k8s
+RUN pip install tensorflow==1.4.0
 ADD tf_k8s /usr/bin
 RUN chmod +x /usr/bin/tf_k8s
 ADD vgg16_tf.py minist_tf.py /workspace/
