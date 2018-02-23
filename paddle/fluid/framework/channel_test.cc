@@ -20,6 +20,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 using paddle::framework::Channel;
+using paddle::framework::ChannelHolder;
 using paddle::framework::MakeChannel;
 using paddle::framework::CloseChannel;
 using paddle::framework::details::Buffered;
@@ -507,4 +508,37 @@ TEST(Channel, UnbufferedChannelDestroyUnblocksReceiversTest) {
 TEST(Channel, UnbufferedChannelDestroyUnblocksSendersTest) {
   auto ch = MakeChannel<int>(0);
   ChannelDestroyUnblockSenders(ch);
+}
+
+void ChannelHolderSendReceive(ChannelHolder *ch) {
+  unsigned sum_send = 0;
+  std::thread t([&]() {
+    for (int i = 0; i < 5; i++) {
+      EXPECT_EQ(ch->Send(&i), true);
+      sum_send += i;
+    }
+  });
+  for (int i = 0; i < 5; i++) {
+    int recv;
+    EXPECT_EQ(ch->Receive(&recv), true);
+    EXPECT_EQ(recv, i);
+  }
+
+  ch->close();
+  t.join();
+  EXPECT_EQ(sum_send, 10U);
+}
+
+TEST(ChannelHolder, ChannelHolderBufferedSendReceiveTest) {
+  ChannelHolder *ch = new ChannelHolder();
+  ch->Reset<int>(10);
+  ChannelHolderSendReceive(ch);
+  delete ch;
+}
+
+TEST(ChannelHolder, ChannelHolderUnBufferedSendReceiveTest) {
+  ChannelHolder *ch = new ChannelHolder();
+  ch->Reset<int>(0);
+  ChannelHolderSendReceive(ch);
+  delete ch;
 }
