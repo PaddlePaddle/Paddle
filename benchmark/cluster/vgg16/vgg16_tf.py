@@ -254,12 +254,10 @@ def run_benchmark(cluster_spec, server):
 
         optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        #global_step = tf.Variable(0, name='global_step', trainable=False)
-        global_step = tf.contrib.framework.get_or_create_global_step()
+        global_step = tf.Variable(0, name='global_step', trainable=False)
         with tf.control_dependencies(update_ops):
             train_op = optimizer.minimize(avg_loss, global_step=global_step)
 
-        #saver = tf.train.Saver()
         summary_op = tf.summary.merge_all()
         init_op = tf.global_variables_initializer()
 
@@ -300,9 +298,7 @@ def run_benchmark(cluster_spec, server):
     hooks = [tf.train.StopAtStepHook(last_step=1000000)]
 
     with tf.train.MonitoredTrainingSession(
-            master=server.target,
-            config=tf.ConfigProto(log_device_placement=False),
-            is_chief=(args.task_index == 0),
+            master=server.target, is_chief=(args.task_index == 0),
             hooks=hooks) as sess:
         iters, num_samples, start_time = 0, 0, 0.0
         for pass_id in range(args.num_passes):
