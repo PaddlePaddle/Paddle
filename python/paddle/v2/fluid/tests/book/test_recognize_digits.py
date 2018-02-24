@@ -230,14 +230,16 @@ def inject_test_method(use_cuda, parallel, nn_type, combine):
 
 
 def inject_all_tests():
-    for use_cuda in (False, True):
-        for parallel in (False, True):
-            for nn_type in ('mlp', 'conv'):
-                inject_test_method(use_cuda, parallel, nn_type, True)
+    # for use_cuda in (True): 
+    #     for parallel in (True):
+    #         for nn_type in ('mlp'):
+    #             inject_test_method(use_cuda, parallel, nn_type, True)
 
-    # Two unit-test for saving parameters as separate files
     inject_test_method(False, False, 'mlp', False)
     inject_test_method(False, False, 'conv', False)
+    inject_test_method(False, False, 'mlp', True)
+    inject_test_method(False, False, 'conv', True)
+    #inject_test_method(True, False, 'conv', False)
 
 
 inject_all_tests()

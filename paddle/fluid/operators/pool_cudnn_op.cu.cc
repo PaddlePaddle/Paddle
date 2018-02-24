@@ -32,6 +32,12 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
 
+    auto *dev_ctx_prof = platform::DeviceContextPool::Instance().Get(
+        paddle::platform::CUDAPlace(0));
+    paddle::platform::Event start_event_gpu1(
+        paddle::platform::EventKind::kPushRange, "gpu_run_pool_cudnn", 0,
+        dev_ctx_prof);
+
     const Tensor *input = ctx.Input<Tensor>("X");
     Tensor *output = ctx.Output<Tensor>("Out");
 
@@ -83,6 +89,11 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(platform::dynload::cudnnPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc, input_data, &beta,
         cudnn_output_desc, output_data));
+    paddle::platform::Event stop_event_gpu1(
+        paddle::platform::EventKind::kPopRange, "gpu_run_pool_cudnn", 0,
+        dev_ctx_prof);
+    LOG(INFO) << "GPU_pool2d_cudnn: "
+              << start_event_gpu1.CudaElapsedMs(stop_event_gpu1) << std::endl;
   }
 };
 

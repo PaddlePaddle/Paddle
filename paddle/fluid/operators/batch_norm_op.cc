@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/framework/data_layout.h"
 
+#include "paddle/fluid/platform/profiler.h"
+
 namespace paddle {
 namespace operators {
 
@@ -142,6 +144,11 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    const paddle::platform::DeviceContext *dev_ctx_prof = nullptr;
+
+    paddle::platform::Event start_event1(
+        paddle::platform::EventKind::kPushRange, "BN_cpu_bm", 0, dev_ctx_prof);
+
     const float epsilon = ctx.Attr<float>("epsilon");
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -273,6 +280,10 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       default:
         PADDLE_THROW("Unknown storage order: %d", data_layout);
     }
+    paddle::platform::Event stop_event1(paddle::platform::EventKind::kPopRange,
+                                        "BN_cpu_bm", 0, dev_ctx_prof);
+    LOG(INFO) << "CPU_batchnorm: " << start_event1.CpuElapsedMs(stop_event1)
+              << std::endl;
   }
 };
 

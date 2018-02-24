@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
+#include "paddle/fluid/platform/profiler.h"
+
 namespace paddle {
 namespace operators {
 
@@ -54,6 +56,13 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
+
+    auto *dev_ctx_prof = platform::DeviceContextPool::Instance().Get(
+        paddle::platform::CUDAPlace(0));
+    paddle::platform::Event start_event_gpu1(
+        paddle::platform::EventKind::kPushRange, "gpu_run_BN_cudnn", 0,
+        dev_ctx_prof);
+
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -170,6 +179,12 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
     CUDNN_ENFORCE(
         platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+
+    paddle::platform::Event stop_event_gpu1(
+        paddle::platform::EventKind::kPopRange, "gpu_run_BN_cudnn", 0,
+        dev_ctx_prof);
+    LOG(INFO) << "GPU_batchnorm_cudnn: "
+              << start_event_gpu1.CudaElapsedMs(stop_event_gpu1) << std::endl;
   }
 };
 
