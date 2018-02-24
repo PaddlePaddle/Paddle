@@ -13,4 +13,4 @@ it has several easy to use methods
 - `paddle.test`
 - `paddle.infer`
 
-to better expose the internal running details, different `Events <http://www.paddlepaddle.org/docs/develop/api/en/v2/run_logic.html#event>`_ are available to users by writing some callbacks.
+to better expose the internal running details, different `events <http://www.paddlepaddle.org/docs/develop/api/en/v2/run_logic.html#event>`_ are available to users by writing some callbacks.
