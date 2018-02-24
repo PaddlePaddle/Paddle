@@ -11,8 +11,7 @@ spec:
     spec:
       hostNetwork: true
       imagePullSecrets:
-      #- name: job-registry-secret
-      - name: gongweibaobaidusecret
+      - name: job-registry-secret
       containers:
       - name: pserver
         image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"

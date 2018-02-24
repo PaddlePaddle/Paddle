@@ -11,8 +11,7 @@ spec:
         paddle-job: vgg16job
     spec:
       imagePullSecrets:
-      #- name: job-registry-secret
-      - name: gongweibaobaidusecret
+      - name: job-registry-secret
       hostNetwork: true
       containers:
       - name: trainer
