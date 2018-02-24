@@ -117,7 +117,7 @@ else:
 
 predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
 cost = fluid.layers.cross_entropy(input=predict, label=label)
-avg_cost = fluid.layers.mean(x=cost)
+avg_cost = fluid.layers.mean(cost)
 
 optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 opts = optimizer.minimize(avg_cost)

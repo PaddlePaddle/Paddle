@@ -49,7 +49,7 @@ def stacked_lstm_net(data,
                                  size=class_dim,
                                  act='softmax')
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = fluid.layers.mean(cost)
     adam_optimizer = fluid.optimizer.Adam(learning_rate=0.002)
     optimize_ops, params_grads = adam_optimizer.minimize(avg_cost)
     accuracy = fluid.evaluator.Accuracy(input=prediction, label=label)

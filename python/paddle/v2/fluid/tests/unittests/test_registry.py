@@ -22,7 +22,7 @@ class TestRegistry(unittest.TestCase):
     @decorators.prog_scope()
     def test_registry_layer(self):
         x = fluid.layers.data(name='X', shape=[10, 10], dtype='float32')
-        output = fluid.layers.mean(x=x)
+        output = fluid.layers.mean(x)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

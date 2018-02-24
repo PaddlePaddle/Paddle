@@ -24,7 +24,7 @@ y_predict = fluid.layers.fc(input=x, size=1, act=None)
 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-avg_cost = fluid.layers.mean(x=cost)
+avg_cost = fluid.layers.mean(cost)
 
 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)

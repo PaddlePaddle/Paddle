@@ -155,7 +155,7 @@ def generate_layer_fn(op_type):
 
         return dtype
 
-    def func(**kwargs):
+    def func(*args, **kwargs):
         helper = LayerHelper(op_type, **kwargs)
 
         dtype = infer_and_check_dtype(op_proto, **kwargs)
@@ -166,6 +166,9 @@ def generate_layer_fn(op_type):
             val = kwargs.pop(name, [])
             if not isinstance(val, list) and not isinstance(val, tuple):
                 val = [val]
+            if len(val) == 0 and len(args) != 0:
+                val = args[0]
+                args = args[1:]
             inputs[ipt.name] = val
 
         outputs = dict()

@@ -37,7 +37,7 @@ conv_pool_2 = fluid.nets.simple_img_conv_pool(
 
 predict = fluid.layers.fc(input=conv_pool_2, size=10, act="softmax")
 cost = fluid.layers.cross_entropy(input=predict, label=label)
-avg_cost = fluid.layers.mean(x=cost)
+avg_cost = fluid.layers.mean(cost)
 optimizer = fluid.optimizer.Adam(learning_rate=0.01)
 optimize_ops, params_grads = optimizer.minimize(avg_cost)
 

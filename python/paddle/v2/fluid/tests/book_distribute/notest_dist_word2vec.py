@@ -65,7 +65,7 @@ concat_embed = fluid.layers.concat(
 hidden1 = fluid.layers.fc(input=concat_embed, size=HIDDEN_SIZE, act='sigmoid')
 predict_word = fluid.layers.fc(input=hidden1, size=dict_size, act='softmax')
 cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
-avg_cost = fluid.layers.mean(x=cost)
+avg_cost = fluid.layers.mean(cost)
 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
 train_reader = paddle.batch(

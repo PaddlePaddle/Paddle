@@ -38,7 +38,7 @@ class TestBook(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(x=cost)
+            avg_cost = layers.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)

@@ -272,7 +272,7 @@ class TestSimpleMul(SeedFixedTestCase):
 
         out = rnn()
         out = fluid.layers.sequence_pool(out, pool_type='last')
-        loss = fluid.layers.mean(x=out)
+        loss = fluid.layers.mean(out)
         fluid.backward.append_backward(loss)
 
         cpu = fluid.CPUPlace()
@@ -348,7 +348,7 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
 
         out = rnn()
         last = fluid.layers.sequence_pool(input=out, pool_type='last')
-        loss = fluid.layers.mean(x=last)
+        loss = fluid.layers.mean(last)
         fluid.backward.append_backward(loss)
 
         cpu = fluid.CPUPlace()

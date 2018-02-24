@@ -42,7 +42,7 @@ def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
                                  size=class_dim,
                                  act="softmax")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = fluid.layers.mean(cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 
@@ -82,7 +82,7 @@ def dyn_rnn_lstm(data, label, input_dim, class_dim=2, emb_dim=32,
     last = fluid.layers.sequence_last_step(rnn())
     prediction = fluid.layers.fc(input=last, size=class_dim, act="softmax")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = fluid.layers.mean(cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 
@@ -119,7 +119,7 @@ def stacked_lstm_net(data,
                                  size=class_dim,
                                  act='softmax')
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = fluid.layers.mean(cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 
@@ -158,8 +158,8 @@ def train(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
             pd.write_output(acc)
 
         cost, acc = pd()
-        cost = fluid.layers.mean(x=cost)
-        acc_out = fluid.layers.mean(x=acc)
+        cost = fluid.layers.mean(cost)
+        acc_out = fluid.layers.mean(acc)
         prediction = None
         assert save_dirname is None
 
