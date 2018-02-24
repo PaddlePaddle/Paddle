@@ -16,8 +16,7 @@ spec:
       hostNetwork: true
       containers:
       - name: trainer
-        #image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
-        image: "registry.baidu.com/gongweibao/test/fluid_benchmark:vgg16"
+        image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
         imagePullPolicy: Always
         command: ["paddle_k8s", "start_fluid"]
         env:
