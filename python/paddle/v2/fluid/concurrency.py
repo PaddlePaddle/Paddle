@@ -75,7 +75,8 @@ def make_channel(dtype, capacity=0):
     main_program = helper.main_program
     make_channel_block = main_program.current_block()
 
-    channel = helper.create_variable(type=core.VarDesc.VarType.CHANNEL)
+    channel = helper.create_variable(dtype=core.VarDesc.VarType.CHANNEL,
+                                     persistable=True)
     create_channel_op = make_channel_block.append_op(
         type="channel_create",
         outputs={"Output": channel},
@@ -89,7 +90,7 @@ def channel_send(channel, value):
     helper = LayerHelper('channel_send', **locals())
     main_program = helper.main_program
     channel_send_block = main_program.current_block()
-    status = helper.create_variable(type=core.VarDesc.VarType.TENSOR)
+    status = helper.create_variable(dtype=core.VarDesc.VarType.TENSOR)
 
     channel_send_op = channel_send_block.append_op(
         type="channel_send",
@@ -106,8 +107,8 @@ def channel_recv(channel, dtype):
     helper = LayerHelper('channel_recv', **locals())
     main_program = helper.main_program
     channel_recv_block = main_program.current_block()
-    return_value = helper.create_variable(type=dtype)
-    status = helper.create_variable(type=core.VarDesc.VarType.TENSOR)
+    return_value = helper.create_variable(dtype=dtype)
+    status = helper.create_variable(dtype=core.VarDesc.VarType.TENSOR)
 
     channel_recv_op = channel_recv_block.append_op(
         type="channel_recv",
