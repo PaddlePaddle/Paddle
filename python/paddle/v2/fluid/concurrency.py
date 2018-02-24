@@ -124,7 +124,6 @@ def channel_close(channel):
     main_program = helper.main_program
     channel_close_block = main_program.current_block()
 
-    return_value = False
     channel_close_op = channel_close_block.append_op(
         type="channel_close", inputs={"Channel": channel})
 
