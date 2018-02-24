@@ -15,8 +15,8 @@
 import copy
 import itertools
 
-from framework import Variable, Parameter, default_main_program, default_startup_program, \
-    unique_name, dtype_is_floating
+from framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
+import unique_name
 from paddle.v2.fluid.initializer import Constant, Xavier
 from param_attr import ParamAttr, WeightNormParamAttr
 
@@ -27,7 +27,7 @@ class LayerHelper(object):
         self.layer_type = layer_type
         name = self.kwargs.get('name', None)
         if name is None:
-            self.kwargs['name'] = unique_name(self.layer_type)
+            self.kwargs['name'] = unique_name.generate(self.layer_type)
 
     @property
     def name(self):
@@ -117,17 +117,20 @@ class LayerHelper(object):
                       block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=unique_name(".".join([self.name, 'weight_norm_norm'])),
+                    name=unique_name.generate(".".join(
+                        [self.name, 'weight_norm_norm'])),
                     dtype=dtype,
                     persistable=False)
             abs_out = block.create_var(
-                name=unique_name(".".join([self.name, 'weight_norm_abs'])),
+                name=unique_name.generate(".".join(
+                    [self.name, 'weight_norm_abs'])),
                 dtype=dtype,
                 persistable=False)
             block.append_op(
                 type='abs', inputs={'X': x}, outputs={'Out': abs_out})
             pow_out = block.create_var(
-                name=unique_name(".".join([self.name, 'weight_norm_pow'])),
+                name=unique_name.generate(".".join(
+                    [self.name, 'weight_norm_pow'])),
                 dtype=dtype,
                 persistable=False)
             block.append_op(
@@ -136,7 +139,8 @@ class LayerHelper(object):
                 outputs={'Out': pow_out},
                 attrs={'factor': float(p)})
             sum_out = block.create_var(
-                name=unique_name(".".join([self.name, 'weight_norm_sum'])),
+                name=unique_name.generate(".".join(
+                    [self.name, 'weight_norm_sum'])),
                 dtype=dtype,
                 persistable=False)
             block.append_op(
@@ -161,7 +165,7 @@ class LayerHelper(object):
                          block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=unique_name(".".join(
+                    name=unique_name.generate(".".join(
                         [self.name, 'weight_norm_reshape'])),
                     dtype=dtype,
                     persistable=False)
@@ -178,7 +182,7 @@ class LayerHelper(object):
                            block=self.startup_program.global_block()):
             if out is None:
                 out = block.create_var(
-                    name=unique_name(".".join(
+                    name=unique_name.generate(".".join(
                         [self.name, 'weight_norm_transpose'])),
                     dtype=dtype,
                     persistable=False)
@@ -196,7 +200,8 @@ class LayerHelper(object):
             """Computes the norm over all dimensions except dim"""
             if out is None:
                 out = block.create_var(
-                    name=unique_name(".".join([self.name, 'weight_norm_norm'])),
+                    name=unique_name.generate(".".join(
+                        [self.name, 'weight_norm_norm'])),
                     dtype=dtype,
                     persistable=False)
             if dim is None:
@@ -286,7 +291,7 @@ class LayerHelper(object):
         assert isinstance(attr, ParamAttr)
         suffix = 'b' if is_bias else 'w'
         if attr.name is None:
-            attr.name = unique_name(".".join([self.name, suffix]))
+            attr.name = unique_name.generate(".".join([self.name, suffix]))
 
         if default_initializer is None and attr.initializer is None:
             if is_bias:
@@ -316,7 +321,7 @@ class LayerHelper(object):
 
     def create_tmp_variable(self, dtype, stop_gradient=False):
         return self.main_program.current_block().create_var(
-            name=unique_name(".".join([self.name, 'tmp'])),
+            name=unique_name.generate(".".join([self.name, 'tmp'])),
             dtype=dtype,
             persistable=False,
             stop_gradient=stop_gradient)

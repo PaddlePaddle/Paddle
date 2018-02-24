@@ -20,6 +20,7 @@ import numpy as np
 
 import proto.framework_pb2 as framework_pb2
 from . import core
+import unique_name
 
 __all__ = [
     'Block',
@@ -45,20 +46,6 @@ def grad_var_name(var_name):
     return gradient name for a certain var name
     """
     return var_name + GRAD_VAR_SUFFIX
-
-
-def unique_name(prefix):
-    """
-    Generate unique names with prefix
-
-    Args:
-        prefix(str): The prefix of return string
-
-    Returns(str): A unique string with the prefix
-
-    """
-    uid = core.unique_integer(prefix)  # unique during whole process.
-    return "_".join([prefix, str(uid)])
 
 
 def convert_np_dtype_to_dtype_(np_dtype):
@@ -175,7 +162,7 @@ class Variable(object):
         self.error_clip = error_clip
 
         if name is None:
-            name = Variable._unique_var_name_()
+            name = unique_name.generate('_generated_var')
         is_new_var = False
         self.desc = self.block.desc.find_var(name)
 
@@ -306,12 +293,6 @@ class Variable(object):
     @property
     def type(self):
         return self.desc.type()
-
-    @staticmethod
-    def _unique_var_name_():
-        prefix = "_generated_var"
-        uid = core.unique_integer(prefix)  # unique during whole process.
-        return "_".join([prefix, str(uid)])
 
     def set_error_clip(self, error_clip):
         self.error_clip = error_clip

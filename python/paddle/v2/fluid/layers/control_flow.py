@@ -428,7 +428,8 @@ class StaticRNN(object):
                 raise ValueError(
                     "if init is None, memory at least need shape and batch_ref")
             parent_block = self.parent_block()
-            var_name = unique_name("@".join([self.helper.name, "memory_boot"]))
+            var_name = unique_name.generate("@".join(
+                [self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
                 name=var_name,
                 shape=shape,
@@ -450,7 +451,7 @@ class StaticRNN(object):
             return self.memory(init=boot_var)
         else:
             pre_mem = self.helper.create_variable(
-                name=unique_name("@".join([self.helper.name, "mem"])),
+                name=unique_name.generate("@".join([self.helper.name, "mem"])),
                 dtype=init.dtype,
                 shape=init.shape)
             self.memories[pre_mem.name] = StaticRNNMemoryLink(
@@ -710,7 +711,7 @@ def lod_rank_table(x, level=0):
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
         type=core.VarDesc.VarType.LOD_RANK_TABLE,
-        name=unique_name("lod_rank_table"))
+        name=unique_name.generate("lod_rank_table"))
     helper.append_op(
         type='lod_rank_table',
         inputs={'X': x},
@@ -808,7 +809,7 @@ def lod_tensor_to_array(x, table):
     """
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
-        name=unique_name("lod_tensor_to_array"),
+        name=unique_name.generate("lod_tensor_to_array"),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         dtype=x.dtype)
     helper.append_op(
@@ -1265,11 +1266,11 @@ class IfElse(object):
         if id(x) not in self.input_table:
             parent_block = self.parent_block()
             out_true = parent_block.create_var(
-                name=unique_name('ifelse_input' + self.helper.name),
+                name=unique_name.generate('ifelse_input' + self.helper.name),
                 dtype=x.dtype)
 
             out_false = parent_block.create_var(
-                name=unique_name('ifelse_input' + self.helper.name),
+                name=unique_name.generate('ifelse_input' + self.helper.name),
                 dtype=x.dtype)
             parent_block.append_op(
                 type='split_lod_tensor',
@@ -1311,7 +1312,8 @@ class IfElse(object):
                 raise TypeError("Each output should be a variable")
             # create outside tensor
             outside_out = parent_block.create_var(
-                name=unique_name("_".join([self.helper.name, 'output'])),
+                name=unique_name.generate("_".join(
+                    [self.helper.name, 'output'])),
                 dtype=each_out.dtype)
             out_table.append(outside_out)
 
@@ -1374,7 +1376,7 @@ class DynamicRNN(object):
         parent_block = self._parent_block_()
         if self.lod_rank_table is None:
             self.lod_rank_table = parent_block.create_var(
-                name=unique_name('lod_rank_table'),
+                name=unique_name.generate('lod_rank_table'),
                 type=core.VarDesc.VarType.LOD_RANK_TABLE)
             self.lod_rank_table.stop_gradient = True
             parent_block.append_op(
@@ -1382,7 +1384,8 @@ class DynamicRNN(object):
                 inputs={"X": x},
                 outputs={"Out": self.lod_rank_table})
             self.max_seq_len = parent_block.create_var(
-                name=unique_name('dynamic_rnn_max_seq_len'), dtype='int64')
+                name=unique_name.generate('dynamic_rnn_max_seq_len'),
+                dtype='int64')
             self.max_seq_len.stop_gradient = False
             parent_block.append_op(
                 type='max_sequence_len',
@@ -1396,7 +1399,7 @@ class DynamicRNN(object):
                 outputs={'Out': self.cond})
 
         input_array = parent_block.create_var(
-            name=unique_name('dynamic_rnn_input_array'),
+            name=unique_name.generate('dynamic_rnn_input_array'),
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
             dtype=x.dtype)
         self.input_array.append((input_array, x.dtype))
@@ -1417,7 +1420,7 @@ class DynamicRNN(object):
                 "static_input() must be called after step_input().")
         parent_block = self._parent_block_()
         x_reordered = parent_block.create_var(
-            name=unique_name("dynamic_rnn_static_input_reordered"),
+            name=unique_name.generate("dynamic_rnn_static_input_reordered"),
             type=core.VarDesc.VarType.LOD_TENSOR,
             dtype=x.dtype)
         parent_block.append_op(
@@ -1479,7 +1482,7 @@ class DynamicRNN(object):
                         'invoked before '
                         'memory(init=init, need_reordered=True, ...).')
                 init_reordered = parent_block.create_var(
-                    name=unique_name('dynamic_rnn_mem_init_reordered'),
+                    name=unique_name.generate('dynamic_rnn_mem_init_reordered'),
                     type=core.VarDesc.VarType.LOD_TENSOR,
                     dtype=init.dtype)
                 parent_block.append_op(
@@ -1491,7 +1494,7 @@ class DynamicRNN(object):
                     outputs={'Out': [init_reordered]})
                 init_tensor = init_reordered
             mem_array = parent_block.create_var(
-                name=unique_name('dynamic_rnn_mem_array'),
+                name=unique_name.generate('dynamic_rnn_mem_array'),
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=init.dtype)
             parent_block.append_op(
@@ -1511,9 +1514,10 @@ class DynamicRNN(object):
                 )
             parent_block = self._parent_block_()
             init = parent_block.create_var(
-                name=unique_name('mem_init'), dtype=dtype)
+                name=unique_name.generate('mem_init'), dtype=dtype)
             arr, dtype = self.input_array[0]
-            in0 = parent_block.create_var(name=unique_name('in0'), dtype=dtype)
+            in0 = parent_block.create_var(
+                name=unique_name.generate('in0'), dtype=dtype)
             parent_block.append_op(
                 type='read_from_array',
                 inputs={'X': [arr],
@@ -1552,7 +1556,7 @@ class DynamicRNN(object):
         parent_block = self._parent_block_()
         for each in outputs:
             outside_array = parent_block.create_var(
-                name=unique_name("_".join(
+                name=unique_name.generate("_".join(
                     [self.helper.name, "output_array", each.name])),
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=each.dtype)
