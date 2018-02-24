@@ -67,7 +67,7 @@ class DataToLoDTensorConverter(object):
 
 
 class DataFeeder(object):
-    def __init__(self, feed_list, place, program=None):
+    def __init__(self, feed_list, place, batch_size_dim=-1, program=None):
         self.feed_dtypes = []
         self.feed_names = []
         self.feed_shapes = []
@@ -82,14 +82,15 @@ class DataFeeder(object):
             self.feed_dtypes.append(each_var.dtype)
             self.feed_names.append(each_var.name)
             shape = each_var.shape
-            batch_size_dim = -1
-            for i, s in enumerate(shape):
-                if s < 0:
-                    batch_size_dim = i
-                    break
-            if batch_size_dim == -1:
-                raise ValueError("Variable {0} must has a batch size dimension",
-                                 each_var.name)
+            if batch_size_dim < 0:
+                for i, s in enumerate(shape):
+                    if s < 0:
+                        batch_size_dim = i
+                        break
+                if batch_size_dim < 0:
+                    raise ValueError(
+                        "Variable {0} must has a batch size dimension",
+                        each_var.name)
             self.feed_lod_level.append(each_var.lod_level)
             self.feed_shapes.append(shape)
 
