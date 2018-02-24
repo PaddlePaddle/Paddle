@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/framework/executor.h"
 
 USE_NO_KERNEL_OP(go);
 USE_NO_KERNEL_OP(channel_close);
@@ -31,21 +33,26 @@ namespace p = paddle::platform;
 
 namespace paddle {
 namespace framework {
+
+void CreateIntVariable(Scope &scope, p::CPUPlace &place, std::string name, int value) {
+  // Create LoDTensor<int> of dim [1,1]
+  auto var = scope.Var(name);
+  auto tensor = var->GetMutable<LoDTensor>();
+  tensor->Resize({1, 1});
+  int *expect = tensor->mutable_data<int>(place);
+  expect[0] = value;
+}
+
 void InitTensorsInScope(Scope &scope, p::CPUPlace &place) {
   p::CPUDeviceContext ctx(place);
-  for (int i = 0; i < 2; ++i) {
-    auto var_name = paddle::string::Sprintf("x%d", i);
-    auto var = scope.Var(var_name);
-    auto tensor = var->GetMutable<LoDTensor>();
-    tensor->Resize({1, 1});
-    float *expect = tensor->mutable_data<float>(place);
-    expect[0] = static_cast<float>(10 + 1 * i);
-  }
 
-  auto out_var = scope.Var("Out");
-  auto out_tensor = out_var->GetMutable<LoDTensor>();
-  out_tensor->Resize({1, 1});
-  out_tensor->mutable_data<float>(place);  // allocate
+  // Create channel variable
+  scope.Var("Channel");
+
+  // Create Variables, x0 will be put into channel,
+  // result will be pulled from channel
+  CreateIntVariable(scope, place, "x0", 99);
+  CreateIntVariable(scope, place, "result", 0);
 }
 
 void AddOp(const std::string &type, const VariableNameMap &inputs,
@@ -67,28 +74,48 @@ TEST(Concurrency, Go_Op) {
   Scope scope;
   p::CPUPlace place;
 
+  // Initialize scope variables
   InitTensorsInScope(scope, place);
 
+  framework::Executor executor(place);
   ProgramDesc program;
   BlockDesc *block = program.MutableBlock(0);
 
-  AddOp("elementwise_add", {{"X", {"x0"}}, {"Y", {"x1"}}}, {{"Out", {"Out"}}},
-        {}, block);
+  // Create channel OP
+  AddOp("channel_create",
+        {},
+        {{"Output", {"Channel"}}},
+        {{"capacity", 10}, {"data_type", f::proto::VarType::INT32}},
+        block);
 
-  AttributeMap attrs;
-  attrs.insert({"sub_block", block});
+  // Create Go Op routine
+  ProgramDesc goOpProgram;
+  BlockDesc *goOpBlock = goOpProgram.MutableBlock(0);
+  AddOp("channel_send",
+        {{"Channel", {"Channel"}}, {"X", {"x0"}}},
+        {{"Status", {"Status"}}},
+        {},
+        goOpBlock);
 
-  auto go_op = OpRegistry::CreateOp("go", {{"X", {"x0", "x1"}}},
-                                    {{"Out", {"Out"}}}, attrs);
+  // Create Go Op
+  AddOp("go",
+        {{"X", {"Channel", "x0"}}},
+        {},
+        {{"sub_block", goOpBlock}},
+        block);
 
-  const LoDTensor &tensor = (scope.FindVar("Out"))->Get<LoDTensor>();
-  auto *data = tensor.data<float>();
+  // Create Channel Receive Op
+  AddOp("channel_recv",
+        {{"Channel", {"Channel"}}},
+        {{"Status", {"Status"}}, {"Output", {"result"}}},
+        {},
+        block);
 
-  go_op->Run(scope, place);
+  executor.Run(program, &scope, 0, true, true);
 
+  const LoDTensor &tensor = (scope.FindVar("result"))->Get<LoDTensor>();
+  auto *data = tensor.data<int>();
   EXPECT_EQ(data[0], 0);
-  usleep(100000);  // TODO(thuan): Replace this command with channel receive
-  EXPECT_EQ(data[0], 21);
 }
 }  // namespace framework
 }  // namespace paddle
