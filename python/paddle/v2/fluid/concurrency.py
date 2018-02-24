@@ -75,8 +75,8 @@ def make_channel(dtype, capacity=0):
     main_program = helper.main_program
     make_channel_block = main_program.current_block()
 
-    channel = helper.create_variable(dtype=core.VarDesc.VarType.CHANNEL,
-                                     persistable=True)
+    channel = helper.create_variable(
+        dtype=core.VarDesc.VarType.CHANNEL, persistable=True)
     create_channel_op = make_channel_block.append_op(
         type="channel_create",
         outputs={"Output": channel},
@@ -96,7 +96,7 @@ def channel_send(channel, value):
         type="channel_send",
         inputs={
             "Channel": channel,
-            "Val": value,
+            "X": value,
         },
         outputs={"Status": status})
 
@@ -113,7 +113,7 @@ def channel_recv(channel, dtype):
     channel_recv_op = channel_recv_block.append_op(
         type="channel_recv",
         inputs={"Channel": channel},
-        outputs={"Output": return_value,
+        outputs={"Out": return_value,
                  "Status": status})
 
     return channel_recv_op
