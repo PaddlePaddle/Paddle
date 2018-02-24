@@ -15,9 +15,9 @@
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.v2.fluid.core as core
-from paddle.v2.fluid.op import Operator
-from paddle.v2.fluid.framework import grad_var_name
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+from paddle.fluid.framework import grad_var_name
 
 
 def get_backward_op(scope, op, no_grad_set):

@@ -12,7 +12,7 @@
 # limitations under the License.
 
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 import unittest
 import os
 import numpy as np

@@ -14,9 +14,9 @@
 
 import unittest
 
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.optimizer as optimizer
-from paddle.v2.fluid.backward import append_backward
+import paddle.fluid.framework as framework
+import paddle.fluid.optimizer as optimizer
+from paddle.fluid.backward import append_backward
 
 
 class TestOptimizer(unittest.TestCase):

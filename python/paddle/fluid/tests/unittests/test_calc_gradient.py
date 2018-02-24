@@ -14,11 +14,11 @@
 
 import unittest
 
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.optimizer as optimizer
-from paddle.v2.fluid.backward import calc_gradient
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle.fluid.framework as framework
+import paddle.fluid.optimizer as optimizer
+from paddle.fluid.backward import calc_gradient
 
 
 class TestCalcGradient(unittest.TestCase):

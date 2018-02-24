@@ -15,7 +15,7 @@
 import numpy as np
 import os
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 
 
 def stacked_lstm_net(data,

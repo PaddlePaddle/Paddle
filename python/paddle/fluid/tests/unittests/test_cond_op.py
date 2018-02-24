@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import logging
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 import unittest
 import numpy as np
-from paddle.v2.fluid.op import Operator, CondOp
+from paddle.fluid.op import Operator, CondOp
 
 
 class PySimpleCond(object):

@@ -14,7 +14,7 @@
 
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 import os
 
 x = fluid.layers.data(name='x', shape=[13], dtype='float32')

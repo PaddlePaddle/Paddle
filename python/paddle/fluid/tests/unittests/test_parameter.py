@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
-from paddle.v2.fluid.framework import default_main_program
-import paddle.v2.fluid.core as core
-from paddle.v2.fluid.executor import Executor
-import paddle.v2.fluid.io as io
-from paddle.v2.fluid.initializer import ConstantInitializer
+from paddle.fluid.framework import default_main_program
+import paddle.fluid.core as core
+from paddle.fluid.executor import Executor
+import paddle.fluid.io as io
+from paddle.fluid.initializer import ConstantInitializer
 import numpy as np
 
 main_program = default_main_program()

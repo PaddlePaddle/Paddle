@@ -16,12 +16,12 @@ import math
 import sys
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.nets as nets
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.optimizer import SGDOptimizer
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
+import paddle.fluid.nets as nets
+from paddle.fluid.executor import Executor
+from paddle.fluid.optimizer import SGDOptimizer
 
 IS_SPARSE = True
 USE_GPU = False

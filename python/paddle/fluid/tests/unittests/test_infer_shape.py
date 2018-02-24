@@ -14,7 +14,7 @@
 
 import unittest
 
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 
 
 class TestInferShape(unittest.TestCase):

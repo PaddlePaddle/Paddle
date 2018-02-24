@@ -14,7 +14,7 @@
 
 import unittest
 import decorators
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 import numpy
 
 

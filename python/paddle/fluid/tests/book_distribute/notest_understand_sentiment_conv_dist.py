@@ -16,7 +16,7 @@ from __future__ import print_function
 import os
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 
 
 def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,

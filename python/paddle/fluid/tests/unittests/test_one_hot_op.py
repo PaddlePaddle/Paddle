@@ -16,10 +16,10 @@ import unittest
 import numpy as np
 import math
 from op_test import OpTest
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.framework as framework
-from paddle.v2.fluid.framework import Program, program_guard
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestOneHotOp(OpTest):

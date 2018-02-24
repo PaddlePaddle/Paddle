@@ -14,8 +14,8 @@
 
 import os
 
-from paddle.v2.fluid.evaluator import Evaluator
-from paddle.v2.fluid.framework import Program, Parameter, default_main_program, Variable
+from paddle.fluid.evaluator import Evaluator
+from paddle.fluid.framework import Program, Parameter, default_main_program, Variable
 from . import core
 
 __all__ = [

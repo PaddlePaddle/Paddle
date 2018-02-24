@@ -17,10 +17,10 @@ import unittest
 import math
 import copy
 
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.learning_rate_decay as lr_decay
+import paddle.fluid.framework as framework
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+import paddle.fluid.learning_rate_decay as lr_decay
 
 
 def exponential_decay(learning_rate,

@@ -15,7 +15,7 @@
 import numpy
 import random
 import collections
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 import unittest
 from decorators import *
 

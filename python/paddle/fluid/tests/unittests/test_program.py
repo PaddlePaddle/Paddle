@@ -15,8 +15,8 @@
 from __future__ import print_function
 import unittest
 
-from paddle.v2.fluid.framework import Program, default_main_program, program_guard, grad_var_name
-import paddle.v2.fluid.layers as layers
+from paddle.fluid.framework import Program, default_main_program, program_guard, grad_var_name
+import paddle.fluid.layers as layers
 
 main_program = default_main_program()
 

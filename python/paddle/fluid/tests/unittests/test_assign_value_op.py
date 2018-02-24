@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.layers as layers
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 import op_test
 import numpy
 import unittest
-import paddle.v2.fluid.framework as framework
+import paddle.fluid.framework as framework
 
 
 class TestAssignValueOp(op_test.OpTest):

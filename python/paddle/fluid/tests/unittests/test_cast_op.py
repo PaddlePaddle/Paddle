@@ -15,7 +15,7 @@
 import op_test
 import unittest
 import numpy as np
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 
 
 class TestCastOp(op_test.OpTest):

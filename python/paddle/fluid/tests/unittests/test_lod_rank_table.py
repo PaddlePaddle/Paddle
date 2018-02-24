@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.v2.fluid.layers import lod_rank_table, data
-from paddle.v2.fluid.executor import Executor
-import paddle.v2.fluid.core as core
+from paddle.fluid.layers import lod_rank_table, data
+from paddle.fluid.executor import Executor
+import paddle.fluid.core as core
 import numpy
 import unittest
 

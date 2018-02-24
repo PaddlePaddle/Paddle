@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 
-import paddle.v2.fluid.executor as executor
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.optimizer as optimizer
-from paddle.v2.fluid.framework import Program, program_guard
-from paddle.v2.fluid.io import save_inference_model, load_inference_model
+import paddle.fluid.executor as executor
+import paddle.fluid.layers as layers
+import paddle.fluid.optimizer as optimizer
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.io import save_inference_model, load_inference_model
 
 
 class TestBook(unittest.TestCase):

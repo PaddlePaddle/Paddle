@@ -15,10 +15,10 @@
 import unittest
 import numpy
 import collections
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
-from paddle.v2.fluid.initializer import ConstantInitializer
-from paddle.v2.fluid.param_attr import WeightNormParamAttr
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.initializer import ConstantInitializer
+from paddle.fluid.param_attr import WeightNormParamAttr
 
 
 class TestWeightNormalization(unittest.TestCase):

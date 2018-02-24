@@ -17,8 +17,8 @@ import math
 import numpy as np
 import paddle.v2 as paddle
 import paddle.v2.dataset.conll05 as conll05
-import paddle.v2.fluid as fluid
-from paddle.v2.fluid.initializer import init_on_cpu
+import paddle.fluid as fluid
+from paddle.fluid.initializer import init_on_cpu
 import contextlib
 import time
 import unittest

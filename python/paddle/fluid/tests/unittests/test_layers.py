@@ -15,10 +15,10 @@
 from __future__ import print_function
 import unittest
 
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.nets as nets
-from paddle.v2.fluid.framework import Program, program_guard, default_main_program
-from paddle.v2.fluid.param_attr import ParamAttr
+import paddle.fluid.layers as layers
+import paddle.fluid.nets as nets
+from paddle.fluid.framework import Program, program_guard, default_main_program
+from paddle.fluid.param_attr import ParamAttr
 import decorators
 
 

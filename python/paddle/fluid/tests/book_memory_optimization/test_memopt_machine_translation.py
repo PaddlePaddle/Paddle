@@ -14,11 +14,11 @@
 
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.executor import Executor
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+import paddle.fluid.layers as layers
+from paddle.fluid.executor import Executor
 import math
 import sys
 

@@ -17,7 +17,7 @@ import itertools
 
 from framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
 import unique_name
-from paddle.v2.fluid.initializer import Constant, Xavier
+from paddle.fluid.initializer import Constant, Xavier
 from param_attr import ParamAttr, WeightNormParamAttr
 
 

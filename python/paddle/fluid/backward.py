@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.v2.fluid import framework as framework
+from paddle.fluid import framework as framework
 from . import core
 import collections
 import copy

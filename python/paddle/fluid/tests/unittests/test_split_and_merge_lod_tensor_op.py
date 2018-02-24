@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 import numpy as np
-import paddle.v2.fluid.layers as layers
-from paddle.v2.fluid.framework import Program, program_guard
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward
+import paddle.fluid.layers as layers
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.executor import Executor
+from paddle.fluid.backward import append_backward
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):

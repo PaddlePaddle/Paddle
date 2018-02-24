@@ -15,8 +15,8 @@
 import numpy as np
 import unittest
 
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.initializer as initializer
+import paddle.fluid.framework as framework
+import paddle.fluid.initializer as initializer
 
 DELTA = 0.00001
 
