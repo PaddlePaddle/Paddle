@@ -76,7 +76,7 @@ class CompareOpKernel
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_LOGICAL_KERNEL(op_type, dev, functor)                    \
+#define REGISTER_COMPARE_KERNEL(op_type, dev, functor)                    \
   REGISTER_OP_##dev##_KERNEL(                                             \
       op_type, ::paddle::operators::CompareOpKernel<                      \
                    ::paddle::platform::dev##DeviceContext, functor<int>>, \
