@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """VGG16 benchmark in TensorFlow
-You can get distribution example structure here:
+You can get distribution example template structure here:
 https://medium.com/clusterone/how-to-write-distributed-tensorflow-code-with-an-example-on-tensorport-70bf3306adcb
+https://www.tensorflow.org/deploy/distributed
 """
 
 import tensorflow as tf
@@ -253,11 +254,12 @@ def run_benchmark(cluster_spec, server):
 
         optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        global_step = tf.Variable(0, name='global_step', trainable=False)
+        #global_step = tf.Variable(0, name='global_step', trainable=False)
+        global_step = tf.contrib.framework.get_or_create_global_step()
         with tf.control_dependencies(update_ops):
             train_op = optimizer.minimize(avg_loss, global_step=global_step)
 
-        saver = tf.train.Saver()
+        #saver = tf.train.Saver()
         summary_op = tf.summary.merge_all()
         init_op = tf.global_variables_initializer()
 
@@ -295,21 +297,13 @@ def run_benchmark(cluster_spec, server):
         intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
     config.gpu_options.allow_growth = True
 
-    # Create a "supervisor", which oversees the training process.
-    sv = tf.train.Supervisor(
-        is_chief=(args.task_index == 0),
-        logdir="/tmp/train_logs",
-        init_op=init_op,
-        summary_op=summary_op,
-        saver=saver,
-        global_step=global_step,
-        save_model_secs=600)
+    hooks = [tf.train.StopAtStepHook(last_step=1000000)]
 
-    with sv.managed_session(server.target) as sess:
-        ds = sess.list_devices()
-        for d in ds:
-            print(d.name)
-
+    with tf.train.MonitoredTrainingSession(
+            master=server.target,
+            config=tf.ConfigProto(log_device_placement=False),
+            is_chief=(args.task_index == 0),
+            hooks=hooks) as sess:
         iters, num_samples, start_time = 0, 0, 0.0
         for pass_id in range(args.num_passes):
             # train

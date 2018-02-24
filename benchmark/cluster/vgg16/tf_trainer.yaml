@@ -29,8 +29,7 @@ spec:
         - name: TF_JOB_NAME 
           value: "worker"
         - name: ENTRY
-          #value: "python vgg16_tf.py"
-          value: "python distribute.py"
+          value: "python vgg16_tf.py"
         - name: PSERVERS_NUM
           value: "10"
         - name: BATCH_SIZE
