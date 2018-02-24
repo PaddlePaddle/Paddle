@@ -146,6 +146,7 @@ include(external/cares)
 include(external/grpc)
 
 include(cudnn)              # set cudnn libraries, must before configure
+include(cupti)
 include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages

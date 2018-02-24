@@ -459,6 +459,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("kDisabled", platform::ProfilerState::kDisabled)
       .value("kCPU", platform::ProfilerState::kCPU)
       .value("kCUDA", platform::ProfilerState::kCUDA)
+      .value("kAll", platform::ProfilerState::kAll)
       .export_values();
 
   py::enum_<platform::EventSortingKey>(m, "EventSortingKey", py::arithmetic())

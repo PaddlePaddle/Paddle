@@ -97,9 +97,14 @@ def profiler(state, sorted_key=None):
             The `ave` means sorting by the average execution time.
     """
 
-    if state not in ['CPU', 'GPU']:
-        raise ValueError("The state must be 'CPU' or 'GPU'.")
-    prof_state = core.ProfilerState.kCUDA if state == "GPU" else core.ProfilerState.kCPU
+    if state not in ['CPU', 'GPU', "All"]:
+        raise ValueError("The state must be 'CPU' or 'GPU' or 'All'.")
+    if state == "GPU":
+        prof_state = core.ProfilerState.kCUDA
+    elif state == "CPU":
+        prof_state = core.ProfilerState.kCPU
+    else:
+        prof_state = core.ProfilerState.kAll
     core.enable_profiler(prof_state)
     yield
 
