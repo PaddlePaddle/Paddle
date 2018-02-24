@@ -32,3 +32,17 @@ inference_test(recommender_system)
 #inference_test(rnn_encoder_decoder)
 inference_test(understand_sentiment)
 inference_test(word2vec)
+
+set(PYTHON_TESTS_DIR ${PADDLE_SOURCE_DIR}/python/paddle/v2/fluid/tests)
+cc_test(test_inference_machine_translation_train
+    SRCS test_inference_machine_translation_train.cc
+    DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
+    ARGS --dirname=${PYTHON_TESTS_DIR}/book/machine_translation_train.inference.model)
+cc_test(test_inference_machine_translation_decode
+    SRCS test_inference_machine_translation_decode.cc
+    DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
+    ARGS --dirname=${PYTHON_TESTS_DIR}/book/machine_translation_decode.inference.model)
+set_tests_properties(test_inference_machine_translation_train
+    PROPERTIES DEPENDS test_machine_translation)
+set_tests_properties(test_inference_machine_translation_decode
+    PROPERTIES DEPENDS test_machine_translation)

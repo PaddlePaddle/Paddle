@@ -29,7 +29,7 @@ batch_size = 2
 max_length = 8
 topk_size = 50
 trg_dic_size = 10000
-beam_size = 2
+beam_size = 1
 
 decoder_size = hidden_dim
 
@@ -168,9 +168,7 @@ def to_lodtensor(data, place):
     return res
 
 
-def train_main(use_cuda, is_sparse):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
-        return
+def train_main_and_save_model(use_cuda, is_sparse, save_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     context = encoder(is_sparse)
@@ -209,13 +207,15 @@ def train_main(use_cuda, is_sparse):
             print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
                   " avg_cost=" + str(avg_cost_val))
             if batch_id > 3:
-                break
+                # Save the trained model in 'save_dirname'
+                fluid.io.save_inference_model(
+                    save_dirname, ['src_word_id', 'target_language_word'],
+                    [rnn_out], exe)
+                return
             batch_id += 1
 
 
-def decode_main(use_cuda, is_sparse):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
-        return
+def decode_main_and_save_model(use_cuda, is_sparse, save_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     context = encoder(is_sparse)
@@ -241,7 +241,6 @@ def decode_main(use_cuda, is_sparse):
         init_scores = set_init_lod(init_scores_data, init_lod, place)
 
         src_word_data = to_lodtensor(map(lambda x: x[0], data), place)
-
         result_ids, result_scores = exe.run(
             framework.default_main_program(),
             feed={
@@ -251,8 +250,130 @@ def decode_main(use_cuda, is_sparse):
             },
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
-        print result_ids.lod()
+        fluid.io.save_inference_model(
+            save_dirname, ['src_word_id', 'init_ids', 'init_scores'],
+            [translation_ids, translation_scores], exe)
         break
+
+
+def create_random_lodtensor(lod, place, low, high):
+    data = np.random.random_integers(low, high, [lod[-1], 1]).astype("int64")
+    res = fluid.LoDTensor()
+    res.set(data, place)
+    res.set_lod([lod])
+    return res
+
+
+# This function tests for loading a model using fluid.io.save_inference_model
+# after training (calling train_main). This is just for checking a general flow
+# of training, saving a model and loading it successfully, and doesn't
+# simulate a real inference setting as we don't have access to target_sequence 
+# while doing inference. 
+def infer_for_train_main(use_cuda, save_dirname=None):
+    if save_dirname is None:
+        return
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    # setup input sequence 
+    lod = [0, 10]
+    inp_sequence = create_random_lodtensor(
+        lod, place, low=0, high=dict_size - 1)
+
+    # setup output sequence
+    out_sequence = create_random_lodtensor(
+        lod, place, low=0, high=dict_size - 1)
+
+    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+    # and results will contain a list of data corresponding to fetch_targets.
+    assert feed_target_names[0] == 'src_word_id'
+    assert feed_target_names[1] == 'target_language_word'
+
+    results = exe.run(inference_program,
+                      feed={
+                          feed_target_names[0]: inp_sequence,
+                          feed_target_names[1]: out_sequence,
+                      },
+                      fetch_list=fetch_targets,
+                      return_numpy=False)
+    print(results[0].lod())
+    np_data = np.array(results[0])
+    print("Inference shape: ", np_data.shape)
+
+
+# This function tests for loading a model using fluid.io.save_inference_model
+# after calling decode_main. This is just for checking a general flow of saving 
+# a model which has the beam_search op and loading it successfully. 
+def infer_for_decode_main(use_cuda, save_dirname=None):
+    if save_dirname is None:
+        return
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
+
+    # Use fluid.io.load_inference_model to obtain the inference program desc,
+    # the feed_target_names (the names of variables that will be feeded 
+    # data using feed operators), and the fetch_targets (variables that 
+    # we want to obtain data from using fetch operators).
+    [inference_program, feed_target_names,
+     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+
+    # setup init_ids and init_scores
+    init_ids_data = np.ones((1, 1), dtype='int64')
+    init_scores_data = np.ones((1, 1), dtype='float32')
+    init_lod = [0, 1]
+    init_lod = [init_lod, init_lod]
+
+    init_ids = set_init_lod(init_ids_data, init_lod, place)
+    init_scores = set_init_lod(init_scores_data, init_lod, place)
+
+    # Setup test input sequence of 10 words
+    lod = [0, 10]
+    inp_sequence = create_random_lodtensor(
+        lod, place, low=0, high=dict_size - 1)
+
+    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+    # and results will contain a list of data corresponding to fetch_targets.
+    assert feed_target_names[0] == 'src_word_id'
+    assert feed_target_names[1] == 'init_ids'
+    assert feed_target_names[2] == 'init_scores'
+
+    result_ids, result_scores = exe.run(inference_program,
+                                        feed={
+                                            feed_target_names[0]: inp_sequence,
+                                            feed_target_names[1]: init_ids,
+                                            feed_target_names[2]: init_scores
+                                        },
+                                        fetch_list=fetch_targets,
+                                        return_numpy=False)
+    print(result_ids.lod())
+    np_data = np.array(result_ids)
+    print("Inference shape: ", np_data.shape)
+    print("Inference results: ", np_data)
+
+
+def train_main(use_cuda, is_sparse):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+    save_dirname = "machine_translation_train.inference.model"
+    train_main_and_save_model(use_cuda, is_sparse, save_dirname)
+    infer_for_train_main(use_cuda, save_dirname)
+
+
+def decode_main(use_cuda, is_sparse):
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
+    save_dirname = "machine_translation_decode.inference.model"
+    decode_main_and_save_model(use_cuda, is_sparse, save_dirname)
+    infer_for_decode_main(use_cuda, save_dirname)
 
 
 class TestMachineTranslation(unittest.TestCase):
