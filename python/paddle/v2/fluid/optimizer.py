@@ -45,6 +45,9 @@ class Optimizer(object):
         # each program should have a independent learning rate
         # program -> Variable(learning_rate)
         self._learning_rate_map = defaultdict(lambda: None)
+        if isinstance(self._learning_rate, framework.Variable):
+            self._learning_rate_map[framework.default_main_program(
+            )] = self._learning_rate
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
