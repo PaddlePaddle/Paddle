@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace pf = paddle::framework;
-static constexpr char kX[] = "X";
+static constexpr char kChannel[] = "Channel";
 
 namespace paddle {
 namespace operators {
@@ -33,7 +33,7 @@ class ChannelCloseOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
     auto &inp = *scope.FindVar(Input("Channel"));
-    pf::ChannelHolder *ch = out.GetMutable<framework::ChannelHolder>();
+    pf::ChannelHolder *ch = inp.GetMutable<framework::ChannelHolder>();
     ch->close();
   }
 };
@@ -50,7 +50,7 @@ class ChannelCloseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ChannelCloseOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(kX,
+    AddInput(kChannel,
              "The Channel Variable that should be closed by"
              " the ChannelClose Op.");
     AddComment(R"DOC(

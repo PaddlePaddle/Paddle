@@ -111,6 +111,13 @@ TEST(Concurrency, Go_Op) {
         {},
         block);
 
+  // Create Channel Close Op
+  AddOp("channel_close",
+        {{"Channel", {"Channel"}}},
+        {},
+        {},
+        block);
+
   executor.Run(program, &scope, 0, true, true);
 
   const LoDTensor &tensor = (scope.FindVar("result"))->Get<LoDTensor>();
