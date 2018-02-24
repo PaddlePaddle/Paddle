@@ -16,5 +16,9 @@ limitations under the License. */
 
 REGISTER_COMPARE_KERNEL(less_than, CUDA, paddle::operators::LessThanFunctor);
 REGISTER_COMPARE_KERNEL(less_equal, CUDA, paddle::operators::LessEqualFunctor);
+REGISTER_COMPARE_KERNEL(larger_than, CUDA,
+                        paddle::operators::LargerThanFunctor);
+REGISTER_COMPARE_KERNEL(larger_equal, CUDA,
+                        paddle::operators::LargerEqualFunctor);
 REGISTER_COMPARE_KERNEL(equal, CUDA, paddle::operators::EqualFunctor);
 REGISTER_COMPARE_KERNEL(not_equal, CUDA, paddle::operators::NotEqualFunctor);

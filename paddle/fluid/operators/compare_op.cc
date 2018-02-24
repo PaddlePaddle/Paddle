@@ -100,6 +100,11 @@ REGISTER_COMPARE_OP(less_than, "Out = X < Y");
 REGISTER_COMPARE_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor);
 REGISTER_COMPARE_OP(less_equal, "Out = X <= Y");
 REGISTER_COMPARE_KERNEL(less_equal, CPU, paddle::operators::LessEqualFunctor);
+REGISTER_COMPARE_OP(larger_than, "Out = X > Y");
+REGISTER_COMPARE_KERNEL(larger_than, CPU, paddle::operators::LargerThanFunctor);
+REGISTER_COMPARE_OP(larger_equal, "Out = X >= Y");
+REGISTER_COMPARE_KERNEL(larger_equal, CPU,
+                        paddle::operators::LargerEqualFunctor);
 REGISTER_COMPARE_OP(equal, "Out = X == Y");
 REGISTER_COMPARE_KERNEL(equal, CPU, paddle::operators::EqualFunctor);
 REGISTER_COMPARE_OP(not_equal, "Out = X != Y");
