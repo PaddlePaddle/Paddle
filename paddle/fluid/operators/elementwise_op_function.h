@@ -379,7 +379,8 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
   } while (i < h);
 
   if (dy) {
-    val = platform::ReduceSum(val, tid);
+    h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+    val = platform::reduceSum(val, tid, h);
     if (threadIdx.x == 0) {
       dy[j] = val;
     }
@@ -454,7 +455,9 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
   }
 
   if (dy) {
-    val = platform::ReduceSum(val, threadIdx.x);
+    int h = pre * post;
+    h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+    val = platform::reduceSum(val, tid, h);
     if (threadIdx.x == 0) {
       dy[j] = val;
     }
