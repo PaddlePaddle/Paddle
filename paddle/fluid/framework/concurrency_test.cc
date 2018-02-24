@@ -115,7 +115,7 @@ TEST(Concurrency, Go_Op) {
 
   const LoDTensor &tensor = (scope.FindVar("result"))->Get<LoDTensor>();
   auto *data = tensor.data<int>();
-  EXPECT_EQ(data[0], 0);
+  EXPECT_EQ(data[0], 99);
 }
 }  // namespace framework
 }  // namespace paddle
