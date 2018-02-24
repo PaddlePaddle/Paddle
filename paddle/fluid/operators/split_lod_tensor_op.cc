@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,8 +33,10 @@ class SplitLoDTensorOp : public framework::OperatorBase {
                    const framework::VariableNameMap &outputs,
                    const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &dev_place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
     auto *out_true =
@@ -53,7 +55,8 @@ class SplitLoDTensorOp : public framework::OperatorBase {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
 #ifdef PADDLE_WITH_CUDA
-      framework::Copy(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
+      framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx,
+                            cpu_mask.get());
 #else
       PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
 #endif
@@ -111,9 +114,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
         // out[offset: offset+len] = x[each_range.begin: each_range.end]
         auto slice = out->Slice(static_cast<int>(offset),
                                 static_cast<int>(offset + len));
-        framework::Copy(x.Slice(static_cast<int>(each_range.begin),
-                                static_cast<int>(each_range.end)),
-                        x.place(), dev_ctx, &slice);
+        framework::TensorCopy(x.Slice(static_cast<int>(each_range.begin),
+                                      static_cast<int>(each_range.end)),
+                              x.place(), dev_ctx, &slice);
         offset += len;
       }
     }

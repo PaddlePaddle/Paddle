@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,8 +25,10 @@ class LoadOp : public framework::OperatorBase {
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     std::ifstream fin(filename);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
@@ -53,7 +55,7 @@ class LoadOp : public framework::OperatorBase {
       out_var->Clear();
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->set_lod(cpu_tensor.lod());
-      Copy(cpu_tensor, place, dev_ctx, tensor);
+      TensorCopy(cpu_tensor, place, dev_ctx, tensor);
     }
   }
 };

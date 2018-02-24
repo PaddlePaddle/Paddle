@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,8 +33,8 @@ class LoDResetKernel : public framework::OpKernel<T> {
       auto* lod = lod_t->data<int>();
       if (platform::is_gpu_place(ctx.GetPlace())) {
         framework::Tensor lod_cpu;
-        framework::Copy(*lod_t, platform::CPUPlace(), ctx.device_context(),
-                        &lod_cpu);
+        framework::TensorCopy(*lod_t, platform::CPUPlace(),
+                              ctx.device_context(), &lod_cpu);
         lod = lod_cpu.data<int>();
       }
       level0 = std::vector<int>(lod, lod + lod_t->numel());

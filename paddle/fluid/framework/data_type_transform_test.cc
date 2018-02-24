@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,11 +32,11 @@ TEST(DataTypeTransform, CPUTransform) {
     ptr[i] = i / 3;
   }
 
-  auto kernel_fp32 = OpKernelType(proto::DataType::FP32, place,
+  auto kernel_fp32 = OpKernelType(proto::VarType::FP32, place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_fp64 = OpKernelType(proto::DataType::FP64, place,
+  auto kernel_fp64 = OpKernelType(proto::VarType::FP64, place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_int32 = OpKernelType(proto::DataType::INT32, place,
+  auto kernel_int32 = OpKernelType(proto::VarType::INT32, place,
                                    DataLayout::kAnyLayout, LibraryType::kPlain);
 
   TransDataType(kernel_fp32, kernel_fp64, in, &out);

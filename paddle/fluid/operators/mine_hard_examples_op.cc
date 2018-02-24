@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -67,7 +67,8 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
     auto out_match_indices =
         ctx.Output<framework::Tensor>("UpdatedMatchIndices");
 
-    framework::Copy(*in_matched_indices, ctx.GetPlace(), out_match_indices);
+    framework::TensorCopy(*in_matched_indices, ctx.GetPlace(),
+                          out_match_indices);
 
     int batch_size = in_matched_indices->dims()[0];
     int prior_num = in_matched_indices->dims()[1];
@@ -237,6 +238,8 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("UpdatedMatchIndices", idx_dims);
+    // The first dimension of NegIndices will be set correcttly in Compute.
+    ctx->SetOutputDim("NegIndices", {-1, 1});
   }
 
  protected:

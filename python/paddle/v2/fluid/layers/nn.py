@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,6 +66,9 @@ __all__ = [
     'row_conv',
     'multiplex',
     'layer_norm',
+    'softmax_with_cross_entropy',
+    'smooth_l1',
+    'one_hot',
 ]
 
 
@@ -101,7 +104,7 @@ def fc(input,
     * :math:`X_i`: The input tensor.
     * :math:`W`: The weights created by this layer.
     * :math:`b`: The bias parameter created by this layer (if needed).
-    * :math:`Act`: The activation funtion.
+    * :math:`Act`: The activation function.
     * :math:`Out`: The output tensor.
 
     Args:
@@ -218,7 +221,7 @@ def embedding(input,
             :math:`padding_idx < 0`, the padding_idx to use in lookup is
             :math:`size[0] + dim`.
         param_attr(ParamAttr): Parameters for this layer
-        dtype(np.dtype|core.DataType|str): The type of data : float32, float_16, int etc
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
 
     Returns:
         Variable: The tensor variable storing the embeddings of the \
@@ -829,12 +832,12 @@ def crf_decoding(input, param_attr, label=None):
     return viterbi_path
 
 
-def cos_sim(X, Y, **kwargs):
+def cos_sim(X, Y):
     """
     This function performs the cosine similarity between two tensors
     X and Y and returns that as the output.
     """
-    helper = LayerHelper('cos_sim', **kwargs)
+    helper = LayerHelper('cos_sim', **locals())
     out = helper.create_tmp_variable(dtype=X.dtype)
     xnorm = helper.create_tmp_variable(dtype=X.dtype)
     ynorm = helper.create_tmp_variable(dtype=X.dtype)
@@ -848,7 +851,7 @@ def cos_sim(X, Y, **kwargs):
     return out
 
 
-def dropout(x, dropout_prob, is_test=False, seed=None, **kwargs):
+def dropout(x, dropout_prob, is_test=False, seed=None):
     """
     Computes dropout.
 
@@ -877,7 +880,7 @@ def dropout(x, dropout_prob, is_test=False, seed=None, **kwargs):
           droped = fluid.layers.dropout(input=x, dropout_rate=0.5)
     """
 
-    helper = LayerHelper('dropout', **kwargs)
+    helper = LayerHelper('dropout', **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
     mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
     helper.append_op(
@@ -894,7 +897,7 @@ def dropout(x, dropout_prob, is_test=False, seed=None, **kwargs):
     return out
 
 
-def cross_entropy(input, label, **kwargs):
+def cross_entropy(input, label, soft_label=False):
     """
     **Cross Entropy Layer**
 
@@ -903,15 +906,15 @@ def cross_entropy(input, label, **kwargs):
     computation.
 
     1) One-hot cross-entropy:
-	`soft_label = False`, `Label[i, 0]` indicates the class index for sample i:
+        `soft_label = False`, `Label[i, 0]` indicates the class index for sample i:
 
         .. math::
 
             Y[i] = -\log(X[i, Label[i]])
 
     2) Soft-label cross-entropy:
-	`soft_label = True`, `Label[i, j]` indicates the soft label of class j
-	for sample i:
+        `soft_label = True`, `Label[i, j]` indicates the soft label of class j
+        for sample i:
 
         .. math::
 
@@ -921,8 +924,8 @@ def cross_entropy(input, label, **kwargs):
        equals one.
 
     3) One-hot cross-entropy with vecterized `label`:
-	 As a special case of 2), when each row of 'label' has only one
-	 non-zero element which is equal to 1, soft-label cross-entropy degenerates
+         As a special case of 2), when each row of 'label' has only one
+         non-zero element which is equal to 1, soft-label cross-entropy degenerates
          to a one-hot cross-entropy with one-hot label representation.
 
     Args:
@@ -936,7 +939,7 @@ def cross_entropy(input, label, **kwargs):
                                tensor<int64> with shape [N x 1]. When
                                `soft_label` is set to `True`, `label` is a
                                tensor<float/double> with shape [N x D].
-        soft_label (bool, via `**kwargs`): a flag indicating whether to
+        soft_label (bool): a flag indicating whether to
                                            interpretate the given labels as soft
                                            labels, default `False`.
 
@@ -956,18 +959,18 @@ def cross_entropy(input, label, **kwargs):
           predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
           cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
-    helper = LayerHelper('cross_entropy', **kwargs)
+    helper = LayerHelper('cross_entropy', **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='cross_entropy',
         inputs={'X': [input],
                 'Label': [label]},
         outputs={'Y': [out]},
-        attrs=kwargs)
+        attrs={"soft_label": soft_label})
     return out
 
 
-def square_error_cost(input, label, **kwargs):
+def square_error_cost(input, label):
     """
     **Square error cost layer**
 
@@ -1002,7 +1005,7 @@ def square_error_cost(input, label, **kwargs):
           cost = layers.square_error_cost(input=y_predict, label=y)
 
     """
-    helper = LayerHelper('square_error_cost', **kwargs)
+    helper = LayerHelper('square_error_cost', **locals())
     minus_out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='elementwise_sub',
@@ -1017,12 +1020,12 @@ def square_error_cost(input, label, **kwargs):
     return square_out
 
 
-def accuracy(input, label, k=1, correct=None, total=None, **kwargs):
+def accuracy(input, label, k=1, correct=None, total=None):
     """
     This function computes the accuracy using the input and label.
     The output is the top_k inputs and their indices.
     """
-    helper = LayerHelper("accuracy", **kwargs)
+    helper = LayerHelper("accuracy", **locals())
     topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype="int64")
     helper.append_op(
@@ -1055,13 +1058,12 @@ def chunk_eval(input,
                label,
                chunk_scheme,
                num_chunk_types,
-               excluded_chunk_types=None,
-               **kwargs):
+               excluded_chunk_types=None):
     """
     This function computes and outputs the precision, recall and
     F1-score of chunk detection.
     """
-    helper = LayerHelper("chunk_eval", **kwargs)
+    helper = LayerHelper("chunk_eval", **locals())
 
     # prepare output
     precision = helper.create_tmp_variable(dtype="float32")
@@ -1293,7 +1295,7 @@ def conv2d(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_pool(input, pool_type, **kwargs):
+def sequence_pool(input, pool_type):
     """
     This function add the operator for sequence pooling.
     It pools features of all time-steps of each instance, and is applied
@@ -1343,7 +1345,7 @@ def sequence_pool(input, pool_type, **kwargs):
              sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
              max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
     """
-    helper = LayerHelper('sequence_pool', input=input, **kwargs)
+    helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_tmp_variable(dtype)
     max_index = helper.create_tmp_variable(dtype)
@@ -1363,7 +1365,7 @@ def sequence_pool(input, pool_type, **kwargs):
     return pool_out
 
 
-def sequence_first_step(input, **kwargs):
+def sequence_first_step(input):
     """
     This funciton get the first step of sequence.
 
@@ -1396,7 +1398,7 @@ def sequence_first_step(input, **kwargs):
     return sequence_pool(input=input, pool_type="first")
 
 
-def sequence_last_step(input, **kwargs):
+def sequence_last_step(input):
     """
     This funciton get the last step of sequence.
 
@@ -1578,7 +1580,7 @@ def layer_norm(input,
     """
     **Layer Normalization**
 
-    Assume feature vectors exist on dimensions 
+    Assume feature vectors exist on dimensions
     :attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics
     along these dimensions for each feature vector :math:`a` with size
     :math:`H`, then normalize each feature vector using the corresponding
@@ -1599,13 +1601,13 @@ def layer_norm(input,
 
     Args:
         input(Variable): The input tensor variable.
-        scale(bool): Whether to learn the adaptive gain :math:`g` after 
+        scale(bool): Whether to learn the adaptive gain :math:`g` after
             normalization.
-        shift(bool): Whether to learn the adaptive bias :math:`b` after 
+        shift(bool): Whether to learn the adaptive bias :math:`b` after
             normalization.
-        begin_norm_axis(bool): The normalization will be performed along 
+        begin_norm_axis(bool): The normalization will be performed along
             dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
-        epsilon(float): The small value added to the variance to prevent 
+        epsilon(float): The small value added to the variance to prevent
             division by zero.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             gain :math:`g`.
@@ -2069,7 +2071,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
             the dimension to reduce is :math:`rank + dim`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
+        keep_dim (bool|False): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
         name(str|None): A name for this layer(optional). If set None, the layer
@@ -2336,7 +2338,8 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
           normed = fluid.layers.l2_normalize(x=data, axis=1)
     """
 
-    if len(x.shape) == 1: axis = 0
+    if len(x.shape) == 1:
+        axis = 0
 
     helper = LayerHelper("l2_normalize", **locals())
 
@@ -2654,7 +2657,7 @@ def ctc_greedy_decoder(input, blank, name=None):
     return ctc_out
 
 
-def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
+def warpctc(input, label, blank=0, norm_by_times=False):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -2695,7 +2698,7 @@ def warpctc(input, label, blank=0, norm_by_times=False, **kwargs):
             cost = layers.warpctc(input=y_predict, label=y)
 
     """
-    helper = LayerHelper('warpctc', **kwargs)
+    helper = LayerHelper('warpctc', **locals())
     loss_out = helper.create_tmp_variable(dtype=input.dtype)
     grad_out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
@@ -3091,3 +3094,159 @@ def multiplex(inputs, index):
                 'Ids': index},
         outputs={'Out': [out]})
     return out
+
+
+def softmax_with_cross_entropy(logits, label, soft_label=False):
+    """
+    **Softmax With Cross Entropy Operator.**
+
+    Cross entropy loss with softmax is used as the output layer extensively. This
+    operator computes the softmax normalized values for each row of the input
+    tensor, after which cross-entropy loss is computed. This provides a more
+    numerically stable gradient.
+
+    Because this operator performs a softmax on logits internally, it expects
+    unscaled logits. This operator should not be used with the output of
+    softmax operator since that would produce incorrect results.
+
+    When the attribute soft_label is set false, this operators expects mutually
+    exclusive hard labels, each sample in a batch is in exactly one class with a
+    probability of 1.0. Each sample in the batch will have a single label.
+
+    The equation is as follows:
+
+    1) Hard label (one-hot label, so every sample has exactly one class)
+
+    .. math::
+
+        loss_j =  -\\text{logit}_{label_j} +
+        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logit}_i)\\right), j = 1,..., K
+
+    2) Soft label (each sample can have a distribution over all classes)
+
+    .. math::
+
+        loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
+        \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
+        \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
+
+    Args:
+        logits (Variable): The unscaled log probabilities, which is a 2-D tensor
+            with shape [N x K]. N is the batch_size, and K is the class number.
+        label (Variable): The ground truth which is a 2-D tensor. If soft_label
+            is set to false, Label is a Tensor<int64> with shape [N x 1]. If
+            soft_label is set to true, Label is a Tensor<float/double> with
+        soft_label (bool): A flag to indicate whether to interpretate the given
+            labels as soft labels. By default, `soft_label` is set to False.
+    Returns:
+        Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
+
+    Examples:
+        .. code-block:: python
+
+            data = fluid.layers.data(name='data', shape=[128], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            fc = fluid.layers.fc(input=data, size=100)
+            out = fluid.layers.softmax_with_cross_entropy(logits=fc, label=label)
+    """
+    helper = LayerHelper('softmax_with_cross_entropy', **locals())
+    softmax = helper.create_tmp_variable(dtype=logits.dtype)
+    loss = helper.create_tmp_variable(dtype=logits.dtype)
+    helper.append_op(
+        type='softmax_with_cross_entropy',
+        inputs={'Logits': logits,
+                'Label': label},
+        outputs={'Softmax': softmax,
+                 'Loss': loss},
+        attrs={'soft_label': soft_label})
+    return loss
+
+
+def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
+    """
+    **Smooth L1 Loss Operator. **
+
+    This operator computes the smooth l1 loss for X and Y.
+    The operator takes the first dimension of X and Y as batch size.
+    For each instance, it computes the smooth l1 loss element by element first
+    and then sums all the losses. So the shape of Out is [batch_size, 1].
+
+    Args:
+        x (Variable): A tensor with rank at least 2. The input value of smooth
+            l1 loss op with shape [batch_size, dim1, ..., dimN].
+        y (Variable): A tensor with rank at least 2. The target value of smooth
+            l1 loss op with same shape as x.
+        inside_weight (Variable|None):  A tensor with rank at least 2. This
+            input is optional and should have same shape with x. If provided,
+            the result of (x - y) will be multiplied by this tensor element by
+            element.
+        outside_weight (Variable|None): A tensor with rank at least 2. This
+            input is optional and should have same shape with x. If provided,
+            the out smooth l1 loss will be multiplied by this tensor element
+            by element.
+        sigma (float|None): Hyper parameter of smooth l1 loss op. A float scalar
+            with default value 1.0.
+    Returns:
+        Variable: A tensor with rank be 2. The output smooth l1 loss with
+            shape [batch_size, 1].
+
+    Examples:
+        .. code-block:: python
+
+            data = fluid.layers.data(name='data', shape=[128], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[100], dtype='int64')
+            fc = fluid.layers.fc(input=data, size=100)
+            out = fluid.layers.smooth_l1(logits=fc, label=label)
+    """
+    helper = LayerHelper('smooth_l1_loss', **locals())
+    diff = helper.create_tmp_variable(dtype=x.dtype)
+    loss = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='smooth_l1_loss',
+        inputs={
+            'X': x,
+            'Y': y,
+            'InsideWeight': inside_weight,
+            'OutsideWeight': outside_weight
+        },
+        outputs={'Diff': diff,
+                 'Out': loss},
+        attrs={'sigma': sigma})
+    return loss
+
+
+def one_hot(input, depth):
+    """
+    One Hot Operator. This operator creates the one-hot representations for input
+    index values. The following example will help to explain the function of this
+    operator.
+
+    Args:
+        input(Tensor/LodTensor):  A Tensor/LodTensor of indices, last dimension must be 1.
+        depth(scalar): an interger defining the depth of the one hot dimension.
+
+    Returns:
+         The one-hot tensor or LodTensor, same as input.
+
+    Examples:
+        X is a LoDTensor:
+          X.lod = [[0, 1, 4]]
+          X.shape = [4, 1]
+          X.data = [[1], [1], [3], [0]]
+        set depth = 4
+        Out is a LoDTensor:
+          Out.lod = [[0, 1, 4]]
+          Out.shape = [4, 4]
+          Out.data = [[0., 1., 0., 0.],
+                      [0., 1., 0., 0.],
+                      [0., 0., 0., 1.],
+                      [1., 0., 0., 0.]]
+    """
+    helper = LayerHelper("one_hot", **locals())
+    one_hot_out = helper.create_tmp_variable(dtype='float32')
+    helper.append_op(
+        type="one_hot",
+        inputs={'X': input},
+        attrs={'depth': depth},
+        outputs={'Out': one_hot_out})
+    return one_hot_out

@@ -179,7 +179,7 @@ def polynomial_decay(learning_rate,
                 shape=[1], dtype='float32', value=1.0)
 
             with layers.Switch() as switch:
-                with switch.case(layers.equal(x=global_step, y=zero_var)):
+                with switch.case(global_step == zero_var):
                     layers.assign(input=one_var, output=div_res)
             decay_steps = decay_steps * div_res
         else:
@@ -229,7 +229,7 @@ def piecewise_decay(global_step, boundaries, values):
                     shape=[1], dtype='float32', value=float(boundaries[i]))
                 value_var = layers.fill_constant(
                     shape=[1], dtype='float32', value=float(values[i]))
-                with switch.case(layers.less_than(global_step, boundary_val)):
+                with switch.case(global_step < boundary_val):
                     layers.assign(value_var, lr)
             last_value_var = layers.fill_constant(
                 shape=[1],

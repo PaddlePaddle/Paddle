@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,6 +62,18 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   } else {
     return default_lod;
   }
+}
+
+void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+  if (platform::is_gpu_place(place)) {
+#ifndef PADDLE_WITH_CUDA
+    PADDLE_THROW("Cannot run operator on place %s", place);
+#else
+    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+    platform::SetDeviceId(dev_id);
+#endif
+  }
+  RunImpl(scope, place);
 }
 
 std::string OperatorBase::Input(const std::string& name) const {
@@ -465,7 +477,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
-  proto::VarDesc::VarType GetVarType(const std::string& name) const override {
+  proto::VarType::Type GetVarType(const std::string& name) const override {
     auto* var = scope_.FindVar(name);
     return ToVarType(var->Type());
   }
@@ -479,8 +491,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const Scope& scope_;
 };
 
-void OperatorWithKernel::Run(const Scope& scope,
-                             const platform::Place& place) const {
+void OperatorWithKernel::RunImpl(const Scope& scope,
+                                 const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -557,7 +569,7 @@ void OperatorWithKernel::Run(const Scope& scope,
   }
 }
 
-proto::DataType OperatorWithKernel::IndicateDataType(
+proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
@@ -583,7 +595,7 @@ proto::DataType OperatorWithKernel::IndicateDataType(
     }
   }
   PADDLE_ENFORCE(data_type != -1, "DataType should be indicated by input");
-  return static_cast<proto::DataType>(data_type);
+  return static_cast<proto::VarType::Type>(data_type);
 }
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(

@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
-from ..core import DataType
+from ..core import VarDesc
 import numpy
 
 __all__ = [
@@ -199,10 +199,10 @@ def assign(input, output):
             attrs={'scale': 1.0})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == DataType.FP32:
+        if dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
-        elif dtype == DataType.INT32:
+        elif dtype == VarDesc.VarType.INT32:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
         else:
@@ -236,7 +236,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     Args:
         shape(tuple|list|None): Shape of the output tensor.
-        dtype(np.dtype|core.DataType|str): Data type of the output tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor.
         value(float): The constant value used to initialize the output tensor.
         out(Variable): The output tensor.
         force_cpu(True|False): data should be on CPU if set true.
@@ -285,7 +285,7 @@ def fill_constant_batch_size_like(input,
     Args:
         input(Variable): Tensor whose dimensions will be used to get batch size
         shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
         value(float): Constant value to initialize the output tensor
         input_dim_idx(int): Index of input's batch size dimension
         output_dim_idx(int): Index of output's batch size dimension
@@ -327,7 +327,7 @@ def ones(shape, dtype, force_cpu=False):
 
     Args:
         shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
 
     Returns:
         Variable: The tensor variable storing the output
@@ -351,7 +351,7 @@ def zeros(shape, dtype, force_cpu=False):
 
     Args:
         shape(tuple|list|None): Shape of output tensor
-        dtype(np.dtype|core.DataType|str): Data type of output tensor
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
 
     Returns:
         Variable: The tensor variable storing the output

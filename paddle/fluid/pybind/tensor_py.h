@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -101,7 +101,7 @@ T TensorGetElement(framework::Tensor &self, size_t offset) {
     return self.data<T>()[offset];
   } else {
     std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
-    framework::Copy(self, platform::CPUPlace(), dst.get());
+    framework::TensorCopy(self, platform::CPUPlace(), dst.get());
     return dst->data<T>()[offset];
   }
 }
@@ -111,9 +111,9 @@ template <typename T>
 void TensorSetElement(framework::Tensor &self, size_t offset, T elem) {
   if (platform::is_gpu_place(self.place())) {
     std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
-    framework::Copy(self, platform::CPUPlace(), dst.get());
+    framework::TensorCopy(self, platform::CPUPlace(), dst.get());
     dst->data<T>()[offset] = elem;
-    framework::Copy(*dst.get(), self.place(), &self);
+    framework::TensorCopy(*dst.get(), self.place(), &self);
 
   } else if (platform::is_cpu_place(self.place())) {
     self.data<T>()[offset] = elem;

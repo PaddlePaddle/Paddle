@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -225,7 +225,7 @@ class Optimizer(object):
         `create_optimization_pass()` into one.
         """
         params_grads = append_backward(loss, parameter_list, no_grad_set,
-                                       error_clip_callback)
+                                       [error_clip_callback])
 
         params_grads = append_gradient_clip_ops(params_grads)
 

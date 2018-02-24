@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ struct Formater {
   }
 
  private:
-  void PrintMessage() { CLOG << std::time(nullptr) << "\t" << message; }
+  void PrintMessage() { CLOG << std::time(nullptr) << "\t" << message << "\t"; }
   void PrintName() {
     if (!name.empty()) {
       CLOG << "Tensor[" << name << "]" << std::endl;
@@ -85,15 +85,16 @@ struct Formater {
     // print float
     if (dtype.hash_code() == typeid(float).hash_code()) {
       Display<float>(size);
-    }
-    if (dtype.hash_code() == typeid(double).hash_code()) {
+    } else if (dtype.hash_code() == typeid(double).hash_code()) {
       Display<double>(size);
-    }
-    if (dtype.hash_code() == typeid(int).hash_code()) {
+    } else if (dtype.hash_code() == typeid(int).hash_code()) {
       Display<int>(size);
-    }
-    if (dtype.hash_code() == typeid(int64_t).hash_code()) {
+    } else if (dtype.hash_code() == typeid(int64_t).hash_code()) {
       Display<int64_t>(size);
+    } else if (dtype.hash_code() == typeid(bool).hash_code()) {
+      Display<bool>(size);
+    } else {
+      CLOG << "\tdata: unprintable type: " << dtype.name() << std::endl;
     }
   }
 
@@ -130,8 +131,9 @@ class TensorPrintOp : public framework::OperatorBase {
     PADDLE_THROW("Not implemented.");
   }
 
-  void Run(const framework::Scope& scope,
-           const platform::Place& place) const override {
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const override {
     const framework::Variable* in_var_ptr = nullptr;
     std::string phase = kForward;
     std::string printed_var_name = "";
@@ -177,10 +179,11 @@ class TensorPrintOp : public framework::OperatorBase {
     } else {
       // copy data to cpu to print
       platform::CPUPlace place;
-      framework::Copy(in_tensor, place, &printed_tensor);
+      framework::TensorCopy(in_tensor, place, &printed_tensor);
     }
 
     Formater formater;
+    formater.message = Attr<std::string>("message");
     if (Attr<bool>("print_tensor_name")) {
       formater.name = printed_var_name;
     }

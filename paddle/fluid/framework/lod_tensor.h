@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -175,8 +175,8 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
   for (size_t ins = 0; ins < num_instances; ins++) {
     for (size_t elem = lod_level[ins]; elem < lod_level[ins + 1]; elem++) {
       auto slice = tensor.Slice(elem, elem + 1);
-      Copy(source.Slice(ins, ins + 1), platform::CPUPlace(),
-           platform::CPUDeviceContext(), &slice);
+      TensorCopy(source.Slice(ins, ins + 1), platform::CPUPlace(),
+                 platform::CPUDeviceContext(), &slice);
     }
   }
   return tensor;

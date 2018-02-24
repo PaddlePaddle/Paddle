@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 import framework
-from framework import Program, default_main_program, Parameter, Variable
+from framework import Program, default_main_program, default_startup_program, Parameter, Variable
 import optimizer
 from layer_helper import LayerHelper
 from distributed_spliter import *
@@ -133,6 +133,7 @@ class DistributeTranspiler:
     def transpile(self,
                   optimize_ops,
                   params_grads,
+                  trainer_id,
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
@@ -146,13 +147,37 @@ class DistributeTranspiler:
             Use different methods to split trainable variables to different
             parameter servers.
 
+            Steps to transpile trainer:
+            1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
+            2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
+            3. modify trainer program add split_op to each grad variable.
+            4. append send_op to send splited variables to server and fetch
+               params(splited blocks or origin param) from server.
+            5. append concat_op to merge splited blocks to update local weights.
+
+            Steps to transpile pserver:
+            1. create new program for parameter server.
+            2. create params and grad variables that assigned to current server instance.
+            3. create a sub-block in the server side program
+            4. append ops that should run on current server instance.
+            5. add listen_and_serv op
+
             :param optimize_ops: op list of optimization, should be the
-                                 return value of Optimizer.minimize
+                                    return value of Optimizer.minimize
             :type optimize_ops: list
-            :param program: program to optimize, default is default_main_program
+            :param params_grads: list of tuple(weight, gradient)
+            :type params_grads: list
+            :param trainer_id: one unique id for each trainer in a job.
+            :type trainer_id: int
+            :param program: program to transpile, default is default_main_program
+            :type program: Program
             :param pservers: parameter server endpoints like "m1:6174,m2:6174"
             :type pservers: string
-            :return: return a list of programs
+            :param trainers: total number of workers/trainers in the job
+            :type trainers: int
+            :param split_method: A function to determin how to split variables
+                to different servers equally.
+            :type split_method: function
         """
         assert (callable(split_method))
         if program is None:
@@ -160,25 +185,19 @@ class DistributeTranspiler:
         self.program = program
         self.trainers = trainers
         self.optimize_ops = optimize_ops
-        # steps to transpile:
-        # 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
-        # 2. modify trainer program add split_op to each Grad.
-        # 3. append send_op to trainer.
-        # 4. append concat_op to trainer to update local weights.
-        # 5. create new program for parameter server.
-        # 6. create parameter server program by split_method generated endpoint->VarBlock
-
+        # TODO(typhoonzero): currently trainer_id is fetched from cluster system
+        # like Kubernetes, we should port this to use etcd later when developing
+        # fluid distributed training with fault-tolerance.
+        self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
 
         # step1
         param_list = [pg[0] for pg in params_grads]
         grad_list = [pg[1] for pg in params_grads]
-        # TODO: add split selected rows support
         grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
         param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
         # step2
         grad_var_mapping = self._append_split_op(program, grad_blocks)
-
         # step3
         send_inputs = []
         send_outputs = []
@@ -191,7 +210,6 @@ class DistributeTranspiler:
         for b in param_blocks:
             varname, block_id, _ = b.split(":")
             send_outputs.append(param_var_mapping[varname][int(block_id)])
-
         # let send_op know which endpoint to send which var to, eplist has the same
         # order as send_inputs.
         eplist = split_method(send_inputs, pserver_endpoints)
@@ -207,12 +225,12 @@ class DistributeTranspiler:
 
         rpc_client_var = program.global_block().create_var(
             name="RPC_CLIENT_VAR",
-            psersistable=True,
+            persistable=True,
             dtype='float32',  # dtype and shape is not used in fact
             shape=[0])
 
         # create send_op
-        send_op = program.global_block().append_op(
+        program.global_block().append_op(
             type="send",
             inputs={"X": send_inputs},
             outputs={"Out": send_outputs,
@@ -224,362 +242,67 @@ class DistributeTranspiler:
             if len(splited_var) <= 1:
                 continue
             orig_param = program.global_block().vars[varname]
-            concat = program.global_block().append_op(
+            program.global_block().append_op(
                 type="concat",
                 inputs={"X": splited_var},
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
-
-        self.lr_param_mapping = self._create_lr_param_mapping()
-
-    def _create_lr_param_mapping(self):
-        lr_mapping = dict()
-        for _, opt_op in enumerate(self.optimize_ops):
-            if not opt_op.inputs or not opt_op.inputs.has_key("LearningRate") \
-              or not opt_op.inputs.has_key("Param"):
-                continue
-            lr = opt_op.inputs["LearningRate"].name
-            param = opt_op.inputs["Param"].name
-            if not lr_mapping.has_key(lr):
-                lr_mapping.update({lr: list()})
-            lr_mapping[lr].append(param)
-        return lr_mapping
-
-    def _create_vars_from_blocklist(self, program, block_list):
-        # Create respective variables using the block_list
-        block_map = dict()
-        var_mapping = dict()
-        for block_str in block_list:
-            varname, offset, size = block_str.split(":")
-            if not block_map.has_key(varname):
-                block_map[varname] = []
-            block_map[varname].append((long(offset), long(size)))
-        for varname, splited in block_map.iteritems():
-            orig_var = program.global_block().vars[varname]
-            var_mapping[varname] = []
-            if len(splited) == 1:
-                var_mapping[varname] = [orig_var]
-                continue
-            orig_shape = orig_var.shape
-            orig_dim1_flatten = 1
-            if len(orig_shape) >= 2:
-                orig_dim1_flatten = reduce(lambda x, y: x * y, orig_shape[1:])
-
-            for i, block in enumerate(splited):
-                size = block[1]
-                rows = size / orig_dim1_flatten
-                splited_shape = [rows]
-                if len(orig_shape) >= 2:
-                    splited_shape.extend(orig_shape[1:])
-                var = program.global_block().create_var(
-                    name="%s.block%d" % (varname, i),
-                    psersistable=False,
-                    dtype=orig_var.dtype,
-                    type=orig_var.type,
-                    shape=splited_shape)  # flattend splited var
-                var_mapping[varname].append(var)
-        return var_mapping
-
-    def _clone_var(self, block, var):
-        assert isinstance(var, Variable)
-        return block.create_var(
-            name=var.name,
-            shape=var.shape,
-            dtype=var.dtype,
-            type=var.type,
-            lod_level=var.lod_level,
-            # HACK: let all param in pserver be persistable so the child
-            # program in recv can get them
-            persistable=True)
-
-    def _append_split_op(self, program, gradblocks):
-        # Split variables that need to be split and append respective ops
-        var_mapping = self._create_vars_from_blocklist(program, gradblocks)
-        for varname, splited_vars in var_mapping.iteritems():
-            # variable that don't need to split have empty splited_vars
-            if len(splited_vars) <= 1:
-                continue
-            orig_var = program.global_block().vars[varname]
-            if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
-                height_sections = []
-                for v in splited_vars:
-                    height_sections.append(v.shape[0])
-                program.global_block().append_op(
-                    type="split_selected_rows",
-                    inputs={"X": orig_var},
-                    outputs={"Out": splited_vars},
-                    attrs={"height_sections": height_sections})
-            elif orig_var.type == core.VarDesc.VarType.LOD_TENSOR:
-                sections = []
-                for v in splited_vars:
-                    sections.append(v.shape[0])
-                program.global_block().append_op(
-                    type="split",
-                    inputs={"X": orig_var},
-                    outputs={"Out": splited_vars},
-                    attrs={"sections": sections}  # assume split evenly
-                )
-            else:
-                AssertionError("Variable type should be in set "
-                               "[LOD_TENSOR, SELECTED_ROWS]")
-        return var_mapping
 
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
         self.program.global_block().delete_ops(self.optimize_ops)
         return self.program
 
-    def _create_var_for_trainers(self, block, var, trainers):
-        # For each trainer, create the necessary variables
-        var_list = []
-        for i in xrange(trainers):
-            var_each = block.create_var(
-                name="%s.trainer_%d" % (var.name, i),
-                psersistable=var.persistable,
-                dtype=var.dtype,
-                type=var.type,
-                shape=var.shape)
-            var_list.append(var_each)
-        return var_list
-
-    def _get_optimizer_input_shape(self, op_type, varkey, orig_shape,
-                                   param_shape):
-        """
-        Returns the shape for optimizer inputs that need to be reshaped when
-        Param and Grad is split to multiple servers.
-        """
-        # HACK(typhoonzero): Should use functions of corresponding optimizer in
-        # optimizer.py to get the shape, do not  bind this in the transpiler.
-        if op_type == "adam":
-            if varkey in ["Moment1", "Moment2"]:
-                return param_shape
-        elif op_type == "adagrad":
-            if varkey == "Moment":
-                return param_shape
-        elif op_type == "adamax":
-            if varkey in ["Moment", "InfNorm"]:
-                return param_shape
-        elif op_type == "momentum":
-            if varkey == "Velocity":
-                return param_shape
-        elif op_type == "":
-            if varkey == "Moment":
-                return param_shape
-        elif op_type == "sgd":
-            pass
-        return orig_shape
-
-    def _fetch_var_names(self, param_dict):
-        res = []
-        if not param_dict:
-            return res
-        for _, values in param_dict.iteritems():
-            if not isinstance(values, list):
-                values = [values]
-            res += [v.name for v in values]
-        return res
-
-    def _append_pserver_ops(self, optimize_block, opt_op, endpoint):
-        program = optimize_block.program
-        new_inputs = dict()
-        # update param/grad shape first, then other inputs like
-        # moment can use the updated shape
-        for key in opt_op.input_names:
-            if key == "Grad":
-                grad_block = None
-                for g in self.param_grad_ep_mapping[endpoint]["grads"]:
-                    if same_or_split_var(g.name, opt_op.input(key)[0]):
-                        grad_block = g
-                        break
-                if not grad_block:
-                    # do not append this op if current endpoint
-                    # is not dealing with this grad block
-                    return
-                merged_var = program.global_block().vars[grad_block.name]
-                # append merging ops if trainers > 1
-                if self.trainers > 1:
-                    vars2merge = self._create_var_for_trainers(
-                        program.global_block(), grad_block, self.trainers)
-                    optimize_block.append_op(
-                        type="sum",
-                        inputs={"X": vars2merge},
-                        outputs={"Out": merged_var})
-                    optimize_block.append_op(
-                        type="scale",
-                        inputs={"X": merged_var},
-                        outputs={"Out": merged_var},
-                        attrs={"scale": 1.0 / float(self.trainers)})
-                new_inputs[key] = merged_var
-            elif key == "Param":
-                # param is already created on global program
-                param_block = None
-                for p in self.param_grad_ep_mapping[endpoint]["params"]:
-                    if same_or_split_var(p.name, opt_op.input(key)[0]):
-                        param_block = p
-                        break
-                if not param_block:
-                    return
-                tmpvar = program.global_block().create_var(
-                    name=param_block.name,
-                    persistable=True,
-                    dtype=param_block.dtype,
-                    shape=param_block.shape)
-
-                new_inputs[key] = tmpvar
-            elif key == "LearningRate":
-                # leraning rate variable has already be created by non-optimize op,
-                # don't create it once again.
-                new_inputs[key] = program.global_block().vars[opt_op.input(key)[
-                    0]]
-
-        for key in opt_op.input_names:
-            new_shape = None
-            if key in ["Param", "Grad", "LearningRate"]:
-                continue
-            var = program.global_block().vars[opt_op.input(key)[0]]
-            # update accumulator variable shape
-            param_shape = new_inputs["Param"].shape
-            new_shape = self._get_optimizer_input_shape(opt_op.type, key,
-                                                        var.shape, param_shape)
-            tmpvar = program.global_block().create_var(
-                name=var.name,
-                persistable=var.persistable,
-                dtype=var.dtype,
-                shape=new_shape)
-            new_inputs[key] = tmpvar
-
-        # change output's ParamOut variable
-        opt_op.outputs["ParamOut"] = new_inputs["Param"]
-        optimize_block.append_op(
-            type=opt_op.type,
-            inputs=new_inputs,
-            outputs=opt_op.outputs,
-            attrs=opt_op.attrs)
-
-    def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
-        program = optimize_block.program
-        # Append the ops for parameters that do not need to be optimized/updated
-        inputs = self._get_input_map_from_op(self.program.global_block().vars,
-                                             opt_op)
-        for varlist in inputs.itervalues():
-            if not isinstance(varlist, list):
-                varlist = [varlist]
-
-            for var in varlist:
-                if not program.global_block().vars.has_key(var.name):
-                    program.global_block().create_var(
-                        name=var.name,
-                        persistable=var.persistable,
-                        dtype=var.dtype,
-                        shape=var.shape)
-
-        outputs = self._get_output_map_from_op(self.program.global_block().vars,
-                                               opt_op)
-
-        for varlist in outputs.itervalues():
-            if not isinstance(varlist, list):
-                varlist = [varlist]
-
-            for var in varlist:
-                program.global_block().create_var(
-                    name=var.name,
-                    persistable=var.persistable,
-                    dtype=var.dtype,
-                    shape=var.shape)
-
-        optimize_block.append_op(
-            type=opt_op.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=opt_op.attrs)
-
-    def _is_op_connected(self, op1, op2):
-        # If one op's input is another op's output or
-        # one op's output is another op's input, we say
-        # the two operator is connected.
-        op1_input_names = self._fetch_var_names(op1.inputs)
-        op1_output_names = self._fetch_var_names(op1.outputs)
-
-        op2_input_names = self._fetch_var_names(op2.inputs)
-        op2_output_names = self._fetch_var_names(op2.outputs)
-        if set(op1_output_names) & set(op2_input_names) or \
-           set(op1_input_names) & set(op2_output_names):
-            return True
-        return False
-
-    def _create_ufind(self, optimize_ops):
-        # Create a unit find data struct by optimize ops
-        ufind = UnionFind(optimize_ops)
-        for i in xrange(len(optimize_ops)):
-            for j in xrange(i, len(optimize_ops)):
-                op1 = optimize_ops[i]
-                op2 = optimize_ops[j]
-                if self._is_op_connected(op1, op2):
-                    ufind.union(op1, op2)
-        return ufind
-
-    def _is_opt_op(self, op):
-        # NOTE: It's a HACK implement.
-        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc... 
-        if op.inputs and op.inputs.has_key("Param") \
-          and op.inputs.has_key("LearningRate"):
-            return True
-        return False
-
-    def _is_opt_op_on_pserver(self, endpoint, op):
-        param_names = [
-            p.name for p in self.param_grad_ep_mapping[endpoint]["params"]
-        ]
-        if op.inputs["Param"].name in param_names:
-            return True
-        else:
-            for n in param_names:
-                param = op.inputs["Param"].name
-                if same_or_split_var(n, param) and n != op.inputs["Param"].name:
-                    return True
-            return False
-        return False
-
     def get_pserver_program(self, endpoint):
         """
-        Get pserver side program using the endpoint
-
+        Get pserver side program using the endpoint.
         NOTE: assume blocks of the same variable is not distributed
         on the same pserver, only change param/grad varnames for
-        trainers to fetch. For each pserver endpoint, server side
-        program must be a sub-set of the original optimization program.
+        trainers to fetch.
         """
-        # step5
+        # step1
         pserver_program = Program()
+        # step2
+        recv_inputs = []
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
             self._clone_var(pserver_program.global_block(), v)
         for v in self.param_grad_ep_mapping[endpoint]["grads"]:
             # create vars for each trainer in global scope, so
             # we don't need to create them when grad arrives.
+            # change client side var name to origin name by
+            # removing ".trainer_%d" suffix
+            suff_idx = v.name.find(".trainer_")
+            if suff_idx >= 0:
+                orig_var_name = v.name[:suff_idx]
             pserver_program.global_block().create_var(
-                name=v.name, persistable=True, dtype=v.dtype, shape=v.shape)
+                name=orig_var_name,
+                persistable=True,
+                dtype=v.dtype,
+                shape=v.shape)
+            print("create origin var: ", orig_var_name)
             for trainer_id in xrange(self.trainers):
-                pserver_program.global_block().create_var(
-                    name="%s.trainer_%d" % (v.name, trainer_id),
-                    persistable=True,
+                var = pserver_program.global_block().create_var(
+                    name="%s.trainer_%d" % (orig_var_name, trainer_id),
+                    persistable=False,
                     dtype=v.dtype,
                     shape=v.shape)
-
-        # step6
+                recv_inputs.append(var)
+                print("create per trainer var: ", var.name)
+        # step3
         optimize_block = pserver_program.create_block(0)
-        # step 6.1
-        # Create a union-find data struct by optimize ops,
+        # step 4
+        # Create a union-find data struct from optimize ops,
         # If two ops are connected, we could add these two ops
         # into one set.
         ufind = self._create_ufind(self.optimize_ops)
-        # step 6.2 
+        # step 4.2 
         # Iterate through the ops and append optimize op which
         # located on current pserver
         opt_op_on_pserver = []
         for _, op in enumerate(self.optimize_ops):
             if self._is_opt_op(op) and self._is_opt_op_on_pserver(endpoint, op):
                 opt_op_on_pserver.append(op)
-        # step 6.3
+        # step 4.3
         # Iterate through the ops, and if an op and the optimize ops
         # which located on current pserver are in one set, then 
         # append it into the sub program.
@@ -591,50 +314,18 @@ class DistributeTranspiler:
                     else:
                         self._append_pserver_non_opt_ops(optimize_block, op)
                     break
-        # Append the listen_and_serv op
+        # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
-            inputs={},
+            inputs={'X': recv_inputs},
             outputs={},
             attrs={
                 "OptimizeBlock": optimize_block,
                 "endpoint": endpoint,
-                "ParamList": [
-                    p.name
-                    for p in self.param_grad_ep_mapping[endpoint]["params"]
-                ],
-                "GradList": [
-                    p.name
-                    for p in self.param_grad_ep_mapping[endpoint]["grads"]
-                ],
                 "Fanin": self.trainers
             })
         pserver_program.sync_with_cpp()
         return pserver_program
-
-    def _get_input_map_from_op(self, varmap, op):
-        iomap = dict()
-        for key in op.input_names:
-            vars = []
-            for varname in op.input(key):
-                vars.append(varmap[varname])
-            if len(vars) == 1:
-                iomap[key] = vars[0]
-            else:
-                iomap[key] = vars
-        return iomap
-
-    def _get_output_map_from_op(self, varmap, op):
-        iomap = dict()
-        for key in op.output_names:
-            vars = []
-            for varname in op.output(key):
-                vars.append(varmap[varname])
-            if len(vars) == 1:
-                iomap[key] = vars[0]
-            else:
-                iomap[key] = vars
-        return iomap
 
     def get_startup_program(self, endpoint, pserver_program):
         """
@@ -693,3 +384,332 @@ class DistributeTranspiler:
                     outputs=new_outputs,
                     attrs=op.attrs)
         return s_prog
+
+    # ====================== private transpiler functions =====================
+    def _create_vars_from_blocklist(self,
+                                    program,
+                                    block_list,
+                                    add_trainer_suffix=False):
+        """
+        NOTE: only grads need to be named for different trainers, use
+              add_trainer_suffix to rename the grad vars.
+        """
+        block_map = dict()
+        var_mapping = dict()
+        for block_str in block_list:
+            varname, offset, size = block_str.split(":")
+            if not block_map.has_key(varname):
+                block_map[varname] = []
+            block_map[varname].append((long(offset), long(size)))
+        for varname, splited in block_map.iteritems():
+            orig_var = program.global_block().var(varname)
+            if len(splited) == 1:
+                if add_trainer_suffix:
+                    new_var_name = "%s.trainer_%d" % \
+                        (orig_var.name, self.trainer_id)
+                    program.global_block().rename_var(varname, new_var_name)
+                    var_mapping[varname] = \
+                        [program.global_block().var(new_var_name)]
+                else:
+                    var_mapping[varname] = \
+                        [program.global_block().var(orig_var.name)]
+                continue
+
+            var_mapping[varname] = []
+            orig_shape = orig_var.shape
+            orig_dim1_flatten = 1
+            if len(orig_shape) >= 2:
+                orig_dim1_flatten = reduce(lambda x, y: x * y, orig_shape[1:])
+
+            for i, block in enumerate(splited):
+                size = block[1]
+                rows = size / orig_dim1_flatten
+                splited_shape = [rows]
+                if len(orig_shape) >= 2:
+                    splited_shape.extend(orig_shape[1:])
+                new_var_name = ""
+                if add_trainer_suffix:
+                    new_var_name = "%s.block%d.trainer_%d" % \
+                        (varname, i, self.trainer_id)
+                else:
+                    new_var_name = "%s.block%d" % \
+                        (varname, i)
+                var = program.global_block().create_var(
+                    name=new_var_name,
+                    persistable=False,
+                    dtype=orig_var.dtype,
+                    type=orig_var.type,
+                    shape=splited_shape)  # flattend splited var
+                var_mapping[varname].append(var)
+            program.global_block().sync_with_cpp()
+        return var_mapping
+
+    def _clone_var(self, block, var):
+        assert isinstance(var, Variable)
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            lod_level=var.lod_level,
+            persistable=True)
+
+    def _append_split_op(self, program, gradblocks):
+        # Split variables that need to be split and append respective ops
+        var_mapping = self._create_vars_from_blocklist(
+            program, gradblocks, add_trainer_suffix=True)
+        for varname, splited_vars in var_mapping.iteritems():
+            # variable that don't need to split have empty splited_vars
+            if len(splited_vars) <= 1:
+                continue
+            orig_var = program.global_block().vars[varname]
+            if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
+                height_sections = []
+                for v in splited_vars:
+                    height_sections.append(v.shape[0])
+                program.global_block().append_op(
+                    type="split_selected_rows",
+                    inputs={"X": orig_var},
+                    outputs={"Out": splited_vars},
+                    attrs={"height_sections": height_sections})
+            elif orig_var.type == core.VarDesc.VarType.LOD_TENSOR:
+                sections = []
+                for v in splited_vars:
+                    sections.append(v.shape[0])
+                program.global_block().append_op(
+                    type="split",
+                    inputs={"X": orig_var},
+                    outputs={"Out": splited_vars},
+                    attrs={"sections": sections}  # assume split evenly
+                )
+            else:
+                AssertionError("Variable type should be in set "
+                               "[LOD_TENSOR, SELECTED_ROWS]")
+        return var_mapping
+
+    def _get_optimizer_input_shape(self, op_type, varkey, orig_shape,
+                                   param_shape):
+        """
+        Returns the shape for optimizer inputs that need to be reshaped when
+        Param and Grad is split to multiple servers.
+        """
+        # HACK(typhoonzero): Should use functions of corresponding optimizer in
+        # optimizer.py to get the shape, do not  bind this in the transpiler.
+        if op_type == "adam":
+            if varkey in ["Moment1", "Moment2"]:
+                return param_shape
+        elif op_type == "adagrad":
+            if varkey == "Moment":
+                return param_shape
+        elif op_type == "adamax":
+            if varkey in ["Moment", "InfNorm"]:
+                return param_shape
+        elif op_type == "momentum":
+            if varkey == "Velocity":
+                return param_shape
+        elif op_type == "":
+            if varkey == "Moment":
+                return param_shape
+        elif op_type == "sgd":
+            pass
+        return orig_shape
+
+    def _orig_varname(self, varname):
+        suff_idx = varname.find(".trainer_")
+        orig_var_name = ""
+        if suff_idx >= 0:
+            orig_var_name = varname[:suff_idx]
+        return orig_var_name
+
+    def _append_pserver_ops(self, optimize_block, opt_op, endpoint):
+        program = optimize_block.program
+        pserver_block = program.global_block()
+        new_inputs = dict()
+        # update param/grad shape first, then other inputs like
+        # moment can use the updated shape
+        for key in opt_op.input_names:
+            if key == "Grad":
+                grad_block = None
+                for g in self.param_grad_ep_mapping[endpoint]["grads"]:
+                    if same_or_split_var(
+                            self._orig_varname(g.name), opt_op.input(key)[0]):
+                        grad_block = g
+                        break
+                if not grad_block:
+                    # do not append this op if current endpoint
+                    # is not dealing with this grad block
+                    return
+                merged_var = \
+                    pserver_block.vars[self._orig_varname(grad_block.name)]
+                if self.trainers > 1:
+                    vars2merge = []
+                    for i in xrange(self.trainers):
+                        per_trainer_name = "%s.trainer_%d" % \
+                        (self._orig_varname(grad_block.name), i)
+                        vars2merge.append(pserver_block.vars[per_trainer_name])
+
+                    optimize_block.append_op(
+                        type="sum",
+                        inputs={"X": vars2merge},
+                        outputs={"Out": merged_var})
+                    optimize_block.append_op(
+                        type="scale",
+                        inputs={"X": merged_var},
+                        outputs={"Out": merged_var},
+                        attrs={"scale": 1.0 / float(self.trainers)})
+                new_inputs[key] = merged_var
+            elif key == "Param":
+                # param is already created on global program
+                param_block = None
+                for p in self.param_grad_ep_mapping[endpoint]["params"]:
+                    if same_or_split_var(p.name, opt_op.input(key)[0]):
+                        param_block = p
+                        break
+                if not param_block:
+                    return
+                tmpvar = pserver_block.create_var(
+                    name=param_block.name,
+                    persistable=True,
+                    dtype=param_block.dtype,
+                    shape=param_block.shape)
+                new_inputs[key] = tmpvar
+            elif key == "LearningRate":
+                # leraning rate variable has already be created by non-optimize op,
+                # don't create it once again.
+                new_inputs[key] = pserver_block.vars[opt_op.input(key)[0]]
+
+        for key in opt_op.input_names:
+            new_shape = None
+            if key in ["Param", "Grad", "LearningRate"]:
+                continue
+            var = self.program.global_block().vars[opt_op.input(key)[0]]
+            # update accumulator variable shape
+            param_shape = new_inputs["Param"].shape
+            new_shape = self._get_optimizer_input_shape(opt_op.type, key,
+                                                        var.shape, param_shape)
+            tmpvar = pserver_block.create_var(
+                name=var.name,
+                persistable=var.persistable,
+                dtype=var.dtype,
+                shape=new_shape)
+            new_inputs[key] = tmpvar
+
+        # change output's ParamOut variable
+        outputs = self._get_output_map_from_op(self.program.global_block().vars,
+                                               opt_op)
+        outputs["ParamOut"] = new_inputs["Param"]
+
+        optimize_block.append_op(
+            type=opt_op.type,
+            inputs=new_inputs,
+            outputs=outputs,
+            attrs=opt_op.attrs)
+
+    def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
+        program = optimize_block.program
+        # Append the ops for parameters that do not need to be optimized/updated
+        inputs = self._get_input_map_from_op(self.program.global_block().vars,
+                                             opt_op)
+        for varlist in inputs.itervalues():
+            if not isinstance(varlist, list):
+                varlist = [varlist]
+
+            for var in varlist:
+                if not program.global_block().vars.has_key(var.name):
+                    program.global_block().create_var(
+                        name=var.name,
+                        persistable=var.persistable,
+                        dtype=var.dtype,
+                        shape=var.shape)
+
+        outputs = self._get_output_map_from_op(self.program.global_block().vars,
+                                               opt_op)
+
+        for varlist in outputs.itervalues():
+            if not isinstance(varlist, list):
+                varlist = [varlist]
+
+            for var in varlist:
+                program.global_block().create_var(
+                    name=var.name,
+                    persistable=var.persistable,
+                    dtype=var.dtype,
+                    shape=var.shape)
+
+        optimize_block.append_op(
+            type=opt_op.type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=opt_op.attrs)
+
+    def _is_op_connected(self, op1, op2):
+        # If one op's input is another op's output or
+        # one op's output is another op's input, we say
+        # the two operator is connected.
+        op1_input_names = op1.desc.input_arg_names()
+        op1_output_names = op1.desc.output_arg_names()
+
+        op2_input_names = op2.desc.input_arg_names()
+        op2_output_names = op2.desc.output_arg_names()
+
+        if set(op1_output_names) & set(op2_input_names) or \
+           set(op1_input_names) & set(op2_output_names):
+            return True
+        return False
+
+    def _create_ufind(self, optimize_ops):
+        # Create a unit find data struct by optimize ops
+        ufind = UnionFind(optimize_ops)
+        for i in xrange(len(optimize_ops)):
+            for j in xrange(i, len(optimize_ops)):
+                op1 = optimize_ops[i]
+                op2 = optimize_ops[j]
+                if self._is_op_connected(op1, op2):
+                    ufind.union(op1, op2)
+        return ufind
+
+    def _is_opt_op(self, op):
+        # NOTE: It's a HACK implement.
+        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc... 
+        if "Param" in op.input_names and \
+            "LearningRate" in op.input_names:
+            return True
+        return False
+
+    def _is_opt_op_on_pserver(self, endpoint, op):
+        param_names = [
+            p.name for p in self.param_grad_ep_mapping[endpoint]["params"]
+        ]
+        if op.input("Param") in param_names:
+            return True
+        else:
+            for n in param_names:
+                param = op.input("Param")[0]
+                if same_or_split_var(n, param) and n != param:
+                    return True
+            return False
+        return False
+
+    def _get_input_map_from_op(self, varmap, op):
+        iomap = dict()
+        for key in op.input_names:
+            vars = []
+            for varname in op.input(key):
+                vars.append(varmap[varname])
+            if len(vars) == 1:
+                iomap[key] = vars[0]
+            else:
+                iomap[key] = vars
+        return iomap
+
+    def _get_output_map_from_op(self, varmap, op):
+        iomap = dict()
+        for key in op.output_names:
+            vars = []
+            for varname in op.output(key):
+                vars.append(varmap[varname])
+            if len(vars) == 1:
+                iomap[key] = vars[0]
+            else:
+                iomap[key] = vars
+        return iomap

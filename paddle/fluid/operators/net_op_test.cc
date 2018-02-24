@@ -1,4 +1,4 @@
-//  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+//  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,10 @@ class TestOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
   DEFINE_OP_CLONE_METHOD(TestOp);
-  void Run(const Scope& scope, const platform::Place& place) const override {
+
+ private:
+  void RunImpl(const Scope& scope,
+               const platform::Place& place) const override {
     ++run_cnt;
   }
 };

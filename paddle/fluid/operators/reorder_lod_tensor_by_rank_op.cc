@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,8 +75,10 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
                                   const framework::VariableNameMap &outputs,
                                   const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto &x =
         detail::Ref(scope.FindVar(Input("X")),
                     "Cannot find input lod tensor variable %s", Input("X"))
@@ -168,7 +170,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
-    framework::Copy(x_sliced, out_sliced.place(), dev_ctx, &out_sliced);
+    framework::TensorCopy(x_sliced, out_sliced.place(), dev_ctx, &out_sliced);
     out_offset += len;
     return out_offset;
   }
