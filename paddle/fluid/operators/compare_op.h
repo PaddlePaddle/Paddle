@@ -35,6 +35,18 @@ struct LessEqualFunctor {
 };
 
 template <typename T>
+struct GreaterThanFunctor {
+  using ELEM_TYPE = T;
+  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a > b; }
+};
+
+template <typename T>
+struct GreaterEqualFunctor {
+  using ELEM_TYPE = T;
+  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a >= b; }
+};
+
+template <typename T>
 struct EqualFunctor {
   using ELEM_TYPE = T;
   HOSTDEVICE bool operator()(const T& a, const T& b) const {
@@ -76,7 +88,7 @@ class CompareOpKernel
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_LOGICAL_KERNEL(op_type, dev, functor)                    \
+#define REGISTER_COMPARE_KERNEL(op_type, dev, functor)                    \
   REGISTER_OP_##dev##_KERNEL(                                             \
       op_type, ::paddle::operators::CompareOpKernel<                      \
                    ::paddle::platform::dev##DeviceContext, functor<int>>, \

@@ -20,6 +20,7 @@ import numpy as np
 
 import proto.framework_pb2 as framework_pb2
 from . import core
+import unique_name
 
 __all__ = [
     'Block',
@@ -45,20 +46,6 @@ def grad_var_name(var_name):
     return gradient name for a certain var name
     """
     return var_name + GRAD_VAR_SUFFIX
-
-
-def unique_name(prefix):
-    """
-    Generate unique names with prefix
-
-    Args:
-        prefix(str): The prefix of return string
-
-    Returns(str): A unique string with the prefix
-
-    """
-    uid = core.unique_integer(prefix)  # unique during whole process.
-    return "_".join([prefix, str(uid)])
 
 
 def convert_np_dtype_to_dtype_(np_dtype):
@@ -152,7 +139,7 @@ class Variable(object):
         shape(tuple|list|None): The shape of variable. -1 means the batch size.
             Some kinds of variable do not contain shape, just set it to None.
         dtype(np.dtype|core.VarDesc.VarType|str): The data type of variable.
-        lod_level(int): The level of lod tensor. 0 means there is not a time
+        lod_level(int): The level of lod tensor. 0 means it is not a time
             series data.
         persistable(bool): True if the variable should be saved as check point.
             Defaults to False.
@@ -175,7 +162,7 @@ class Variable(object):
         self.error_clip = error_clip
 
         if name is None:
-            name = Variable._unique_var_name_()
+            name = unique_name.generate('_generated_var')
         is_new_var = False
         self.desc = self.block.desc.find_var(name)
 
@@ -307,12 +294,6 @@ class Variable(object):
     def type(self):
         return self.desc.type()
 
-    @staticmethod
-    def _unique_var_name_():
-        prefix = "_generated_var"
-        uid = core.unique_integer(prefix)  # unique during whole process.
-        return "_".join([prefix, str(uid)])
-
     def set_error_clip(self, error_clip):
         self.error_clip = error_clip
 
@@ -346,7 +327,7 @@ class OpProtoHolder(object):
     def __init__(self):
         assert not hasattr(
             self.__class__,
-            '_instance'), 'Please use `instance()` to get OpProtoHolder opject!'
+            '_instance'), 'Please use `instance()` to get OpProtoHolder object!'
         op_protos = get_all_op_protos()
         self.op_proto_map = {}
         for proto in op_protos:
@@ -368,8 +349,8 @@ class OpProtoHolder(object):
 
 class Operator(object):
     """
-    Python Operator class. The operator represents the build in instructs in a
-    Block. Users can use the build in instructs to describe their neural
+    Python Operator class. The operator represents the build in instructions in a
+    Block. Users can use the build in instructions to describe their neural
     network.
     """
 
@@ -478,7 +459,7 @@ class Operator(object):
                 raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
-                if (not attr_name in attrs) or (attrs[attr_name] is None):
+                if (attr_name not in attrs) or (attrs[attr_name] is None):
                     continue
                 if isinstance(attrs[attr_name], Block):
                     self.desc.set_block_attr(attr_name, attrs[attr_name].desc)
@@ -697,6 +678,13 @@ class Block(object):
         return self.desc.parent
 
     @property
+    def forward_block_idx(self):
+        return self.desc.get_forward_block_idx()
+
+    def set_forward_block_idx(self, idx):
+        self.desc.set_forward_block_idx(idx)
+
+    @property
     def idx(self):
         return self.desc.id
 
@@ -709,15 +697,32 @@ class Block(object):
         return v
 
     def var_recursive(self, name):
-        if self.has_var(name):
-            return self.var(name)
-        else:
-            if self.idx == 0:
-                raise ValueError("var %s is not in block(%d) nor its parents." %
-                                 name, self.idx)
-            else:
-                parent_block = self.program.block(self.parent_idx)
-                return parent_block.var_recursive(name)
+        frontier = list()
+        visited = set()
+
+        frontier.append(self)
+
+        prog = self.program
+
+        while len(frontier) != 0:  # BFS
+            cur = frontier[0]
+            frontier = frontier[1:]
+
+            if id(cur) in visited:
+                continue
+
+            if cur.has_var(name):
+                return cur.var(name)
+
+            if cur.parent_idx != -1:
+                frontier.append(prog.block(cur.parent_idx))
+
+            if cur.forward_block_idx != -1:
+                frontier.append(prog.block(cur.forward_block_idx))
+
+            visited.add(id(cur))
+
+        raise ValueError("Var {0} is not found recursively".format(name))
 
     def all_parameters(self):
         return list(self.iter_parameters())
@@ -727,7 +732,7 @@ class Block(object):
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
-        var = Variable(self, *args, **kwargs)
+        var = Variable(block=self, *args, **kwargs)
         if 'initializer' in kwargs:
             kwargs['initializer'](var, self)
         return var
@@ -798,13 +803,13 @@ class Block(object):
 
     def append_op(self, *args, **kwargs):
         op_desc = self.desc.append_op()
-        op = Operator(self, op_desc, *args, **kwargs)
+        op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.append(op)
         return op
 
     def delete_ops(self, ops):
         # remove from cpp
-        # FIXME(typhoonzero): remove only the first occuracy.
+        # FIXME(typhoonzero): remove only the first occurrence.
         try:
             start = list(self.ops).index(ops[0])
             end = list(self.ops).index(ops[-1])
@@ -822,6 +827,11 @@ class Block(object):
         return op
 
     def sync_with_cpp(self):
+        """
+        Sync with the desc on the c++ end.
+
+        This method is used to synchronize the c++ desc instance generated by backward.
+        """
         # sync variables from cpp
         for var in self.desc.all_vars():
             if not self.has_var(var.name()):
@@ -867,9 +877,9 @@ class Block(object):
 
     def copy_param_info_from(self, other):
         """
-        Copy the information of parameters from other block
+        Copy the information of parameters from the other block
         Args:
-            other(Block): other block
+            other(Block): the other block
 
         Returns:
             None
@@ -1215,6 +1225,6 @@ def get_var(name, program=None):
     if program is None:
         program = default_main_program()
     assert isinstance(name, str)
-    assert isinstance(name, Program)
+    assert isinstance(program, Program)
 
     return program.global_block().var(name)

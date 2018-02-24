@@ -25,7 +25,8 @@ __all__ = ['get_places']
 @autodoc()
 def get_places(device_count=None, device_type=None):
     helper = LayerHelper('get_places', **locals())
-    out_places = helper.create_variable(name=unique_name(helper.name + ".out"))
+    out_places = helper.create_variable(
+        name=unique_name.generate(helper.name + ".out"))
     attrs = dict()
     if device_count is not None:
         attrs['device_count'] = int(device_count)

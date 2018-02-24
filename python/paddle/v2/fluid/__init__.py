@@ -39,6 +39,7 @@ from concurrency import (Go, make_channel, channel_send, channel_recv,
 import clip
 from memory_optimization_transpiler import memory_optimize
 import profiler
+import unique_name
 
 Tensor = LoDTensor
 
@@ -63,6 +64,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'DistributeTranspiler',
     'memory_optimize',
     'profiler',
+    'unique_name',
 ]
 
 

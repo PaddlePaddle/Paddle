@@ -16,6 +16,7 @@ from paddle.v2.fluid import framework as framework
 from . import core
 import collections
 import copy
+import unique_name
 
 __all__ = [
     'append_backward',
@@ -298,7 +299,8 @@ def _append_backward_ops_(block,
         # If the op has its own sub-block, deal with the sub-block first
         if op.has_attr("sub_block"):
             sub_block = program.block(op.block_attr("sub_block"))
-            grad_sub_block = program.create_block(parent_idx=sub_block.idx)
+            grad_sub_block = program.create_block()
+            grad_sub_block.set_forward_block_idx(sub_block.idx)
             cb = _callback_lookup_(op)
             if cb is not None:
                 if callbacks is None:
@@ -310,6 +312,8 @@ def _append_backward_ops_(block,
             else:
                 _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
                                       no_grad_dict, grad_to_var, callbacks)
+
+            program.rollback()
             grad_sub_block_list.append(grad_sub_block.desc)
 
         # Getting op's corresponding grad_op
@@ -388,7 +392,7 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
 
         for name in op_desc.output_arg_names():
             if block.desc.find_var(name.encode("ascii")):
-                new_name = "%s_%s" % (name, core.unique_integer(name))
+                new_name = unique_name.generate(name)
                 op_desc.rename_output(name, new_name)
                 var_map[name] = new_name
 
