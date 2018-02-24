@@ -21,6 +21,7 @@ from ..framework import Variable
 from ..param_attr import ParamAttr
 from layer_function_generator import autodoc
 from tensor import concat
+import utils
 
 __all__ = [
     'fc',
@@ -1138,8 +1139,8 @@ def sequence_conv(input,
 def conv2d(input,
            num_filters,
            filter_size,
-           stride=None,
-           padding=None,
+           stride=1,
+           padding=0,
            groups=None,
            param_attr=None,
            bias_attr=None,
@@ -1252,17 +1253,15 @@ def conv2d(input,
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels / groups
 
-    if isinstance(filter_size, int):
-        filter_size = [filter_size, filter_size]
-    if isinstance(stride, int):
-        stride = [stride, stride]
-    if isinstance(padding, int):
-        padding = [padding, padding]
+    filter_size = utils.convert_to_list(filter_size, 2, 'conv2d.filter_size')
+    stride = utils.convert_to_list(stride, 2, 'conv2d.stride')
+    padding = utils.convert_to_list(padding, 2, 'conv2d.padding')
+
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
 
     input_shape = input.shape
-    filter_shape = [num_filters, num_filter_channels] + list(filter_size)
+    filter_shape = [num_filters, num_filter_channels] + filter_size
 
     def _get_default_param_initializer():
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
@@ -1685,9 +1684,9 @@ def conv2d_transpose(input,
                      num_filters,
                      output_size=None,
                      filter_size=None,
-                     padding=None,
-                     stride=None,
-                     dilation=None,
+                     padding=0,
+                     stride=1,
+                     dilation=1,
                      param_attr=None,
                      use_cudnn=True,
                      name=None):
@@ -1783,36 +1782,18 @@ def conv2d_transpose(input,
         raise TypeError("Input of conv2d_transpose must be Variable")
     input_channel = input.shape[1]
 
-    op_attr = dict()
-
-    if isinstance(padding, int):
-        op_attr['paddings'] = [padding, padding]
-    elif padding is not None:
-        op_attr['paddings'] = padding
-
-    if isinstance(stride, int):
-        op_attr['strides'] = [stride, stride]
-    elif stride is not None:
-        op_attr['strides'] = stride
-
-    if isinstance(dilation, int):
-        op_attr['dilations'] = [dilation, dilation]
-    elif dilation is not None:
-        op_attr['dilations'] = dilation
+    padding = utils.convert_to_list(padding, 2, 'conv2d_transpose.padding')
+    stride = utils.convert_to_list(stride, 2, 'conv2d_transpose.stride')
+    dilation = utils.convert_to_list(dilation, 2, 'conv2d_transpose.dilation')
 
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
-    op_attr['use_cudnn'] = use_cudnn
 
     if filter_size is None:
         if output_size is None:
             raise ValueError("output_size must be set when filter_size is None")
         if isinstance(output_size, int):
             output_size = [output_size, output_size]
-
-        padding = op_attr.get('paddings', [0, 0])
-        stride = op_attr.get('strides', [1, 1])
-        dilation = op_attr.get('dilations', [1, 1])
 
         h_in = input.shape[2]
         w_in = input.shape[3]
@@ -1822,11 +1803,11 @@ def conv2d_transpose(input,
         filter_size_w = (output_size[1] - (w_in - 1) * stride[1] + 2 *
                          padding[1] - 1) / dilation[1] + 1
         filter_size = [filter_size_h, filter_size_w]
+    else:
+        filter_size = utils.convert_to_list(filter_size, 2,
+                                            'conv2d_transpose.filter_size')
 
-    elif isinstance(filter_size, int):
-        filter_size = [filter_size, filter_size]
-
-    filter_shape = [input_channel, num_filters] + list(filter_size)
+    filter_shape = [input_channel, num_filters] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
@@ -1836,7 +1817,12 @@ def conv2d_transpose(input,
         inputs={'Input': [input],
                 'Filter': [img_filter]},
         outputs={'Output': out},
-        attrs=op_attr)
+        attrs={
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'use_cudnn': use_cudnn
+        })
 
     return out
 
