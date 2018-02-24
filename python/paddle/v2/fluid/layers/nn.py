@@ -104,7 +104,7 @@ def fc(input,
     * :math:`X_i`: The input tensor.
     * :math:`W`: The weights created by this layer.
     * :math:`b`: The bias parameter created by this layer (if needed).
-    * :math:`Act`: The activation funtion.
+    * :math:`Act`: The activation function.
     * :math:`Out`: The output tensor.
 
     Args:

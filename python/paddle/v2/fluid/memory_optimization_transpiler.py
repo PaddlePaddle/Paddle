@@ -220,15 +220,15 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
 
         # Find fwd_op/bwd_op block pair
         for grad_id in grad_sub_block_ids:
-            parent_id = pdesc.block(grad_id).parent
-            if parent_id in sub_block_ids:
-                sub_block_id_pair.append((parent_id, grad_id))
-                sub_block_ids.remove(parent_id)
+            fwd_id = pdesc.block(grad_id).get_forward_block_idx()
+            if fwd_id in sub_block_ids:
+                sub_block_id_pair.append((fwd_id, grad_id))
+                sub_block_ids.remove(fwd_id)
 
         # Get fwd_op/bwd_op block ops
-        for parent_id, grad_id in sub_block_id_pair:
+        for fwd_id, grad_id in sub_block_id_pair:
             sub_block_ops = []
-            sub_block = pdesc.block(parent_id)
+            sub_block = pdesc.block(fwd_id)
             block_op_size = sub_block.op_size()
             for i in range(block_op_size):
                 sub_block_ops.append(sub_block.op(i))
@@ -239,19 +239,19 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
                 sub_block_ops.append(grad_sub_block.op(i))
 
             sub_op_output = set()
-            sub_op_output.update(sub_op_dict[parent_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
             sub_op_output.update(sub_op_dict[grad_id].output_arg_names())
             ops_list.append((sub_block_ops, block_op_size, sub_op_output))
 
         # Process rest fwd_op block ops
-        for parent_id in sub_block_ids:
+        for fwd_id in sub_block_ids:
             sub_block_ops = []
-            sub_block = pdesc.block(parent_id)
+            sub_block = pdesc.block(fwd_id)
             sub_block_op_size = sub_block.op_size()
             for i in range(sub_block_op_size):
                 sub_block_ops.append(sub_block.op(i))
             sub_op_output = set()
-            sub_op_output.update(sub_op_dict[parent_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
             ops_list.append((sub_block_ops, sub_block_op_size, sub_op_output))
     return ops_list
 
