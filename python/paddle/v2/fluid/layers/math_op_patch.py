@@ -21,7 +21,7 @@ __all__ = ['monkey_patch_variable']
 
 def monkey_patch_variable():
     def unique_tmp_name():
-        return unique_name("tmp")
+        return unique_name.generate("tmp")
 
     def safe_get_dtype(var):
         try:

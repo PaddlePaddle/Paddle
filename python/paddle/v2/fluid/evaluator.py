@@ -15,7 +15,8 @@
 import numpy as np
 
 import layers
-from framework import Program, unique_name, Variable, program_guard
+from framework import Program, Variable, program_guard
+import unique_name
 from layer_helper import LayerHelper
 
 __all__ = [
@@ -96,7 +97,7 @@ class Evaluator(object):
 
         """
         state = self.helper.create_variable(
-            name="_".join([unique_name(self.helper.name), suffix]),
+            name="_".join([unique_name.generate(self.helper.name), suffix]),
             persistable=True,
             dtype=dtype,
             shape=shape)
