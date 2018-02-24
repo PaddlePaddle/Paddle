@@ -38,7 +38,13 @@ class ProgramDesc {
 
   BlockDesc *AppendBlock(const BlockDesc &parent);
 
-  BlockDesc *MutableBlock(size_t idx) { return blocks_[idx].get(); }
+  BlockDesc *MutableBlock(size_t idx) {
+    if (idx == static_cast<size_t>(kNoneBlockIndex)) {
+      return nullptr;
+    } else {
+      return blocks_[idx].get();
+    }
+  }
 
   const BlockDesc &Block(size_t idx) const { return *blocks_[idx]; }
 

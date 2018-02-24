@@ -8,23 +8,24 @@
 - cpu MHz		: 2101.000
 - cache size	: 20480 KB
 
+### Blas settings
+
+Setting environment variable: `MKL_NUM_THREADS=1`.
+
 ### Single Node Single Thread
 
-- PServer Count: 10
-- Trainer Count: 20
 - Metrics: samples / sec
 
 | Batch Size | 32 | 64 | 128 | 256 |
 | -- | -- | -- | -- | -- |
 | PaddlePaddle Fluid | 15.44 | 16.32 | 16.74 | 16.79 |
 | PaddlePaddle v2 | 15.97 | 17.04 | 17.60 | 17.83 |
-| TensorFlow | - | - | - | - |
+| TensorFlow | 9.09 | 9.10 | 9.24 | 8.66 |
 
 ### Different Batch Size
 
 - PServer Count: 10
 - Trainer Count: 20
-- Per trainer CPU Core: 1
 - Metrics: samples / sec
 
 | Batch Size | 32 | 64 | 128 | 256 |
