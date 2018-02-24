@@ -35,13 +35,13 @@ struct LessEqualFunctor {
 };
 
 template <typename T>
-struct LargerThanFunctor {
+struct GreaterThanFunctor {
   using ELEM_TYPE = T;
   HOSTDEVICE bool operator()(const T& a, const T& b) const { return a > b; }
 };
 
 template <typename T>
-struct LargerEqualFunctor {
+struct GreaterEqualFunctor {
   using ELEM_TYPE = T;
   HOSTDEVICE bool operator()(const T& a, const T& b) const { return a >= b; }
 };
