@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-import paddle.v2.fluid.framework as framework
+import paddle.fluid.framework as framework
 
 
 class ConditionalBlock(unittest.TestCase):

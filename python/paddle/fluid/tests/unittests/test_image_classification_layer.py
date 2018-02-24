@@ -14,9 +14,9 @@
 
 import unittest
 
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.nets as nets
-from paddle.v2.fluid.framework import Program
+import paddle.fluid as fluid
+import paddle.fluid.nets as nets
+from paddle.fluid.framework import Program
 
 
 def conv_block(input, num_filter, groups, dropouts):

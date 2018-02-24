@@ -14,8 +14,8 @@
 
 import unittest
 
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.layers as layers
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 import numpy
 from multiprocessing import Process
 import os, sys

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 import numpy as np
-from paddle.v2.fluid.op import Operator
+from paddle.fluid.op import Operator
 
 
 class TestSpliteSelectedRows(unittest.TestCase):

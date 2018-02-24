@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import print_function
 import argparse
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 import paddle.v2 as paddle
 import sys
 import numpy

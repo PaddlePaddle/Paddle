@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from paddle.v2.fluid.framework import Program
+from paddle.fluid.framework import Program
 
 
 class TestDebugStringFramework(unittest.TestCase):

@@ -15,8 +15,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
-from paddle.v2.fluid import core
-from paddle.v2.fluid.op import Operator
+from paddle.fluid import core
+from paddle.fluid.op import Operator
 
 
 class TestAdamOp1(OpTest):

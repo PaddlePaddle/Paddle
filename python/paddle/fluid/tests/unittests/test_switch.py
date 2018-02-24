@@ -14,11 +14,11 @@
 
 import unittest
 
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.framework as framework
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.framework import default_startup_program
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.framework as framework
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import default_startup_program
 
 
 class TestSwitch(unittest.TestCase):

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.v2.fluid.default_scope_funcs import *
+from paddle.fluid.default_scope_funcs import *
 import unittest
 
 

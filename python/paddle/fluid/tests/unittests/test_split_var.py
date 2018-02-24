@@ -14,9 +14,9 @@
 
 import math
 import unittest
-from paddle.v2.fluid.distribute_transpiler import split_dense_variable
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
+from paddle.fluid.distribute_transpiler import split_dense_variable
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 import random
 
 

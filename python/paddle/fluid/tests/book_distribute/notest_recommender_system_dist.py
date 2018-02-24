@@ -15,11 +15,11 @@
 import numpy as np
 import os
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.nets as nets
-from paddle.v2.fluid.optimizer import SGDOptimizer
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.nets as nets
+from paddle.fluid.optimizer import SGDOptimizer
 
 IS_SPARSE = True
 BATCH_SIZE = 256

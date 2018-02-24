@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 
 __all__ = ['many_times', 'prog_scope']
 

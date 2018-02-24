@@ -14,11 +14,11 @@
 
 import unittest
 
-from paddle.v2.fluid.framework import Program
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward
+from paddle.fluid.framework import Program
+from paddle.fluid.executor import Executor
+from paddle.fluid.backward import append_backward
 import numpy as np
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 
 
 class RNNMemoryHelperOpTest(unittest.TestCase):

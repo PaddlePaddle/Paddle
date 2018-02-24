@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 
 
 class TestOpSupportGPU(unittest.TestCase):

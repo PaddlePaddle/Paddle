@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.core as core
-from paddle.v2.fluid.framework import default_startup_program, default_main_program
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.backward import append_backward
+import paddle.fluid.layers as layers
+import paddle.fluid.core as core
+from paddle.fluid.framework import default_startup_program, default_main_program
+from paddle.fluid.executor import Executor
+from paddle.fluid.backward import append_backward
 import numpy
 
 

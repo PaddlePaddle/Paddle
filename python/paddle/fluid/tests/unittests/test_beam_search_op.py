@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import logging
-from paddle.v2.fluid.op import Operator, DynamicRecurrentOp
-import paddle.v2.fluid.core as core
+from paddle.fluid.op import Operator, DynamicRecurrentOp
+import paddle.fluid.core as core
 import unittest
 import numpy as np
 

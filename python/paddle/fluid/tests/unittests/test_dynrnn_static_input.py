@@ -14,11 +14,11 @@
 
 import unittest
 import paddle.v2 as paddle
-import paddle.v2.fluid.core as core
-import paddle.v2.fluid as fluid
-from paddle.v2.fluid.backward import append_backward
-import paddle.v2.fluid.framework as framework
-from paddle.v2.fluid.framework import Program, switch_main_program
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid.backward import append_backward
+import paddle.fluid.framework as framework
+from paddle.fluid.framework import Program, switch_main_program
 import bisect
 import numpy as np
 

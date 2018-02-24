@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import unittest
-from paddle.v2.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_
-import paddle.v2.fluid.core as core
+from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_
+import paddle.fluid.core as core
 import numpy as np
 
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-import paddle.v2.fluid.layers as layers
+import paddle.fluid.layers as layers
 
 
 class TestDocString(unittest.TestCase):

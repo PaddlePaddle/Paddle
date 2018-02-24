@@ -16,12 +16,12 @@ import unittest
 import numpy as np
 import random
 import itertools
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 import collections
-from paddle.v2.fluid.backward import append_backward
-from paddle.v2.fluid.op import Operator
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.framework import Program, OpProtoHolder
+from paddle.fluid.backward import append_backward
+from paddle.fluid.op import Operator
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, OpProtoHolder
 
 
 def randomize_probability(batch_size, class_num, dtype='float32'):

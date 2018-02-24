@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 
 
 class TestCSPFramework(unittest.TestCase):

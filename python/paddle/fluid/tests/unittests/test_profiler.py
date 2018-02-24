@@ -15,10 +15,10 @@
 import unittest
 import os
 import numpy as np
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.profiler as profiler
-import paddle.v2.fluid.layers as layers
-import paddle.v2.fluid.core as core
+import paddle.fluid as fluid
+import paddle.fluid.profiler as profiler
+import paddle.fluid.layers as layers
+import paddle.fluid.core as core
 
 
 class TestProfiler(unittest.TestCase):

@@ -15,10 +15,10 @@
 import unittest
 
 import numpy
-import paddle.v2.fluid.core as core
+import paddle.fluid.core as core
 
-from paddle.v2.fluid.executor import Executor
-from paddle.v2.fluid.layers import mul, data
+from paddle.fluid.executor import Executor
+from paddle.fluid.layers import mul, data
 
 
 class TestExecutor(unittest.TestCase):

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.core as core
-from paddle.v2.fluid.executor import Executor
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.executor import Executor
 
 
 class TestRoutineOp(unittest.TestCase):

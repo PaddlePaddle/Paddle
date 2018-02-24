@@ -15,10 +15,10 @@ import contextlib
 
 import numpy as np
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
-import paddle.v2.fluid.framework as framework
-import paddle.v2.fluid.layers as pd
-from paddle.v2.fluid.executor import Executor
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
+import paddle.fluid.layers as pd
+from paddle.fluid.executor import Executor
 import unittest
 
 dict_size = 30000
