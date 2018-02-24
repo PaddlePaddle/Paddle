@@ -51,8 +51,8 @@ class UniqueNameGenerator(object):
 generator = UniqueNameGenerator()
 
 
-def generate(prefix):
-    return generator(prefix)
+def generate(key):
+    return generator(key)
 
 
 def switch(new_generator=None):
