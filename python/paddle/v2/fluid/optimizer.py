@@ -17,7 +17,8 @@ from collections import defaultdict
 import framework
 import layers
 from backward import append_backward
-from framework import unique_name, program_guard
+from framework import program_guard
+import unique_name
 from initializer import Constant
 from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
@@ -49,7 +50,7 @@ class Optimizer(object):
     def _create_global_learning_rate(self):
         if isinstance(self._global_learning_rate, float):
             self._global_learning_rate = layers.create_global_var(
-                name=unique_name("learning_rate"),
+                name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._global_learning_rate),
                 dtype='float32',
@@ -118,7 +119,7 @@ class Optimizer(object):
 
         assert isinstance(self.helper, LayerHelper)
         var = self.helper.create_global_variable(
-            name=unique_name(name),
+            name=unique_name.generate(name),
             persistable=True,
             dtype=dtype or param.dtype,
             type=param.type,
@@ -379,7 +380,7 @@ class AdamOptimizer(Optimizer):
         # Create beta1 and beta2 power tensors
         beta_shape = [1]
         self._beta1_pow_acc = self.helper.create_global_variable(
-            name=unique_name('beta1_pow_acc'),
+            name=unique_name.generate('beta1_pow_acc'),
             dtype='float32',
             shape=beta_shape,
             lod_level=0,
@@ -388,7 +389,7 @@ class AdamOptimizer(Optimizer):
             self._beta1_pow_acc, initializer=Constant(self._beta1))
 
         self._beta2_pow_acc = self.helper.create_global_variable(
-            name=unique_name('beta2_pow_acc'),
+            name=unique_name.generate('beta2_pow_acc'),
             dtype='float32',
             shape=beta_shape,
             lod_level=0,
@@ -481,7 +482,7 @@ class AdamaxOptimizer(Optimizer):
         # Create beta1 power accumulator tensor
         beta_shape = [1]
         self._beta1_pow_acc = self.helper.create_global_variable(
-            name=unique_name('beta1_pow_acc'),
+            name=unique_name.generate('beta1_pow_acc'),
             dtype='float32',
             shape=beta_shape,
             lod_level=0,
