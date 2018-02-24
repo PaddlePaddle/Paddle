@@ -30,7 +30,7 @@ class TestBook(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
             y = layers.data(name='y', shape=[1], dtype='float32')
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(x=cost)
+            avg_cost = layers.mean(cost)
             self.assertIsNotNone(avg_cost)
             program.append_backward(avg_cost)
 
@@ -49,7 +49,7 @@ class TestBook(unittest.TestCase):
                                 act='softmax',
                                 param_attr=["sftmax.w1", "sftmax.w2"])
             cost = layers.cross_entropy(input=predict, label=label)
-            avg_cost = layers.mean(x=cost)
+            avg_cost = layers.mean(cost)
             self.assertIsNotNone(avg_cost)
 
         print(str(program))
@@ -92,7 +92,7 @@ class TestBook(unittest.TestCase):
 
             predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
             cost = layers.cross_entropy(input=predict, label=label)
-            avg_cost = layers.mean(x=cost)
+            avg_cost = layers.mean(cost)
 
             program.append_backward(avg_cost)
 
@@ -140,7 +140,7 @@ class TestBook(unittest.TestCase):
                                      size=dict_size,
                                      act='softmax')
             cost = layers.cross_entropy(input=predict_word, label=next_word)
-            avg_cost = layers.mean(x=cost)
+            avg_cost = layers.mean(cost)
             self.assertIsNotNone(avg_cost)
 
         print(str(program))
@@ -287,7 +287,7 @@ class TestBook(unittest.TestCase):
                           num_total_classes=dict_size,
                           param_attr='nce.w',
                           bias_attr='nce.b')
-        avg_loss = layers.mean(x=loss)
+        avg_loss = layers.mean(loss)
         self.assertIsNotNone(avg_loss)
         print(str(default_main_program()))
 

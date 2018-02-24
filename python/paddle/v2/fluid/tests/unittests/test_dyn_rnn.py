@@ -81,7 +81,7 @@ class TestDynRNN(unittest.TestCase):
             logits = fluid.layers.fc(input=last, size=1, act=None)
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=logits, label=label)
-            loss = fluid.layers.mean(x=loss)
+            loss = fluid.layers.mean(loss)
             sgd = fluid.optimizer.SGD(1e-4)
             sgd.minimize(loss=loss)
         cpu = fluid.CPUPlace()
@@ -119,7 +119,7 @@ class TestDynRNN(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=logits, label=label)
-            loss = fluid.layers.mean(x=loss)
+            loss = fluid.layers.mean(loss)
             sgd = fluid.optimizer.Adam(1e-3)
             sgd.minimize(loss=loss)
 

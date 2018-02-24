@@ -54,7 +54,7 @@ class TestProfiler(unittest.TestCase):
             predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
-            avg_cost = fluid.layers.mean(x=cost)
+            avg_cost = fluid.layers.mean(cost)
             accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
         optimizer = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)

@@ -125,7 +125,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
             return static_input_step_outs
 
         last = fluid.layers.sequence_pool(input=rnn(), pool_type='last')
-        loss = fluid.layers.mean(x=last)
+        loss = fluid.layers.mean(last)
         append_backward(loss)
         static_input_grad = self._program.global_block().var(
             framework.grad_var_name('static_input_tensor'))

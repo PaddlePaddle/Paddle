@@ -182,7 +182,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
             array = layers.lod_tensor_to_array(x, table)
             result = layers.array_to_lod_tensor(array, table)
 
-            mean = layers.mean(x=result)
+            mean = layers.mean(result)
 
             append_backward(mean)
 
