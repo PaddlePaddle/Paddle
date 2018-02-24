@@ -34,7 +34,6 @@ __all__ = [
     'cos_sim',
     'cross_entropy',
     'square_error_cost',
-    'accuracy',
     'chunk_eval',
     'sequence_conv',
     'conv2d',
@@ -1018,40 +1017,6 @@ def square_error_cost(input, label):
         type='square', inputs={'X': [minus_out]},
         outputs={'Out': [square_out]})
     return square_out
-
-
-def accuracy(input, label, k=1, correct=None, total=None):
-    """
-    This function computes the accuracy using the input and label.
-    The output is the top_k inputs and their indices.
-    """
-    helper = LayerHelper("accuracy", **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype="int64")
-    helper.append_op(
-        type="top_k",
-        inputs={"X": [input]},
-        outputs={"Out": [topk_out],
-                 "Indices": [topk_indices]},
-        attrs={"k": k})
-    acc_out = helper.create_tmp_variable(dtype="float32")
-    if correct is None:
-        correct = helper.create_tmp_variable(dtype="int64")
-    if total is None:
-        total = helper.create_tmp_variable(dtype="int64")
-    helper.append_op(
-        type="accuracy",
-        inputs={
-            "Out": [topk_out],
-            "Indices": [topk_indices],
-            "Label": [label]
-        },
-        outputs={
-            "Accuracy": [acc_out],
-            "Correct": [correct],
-            "Total": [total],
-        })
-    return acc_out
 
 
 def chunk_eval(input,
