@@ -16,6 +16,7 @@ from paddle.v2.fluid import framework as framework
 from . import core
 import collections
 import copy
+import unique_name
 
 __all__ = [
     'append_backward',
@@ -391,7 +392,7 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
 
         for name in op_desc.output_arg_names():
             if block.desc.find_var(name.encode("ascii")):
-                new_name = "%s_%s" % (name, core.unique_integer(name))
+                new_name = unique_name.generate(name)
                 op_desc.rename_output(name, new_name)
                 var_map[name] = new_name
 
