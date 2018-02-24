@@ -18,9 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static constexpr char kX[] = "X";
-static constexpr char kOutputs[] = "Output";
-
 class ChannelCreateOp : public framework::OperatorBase {
  public:
   ChannelCreateOp(const std::string &type,
@@ -32,15 +29,13 @@ class ChannelCreateOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto &out =
-        detail::Ref(detail::Ref(scope.FindVar(Output("Output")),
-                                "Cannot find variable %s", Output("Output"))
-                        .GetMutable<framework::Channel>());
+    auto &out = *scope.FindVar(Output("Output"));
+
     auto dtype =
         static_cast<framework::proto::VarType::Type>(Attr<int>("data_type"));
     auto capacity = Attr<int>("capacity");
-    out.mutable_data(cpu, framework::ToTypeIndex(dtype));
-    ChannelHolder *channel = new ChannelHolder();
+
+    ChannelHolder *ch = out->GetMutable<framework::ChannelHolder>();
     if (dtype == framework::proto::VarType::LOD_TENSOR) {
       ch->Reset<LoDTensor>(capacity);
     } else if (dtype == framework::proto::VarType::SELECTED_ROWS) {
@@ -79,7 +74,7 @@ class ChannelCreateOpOpInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasOutput("Output"),
                    "The output of ChannelCreate op must be set");
-    context->SetOutputDim("Out", {1});
+    context->SetOutputDim("Output", {1});
   }
 };
 
