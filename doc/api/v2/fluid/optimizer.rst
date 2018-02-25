@@ -8,42 +8,42 @@ optimizer
 SGD
 ---
 
-..  autoclass:: paddle.v2.fluid.optimizer.SGD
+..  autoclass:: paddle.fluid.optimizer.SGD
     :members:
     :noindex:
 
 Momentum
 --------
 
-..  autoclass:: paddle.v2.fluid.optimizer.Momentum
+..  autoclass:: paddle.fluid.optimizer.Momentum
     :members:
     :noindex:
 
 Adagrad
 -------
 
-..  autoclass:: paddle.v2.fluid.optimizer.Adagrad
+..  autoclass:: paddle.fluid.optimizer.Adagrad
     :members:
     :noindex:
 
 Adam
 ----
 
-..  autoclass:: paddle.v2.fluid.optimizer.Adam
+..  autoclass:: paddle.fluid.optimizer.Adam
     :members:
     :noindex:
 
 Adamax
 ------
 
-..  autoclass:: paddle.v2.fluid.optimizer.Adamax
+..  autoclass:: paddle.fluid.optimizer.Adamax
     :members:
     :noindex:
 
 DecayedAdagrad
 --------------
 
-..  autoclass:: paddle.v2.fluid.optimizer.DecayedAdagrad
+..  autoclass:: paddle.fluid.optimizer.DecayedAdagrad
     :members:
     :noindex:
 

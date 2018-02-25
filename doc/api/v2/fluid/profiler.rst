@@ -8,18 +8,18 @@ profiler
 cuda_profiler
 -------------
 
-..  autofunction:: paddle.v2.fluid.profiler.cuda_profiler
+..  autofunction:: paddle.fluid.profiler.cuda_profiler
     :noindex:
 
 reset_profiler
 --------------
 
-..  autofunction:: paddle.v2.fluid.profiler.reset_profiler
+..  autofunction:: paddle.fluid.profiler.reset_profiler
     :noindex:
 
 profiler
 --------
 
-..  autofunction:: paddle.v2.fluid.profiler.profiler
+..  autofunction:: paddle.fluid.profiler.profiler
     :noindex:
 
