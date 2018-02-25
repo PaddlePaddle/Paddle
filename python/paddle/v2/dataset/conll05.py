@@ -51,8 +51,6 @@ def load_label_dict(filename):
                 tag_dict.add(line[2:])
             elif line.startswith("I-"):
                 tag_dict.add(line[2:])
-            else:
-                continue
         index = 0
         for tag in tag_dict:
             d["B-" + tag] = index
