@@ -115,7 +115,7 @@ message VarType {
     CHANNEL = 16;
     // Any runtime decided variable type is raw
     // raw variables should manage their own allocations
-    // in operators likc nccl_op
+    // in operators like nccl_op
     RAW = 17;
   }
 
