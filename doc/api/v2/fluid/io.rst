@@ -8,54 +8,54 @@ io
 save_vars
 ---------
 
-..  autofunction:: paddle.v2.fluid.io.save_vars
+..  autofunction:: paddle.fluid.io.save_vars
     :noindex:
 
 save_params
 -----------
 
-..  autofunction:: paddle.v2.fluid.io.save_params
+..  autofunction:: paddle.fluid.io.save_params
     :noindex:
 
 save_persistables
 -----------------
 
-..  autofunction:: paddle.v2.fluid.io.save_persistables
+..  autofunction:: paddle.fluid.io.save_persistables
     :noindex:
 
 load_vars
 ---------
 
-..  autofunction:: paddle.v2.fluid.io.load_vars
+..  autofunction:: paddle.fluid.io.load_vars
     :noindex:
 
 load_params
 -----------
 
-..  autofunction:: paddle.v2.fluid.io.load_params
+..  autofunction:: paddle.fluid.io.load_params
     :noindex:
 
 load_persistables
 -----------------
 
-..  autofunction:: paddle.v2.fluid.io.load_persistables
+..  autofunction:: paddle.fluid.io.load_persistables
     :noindex:
 
 save_inference_model
 --------------------
 
-..  autofunction:: paddle.v2.fluid.io.save_inference_model
+..  autofunction:: paddle.fluid.io.save_inference_model
     :noindex:
 
 load_inference_model
 --------------------
 
-..  autofunction:: paddle.v2.fluid.io.load_inference_model
+..  autofunction:: paddle.fluid.io.load_inference_model
     :noindex:
 
 get_inference_program
 ---------------------
 
-..  autofunction:: paddle.v2.fluid.io.get_inference_program
+..  autofunction:: paddle.fluid.io.get_inference_program
     :noindex:
 
