@@ -8,7 +8,7 @@ data_feeder
 DataFeeder
 ----------
 
-..  autoclass:: paddle.v2.fluid.data_feeder.DataFeeder
+..  autoclass:: paddle.fluid.data_feeder.DataFeeder
     :members:
     :noindex:
 
