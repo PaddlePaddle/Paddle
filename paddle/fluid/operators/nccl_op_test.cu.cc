@@ -48,11 +48,11 @@ const f::DDim kDims = {20, 20};
 class NCCLTester : public ::testing::Test {
  public:
   virtual void SetUp() override {
-    int count = f::GetCUDADeviceCount();
+    int count = p::GetCUDADeviceCount();
     if (count <= 1) {
       LOG(WARNING)
           << "Cannot test multi-gpu nccl, because the CUDA device count is "
-          << dev_count;
+          << count;
       exit(0);
     }
     for (int i = 0; i < count; ++i) {
