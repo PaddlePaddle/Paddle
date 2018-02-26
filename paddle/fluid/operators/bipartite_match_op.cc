@@ -221,10 +221,10 @@ distance matrix. For input 2D matrix, the bipartite matching algorithm can
 find the matched column for each row, also can find the matched row for
 each column. And this operator only calculate matched indices from column
 to row. For each instance, the number of matched indices is the number of
-of columns of the input ditance matrix.
+of columns of the input distance matrix.
 
 There are two outputs to save matched indices and distance.
-A simple description, this algothrim matched the best (maximum distance)
+A simple description, this algorithm matched the best (maximum distance)
 row entity to the column entity and the matched indices are not duplicated
 in each row of ColToRowMatchIndices. If the column entity is not matched
 any row entity, set -1 in ColToRowMatchIndices.
