@@ -145,7 +145,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
                 input=x, mask=y, level=level)
             out = layers.merge_lod_tensor(
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
-            mean = layers.mean(x=out)
+            mean = layers.mean(out)
 
             append_backward(mean)
 

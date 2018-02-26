@@ -127,7 +127,7 @@ class BaseParallelForTest(unittest.TestCase):
                 data = next(generator)
                 loss = generator.send(data)
             self.assertIsNotNone(loss)
-            avg_loss = fluid.layers.mean(x=loss)
+            avg_loss = fluid.layers.mean(loss)
             fluid.backward.append_backward(loss=avg_loss)
 
         exe = fluid.Executor(place)
@@ -170,7 +170,7 @@ class ParallelOpTest(BaseParallelForTest):
         x = fluid.layers.data(shape=[784], dtype='float32', name='img')
         x = yield x
         hidden = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
-        loss = fluid.layers.mean(x=hidden)
+        loss = fluid.layers.mean(hidden)
         yield loss
 
     def test_simple_fc(self):
@@ -200,7 +200,7 @@ class ParallelOpTestMultipleInput(BaseParallelForTest):
         hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
         hidden2 = fluid.layers.fc(input=hidden1, size=200, param_attr='fc2.w')
         hidden3 = fluid.layers.fc(input=hidden2, size=200, param_attr='fc3.w')
-        loss = fluid.layers.mean(x=hidden3)
+        loss = fluid.layers.mean(hidden3)
         yield loss
 
     def test_simple_fc(self):
