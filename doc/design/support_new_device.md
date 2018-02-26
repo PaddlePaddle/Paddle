@@ -2,9 +2,9 @@
 
 ## Background
 
-Deep learning has a high demand for computing resources. New high-performance devices and computing libraries are appearing very frequently. Deep learning frameworks have to integrate these high-performance devices and computing libraries flexibly and efficiently.
+Deep learning has a high demand for computing resources. New high-performance devices and computing libraries are appearing very frequently. Deep learning frameworks have to integrate these high-performance devices and computing libraries in a flexible and efficient manner.
 
-On one hand, hardware and computing libraries usually do not have a one-to-one correspondence. For example,Intel CPUs support Eigen and MKL computing libraries while Nvidia GPUs support Eigen and cuDNN computing libraries. We have to implement operator specific kernels for each computing library.
+On one hand, hardware and computing libraries usually do not have a one-to-one correspondence. For example, Intel CPUs support Eigen and MKL computing libraries while Nvidia GPUs support Eigen and cuDNN computing libraries. We have to implement operator specific kernels for each computing library.
 
 On the other hand, users usually do not want to care about the low-level hardware and computing libraries when writing a neural network configuration. In Fluid, `Layer` is exposed in `Python`, and `Operator` is exposed in `C++`. Both `Layer` and `Operator` are hardware independent.
 
@@ -17,7 +17,7 @@ For a general overview of fluid, please refer to the [overview doc](https://gith
 
 There are mainly three parts that we have to consider while integrating a new device/library:
 
-- Place and DeviceContext: indicates the device id and manages hardware resources
+- Place and DeviceContext: indicate the device id and manage hardware resources
 
 - Memory and Tensor: malloc/free data on certain device
 
@@ -25,13 +25,14 @@ There are mainly three parts that we have to consider while integrating a new de
 
 ### Place and DeviceContext
 
+Please note that device and computing library are not one-to-one corresponding. A device can have a lot of computing libraries and a computing library can also support several devices.
 
 #### Place
-Fluid uses class [Place](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/place.h#L55) to represent different devices and computing libraries. There are inheritance relationships between different kinds of `Place`.
+Fluid uses class [Place](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/place.h#L55) to represent the device memory where data is located. If we add another device, we have to add the corresponding `DevicePlace`.
 
 ```
-        |   CPUPlace   --> MKLDNNPlace
-Place --|   CUDAPlace  --> CUDNNPlace
+        |   CPUPlace
+Place --|   CUDAPlace
         |   FPGAPlace
 ```
 
@@ -43,12 +44,12 @@ typedef boost::variant<CUDAPlace, CPUPlace, FPGAPlace> Place;
 
 #### DeviceContext
 
-Fluid uses class [DeviceContext](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/device_context.h#L30) to manage the resources in different hardwares, such as CUDA stream in `CDUADeviceContext`. There are also inheritance relationships between different kinds of `DeviceContext`.
+Fluid uses class [DeviceContext](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/device_context.h#L30) to manage the resources in different libraries, such as CUDA stream in `CDUADeviceContext`. There are also inheritance relationships between different kinds of `DeviceContext`.
 
 
 ```
-                /->  CPUDeviceContext   --> MKLDeviceContext
-DeviceContext ---->  CUDADeviceContext  --> CUDNNDeviceContext
+                /->  CPUDeviceContext   
+DeviceContext ---->  CUDADeviceContext  
                 \->  FPGADeviceContext
 ```
 
@@ -78,16 +79,6 @@ private:
 };
 ```
 
-- CUDNNDeviceContext
-
-```
-class CUDNNDeviceContext : public CUDADeviceContext {
-  private:
-    cudnnHandle_t cudnn_handle_;
-};
-```
-
-
 ### Memory and Tensor
 
 
@@ -106,7 +97,7 @@ template <typename Place>
 size_t Used(Place place);
 ```
 
-To implementing these interfaces, we have to implement MemoryAllocator for different Devices
+To implement these interfaces, we have to implement MemoryAllocator for different Devices.
 
 
 #### Tensor
@@ -153,7 +144,7 @@ class Tensor {
 };
 ```
 
-`Placeholder` is used to delay memory allocation; that is, we can first define a tensor, using `Resize` to configure its shape, and then call `mutuable_data` to allocate the actual memory.
+`Placeholder` is used to delay memory allocation; that is, we can first define a tensor, using `Resize` to configurate its shape, and then call `mutuable_data` to allocate the actual memory.
 
 ```cpp
 paddle::framework::Tensor t;
@@ -172,7 +163,7 @@ Fluid implements computing units based on different DeviceContexts. Some computi
 
 Let's take [MaxOutFunctor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/math/maxouting.h#L27) as an example:
 
-The interface is defined in header file.
+The interface is defined in the header file.
 
 ```
 template <typename DeviceContext, typename T>
@@ -183,7 +174,7 @@ class MaxOutFunctor {
 };
 ```
 
-CPU implemention is in .cc file
+CPU implementation is in .cc file
 
 ```
 template <typename T>
@@ -197,7 +188,7 @@ class MaxOutFunctor<platform::CPUDeviceContext, T> {
 };
 ```
 
-CUDA implemention is in .cu file
+CUDA implementation is in .cu file
 
 ```
 template <typename T>
@@ -212,9 +203,9 @@ class MaxOutFunctor<platform::CUDADeviceContext, T> {
 ```
 
 
-We get computing handle from a concrete DeviceContext, and make compution on tensors.
+We first obtain the computing handle from a concrete DeviceContext and then compute on tensors.
 
-The implemention of `OpKernel` is similar to math functors, the extra thing we need to do is to register the OpKernel in a global map.
+The implementation of `OpKernel` is similar to math functors, the extra thing we need to do is to register the OpKernel in a global map.
 
 Fluid provides different register interfaces in op_registry.h
 
@@ -240,9 +231,10 @@ REGISTER_OP_CUDA_KERNEL(
 
 ## Advanced topics: How to switch between different Device/Library
 
-Generally, we will impelement OpKernel for all Device/Library of an Operator. We can easily train a Convolutional Neural Network in GPU. However, some OpKernel is not sutibale on a specific Device. For example, crf operator can only run on CPU, whereas most other operators can run at GPU. To achieve high performance in such circumstance, we have to switch between different Device/Library.
+Generally, we will implement OpKernel for all Device/Library of an Operator. We can easily train a Convolutional Neural Network in GPU. However, some OpKernel is not suitable on a specific Device. For example, crf operator can only run on CPU, whereas most other operators can run on GPU. To achieve high performance in such circumstance, we have to switch between different Device/Library.
 
 
-We will discuss how to implement an efficient OpKernel switch policy. 
+For more details, please refer to following docs:
 
-- TBD
+- operator kernel type [doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/operator_kernel_type.md)
+- switch kernel [doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/switch_kernel.md)

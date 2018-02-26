@@ -1,8 +1,8 @@
 INCLUDE(ExternalProject)
 
 SET(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3)
-
-INCLUDE_DIRECTORIES(${EIGEN_SOURCE_DIR}/src/extern_eigen3)
+SET(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR}/src/extern_eigen3)
+INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
 
 ExternalProject_Add(
     extern_eigen3
@@ -19,7 +19,7 @@ ExternalProject_Add(
 
 if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
     set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/eigen3_dummy.c)
-    file(WRITE ${dummyfile} "const char * dummy_eigen3 = \"${dummyfile}\";")
+    file(WRITE ${dummyfile} "const char *dummy_eigen3 = \"${dummyfile}\";")
     add_library(eigen3 STATIC ${dummyfile})
 else()
     add_library(eigen3 INTERFACE)

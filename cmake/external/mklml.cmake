@@ -1,4 +1,4 @@
-# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,3 +66,7 @@ ADD_LIBRARY(mklml SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET mklml PROPERTY IMPORTED_LOCATION ${MKLML_LIB})
 ADD_DEPENDENCIES(mklml ${MKLML_PROJECT})
 LIST(APPEND external_project_dependencies mklml)
+
+IF(WITH_C_API)
+  INSTALL(FILES ${MKLML_LIB} ${MKLML_IOMP_LIB} DESTINATION lib)
+ENDIF()

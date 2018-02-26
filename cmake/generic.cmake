@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -120,7 +120,7 @@ function(merge_static_libs TARGET_NAME)
       DEPENDS ${libs})
 
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy = \"${target_SRCS}\";")
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
     add_library(${TARGET_NAME} STATIC ${target_SRCS})
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
@@ -160,7 +160,7 @@ function(merge_static_libs TARGET_NAME)
       DEPENDS ${libs} ${target_OBJS})
 
     # Generate dummy staic lib
-    file(WRITE ${target_SRCS} "const char *dummy = \"${target_SRCS}\";")
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
     add_library(${TARGET_NAME} STATIC ${target_SRCS})
     target_link_libraries(${TARGET_NAME} ${libs_deps})
 
@@ -179,15 +179,24 @@ function(cc_library TARGET_NAME)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  if (cc_library_SRCS)
-    if (cc_library_SHARED OR cc_library_shared) # build *.so
+  if(cc_library_SRCS)
+    if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
     else()
       add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
     endif()
-    if (cc_library_DEPS)
+    if(cc_library_DEPS)
+      # Don't need link libwarpctc.so
+      if("${cc_library_DEPS};" MATCHES "warpctc;")
+        list(REMOVE_ITEM cc_library_DEPS warpctc)
+        add_dependencies(${TARGET_NAME} warpctc)
+      endif()
+      # Support linking flags: --whole-archive (Linux) / -force_load (MacOS)
+      target_circle_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
+      if("${cc_library_DEPS}" MATCHES "ARCHIVE_START")
+        list(REMOVE_ITEM cc_library_DEPS ARCHIVE_START ARCHIVE_END)
+      endif()
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
-      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     endif()
     
     # cpplint code style
@@ -224,12 +233,18 @@ function(cc_test TARGET_NAME)
   if(WITH_TESTING)
     set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS)
+    set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    # Support linking flags: --whole-archive (Linux) / -force_load (MacOS)
+    target_circle_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    if("${cc_test_DEPS}" MATCHES "ARCHIVE_START")
+      list(REMOVE_ITEM cc_test_DEPS ARCHIVE_START ARCHIVE_END)
+    endif()
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
-    add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME ${TARGET_NAME}
+             COMMAND ${TARGET_NAME} ${cc_test_ARGS}
+             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()
 endfunction(cc_test)
 
@@ -324,7 +339,7 @@ function(go_library TARGET_NAME)
     )
 
   # Add dummy code to support `make target_name` under Terminal Command
-  file(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
+  file(WRITE ${dummyfile} "const char *dummy_${TARGET_NAME} = \"${dummyfile}\";")
   if (go_library_SHARED OR go_library_shared)
     add_library(${TARGET_NAME} SHARED ${dummyfile})
   else()
@@ -457,12 +472,12 @@ endfunction()
 
 function(py_test TARGET_NAME)
   if(WITH_TESTING)
-    set(options STATIC static SHARED shared)
+    set(options "")
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS ARGS)
+    set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python
+             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endif()

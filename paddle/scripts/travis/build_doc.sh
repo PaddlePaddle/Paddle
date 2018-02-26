@@ -6,17 +6,15 @@ mkdir -p $TRAVIS_BUILD_DIR/build
 cd $TRAVIS_BUILD_DIR/build
 
 # Compile Documentation only.
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
-make -j `nproc` gen_proto_py
-make -j `nproc` paddle_python
-make -j `nproc` paddle_docs paddle_docs_cn
-make -j `nproc` print_operators_doc
-paddle/pybind/print_operators_doc > doc/en/html/operators.json
+cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON -DWITH_STYLE_CHECK=OFF
+make -j `nproc` gen_proto_py framework_py_proto
+make -j `nproc` copy_paddle_pybind
+make -j `nproc` paddle_docs paddle_docs_cn paddle_api_docs
 
 # check websites for broken links
-# It will be failed now!
-#linkchecker doc/en/html/index.html
-#linkchecker doc/cn/html/index.html
+linkchecker doc/en/html/index.html
+linkchecker doc/cn/html/index.html
+linkchecker doc/api/en/html/index.html
 
 # Parse Github URL
 REPO=`git config remote.origin.url`
@@ -55,10 +53,11 @@ function deploy_docs() {
   mkdir -p ${DIR}
   # remove old docs. mv new docs.
   set +e
-  rm -rf ${DIR}/doc ${DIR}/doc_cn
+  rm -rf ${DIR}/doc ${DIR}/doc_cn ${DIR}/api_doc
   set -e
   cp -r ../doc/cn/html ${DIR}/doc_cn
   cp -r ../doc/en/html ${DIR}/doc
+  cp -r ../doc/api/en/html ${DIR}/api_doc
   git add .
 }
 

@@ -1,4 +1,4 @@
-# Copyright PaddlePaddle contributors. All Rights Reserved
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import time
 import unittest
 
@@ -147,8 +148,11 @@ class TestXmap(unittest.TestCase):
 
 class TestPipeReader(unittest.TestCase):
     def test_pipe_reader(self):
-        def simple_parser(lines):
-            return lines
+        def example_reader(myfiles):
+            for f in myfiles:
+                pr = paddle.v2.reader.PipeReader("cat %s" % f, bufsize=128)
+                for l in pr.get_line():
+                    yield l
 
         import tempfile
 
@@ -159,17 +163,12 @@ class TestPipeReader(unittest.TestCase):
                 for r in records:
                     f.write('%s\n' % r)
 
-            cmd = "cat %s" % temp.name
-            reader = paddle.v2.reader.pipe_reader(
-                cmd, simple_parser, bufsize=128)
-            for i in xrange(4):
-                result = []
-                for r in reader():
-                    result.append(r)
+            result = []
+            for r in example_reader([temp.name]):
+                result.append(r)
 
-                for idx, e in enumerate(records):
-                    print e, result[idx]
-                    self.assertEqual(e, result[idx])
+            for idx, e in enumerate(records):
+                self.assertEqual(e, result[idx])
         finally:
             # delete the temporary file
             temp.close()

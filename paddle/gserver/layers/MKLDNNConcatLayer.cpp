@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ void MKLDNNConcatLayer::reshape(
   channels_[0] = ic;
   oc = ic;
   for (size_t i = 1; i < inputLayers_.size(); i++) {
-    int batchsize, height, witdh;
+    int batchsize = 0, height = 0, witdh = 0;
     reshapeInput(batchsize, height, witdh, i);
     CHECK_EQ(bs, batchsize);
     CHECK_EQ(ih, height);
@@ -84,6 +84,7 @@ void MKLDNNConcatLayer::resetFwdBuffers(std::vector<MKLDNNMatrixPtr>& inputs,
   bool has8c = false, has16c = false, hasnc = false;
   for (size_t i = 0; i < inputs.size(); i++) {
     resetInValue(inputs[i], nullptr, i, channels_[i]);
+    inputs[i]->downSpatial();
     CHECK(inputs[i]);
     auto dm = inputs[i]->getDims();
     // inputs format can be different, but ndims must equal

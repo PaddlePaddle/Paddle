@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -98,6 +98,8 @@ protected:
 public:
   explicit MKLDNNLayer(const LayerConfig& config)
       : Layer(config),
+        ih_(0),
+        iw_(0),
         condition_(0),
         needResetBwd_(true),
         outputOnlyMKLDNN_(false),

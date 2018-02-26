@@ -31,6 +31,7 @@ patch           = '%(patch)d'
 rc              = '%(rc)d'
 istaged         = %(istaged)s
 commit          = '%(commit)s'
+with_mkl        = '%(with_mkl)s'
 
 def show():
     if istaged:
@@ -41,6 +42,9 @@ def show():
         print 'rc:', rc
     else:
         print 'commit:', commit
+
+def mkl():
+    return with_mkl
 '''
     commit = git_commit()
     with open(filename, 'w') as f:
@@ -51,7 +55,8 @@ def show():
             'rc': RC,
             'version': '${PADDLE_VERSION}',
             'commit': commit,
-            'istaged': ISTAGED})
+            'istaged': ISTAGED,
+            'with_mkl': '@WITH_MKL@'})
 
 write_version_py(filename='@PADDLE_SOURCE_DIR@/python/paddle/version.py')
 
@@ -66,9 +71,9 @@ packages=['paddle',
           'paddle.v2.reader',
           'paddle.v2.master',
           'paddle.v2.plot',
-          'paddle.v2.fluid',
-          'paddle.v2.fluid.proto',
-          'paddle.v2.fluid.layers',
+          'paddle.fluid',
+          'paddle.fluid.proto',
+          'paddle.fluid.layers',
           'py_paddle']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -79,8 +84,7 @@ if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
 
 # the prefix is sys.prefix which should always be usr
 paddle_bin_dir = 'opt/paddle/bin'
-paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle_usage',
-               '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_trainer',
+paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/trainer/paddle_trainer',
                '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_merge_model',
                '${PADDLE_BINARY_DIR}/paddle/pserver/paddle_pserver_main',
                '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
@@ -98,14 +102,14 @@ setup(name='${PACKAGE_NAME}',
       ext_modules=[Extension('_foo', ['stub.cc'])],
       package_data={
         'paddle.v2.master': ['libpaddle_master.so'],
-        'paddle.v2.fluid': ['core.so'],
+        'paddle.fluid': ['core.so'],
         'py_paddle':['*.py','_swig_paddle.so']
       },
       package_dir={
           '': '${CMAKE_CURRENT_SOURCE_DIR}',
-          # The paddle.v2.fluid.proto will be generated while compiling.
+          # The paddle.fluid.proto will be generated while compiling.
           # So that package points to other directory.
-          'paddle.v2.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/framework',
+          'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
           'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'
       },
       scripts=paddle_bins,

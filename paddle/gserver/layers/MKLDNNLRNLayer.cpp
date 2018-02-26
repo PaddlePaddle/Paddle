@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ bool MKLDNNLRNLayer::init(const LayerMap& layerMap,
   }
 
   /* the size of inputs for norm-layer is 1 */
-  CHECK_EQ(config_.inputs_size(), 1UL);
+  CHECK_EQ(config_.inputs_size(), 1);
   const NormConfig& conf = config_.inputs(0).norm_conf();
   localSize_ = conf.size();
   alpha_ = conf.scale();
