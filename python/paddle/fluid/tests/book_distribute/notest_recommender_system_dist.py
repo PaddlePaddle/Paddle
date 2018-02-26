@@ -117,7 +117,7 @@ def model():
 
     label = layers.data(name='score', shape=[1], dtype='float32')
     square_cost = layers.square_error_cost(input=scale_infer, label=label)
-    avg_cost = layers.mean(x=square_cost)
+    avg_cost = layers.mean(square_cost)
 
     return avg_cost
 

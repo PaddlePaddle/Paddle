@@ -96,7 +96,7 @@ def main():
             x=D(img),
             label=fluid.layers.data(
                 name='label', shape=[1], dtype='float32'))
-        d_loss = fluid.layers.mean(x=d_loss)
+        d_loss = fluid.layers.mean(d_loss)
 
     with fluid.program_guard(dg_program, startup_program):
         noise = fluid.layers.data(
@@ -107,7 +107,7 @@ def main():
             x=D(g_img),
             label=fluid.layers.fill_constant_batch_size_like(
                 input=noise, dtype='float32', shape=[-1, 1], value=1.0))
-        dg_loss = fluid.layers.mean(x=dg_loss)
+        dg_loss = fluid.layers.mean(dg_loss)
 
     opt = fluid.optimizer.Adam(learning_rate=LEARNING_RATE)
 
