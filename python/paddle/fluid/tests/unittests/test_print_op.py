@@ -35,7 +35,7 @@ class TestPrintOpCPU(unittest.TestCase):
         x.stop_gradient = False
         printed = layers.Print(input=x, **kargs)
         if only_forward: return printed
-        loss = layers.mean(x=printed)
+        loss = layers.mean(printed)
         append_backward(loss=loss)
         return loss
 

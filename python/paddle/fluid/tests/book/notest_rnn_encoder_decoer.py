@@ -147,7 +147,7 @@ def seq_to_seq_net():
     label = fluid.layers.data(
         name='label_sequence', shape=[1], dtype='int64', lod_level=1)
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = fluid.layers.mean(cost)
 
     return avg_cost, prediction
 
