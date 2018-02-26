@@ -21,7 +21,6 @@ PaddlePaddle提供了C-API，用于解决上述问题。关于C-API的使用，�
 ..  toctree::
   :maxdepth: 1
 
-  quick_start.md
   compile_paddle_lib_cn.md
   organization_of_the_inputs_cn.md
   workflow_of_capi_cn.md
