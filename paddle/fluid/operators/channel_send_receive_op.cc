@@ -67,10 +67,15 @@ class ChannelSendOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+    // Get the channel holder created by channel_create op, passed as input.
     framework::ChannelHolder *ch =
         scope.FindVar(Input(Channel))->GetMutable<framework::ChannelHolder>();
     auto input_var = scope.FindVar(Input(X));
+
+    // Send the input data through the channel.
     bool ok = ChannelSend(ch, input_var);
+
+    // Set the status output of the `ChannelSend` call.
     auto &status_out =
         *scope.FindVar(Output(Status))->GetMutable<framework::LoDTensor>();
     auto cpu = platform::CPUPlace();

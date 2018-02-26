@@ -32,7 +32,9 @@ class ChannelCloseOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto &inp = *scope.FindVar(Input("Channel"));
+    auto &inp = *scope.FindVar(Input(kChannel));
+
+    // Get the mutable version of the channel variable and closes it.
     pf::ChannelHolder *ch = inp.GetMutable<framework::ChannelHolder>();
     ch->close();
   }

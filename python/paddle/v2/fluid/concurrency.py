@@ -71,12 +71,50 @@ class Go(BlockGuard):
 
 
 def make_channel(dtype, capacity=0):
+    """
+    Helps implementation of a concurrent program by creating a "channel" of
+    a defined data type. Channels allow for the passing of data in
+    concurrent scenarios - such as when using threads to divide computation.
+    Channels can be used to "send" and "receive" such data concurrently.
+
+    There are two kinds of channels: unbuffered and buffered. Unbuffered
+    channels have no capacity - and thus, block on send and only unblock only
+    once what they have sent has been received.
+
+    On the other hand, buffered channels are initialized with a capacity -
+    and do not block on sends.
+
+    Use this method in combination with `channel_send`, `channel_recv`,
+    `channel_close`, and `Go` to design a concurrent Paddle program.
+
+    Args:
+        dtype (ParamAttr|int): Data type of the data sent in the channel.
+        This data type should be one of the Paddle supported data types.
+        capacity (ParamAttr|int): Size of the channel. Defaults to 0 for
+        to create an unbuffered channel.
+
+    Returns:
+        Variable: The channel variable that can be used to send an receive data
+                  of the defined dtype.
+
+    Examples:
+        .. code-block:: python
+
+          ch = fluid.make_channel(dtype='int32', capacity=10)
+          ...
+          # Code to execute in a Go block, which receives the channel data.
+          fluid.channel_send(ch, 100)
+          fluid.channel_close(ch)
+    """
     helper = LayerHelper('make_channel', **locals())
     main_program = helper.main_program
     make_channel_block = main_program.current_block()
 
+    # Make a channel variable (using the channel data type) and make sure it
+    # persists into the global scope.
     channel = helper.create_variable(
         dtype=core.VarDesc.VarType.CHANNEL, persistable=True)
+
     create_channel_op = make_channel_block.append_op(
         type="channel_create",
         outputs={"Output": channel},
@@ -87,6 +125,27 @@ def make_channel(dtype, capacity=0):
 
 
 def channel_send(channel, value):
+    """
+    Sends a value through a channel variable. Used by an unbuffered or buffered
+    channel to pass data from within or to a concurrent Go block, where
+    `channel_recv` to used to get the passed value.
+
+    Args:
+        channel (Variable|Channel): Channel variable created using
+        `make_channel`.
+
+    Returns:
+        Variable: The boolean status on whether or not the channel
+                  successfully sent the passed value.
+
+    Examples:
+        .. code-block:: python
+
+          ch = fluid.make_channel(dtype='int32', capacity=10)
+          ...
+          # Code to execute in a Go block, which receives the channel data.
+          fluid.channel_send(ch, 100)
+    """
     helper = LayerHelper('channel_send', **locals())
     main_program = helper.main_program
     channel_send_block = main_program.current_block()
@@ -104,9 +163,36 @@ def channel_send(channel, value):
 
 
 def channel_recv(channel, dtype):
+    """
+    Receives a value through a channel variable. Used by an unbuffered or
+    buffered channel within a concurrent Go block to get data from originally
+    sent using `channel_send`, or from outside such a block where
+    `channel_send` is used to send the value.
+
+    Args:
+        channel (Variable|Channel): Channel variable created using
+        `make_channel`.
+        dtype (Variable|int): Data type of the data expected to be read in the
+        channel. This data type should be one of the Paddle supported data
+        types.
+
+    Returns:
+        Variable: The boolean status on whether or not the channel
+                  successfully received the passed value.
+
+    Examples:
+        .. code-block:: python
+
+          ch = fluid.make_channel(dtype='int32', capacity=10)
+          with fluid.Go():
+            fluid.channel_recv(ch, 'int32')
+
+          # Code to send data through the channel.
+    """
     helper = LayerHelper('channel_recv', **locals())
     main_program = helper.main_program
     channel_recv_block = main_program.current_block()
+
     return_value = helper.create_variable(dtype=dtype)
     status = helper.create_variable(dtype=core.VarDesc.VarType.TENSOR)
 
@@ -120,6 +206,22 @@ def channel_recv(channel, dtype):
 
 
 def channel_close(channel):
+    """
+    Closes a channel created using `make_channel`.
+
+    Args:
+        channel (Variable|Channel): Channel variable created using
+        `make_channel`.
+
+    Examples:
+        .. code-block:: python
+
+          ch = fluid.make_channel(dtype='int32', capacity=10)
+          ...
+          # Code to receive and send data through a channel
+          ...
+          fluid.channel_close(ch)
+    """
     helper = LayerHelper('channel_close', **locals())
     main_program = helper.main_program
     channel_close_block = main_program.current_block()
