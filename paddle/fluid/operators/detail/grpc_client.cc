@@ -177,8 +177,8 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
 
-  auto ch = std::shared_ptr<grpc::Channel>(
-      grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args));
+  auto ch =
+      grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args);
 
   channels_[ep] = ch;
   return ch;
