@@ -94,7 +94,7 @@ def main():
     label = layers.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
     cost = layers.cross_entropy(input=rnn_out, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = fluid.layers.mean(cost)
 
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
     optimize_ops, params_grads = optimizer.minimize(avg_cost)

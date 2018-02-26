@@ -56,7 +56,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
             prob = layers.merge_lod_tensor(
                 in_true=true_out, in_false=false_out, mask=cond, x=image)
             loss = layers.cross_entropy(input=prob, label=label)
-            avg_loss = layers.mean(x=loss)
+            avg_loss = layers.mean(loss)
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(avg_loss, startup_prog)
@@ -113,7 +113,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
             prob = ie()
             loss = layers.cross_entropy(input=prob[0], label=label)
-            avg_loss = layers.mean(x=loss)
+            avg_loss = layers.mean(loss)
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
             optimizer.minimize(avg_loss, startup_prog)
