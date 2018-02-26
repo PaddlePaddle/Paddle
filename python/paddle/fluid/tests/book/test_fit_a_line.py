@@ -19,9 +19,10 @@ import numpy
 import unittest
 import math
 import sys
+import os
 
 
-def train(use_cuda, save_dirname):
+def train(use_cuda, save_dirname, is_local):
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -32,7 +33,7 @@ def train(use_cuda, save_dirname):
     avg_cost = fluid.layers.mean(x=cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-    sgd_optimizer.minimize(avg_cost)
+    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 20
 
@@ -42,27 +43,57 @@ def train(use_cuda, save_dirname):
         batch_size=BATCH_SIZE)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
     exe = fluid.Executor(place)
 
-    exe.run(fluid.default_startup_program())
+    def train_loop(main_program):
+        feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+        exe.run(fluid.default_startup_program())
 
-    PASS_NUM = 100
-    for pass_id in range(PASS_NUM):
-        for data in train_reader():
-            avg_loss_value, = exe.run(fluid.default_main_program(),
-                                      feed=feeder.feed(data),
-                                      fetch_list=[avg_cost])
-            print(avg_loss_value)
-            if avg_loss_value[0] < 10.0:
-                if save_dirname is not None:
-                    fluid.io.save_inference_model(save_dirname, ['x'],
-                                                  [y_predict], exe)
-                return
-            if math.isnan(float(avg_loss_value)):
-                sys.exit("got NaN loss, training failed.")
-    raise AssertionError("Fit a line cost is too large, {0:2.2}".format(
-        avg_loss_value[0]))
+        PASS_NUM = 100
+        for pass_id in range(PASS_NUM):
+            for data in train_reader():
+                avg_loss_value, = exe.run(main_program,
+                                          feed=feeder.feed(data),
+                                          fetch_list=[avg_cost])
+                print(avg_loss_value)
+                if avg_loss_value[0] < 10.0:
+                    if save_dirname is not None:
+                        fluid.io.save_inference_model(save_dirname, ['x'],
+                                                      [y_predict], exe)
+                    return
+                if math.isnan(float(avg_loss_value)):
+                    sys.exit("got NaN loss, training failed.")
+        raise AssertionError("Fit a line cost is too large, {0:2.2}".format(
+            avg_loss_value[0]))
+
+    if is_local:
+        train_loop(fluid.default_main_program())
+    else:
+        port = os.getenv("PADDLE_INIT_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        eplist = []
+        for ip in pserver_ips.split(","):
+            eplist.append(':'.join([ip, port]))
+        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        trainers = int(os.getenv("TRAINERS"))
+        current_endpoint = os.getenv("POD_IP") + ":" + port
+        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
+        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            optimize_ops,
+            params_grads,
+            trainer_id,
+            pservers=pserver_endpoints,
+            trainers=trainers)
+        if training_role == "PSERVER":
+            pserver_prog = t.get_pserver_program(current_endpoint)
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
+            exe.run(pserver_startup)
+            exe.run(pserver_prog)
+        elif training_role == "TRAINER":
+            train_loop(t.get_trainer_program())
 
 
 def infer(use_cuda, save_dirname=None):
@@ -91,14 +122,14 @@ def infer(use_cuda, save_dirname=None):
     print("infer results: ", results[0])
 
 
-def main(use_cuda):
+def main(use_cuda, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
     save_dirname = "fit_a_line.inference.model"
 
-    train(use_cuda, save_dirname)
+    train(use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
 
 

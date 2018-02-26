@@ -75,7 +75,7 @@ def infer(use_cuda, save_dirname=None):
     print("Inference results: ", np_data)
 
 
-def train(use_cuda, is_sparse, parallel, save_dirname):
+def train(use_cuda, is_sparse, parallel, save_dirname, is_local=True):
     PASS_NUM = 100
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256
@@ -146,7 +146,7 @@ def train(use_cuda, is_sparse, parallel, save_dirname):
         avg_cost = fluid.layers.mean(x=pd())
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-    sgd_optimizer.minimize(avg_cost)
+    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
 
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
@@ -157,23 +157,53 @@ def train(use_cuda, is_sparse, parallel, save_dirname):
         feed_list=[first_word, second_word, third_word, forth_word, next_word],
         place=place)
 
-    exe.run(fluid.default_startup_program())
+    def train_loop(main_program):
+        exe.run(fluid.default_startup_program())
 
-    for pass_id in range(PASS_NUM):
-        for data in train_reader():
-            avg_cost_np = exe.run(fluid.default_main_program(),
-                                  feed=feeder.feed(data),
-                                  fetch_list=[avg_cost])
-            if avg_cost_np[0] < 5.0:
-                if save_dirname is not None:
-                    fluid.io.save_inference_model(save_dirname, [
-                        'firstw', 'secondw', 'thirdw', 'forthw'
-                    ], [predict_word], exe)
-                return
-            if math.isnan(float(avg_cost_np[0])):
-                sys.exit("got NaN loss, training failed.")
+        for pass_id in range(PASS_NUM):
+            for data in train_reader():
+                avg_cost_np = exe.run(main_program,
+                                      feed=feeder.feed(data),
+                                      fetch_list=[avg_cost])
+                if avg_cost_np[0] < 5.0:
+                    if save_dirname is not None:
+                        fluid.io.save_inference_model(save_dirname, [
+                            'firstw', 'secondw', 'thirdw', 'forthw'
+                        ], [predict_word], exe)
+                    return
+                if math.isnan(float(avg_cost_np[0])):
+                    sys.exit("got NaN loss, training failed.")
 
-    raise AssertionError("Cost is too large {0:2.2}".format(avg_cost_np[0]))
+        raise AssertionError("Cost is too large {0:2.2}".format(avg_cost_np[0]))
+
+    if is_local:
+        train_loop(fluid.default_main_program())
+    else:
+        port = os.getenv("PADDLE_INIT_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        eplist = []
+        for ip in pserver_ips.split(","):
+            eplist.append(':'.join([ip, port]))
+        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        trainers = int(os.getenv("TRAINERS"))
+        current_endpoint = os.getenv("POD_IP") + ":" + port
+        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
+        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            optimize_ops,
+            params_grads,
+            trainer_id,
+            pservers=pserver_endpoints,
+            trainers=trainers)
+        if training_role == "PSERVER":
+            pserver_prog = t.get_pserver_program(current_endpoint)
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
+            exe.run(pserver_startup)
+            exe.run(pserver_prog)
+        elif training_role == "TRAINER":
+            train_loop(t.get_trainer_program())
 
 
 def main(use_cuda, is_sparse, parallel):
