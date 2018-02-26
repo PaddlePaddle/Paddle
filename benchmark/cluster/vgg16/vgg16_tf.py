@@ -330,8 +330,6 @@ def run_benchmark(cluster_spec, server):
             print("Pass = %d, Train speed = %f imgs/s, Test accuracy = %f\n" %
                   (pass_id, num_samples / train_elapsed, pass_test_acc))
 
-    sv.stop()
-
 
 def print_arguments():
     print('-----------  Configuration Arguments -----------')
