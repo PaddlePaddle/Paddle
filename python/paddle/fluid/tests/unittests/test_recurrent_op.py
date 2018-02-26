@@ -127,7 +127,7 @@ class RecurrentOpTest1(unittest.TestCase):
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.py_rnn = PySimpleRNN1(self.input_shape, self.output_shape)
 
-        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
+        self.output = layers.mean(self.create_rnn_op(), **self.p_info)
 
     def create_rnn_op(self):
         x = layers.data(
@@ -261,7 +261,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.py_rnn = PySimpleRNN2(self.input_shape, self.output_shape)
 
-        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
+        self.output = layers.mean(self.create_rnn_op(), **self.p_info)
 
     def create_rnn_op(self):
         x = layers.data(
@@ -360,7 +360,7 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
         self.py_rnn = RecurrentOpMultipleMemoryTest.PySimpleRNN3(
             self.input_shape, self.output_shape)
 
-        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
+        self.output = layers.mean(self.create_rnn_op(), **self.p_info)
 
     def create_rnn_op(self):
         x = layers.data(
@@ -444,7 +444,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
         self.output_shape = (self.sent_len, self.batch_size, self.input_dim)
         self.py_rnn = RecurrentOpNoMemBootTest.PySimpleRNN4(self.input_shape,
                                                             self.output_shape)
-        self.output = layers.mean(x=self.create_rnn_op(), **self.p_info)
+        self.output = layers.mean(self.create_rnn_op(), **self.p_info)
         print self.main_program
 
     def create_rnn_op(self):
