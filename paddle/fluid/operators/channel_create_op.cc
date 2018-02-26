@@ -20,7 +20,7 @@ limitations under the License. */
 
 namespace pf = paddle::framework;
 
-static constexpr char kOutput[] = "Output";
+static constexpr char kOutput[] = "Out";
 
 namespace paddle {
 namespace operators {
@@ -83,9 +83,9 @@ class ChannelCreateOp : public framework::OperatorBase {
 class ChannelCreateOpOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasOutput("Output"),
+    PADDLE_ENFORCE(context->HasOutput(kOutput),
                    "The output of ChannelCreate op must be set");
-    context->SetOutputDim("Output", {1});
+    context->SetOutputDim(kOutput, {1});
   }
 };
 

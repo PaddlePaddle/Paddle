@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <thread>
-#include <chrono>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/block_desc.h"
@@ -25,7 +24,7 @@ limitations under the License. */
 USE_NO_KERNEL_OP(go);
 USE_NO_KERNEL_OP(channel_close);
 USE_NO_KERNEL_OP(channel_create);
-//USE_NO_KERNEL_OP(channel_recv);
+USE_NO_KERNEL_OP(channel_recv);
 USE_NO_KERNEL_OP(channel_send);
 USE_NO_KERNEL_OP(elementwise_add);
 
@@ -35,12 +34,13 @@ namespace p = paddle::platform;
 namespace paddle {
 namespace framework {
 
-void CreateIntVariable(Scope &scope, p::CPUPlace &place, std::string name, int value) {
+template <typename T>
+void CreateIntVariable(Scope &scope, p::CPUPlace &place, std::string name, T value) {
   // Create LoDTensor<int> of dim [1,1]
   auto var = scope.Var(name);
   auto tensor = var->GetMutable<LoDTensor>();
   tensor->Resize({1, 1});
-  int *expect = tensor->mutable_data<int>(place);
+  T *expect = tensor->mutable_data<T>(place);
   expect[0] = value;
 }
 
@@ -52,8 +52,8 @@ void InitTensorsInScope(Scope &scope, p::CPUPlace &place) {
 
   // Create Variables, x0 will be put into channel,
   // result will be pulled from channel
+  CreateIntVariable(scope, place, "Status", false);
   CreateIntVariable(scope, place, "x0", 99);
-  CreateIntVariable(scope, place, "Status", 0);
   CreateIntVariable(scope, place, "result", 0);
 }
 
@@ -86,7 +86,7 @@ TEST(Concurrency, Go_Op) {
   // Create channel OP
   AddOp("channel_create",
         {},
-        {{"Output", {"Channel"}}},
+        {{"Out", {"Channel"}}},
         {{"capacity", 10}, {"data_type", f::proto::VarType::LOD_TENSOR}},
         block);
 
@@ -107,11 +107,11 @@ TEST(Concurrency, Go_Op) {
         block);
 
   // Create Channel Receive Op
-//  AddOp("channel_recv",
-//        {{"Channel", {"Channel"}}},
-//        {{"Status", {"Status"}}, {"Output", {"result"}}},
-//        {},
-//        block);
+  AddOp("channel_recv",
+        {{"Channel", {"Channel"}}},
+        {{"Status", {"Status"}}, {"Out", {"result"}}},
+        {},
+        block);
 
   // Create Channel Close Op
   AddOp("channel_close",
@@ -120,12 +120,17 @@ TEST(Concurrency, Go_Op) {
         {},
         block);
 
-  executor.Run(program, &scope, 0, true, true);
-//  std::this_thread::sleep_for(std::chrono::minutes(1));
+  // Check the result tensor to make sure it is set to 0
+  const LoDTensor &tensor = (scope.FindVar("result"))->Get<LoDTensor>();
+  auto *initialData = tensor.data<int>();
+  EXPECT_EQ(initialData[0], 0);
 
-//  const LoDTensor &tensor = (scope.FindVar("result"))->Get<LoDTensor>();
-//  auto *data = tensor.data<int>();
-//  EXPECT_EQ(data[0], 99);
+  executor.Run(program, &scope, 0, true, true);
+
+  // After we call executor.run, the Go operator should do a channel_send to set the
+  // "result" variable to 99
+  auto *finalData = tensor.data<int>();
+  EXPECT_EQ(finalData[0], 99);
 }
 }  // namespace framework
 }  // namespace paddle
