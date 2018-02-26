@@ -16,6 +16,7 @@ All layers just related to the detection neural network.
 """
 
 from layer_function_generator import generate_layer_fn
+from layer_function_generator import autodoc
 from ..layer_helper import LayerHelper
 import tensor
 import ops
@@ -28,6 +29,7 @@ __all__ = [
     'target_assign',
     'detection_output',
     'ssd_loss',
+    'detection_map',
 ]
 
 __auto__ = [
@@ -130,6 +132,44 @@ def detection_output(scores,
             'nms_eta': 1.0
         })
     return nmsed_outs
+
+
+@autodoc()
+def detection_map(detect_res,
+                  label,
+                  pos_count=None,
+                  true_pos=None,
+                  false_pos=None,
+                  overlap_threshold=0.3,
+                  evaluate_difficult=True,
+                  ap_type='integral'):
+    helper = LayerHelper("detection_map", **locals())
+
+    map_out = helper.create_tmp_variable(dtype='float32')
+    accum_pos_count_out = helper.create_tmp_variable(dtype='int32')
+    accum_true_pos_out = helper.create_tmp_variable(dtype='float32')
+    accum_false_pos_out = helper.create_tmp_variable(dtype='float32')
+    helper.append_op(
+        type="detection_map",
+        inputs={
+            'Label': label,
+            'DetectRes': detect_res,
+            'PosCount': pos_count,
+            'TruePos': true_pos,
+            'FalsePos': false_pos
+        },
+        outputs={
+            'MAP': map_out,
+            'AccumPosCount': accum_pos_count_out,
+            'AccumTruePos': accum_true_pos_out,
+            'AccumFalsePos': accum_false_pos_out
+        },
+        attrs={
+            'overlap_threshold': overlap_threshold,
+            'evaluate_difficult': evaluate_difficult,
+            'ap_type': ap_type
+        })
+    return map_out, accum_pos_count_out, accum_true_pos_out, accum_false_pos_out
 
 
 def bipartite_match(dist_matrix, name=None):
