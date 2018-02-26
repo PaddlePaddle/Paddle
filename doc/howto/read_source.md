@@ -1,6 +1,6 @@
 # PaddlePaddle Fluid Source Code Overview
 
-Examples: https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/v2/fluid/tests/book
+Examples: https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/fluid/tests/book
 
 Core: https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/framework
 
@@ -26,16 +26,16 @@ sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 sgd_optimizer.minimize(avg_cost)
 ```
 
-- Variables: `x`,  `y`, `y_predict`, `cost` and `avg_cost`. [Python](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/framework.py#)
-- Layers: `fluid.layers.data`, `fluid.layers.fc` and `fluid.layers.mean` are layers. [Python](https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/v2/fluid/layers)
+- Variables: `x`,  `y`, `y_predict`, `cost` and `avg_cost`. [Python](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/framework.py#)
+- Layers: `fluid.layers.data`, `fluid.layers.fc` and `fluid.layers.mean` are layers. [Python](https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/fluid/layers)
   - Every Layer has one or more operators and variables/parameters
     - All the operators are defined at [`paddle/operators/`](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators). Other worth-looking files:
       - Base class: [`paddle/framework/operator.h`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h)
       - Operator Registration: [`paddle/framework/op_registry.h`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/op_registry.h) 
       - Operator Lookup: [`paddle/framework/op_info.h`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/op_info.h)
 - Optimizer: `fluid.optimizer.SGD`. It does the following
-  - Add backward operators. [[Python](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/backward.py)]
-  - Add optimizer operators. [[Python](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/optimizer.py)]
+  - Add backward operators. [[Python](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/backward.py)]
+  - Add optimizer operators. [[Python](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/optimizer.py)]
 
 # Run Time
 
@@ -57,7 +57,7 @@ exe.run(fluid.default_main_program(),
 
 - Place: `place`. one of CPU, GPU or FPGA. [C++](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/place.h)
   - The device handle are at [paddle/platform/device_context.h](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/platform/device_context.h)
-- Executor: `fluid.Executor(place)`. [[Python](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/executor.py), [C++](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/executor.cc)]
+- Executor: `fluid.Executor(place)`. [[Python](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/executor.py), [C++](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/executor.cc)]
   - Feeds the data: `feed=feeder.feed(data)`
   - Evaluates all the operators
   - Fetches the result: `fetch_list=[avg_cost]`
