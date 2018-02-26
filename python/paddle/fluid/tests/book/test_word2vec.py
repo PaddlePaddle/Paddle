@@ -118,7 +118,7 @@ def train(use_cuda, is_sparse, parallel, save_dirname, is_local=True):
                                        size=dict_size,
                                        act='softmax')
         cost = fluid.layers.cross_entropy(input=predict_word, label=words[4])
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = fluid.layers.mean(cost)
         return avg_cost, predict_word
 
     word_dict = paddle.dataset.imikolov.build_dict()
@@ -143,7 +143,7 @@ def train(use_cuda, is_sparse, parallel, save_dirname, is_local=True):
                 ]))
             pd.write_output(avg_cost)
 
-        avg_cost = fluid.layers.mean(x=pd())
+        avg_cost = fluid.layers.mean(pd())
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)

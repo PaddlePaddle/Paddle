@@ -28,7 +28,7 @@ BATCH_SIZE = 64
 def loss_net(hidden, label):
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(x=loss)
+    avg_loss = fluid.layers.mean(loss)
     acc = fluid.layers.accuracy(input=prediction, label=label)
     return prediction, avg_loss, acc
 
@@ -86,8 +86,8 @@ def train(nn_type,
 
         avg_loss, acc = pd()
         # get mean loss and acc through every devices.
-        avg_loss = fluid.layers.mean(x=avg_loss)
-        acc = fluid.layers.mean(x=acc)
+        avg_loss = fluid.layers.mean(avg_loss)
+        acc = fluid.layers.mean(acc)
     else:
         prediction, avg_loss, acc = net_conf(img, label)
 

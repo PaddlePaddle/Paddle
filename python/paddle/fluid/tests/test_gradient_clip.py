@@ -30,7 +30,7 @@ with fluid.program_guard(main_program=prog):
     label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
     cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = fluid.layers.mean(cost)
 
 prog_clip = prog.clone()
 
