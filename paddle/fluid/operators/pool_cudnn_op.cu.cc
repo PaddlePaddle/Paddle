@@ -92,7 +92,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     paddle::platform::Event stop_event_gpu1(
         paddle::platform::EventKind::kPopRange, "gpu_run_pool_cudnn", 0,
         dev_ctx_prof);
-    LOG(INFO) << "GPU_pool2d_cudnn: "
+    std::cout << "GPU_pool2d_cudnn: "
               << start_event_gpu1.CudaElapsedMs(stop_event_gpu1) << std::endl;
   }
 };

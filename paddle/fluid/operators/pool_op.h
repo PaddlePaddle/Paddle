@@ -123,7 +123,7 @@ class PoolKernel : public framework::OpKernel<T> {
 
     paddle::platform::Event stop_event1(paddle::platform::EventKind::kPopRange,
                                         "pool2d_cpu_bm", 0, dev_ctx_prof);
-    LOG(INFO) << "CPU_pool2d: " << start_event1.CpuElapsedMs(stop_event1)
+    std::cout << "CPU_pool2d: " << start_event1.CpuElapsedMs(stop_event1)
               << std::endl;
   }
 };

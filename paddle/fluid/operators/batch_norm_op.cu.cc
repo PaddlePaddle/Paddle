@@ -183,7 +183,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     paddle::platform::Event stop_event_gpu1(
         paddle::platform::EventKind::kPopRange, "gpu_run_BN_cudnn", 0,
         dev_ctx_prof);
-    LOG(INFO) << "GPU_batchnorm_cudnn: "
+    std::cout << "GPU_batchnorm_cudnn: "
               << start_event_gpu1.CudaElapsedMs(stop_event_gpu1) << std::endl;
   }
 };

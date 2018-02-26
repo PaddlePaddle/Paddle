@@ -1,5 +1,4 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -146,8 +145,8 @@ void TestInference(const std::string& dirname,
   executor.Run(*inference_program, scope, feed_targets, fetch_targets);
 
   Event stop_event1(EventKind::kPopRange, "run_inference", 0, dev_ctx);
-  LOG(INFO) << "Running_inference: " << start_event1.CpuElapsedMs(stop_event1)
-            << std::endl;
+  std::cout << "CPUGPU_Running_inference: "
+            << start_event1.CpuElapsedMs(stop_event1) << std::endl;
 
   delete scope;
 }

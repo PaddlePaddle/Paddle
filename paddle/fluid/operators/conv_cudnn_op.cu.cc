@@ -155,7 +155,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     paddle::platform::Event stop_event_gpu1(
         paddle::platform::EventKind::kPopRange, "gpu_run_conv_cudnn", 0,
         dev_ctx_prof);
-    LOG(INFO) << "GPU_conv2d_cudnn: "
+    std::cout << "GPU_conv2d_cudnn: "
               << start_event_gpu1.CudaElapsedMs(stop_event_gpu1) << std::endl;
   }
 };

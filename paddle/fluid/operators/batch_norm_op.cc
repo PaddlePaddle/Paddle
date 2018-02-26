@@ -282,7 +282,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     }
     paddle::platform::Event stop_event1(paddle::platform::EventKind::kPopRange,
                                         "BN_cpu_bm", 0, dev_ctx_prof);
-    LOG(INFO) << "CPU_batchnorm: " << start_event1.CpuElapsedMs(stop_event1)
+    std::cout << "CPU_batchnorm: " << start_event1.CpuElapsedMs(stop_event1)
               << std::endl;
   }
 };

@@ -64,7 +64,7 @@ class ActivationKernel
 
     paddle::platform::Event stop_event1(paddle::platform::EventKind::kPopRange,
                                         event_string, 0, dev_ctx_prof);
-    LOG(INFO) << log_string + "_activation: "
+    std::cout << log_string + "_activation: "
               << start_event1.CpuElapsedMs(stop_event1) << std::endl;
   }
 };
