@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 
 namespace pf = paddle::framework;
@@ -95,9 +95,8 @@ class ChannelCreateOpMaker : public framework::OpProtoAndCheckerMaker {
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput(kOutput,
               "The object of a Channel type created by ChannelCreate Op.");
-    AddAttr<int>("capacity",
-                 "The size of the buffer of Channel.")
-            .SetDefault(0);
+    AddAttr<int>("capacity", "The size of the buffer of Channel.")
+        .SetDefault(0);
     AddAttr<int>("data_type", "The data type of elements inside the Channel.");
     AddComment(R"DOC(
 Channel Create Operator.
