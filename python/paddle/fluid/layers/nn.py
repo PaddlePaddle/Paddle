@@ -69,6 +69,7 @@ __all__ = [
     'softmax_with_cross_entropy',
     'smooth_l1',
     'one_hot',
+    'global_step_counter',
 ]
 
 
@@ -3250,3 +3251,25 @@ def one_hot(input, depth):
         attrs={'depth': depth},
         outputs={'Out': one_hot_out})
     return one_hot_out
+
+
+def global_step_counter():
+    """
+    Return the run counter of the main program, which is started with 1.
+    Returns(Variable): The global run counter.
+    """
+    helper = LayerHelper('global_step_counter')
+    counter_name = '@STEP_COUNTER@'
+    counter, is_new_var = helper.create_or_get_global_variable(
+        name=counter_name, dtype='int64', shape=[1], persistable=True)
+    if is_new_var:
+        helper.set_variable_initializer(
+            counter, initializer=Constant(
+                value=0, force_cpu=True))
+        helper.main_program.global_block().prepend_op(
+            type='increment',
+            inputs={'X': [counter]},
+            outputs={'Out': [counter]})
+        counter.stop_gradient = True
+
+    return counter
