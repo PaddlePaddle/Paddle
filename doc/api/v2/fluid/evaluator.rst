@@ -8,14 +8,14 @@ evaluator
 Accuracy
 --------
 
-..  autoclass:: paddle.v2.fluid.evaluator.Accuracy
+..  autoclass:: paddle.fluid.evaluator.Accuracy
     :members:
     :noindex:
 
 ChunkEvaluator
 --------------
 
-..  autoclass:: paddle.v2.fluid.evaluator.ChunkEvaluator
+..  autoclass:: paddle.fluid.evaluator.ChunkEvaluator
     :members:
     :noindex:
 

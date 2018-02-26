@@ -17,7 +17,7 @@ import argparse
 import sys
 import types
 
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 
 
 def parse_arg():
@@ -70,7 +70,7 @@ class DocGenerator(object):
 
     def print_class(self, name):
         self._print_header_(name, dot='-', is_title=False)
-        self.stream.write('''..  autoclass:: paddle.v2.fluid.{0}.{1}
+        self.stream.write('''..  autoclass:: paddle.fluid.{0}.{1}
     :members:
     :noindex:
 
@@ -78,7 +78,7 @@ class DocGenerator(object):
 
     def print_method(self, name):
         self._print_header_(name, dot='-', is_title=False)
-        self.stream.write('''..  autofunction:: paddle.v2.fluid.{0}.{1}
+        self.stream.write('''..  autofunction:: paddle.fluid.{0}.{1}
     :noindex:
 
 '''.format(self.module_name, name))
