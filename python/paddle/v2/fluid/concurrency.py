@@ -73,7 +73,7 @@ class Go(BlockGuard):
 def make_channel(dtype, capacity=0):
     """
     Helps implementation of a concurrent program by creating a "channel" of
-    a predefined data type. Channels allow for the passing of data in
+    a defined data type. Channels allow for the passing of data in
     concurrent scenarios - such as when using threads to divide computation.
     Channels can be used to "send" and "receive" such data concurrently.
 
@@ -127,8 +127,8 @@ def make_channel(dtype, capacity=0):
 def channel_send(channel, value):
     """
     Sends a value through a channel variable. Used by an unbuffered or buffered
-    channel to pass data to a concurrent Go block which uses `channel_recv` to
-    get the passed value.
+    channel to pass data from within or to a concurrent Go block, where
+    `channel_recv` to used to get the passed value.
 
     Args:
         channel (Variable|Channel): Channel variable created using
@@ -166,7 +166,8 @@ def channel_recv(channel, dtype):
     """
     Receives a value through a channel variable. Used by an unbuffered or
     buffered channel within a concurrent Go block to get data from originally
-    passed using `channel_send`.
+    sent using `channel_send`, or from outside such a block where
+    `channel_send` is used to send the value.
 
     Args:
         channel (Variable|Channel): Channel variable created using
