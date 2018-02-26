@@ -171,7 +171,7 @@ def train(use_cuda, save_dirname=None):
     global_step = fluid.layers.create_global_var(
         shape=[1], value=0, dtype='float32', force_cpu=True, persistable=True)
     sgd_optimizer = fluid.optimizer.SGD(
-        learning_rate=fluid.learning_rate_decay.exponential_decay(
+        learning_rate=fluid.layers.exponential_decay(
             learning_rate=0.0001,
             global_step=global_step,
             decay_steps=100000,

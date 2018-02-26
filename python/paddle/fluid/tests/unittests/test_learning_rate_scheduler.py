@@ -20,7 +20,6 @@ import copy
 import paddle.fluid.framework as framework
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.learning_rate_decay as lr_decay
 
 
 def exponential_decay(learning_rate,
@@ -111,27 +110,24 @@ class TestLearningRateDecay(unittest.TestCase):
         common_kwargs_false["staircase"] = False
 
         decay_fns = [
-            (exponential_decay, lr_decay.exponential_decay, common_kwargs_true),
-            (exponential_decay, lr_decay.exponential_decay,
+            (exponential_decay, layers.exponential_decay, common_kwargs_true),
+            (exponential_decay, layers.exponential_decay, common_kwargs_false),
+            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_true),
+            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_false),
+            (inverse_time_decay, layers.inverse_time_decay, common_kwargs_true),
+            (inverse_time_decay, layers.inverse_time_decay,
              common_kwargs_false),
-            (natural_exp_decay, lr_decay.natural_exp_decay, common_kwargs_true),
-            (natural_exp_decay, lr_decay.natural_exp_decay,
-             common_kwargs_false),
-            (inverse_time_decay, lr_decay.inverse_time_decay,
-             common_kwargs_true),
-            (inverse_time_decay, lr_decay.inverse_time_decay,
-             common_kwargs_false),
-            (polynomial_decay, lr_decay.polynomial_decay, {
+            (polynomial_decay, layers.polynomial_decay, {
                 "learning_rate": 1.0,
                 "decay_steps": 5,
                 "cycle": True
             }),
-            (polynomial_decay, lr_decay.polynomial_decay, {
+            (polynomial_decay, layers.polynomial_decay, {
                 "learning_rate": 1.0,
                 "decay_steps": 5,
                 "cycle": False
             }),
-            (piecewise_decay, lr_decay.piecewise_decay, {
+            (piecewise_decay, layers.piecewise_decay, {
                 "boundaries": [3, 6, 9],
                 "values": [0.1, 0.2, 0.3, 0.4]
             }),
