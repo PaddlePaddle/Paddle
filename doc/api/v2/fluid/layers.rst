@@ -11,167 +11,167 @@ control_flow
 split_lod_tensor
 ----------------
 
-..  autofunction:: paddle.v2.fluid.layers.split_lod_tensor
+..  autofunction:: paddle.fluid.layers.split_lod_tensor
     :noindex:
 
 merge_lod_tensor
 ----------------
 
-..  autofunction:: paddle.v2.fluid.layers.merge_lod_tensor
+..  autofunction:: paddle.fluid.layers.merge_lod_tensor
     :noindex:
 
 BlockGuard
 ----------
 
-..  autoclass:: paddle.v2.fluid.layers.BlockGuard
+..  autoclass:: paddle.fluid.layers.BlockGuard
     :members:
     :noindex:
 
 BlockGuardWithCompletion
 ------------------------
 
-..  autoclass:: paddle.v2.fluid.layers.BlockGuardWithCompletion
+..  autoclass:: paddle.fluid.layers.BlockGuardWithCompletion
     :members:
     :noindex:
 
 StaticRNNMemoryLink
 -------------------
 
-..  autoclass:: paddle.v2.fluid.layers.StaticRNNMemoryLink
+..  autoclass:: paddle.fluid.layers.StaticRNNMemoryLink
     :members:
     :noindex:
 
 WhileGuard
 ----------
 
-..  autoclass:: paddle.v2.fluid.layers.WhileGuard
+..  autoclass:: paddle.fluid.layers.WhileGuard
     :members:
     :noindex:
 
 While
 -----
 
-..  autoclass:: paddle.v2.fluid.layers.While
+..  autoclass:: paddle.fluid.layers.While
     :members:
     :noindex:
 
 lod_rank_table
 --------------
 
-..  autofunction:: paddle.v2.fluid.layers.lod_rank_table
+..  autofunction:: paddle.fluid.layers.lod_rank_table
     :noindex:
 
 max_sequence_len
 ----------------
 
-..  autofunction:: paddle.v2.fluid.layers.max_sequence_len
+..  autofunction:: paddle.fluid.layers.max_sequence_len
     :noindex:
 
 topk
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.topk
+..  autofunction:: paddle.fluid.layers.topk
     :noindex:
 
 lod_tensor_to_array
 -------------------
 
-..  autofunction:: paddle.v2.fluid.layers.lod_tensor_to_array
+..  autofunction:: paddle.fluid.layers.lod_tensor_to_array
     :noindex:
 
 array_to_lod_tensor
 -------------------
 
-..  autofunction:: paddle.v2.fluid.layers.array_to_lod_tensor
+..  autofunction:: paddle.fluid.layers.array_to_lod_tensor
     :noindex:
 
 increment
 ---------
 
-..  autofunction:: paddle.v2.fluid.layers.increment
+..  autofunction:: paddle.fluid.layers.increment
     :noindex:
 
 array_write
 -----------
 
-..  autofunction:: paddle.v2.fluid.layers.array_write
+..  autofunction:: paddle.fluid.layers.array_write
     :noindex:
 
 create_array
 ------------
 
-..  autofunction:: paddle.v2.fluid.layers.create_array
+..  autofunction:: paddle.fluid.layers.create_array
     :noindex:
 
 less_than
 ---------
 
-..  autofunction:: paddle.v2.fluid.layers.less_than
+..  autofunction:: paddle.fluid.layers.less_than
     :noindex:
 
 array_read
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.array_read
+..  autofunction:: paddle.fluid.layers.array_read
     :noindex:
 
 shrink_memory
 -------------
 
-..  autofunction:: paddle.v2.fluid.layers.shrink_memory
+..  autofunction:: paddle.fluid.layers.shrink_memory
     :noindex:
 
 array_length
 ------------
 
-..  autofunction:: paddle.v2.fluid.layers.array_length
+..  autofunction:: paddle.fluid.layers.array_length
     :noindex:
 
 IfElse
 ------
 
-..  autoclass:: paddle.v2.fluid.layers.IfElse
+..  autoclass:: paddle.fluid.layers.IfElse
     :members:
     :noindex:
 
 DynamicRNN
 ----------
 
-..  autoclass:: paddle.v2.fluid.layers.DynamicRNN
+..  autoclass:: paddle.fluid.layers.DynamicRNN
     :members:
     :noindex:
 
 ConditionalBlock
 ----------------
 
-..  autoclass:: paddle.v2.fluid.layers.ConditionalBlock
+..  autoclass:: paddle.fluid.layers.ConditionalBlock
     :members:
     :noindex:
 
 StaticRNN
 ---------
 
-..  autoclass:: paddle.v2.fluid.layers.StaticRNN
+..  autoclass:: paddle.fluid.layers.StaticRNN
     :members:
     :noindex:
 
 reorder_lod_tensor_by_rank
 --------------------------
 
-..  autofunction:: paddle.v2.fluid.layers.reorder_lod_tensor_by_rank
+..  autofunction:: paddle.fluid.layers.reorder_lod_tensor_by_rank
     :noindex:
 
 ParallelDo
 ----------
 
-..  autoclass:: paddle.v2.fluid.layers.ParallelDo
+..  autoclass:: paddle.fluid.layers.ParallelDo
     :members:
     :noindex:
 
 Print
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.Print
+..  autofunction:: paddle.fluid.layers.Print
     :noindex:
 
 device
@@ -180,7 +180,7 @@ device
 get_places
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.get_places
+..  autofunction:: paddle.fluid.layers.get_places
     :noindex:
 
 io
@@ -189,27 +189,27 @@ io
 data
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.data
+..  autofunction:: paddle.fluid.layers.data
     :noindex:
 
 BlockGuardServ
 --------------
 
-..  autoclass:: paddle.v2.fluid.layers.BlockGuardServ
+..  autoclass:: paddle.fluid.layers.BlockGuardServ
     :members:
     :noindex:
 
 ListenAndServ
 -------------
 
-..  autoclass:: paddle.v2.fluid.layers.ListenAndServ
+..  autoclass:: paddle.fluid.layers.ListenAndServ
     :members:
     :noindex:
 
 Send
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.Send
+..  autofunction:: paddle.fluid.layers.Send
     :noindex:
 
 nn
@@ -218,259 +218,259 @@ nn
 fc
 --
 
-..  autofunction:: paddle.v2.fluid.layers.fc
+..  autofunction:: paddle.fluid.layers.fc
     :noindex:
 
 embedding
 ---------
 
-..  autofunction:: paddle.v2.fluid.layers.embedding
+..  autofunction:: paddle.fluid.layers.embedding
     :noindex:
 
 dynamic_lstm
 ------------
 
-..  autofunction:: paddle.v2.fluid.layers.dynamic_lstm
+..  autofunction:: paddle.fluid.layers.dynamic_lstm
     :noindex:
 
 dynamic_lstmp
 -------------
 
-..  autofunction:: paddle.v2.fluid.layers.dynamic_lstmp
+..  autofunction:: paddle.fluid.layers.dynamic_lstmp
     :noindex:
 
 dynamic_gru
 -----------
 
-..  autofunction:: paddle.v2.fluid.layers.dynamic_gru
+..  autofunction:: paddle.fluid.layers.dynamic_gru
     :noindex:
 
 gru_unit
 --------
 
-..  autofunction:: paddle.v2.fluid.layers.gru_unit
+..  autofunction:: paddle.fluid.layers.gru_unit
     :noindex:
 
 linear_chain_crf
 ----------------
 
-..  autofunction:: paddle.v2.fluid.layers.linear_chain_crf
+..  autofunction:: paddle.fluid.layers.linear_chain_crf
     :noindex:
 
 crf_decoding
 ------------
 
-..  autofunction:: paddle.v2.fluid.layers.crf_decoding
+..  autofunction:: paddle.fluid.layers.crf_decoding
     :noindex:
 
 cos_sim
 -------
 
-..  autofunction:: paddle.v2.fluid.layers.cos_sim
+..  autofunction:: paddle.fluid.layers.cos_sim
     :noindex:
 
 cross_entropy
 -------------
 
-..  autofunction:: paddle.v2.fluid.layers.cross_entropy
+..  autofunction:: paddle.fluid.layers.cross_entropy
     :noindex:
 
 square_error_cost
 -----------------
 
-..  autofunction:: paddle.v2.fluid.layers.square_error_cost
+..  autofunction:: paddle.fluid.layers.square_error_cost
     :noindex:
 
 accuracy
 --------
 
-..  autofunction:: paddle.v2.fluid.layers.accuracy
+..  autofunction:: paddle.fluid.layers.accuracy
     :noindex:
 
 chunk_eval
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.chunk_eval
+..  autofunction:: paddle.fluid.layers.chunk_eval
     :noindex:
 
 sequence_conv
 -------------
 
-..  autofunction:: paddle.v2.fluid.layers.sequence_conv
+..  autofunction:: paddle.fluid.layers.sequence_conv
     :noindex:
 
 conv2d
 ------
 
-..  autofunction:: paddle.v2.fluid.layers.conv2d
+..  autofunction:: paddle.fluid.layers.conv2d
     :noindex:
 
 sequence_pool
 -------------
 
-..  autofunction:: paddle.v2.fluid.layers.sequence_pool
+..  autofunction:: paddle.fluid.layers.sequence_pool
     :noindex:
 
 pool2d
 ------
 
-..  autofunction:: paddle.v2.fluid.layers.pool2d
+..  autofunction:: paddle.fluid.layers.pool2d
     :noindex:
 
 batch_norm
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.batch_norm
+..  autofunction:: paddle.fluid.layers.batch_norm
     :noindex:
 
 layer_norm
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.layer_norm
+..  autofunction:: paddle.fluid.layers.layer_norm
     :noindex:
 
 beam_search_decode
 ------------------
 
-..  autofunction:: paddle.v2.fluid.layers.beam_search_decode
+..  autofunction:: paddle.fluid.layers.beam_search_decode
     :noindex:
 
 conv2d_transpose
 ----------------
 
-..  autofunction:: paddle.v2.fluid.layers.conv2d_transpose
+..  autofunction:: paddle.fluid.layers.conv2d_transpose
     :noindex:
 
 sequence_expand
 ---------------
 
-..  autofunction:: paddle.v2.fluid.layers.sequence_expand
+..  autofunction:: paddle.fluid.layers.sequence_expand
     :noindex:
 
 lstm_unit
 ---------
 
-..  autofunction:: paddle.v2.fluid.layers.lstm_unit
+..  autofunction:: paddle.fluid.layers.lstm_unit
     :noindex:
 
 reduce_sum
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.reduce_sum
+..  autofunction:: paddle.fluid.layers.reduce_sum
     :noindex:
 
 reduce_mean
 -----------
 
-..  autofunction:: paddle.v2.fluid.layers.reduce_mean
+..  autofunction:: paddle.fluid.layers.reduce_mean
     :noindex:
 
 reduce_max
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.reduce_max
+..  autofunction:: paddle.fluid.layers.reduce_max
     :noindex:
 
 reduce_min
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.reduce_min
+..  autofunction:: paddle.fluid.layers.reduce_min
     :noindex:
 
 sequence_first_step
 -------------------
 
-..  autofunction:: paddle.v2.fluid.layers.sequence_first_step
+..  autofunction:: paddle.fluid.layers.sequence_first_step
     :noindex:
 
 sequence_last_step
 ------------------
 
-..  autofunction:: paddle.v2.fluid.layers.sequence_last_step
+..  autofunction:: paddle.fluid.layers.sequence_last_step
     :noindex:
 
 dropout
 -------
 
-..  autofunction:: paddle.v2.fluid.layers.dropout
+..  autofunction:: paddle.fluid.layers.dropout
     :noindex:
 
 split
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.split
+..  autofunction:: paddle.fluid.layers.split
     :noindex:
 
 ctc_greedy_decoder
 ------------------
 
-..  autofunction:: paddle.v2.fluid.layers.ctc_greedy_decoder
+..  autofunction:: paddle.fluid.layers.ctc_greedy_decoder
     :noindex:
 
 edit_distance
 -------------
 
-..  autofunction:: paddle.v2.fluid.layers.edit_distance
+..  autofunction:: paddle.fluid.layers.edit_distance
     :noindex:
 
 l2_normalize
 ------------
 
-..  autofunction:: paddle.v2.fluid.layers.l2_normalize
+..  autofunction:: paddle.fluid.layers.l2_normalize
     :noindex:
 
 matmul
 ------
 
-..  autofunction:: paddle.v2.fluid.layers.matmul
+..  autofunction:: paddle.fluid.layers.matmul
     :noindex:
 
 warpctc
 -------
 
-..  autofunction:: paddle.v2.fluid.layers.warpctc
+..  autofunction:: paddle.fluid.layers.warpctc
     :noindex:
 
 sequence_reshape
 ----------------
 
-..  autofunction:: paddle.v2.fluid.layers.sequence_reshape
+..  autofunction:: paddle.fluid.layers.sequence_reshape
     :noindex:
 
 transpose
 ---------
 
-..  autofunction:: paddle.v2.fluid.layers.transpose
+..  autofunction:: paddle.fluid.layers.transpose
     :noindex:
 
 im2sequence
 -----------
 
-..  autofunction:: paddle.v2.fluid.layers.im2sequence
+..  autofunction:: paddle.fluid.layers.im2sequence
     :noindex:
 
 nce
 ---
 
-..  autofunction:: paddle.v2.fluid.layers.nce
+..  autofunction:: paddle.fluid.layers.nce
     :noindex:
 
 beam_search
 -----------
 
-..  autofunction:: paddle.v2.fluid.layers.beam_search
+..  autofunction:: paddle.fluid.layers.beam_search
     :noindex:
 
 row_conv
 --------
 
-..  autofunction:: paddle.v2.fluid.layers.row_conv
+..  autofunction:: paddle.fluid.layers.row_conv
     :noindex:
 
 multiplex
 ---------
 
-..  autofunction:: paddle.v2.fluid.layers.multiplex
+..  autofunction:: paddle.fluid.layers.multiplex
     :noindex:
 
 ops
@@ -479,259 +479,259 @@ ops
 mean
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.mean
+..  autofunction:: paddle.fluid.layers.mean
     :noindex:
 
 mul
 ---
 
-..  autofunction:: paddle.v2.fluid.layers.mul
+..  autofunction:: paddle.fluid.layers.mul
     :noindex:
 
 reshape
 -------
 
-..  autofunction:: paddle.v2.fluid.layers.reshape
+..  autofunction:: paddle.fluid.layers.reshape
     :noindex:
 
 scale
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.scale
+..  autofunction:: paddle.fluid.layers.scale
     :noindex:
 
 sigmoid_cross_entropy_with_logits
 ---------------------------------
 
-..  autofunction:: paddle.v2.fluid.layers.sigmoid_cross_entropy_with_logits
+..  autofunction:: paddle.fluid.layers.sigmoid_cross_entropy_with_logits
     :noindex:
 
 elementwise_add
 ---------------
 
-..  autofunction:: paddle.v2.fluid.layers.elementwise_add
+..  autofunction:: paddle.fluid.layers.elementwise_add
     :noindex:
 
 elementwise_div
 ---------------
 
-..  autofunction:: paddle.v2.fluid.layers.elementwise_div
+..  autofunction:: paddle.fluid.layers.elementwise_div
     :noindex:
 
 elementwise_sub
 ---------------
 
-..  autofunction:: paddle.v2.fluid.layers.elementwise_sub
+..  autofunction:: paddle.fluid.layers.elementwise_sub
     :noindex:
 
 elementwise_mul
 ---------------
 
-..  autofunction:: paddle.v2.fluid.layers.elementwise_mul
+..  autofunction:: paddle.fluid.layers.elementwise_mul
     :noindex:
 
 elementwise_max
 ---------------
 
-..  autofunction:: paddle.v2.fluid.layers.elementwise_max
+..  autofunction:: paddle.fluid.layers.elementwise_max
     :noindex:
 
 elementwise_min
 ---------------
 
-..  autofunction:: paddle.v2.fluid.layers.elementwise_min
+..  autofunction:: paddle.fluid.layers.elementwise_min
     :noindex:
 
 elementwise_pow
 ---------------
 
-..  autofunction:: paddle.v2.fluid.layers.elementwise_pow
+..  autofunction:: paddle.fluid.layers.elementwise_pow
     :noindex:
 
 clip
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.clip
+..  autofunction:: paddle.fluid.layers.clip
     :noindex:
 
 clip_by_norm
 ------------
 
-..  autofunction:: paddle.v2.fluid.layers.clip_by_norm
+..  autofunction:: paddle.fluid.layers.clip_by_norm
     :noindex:
 
 sequence_softmax
 ----------------
 
-..  autofunction:: paddle.v2.fluid.layers.sequence_softmax
+..  autofunction:: paddle.fluid.layers.sequence_softmax
     :noindex:
 
 sigmoid
 -------
 
-..  autofunction:: paddle.v2.fluid.layers.sigmoid
+..  autofunction:: paddle.fluid.layers.sigmoid
     :noindex:
 
 logsigmoid
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.logsigmoid
+..  autofunction:: paddle.fluid.layers.logsigmoid
     :noindex:
 
 exp
 ---
 
-..  autofunction:: paddle.v2.fluid.layers.exp
+..  autofunction:: paddle.fluid.layers.exp
     :noindex:
 
 relu
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.relu
+..  autofunction:: paddle.fluid.layers.relu
     :noindex:
 
 tanh
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.tanh
+..  autofunction:: paddle.fluid.layers.tanh
     :noindex:
 
 tanh_shrink
 -----------
 
-..  autofunction:: paddle.v2.fluid.layers.tanh_shrink
+..  autofunction:: paddle.fluid.layers.tanh_shrink
     :noindex:
 
 softshrink
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.softshrink
+..  autofunction:: paddle.fluid.layers.softshrink
     :noindex:
 
 sqrt
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.sqrt
+..  autofunction:: paddle.fluid.layers.sqrt
     :noindex:
 
 abs
 ---
 
-..  autofunction:: paddle.v2.fluid.layers.abs
+..  autofunction:: paddle.fluid.layers.abs
     :noindex:
 
 ceil
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.ceil
+..  autofunction:: paddle.fluid.layers.ceil
     :noindex:
 
 floor
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.floor
+..  autofunction:: paddle.fluid.layers.floor
     :noindex:
 
 round
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.round
+..  autofunction:: paddle.fluid.layers.round
     :noindex:
 
 reciprocal
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.reciprocal
+..  autofunction:: paddle.fluid.layers.reciprocal
     :noindex:
 
 log
 ---
 
-..  autofunction:: paddle.v2.fluid.layers.log
+..  autofunction:: paddle.fluid.layers.log
     :noindex:
 
 square
 ------
 
-..  autofunction:: paddle.v2.fluid.layers.square
+..  autofunction:: paddle.fluid.layers.square
     :noindex:
 
 softplus
 --------
 
-..  autofunction:: paddle.v2.fluid.layers.softplus
+..  autofunction:: paddle.fluid.layers.softplus
     :noindex:
 
 softsign
 --------
 
-..  autofunction:: paddle.v2.fluid.layers.softsign
+..  autofunction:: paddle.fluid.layers.softsign
     :noindex:
 
 brelu
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.brelu
+..  autofunction:: paddle.fluid.layers.brelu
     :noindex:
 
 leaky_relu
 ----------
 
-..  autofunction:: paddle.v2.fluid.layers.leaky_relu
+..  autofunction:: paddle.fluid.layers.leaky_relu
     :noindex:
 
 soft_relu
 ---------
 
-..  autofunction:: paddle.v2.fluid.layers.soft_relu
+..  autofunction:: paddle.fluid.layers.soft_relu
     :noindex:
 
 elu
 ---
 
-..  autofunction:: paddle.v2.fluid.layers.elu
+..  autofunction:: paddle.fluid.layers.elu
     :noindex:
 
 relu6
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.relu6
+..  autofunction:: paddle.fluid.layers.relu6
     :noindex:
 
 pow
 ---
 
-..  autofunction:: paddle.v2.fluid.layers.pow
+..  autofunction:: paddle.fluid.layers.pow
     :noindex:
 
 stanh
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.stanh
+..  autofunction:: paddle.fluid.layers.stanh
     :noindex:
 
 hard_shrink
 -----------
 
-..  autofunction:: paddle.v2.fluid.layers.hard_shrink
+..  autofunction:: paddle.fluid.layers.hard_shrink
     :noindex:
 
 thresholded_relu
 ----------------
 
-..  autofunction:: paddle.v2.fluid.layers.thresholded_relu
+..  autofunction:: paddle.fluid.layers.thresholded_relu
     :noindex:
 
 hard_sigmoid
 ------------
 
-..  autofunction:: paddle.v2.fluid.layers.hard_sigmoid
+..  autofunction:: paddle.fluid.layers.hard_sigmoid
     :noindex:
 
 swish
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.swish
+..  autofunction:: paddle.fluid.layers.swish
     :noindex:
 
 tensor
@@ -740,66 +740,66 @@ tensor
 create_tensor
 -------------
 
-..  autofunction:: paddle.v2.fluid.layers.create_tensor
+..  autofunction:: paddle.fluid.layers.create_tensor
     :noindex:
 
 create_parameter
 ----------------
 
-..  autofunction:: paddle.v2.fluid.layers.create_parameter
+..  autofunction:: paddle.fluid.layers.create_parameter
     :noindex:
 
 create_global_var
 -----------------
 
-..  autofunction:: paddle.v2.fluid.layers.create_global_var
+..  autofunction:: paddle.fluid.layers.create_global_var
     :noindex:
 
 cast
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.cast
+..  autofunction:: paddle.fluid.layers.cast
     :noindex:
 
 concat
 ------
 
-..  autofunction:: paddle.v2.fluid.layers.concat
+..  autofunction:: paddle.fluid.layers.concat
     :noindex:
 
 sums
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.sums
+..  autofunction:: paddle.fluid.layers.sums
     :noindex:
 
 assign
 ------
 
-..  autofunction:: paddle.v2.fluid.layers.assign
+..  autofunction:: paddle.fluid.layers.assign
     :noindex:
 
 fill_constant_batch_size_like
 -----------------------------
 
-..  autofunction:: paddle.v2.fluid.layers.fill_constant_batch_size_like
+..  autofunction:: paddle.fluid.layers.fill_constant_batch_size_like
     :noindex:
 
 fill_constant
 -------------
 
-..  autofunction:: paddle.v2.fluid.layers.fill_constant
+..  autofunction:: paddle.fluid.layers.fill_constant
     :noindex:
 
 ones
 ----
 
-..  autofunction:: paddle.v2.fluid.layers.ones
+..  autofunction:: paddle.fluid.layers.ones
     :noindex:
 
 zeros
 -----
 
-..  autofunction:: paddle.v2.fluid.layers.zeros
+..  autofunction:: paddle.fluid.layers.zeros
     :noindex:
 

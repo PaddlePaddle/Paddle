@@ -8,25 +8,25 @@ executor
 Executor
 --------
 
-..  autoclass:: paddle.v2.fluid.executor.Executor
+..  autoclass:: paddle.fluid.executor.Executor
     :members:
     :noindex:
 
 global_scope
 ------------
 
-..  autofunction:: paddle.v2.fluid.executor.global_scope
+..  autofunction:: paddle.fluid.executor.global_scope
     :noindex:
 
 scope_guard
 -----------
 
-..  autofunction:: paddle.v2.fluid.executor.scope_guard
+..  autofunction:: paddle.fluid.executor.scope_guard
     :noindex:
 
 switch_scope
 ------------
 
-..  autofunction:: paddle.v2.fluid.executor.switch_scope
+..  autofunction:: paddle.fluid.executor.switch_scope
     :noindex:
 
