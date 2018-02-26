@@ -47,7 +47,7 @@ def convert_to_list(value, n, name):
                 int(single_value)
             except (ValueError, TypeError):
                 raise ValueError(
-                    "The " + name + "'s must be a list or tuple of " + str(
+                    "The " + name + "'s type must be a list or tuple of " + str(
                         n) + " integers. Received: " + str(value) + " "
                     "including element " + str(single_value) + " of type" + " "
                     + str(type(single_value)))
