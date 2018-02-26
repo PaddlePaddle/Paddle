@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ static constexpr char kOutputs[] = "outputs";
 static constexpr char kParallelScopes[] = "parallel_scopes";
 
 static constexpr char kParallelBlock[] = "sub_block";
+static constexpr char kUseNCCL[] = "use_nccl";
 
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
@@ -78,7 +79,7 @@ inline void CopyOrShare(const framework::Variable &src,
       dst->GetMutable<LoDTensor>()->ShareDataWith(src.Get<LoDTensor>());
       dst->GetMutable<LoDTensor>()->set_lod(src.Get<LoDTensor>().lod());
     } else {
-      Copy(src.Get<LoDTensor>(), dst_place, dst->GetMutable<LoDTensor>());
+      TensorCopy(src.Get<LoDTensor>(), dst_place, dst->GetMutable<LoDTensor>());
     }
   } else if (src.IsType<SelectedRows>()) {
     auto &src_sr = src.Get<SelectedRows>();
@@ -88,7 +89,7 @@ inline void CopyOrShare(const framework::Variable &src,
       dst_sr->mutable_value()->ShareDataWith(src_sr.value());
       dst_sr->set_rows(src_sr.rows());
     } else {
-      Copy(src_sr.value(), dst_place, dst_sr->mutable_value());
+      TensorCopy(src_sr.value(), dst_place, dst_sr->mutable_value());
     }
   } else {
     PADDLE_THROW("Expect LoDTensor/SelectedRows, get %s", src.Type().name());
@@ -146,7 +147,7 @@ class ParallelDoOp : public framework::OperatorBase {
         auto &place = places[i];
         auto *sub_scope = sub_scopes[i];
         auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
-        framework::Copy(src, place, dst);
+        framework::TensorCopy(src, place, dst);
       }
     }
     WaitOnPlaces(places);
@@ -194,6 +195,8 @@ class ParallelDoOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(kOutputs, "").AsDuplicable();
     AddOutput(kParallelScopes, "");
     AddAttr<framework::BlockDesc *>(kParallelBlock, "");
+    AddAttr<bool>(kUseNCCL, "true if we use nccl on backward")
+        .SetDefault(false);
     AddComment(R"DOC(
 ParallelDo Operator.
 )DOC");
@@ -216,7 +219,6 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
     auto &sub_scopes = scope.FindVar(Input(kParallelScopes))
                            ->Get<std::vector<framework::Scope *>>();
-
     auto &places = scope.FindVar(Input(kPlaces))->Get<platform::PlaceList>();
 
     // feed output@grad
@@ -243,7 +245,24 @@ class ParallelDoGradOp : public framework::OperatorBase {
     }
     WaitOnPlaces(places);
 
-    AccumulateGrad(scope, place, sub_scopes, places);
+    // NCCL allreduce op will be added by backward,
+    // so no need to explicitly accumulate grad
+    if (!(Attr<bool>(kUseNCCL))) {
+      AccumulateGrad(scope, place, sub_scopes, places);
+    } else {
+      for (auto &place : places) {
+        PADDLE_ENFORCE(platform::is_gpu_place(place),
+                       "NCCL only supports cuda place");
+      }
+    }
+    for (auto &s : Outputs(framework::GradVarName(kParameters))) {
+      if (s == framework::kEmptyVarName) {
+        continue;
+      }
+      VLOG(3) << "Moving " << s;
+      CopyOrShare(*sub_scopes[0]->FindVar(s), place, scope.FindVar(s));
+    }
+    WaitOnPlaces(places);
   }
 
   void AccumulateGrad(const framework::Scope &scope,
@@ -251,6 +270,9 @@ class ParallelDoGradOp : public framework::OperatorBase {
                       const std::vector<framework::Scope *> &sub_scopes,
                       const platform::PlaceList &places) const {
     for (auto &s : Outputs(framework::GradVarName(kParameters))) {
+      if (s == framework::kEmptyVarName) {
+        continue;
+      }
       VLOG(3) << "Accumulating " << s;
       if (s == framework::kEmptyVarName) continue;
       std::string tmp_name;

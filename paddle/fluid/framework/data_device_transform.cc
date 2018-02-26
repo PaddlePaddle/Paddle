@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -37,7 +37,7 @@ void TransDataDevice(const Tensor& in, const platform::Place& dst_place,
           << " dst_place: " << dst_place;
   auto* dev_ctx = GetDeviceContext(in.place(), dst_place);
   dev_ctx->Wait();
-  Copy(in, dst_place, *dev_ctx, out);
+  TensorCopy(in, dst_place, *dev_ctx, out);
   dev_ctx->Wait();
 }
 

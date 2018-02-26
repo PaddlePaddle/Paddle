@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,9 +27,9 @@ TEST(DataTransform, DataLayoutFunction) {
   in.mutable_data<double>(make_ddim({2, 3, 1, 2}), place);
   in.set_layout(DataLayout::kNHWC);
 
-  auto kernel_nhwc = OpKernelType(proto::DataType::FP32, place,
+  auto kernel_nhwc = OpKernelType(proto::VarType::FP32, place,
                                   DataLayout::kNHWC, LibraryType::kPlain);
-  auto kernel_ncwh = OpKernelType(proto::DataType::FP32, place,
+  auto kernel_ncwh = OpKernelType(proto::VarType::FP32, place,
                                   DataLayout::kNCHW, LibraryType::kPlain);
 
   TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out);

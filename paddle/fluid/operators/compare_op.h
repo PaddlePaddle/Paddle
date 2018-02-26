@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,6 +35,18 @@ struct LessEqualFunctor {
 };
 
 template <typename T>
+struct GreaterThanFunctor {
+  using ELEM_TYPE = T;
+  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a > b; }
+};
+
+template <typename T>
+struct GreaterEqualFunctor {
+  using ELEM_TYPE = T;
+  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a >= b; }
+};
+
+template <typename T>
 struct EqualFunctor {
   using ELEM_TYPE = T;
   HOSTDEVICE bool operator()(const T& a, const T& b) const {
@@ -67,7 +79,6 @@ class CompareOpKernel
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Input<Tensor>("Y");
     auto* z = context.Output<Tensor>("Out");
-    z->mutable_data<T>(context.GetPlace());
     int axis = context.Attr<int>("axis");
     ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, axis,
                                                           Functor(), z);
@@ -77,7 +88,7 @@ class CompareOpKernel
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_LOGICAL_KERNEL(op_type, dev, functor)                    \
+#define REGISTER_COMPARE_KERNEL(op_type, dev, functor)                    \
   REGISTER_OP_##dev##_KERNEL(                                             \
       op_type, ::paddle::operators::CompareOpKernel<                      \
                    ::paddle::platform::dev##DeviceContext, functor<int>>, \

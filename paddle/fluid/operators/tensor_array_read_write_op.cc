@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ class WriteToArrayOp : public ArrayOp {
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
 
-      Copy(x_tensor, place, dev_ctx, out_tensor);
+      TensorCopy(x_tensor, place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_tensor.lod());
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
@@ -108,7 +108,7 @@ class WriteToArrayInferVarType : public framework::VarTypeInference {
     auto out_name = op_desc.Output("Out")[0];
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
     auto &out = block->FindRecursiveOrCreateVar(out_name);
-    out.SetType(framework::proto::VarDesc::LOD_TENSOR_ARRAY);
+    out.SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
     auto *x = block->FindVarRecursive(x_name);
     if (x != nullptr) {
       out.SetDataType(x->GetDataType());
@@ -138,7 +138,7 @@ class ReadFromArrayOp : public ArrayOp {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
-      framework::Copy(x_array[offset], place, dev_ctx, out_tensor);
+      framework::TensorCopy(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());
     } else {
       VLOG(10) << "offset " << offset << " >= " << x_array.size();

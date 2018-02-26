@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -130,8 +130,6 @@ class Tensor {
   inline void set_layout(const DataLayout layout) { layout_ = layout; }
 
  private:
-  friend class LoDTensor;
-
   /**
    * @note    Placeholder hides type T, so it doesn't appear as a template
    *          parameter of Variable.

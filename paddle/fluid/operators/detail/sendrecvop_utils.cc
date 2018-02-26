@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,11 +24,11 @@ void SerializeToMessage(const std::string& name, const framework::Variable* var,
   msg->set_varname(name);
   std::ostringstream oss;
   switch (framework::ToVarType(var->Type())) {
-    case framework::proto::VarDesc_VarType_LOD_TENSOR:
+    case framework::proto::VarType_Type_LOD_TENSOR:
       msg->set_type(sendrecv::VarType::LOD_TENSOR);
       framework::SerializeToStream(oss, var->Get<framework::LoDTensor>(), ctx);
       break;
-    case framework::proto::VarDesc_VarType_SELECTED_ROWS:
+    case framework::proto::VarType_Type_SELECTED_ROWS:
       msg->set_type(sendrecv::VarType::SELECTED_ROWS);
       framework::SerializeToStream(oss, var->Get<framework::SelectedRows>(),
                                    ctx);

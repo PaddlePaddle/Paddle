@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/compare_op.h"
 
-REGISTER_LOGICAL_KERNEL(less_than, CUDA, paddle::operators::LessThanFunctor);
-REGISTER_LOGICAL_KERNEL(less_equal, CUDA, paddle::operators::LessEqualFunctor);
-REGISTER_LOGICAL_KERNEL(equal, CUDA, paddle::operators::EqualFunctor);
-REGISTER_LOGICAL_KERNEL(not_equal, CUDA, paddle::operators::NotEqualFunctor);
+REGISTER_COMPARE_KERNEL(less_than, CUDA, paddle::operators::LessThanFunctor);
+REGISTER_COMPARE_KERNEL(less_equal, CUDA, paddle::operators::LessEqualFunctor);
+REGISTER_COMPARE_KERNEL(greater_than, CUDA,
+                        paddle::operators::GreaterThanFunctor);
+REGISTER_COMPARE_KERNEL(greater_equal, CUDA,
+                        paddle::operators::GreaterEqualFunctor);
+REGISTER_COMPARE_KERNEL(equal, CUDA, paddle::operators::EqualFunctor);
+REGISTER_COMPARE_KERNEL(not_equal, CUDA, paddle::operators::NotEqualFunctor);

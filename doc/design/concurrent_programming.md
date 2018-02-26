@@ -12,7 +12,7 @@ The following table compares concepts in Fluid and Go
 
 | Go | Fluid |
 |----|-------|
-|user-defined functions | [layers](https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/v2/fluid) |
+|user-defined functions | [layers](https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/fluid) |
 | control-flow and built-in functions | [intrinsics/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators) |
 | goroutines, channels | [class ThreadPool](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/framework/thread_pool.h) |
 | runtime | [class Executor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/executor.h) |

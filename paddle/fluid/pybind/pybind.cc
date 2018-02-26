@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ limitations under the License. */
 #include <mutex>  // for call_once
 #include <unordered_map>
 #include "paddle/fluid/framework/backward.h"
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -48,11 +49,6 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
 namespace paddle {
 namespace pybind {
-static size_t UniqueIntegerGenerator(const std::string &prefix) {
-  static std::unordered_map<std::string, std::atomic<size_t>> generators;
-  return generators[prefix].fetch_add(1);
-}
-
 bool IsCompiledWithCUDA() {
 #ifndef PADDLE_WITH_CUDA
   return false;
@@ -409,7 +405,6 @@ All parameter, weight, gradient are variables in Paddle.
            (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
                Executor::Run);
 
-  m.def("unique_integer", UniqueIntegerGenerator);
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_devices", &framework::InitDevices);
