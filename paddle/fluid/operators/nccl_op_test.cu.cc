@@ -70,11 +70,16 @@ class NCCLTester : public ::testing::Test {
     std::unique_ptr<f::OpDesc> op1(new f::OpDesc);
 
     op1->SetType("ncclInit");
-    op1->SetOutput("Communicator", {"comm"});
-    op1->SetAttr("gpus", {gpu_list});
+    op1->SetInput("parallel_scopes", {"p_scopes"})
+        op1->SetOutput("Communicator", {"comm"});
 
     auto *var = g_scope.Var("comm");
     var->GetMutable<p::Communicator>();
+
+    auto *scope_var = g_scope.Var("p_scopes");
+    scope_var->GetMutable<std::vector<f::Scope *>>();
+    auto &p_scopes = scope_var->Get<std::vector<f::Scope *>>();
+    (*p_scopes).resize(gpu_list.size());
 
     auto op = f::OpRegistry::CreateOp(*op1);
     VLOG(1) << "invoke NCCLInitOp.";
@@ -124,24 +129,7 @@ class NCCLTester : public ::testing::Test {
 };
 
 // ncclInitOp with desc
-TEST(NCCL, ncclInitOp) {
-  std::unique_ptr<f::OpDesc> op_desc(new f::OpDesc);
-
-  op_desc->SetType("ncclInit");
-  op_desc->SetOutput("Communicator", {"x1"});
-  op_desc->SetAttr("gpus", {gpu_list});
-
-  f::Scope g_scope;
-  paddle::platform::CPUPlace cpu_place;
-
-  auto *var = g_scope.Var("x1");
-  var->GetMutable<p::Communicator>();
-
-  auto op = f::OpRegistry::CreateOp(*op_desc);
-  VLOG(1) << "invoke NCCLInitOp.";
-  op->Run(g_scope, cpu_place);
-  VLOG(1) << "NCCLInitOp finished.";
-}
+TEST(NCCLTester, ncclInitOp) {}
 
 // ncclAllReduceOp with desc
 TEST_F(NCCLTester, ncclAllReduceOp) {
