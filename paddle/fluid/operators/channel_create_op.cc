@@ -36,12 +36,17 @@ class ChannelCreateOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto &out = *scope.FindVar(Output("Output"));
+    auto &out = *scope.FindVar(Output(kOutput));
 
+    // Determine the datatype and capacity of the channel to be created
+    // from the attributes provided.
     auto dtype =
         static_cast<framework::proto::VarType::Type>(Attr<int>("data_type"));
     auto capacity = Attr<int>("capacity");
 
+    // Based on the datatype, create a new channel holder initialized with
+    // the given capacity. When capacity is 0, an unbuffered channel is
+    // created.
     pf::ChannelHolder *ch = out.GetMutable<framework::ChannelHolder>();
     if (dtype == framework::proto::VarType::LOD_TENSOR) {
       ch->Reset<pf::LoDTensor>(capacity);
