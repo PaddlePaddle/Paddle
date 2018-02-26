@@ -117,7 +117,7 @@ def make_channel(dtype, capacity=0):
 
     create_channel_op = make_channel_block.append_op(
         type="channel_create",
-        outputs={"Output": channel},
+        outputs={"Out": channel},
         attrs={"data_type": dtype,
                "capacity": capacity})
 
