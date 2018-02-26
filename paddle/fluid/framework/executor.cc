@@ -58,13 +58,13 @@ static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<ReaderHolder>();
   } else if (var_type == proto::VarType::CHANNEL) {
     var->GetMutable<ChannelHolder>();
-  } else if (var_type == proto::VarType::NCCL_COM) {
-    // GetMutable will be called in ncclInit
+  } else if (var_type == proto::VarType::RAW) {
+    // GetMutable will be called in operator
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, NCCL_COM]",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
         var_type);
   }
 }

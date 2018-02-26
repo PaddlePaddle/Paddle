@@ -129,6 +129,8 @@ class ListenAndServOp : public framework::OperatorBase {
       }
       if (exit_flag) {
         rpc_service_->ShutDown();
+        rpc_service_->SetCond(1);
+        break;
       }
       try {
         executor.Run(*program, &recv_scope, block->ID(), /*global_block*/
