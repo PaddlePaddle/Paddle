@@ -65,6 +65,7 @@
     output_file = "output.paddle.model"
     merge_v2_model(net, param_file, output_file)
     ```
+
     对[手写数字识别](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense)这个示例，可直接运行 `python` [merge_v2_model.py](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense/merge_v2_model.py)。序列化结果会写入当前运行目录下的`output.paddle.model`文件中。使用这种方式，运行时C-API可以通过指定`output.paddle.model`文件的路径来加载预测模型。
 
 #### 注意事项
