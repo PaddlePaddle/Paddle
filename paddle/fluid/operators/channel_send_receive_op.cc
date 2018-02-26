@@ -23,10 +23,22 @@ limitations under the License. */
 static constexpr char Channel[] = "Channel";
 static constexpr char X[] = "X";
 static constexpr char Status[] = "Status";
+static constexpr char Out[] = "Out";
 static constexpr char copy[] = "copy";
 
 namespace paddle {
 namespace operators {
+
+void SetStatus(const platform::Place &dev_place,
+               framework::Variable &status_var, bool status) {
+  auto cpu = platform::CPUPlace();
+  auto status_tensor = status_var.GetMutable<framework::LoDTensor>();
+  status_tensor->mutable_data(
+      cpu, framework::ToTypeIndex(framework::proto::VarType::BOOL));
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(dev_place);
+  math::set_constant(dev_ctx, status_tensor, status);
+}
 
 bool ChannelSend(framework::ChannelHolder *ch, framework::Variable *var) {
   auto type = framework::ToVarType(var->Type());
@@ -43,7 +55,7 @@ bool ChannelSend(framework::ChannelHolder *ch, framework::Variable *var) {
   else if (type == framework::proto::VarType_Type_CHANNEL)
     return ch->Send(var->GetMutable<framework::ChannelHolder>());
   else
-    PADDLE_THROW("GetUnderlyingDataPtr:Unsupported type");
+    PADDLE_THROW("ChannelSend:Unsupported type");
 }
 
 class ChannelSendOp : public framework::OperatorBase {
@@ -55,11 +67,11 @@ class ChannelSendOp : public framework::OperatorBase {
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const {
-    PADDLE_ENFORCE(ctx->HasInput("Channel"),
+    PADDLE_ENFORCE(ctx->HasInput(Channel),
                    "Input(Channel) of ChannelSendOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"),
+    PADDLE_ENFORCE(ctx->HasInput(X),
                    "Input(X) of ChannelSendOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Status"),
+    PADDLE_ENFORCE(ctx->HasOutput(Status),
                    "Output(Status) of ChannelSendOp should not be null.");
     ctx->SetOutputDim("Status", {1});
   }
@@ -76,14 +88,7 @@ class ChannelSendOp : public framework::OperatorBase {
     bool ok = ChannelSend(ch, input_var);
 
     // Set the status output of the `ChannelSend` call.
-    auto &status_out =
-        *scope.FindVar(Output(Status))->GetMutable<framework::LoDTensor>();
-    auto cpu = platform::CPUPlace();
-    status_out.mutable_data(
-        cpu, framework::ToTypeIndex(framework::proto::VarType::BOOL));
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
-    math::set_constant(dev_ctx, &status_out, ok);
+    SetStatus(dev_place, *scope.FindVar(Output(Status)), ok);
   }
 };
 
@@ -108,6 +113,25 @@ class ChannelSendOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+bool ChannelReceive(framework::ChannelHolder *ch, framework::Variable *var) {
+  // Get type of channel and use that to call mutable data for Variable
+  auto type = framework::ToVarType(ch->Type());
+  if (type == framework::proto::VarType_Type_LOD_TENSOR)
+    return ch->Receive(var->GetMutable<framework::LoDTensor>());
+  else if (type == framework::proto::VarType_Type_LOD_RANK_TABLE)
+    return ch->Receive(var->GetMutable<framework::LoDRankTable>());
+  else if (type == framework::proto::VarType_Type_LOD_TENSOR_ARRAY)
+    return ch->Receive(var->GetMutable<framework::LoDTensorArray>());
+  else if (type == framework::proto::VarType_Type_SELECTED_ROWS)
+    return ch->Receive(var->GetMutable<framework::SelectedRows>());
+  else if (type == framework::proto::VarType_Type_READER)
+    return ch->Receive(var->GetMutable<framework::ReaderHolder>());
+  else if (type == framework::proto::VarType_Type_CHANNEL)
+    return ch->Receive(var->GetMutable<framework::ChannelHolder>());
+  else
+    PADDLE_THROW("ChannelReceive:Unsupported type");
+}
+
 class ChannelRecvOp : public framework::OperatorBase {
  public:
   ChannelRecvOp(const std::string &type,
@@ -117,16 +141,28 @@ class ChannelRecvOp : public framework::OperatorBase {
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const {
-    PADDLE_ENFORCE(ctx->HasInput("Channel"),
+    PADDLE_ENFORCE(ctx->HasInput(Channel),
                    "Input(Channel) of ChannelRecvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Status"),
+    PADDLE_ENFORCE(ctx->HasOutput(Out),
+                   "Input(Channel) of ChannelRecvOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(Status),
                    "Output(Status) of ChannelRecvOp should not be null.");
     ctx->SetOutputDim("Status", {1});
   }
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {}
+               const platform::Place &dev_place) const override {
+    // Get the channel holder created by channel_create op, passed as input.
+    framework::ChannelHolder *ch =
+        scope.FindVar(Input(Channel))->GetMutable<framework::ChannelHolder>();
+    auto output_var = scope.FindVar(Output(Out));
+    // Receive the data from the channel.
+    bool ok = ChannelReceive(ch, output_var);
+
+    // Set the status output of the `ChannelReceive` call.
+    SetStatus(dev_place, *scope.FindVar(Output(Status)), ok);
+  }
 };
 
 class ChannelRecvOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -136,6 +172,10 @@ class ChannelRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(Channel,
              "(Channel) A variable which \"receives\" the a value sent"
              "to it by a channel_send op.")
+        .AsDuplicable();
+    AddOutput(Out,
+              "(Variable) Output Variable that will hold the data received"
+              " from the Channel")
         .AsDuplicable();
     AddOutput(Status,
               "(Tensor) An LoD Tensor that returns a boolean status of the"
@@ -152,8 +192,6 @@ class ChannelRecvOpMaker : public framework::OpProtoAndCheckerMaker {
 REGISTER_OPERATOR(channel_send, paddle::operators::ChannelSendOp,
                   paddle::framework::EmptyGradOpMaker,
                   paddle::operators::ChannelSendOpMaker);
-/*
 REGISTER_OPERATOR(channel_recv, paddle::operators::ChannelRecvOp,
                   paddle::framework::EmptyGradOpMaker,
                   paddle::operators::ChannelRecvOpMaker);
-*/
