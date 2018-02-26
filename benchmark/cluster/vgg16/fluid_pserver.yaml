@@ -38,8 +38,6 @@ spec:
           value: "/workspace"
         - name: PADDLE_INIT_PORT
           value: "30236"
-        - name: PORT
-          value: "6174"
         - name: PADDLE_INIT_NICS
           value: "xgbe0"
         - name: PADDLE_INIT_TRAINER_COUNT
