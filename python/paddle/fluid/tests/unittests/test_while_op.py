@@ -58,7 +58,7 @@ class TestWhileOp(unittest.TestCase):
             layers.less_than(x=i, y=array_len, cond=cond)
 
         sum_result = layers.array_read(array=mem_array, i=i)
-        loss = layers.mean(x=sum_result)
+        loss = layers.mean(sum_result)
 
         append_backward(loss)
 

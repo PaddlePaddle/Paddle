@@ -39,7 +39,7 @@ class ConditionalBlock(unittest.TestCase):
 
         outs = exe.run(feed={'X': x}, fetch_list=[out])[0]
         print outs
-        loss = layers.mean(x=out)
+        loss = layers.mean(out)
         append_backward(loss=loss)
         outs = exe.run(
             feed={'X': x},

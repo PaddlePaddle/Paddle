@@ -160,8 +160,8 @@ def sums(input, out=None):
           a0 = layers.array_read(array=tmp, i=i)
           i = layers.increment(x=i)
           a1 = layers.array_read(array=tmp, i=i)
-          mean_a0 = layers.mean(x=a0)
-          mean_a1 = layers.mean(x=a1)
+          mean_a0 = layers.mean(a0)
+          mean_a1 = layers.mean(a1)
           a_sum = layers.sums(input=[mean_a0, mean_a1])
     """
     helper = LayerHelper('sum', **locals())
