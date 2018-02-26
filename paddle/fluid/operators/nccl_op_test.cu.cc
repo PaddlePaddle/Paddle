@@ -41,15 +41,24 @@ USE_CUDA_ONLY_OP(ncclBcast);
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-static std::vector<int> gpu_list;
-
 // test data amount
-const f::DDim kDims = {100, 100};
+const f::DDim kDims = {20, 20};
 
 // nccl op common tester, init communicator.
 class NCCLTester : public ::testing::Test {
  public:
   virtual void SetUp() override {
+    int count = f::GetCUDADeviceCount();
+    if (count <= 1) {
+      LOG(WARNING)
+          << "Cannot test multi-gpu nccl, because the CUDA device count is "
+          << dev_count;
+      exit(0);
+    }
+    for (int i = 0; i < count; ++i) {
+      gpu_list.emplace_back(i);
+    }
+
     paddle::platform::CPUPlace cpu_place;
     for (size_t i = 0; i < gpu_list.size(); ++i) {
       p::CUDAPlace place(i);
@@ -125,6 +134,7 @@ class NCCLTester : public ::testing::Test {
   std::vector<p::DeviceContext *> dev_ctxs;
   f::Scope g_scope;
   std::mutex mu;
+  std::vector<int> gpu_list;
 };
 
 // ncclInitOp with desc
@@ -271,32 +281,4 @@ TEST_F(NCCLTester, ncclBcastOp) {
   for (int64_t j = 0; j < f::product(kDims); ++j) {
     ASSERT_NEAR(ct[j], result, 1e-5);
   }
-}
-
-int main(int argc, char **argv) {
-  const int dev_count = p::GetCUDADeviceCount();
-  if (dev_count <= 1) {
-    LOG(WARNING)
-        << "Cannot test multi-gpu nccl, because the CUDA device count is "
-        << dev_count;
-    return 0;
-  }
-
-  std::vector<paddle::platform::Place> places;
-
-  places.emplace_back(paddle::platform::CPUPlace());
-  int count = paddle::platform::GetCUDADeviceCount();
-  for (int i = 0; i < count; ++i) {
-    places.emplace_back(paddle::platform::CUDAPlace(i));
-    gpu_list.emplace_back(i);
-  }
-
-  VLOG(0) << " DeviceCount " << count;
-  paddle::platform::DeviceContextPool::Init(places);
-
-  testing::InitGoogleTest(&argc, argv);
-
-  // device context should be release before scope.
-  // otherwise driver will down.
-  return RUN_ALL_TESTS();
 }

@@ -25,12 +25,17 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
-static int dev_count = 0;
-
 namespace paddle {
 namespace platform {
 
 TEST(NCCL, init) {
+  int dev_count = paddle::platform::GetCUDADeviceCount();
+  if (dev_count <= 1) {
+    LOG(WARNING)
+        << "Cannot test multi-gpu nccl, because the CUDA device count is "
+        << dev_count;
+    exit(0);
+  }
   std::vector<ncclComm_t> comms;
   comms.resize(dev_count);
   PADDLE_ENFORCE(dynload::ncclCommInitAll(comms.data(), dev_count, nullptr));
@@ -59,9 +64,16 @@ struct PerThreadData {
   }
 };
 
-static constexpr int ELEM_COUNT = 10000;
+static constexpr int ELEM_COUNT = 100;
 
 TEST(NCCL, all_reduce) {
+  int dev_count = paddle::platform::GetCUDADeviceCount();
+  if (dev_count <= 1) {
+    LOG(WARNING)
+        << "Cannot test multi-gpu nccl, because the CUDA device count is "
+        << dev_count;
+    exit(0);
+  }
   std::vector<ncclComm_t> comms;
   comms.resize(dev_count);
   VLOG(1) << "Initializing ncclComm";
@@ -127,27 +139,3 @@ TEST(NCCL, all_reduce) {
 }
 }  // namespace platform
 }  // namespace paddle
-
-int main(int argc, char** argv) {
-  dev_count = paddle::platform::GetCUDADeviceCount();
-  if (dev_count <= 1) {
-    LOG(WARNING)
-        << "Cannot test multi-gpu nccl, because the CUDA device count is "
-        << dev_count;
-    return 0;
-  }
-
-  std::vector<paddle::platform::Place> places;
-
-  places.emplace_back(paddle::platform::CPUPlace());
-  int count = paddle::platform::GetCUDADeviceCount();
-  for (int i = 0; i < count; ++i) {
-    places.emplace_back(paddle::platform::CUDAPlace(i));
-  }
-
-  VLOG(0) << " DeviceCount " << count;
-  paddle::platform::DeviceContextPool::Init(places);
-
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
