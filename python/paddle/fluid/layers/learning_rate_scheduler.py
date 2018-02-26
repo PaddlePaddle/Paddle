@@ -61,7 +61,7 @@ def exponential_decay(learning_rate,
         # update learning_rate
         div_res = global_step / decay_steps
         if staircase:
-            div_res = ops.floor(x=div_res)
+            div_res = ops.floor(div_res)
         decayed_lr = learning_rate * (decay_rate**div_res)
 
     return decayed_lr
@@ -97,8 +97,8 @@ def natural_exp_decay(learning_rate,
     with init_on_cpu():
         div_res = global_step / decay_steps
         if staircase:
-            div_res = ops.floor(x=div_res)
-        decayed_lr = learning_rate * ops.exp(x=(-1 * decay_rate * div_res))
+            div_res = ops.floor(div_res)
+        decayed_lr = learning_rate * ops.exp(-1 * decay_rate * div_res)
 
     return decayed_lr
 
@@ -133,7 +133,7 @@ def inverse_time_decay(learning_rate,
     with init_on_cpu():
         div_res = global_step / decay_steps
         if staircase:
-            div_res = ops.floor(x=div_res)
+            div_res = ops.floor(div_res)
 
         decayed_lr = learning_rate / (1 + decay_rate * div_res)
 
@@ -174,7 +174,7 @@ def polynomial_decay(learning_rate,
 
     with init_on_cpu():
         if cycle:
-            div_res = ops.ceil(x=(global_step / decay_steps))
+            div_res = ops.ceil(global_step / decay_steps)
             zero_var = tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.0)
             one_var = tensor.fill_constant(
