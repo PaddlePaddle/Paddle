@@ -1431,8 +1431,8 @@ def sequence_last_step(input):
 
 
 def pool2d(input,
-           pool_size,
-           pool_type,
+           pool_size=-1,
+           pool_type="max",
            pool_stride=1,
            pool_padding=0,
            global_pooling=False,
@@ -1446,6 +1446,11 @@ def pool2d(input,
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
             str(pool_type))
+
+    if global_pooling is False and pool_size == -1:
+        raise ValueError(
+            "When the global_pooling is False, pool_size must be passed "
+            "and be a valid value. Received pool_size: " + str(pool_size))
 
     pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
     pool_padding = utils.convert_to_list(pool_padding, 2, 'pool_padding')
