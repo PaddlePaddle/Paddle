@@ -8,28 +8,28 @@ initializer
 Constant
 --------
 
-..  autoclass:: paddle.v2.fluid.initializer.Constant
+..  autoclass:: paddle.fluid.initializer.Constant
     :members:
     :noindex:
 
 Uniform
 -------
 
-..  autoclass:: paddle.v2.fluid.initializer.Uniform
+..  autoclass:: paddle.fluid.initializer.Uniform
     :members:
     :noindex:
 
 Normal
 ------
 
-..  autoclass:: paddle.v2.fluid.initializer.Normal
+..  autoclass:: paddle.fluid.initializer.Normal
     :members:
     :noindex:
 
 Xavier
 ------
 
-..  autoclass:: paddle.v2.fluid.initializer.Xavier
+..  autoclass:: paddle.fluid.initializer.Xavier
     :members:
     :noindex:
 
