@@ -26,8 +26,16 @@ fluid.default_startup_program().random_seed = 111
 x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-places = fluid.layers.get_places(device_count=2, device_type='CPU')
-pd = fluid.layers.ParallelDo(places)
+device_type = 'CPU'
+use_nccl = False
+place = fluid.CPUPlace()
+if fluid.core.is_compiled_with_cuda():
+    device_type = 'CUDA'
+    use_nccl = True
+    place = fluid.CUDAPlace(0)
+
+places = fluid.layers.get_places(device_count=2, device_type=device_type)
+pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
 with pd.do():
     x_ = pd.read_input(x)
     y_ = pd.read_input(y)
@@ -54,7 +62,6 @@ train_reader = paddle.batch(
 #         paddle.dataset.uci_housing.train(), buf_size=500),
 #     batch_size=BATCH_SIZE)
 
-place = fluid.CPUPlace()
 feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
 exe = fluid.Executor(place)
 
