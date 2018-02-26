@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,8 +34,8 @@ void ReadBinaryFile(const std::string& filename, std::string& contents) {
 
 bool IsPersistable(const framework::VarDesc* var) {
   if (var->Persistable() &&
-      var->GetType() != framework::proto::VarDesc::FEED_MINIBATCH &&
-      var->GetType() != framework::proto::VarDesc::FETCH_LIST) {
+      var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
+      var->GetType() != framework::proto::VarType::FETCH_LIST) {
     return true;
   }
   return false;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,13 @@ class ProgramDesc {
 
   BlockDesc *AppendBlock(const BlockDesc &parent);
 
-  BlockDesc *MutableBlock(size_t idx) { return blocks_[idx].get(); }
+  BlockDesc *MutableBlock(size_t idx) {
+    if (idx == static_cast<size_t>(kNoneBlockIndex)) {
+      return nullptr;
+    } else {
+      return blocks_[idx].get();
+    }
+  }
 
   const BlockDesc &Block(size_t idx) const { return *blocks_[idx]; }
 

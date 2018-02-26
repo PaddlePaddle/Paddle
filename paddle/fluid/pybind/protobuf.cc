@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -155,6 +155,8 @@ void BindBlockDesc(py::module &m) {
   py::class_<BlockDesc>(m, "BlockDesc", "")
       .def_property_readonly("id", &BlockDesc::ID)
       .def_property_readonly("parent", &BlockDesc::Parent)
+      .def("get_forward_block_idx", &BlockDesc::ForwardBlockID)
+      .def("set_forward_block_idx", &BlockDesc::SetForwardBlockID)
       .def("append_op", &BlockDesc::AppendOp,
            py::return_value_policy::reference)
       .def("prepend_op", &BlockDesc::PrependOp,
@@ -170,6 +172,14 @@ void BindBlockDesc(py::module &m) {
            [](BlockDesc &self, py::bytes byte_name) {
              std::string name = byte_name;
              return self.HasVar(name);
+           },
+           py::return_value_policy::reference)
+      .def("rename_var",
+           [](BlockDesc &self, const py::bytes &byte_name,
+              const py::bytes &byte_name_new) {
+             std::string name = byte_name;
+             std::string new_name = byte_name_new;
+             self.RenameVar(name, new_name);
            })
       .def("has_var_recursive",
            [](BlockDesc &self, py::bytes byte_name) {
@@ -195,19 +205,10 @@ void BindBlockDesc(py::module &m) {
 }
 
 void BindVarDsec(py::module &m) {
-  py::enum_<proto::DataType>(m, "DataType", "")
-      .value("BOOL", proto::DataType::BOOL)
-      .value("INT16", proto::DataType::INT16)
-      .value("INT32", proto::DataType::INT32)
-      .value("INT64", proto::DataType::INT64)
-      .value("FP16", proto::DataType::FP16)
-      .value("FP32", proto::DataType::FP32)
-      .value("FP64", proto::DataType::FP64);
-
   py::class_<VarDesc> var_desc(m, "VarDesc", "");
   var_desc
       .def("name",
-           [](const VarDesc &self) {
+           [](VarDesc &self) {
              py::bytes name = self.Name();
              return name;
            },
@@ -217,6 +218,7 @@ void BindVarDsec(py::module &m) {
       .def("set_shapes", &VarDesc::SetShapes)
       .def("set_dtype", &VarDesc::SetDataType)
       .def("set_dtypes", &VarDesc::SetDataTypes)
+      .def("set_capacity", &VarDesc::SetCapacity)
       .def("shape", &VarDesc::GetShape, py::return_value_policy::reference)
       .def("shapes", &VarDesc::GetShapes, py::return_value_policy::reference)
       .def("dtype", &VarDesc::GetDataType, py::return_value_policy::reference)
@@ -232,16 +234,25 @@ void BindVarDsec(py::module &m) {
       .def("persistable", &VarDesc::Persistable)
       .def("set_persistable", &VarDesc::SetPersistable);
 
-  py::enum_<proto::VarDesc::VarType>(var_desc, "VarType", "")
-      .value("LOD_TENSOR", proto::VarDesc::LOD_TENSOR)
-      .value("SELECTED_ROWS", proto::VarDesc::SELECTED_ROWS)
-      .value("FEED_MINIBATCH", proto::VarDesc::FEED_MINIBATCH)
-      .value("FETCH_LIST", proto::VarDesc::FETCH_LIST)
-      .value("STEP_SCOPES", proto::VarDesc::STEP_SCOPES)
-      .value("LOD_RANK_TABLE", proto::VarDesc::LOD_RANK_TABLE)
-      .value("LOD_TENSOR_ARRAY", proto::VarDesc::LOD_TENSOR_ARRAY)
-      .value("PLACE_LIST", proto::VarDesc::PLACE_LIST)
-      .value("READER", proto::VarDesc::READER);
+  py::enum_<proto::VarType::Type>(var_desc, "VarType", "")
+      .value("BOOL", proto::VarType::BOOL)
+      .value("INT16", proto::VarType::INT16)
+      .value("INT32", proto::VarType::INT32)
+      .value("INT64", proto::VarType::INT64)
+      .value("FP16", proto::VarType::FP16)
+      .value("FP32", proto::VarType::FP32)
+      .value("FP64", proto::VarType::FP64)
+      .value("LOD_TENSOR", proto::VarType::LOD_TENSOR)
+      .value("SELECTED_ROWS", proto::VarType::SELECTED_ROWS)
+      .value("FEED_MINIBATCH", proto::VarType::FEED_MINIBATCH)
+      .value("FETCH_LIST", proto::VarType::FETCH_LIST)
+      .value("STEP_SCOPES", proto::VarType::STEP_SCOPES)
+      .value("LOD_RANK_TABLE", proto::VarType::LOD_RANK_TABLE)
+      .value("LOD_TENSOR_ARRAY", proto::VarType::LOD_TENSOR_ARRAY)
+      .value("CHANNEL", proto::VarType::CHANNEL)
+      .value("PLACE_LIST", proto::VarType::PLACE_LIST)
+      .value("READER", proto::VarType::READER)
+      .value("NCCL_COM", proto::VarType::NCCL_COM);
 }
 
 void BindOpDesc(py::module &m) {

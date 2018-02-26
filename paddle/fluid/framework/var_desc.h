@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ class VarDesc {
  public:
   explicit VarDesc(const std::string &name) {
     desc_.set_name(name);
-    desc_.set_type(proto::VarDesc::LOD_TENSOR);
+    desc_.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
   }
 
   explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
@@ -80,13 +80,16 @@ class VarDesc {
 
   std::vector<std::vector<int64_t>> GetShapes() const;
 
-  void SetDataType(proto::DataType data_type);
+  void SetDataType(proto::VarType::Type data_type);
 
-  void SetDataTypes(const std::vector<proto::DataType> &multiple_data_type);
+  void SetDataTypes(
+      const std::vector<proto::VarType::Type> &multiple_data_type);
 
-  proto::DataType GetDataType() const;
+  void SetCapacity(int64_t capacity);
 
-  std::vector<proto::DataType> GetDataTypes() const;
+  proto::VarType::Type GetDataType() const;
+
+  std::vector<proto::VarType::Type> GetDataTypes() const;
 
   void SetLoDLevel(int32_t lod_level);
 
@@ -96,19 +99,21 @@ class VarDesc {
 
   std::vector<int32_t> GetLoDLevels() const;
 
-  proto::VarDesc::VarType GetType() const;
+  proto::VarType::Type GetType() const;
 
-  void SetType(proto::VarDesc::VarType type);
+  void SetType(proto::VarType::Type type);
 
   bool Persistable() const { return desc_.persistable(); }
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
  private:
-  const proto::TensorDesc &tensor_desc() const;
-  std::vector<proto::TensorDesc> tensor_descs() const;
-  proto::TensorDesc *mutable_tensor_desc();
-  std::vector<proto::TensorDesc *> mutable_tensor_descs();
+  const proto::VarType::ChannelDesc &channel_desc() const;
+  const proto::VarType::TensorDesc &tensor_desc() const;
+  std::vector<proto::VarType::TensorDesc> tensor_descs() const;
+  proto::VarType::ChannelDesc *mutable_channel_desc();
+  proto::VarType::TensorDesc *mutable_tensor_desc();
+  std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
   proto::VarDesc desc_;
 };

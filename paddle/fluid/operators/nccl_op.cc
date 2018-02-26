@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 
 namespace paddle {
 namespace operators {
+
+static constexpr char kParallelScopes[] = "parallel_scopes";
 
 // NCCLinitOp
 class NCCLInitOp : public framework::OperatorBase {
@@ -29,11 +32,22 @@ class NCCLInitOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
+    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kParallelScopes)),
+                            "Can not find variable '%s' in the scope.",
+                            kParallelScopes);
     const auto &name = Output("Communicator");
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(name),
                             "Can not find variable '%s' in the scope.", name);
-    std::vector<int> gpus = Attr<std::vector<int>>("gpus");
-    PADDLE_ENFORCE(!gpus.empty(), "Attr(gpus) should not be empty.");
+    // A parallel do may not use all the gpus. For example, the batch size is 7
+    // in the last batch while we have 8 gpu. In this case, parallel_do will
+    // create 7 parallel scopes, so should ncclInitOp create 7 gpu peers
+    auto &parallel_scopes = scope.FindVar(Input(kParallelScopes))
+                                ->Get<std::vector<framework::Scope *>>();
+    std::vector<int> gpus(parallel_scopes.size());
+    for (int i = 0; i < static_cast<int>(parallel_scopes.size()); ++i) {
+      gpus[i] = i;
+    }
+    PADDLE_ENFORCE(!gpus.empty(), "NCCL init with 0 gpus.");
 
     if (scope.FindVar(name) == nullptr) {
       PADDLE_THROW("Output(Communicator) is needed for ncclInit operator.");
@@ -45,17 +59,29 @@ class NCCLInitOp : public framework::OperatorBase {
   }
 };
 
+class NCCLInitOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    auto out_var_name = op_desc.Output("Communicator").front();
+    auto &out_var = block->FindRecursiveOrCreateVar(out_var_name);
+    auto var_type = framework::proto::VarType::NCCL_COM;
+    out_var.SetType(var_type);
+  }
+};
+
+class NCCLInitOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {}
+};
+
 class NCCLInitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   NCCLInitOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput(kParallelScopes, "The working place of parallel do.");
     AddOutput("Communicator",
               "Create Communicator for communicating between gpus");
-    AddAttr<std::vector<int>>("gpus", "(vector<int>) GPU id lists");
-    AddAttr<int>("dtype",
-                 "(int, default 5 (FP32)) "
-                 "Output data type")
-        .SetDefault(framework::proto::DataType::FP32);
     AddComment(R"DOC(
 NCCLInit Operator.
 
@@ -78,7 +104,7 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
         ctx->HasInput("Communicator"),
         " Input(Communicator) of AllReduce op input should not be NULL");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   " Input(X) of AllReduce op input should not be NULL");
+                   " Output(Out) of AllReduce op output should not be NULL");
 
     auto x_dims = ctx->GetInputsDim("X");
 
@@ -215,7 +241,9 @@ Bcast the tensors.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(ncclInit, ops::NCCLInitOp,
-                  paddle::framework::EmptyGradOpMaker, ops::NCCLInitOpMaker);
+                  paddle::framework::EmptyGradOpMaker, ops::NCCLInitOpMaker,
+                  ops::NCCLInitOpVarTypeInference,
+                  ops::NCCLInitOpShapeInference);
 
 REGISTER_OP_WITHOUT_GRADIENT(ncclAllReduce, ops::NCCLAllReduceOp,
                              ops::NCCLAllReduceOpMaker);

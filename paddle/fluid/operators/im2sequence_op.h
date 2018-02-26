@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    You may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-inline int OutputSize(int input_size, int filter_size, int padding_0,
-                      int padding_1, int stride) {
+inline int Im2SeqOutputSize(int input_size, int filter_size, int padding_0,
+                            int padding_1, int stride) {
   const int output_size =
       (input_size + padding_0 + padding_1 - filter_size) / stride + 1;
   return output_size;
@@ -53,10 +53,10 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     auto kernels = ctx.Attr<std::vector<int>>("kernels");
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
-    int output_height = OutputSize(img_height, kernels[0], paddings[0],
-                                   paddings[2], strides[0]);
-    int output_width =
-        OutputSize(img_width, kernels[1], paddings[1], paddings[3], strides[1]);
+    int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
+                                         paddings[2], strides[0]);
+    int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
+                                        paddings[3], strides[1]);
 
     const std::vector<int> dilations({1, 1});
 
@@ -109,10 +109,10 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
     auto kernels = ctx.Attr<std::vector<int>>("kernels");
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
-    int output_height = OutputSize(img_height, kernels[0], paddings[0],
-                                   paddings[2], strides[0]);
-    int output_width =
-        OutputSize(img_width, kernels[1], paddings[1], paddings[3], strides[1]);
+    int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
+                                         paddings[2], strides[0]);
+    int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
+                                        paddings[3], strides[1]);
 
     const std::vector<int> dilations({1, 1});
 
