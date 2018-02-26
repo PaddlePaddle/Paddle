@@ -70,15 +70,14 @@ class NCCLTester : public ::testing::Test {
     std::unique_ptr<f::OpDesc> op1(new f::OpDesc);
 
     op1->SetType("ncclInit");
-    op1->SetInput("parallel_scopes", {"p_scopes"})
-        op1->SetOutput("Communicator", {"comm"});
+    op1->SetInput("parallel_scopes", {"p_scopes"});
+    op1->SetOutput("Communicator", {"comm"});
 
     auto *var = g_scope.Var("comm");
     var->GetMutable<p::Communicator>();
 
     auto *scope_var = g_scope.Var("p_scopes");
-    scope_var->GetMutable<std::vector<f::Scope *>>();
-    auto &p_scopes = scope_var->Get<std::vector<f::Scope *>>();
+    auto* p_scopes = scope_var->GetMutable<std::vector<f::Scope *>>();
     (*p_scopes).resize(gpu_list.size());
 
     auto op = f::OpRegistry::CreateOp(*op1);
@@ -129,7 +128,7 @@ class NCCLTester : public ::testing::Test {
 };
 
 // ncclInitOp with desc
-TEST(NCCLTester, ncclInitOp) {}
+TEST_F(NCCLTester, ncclInitOp) {}
 
 // ncclAllReduceOp with desc
 TEST_F(NCCLTester, ncclAllReduceOp) {
@@ -275,9 +274,6 @@ TEST_F(NCCLTester, ncclBcastOp) {
 }
 
 int main(int argc, char **argv) {
-  // FIXME(tonyyang-svail):
-  //   Due to the driver issue on our CI, disable for now
-  return 0;
   const int dev_count = p::GetCUDADeviceCount();
   if (dev_count <= 1) {
     LOG(WARNING)
