@@ -8,20 +8,20 @@ regularizer
 append_regularization_ops
 -------------------------
 
-..  autofunction:: paddle.v2.fluid.regularizer.append_regularization_ops
+..  autofunction:: paddle.fluid.regularizer.append_regularization_ops
     :noindex:
 
 L1Decay
 -------
 
-..  autoclass:: paddle.v2.fluid.regularizer.L1Decay
+..  autoclass:: paddle.fluid.regularizer.L1Decay
     :members:
     :noindex:
 
 L2Decay
 -------
 
-..  autoclass:: paddle.v2.fluid.regularizer.L2Decay
+..  autoclass:: paddle.fluid.regularizer.L2Decay
     :members:
     :noindex:
 
