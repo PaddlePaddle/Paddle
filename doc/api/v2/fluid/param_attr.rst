@@ -8,14 +8,14 @@ param_attr
 ParamAttr
 ---------
 
-..  autoclass:: paddle.v2.fluid.param_attr.ParamAttr
+..  autoclass:: paddle.fluid.param_attr.ParamAttr
     :members:
     :noindex:
 
 WeightNormParamAttr
 -------------------
 
-..  autoclass:: paddle.v2.fluid.param_attr.WeightNormParamAttr
+..  autoclass:: paddle.fluid.param_attr.WeightNormParamAttr
     :members:
     :noindex:
 
