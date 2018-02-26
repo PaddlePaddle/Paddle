@@ -77,7 +77,7 @@ class NCCLTester : public ::testing::Test {
     var->GetMutable<p::Communicator>();
 
     auto *scope_var = g_scope.Var("p_scopes");
-    auto* p_scopes = scope_var->GetMutable<std::vector<f::Scope *>>();
+    auto *p_scopes = scope_var->GetMutable<std::vector<f::Scope *>>();
     (*p_scopes).resize(gpu_list.size());
 
     auto op = f::OpRegistry::CreateOp(*op1);
