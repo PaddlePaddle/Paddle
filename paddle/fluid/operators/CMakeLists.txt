@@ -11,6 +11,7 @@ function(op_library TARGET)
     set(cc_srcs)
     set(cu_srcs)
     set(cu_cc_srcs)
+    set(cudnn_cu_cc_srcs)
     set(op_common_deps operator op_registry math_function)
     set(options "")
     set(oneValueArgs "")
@@ -34,6 +35,8 @@ function(op_library TARGET)
         foreach(src ${op_library_SRCS})
             if (${src} MATCHES ".*\\.cu$")
                 list(APPEND cu_srcs ${src})
+            elseif(${src} MATCHES ".*_cudnn_op.cu.cc$")
+                list(APPEND cudnn_cu_cc_srcs ${src})
             elseif(${src} MATCHES ".*\\.cu.cc$")
                 list(APPEND cu_cc_srcs ${src})
             elseif(${src} MATCHES ".*\\.cc$")
@@ -54,7 +57,7 @@ function(op_library TARGET)
         set(DEPS_OPS ${TARGET} ${DEPS_OPS} PARENT_SCOPE)
     endif()
     if (WITH_GPU)
-        nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
+        nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     else()
         cc_library(${TARGET} SRCS ${cc_srcs} DEPS ${op_library_DEPS}
@@ -96,6 +99,12 @@ function(op_library TARGET)
     if (${pybind_flag} EQUAL 0 AND ${cu_srcs_len} EQUAL 0 AND ${cu_cc_srcs_len} EQUAL 0)
         file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
         set(pybind_flag 1)
+    endif()
+
+    # pybind USE_OP_DEVICE_KERNEL for CUDNN
+    list(LENGTH cudnn_cu_cc_srcs cudnn_cu_cc_srcs_len)
+    if (${cudnn_cu_cc_srcs_len} GREATER 0)
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
     endif()
 
     # pybind USE_OP
@@ -159,21 +168,16 @@ op_library(create_reader_op DEPS reader)
 
 # Regist multiple Kernel to pybind
 if (WITH_GPU)
-
-op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS
-    vol2col depthwise_conv)
-
-op_library(edit_distance_op SRCS edit_distance_op.cc edit_distance_op.cu DEPS math_function)
-op_library(pool_op SRCS pool_op.cc pool_op.cu.cc pool_cudnn_op.cu.cc DEPS pooling)
-op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
-  conv_transpose_cudnn_op.cu.cc DEPS vol2col)
-file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(conv2d, CUDNN);\n")
-file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(pool2d, CUDNN);\n")
-file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(conv2d_transpose, CUDNN);\n")
+    op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS
+        vol2col depthwise_conv)
+    op_library(edit_distance_op SRCS edit_distance_op.cc edit_distance_op.cu DEPS math_function)
+    op_library(pool_op SRCS pool_op.cc pool_op.cu.cc pool_cudnn_op.cu.cc DEPS pooling)
+    op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
+      conv_transpose_cudnn_op.cu.cc DEPS vol2col)
 else()
-op_library(conv_op SRCS conv_op.cc DEPS vol2col)
-op_library(pool_op SRCS pool_op.cc DEPS pooling)
-op_library(conv_transpose_op SRCS conv_transpose_op.cc DEPS vol2col)
+    op_library(conv_op SRCS conv_op.cc DEPS vol2col)
+    op_library(pool_op SRCS pool_op.cc DEPS pooling)
+    op_library(conv_transpose_op SRCS conv_transpose_op.cc DEPS vol2col)
 endif()
 
 cc_library(batch_size_like SRCS batch_size_like.cc DEPS op_registry)
