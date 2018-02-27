@@ -48,7 +48,15 @@ current_endpoint = os.getenv("SERVER_ENDPOINT")
 # run as trainer or parameter server
 training_role = os.getenv("TRAINING_ROLE",
                           "TRAINER")  # get the training role: trainer/pserver
-t.transpile(optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2)
+trainer_id = int(os.getenv("TRAINER_ID", -1))
+assert (trainer_id > 0, "You should specified env TRAINER_ID which greater 0")
+
+t.transpile(
+    optimize_ops,
+    params_grads,
+    trainer_id,
+    pservers=pserver_endpoints,
+    trainers=2)
 
 if training_role == "PSERVER":
     if not current_endpoint:
@@ -65,8 +73,8 @@ else:
 
     PASS_NUM = 100
     for pass_id in range(PASS_NUM):
-        fluid.io.save_persistables(exe, "./fit_a_line.model/")
-        fluid.io.load_persistables(exe, "./fit_a_line.model/")
+        #fluid.io.save_persistables(exe, "./fit_a_line.model/")
+        #fluid.io.load_persistables(exe, "./fit_a_line.model/")
         for data in train_reader():
             avg_loss_value = exe.run(trainer_prog,
                                      feed=feeder.feed(data),

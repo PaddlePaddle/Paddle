@@ -171,8 +171,16 @@ def main():
     current_endpoint = os.getenv("SERVER_ENDPOINT")
     # run as trainer or parameter server
     training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+    trainer_id = int(os.getenv("TRAINER_ID", -1))
+    assert (trainer_id > 0,
+            "You should specified env TRAINER_ID which greater 0")
+
     t.transpile(
-        optimize_ops, params_grads, pservers=pserver_endpoints, trainers=2)
+        optimize_ops,
+        params_grads,
+        trainer_id,
+        pservers=pserver_endpoints,
+        trainers=2)
 
     if training_role == "PSERVER":
         if not current_endpoint:
