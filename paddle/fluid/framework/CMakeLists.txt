@@ -41,6 +41,7 @@ nv_test(data_device_transform_test SRCS data_device_transform_test.cu
 
 cc_library(data_type_transform SRCS data_type_transform.cc DEPS tensor)
 cc_test(data_type_transform_test SRCS data_type_transform_test.cc DEPS data_type_transform)
+nv_test(data_type_transform_gpu_test SRCS data_type_transform_test.cu DEPS data_type_transform)
 
 cc_library(data_layout_transform SRCS data_layout_transform.cc DEPS tensor math_function)
 cc_test(data_layout_transform_test SRCS data_layout_transform_test.cc DEPS data_layout_transform)

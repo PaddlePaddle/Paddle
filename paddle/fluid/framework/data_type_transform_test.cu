@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 #include "gtest/gtest.h"
 
@@ -24,17 +25,17 @@ TEST(DataTypeTransform, GPUTransform) {
   auto gpu_place = CUDAPlace(0);
   CUDADeviceContext context(gpu_place);
 
-  auto kernel_fp16 = OpKernelType(proto::VarType::FP16, place,
+  auto kernel_fp16 = OpKernelType(proto::VarType::FP16, gpu_place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_fp32 = OpKernelType(proto::VarType::FP32, place,
+  auto kernel_fp32 = OpKernelType(proto::VarType::FP32, gpu_place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_fp64 = OpKernelType(proto::VarType::FP64, place,
+  auto kernel_fp64 = OpKernelType(proto::VarType::FP64, gpu_place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_int32 = OpKernelType(proto::VarType::INT32, place,
+  auto kernel_int32 = OpKernelType(proto::VarType::INT32, gpu_place,
                                    DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_int64 = OpKernelType(proto::VarType::INT64, place,
+  auto kernel_int64 = OpKernelType(proto::VarType::INT64, gpu_place,
                                    DataLayout::kAnyLayout, LibraryType::kPlain);
-  auto kernel_bool = OpKernelType(proto::VarType::BOOL, place,
+  auto kernel_bool = OpKernelType(proto::VarType::BOOL, gpu_place,
                                   DataLayout::kAnyLayout, LibraryType::kPlain);
 
   // data type transform from float32
@@ -48,7 +49,6 @@ TEST(DataTypeTransform, GPUTransform) {
     float arr[6] = {0, 1, 2, 3, 4, 5};
     int data_number = sizeof(arr) / sizeof(arr[0]);
     memcpy(in_ptr, arr, sizeof(arr));
-
     TensorCopy(in, gpu_place, context, &in_gpu);
 
     TransDataType(kernel_fp32, kernel_fp64, in_gpu, &out_gpu);
@@ -57,7 +57,7 @@ TEST(DataTypeTransform, GPUTransform) {
     double* out_data_double = out.data<double>();
     context.Wait();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_double[i], static_cast<double>(i));
+      ASSERT_EQ(out_data_double[i], static_cast<double>(arr[i]));
     }
 
     TransDataType(kernel_fp32, kernel_int32, in_gpu, &out_gpu);
@@ -66,9 +66,62 @@ TEST(DataTypeTransform, GPUTransform) {
     int* out_data_int = out.data<int>();
     context.Wait();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_int[i], static_cast<int>(i));
+      ASSERT_EQ(out_data_int[i], static_cast<int>(arr[i]));
     }
   }
 
   // data type transform from/to float16
+  {
+    Tensor in;
+    Tensor in_gpu;
+    Tensor out_gpu;
+    Tensor out;
+
+    float16* in_ptr = in.mutable_data<float16>(make_ddim({2, 3}), cpu_place);
+    float16 arr[6] = {0, 1, 2, 3, 4, 5};
+    int data_number = sizeof(arr) / sizeof(arr[0]);
+    memcpy(in_ptr, arr, sizeof(arr));
+    TensorCopy(in, gpu_place, context, &in_gpu);
+
+    // transform from float16 to other data types
+    TransDataType(kernel_fp16, kernel_fp32, in_gpu, &out_gpu);
+    TensorCopy(out_gpu, cpu_place, context, &out);
+
+    float* out_data_float = out.data<float>();
+    for (int i = 0; i < data_number; ++i) {
+      ASSERT_EQ(out_data_float[i], static_cast<float>(ptr[i]));
+    }
+
+    TransDataType(kernel_fp16, kernel_fp64, in_gpu, &out_gpu);
+    TensorCopy(out_gpu, cpu_place, context, &out);
+
+    double* out_data_double = out.data<double>();
+    for (int i = 0; i < data_number; ++i) {
+      ASSERT_EQ(out_data_double[i], static_cast<double>(ptr[i]));
+    }
+
+    TransDataType(kernel_fp16, kernel_int32, in_gpu, &out_gpu);
+    TensorCopy(out_gpu, cpu_place, context, &out);
+
+    int* out_data_int = out.data<int>();
+    for (int i = 0; i < data_number; ++i) {
+      ASSERT_EQ(out_data_int[i], static_cast<int>(ptr[i]));
+    }
+
+    TransDataType(kernel_fp16, kernel_int64, in_gpu, &out_gpu);
+    TensorCopy(out_gpu, cpu_place, context, &out);
+
+    int64_t* out_data_int64 = out.data<int64_t>();
+    for (int i = 0; i < data_number; ++i) {
+      ASSERT_EQ(out_data_int64[i], static_cast<int64_t>(ptr[i]));
+    }
+
+    TransDataType(kernel_fp16, kernel_bool, in_gpu, &out_gpu);
+    TensorCopy(out_gpu, cpu_place, context, &out);
+
+    bool* out_data_bool = out.data<bool>();
+    for (int i = 0; i < data_number; ++i) {
+      ASSERT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
+    }
+  }
 }
