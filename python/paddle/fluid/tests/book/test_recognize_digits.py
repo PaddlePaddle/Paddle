@@ -20,27 +20,7 @@ import numpy
 import unittest
 import math
 import sys
-
-
-def parse_arg():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "nn_type",
-        help="The neural network type, in ['mlp', 'conv']",
-        type=str,
-        choices=['mlp', 'conv'])
-    parser.add_argument(
-        "--parallel",
-        help='Run in parallel or not',
-        default=False,
-        action="store_true")
-    parser.add_argument(
-        "--use_cuda",
-        help="Run the program by using CUDA",
-        default=False,
-        action="store_true")
-    return parser.parse_args()
-
+import os
 
 BATCH_SIZE = 64
 
@@ -83,7 +63,8 @@ def train(nn_type,
           parallel,
           save_dirname=None,
           model_filename=None,
-          params_filename=None):
+          params_filename=None,
+          is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
@@ -114,12 +95,11 @@ def train(nn_type,
     test_program = fluid.default_main_program().clone()
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    optimizer.minimize(avg_loss)
+    optimize_ops, params_grads = optimizer.minimize(avg_loss)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     exe = fluid.Executor(place)
-    exe.run(fluid.default_startup_program())
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -129,39 +109,74 @@ def train(nn_type,
         paddle.dataset.mnist.test(), batch_size=BATCH_SIZE)
     feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
 
-    PASS_NUM = 100
-    for pass_id in range(PASS_NUM):
-        for batch_id, data in enumerate(train_reader()):
-            # train a mini-batch, fetch nothing
-            exe.run(feed=feeder.feed(data))
-            if (batch_id + 1) % 10 == 0:
-                acc_set = []
-                avg_loss_set = []
-                for test_data in test_reader():
-                    acc_np, avg_loss_np = exe.run(program=test_program,
-                                                  feed=feeder.feed(test_data),
-                                                  fetch_list=[acc, avg_loss])
-                    acc_set.append(float(acc_np))
-                    avg_loss_set.append(float(avg_loss_np))
-                # get test acc and loss
-                acc_val = numpy.array(acc_set).mean()
-                avg_loss_val = numpy.array(avg_loss_set).mean()
-                if float(acc_val) > 0.2:  # Smaller value to increase CI speed
-                    if save_dirname is not None:
-                        fluid.io.save_inference_model(
-                            save_dirname, ["img"], [prediction],
-                            exe,
-                            model_filename=model_filename,
-                            params_filename=params_filename)
-                    return
-                else:
-                    print(
-                        'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
-                        format(pass_id, batch_id + 1,
-                               float(avg_loss_val), float(acc_val)))
-                    if math.isnan(float(avg_loss_val)):
-                        sys.exit("got NaN loss, training failed.")
-    raise AssertionError("Loss of recognize digits is too large")
+    def train_loop(main_program):
+        exe.run(fluid.default_startup_program())
+
+        PASS_NUM = 100
+        for pass_id in range(PASS_NUM):
+            for batch_id, data in enumerate(train_reader()):
+                # train a mini-batch, fetch nothing
+                exe.run(main_program, feed=feeder.feed(data))
+                if (batch_id + 1) % 10 == 0:
+                    acc_set = []
+                    avg_loss_set = []
+                    for test_data in test_reader():
+                        acc_np, avg_loss_np = exe.run(
+                            program=test_program,
+                            feed=feeder.feed(test_data),
+                            fetch_list=[acc, avg_loss])
+                        acc_set.append(float(acc_np))
+                        avg_loss_set.append(float(avg_loss_np))
+                    # get test acc and loss
+                    acc_val = numpy.array(acc_set).mean()
+                    avg_loss_val = numpy.array(avg_loss_set).mean()
+                    if float(acc_val
+                             ) > 0.2:  # Smaller value to increase CI speed
+                        if save_dirname is not None:
+                            fluid.io.save_inference_model(
+                                save_dirname, ["img"], [prediction],
+                                exe,
+                                model_filename=model_filename,
+                                params_filename=params_filename)
+                        return
+                    else:
+                        print(
+                            'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
+                            format(pass_id, batch_id + 1,
+                                   float(avg_loss_val), float(acc_val)))
+                        if math.isnan(float(avg_loss_val)):
+                            sys.exit("got NaN loss, training failed.")
+        raise AssertionError("Loss of recognize digits is too large")
+
+    if is_local:
+        train_loop(fluid.default_main_program())
+    else:
+        port = os.getenv("PADDLE_INIT_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        eplist = []
+        for ip in pserver_ips.split(","):
+            eplist.append(':'.join([ip, port]))
+        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        pserver_endpoints = os.getenv("PSERVERS")
+        trainers = int(os.getenv("TRAINERS"))
+        current_endpoint = os.getenv("POD_IP") + ":" + port
+        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
+        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            optimize_ops,
+            params_grads,
+            trainer_id,
+            pservers=pserver_endpoints,
+            trainers=trainers)
+        if training_role == "PSERVER":
+            pserver_prog = t.get_pserver_program(current_endpoint)
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
+            exe.run(pserver_startup)
+            exe.run(pserver_prog)
+        elif training_role == "TRAINER":
+            train_loop(t.get_trainer_program())
 
 
 def infer(use_cuda,
@@ -208,6 +223,7 @@ def main(use_cuda, parallel, nn_type, combine):
             model_filename = "__model_combined__"
             params_filename = "__params_combined__"
 
+    # call train() with is_local argument to run distributed train
     train(
         nn_type=nn_type,
         use_cuda=use_cuda,

@@ -21,6 +21,7 @@ import math
 import sys
 import numpy
 import unittest
+import os
 
 
 def resnet_cifar10(input, depth=32):
@@ -92,7 +93,7 @@ def vgg16_bn_drop(input):
     return fc2
 
 
-def train(net_type, use_cuda, save_dirname):
+def train(net_type, use_cuda, save_dirname, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
@@ -117,7 +118,7 @@ def train(net_type, use_cuda, save_dirname):
     test_program = fluid.default_main_program().clone()
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    optimizer.minimize(avg_cost)
+    optimize_ops, params_grads = optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 128
     PASS_NUM = 1
@@ -133,38 +134,68 @@ def train(net_type, use_cuda, save_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
-    exe.run(fluid.default_startup_program())
 
-    loss = 0.0
-    for pass_id in range(PASS_NUM):
-        for batch_id, data in enumerate(train_reader()):
-            exe.run(feed=feeder.feed(data))
+    def train_loop(main_program):
+        exe.run(fluid.default_startup_program())
+        loss = 0.0
+        for pass_id in range(PASS_NUM):
+            for batch_id, data in enumerate(train_reader()):
+                exe.run(main_program, feed=feeder.feed(data))
 
-            if (batch_id % 10) == 0:
-                acc_list = []
-                avg_loss_list = []
-                for tid, test_data in enumerate(test_reader()):
-                    loss_t, acc_t = exe.run(program=test_program,
-                                            feed=feeder.feed(test_data),
-                                            fetch_list=[avg_cost, acc])
-                    if math.isnan(float(loss_t)):
-                        sys.exit("got NaN loss, training failed.")
-                    acc_list.append(float(acc_t))
-                    avg_loss_list.append(float(loss_t))
-                    break  # Use 1 segment for speeding up CI
+                if (batch_id % 10) == 0:
+                    acc_list = []
+                    avg_loss_list = []
+                    for tid, test_data in enumerate(test_reader()):
+                        loss_t, acc_t = exe.run(program=test_program,
+                                                feed=feeder.feed(test_data),
+                                                fetch_list=[avg_cost, acc])
+                        if math.isnan(float(loss_t)):
+                            sys.exit("got NaN loss, training failed.")
+                        acc_list.append(float(acc_t))
+                        avg_loss_list.append(float(loss_t))
+                        break  # Use 1 segment for speeding up CI
 
-                acc_value = numpy.array(acc_list).mean()
-                avg_loss_value = numpy.array(avg_loss_list).mean()
+                    acc_value = numpy.array(acc_list).mean()
+                    avg_loss_value = numpy.array(avg_loss_list).mean()
 
-                print(
-                    'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
-                    format(pass_id, batch_id + 1,
-                           float(avg_loss_value), float(acc_value)))
+                    print(
+                        'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
+                        format(pass_id, batch_id + 1,
+                               float(avg_loss_value), float(acc_value)))
 
-                if acc_value > 0.01:  # Low threshold for speeding up CI
-                    fluid.io.save_inference_model(save_dirname, ["pixel"],
-                                                  [predict], exe)
-                    return
+                    if acc_value > 0.01:  # Low threshold for speeding up CI
+                        fluid.io.save_inference_model(save_dirname, ["pixel"],
+                                                      [predict], exe)
+                        return
+
+    if is_local:
+        train_loop(fluid.default_main_program())
+    else:
+        port = os.getenv("PADDLE_INIT_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        eplist = []
+        for ip in pserver_ips.split(","):
+            eplist.append(':'.join([ip, port]))
+        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        trainers = int(os.getenv("TRAINERS"))
+        current_endpoint = os.getenv("POD_IP") + ":" + port
+        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
+        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            optimize_ops,
+            params_grads,
+            trainer_id,
+            pservers=pserver_endpoints,
+            trainers=trainers)
+        if training_role == "PSERVER":
+            pserver_prog = t.get_pserver_program(current_endpoint)
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
+            exe.run(pserver_startup)
+            exe.run(pserver_prog)
+        elif training_role == "TRAINER":
+            train_loop(t.get_trainer_program())
 
 
 def infer(use_cuda, save_dirname=None):
@@ -196,14 +227,14 @@ def infer(use_cuda, save_dirname=None):
         print("infer results: ", results[0])
 
 
-def main(net_type, use_cuda):
+def main(net_type, use_cuda, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
     save_dirname = "image_classification_" + net_type + ".inference.model"
 
-    train(net_type, use_cuda, save_dirname)
+    train(net_type, use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
 
 
