@@ -20,6 +20,7 @@ import contextlib
 import math
 import numpy as np
 import sys
+import os
 
 
 def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
@@ -132,7 +133,12 @@ def create_random_lodtensor(lod, place, low, high):
     return res
 
 
-def train(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
+def train(word_dict,
+          net_method,
+          use_cuda,
+          parallel=False,
+          save_dirname=None,
+          is_local=True):
     BATCH_SIZE = 128
     PASS_NUM = 5
     dict_dim = len(word_dict)
@@ -164,7 +170,7 @@ def train(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
         assert save_dirname is None
 
     adagrad = fluid.optimizer.Adagrad(learning_rate=0.002)
-    adagrad.minimize(cost)
+    optimize_ops, params_grads = adagrad.minimize(cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -174,23 +180,53 @@ def train(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
 
-    exe.run(fluid.default_startup_program())
+    def train_loop(main_program):
+        exe.run(fluid.default_startup_program())
 
-    for pass_id in xrange(PASS_NUM):
-        for data in train_data():
-            cost_val, acc_val = exe.run(fluid.default_main_program(),
-                                        feed=feeder.feed(data),
-                                        fetch_list=[cost, acc_out])
-            print("cost=" + str(cost_val) + " acc=" + str(acc_val))
-            if cost_val < 0.4 and acc_val > 0.8:
-                if save_dirname is not None:
-                    fluid.io.save_inference_model(save_dirname, ["words"],
-                                                  prediction, exe)
-                return
-            if math.isnan(float(cost_val)):
-                sys.exit("got NaN loss, training failed.")
-    raise AssertionError("Cost is too large for {0}".format(
-        net_method.__name__))
+        for pass_id in xrange(PASS_NUM):
+            for data in train_data():
+                cost_val, acc_val = exe.run(main_program,
+                                            feed=feeder.feed(data),
+                                            fetch_list=[cost, acc_out])
+                print("cost=" + str(cost_val) + " acc=" + str(acc_val))
+                if cost_val < 0.4 and acc_val > 0.8:
+                    if save_dirname is not None:
+                        fluid.io.save_inference_model(save_dirname, ["words"],
+                                                      prediction, exe)
+                    return
+                if math.isnan(float(cost_val)):
+                    sys.exit("got NaN loss, training failed.")
+        raise AssertionError("Cost is too large for {0}".format(
+            net_method.__name__))
+
+    if is_local:
+        train_loop(fluid.default_main_program())
+    else:
+        port = os.getenv("PADDLE_INIT_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        eplist = []
+        for ip in pserver_ips.split(","):
+            eplist.append(':'.join([ip, port]))
+        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        trainers = int(os.getenv("TRAINERS"))
+        current_endpoint = os.getenv("POD_IP") + ":" + port
+        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
+        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            optimize_ops,
+            params_grads,
+            trainer_id,
+            pservers=pserver_endpoints,
+            trainers=trainers)
+        if training_role == "PSERVER":
+            pserver_prog = t.get_pserver_program(current_endpoint)
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
+            exe.run(pserver_startup)
+            exe.run(pserver_prog)
+        elif training_role == "TRAINER":
+            train_loop(t.get_trainer_program())
 
 
 def infer(word_dict, use_cuda, save_dirname=None):
