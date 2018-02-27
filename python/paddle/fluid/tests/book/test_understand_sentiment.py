@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -229,36 +229,39 @@ def train(word_dict,
             train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(word_dict, use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    # Use fluid.io.load_inference_model to obtain the inference program desc,
-    # the feed_target_names (the names of variables that will be feeded 
-    # data using feed operators), and the fetch_targets (variables that 
-    # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    lod = [0, 4, 10]
-    word_dict = paddle.dataset.imdb.word_dict()
-    tensor_words = create_random_lodtensor(
-        lod, place, low=0, high=len(word_dict) - 1)
+        word_dict_len = len(word_dict)
 
-    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-    # and results will contain a list of data corresponding to fetch_targets.
-    assert feed_target_names[0] == "words"
-    results = exe.run(inference_program,
-                      feed={feed_target_names[0]: tensor_words},
-                      fetch_list=fetch_targets,
-                      return_numpy=False)
-    print(results[0].lod())
-    np_data = np.array(results[0])
-    print("Inference Shape: ", np_data.shape)
-    print("Inference results: ", np_data)
+        lod = [0, 4, 10]
+        tensor_words = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        assert feed_target_names[0] == "words"
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: tensor_words},
+                          fetch_list=fetch_targets,
+                          return_numpy=False)
+        print(results[0].lod())
+        np_data = np.array(results[0])
+        print("Inference Shape: ", np_data.shape)
+        print("Inference results: ", np_data)
 
 
 def main(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
@@ -294,7 +297,7 @@ class TestUnderstandSentiment(unittest.TestCase):
                 self.word_dict,
                 net_method=convolution_net,
                 use_cuda=False,
-                save_dirname="understand_sentiment.inference.model")
+                save_dirname="understand_sentiment_conv.inference.model")
 
     def test_conv_cpu_parallel(self):
         with self.new_program_scope():
@@ -307,7 +310,11 @@ class TestUnderstandSentiment(unittest.TestCase):
     @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_cpu(self):
         with self.new_program_scope():
-            main(self.word_dict, net_method=stacked_lstm_net, use_cuda=False)
+            main(
+                self.word_dict,
+                net_method=stacked_lstm_net,
+                use_cuda=False,
+                save_dirname="understand_sentiment_stacked_lstm.inference.model")
 
     def test_stacked_lstm_cpu_parallel(self):
         with self.new_program_scope():
@@ -323,7 +330,7 @@ class TestUnderstandSentiment(unittest.TestCase):
                 self.word_dict,
                 net_method=convolution_net,
                 use_cuda=True,
-                save_dirname="understand_sentiment.inference.model")
+                save_dirname="understand_sentiment_conv.inference.model")
 
     def test_conv_gpu_parallel(self):
         with self.new_program_scope():
@@ -336,7 +343,11 @@ class TestUnderstandSentiment(unittest.TestCase):
     @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_gpu(self):
         with self.new_program_scope():
-            main(self.word_dict, net_method=stacked_lstm_net, use_cuda=True)
+            main(
+                self.word_dict,
+                net_method=stacked_lstm_net,
+                use_cuda=True,
+                save_dirname="understand_sentiment_stacked_lstm.inference.model")
 
     def test_stacked_lstm_gpu_parallel(self):
         with self.new_program_scope():

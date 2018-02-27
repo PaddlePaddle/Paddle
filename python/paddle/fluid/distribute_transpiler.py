@@ -226,8 +226,7 @@ class DistributeTranspiler:
         rpc_client_var = program.global_block().create_var(
             name="RPC_CLIENT_VAR",
             persistable=True,
-            dtype='float32',  # dtype and shape is not used in fact
-            shape=[0])
+            type=core.VarDesc.VarType.RAW)
 
         # create send_op
         program.global_block().append_op(

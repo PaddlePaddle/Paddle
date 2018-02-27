@@ -205,22 +205,26 @@ def infer(use_cuda, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    # Use fluid.io.load_inference_model to obtain the inference program desc,
-    # the feed_target_names (the names of variables that will be feeded 
-    # data using feed operators), and the fetch_targets (variables that 
-    # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    # The input's dimension of conv should be 4-D or 5-D.
-    tensor_img = numpy.random.rand(1, 3, 32, 32).astype("float32")
+        # The input's dimension of conv should be 4-D or 5-D.
+        # Use normilized image pixels as input data, which should be in the range [0, 1.0].
+        batch_size = 1
+        tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
-    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-    # and results will contain a list of data corresponding to fetch_targets.
-    results = exe.run(inference_program,
-                      feed={feed_target_names[0]: tensor_img},
-                      fetch_list=fetch_targets)
-    print("infer results: ", results[0])
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: tensor_img},
+                          fetch_list=fetch_targets)
+        print("infer results: ", results[0])
 
 
 def main(net_type, use_cuda, is_local=True):
