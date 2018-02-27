@@ -152,7 +152,7 @@ def channel_send(channel, value):
     helper = LayerHelper('channel_send', **locals())
     main_program = helper.main_program
     channel_send_block = main_program.current_block()
-    status = helper.create_variable(dtype=core.VarDesc.VarType.TENSOR)
+    status = helper.create_variable(dtype=core.VarDesc.VarType.LOD_TENSOR)
 
     channel_send_op = channel_send_block.append_op(
         type="channel_send",
@@ -197,7 +197,7 @@ def channel_recv(channel, dtype):
     channel_recv_block = main_program.current_block()
 
     return_value = helper.create_variable(dtype=dtype)
-    status = helper.create_variable(dtype=core.VarDesc.VarType.TENSOR)
+    status = helper.create_variable(dtype=core.VarDesc.VarType.LOD_TENSOR)
 
     channel_recv_op = channel_recv_block.append_op(
         type="channel_recv",
