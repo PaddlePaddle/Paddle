@@ -101,7 +101,7 @@ In-place is a built-in attribute of an operator. Since we treat in-place and oth
 
 #### contruct control flow graph
 
-Following is the ProgramDesc protobuf of [machine translation](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book/test_machine_translation.py) example.
+Following is the ProgramDesc protobuf of [machine translation](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_machine_translation.py) example.
 
 - Block0:
 

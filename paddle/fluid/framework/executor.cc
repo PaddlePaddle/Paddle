@@ -58,13 +58,13 @@ static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<ReaderHolder>();
   } else if (var_type == proto::VarType::CHANNEL) {
     var->GetMutable<ChannelHolder>();
-  } else if (var_type == proto::VarType::NCCL_COM) {
-    // GetMutable will be called in ncclInit
+  } else if (var_type == proto::VarType::RAW) {
+    // GetMutable will be called in operator
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, NCCL_COM]",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
         var_type);
   }
 }
@@ -127,7 +127,9 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::RecordEvent record_event(op->Type(), pool.Get(place_));
+    // TODO(panyx0718): Need a program id to distinguish programs.
+    platform::RecordEvent record_event(op->Type(), pool.Get(place_),
+                                       op_desc->Block()->ID());
 
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);

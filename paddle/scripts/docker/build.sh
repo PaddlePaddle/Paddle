@@ -49,6 +49,7 @@ function cmake_gen() {
         -DCUDNN_ROOT=/usr/
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     ========================================
 EOF
@@ -72,6 +73,7 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
+        -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 }
 
@@ -171,7 +173,7 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y libnccl-dev &&"
+        NCCL_DEPS="apt-get install -y libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 &&"
     else
         NCCL_DEPS=""
     fi
