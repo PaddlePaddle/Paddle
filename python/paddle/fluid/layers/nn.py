@@ -69,7 +69,7 @@ __all__ = [
     'softmax_with_cross_entropy',
     'smooth_l1',
     'one_hot',
-    'global_step_counter',
+    'autoincreased_step_counter',
 ]
 
 
@@ -3253,23 +3253,32 @@ def one_hot(input, depth):
     return one_hot_out
 
 
-def global_step_counter():
+def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     """
+    NOTE: The counter will be automatically increased by 1 every mini-batch
     Return the run counter of the main program, which is started with 1.
+
+    Args:
+        counter_name(str): The counter name, default is '@STEP_COUNTER@'.
+        begin(int): The first value of this counter.
+        step(int): The increment step between each execution.
+
     Returns(Variable): The global run counter.
     """
     helper = LayerHelper('global_step_counter')
-    counter_name = '@STEP_COUNTER@'
+    if counter_name is None:
+        counter_name = '@STEP_COUNTER@'
     counter, is_new_var = helper.create_or_get_global_variable(
         name=counter_name, dtype='int64', shape=[1], persistable=True)
     if is_new_var:
         helper.set_variable_initializer(
             counter, initializer=Constant(
-                value=0, force_cpu=True))
+                value=begin - 1, force_cpu=True))
         helper.main_program.global_block().prepend_op(
             type='increment',
             inputs={'X': [counter]},
-            outputs={'Out': [counter]})
+            outputs={'Out': [counter]},
+            attrs={'step': float(step)})
         counter.stop_gradient = True
 
     return counter
