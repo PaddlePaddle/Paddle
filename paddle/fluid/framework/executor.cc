@@ -127,7 +127,9 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::RecordEvent record_event(op->Type(), pool.Get(place_));
+    // TODO(panyx0718): Need a program id to distinguish programs.
+    platform::RecordEvent record_event(op->Type(), pool.Get(place_),
+                                       op_desc->Block()->ID());
 
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
