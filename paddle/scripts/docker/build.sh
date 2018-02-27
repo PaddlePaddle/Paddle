@@ -49,6 +49,7 @@ function cmake_gen() {
         -DCUDNN_ROOT=/usr/
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     ========================================
 EOF
@@ -72,6 +73,7 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
+        -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 }
 
