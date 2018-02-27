@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,8 +32,10 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
                      const framework::VariableNameMap &outputs,
                      const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto &x = detail::Ref(scope.FindVar(Input("X")), "Cannot find input %s",
                           Input("X"))
                   .Get<framework::LoDTensor>();
@@ -92,9 +94,9 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
             platform::DeviceContextPool::Instance();
         auto &dev_ctx = *pool.Get(place);
 
-        framework::Copy(x.Slice(static_cast<int>(each_range.begin),
-                                static_cast<int>(each_range.end)),
-                        x.place(), dev_ctx, &slice);
+        framework::TensorCopy(x.Slice(static_cast<int>(each_range.begin),
+                                      static_cast<int>(each_range.end)),
+                              x.place(), dev_ctx, &slice);
         offset += len;
       }
     }
@@ -136,7 +138,7 @@ class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
   void operator()(const framework::OpDesc &op_desc,
                   framework::BlockDesc *block) const override {
     for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(framework::proto::VarDesc::LOD_TENSOR_ARRAY);
+      block->Var(out_var)->SetType(framework::proto::VarType::LOD_TENSOR_ARRAY);
     }
   }
 };

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -341,7 +341,7 @@ static void CreateGradVarInBlock(
       auto* param = block_desc->FindVarRecursive(pname);
       auto* grad = block_desc->FindVar(arg);
       if (param == nullptr) {
-        grad->SetDataType(proto::DataType::FP32);
+        grad->SetDataType(proto::VarType::FP32);
       } else {
         grad->SetDataType(param->GetDataType());
       }

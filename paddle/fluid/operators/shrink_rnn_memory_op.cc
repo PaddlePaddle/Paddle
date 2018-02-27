@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,8 +27,9 @@ class ShrinkRNNMemoryOp : public ArrayOp {
                     const framework::AttributeMap &attrs)
       : ArrayOp(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto *x_var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x_var != nullptr, "Input X must be set");
     auto &x_tensor = x_var->Get<framework::LoDTensor>();
@@ -108,8 +109,9 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
                         const framework::AttributeMap &attrs)
       : ArrayOp(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto *dout_var = scope.FindVar(Input(framework::GradVarName("Out")));
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
     PADDLE_ENFORCE(dx_var != nullptr, "Input Gradient should not be nullptr");
@@ -131,7 +133,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
       auto &dout_tensor = dout_var->Get<framework::LoDTensor>();
       auto height = dout_tensor.dims()[0];
       auto slice = dx_tensor.Slice(0, static_cast<int>(height));
-      framework::Copy(dout_tensor, dout_tensor.place(), dev_ctx, &slice);
+      framework::TensorCopy(dout_tensor, dout_tensor.place(), dev_ctx, &slice);
       if (dx_tensor.dims()[0] > height) {
         auto rest_tensor = dx_tensor.Slice(
             static_cast<int>(height), static_cast<int>(dx_tensor.dims()[0]));

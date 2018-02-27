@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -61,4 +61,8 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_CUDA_KERNEL(gaussian_random,
-                        paddle::operators::GPUGaussianRandomKernel<float>);
+                        paddle::operators::GPUGaussianRandomKernel<float>,
+                        paddle::operators::GPUGaussianRandomKernel<double>);
+REGISTER_OP_CUDA_KERNEL(gaussian_random_batch_size_like,
+                        paddle::operators::GPUGaussianRandomKernel<float>,
+                        paddle::operators::GPUGaussianRandomKernel<double>);

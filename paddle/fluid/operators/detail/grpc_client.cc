@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -177,8 +177,8 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
 
-  auto ch = std::shared_ptr<grpc::Channel>(
-      grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args));
+  auto ch =
+      grpc::CreateCustomChannel(ep, grpc::InsecureChannelCredentials(), args);
 
   channels_[ep] = ch;
   return ch;

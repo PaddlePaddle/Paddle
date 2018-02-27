@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -204,8 +204,9 @@ class BeamSearchOp : public framework::OperatorBase {
     PADDLE_THROW("Not Implemented");
   }
 
-  void Run(const framework::Scope& scope,
-           const platform::Place& dev_place) const override {
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& dev_place) const override {
     auto ids_var = scope.FindVar(Input("ids"));
     auto scores_var = scope.FindVar(Input("scores"));
     auto pre_ids_var = scope.FindVar(Input("pre_ids"));

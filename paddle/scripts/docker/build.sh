@@ -34,6 +34,7 @@ function cmake_gen() {
     Configuring cmake in /paddle/build ...
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
+        -DWITH_DSO=ON
         -DWITH_DOC=OFF
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
@@ -48,6 +49,7 @@ function cmake_gen() {
         -DCUDNN_ROOT=/usr/
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     ========================================
 EOF
@@ -57,6 +59,7 @@ EOF
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
+        -DWITH_DSO=ON \
         -DWITH_DOC=OFF \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
@@ -70,6 +73,7 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
+        -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 }
 
@@ -169,9 +173,9 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y libnccl-dev &&"
+        NCCL_DEPS="apt-get install -y libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 &&"
     else
-        NCCL_DEPS="" 
+        NCCL_DEPS=""
     fi
 
     cat >> /paddle/build/Dockerfile <<EOF
@@ -187,6 +191,7 @@ EOF
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
+    ENV NCCL_LAUNCH_MODE PARALLEL
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
     # default command shows the paddle version and exit
@@ -204,6 +209,17 @@ function gen_capi_package() {
   fi
 }
 
+function gen_fluid_inference_lib() {
+    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+    cat <<EOF
+    ========================================
+    Building fluid inference library ...
+    ========================================
+EOF
+        make inference_lib_dist
+    fi
+}
+
 set -xe
 
 cmake_gen ${PYTHON_ABI:-""}
@@ -212,6 +228,7 @@ run_test
 gen_docs
 gen_dockerfile
 gen_capi_package
+gen_fluid_inference_lib
 
 if [[ ${WITH_C_API:-OFF} == "ON" ]]; then
   printf "PaddlePaddle C-API libraries was generated on build/paddle.tgz\n" 

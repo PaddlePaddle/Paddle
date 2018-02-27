@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,8 +48,8 @@ class SendOp : public framework::OperatorBase {
          const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope& scope,
-           const platform::Place& place) const override {
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const override {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
@@ -121,9 +121,27 @@ This operator will send tensor to recv_op at the parameter server.
   }
 };
 
+class SendOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto out_var_name = op_desc.Output("RPCClient").front();
+    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
+    auto var_type = framework::proto::VarType::RAW;
+    out_var.SetType(var_type);
+  }
+};
+
+class SendOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext* ctx) const override {}
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send, ops::SendOp, ops::SendOpMaker);
+REGISTER_OPERATOR(send, ops::SendOp, paddle::framework::EmptyGradOpMaker,
+                  ops::SendOpMaker, ops::SendOpVarTypeInference,
+                  ops::SendOpShapeInference);

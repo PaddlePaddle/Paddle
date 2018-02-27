@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,14 +42,17 @@ class FillOp : public framework::OperatorBase {
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto &out =
         detail::Ref(detail::Ref(scope.FindVar(Output("Out")),
                                 "Cannot find variable %s", Output("Out"))
                         .GetMutable<framework::LoDTensor>());
     out.Resize(framework::make_ddim(Attr<std::vector<int>>("shape")));
-    auto dtype = static_cast<framework::proto::DataType>(Attr<int>("dtype"));
+    auto dtype =
+        static_cast<framework::proto::VarType::Type>(Attr<int>("dtype"));
     platform::CPUPlace cpu;
     auto force_cpu = Attr<bool>("force_cpu");
     out.mutable_data(force_cpu ? cpu : place, framework::ToTypeIndex(dtype));
@@ -72,7 +75,7 @@ class FillOp : public framework::OperatorBase {
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
-      framework::Copy(tensor, place, dev_ctx, &out);
+      framework::TensorCopy(tensor, place, dev_ctx, &out);
     }
   }
 };
@@ -91,7 +94,7 @@ Fill an tensor with `value` and `shape`. The type of the tensor is specify by
         "value", "The float values of tensor, which are flatten in row major");
     AddAttr<std::vector<int>>("shape", "The shape of output tensor");
     AddAttr<int>("dtype", "The data type of output tensor, Default is float")
-        .SetDefault(framework::proto::DataType::FP32);
+        .SetDefault(framework::proto::VarType::FP32);
     AddAttr<bool>("force_cpu",
                   "Whether the output tensor must be at CPU memory or not. "
                   "Default is false.")
