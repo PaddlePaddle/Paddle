@@ -20,12 +20,12 @@ from paddle.fluid.executor import Executor
 
 class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
-        ch = fluid.make_channel(dtype='bool')
+        ch = fluid.make_channel(dtype='int64')
 
         with fluid.Go():
-            fluid.channel_send(ch, True, dtype='bool')
+            fluid.channel_send(ch, 1, dtype='int64')
 
-        result = fluid.channel_recv(ch, dtype='bool')
+        result = fluid.channel_recv(ch, dtype='int64')
         fluid.channel_close(ch)
 
         cpu = core.CPUPlace()
