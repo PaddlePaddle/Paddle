@@ -20,10 +20,6 @@ limitations under the License. */
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
 
-#include "unsupported/Eigen/CXX11/Tensor"
-
-#include "paddle/fluid/platform/hostdevice.h"
-
 #ifdef __GNUC__
 #define PADDLE_GNUC_VER (__GNUC__ * 10 + __GNUC_MINOR__)
 #else
@@ -60,6 +56,18 @@ limitations under the License. */
 #endif  // PADDLE_ARM
 
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
+
+namespace paddle {
+namespace platform {
+
+// Forward declare float16 for eigen.h
+struct float16;
+
+}  // namespace platform
+}  // namespace paddle
+
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace platform {
@@ -729,10 +737,6 @@ HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
 }
 #endif
 
-HOSTDEVICE inline bool(isinf)(const float16& a) {
-  return (a.x & 0x7fff) == 0x7c00;
-}
-
 HOSTDEVICE inline bool(isnan)(const float16& a) {
 #if defined(PADDLE_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
   return __hisnan(half(a));
@@ -741,8 +745,12 @@ HOSTDEVICE inline bool(isnan)(const float16& a) {
 #endif
 }
 
+HOSTDEVICE inline bool(isinf)(const float16& a) {
+  return (a.x & 0x7fff) == 0x7c00;
+}
+
 HOSTDEVICE inline bool(isfinite)(const float16& a) {
-  return !((isinf)(a)) && !((isnan)(a));
+  return !((isnan)(a)) && !((isinf)(a));
 }
 
 }  // namespace platform
@@ -767,7 +775,6 @@ struct is_pod<paddle::platform::float16> {
 
 }  // namespace std
 
-#ifdef __CUDA_ARCH__
 namespace Eigen {
 namespace numext {
 
@@ -791,4 +798,3 @@ EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE bool(isfinite)(
 
 }  // namespace numext
 }  // namespace Eigen
-#endif  // __CUDA_ARCH__
