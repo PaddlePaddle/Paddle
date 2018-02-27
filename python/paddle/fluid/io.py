@@ -68,7 +68,7 @@ def save_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              save_file_name=None):
+              filename=None):
     """
     Save variables to directory by executor.
 
@@ -80,8 +80,8 @@ def save_vars(executor,
     as a bool. If it returns true, the corresponding input variable will be saved.
     :param vars: variables need to be saved. If vars is specified, program & predicate
     will be ignored
-    :param save_file_name: The name of a single file that all vars are saved to. 
-    If it is None, save variables to separate files.
+    :param filename: The name of a single file that all vars are saved to.
+        If it is None, save variables to separate files.
 
     :return: None
     """
@@ -95,7 +95,7 @@ def save_vars(executor,
             executor,
             dirname=dirname,
             vars=filter(predicate, main_program.list_vars()),
-            save_file_name=save_file_name)
+            filename=filename)
     else:
         save_program = Program()
         save_block = save_program.global_block()
@@ -103,7 +103,7 @@ def save_vars(executor,
         save_var_map = {}
         for each_var in vars:
             new_var = _clone_var_in_block_(save_block, each_var)
-            if save_file_name is None:
+            if filename is None:
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
@@ -112,7 +112,7 @@ def save_vars(executor,
             else:
                 save_var_map[new_var.name] = new_var
 
-        if save_file_name is not None:
+        if filename is not None:
             save_var_list = []
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
@@ -121,12 +121,12 @@ def save_vars(executor,
                 type='save_combine',
                 inputs={'X': save_var_list},
                 outputs={},
-                attrs={'file_path': os.path.join(dirname, save_file_name)})
+                attrs={'file_path': os.path.join(dirname, filename)})
 
         executor.run(save_program)
 
 
-def save_params(executor, dirname, main_program=None, save_file_name=None):
+def save_params(executor, dirname, main_program=None, filename=None):
     """
     Save all parameters to directory with executor.
     """
@@ -136,11 +136,10 @@ def save_params(executor, dirname, main_program=None, save_file_name=None):
         main_program=main_program,
         vars=None,
         predicate=is_parameter,
-        save_file_name=save_file_name)
+        filename=filename)
 
 
-def save_persistables(executor, dirname, main_program=None,
-                      save_file_name=None):
+def save_persistables(executor, dirname, main_program=None, filename=None):
     """
     Save all persistables to directory with executor.
     """
@@ -150,7 +149,7 @@ def save_persistables(executor, dirname, main_program=None,
         main_program=main_program,
         vars=None,
         predicate=is_persistable,
-        save_file_name=save_file_name)
+        filename=filename)
 
 
 def load_vars(executor,
@@ -158,7 +157,7 @@ def load_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              load_file_name=None):
+              filename=None):
     """
     Load variables from directory by executor.
 
@@ -170,8 +169,8 @@ def load_vars(executor,
     as a bool. If it returns true, the corresponding input variable will be loaded.
     :param vars: variables need to be loaded. If vars is specified, program &
     predicate will be ignored
-    :param load_file_name: The name of the single file that all vars are loaded from.   
-    If it is None, load variables from separate files.
+    :param filename: The name of the single file that all vars are loaded from.
+        If it is None, load variables from separate files.
 
     :return: None
     """
@@ -185,7 +184,7 @@ def load_vars(executor,
             executor,
             dirname=dirname,
             vars=filter(predicate, main_program.list_vars()),
-            load_file_name=load_file_name)
+            filename=filename)
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
@@ -194,7 +193,7 @@ def load_vars(executor,
         for each_var in vars:
             assert isinstance(each_var, Variable)
             new_var = _clone_var_in_block_(load_block, each_var)
-            if load_file_name is None:
+            if filename is None:
                 load_block.append_op(
                     type='load',
                     inputs={},
@@ -203,7 +202,7 @@ def load_vars(executor,
             else:
                 load_var_map[new_var.name] = new_var
 
-        if load_file_name is not None:
+        if filename is not None:
             load_var_list = []
             for name in sorted(load_var_map.keys()):
                 load_var_list.append(load_var_map[name])
@@ -212,12 +211,12 @@ def load_vars(executor,
                 type='load_combine',
                 inputs={},
                 outputs={"Out": load_var_list},
-                attrs={'file_path': os.path.join(dirname, load_file_name)})
+                attrs={'file_path': os.path.join(dirname, filename)})
 
         executor.run(load_prog)
 
 
-def load_params(executor, dirname, main_program=None, load_file_name=None):
+def load_params(executor, dirname, main_program=None, filename=None):
     """
     load all parameters from directory by executor.
     """
@@ -226,11 +225,10 @@ def load_params(executor, dirname, main_program=None, load_file_name=None):
         dirname=dirname,
         main_program=main_program,
         predicate=is_parameter,
-        load_file_name=load_file_name)
+        filename=filename)
 
 
-def load_persistables(executor, dirname, main_program=None,
-                      load_file_name=None):
+def load_persistables(executor, dirname, main_program=None, filename=None):
     """
     load all persistables from directory by executor.
     """
@@ -239,7 +237,7 @@ def load_persistables(executor, dirname, main_program=None,
         dirname=dirname,
         main_program=main_program,
         predicate=is_persistable,
-        load_file_name=load_file_name)
+        filename=filename)
 
 
 def get_inference_program(target_vars, main_program=None):
@@ -299,7 +297,8 @@ def save_inference_model(dirname,
                          target_vars,
                          executor,
                          main_program=None,
-                         save_file_name=None):
+                         model_filename=None,
+                         params_filename=None):
     """
     Build a model especially for inference,
     and save it to directory by the executor.
@@ -310,8 +309,11 @@ def save_inference_model(dirname,
     :param executor: executor that save inference model
     :param main_program: original program, which will be pruned to build the inference model.
             Default default_main_program().
-    :param save_file_name: The name of a single file that all parameters are saved to. 
-    If it is None, save parameters to separate files.
+    :param model_filename: The name of file to save inference program.
+        If not specified, default filename `__model__` will be used.
+    :param params_filename: The name of file to save parameters.
+        It is used for the case that all parameters are saved in a single binary file.
+        If not specified, parameters are considered saved in separate files.
 
     :return: None
     """
@@ -342,15 +344,19 @@ def save_inference_model(dirname,
     prepend_feed_ops(inference_program, feeded_var_names)
     append_fetch_ops(inference_program, fetch_var_names)
 
-    if save_file_name == None:
-        model_file_name = dirname + "/__model__"
+    if model_filename is not None:
+        model_filename = os.path.basename(model_filename)
     else:
-        model_file_name = dirname + "/__model_combined__"
+        model_filename = "__model__"
+    model_filename = os.path.join(dirname, model_filename)
 
-    with open(model_file_name, "wb") as f:
+    if params_filename is not None:
+        params_filename = os.path.basename(params_filename)
+
+    with open(model_filename, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())
 
-    save_persistables(executor, dirname, inference_program, save_file_name)
+    save_persistables(executor, dirname, inference_program, params_filename)
 
 
 def get_feed_targets_names(program):
@@ -371,15 +377,21 @@ def get_fetch_targets_names(program):
     return fetch_targets_names
 
 
-def load_inference_model(dirname, executor, load_file_name=None):
+def load_inference_model(dirname,
+                         executor,
+                         model_filename=None,
+                         params_filename=None):
     """
     Load inference model from a directory
 
     :param dirname: directory path
     :param executor: executor that load inference model
-    :param load_file_name: The name of the single file that all parameters are loaded from.   
-    If it is None, load parameters from separate files.
-    
+    :param model_filename: The name of file to load inference program.
+        If not specified, default filename `__model__` will be used.
+    :param params_filename: The name of file to load parameters.
+        It is used for the case that all parameters are saved in a single binary file.
+        If not specified, parameters are considered saved in separate files.
+
     :return: [program, feed_target_names, fetch_targets]
              program: program especially for inference.
              feed_target_names: Names of variables that need to feed data
@@ -388,16 +400,20 @@ def load_inference_model(dirname, executor, load_file_name=None):
     if not os.path.isdir(dirname):
         raise ValueError("There is no directory named '%s'", dirname)
 
-    if load_file_name == None:
-        model_file_name = dirname + "/__model__"
+    if model_filename is not None:
+        model_filename = os.path.basename(model_filename)
     else:
-        model_file_name = dirname + "/__model_combined__"
+        model_filename = "__model__"
+    model_filename = os.path.join(dirname, model_filename)
 
-    with open(model_file_name, "rb") as f:
+    if params_filename is not None:
+        params_filename = os.path.basename(params_filename)
+
+    with open(model_filename, "rb") as f:
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
-    load_persistables(executor, dirname, program, load_file_name)
+    load_persistables(executor, dirname, program, params_filename)
 
     feed_target_names = get_feed_targets_names(program)
     fetch_target_names = get_fetch_targets_names(program)

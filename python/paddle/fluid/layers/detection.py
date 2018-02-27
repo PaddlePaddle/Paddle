@@ -172,7 +172,10 @@ def detection_map(detect_res,
     return map_out, accum_pos_count_out, accum_true_pos_out, accum_false_pos_out
 
 
-def bipartite_match(dist_matrix, name=None):
+def bipartite_match(dist_matrix,
+                    match_type=None,
+                    dist_threshold=None,
+                    name=None):
     """
     **Bipartite matchint operator**
 
@@ -204,6 +207,11 @@ def bipartite_match(dist_matrix, name=None):
             This tensor can contain LoD information to represent a batch of
             inputs. One instance of this batch can contain different numbers of
             entities.
+        match_type(string|None): The type of matching method, should be
+           'bipartite' or 'per_prediction', 'bipartite' by defalut.
+        dist_threshold(float|None): If `match_type` is 'per_prediction',
+            this threshold is to determine the extra matching bboxes based
+            on the maximum distance, 0.5 by defalut.
     Returns:
         match_indices(Variable): A 2-D Tensor with shape [N, M] in int type.
             N is the batch size. If match_indices[i][j] is -1, it
@@ -223,6 +231,10 @@ def bipartite_match(dist_matrix, name=None):
     helper.append_op(
         type='bipartite_match',
         inputs={'DistMat': dist_matrix},
+        attrs={
+            'match_type': match_type,
+            'dist_threshold': dist_threshold,
+        },
         outputs={
             'ColToRowMatchIndices': match_indices,
             'ColToRowMatchDist': match_distance
@@ -373,7 +385,7 @@ def ssd_loss(location,
         loc_loss_weight (float): Weight for localization loss, 1.0 by default.
         conf_loss_weight (float): Weight for confidence loss, 1.0 by default.
         match_type (str): The type of matching method during training, should
-            be 'bipartite' or 'per_prediction'.
+            be 'bipartite' or 'per_prediction', 'per_prediction' by defalut.
         mining_type (str): The hard example mining type, should be 'hard_example'
             or 'max_negative', now only support `max_negative`.
 
@@ -421,7 +433,8 @@ def ssd_loss(location,
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
     iou = iou_similarity(x=gt_box, y=prior_box)
     #   1.2 Compute matched boundding box by bipartite matching algorithm.
-    matched_indices, matched_dist = bipartite_match(iou)
+    matched_indices, matched_dist = bipartite_match(iou, match_type,
+                                                    overlap_threshold)
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
