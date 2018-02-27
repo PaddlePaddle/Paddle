@@ -251,13 +251,6 @@ def infer(use_cuda, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    # Use fluid.io.load_inference_model to obtain the inference program desc,
-    # the feed_target_names (the names of variables that will be feeded
-    # data using feed operators), and the fetch_targets (variables that
-    # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
-
     def create_lod_tensor(data, lod=None):
         tensor = fluid.LoDTensor()
         if lod is None:
@@ -275,44 +268,53 @@ def infer(use_cuda, save_dirname=None):
         tensor.set(flattened_data, place)
         return tensor
 
-    # Use the first data from paddle.dataset.movielens.test() as input
-    assert feed_target_names[0] == "user_id"
-    user_id = create_lod_tensor([[1]])
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    assert feed_target_names[1] == "gender_id"
-    gender_id = create_lod_tensor([[1]])
+        # Use the first data from paddle.dataset.movielens.test() as input
+        assert feed_target_names[0] == "user_id"
+        user_id = create_lod_tensor([[1]])
 
-    assert feed_target_names[2] == "age_id"
-    age_id = create_lod_tensor([[0]])
+        assert feed_target_names[1] == "gender_id"
+        gender_id = create_lod_tensor([[1]])
 
-    assert feed_target_names[3] == "job_id"
-    job_id = create_lod_tensor([[10]])
+        assert feed_target_names[2] == "age_id"
+        age_id = create_lod_tensor([[0]])
 
-    assert feed_target_names[4] == "movie_id"
-    movie_id = create_lod_tensor([[783]])
+        assert feed_target_names[3] == "job_id"
+        job_id = create_lod_tensor([[10]])
 
-    assert feed_target_names[5] == "category_id"
-    category_id = create_lod_tensor([[10], [8], [9]], [[0, 3]])
+        assert feed_target_names[4] == "movie_id"
+        movie_id = create_lod_tensor([[783]])
 
-    assert feed_target_names[6] == "movie_title"
-    movie_title = create_lod_tensor([[1069], [4140], [2923], [710], [988]],
-                                    [[0, 5]])
+        assert feed_target_names[5] == "category_id"
+        category_id = create_lod_tensor([[10], [8], [9]], [[0, 3]])
 
-    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-    # and results will contain a list of data corresponding to fetch_targets.
-    results = exe.run(inference_program,
-                      feed={
-                          feed_target_names[0]: user_id,
-                          feed_target_names[1]: gender_id,
-                          feed_target_names[2]: age_id,
-                          feed_target_names[3]: job_id,
-                          feed_target_names[4]: movie_id,
-                          feed_target_names[5]: category_id,
-                          feed_target_names[6]: movie_title
-                      },
-                      fetch_list=fetch_targets,
-                      return_numpy=False)
-    print("inferred score: ", np.array(results[0]))
+        assert feed_target_names[6] == "movie_title"
+        movie_title = create_lod_tensor([[1069], [4140], [2923], [710], [988]],
+                                        [[0, 5]])
+
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        results = exe.run(inference_program,
+                          feed={
+                              feed_target_names[0]: user_id,
+                              feed_target_names[1]: gender_id,
+                              feed_target_names[2]: age_id,
+                              feed_target_names[3]: job_id,
+                              feed_target_names[4]: movie_id,
+                              feed_target_names[5]: category_id,
+                              feed_target_names[6]: movie_title
+                          },
+                          fetch_list=fetch_targets,
+                          return_numpy=False)
+        print("inferred score: ", np.array(results[0]))
 
 
 def main(use_cuda):

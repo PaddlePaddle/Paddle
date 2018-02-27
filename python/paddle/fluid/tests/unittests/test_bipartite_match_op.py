@@ -46,7 +46,20 @@ def bipartite_match(distance, match_indices, match_dist):
             idx += 1
 
 
-def batch_bipartite_match(distance, lod):
+def argmax_match(distance, match_indices, match_dist, threshold):
+    r, c = distance.shape
+    for j in xrange(c):
+        if match_indices[j] != -1:
+            continue
+        col_dist = distance[:, j]
+        indices = np.argwhere(col_dist >= threshold).flatten()
+        if len(indices) < 1:
+            continue
+        match_indices[j] = indices[np.argmax(col_dist[indices])]
+        match_dist[j] = col_dist[match_indices[j]]
+
+
+def batch_bipartite_match(distance, lod, match_type=None, dist_threshold=None):
     """Bipartite Matching algorithm for batch input.
     Arg:
         distance (numpy.array) : The distance of two entries with shape [M, N].
@@ -59,6 +72,9 @@ def batch_bipartite_match(distance, lod):
     for i in range(len(lod) - 1):
         bipartite_match(distance[lod[i]:lod[i + 1], :], match_indices[i, :],
                         match_dist[i, :])
+        if match_type == 'per_prediction':
+            argmax_match(distance[lod[i]:lod[i + 1], :], match_indices[i, :],
+                         match_dist[i, :], dist_threshold)
     return match_indices, match_dist
 
 
@@ -71,8 +87,8 @@ class TestBipartiteMatchOpWithLoD(OpTest):
 
         self.inputs = {'DistMat': (dist, lod)}
         self.outputs = {
-            'ColToRowMatchIndices': (match_indices),
-            'ColToRowMatchDist': (match_dist),
+            'ColToRowMatchIndices': match_indices,
+            'ColToRowMatchDist': match_dist,
         }
 
     def test_check_output(self):
@@ -90,6 +106,28 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
         self.outputs = {
             'ColToRowMatchIndices': match_indices,
             'ColToRowMatchDist': match_dist,
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestBipartiteMatchOpWithPerPredictionType(OpTest):
+    def setUp(self):
+        self.op_type = 'bipartite_match'
+        lod = [[0, 5, 11, 23]]
+        dist = np.random.random((23, 237)).astype('float32')
+        match_indices, match_dist = batch_bipartite_match(dist, lod[0],
+                                                          'per_prediction', 0.5)
+
+        self.inputs = {'DistMat': (dist, lod)}
+        self.outputs = {
+            'ColToRowMatchIndices': match_indices,
+            'ColToRowMatchDist': match_dist,
+        }
+        self.attrs = {
+            'match_type': 'per_prediction',
+            'dist_threshold': 0.5,
         }
 
     def test_check_output(self):
