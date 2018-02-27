@@ -55,7 +55,6 @@ struct CastDataType {
             CastDataTypeFunctor<InType, OutType>());
 #endif
     } else {
-      // TODO(dzhwinter): enhance Copy CPU<->GPU with different data type?
       PADDLE_THROW("Unsupported place!");
     }
   }

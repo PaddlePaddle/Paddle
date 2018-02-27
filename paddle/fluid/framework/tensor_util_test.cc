@@ -245,6 +245,7 @@ TEST(TensorContainsNAN, CPU) {
     buf[1] = 0.0;
     ASSERT_FALSE(TensorContainsNAN(src));
   }
+
   {
     Tensor src;
     float16* buf = src.mutable_data<float16>({3}, CPUPlace());
@@ -270,6 +271,7 @@ TEST(TensorContainsInf, CPU) {
     buf[1] = 1.0;
     ASSERT_FALSE(TensorContainsInf(src));
   }
+
   {
     Tensor src;
     float16* buf = src.mutable_data<float16>({3}, CPUPlace());
