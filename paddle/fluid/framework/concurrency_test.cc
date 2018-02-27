@@ -90,8 +90,7 @@ TEST(Concurrency, Go_Op) {
         block);
 
   // Create Go Op routine
-  ProgramDesc goOpProgram;
-  BlockDesc *goOpBlock = goOpProgram.MutableBlock(0);
+  BlockDesc *goOpBlock = program.AppendBlock(program.Block(0));
   AddOp("channel_send", {{"Channel", {"Channel"}}, {"X", {"x0"}}},
         {{"Status", {"Status"}}}, {}, goOpBlock);
 
