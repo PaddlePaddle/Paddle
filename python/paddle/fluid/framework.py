@@ -141,6 +141,8 @@ class Variable(object):
         dtype(np.dtype|core.VarDesc.VarType|str): The data type of variable.
         lod_level(int): The level of lod tensor. 0 means it is not a time
             series data.
+        capacity(int): The capacity of Channel variable. Ignored
+            for other types.
         persistable(bool): True if the variable should be saved as check point.
             Defaults to False.
         stop_gradient(bool): True if the variable will stop to calculate
