@@ -30,7 +30,7 @@ strategy according to this module.
 """
 
 
-def float_global_step():
+def _decay_step_counter():
     # the first global step is zero in learning rate decay
     global_step = layers.autoincreased_step_counter(
         counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
@@ -55,7 +55,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     Returns:
         The decayed learning rate
     """
-    global_step = float_global_step()
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         # update learning_rate
@@ -85,7 +85,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     Returns:
         The decayed learning rate
     """
-    global_step = float_global_step()
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         div_res = global_step / decay_steps
@@ -114,7 +114,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     Returns:
         The decayed learning rate
     """
-    global_step = float_global_step()
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         div_res = global_step / decay_steps
@@ -151,7 +151,7 @@ def polynomial_decay(learning_rate,
     Returns:
         The decayed learning rate
     """
-    global_step = float_global_step()
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         if cycle:
@@ -193,7 +193,7 @@ def piecewise_decay(boundaries, values):
     if len(values) - len(boundaries) != 1:
         raise ValueError("len(values) - len(boundaries) should be 1")
 
-    global_step = float_global_step()
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         lr = layers.create_global_var(
