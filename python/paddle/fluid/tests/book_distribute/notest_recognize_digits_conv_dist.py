@@ -58,20 +58,13 @@ trainers = int(os.getenv("TRAINERS"))  # total trainer count
 current_endpoint = os.getenv("SERVER_ENDPOINT")  # current pserver endpoint
 training_role = os.getenv("TRAINING_ROLE",
                           "TRAINER")  # get the training role: trainer/pserver
-trainer_id = int(os.getenv("TRAINER_ID", -1))
-assert (trainer_id > 0, "You should specified env TRAINER_ID which greater 0")
-
 if not current_endpoint:
     print("need env SERVER_ENDPOINT")
     exit(1)
 
 t = fluid.DistributeTranspiler()
 t.transpile(
-    optimize_ops,
-    params_grads,
-    trainer_id,
-    pservers=pserver_endpoints,
-    trainers=trainers)
+    optimize_ops, params_grads, pservers=pserver_endpoints, trainers=trainers)
 
 if training_role == "PSERVER":
     pserver_prog = t.get_pserver_program(current_endpoint)
