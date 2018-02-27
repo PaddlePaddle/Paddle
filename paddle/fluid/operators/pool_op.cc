@@ -19,6 +19,11 @@ namespace operators {
 
 int PoolOutputSize(int input_size, int filter_size, int padding, int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
+  PADDLE_ENFORCE(output_size > 0,
+                 "Due to the settings of padding(%d), filter_size(%d) and "
+                 "stride(%d), the output size is less than 0, please check "
+                 "again. Input_size:%d",
+                 padding, filter_size, stride, input_size);
   return output_size;
 }
 

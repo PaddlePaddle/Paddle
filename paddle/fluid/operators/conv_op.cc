@@ -54,12 +54,6 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
-    PADDLE_ENFORCE(in_dims[i + 2] + 2 * paddings[i] -
-                           (dilations[i] * (filter_dims[i + 2] - 1) + 1) >=
-                       0,
-                   "Due to the settings of paddings, filter_dims and "
-                   "dilations, the output size is less than 0, please check "
-                   "again.");
     output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
                                           dilations[i], paddings[i],
                                           strides[i]));
