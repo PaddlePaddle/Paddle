@@ -32,7 +32,8 @@ strategy according to this module.
 
 def float_global_step():
     # the first global step is zero in learning rate decay
-    global_step = layers.global_step_counter() - 1
+    global_step = layers.autoincreased_step_counter(
+        counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
     global_step = layers.cast(global_step, 'float32')
     return global_step
 

@@ -93,7 +93,9 @@ class TestLearningRateDecay(unittest.TestCase):
             step_val, lr_val = exe.run(
                 fluid.default_main_program(),
                 feed=[],
-                fetch_list=[fluid.layers.global_step_counter(), decayed_lr])
+                fetch_list=[
+                    fluid.layers.autoincreased_step_counter(), decayed_lr
+                ])
             python_decayed_lr = python_decay_fn(
                 global_step=float(step), **kwargs)
             self.assertAlmostEqual(
