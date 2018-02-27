@@ -23,9 +23,9 @@ class TestRoutineOp(unittest.TestCase):
         ch = fluid.make_channel(dtype='bool')
 
         with fluid.Go():
-            fluid.channel_send(ch, True)
+            fluid.channel_send(ch, True, dtype='bool')
 
-        result = fluid.channel_recv(ch)
+        result = fluid.channel_recv(ch, dtype='bool')
         fluid.channel_close(ch)
 
         cpu = core.CPUPlace()
@@ -54,7 +54,8 @@ class TestRoutineOp(unittest.TestCase):
             right = fluid.make_channel(dtype='int32')
 
             with fluid.Go():
-                fluid.channel_send(left, 1 + fluid.channel_recv(right, dtype='int32')[0])
+                fluid.channel_send(left, 1 + fluid.channel_recv(
+                    right, dtype='int32')[0], dtype='int32')
 
             left = right
 

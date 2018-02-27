@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: Variables: make_channel
-# TODO: Operators: send, close_channel, recv, go, select
 from layers.control_flow import BlockGuard
-from layer_helper import LayerHelper
+from layer_helper import LayerHelper, unique_name
+from layers import fill_constant
 from framework import convert_np_dtype_to_dtype_
 import core
 
@@ -116,6 +115,7 @@ def make_channel(dtype, capacity=0):
     # Make a channel variable (using the channel data type) and make sure it
     # persists into the global scope.
     channel = helper.create_variable(
+        name=unique_name.generate('channel'),
         dtype=core.VarDesc.VarType.CHANNEL, persistable=True)
 
     create_channel_op = make_channel_block.append_op(
@@ -124,10 +124,10 @@ def make_channel(dtype, capacity=0):
         attrs={"data_type": convert_np_dtype_to_dtype_(dtype),
                "capacity": capacity})
 
-    return create_channel_op
+    return channel
 
 
-def channel_send(channel, value):
+def channel_send(channel, value, dtype):
     """
     Sends a value through a channel variable. Used by an unbuffered or buffered
     channel to pass data from within or to a concurrent Go block, where
@@ -152,17 +152,23 @@ def channel_send(channel, value):
     helper = LayerHelper('channel_send', **locals())
     main_program = helper.main_program
     channel_send_block = main_program.current_block()
-    status = helper.create_variable(dtype=core.VarDesc.VarType.LOD_TENSOR)
+
+    status = helper.create_variable(
+        name=unique_name.generate('status'),
+        dtype=core.VarDesc.VarType.LOD_TENSOR)
+
+    input_value = fill_constant(
+        shape=[1], dtype=convert_np_dtype_to_dtype_(dtype), value=value)
 
     channel_send_op = channel_send_block.append_op(
         type="channel_send",
         inputs={
             "Channel": channel,
-            "X": value,
+            "X": input_value,
         },
         outputs={"Status": status})
 
-    return channel_send_op
+    return status
 
 
 def channel_recv(channel, dtype):
@@ -180,6 +186,7 @@ def channel_recv(channel, dtype):
         types.
 
     Returns:
+        Variable: The received value from the channel.
         Variable: The boolean status on whether or not the channel
                   successfully received the passed value.
 
@@ -188,7 +195,7 @@ def channel_recv(channel, dtype):
 
           ch = fluid.make_channel(dtype='int32', capacity=10)
           with fluid.Go():
-            fluid.channel_recv(ch, 'int32')
+            returned_value = fluid.channel_recv(ch, 'int32')
 
           # Code to send data through the channel.
     """
@@ -196,8 +203,12 @@ def channel_recv(channel, dtype):
     main_program = helper.main_program
     channel_recv_block = main_program.current_block()
 
-    return_value = helper.create_variable(dtype=dtype)
-    status = helper.create_variable(dtype=core.VarDesc.VarType.LOD_TENSOR)
+    return_value = helper.create_variable(
+        name=unique_name.generate('channel_return'),
+        dtype=dtype)
+    status = helper.create_variable(
+        name=unique_name.generate('status'),
+        dtype=core.VarDesc.VarType.LOD_TENSOR)
 
     channel_recv_op = channel_recv_block.append_op(
         type="channel_recv",
@@ -205,7 +216,7 @@ def channel_recv(channel, dtype):
         outputs={"Out": return_value,
                  "Status": status})
 
-    return channel_recv_op
+    return return_value, status
 
 
 def channel_close(channel):
@@ -231,5 +242,3 @@ def channel_close(channel):
 
     channel_close_op = channel_close_block.append_op(
         type="channel_close", inputs={"Channel": channel})
-
-    return channel_close_op
