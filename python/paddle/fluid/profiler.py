@@ -73,7 +73,7 @@ def reset_profiler():
 
 
 @contextmanager
-def profiler(state, sorted_key=None):
+def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
     """The profiler interface.
     Different from cuda_profiler, this profiler can be used to profile both CPU
     and GPU program. By defalut, it records the CPU and GPU operator kernels,
@@ -95,8 +95,9 @@ def profiler(state, sorted_key=None):
             The `max` means sorting by the maximum execution time.
             The `min` means sorting by the minimum execution time.
             The `ave` means sorting by the average execution time.
+        profile_path (string) : If state == 'All', it will write a profile
+            proto output file.
     """
-
     if state not in ['CPU', 'GPU', "All"]:
         raise ValueError("The state must be 'CPU' or 'GPU' or 'All'.")
     if state == "GPU":
@@ -122,4 +123,4 @@ def profiler(state, sorted_key=None):
     }
     # TODO(qingqing) : redirect C++ ostream to Python stream.
     # with core.ostream_redirect(stdout=True, stderr=True):
-    core.disable_profiler(key_map[sorted_key])
+    core.disable_profiler(key_map[sorted_key], profile_path)

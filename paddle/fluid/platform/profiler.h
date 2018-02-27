@@ -140,7 +140,8 @@ void EnableProfiler(ProfilerState state);
 // Clear the g_all_event_lists, which is total event lists of all threads.
 void ResetProfiler();
 
-void DisableProfiler(EventSortingKey sorted_key);
+void DisableProfiler(EventSortingKey sorted_key,
+                     const std::string& profile_path);
 
 // Parse the event list and output the profiling report
 void ParseEvents(std::vector<std::vector<Event>>&,
