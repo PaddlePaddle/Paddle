@@ -25,6 +25,12 @@ Users can directly use the published Docker image.
 $ docker pull paddlepaddle/paddle:latest-dev-android
 ```
 
+For users in China, we provide a faster mirror.
+
+```bash
+$ docker pull docker.paddlepaddlehub.com/paddle:latest-dev-android
+```
+
 ### Build the Inference Library
 
 We can run the Docker image we just created to build the inference library of PaddlePaddle for Android using the command below:

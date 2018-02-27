@@ -23,6 +23,12 @@ $ docker build -t username/paddle-android:dev . -f Dockerfile.android
 $ docker pull paddlepaddle/paddle:latest-dev-android
 ```
 
+对于国内用户，我们提供了加速访问的镜像源：
+
+```bash
+$ docker pull docker.paddlepaddlehub.com/paddle:latest-dev-android
+```
+
 ### 编译PaddlePaddle C-API库
 构建好开发镜像后，即可使用开发镜像来编译Android版PaddlePaddle C-API库。
 Android的Docker开发镜像向用户提供两个可配置的参数：
@@ -155,7 +161,11 @@ cmake -DCMAKE_SYSTEM_NAME=Android \
       ..
 ```
 
-用户还可根据自己的需求设置其他编译参数。比如希望最小化生成的库的大小，可以设置`CMAKE_BUILD_TYPE`为`MinSizeRel`；若希望最快的执行速度，则可设置`CMAKE_BUILD_TYPE`为`Release`。亦可以通过手动设置`CMAKE_C/CXX_FLAGS`来影响PaddlePaddle的编译过程。
+用户还可根据自己的需求设置其他编译参数。
+
+- 设置`CMAKE_BUILD_TYPE`为`MinSizeRel`，最小化生成的库的大小。
+- 设置`CMAKE_BUILD_TYPE`为`Release`，获得最快的执行速度，
+- 用户亦可以通过手动设置`CMAKE_C/CXX_FLAGS`来影响PaddlePaddle的编译过程。
 
 **性能TIPS**，为了达到最快的计算速度，在CMake参数配置上，有以下建议：
 
