@@ -33,6 +33,7 @@ __all__ = [
     'switch_startup_program',
     'switch_main_program',
     'get_var',
+    'convert_np_dtype_to_dtype_',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()

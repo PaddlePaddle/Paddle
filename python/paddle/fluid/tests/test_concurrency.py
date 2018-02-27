@@ -20,8 +20,8 @@ from paddle.fluid.executor import Executor
 
 class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
-        ch = fluid.make_channel(
-            dtype=core.VarDesc.VarType.BOOL, name="CreateChannel")
+        ch = fluid.make_channel(dtype='bool')
+
         with fluid.Go():
             fluid.channel_send(ch, True)
 
@@ -33,6 +33,32 @@ class TestRoutineOp(unittest.TestCase):
 
         outs = exe.run(fetch_list=[result])
         self.assertEqual(outs[0], True)
+
+    def test_daisy_chain(self):
+        n = 10000
+
+        leftmost = fluid.make_channel(dtype='int32')
+        right = leftmost
+        left = leftmost
+
+        with fluid.While(steps=n):
+            right = fluid.make_channel(dtype='int32')
+
+            with fluid.Go():
+                fluid.channel_send(left, 1 + fluid.channel_recv(right)[0])
+
+            left = right
+
+        with fluid.Go():
+            fluid.channel_send(right, 1)
+
+        leftmost_received = fluid.channel_recv(leftmost)
+
+        cpu = core.CPUPlace()
+        exe = Executor(cpu)
+
+        outs = exe.run(fetch_list=[leftmost_received])
+        self.assertEqual(outs[0][1], True)
 
 
 if __name__ == '__main__':

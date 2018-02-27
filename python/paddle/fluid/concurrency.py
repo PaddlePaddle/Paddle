@@ -16,7 +16,10 @@
 # TODO: Operators: send, close_channel, recv, go, select
 from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper
+from framework import convert_np_dtype_to_dtype_
 import core
+
+
 __all__ = [
     'Go',
     'make_channel',
@@ -88,8 +91,8 @@ def make_channel(dtype, capacity=0):
     `channel_close`, and `Go` to design a concurrent Paddle program.
 
     Args:
-        dtype (ParamAttr|int): Data type of the data sent in the channel.
-        This data type should be one of the Paddle supported data types.
+        dtype (ParamAttr|string): Data type of the data sent in the channel.
+        This data type should be the string name of a numpy data type.
         capacity (ParamAttr|int): Size of the channel. Defaults to 0 for
         to create an unbuffered channel.
 
@@ -118,7 +121,7 @@ def make_channel(dtype, capacity=0):
     create_channel_op = make_channel_block.append_op(
         type="channel_create",
         outputs={"Out": channel},
-        attrs={"data_type": dtype,
+        attrs={"data_type": convert_np_dtype_to_dtype_(dtype),
                "capacity": capacity})
 
     return create_channel_op
