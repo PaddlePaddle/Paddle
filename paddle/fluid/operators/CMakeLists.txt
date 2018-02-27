@@ -155,6 +155,7 @@ op_library(print_op DEPS lod_tensor)
 op_library(adagrad_op DEPS selected_rows_functor)
 op_library(maxout_op DEPS maxouting)
 op_library(unpool_op DEPS unpooling)
+op_library(pool_op DEPS pooling)
 op_library(pool_with_index_op DEPS pooling)
 op_library(lod_rank_table_op DEPS lod_rank_table)
 op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
@@ -171,19 +172,12 @@ op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
 op_library(create_reader_op DEPS reader)
 
-# Regist multiple Kernel to pybind
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv)
 else()
     op_library(conv_op DEPS vol2col)
 endif()
-op_library(pool_op DEPS pooling)
 op_library(conv_transpose_op DEPS vol2col)
-
-cc_library(batch_size_like SRCS batch_size_like.cc DEPS op_registry)
-op_library(fill_constant_batch_size_like_op DEPS batch_size_like)
-op_library(uniform_random_batch_size_like_op DEPS batch_size_like uniform_random_op)
-op_library(gaussian_random_batch_size_like_op DEPS batch_size_like gaussian_random_op)
 
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
