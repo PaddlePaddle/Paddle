@@ -64,11 +64,7 @@ if not current_endpoint:
 
 t = fluid.DistributeTranspiler()
 t.transpile(
-    optimize_ops,
-    params_grads,
-    0,
-    pservers=pserver_endpoints,
-    trainers=trainers)
+    optimize_ops, params_grads, pservers=pserver_endpoints, trainers=trainers)
 
 if training_role == "PSERVER":
     pserver_prog = t.get_pserver_program(current_endpoint)
