@@ -12,6 +12,7 @@ function(op_library TARGET)
     set(cu_srcs)
     set(cu_cc_srcs)
     set(cudnn_cu_cc_srcs)
+    set(CUDNN_FILE)
     set(op_common_deps operator op_registry math_function)
     set(options "")
     set(oneValueArgs "")
@@ -30,6 +31,10 @@ function(op_library TARGET)
         endif()
         if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu)
             list(APPEND cu_srcs ${TARGET}.cu)
+        endif()
+        string(REPLACE "_op" "_cudnn_op" CUDNN_FILE "${TARGET}")
+        if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${CUDNN_FILE}.cu.cc)
+            list(APPEND cudnn_cu_cc_srcs ${CUDNN_FILE}.cu.cc)
         endif()
     else()
         foreach(src ${op_library_SRCS})
@@ -103,7 +108,7 @@ function(op_library TARGET)
 
     # pybind USE_OP_DEVICE_KERNEL for CUDNN
     list(LENGTH cudnn_cu_cc_srcs cudnn_cu_cc_srcs_len)
-    if (${cudnn_cu_cc_srcs_len} GREATER 0)
+    if (WITH_GPU AND ${cudnn_cu_cc_srcs_len} GREATER 0)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
     endif()
 
@@ -161,38 +166,24 @@ op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(lstmp_op DEPS sequence2batch lstm_compute)
 op_library(gru_op DEPS sequence2batch gru_compute)
 op_library(recurrent_op DEPS executor)
-op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale math_function)
+op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
 op_library(create_reader_op DEPS reader)
 
 # Regist multiple Kernel to pybind
 if (WITH_GPU)
-    op_library(conv_op SRCS conv_op.cc conv_op.cu.cc conv_cudnn_op.cu.cc DEPS
-        vol2col depthwise_conv)
-    op_library(edit_distance_op SRCS edit_distance_op.cc edit_distance_op.cu DEPS math_function)
-    op_library(pool_op SRCS pool_op.cc pool_op.cu.cc pool_cudnn_op.cu.cc DEPS pooling)
-    op_library(conv_transpose_op SRCS conv_transpose_op.cc conv_transpose_op.cu.cc
-      conv_transpose_cudnn_op.cu.cc DEPS vol2col)
+    op_library(conv_op DEPS vol2col depthwise_conv)
 else()
-    op_library(conv_op SRCS conv_op.cc DEPS vol2col)
-    op_library(pool_op SRCS pool_op.cc DEPS pooling)
-    op_library(conv_transpose_op SRCS conv_transpose_op.cc DEPS vol2col)
+    op_library(conv_op DEPS vol2col)
 endif()
+op_library(pool_op DEPS pooling)
+op_library(conv_transpose_op DEPS vol2col)
 
 cc_library(batch_size_like SRCS batch_size_like.cc DEPS op_registry)
-
-op_library(fill_constant_batch_size_like_op
-  SRCS fill_constant_batch_size_like_op.cc fill_constant_batch_size_like_op.cu.cc
-  DEPS batch_size_like)
-
-op_library(uniform_random_batch_size_like_op
-  SRCS uniform_random_batch_size_like_op.cc
-  DEPS batch_size_like uniform_random_op)
-
-op_library(gaussian_random_batch_size_like_op
-  SRCS gaussian_random_batch_size_like_op.cc
-  DEPS batch_size_like gaussian_random_op)
+op_library(fill_constant_batch_size_like_op DEPS batch_size_like)
+op_library(uniform_random_batch_size_like_op DEPS batch_size_like uniform_random_op)
+op_library(gaussian_random_batch_size_like_op DEPS batch_size_like gaussian_random_op)
 
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
