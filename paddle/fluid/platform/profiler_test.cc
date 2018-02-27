@@ -95,7 +95,7 @@ TEST(RecordEvent, RecordEvent) {
    */
   for (int i = 1; i < 5; ++i) {
     std::string name = "evs_op_" + std::to_string(i);
-    RecordEvent record_event(name, dev_ctx);
+    RecordEvent record_event(name, dev_ctx, 0);
     int counter = 1;
     while (counter != i * 1000) counter++;
   }

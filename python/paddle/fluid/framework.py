@@ -784,6 +784,7 @@ class Block(object):
         elif type(v) == Variable:
             var = Variable(
                 self,
+                type=v.type,
                 name=new_name,
                 error_clip=error_clip,
                 stop_gradient=stop_gradient)
