@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device_tracer.h"
+#include <google/protobuf/text_format.h>
+#include <fstream>
 #include <map>
 #include <mutex>
 #include "glog/logging.h"
@@ -177,7 +179,7 @@ class DeviceTracerImpl : public DeviceTracer {
     enabled_ = true;
   }
 
-  proto::Profile GenProfile() {
+  proto::Profile GenProfile(const std::string &profile_path) {
     std::lock_guard<std::mutex> l(trace_mu_);
     proto::Profile profile_pb;
     profile_pb.set_start_ns(start_ns_);
@@ -196,13 +198,12 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_device_id(r.device_id);
       event_times[event->name()].push_back(r.end_ns - r.start_ns);
     }
-    for (const auto &et : event_times) {
-      fprintf(
-          stderr, "%s: total: %fms invoked cuda kernels: %lu\n",
-          et.first.c_str(),
-          std::accumulate(et.second.begin(), et.second.end(), 0) / 1000000.0,
-          et.second.size());
-    }
+    std::string profile_str;
+    google::protobuf::TextFormat::PrintToString(profile_pb, &profile_str);
+    std::ofstream profile_f;
+    profile_f.open(profile_path, std::ios::out | std::ios::trunc);
+    profile_f << profile_str;
+    profile_f.close();
     return profile_pb;
   }
 
@@ -259,7 +260,9 @@ class DeviceTracerDummy : public DeviceTracer {
 
   void Enable() {}
 
-  proto::Profile GenProfile() { return proto::Profile(); }
+  proto::Profile GenProfile(const std::string &profile_path) {
+    return proto::Profile();
+  }
 
   void Disable() {}
 };
