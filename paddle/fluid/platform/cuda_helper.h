@@ -77,6 +77,12 @@ __forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
 
 template <typename T>
 __device__ T reduceSum(T val, int tid, int len) {
+  // TODO(zcd): The warp size should be taken from the
+  // parameters of the GPU but not specified as 32 simply.
+  // To make the reduceSum more efficiently,
+  // I use Warp-Level Parallelism and assume the Warp size
+  // is 32 which may be different for different GPU,
+  // but most card's warp size is 32.
   __shared__ T shm[32];
   const int warpSize = 32;
   unsigned mask = 0u;
