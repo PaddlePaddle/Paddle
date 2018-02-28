@@ -249,8 +249,8 @@ class Optimizer(object):
             cpu_place = False
 
         if parallel_place is "AUTO" and api.isUsingGpu():
-            # It's still possible that the program is run on a CPU place executor,
-            # however it can't be detect when the program is compiling.
+            # It's still possible that the program will run on a CPU place executor,
+            # however it can't be detected at compile-time now.
             # TODO(helin): improve this situation.
             cpu_place = False
 
