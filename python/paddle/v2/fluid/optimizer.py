@@ -34,11 +34,16 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self, learning_rate, global_step=None, regularization=None):
+    def __init__(self,
+                 learning_rate,
+                 global_step=None,
+                 regularization=None,
+                 append_all_reduce=False):
         assert learning_rate is not None
         self._global_step = global_step
         self.regularization = regularization
         self._global_learning_rate = learning_rate
+        self.append_all_reduce = append_all_reduce
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
@@ -226,6 +231,26 @@ class Optimizer(object):
         """
         params_grads = append_backward(loss, parameter_list, no_grad_set,
                                        [error_clip_callback])
+        if self.append_all_reduce:
+            global_block = loss.block.program.global_block()
+            for (_, grad) in params_grads:
+                if grad is None:
+                    continue
+                import core
+                dummy_communicator = global_block.create_var(
+                    type=core.VarDesc.VarType.NCCL_COM)
+                all_reduced_var = global_block.create_var(
+                    name=grad.name + '__nccl_all_reduce__')
+                global_block.append_op(
+                    type='ncclAllReduce',
+                    inputs={'X': [grad],
+                            "Communicator": [dummy_communicator]},
+                    outputs={'Out': [all_reduced_var]},
+                    attrs={'reduction': 'ncclSum'})
+                global_block.append_op(
+                    type="assign",
+                    inputs={"X": [all_reduced_var]},
+                    outputs={"Out": [grad]})
 
         params_grads = append_gradient_clip_ops(params_grads)
 
