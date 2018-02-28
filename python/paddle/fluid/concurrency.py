@@ -17,7 +17,6 @@ from layer_helper import LayerHelper, unique_name
 from layers import fill_constant
 import core
 
-
 __all__ = [
     'Go',
     'make_channel',
@@ -71,7 +70,10 @@ class Go(BlockGuard):
 
         parent_block.append_op(
             type='go',
-            inputs={'X': [parent_block.var_recursive(x_name) for x_name in x_name_list]},
+            inputs={
+                'X':
+                [parent_block.var_recursive(x_name) for x_name in x_name_list]
+            },
             outputs={},
             attrs={'sub_block': go_block})
 
@@ -141,7 +143,7 @@ def channel_send(channel, value):
     Args:
         channel (Variable|Channel): Channel variable created using
         `make_channel`.
-
+        value (Variable): Value to send to channel
     Returns:
         Variable: The boolean status on whether or not the channel
                   successfully sent the passed value.
@@ -184,9 +186,7 @@ def channel_recv(channel, return_value):
     Args:
         channel (Variable|Channel): Channel variable created using
         `make_channel`.
-        dtype (Variable|int): Data type of the data expected to be read in the
-        channel. This data type should be one of the Paddle supported data
-        types.
+        return_value (Variable): Variable to set as a result of running channel_recv_op
 
     Returns:
         Variable: The received value from the channel.

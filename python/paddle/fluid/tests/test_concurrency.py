@@ -48,7 +48,8 @@ class TestRoutineOp(unittest.TestCase):
         n = 100
 
         cond = fluid.layers.less_than(
-            x=fluid.layers.zeros(shape=[1], dtype='int64'),
+            x=fluid.layers.zeros(
+                shape=[1], dtype='int64'),
             y=self._create_one_dim_tensor(n))
 
         leftmost = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
@@ -61,8 +62,8 @@ class TestRoutineOp(unittest.TestCase):
             with fluid.Go():
                 one_tensor = self._create_one_dim_tensor(1)
                 result = self._create_tensor('return_value',
-                                                      core.VarDesc.VarType.LOD_TENSOR,
-                                                      core.VarDesc.VarType.INT64)
+                                             core.VarDesc.VarType.LOD_TENSOR,
+                                             core.VarDesc.VarType.INT64)
 
                 result, status = fluid.channel_recv(right, result)
                 one_added = fluid.layers.elementwise_add(x=one_tensor, y=result)
@@ -75,8 +76,8 @@ class TestRoutineOp(unittest.TestCase):
             fluid.channel_send(right, one_tensor)
 
         leftmost_result = self._create_tensor('return_value',
-                                     core.VarDesc.VarType.LOD_TENSOR,
-                                     core.VarDesc.VarType.INT64)
+                                              core.VarDesc.VarType.LOD_TENSOR,
+                                              core.VarDesc.VarType.INT64)
         leftmost_result, status = fluid.channel_recv(leftmost, leftmost_result)
 
         cpu = core.CPUPlace()
@@ -84,19 +85,18 @@ class TestRoutineOp(unittest.TestCase):
         leftmost_data = exe.run(fetch_list=[leftmost_result])
 
         # The leftmost_data should be equal to the number of channels + 1
-        self.assertEqual(leftmost_data[0][0], n+1)
+        self.assertEqual(leftmost_data[0][0], n + 1)
 
     def _create_one_dim_tensor(self, value):
-        one_dim_tensor = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=value)
+        one_dim_tensor = fill_constant(
+            shape=[1], dtype=core.VarDesc.VarType.INT64, value=value)
         one_dim_tensor.stop_gradient = True
         return one_dim_tensor
 
     def _create_tensor(self, name, type, dtype):
         return framework.default_main_program().current_block().create_var(
-            name=unique_name.generate(name),
-            type=type,
-            dtype=dtype
-        )
+            name=unique_name.generate(name), type=type, dtype=dtype)
+
 
 if __name__ == '__main__':
     unittest.main()
