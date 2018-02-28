@@ -3161,7 +3161,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
             label = fluid.layers.data(name='label', shape=[100], dtype='int64')
             fc = fluid.layers.fc(input=data, size=100)
-            out = fluid.layers.smooth_l1(logits=fc, label=label)
+            out = fluid.layers.smooth_l1(x=fc, y=label)
     """
     helper = LayerHelper('smooth_l1_loss', **locals())
     diff = helper.create_tmp_variable(dtype=x.dtype)
