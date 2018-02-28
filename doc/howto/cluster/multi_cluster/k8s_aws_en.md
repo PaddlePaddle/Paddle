@@ -1,5 +1,4 @@
-
-# Distributed PaddlePaddle Training on AWS with Kubernetes
+# Kubernetes on AWS
 
 We will show you step by step on how to run distributed PaddlePaddle training on AWS cluster with Kubernetes. Let's start from core concepts.
 
