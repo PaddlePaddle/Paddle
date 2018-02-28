@@ -37,12 +37,19 @@ class BoxCoderOp : public framework::OperatorWithKernel {
                       "The rank of Input of PriorBoxVar must be 2");
     PADDLE_ENFORCE_EQ(prior_box_dims[1], 4, "The shape of PriorBox is [N, 4]");
     PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
-    PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
-                      "The rank of Input of TargetBox must be 2");
-    PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
-                      "The shape of TargetBox is [M, 4]");
 
-    GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
+    auto code_type = GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
+    if (code_type == BoxCodeType::kEncodeCenterSize) {
+      PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
+                        "The rank of Input of TargetBox must be 2");
+      PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
+                        "The shape of TargetBox is [M, 4]");
+    } else if (code_type == BoxCodeType::kDecodeCenterSize) {
+      PADDLE_ENFORCE_EQ(target_box_dims.size(), 3,
+                        "The rank of Input of TargetBox must be 3");
+      PADDLE_ENFORCE_EQ(target_box_dims[1], prior_box_dims[0]);
+      PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
+    }
 
     ctx->SetOutputDim(
         "OutputBox",
@@ -70,7 +77,7 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
              "of variance.");
     AddInput(
         "TargetBox",
-        "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
+        "(LoDTensor or Tensor) this input is a 2-D/3-D LoDTensor with shape "
         "[N, 4], each box is represented as [xmin, ymin, xmax, ymax], "
         "[xmin, ymin] is the left top coordinate of the box if the input "
         "is image feature map, they are close to the origin of the coordinate "

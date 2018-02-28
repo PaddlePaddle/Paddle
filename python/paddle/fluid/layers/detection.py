@@ -109,8 +109,6 @@ def detection_output(loc,
                                        prior_box=pb,
                                        prior_box_var=pbv)
     """
-    new_shape = [-1, loc.shape[2]]
-    loc = ops.reshape(x=loc, shape=new_shape)
     helper = LayerHelper("detection_output", **locals())
     decoded_box = box_coder(
         prior_box=prior_box,
