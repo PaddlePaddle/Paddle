@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import layers
-from framework import Variable
 from initializer import init_on_cpu
 
 __all__ = [

@@ -113,7 +113,10 @@ message VarType {
     PLACE_LIST = 14;
     READER = 15;
     CHANNEL = 16;
-    NCCL_COM = 17;
+    // Any runtime decided variable type is raw
+    // raw variables should manage their own allocations
+    // in operators like nccl_op
+    RAW = 17;
   }
 
   required Type type = 1;
@@ -164,4 +167,6 @@ message BlockDesc {
 // Please refer to
 // https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
 // for more details.
+// TODO(panyx0718): A model can have multiple programs. Need a
+// way to distinguish them. Maybe ID or name?
 message ProgramDesc { repeated BlockDesc blocks = 1; }

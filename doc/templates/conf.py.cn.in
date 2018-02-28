@@ -18,7 +18,6 @@ import shlex
 from recommonmark import parser, transform
 import paddle
 import paddle.v2
-import paddle.fluid
 
 MarkdownParser = parser.CommonMarkParser
 AutoStructify = transform.AutoStructify

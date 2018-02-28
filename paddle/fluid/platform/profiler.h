@@ -18,6 +18,7 @@ limitations under the License. */
 #include <mutex>
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler.pb.h"
 
 namespace paddle {
 namespace platform {
@@ -93,6 +94,7 @@ enum ProfilerState {
   kDisabled,  // disabled state
   kCPU,       // CPU profiling state
   kCUDA,      // GPU profiling state
+  kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
 void Mark(const std::string& name, const DeviceContext* dev_ctx);
@@ -102,7 +104,8 @@ void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
 void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 struct RecordEvent {
-  explicit RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
+  RecordEvent(const std::string& name, const DeviceContext* dev_ctx,
+              int32_t block_id);
 
   ~RecordEvent();
 
@@ -110,9 +113,12 @@ struct RecordEvent {
   const DeviceContext* dev_ctx_;
   // Event name
   std::string name_;
+  // Need to distinguish name by op type, block_id, program_id and perhaps
+  // different kernel invocations within an op.
+  std::string full_name_;
 };
 
-// Return the event list of all threads. Asummed the returned value calls
+// Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();
 
