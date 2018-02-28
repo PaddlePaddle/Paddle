@@ -189,7 +189,7 @@ PaddlePaddle的编译选项，包括生成CPU/GPU二进制文件、链接何种B
     "WITH_TESTING", "是否开启单元测试", "OFF"
     "WITH_DOC", "是否编译中英文文档", "OFF"
     "WITH_SWIG_PY", "是否编译PYTHON的SWIG接口，该接口可用于预测和定制化训练", "Auto"
-    "WITH_GOLANG", "是否编译go语言的可容错parameter server", "ON"
+    "WITH_GOLANG", "是否编译go语言的可容错parameter server", "OFF"
     "WITH_MKL", "是否使用MKL数学库，如果为否则是用OpenBLAS", "ON"
 
 BLAS

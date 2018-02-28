@@ -1,4 +1,4 @@
-# Cluster Training Using OpenMPI
+# OpenMPI
 
 ## Prepare an OpenMPI cluster
 

@@ -22,27 +22,9 @@ import paddle.fluid.core as core
 
 
 class TestProfiler(unittest.TestCase):
-    def test_nvprof(self):
-        if not fluid.core.is_compiled_with_cuda():
-            return
-        epoc = 8
-        dshape = [4, 3, 28, 28]
-        data = layers.data(name='data', shape=[3, 28, 28], dtype='float32')
-        conv = layers.conv2d(data, 20, 3, stride=[1, 1], padding=[1, 1])
-
-        place = fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-
-        output_file = 'cuda_profiler.txt'
-        with profiler.cuda_profiler(output_file, 'csv') as nvprof:
-            for i in range(epoc):
-                input = np.random.random(dshape).astype('float32')
-                exe.run(fluid.default_main_program(), feed={'data': input})
-        os.remove(output_file)
-
     def net_profiler(self, state):
-        if state == 'GPU' and not core.is_compiled_with_cuda():
+        enable_if_gpu = state == 'GPU' or state == "All"
+        if enable_if_gpu and not core.is_compiled_with_cuda():
             return
         startup_program = fluid.Program()
         main_program = fluid.Program()
@@ -84,6 +66,9 @@ class TestProfiler(unittest.TestCase):
 
     def test_cuda_profiler(self):
         self.net_profiler('GPU')
+
+    def test_all_profiler(self):
+        self.net_profiler('All')
 
 
 if __name__ == '__main__':
