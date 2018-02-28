@@ -1,14 +1,17 @@
-## 启动参数说明
+# 启动参数说明
 
 下面以`doc/howto/cluster/src/word2vec`中的代码作为实例，介绍使用PaddlePaddle v2 API完成分布式训练。
 
-### 启动参数服务器
+## 启动参数服务器
+
 执行以下的命令启动一个参数服务器并等待和计算节点的数据交互
+
 ```bash
 $ paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradient_servers=1
 ```
 
 如果希望可以在后台运行pserver程序，并保存输出到一个日志文件，可以运行：
+
 ```bash
 $ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradient_servers=1 &> pserver.log
 ```
@@ -20,8 +23,10 @@ $ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num
 - ports_num_for_sparse：**必选，默认0**，用于稀疏类型参数通信的端口个数
 - num_gradient_servers：**必选，默认1**，当前训练任务pserver总数
 
-### 启动计算节点
+## 启动计算节点
+
 执行以下命令启动使用python编写的trainer程序（文件名为任意文件名，如train.py）
+
 ```bash
 $ python train.py
 ```
@@ -67,7 +72,7 @@ paddle.init(
 - pservers：**必选，默认127.0.0.1**，当前训练任务启动的pserver的IP列表，多个IP使用“,”隔开
 
 
-### 准备数据集
+## 准备数据集
 
 参考样例数据准备脚本[prepare.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/prepare.py)，准备训练数据和验证数据集，我们使用paddle.dataset.imikolov数据集，并根据分布式训练并发数（trainer节点个数），在`prepare.py`开头部分指定`SPLIT_COUNT`将数据切分成多份。
 
@@ -84,7 +89,8 @@ for f in flist:
 ```
 
 示例程序`prepare.py`会把训练集和测试集分别分割成多个文件（例子中为3个，后缀为`-00000`、`-00001`和`-00002`）:
-```
+
+```bash
 train.txt
 train.txt-00000
 train.txt-00001
@@ -99,12 +105,13 @@ test.txt-00002
 
 对于不同的训练任务，训练数据格式和训练程序的`reader()`会大不相同，所以开发者需要根据自己训练任务的实际场景完成训练数据的分割和`reader()`的编写。
 
-### 准备训练程序
+## 准备训练程序
 
 我们会对每个训练任务都会在每个节点上创建一个工作空间（workspace），其中包含了用户的训练程序、程序依赖、挂载或下载的训练数据分片。
 
 最后，工作空间应如下所示：
-```
+
+```bash
 .
 |-- my_lib.py
 |-- word_dict.pickle
@@ -133,3 +140,21 @@ test.txt-00002
 
 - `train_data_dir`：包含训练数据的目录，可以是从分布式存储挂载过来的，也可以是在任务启动前下载到本地的。
 - `test_data_dir`：包含测试数据集的目录。
+
+## 异步 SGD 更新
+
+我们可以通过设置 `optimize` 的参数使之支持异步SGD更新。
+例如，设置 `AdaGrad` optimize 的 `is_async` 和 `async_lagged_grad_discard_ratio` 参数：
+
+```python
+adagrad = paddle.optimizer.AdaGrad(
+    is_async=True,
+    async_lagged_grad_discard_ratio=1.6,
+    learning_rate=3e-3,
+    regularization=paddle.optimizer.L2Regularization(8e-4))
+```
+
+- `is_async`: 是否为异步SGD更新模式。
+- `async_lagged_grad_discard_ratio`: 异步SGD更新的步长控制，接收到足够的gradient(
+  `async_lagged_grad_discard_ratio * num_gradient_servers`)之后，后面的gradient
+  将会被抛弃。
