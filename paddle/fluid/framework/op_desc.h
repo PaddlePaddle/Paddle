@@ -125,6 +125,8 @@ class OpDesc {
 
   BlockDesc *Block() { return this->block_; }
 
+  const BlockDesc &BlockRef() const { return *this->block_; }
+
   void SetBlock(BlockDesc *block) { this->block_ = block; }
 
  private:

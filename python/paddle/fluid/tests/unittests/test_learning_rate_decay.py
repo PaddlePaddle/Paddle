@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+import math
 import unittest
 
-import math
-import copy
-
-import paddle.fluid.framework as framework
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+import paddle.fluid.framework as framework
 import paddle.fluid.learning_rate_decay as lr_decay
 
 
@@ -90,12 +88,9 @@ class TestLearningRateDecay(unittest.TestCase):
 
         exe.run(fluid.default_startup_program())
         for step in range(10):
-            step_val, lr_val = exe.run(
-                fluid.default_main_program(),
-                feed=[],
-                fetch_list=[
-                    fluid.layers.autoincreased_step_counter(), decayed_lr
-                ])
+            lr_val, = exe.run(fluid.default_main_program(),
+                              feed=[],
+                              fetch_list=[decayed_lr])
             python_decayed_lr = python_decay_fn(
                 global_step=float(step), **kwargs)
             self.assertAlmostEqual(

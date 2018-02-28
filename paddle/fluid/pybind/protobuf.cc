@@ -252,7 +252,7 @@ void BindVarDsec(py::module &m) {
       .value("CHANNEL", proto::VarType::CHANNEL)
       .value("PLACE_LIST", proto::VarType::PLACE_LIST)
       .value("READER", proto::VarType::READER)
-      .value("NCCL_COM", proto::VarType::NCCL_COM);
+      .value("RAW", proto::VarType::RAW);
 }
 
 void BindOpDesc(py::module &m) {
