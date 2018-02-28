@@ -218,11 +218,8 @@ def train_main(use_cuda, is_sparse, is_local=True):
         train_loop(framework.default_main_program())
     else:
         port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
-        eplist = []
-        for ip in pserver_ips.split(","):
-            eplist.append(':'.join([ip, port]))
-        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        pserver_endpoints = os.getenv("PADDLE_PSERVER_EPS")
+        eplist = pserver_endpoints.split(",")
         trainers = int(os.getenv("TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))

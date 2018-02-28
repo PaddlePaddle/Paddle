@@ -152,11 +152,8 @@ def train(nn_type,
         train_loop(fluid.default_main_program())
     else:
         port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
-        eplist = []
-        for ip in pserver_ips.split(","):
-            eplist.append(':'.join([ip, port]))
-        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        pserver_endpoints = os.getenv("PADDLE_PSERVER_EPS")
+        eplist = pserver_endpoints.split(",")
         pserver_endpoints = os.getenv("PSERVERS")
         trainers = int(os.getenv("TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
