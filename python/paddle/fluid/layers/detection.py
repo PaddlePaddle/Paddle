@@ -377,9 +377,9 @@ def ssd_loss(location,
             `overlap_threshold` to determine the extra matching bboxes when
              finding matched boxes. 0.5 by default.
         neg_pos_ratio (float): The ratio of the negative boxes to the positive
-            boxes, used only when mining_type is max_negative, 3.0 by defalut.
+            boxes, used only when mining_type is 'max_negative', 3.0 by defalut.
         neg_overlap (float): The negative overlap upper bound for the unmatched
-            predictions. Use only when mining_type is max_negative,
+            predictions. Use only when mining_type is 'max_negative',
             0.5 by default.
         loc_loss_weight (float): Weight for localization loss, 1.0 by default.
         conf_loss_weight (float): Weight for confidence loss, 1.0 by default.
@@ -390,7 +390,7 @@ def ssd_loss(location,
         normalize (bool): Whether to normalize the SSD loss by the total number
             of output locations, True by defalut.
         sample_size (int): The max sample size of negative box, used only when
-            mining_type is hard_example.
+            mining_type is 'hard_example'.
 
     Returns:
         Variable: The weighted sum of the localization loss and confidence loss,
