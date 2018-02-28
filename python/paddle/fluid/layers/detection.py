@@ -328,6 +328,7 @@ def ssd_loss(location,
              conf_loss_weight=1.0,
              match_type='per_prediction',
              mining_type='max_negative',
+             normalize=True,
              sample_size=None):
     """
     **Multi-box loss layer for object dection algorithm of SSD**
@@ -380,14 +381,16 @@ def ssd_loss(location,
         neg_overlap (float): The negative overlap upper bound for the unmatched
             predictions. Use only when mining_type is max_negative,
             0.5 by default.
-        sample_size (int): The max sample size of negative box, used only when
-            mining_type is hard_example.
         loc_loss_weight (float): Weight for localization loss, 1.0 by default.
         conf_loss_weight (float): Weight for confidence loss, 1.0 by default.
         match_type (str): The type of matching method during training, should
             be 'bipartite' or 'per_prediction', 'per_prediction' by defalut.
         mining_type (str): The hard example mining type, should be 'hard_example'
             or 'max_negative', now only support `max_negative`.
+        normalize (bool): Whether to normalize the SSD loss by the total number
+            of output locations, True by defalut.
+        sample_size (int): The max sample size of negative box, used only when
+            mining_type is hard_example.
 
     Returns:
         Variable: The weighted sum of the localization loss and confidence loss,
@@ -507,6 +510,13 @@ def ssd_loss(location,
 
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
+    # reshape to [N, Np], N is the batch size and Np is the prior box number.
+    loss = ops.reshape(x=loss, shape=[-1, num_prior])
+    loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
+    if normalize:
+        normalizer = nn.reduce_sum(target_loc_weight)
+        loss = loss / normalizer
+
     return loss
 
 
