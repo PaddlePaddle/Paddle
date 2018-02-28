@@ -232,7 +232,7 @@ class EditDistance(Evaluator):
             distance, instance_error = distance_evaluator.eval(exe)
 
         In the above example:
-        'distance' is the average of the edit distance rate in a pass.
+        'distance' is the average of the edit distance in a pass.
         'instance_error' is the instance error rate in a pass.
 
     """
