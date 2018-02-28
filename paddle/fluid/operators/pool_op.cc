@@ -178,9 +178,8 @@ Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
   AddAttr<bool>(
       "ceil_mode",
       "(bool, default false) Wether to use the ceil function to calculate "
-      "output height and width."
-      "True is the default. If it is set to False, the floor function will"
-      "be used")
+      "output height and width. False is the default. If it is set to False, "
+      "the floor function will be used.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -274,9 +273,8 @@ Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
   AddAttr<bool>(
       "ceil_mode",
       "(bool, default false) Wether to use the ceil function to calculate "
-      "output height and width."
-      "True is the default. If it is set to False, the floor function will"
-      "be used")
+      "output height and width. False is the default. If it is set to False, "
+      "the floor function will be used.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
