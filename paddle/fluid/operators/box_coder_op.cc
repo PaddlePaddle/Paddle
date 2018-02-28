@@ -98,8 +98,8 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor) The output of box_coder_op, a tensor with shape [N, M, 4] "
         "representing the result of N target boxes encoded with "
         "M Prior boxes and variances when code_type is 'encode_center_size'. "
-        "N represents the batchsize and M represents the deocded boxes when "
-        "code_type is 'decode_center_size'.");
+        "When code_type is 'decode_center_size', N represents the batch size "
+        "and M represents the deocded boxes.");
 
     AddComment(R"DOC(
 Bounding Box Coder Operator.
