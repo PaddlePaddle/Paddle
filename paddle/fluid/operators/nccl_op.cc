@@ -65,7 +65,7 @@ class NCCLInitOpVarTypeInference : public framework::VarTypeInference {
                   framework::BlockDesc *block) const override {
     auto out_var_name = op_desc.Output("Communicator").front();
     auto &out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto var_type = framework::proto::VarType::NCCL_COM;
+    auto var_type = framework::proto::VarType::RAW;
     out_var.SetType(var_type);
   }
 };

@@ -49,11 +49,6 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
 namespace paddle {
 namespace pybind {
-static size_t UniqueIntegerGenerator(const std::string &prefix) {
-  static std::unordered_map<std::string, std::atomic<size_t>> generators;
-  return generators[prefix].fetch_add(1);
-}
-
 bool IsCompiledWithCUDA() {
 #ifndef PADDLE_WITH_CUDA
   return false;
@@ -410,7 +405,6 @@ All parameter, weight, gradient are variables in Paddle.
            (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
                Executor::Run);
 
-  m.def("unique_integer", UniqueIntegerGenerator);
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_devices", &framework::InitDevices);
@@ -465,6 +459,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("kDisabled", platform::ProfilerState::kDisabled)
       .value("kCPU", platform::ProfilerState::kCPU)
       .value("kCUDA", platform::ProfilerState::kCUDA)
+      .value("kAll", platform::ProfilerState::kAll)
       .export_values();
 
   py::enum_<platform::EventSortingKey>(m, "EventSortingKey", py::arithmetic())

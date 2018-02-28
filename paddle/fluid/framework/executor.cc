@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
@@ -58,13 +57,13 @@ static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<ReaderHolder>();
   } else if (var_type == proto::VarType::CHANNEL) {
     var->GetMutable<ChannelHolder>();
-  } else if (var_type == proto::VarType::NCCL_COM) {
-    // GetMutable will be called in ncclInit
+  } else if (var_type == proto::VarType::RAW) {
+    // GetMutable will be called in operator
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, NCCL_COM]",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
         var_type);
   }
 }
@@ -125,9 +124,6 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::RecordEvent record_event(op->Type(), pool.Get(place_));
 
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);

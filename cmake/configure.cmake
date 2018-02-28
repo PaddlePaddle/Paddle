@@ -59,6 +59,7 @@ endif(NOT WITH_GOLANG)
 
 if(NOT WITH_GPU)
     add_definitions(-DHPPL_STUB_FUNC)
+    add_definitions("-DCUPTI_LIB_PATH=\"\"")
 
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 else()
@@ -73,7 +74,14 @@ else()
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
-
+    if(CUPTI_FOUND)
+        include_directories(${CUPTI_INCLUDE_DIR})
+        add_definitions(-DPADDLE_WITH_CUPTI)
+        add_definitions("-DCUPTI_LIB_PATH=\"${CUPTI_LIBRARY_PATH}\"")
+    else()
+        add_definitions("-DCUPTI_LIB_PATH=\"\"")
+        message(STATUS "Cannot find CUPTI, GPU Profiling is incorrect.")
+    endif()
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
 
     # Include cuda and cudnn
