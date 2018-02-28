@@ -148,10 +148,10 @@ Paddle二进制在运行时捕获了浮点数异常，只要出现浮点数异�
 
 ..  code-block:: python
 
-optimizer = paddle.optimizer.RMSProp(
-    learning_rate=1e-3,
-    gradient_clipping_threshold=10.0,
-    regularization=paddle.optimizer.L2Regularization(rate=8e-4))
+    optimizer = paddle.optimizer.RMSProp(
+        learning_rate=1e-3,
+        gradient_clipping_threshold=10.0,
+        regularization=paddle.optimizer.L2Regularization(rate=8e-4))
 
 具体可以参考  `nmt_without_attention  <https://github.com/PaddlePaddle/models/blob/develop/nmt_without_attention/train.py#L35>`_ 示例。
 
@@ -159,13 +159,13 @@ optimizer = paddle.optimizer.RMSProp(
 
 ..  code-block:: python
 
-decoder_inputs = paddle.layer.fc(
-    act=paddle.activation.Linear(),
-    size=decoder_size * 3,
-    bias_attr=False,
-    input=[context, current_word],
-    layer_attr=paddle.attr.ExtraLayerAttribute(
-        error_clipping_threshold=100.0))
+    decoder_inputs = paddle.layer.fc(
+        act=paddle.activation.Linear(),
+        size=decoder_size * 3,
+        bias_attr=False,
+        input=[context, current_word],
+        layer_attr=paddle.attr.ExtraLayerAttribute(
+            error_clipping_threshold=100.0))
 
 完整代码可以参考示例 `machine translation <https://github.com/PaddlePaddle/book/blob/develop/08.machine_translation/train.py#L66>`_ 。
 
