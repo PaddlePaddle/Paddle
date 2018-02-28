@@ -763,6 +763,7 @@ class Block(object):
             raise ValueError("unsupported var type: %s", type(v))
 
         self.desc.rename_var(name, new_name)
+        # NOTE: v is destroyed by C++ after calling rename_var.
         d = self.desc.find_var(new_name)
         if var_type == "Parameter":
             var = Parameter(
