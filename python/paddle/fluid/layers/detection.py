@@ -43,8 +43,8 @@ for _OP in set(__auto__):
     globals()[_OP] = generate_layer_fn(_OP)
 
 
-def detection_output(scores,
-                     loc,
+def detection_output(loc,
+                     scores,
                      prior_box,
                      prior_box_var,
                      background_label=0,
@@ -61,14 +61,14 @@ def detection_output(scores,
     be zero if there is no valid bounding box.
 
     Args:
-        scores(Variable): A 3-D Tensor with shape [N, C, M] represents the
-            predicted confidence predictions. N is the batch size, C is the
-            class number, M is number of bounding boxes. For each category
-            there are total M scores which corresponding M bounding boxes.
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
             predicted locations of M bounding bboxes. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
+        scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
+            predicted confidence predictions. N is the batch size, C is the
+            class number, M is number of bounding boxes. For each category
+            there are total M scores which corresponding M bounding boxes.
         prior_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
             each box is represented as [xmin, ymin, xmax, ymax],
             [xmin, ymin] is the left top coordinate of the anchor box,
@@ -100,7 +100,7 @@ def detection_output(scores,
                          append_batch_size=False, dtype='float32')
         pbv = layers.data(name='prior_box_var', shape=[10, 4],
                           append_batch_size=False, dtype='float32')
-        loc = layers.data(name='target_box', shape=[21, 4],
+        loc = layers.data(name='target_box', shape=[2, 21, 4],
                           append_batch_size=False, dtype='float32')
         scores = layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
@@ -109,7 +109,8 @@ def detection_output(scores,
                                        prior_box=pb,
                                        prior_box_var=pbv)
     """
-
+    new_shape = [-1, loc.shape[2]]
+    loc = ops.reshape(x=loc, shape=new_shape)
     helper = LayerHelper("detection_output", **locals())
     decoded_box = box_coder(
         prior_box=prior_box,
@@ -118,6 +119,7 @@ def detection_output(scores,
         code_type='decode_center_size')
 
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
+    scores = nn.transpose(scores, perm=[0, 2, 1])
     helper.append_op(
         type="multiclass_nms",
         inputs={'Scores': scores,
@@ -742,7 +744,7 @@ def multi_box_head(inputs,
         num_boxes = box.shape[2]
 
         # get box_loc
-        num_loc_output = num_boxes * num_classes * 4
+        num_loc_output = num_boxes * 4
         mbox_loc = nn.conv2d(
             input=input,
             num_filters=num_loc_output,
@@ -751,7 +753,12 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        mbox_locs.append(mbox_loc)
+        new_shape = [
+            mbox_loc.shape[0],
+            mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3] / 4, 4
+        ]
+        mbox_loc_flatten = ops.reshape(mbox_loc, shape=new_shape)
+        mbox_locs.append(mbox_loc_flatten)
 
         # get conf_loc
         num_conf_output = num_boxes * num_classes
@@ -762,11 +769,18 @@ def multi_box_head(inputs,
             padding=pad,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        mbox_confs.append(conf_loc)
+        new_shape = [
+            conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
+            conf_loc.shape[3] / num_classes, num_classes
+        ]
+        conf_loc_flatten = ops.reshape(conf_loc, shape=new_shape)
+        mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
         box = box_results[0]
         var = var_results[0]
+        mbox_locs_concat = mbox_locs[0]
+        mbox_confs_concat = mbox_confs[0]
     else:
         reshaped_boxes = []
         reshaped_vars = []
@@ -776,5 +790,7 @@ def multi_box_head(inputs,
 
         box = tensor.concat(reshaped_boxes)
         var = tensor.concat(reshaped_vars)
+        mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
+        mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
 
-    return mbox_locs, mbox_confs, box, var
+    return mbox_locs_concat, mbox_confs_concat, box, var
