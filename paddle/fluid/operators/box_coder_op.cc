@@ -77,14 +77,16 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
              "of variance.");
     AddInput(
         "TargetBox",
-        "(LoDTensor or Tensor) this input is a 2-D/3-D LoDTensor with shape "
-        "[N, 4], each box is represented as [xmin, ymin, xmax, ymax], "
-        "[xmin, ymin] is the left top coordinate of the box if the input "
-        "is image feature map, they are close to the origin of the coordinate "
-        "system. [xmax, ymax] is the right bottom coordinate of the box. "
-        "This tensor can contain LoD information to represent a batch "
-        "of inputs. One instance of this batch can contain different "
-        "numbers of entities.");
+        "(LoDTensor or Tensor) This input can be a 2-D LoDTensor with shape "
+        "[N, 4] when code_type is 'encode_center_size'. This input also can "
+        "be a 3-D Tensor with shape [N, M, 4] when code_type is "
+        "'decode_center_size'. [N, 4], each box is represented as "
+        "[xmin, ymin, xmax, ymax], [xmin, ymin] is the left top coordinate "
+        "of the box if the input is image feature map, they are close to "
+        "the origin of the coordinate system. [xmax, ymax] is the right "
+        "bottom coordinate of the box. This tensor can contain LoD "
+        "information to represent a batch of inputs. One instance of this "
+        "batch can contain different numbers of entities.");
     AddAttr<std::string>("code_type",
                          "(string, default encode_center_size) "
                          "the code type used with the target box")
@@ -94,8 +96,10 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         "OutputBox",
         "(LoDTensor or Tensor) "
         "(Tensor) The output of box_coder_op, a tensor with shape [N, M, 4] "
-        "representing the result of N target boxes encoded/decoded with "
-        "M Prior boxes and variances.");
+        "representing the result of N target boxes encoded with "
+        "M Prior boxes and variances when code_type is 'encode_center_size'. "
+        "N represents the batchsize and M represents the deocded boxes when "
+        "code_type is 'decode_center_size'.");
 
     AddComment(R"DOC(
 Bounding Box Coder Operator.
