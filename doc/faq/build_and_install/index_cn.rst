@@ -16,7 +16,7 @@
     $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
     $ docker run ${CUDA_SO} ${DEVICES} -it paddlepaddle/paddle:latest-gpu
 
-更多关于Docker的安装与使用, 请参考 `PaddlePaddle Docker 文档 <http://www.paddlepaddle.org/doc_cn/build_and_install/install/docker_install.html>`_ 。
+更多关于Docker的安装与使用, 请参考 `PaddlePaddle Docker 文档 <http://www.paddlepaddle.org/docs/0.11.0/documentation/zh/getstarted/build_and_install/docker_install_cn.html>`_ 。
 
 
 2. CMake源码编译, 找到的PythonLibs和PythonInterp版本不一致
