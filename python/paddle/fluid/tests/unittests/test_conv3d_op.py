@@ -200,6 +200,22 @@ class TestWith1x1(TestConv3dOp):
         self.groups = 3
 
 
+class TestWithInput1x1Filter1x1(TestConv3dOp):
+    def init_test_case(self):
+        self.pad = [0, 0, 0]
+        self.stride = [1, 1, 1]
+        self.input_size = [2, 3, 1, 1, 1]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 1, 1, 1]
+
+    def init_dilation(self):
+        self.dilations = [1, 1, 1]
+
+    def init_group(self):
+        self.groups = 3
+
+
 class TestWithDilation(TestConv3dOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
@@ -235,6 +251,12 @@ class TestWithGroup2CUDNN(TestWithGroup2):
 
 
 class TestWith1x1CUDNN(TestWith1x1):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv3d"
+
+
+class TestWithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d"
