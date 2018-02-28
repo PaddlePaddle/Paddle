@@ -174,7 +174,7 @@ def channel_send(channel, value):
     return status
 
 
-def channel_recv(channel, type):
+def channel_recv(channel, return_value):
     """
     Receives a value through a channel variable. Used by an unbuffered or
     buffered channel within a concurrent Go block to get data from originally
@@ -206,9 +206,6 @@ def channel_recv(channel, type):
     main_program = helper.main_program
     channel_recv_block = main_program.current_block()
 
-    return_value = helper.create_variable(
-        name=unique_name.generate('channel_return'),
-        type=type)
     status = helper.create_variable(
         name=unique_name.generate('status'),
         type=core.VarDesc.VarType.LOD_TENSOR,

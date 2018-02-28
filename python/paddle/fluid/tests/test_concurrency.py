@@ -15,6 +15,7 @@
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import framework, unique_name
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers import fill_constant
 
@@ -22,23 +23,29 @@ from paddle.fluid.layers import fill_constant
 class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
         ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
+        result = self._create_tensor('return_value',
+                                     core.VarDesc.VarType.LOD_TENSOR,
+                                     core.VarDesc.VarType.INT64)
 
         with fluid.Go():
             input_value = fill_constant(
-                shape=[1], dtype=core.VarDesc.VarType.FP64, value=99)
-            fluid.channel_send(ch, input_value, dtype=core.VarDesc.VarType.LOD_TENSOR)
+                shape=[1], dtype=core.VarDesc.VarType.FP64, value=1234)
+            fluid.channel_send(ch, input_value)
 
-        result, status = fluid.channel_recv(ch, dtype=core.VarDesc.VarType.LOD_TENSOR)
+        result, status = fluid.channel_recv(ch, result)
         fluid.channel_close(ch)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
 
         outs = exe.run(fetch_list=[result])
-        self.assertEqual(outs[0], 99)
+        self.assertEqual(outs[0], 1234)
 
     def test_daisy_chain(self):
-        n = 50
+        '''
+        Minics classic Daisy-chain test:  https://talks.golang.org/2012/concurrency.slide#39
+        '''
+        n = 100
 
         cond = fluid.layers.less_than(
             x=fluid.layers.zeros(shape=[1], dtype='int64'),
@@ -47,48 +54,49 @@ class TestRoutineOp(unittest.TestCase):
         leftmost = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
         left = leftmost
 
+        # TODO(thuan): Use fluid.While() after scope capture is implemented.
+        # https://github.com/PaddlePaddle/Paddle/issues/8502
         for i in range(n):
             right = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
             with fluid.Go():
                 one_tensor = self._create_one_dim_tensor(1)
-                result, status = fluid.channel_recv(right, type=core.VarDesc.VarType.LOD_TENSOR)
+                result = self._create_tensor('return_value',
+                                                      core.VarDesc.VarType.LOD_TENSOR,
+                                                      core.VarDesc.VarType.INT64)
+
+                result, status = fluid.channel_recv(right, result)
                 one_added = fluid.layers.elementwise_add(x=one_tensor, y=result)
-                fluid.channel_send(left, one_added, type=core.VarDesc.VarType.LOD_TENSOR)
+                fluid.channel_send(left, one_added)
             left = right
 
-        #fluid.layers.assign(leftmost, right)
-        # fluid.layers.assign(leftmost, left)
-
-        # with fluid.While(steps=n):
-
-        # while_op = fluid.layers.While(cond=cond)
-        # with while_op.block():
-        #     right = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
-        #
-        #     with fluid.Go():
-        #         result, status = fluid.channel_recv(right, dtype=core.VarDesc.VarType.LOD_TENSOR)
-        #         one_added = fluid.layers.elementwise_add(x=one_tensor, y=result, act='relu')
-        #         fluid.channel_send(left, one_added, dtype=core.VarDesc.VarType.LOD_TENSOR)
-        #
-        #     fluid.layers.assign(right, left)
-        #     fluid.layers.increment(x=i, in_place=True)
-
+        # Trigger the channel propegation by sending a "1" to rightmost channel
         with fluid.Go():
             one_tensor = self._create_one_dim_tensor(1)
-            fluid.channel_send(right, one_tensor, type=core.VarDesc.VarType.LOD_TENSOR)
+            fluid.channel_send(right, one_tensor)
 
-        leftmost_received, status = fluid.channel_recv(leftmost, type=core.VarDesc.VarType.LOD_TENSOR)
+        leftmost_result = self._create_tensor('return_value',
+                                     core.VarDesc.VarType.LOD_TENSOR,
+                                     core.VarDesc.VarType.INT64)
+        leftmost_result, status = fluid.channel_recv(leftmost, leftmost_result)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
+        leftmost_data = exe.run(fetch_list=[leftmost_result])
 
-        outs = exe.run(fetch_list=[leftmost_received])
-        self.assertEqual(outs[0][0], 51)
+        # The leftmost_data should be equal to the number of channels + 1
+        self.assertEqual(leftmost_data[0][0], n+1)
 
     def _create_one_dim_tensor(self, value):
-        one_dim_tensor = fill_constant(shape=[1], type=core.VarDesc.VarType.INT64, value=value)
+        one_dim_tensor = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=value)
         one_dim_tensor.stop_gradient = True
         return one_dim_tensor
+
+    def _create_tensor(self, name, type, dtype):
+        return framework.default_main_program().current_block().create_var(
+            name=unique_name.generate(name),
+            type=type,
+            dtype=dtype
+        )
 
 if __name__ == '__main__':
     unittest.main()
