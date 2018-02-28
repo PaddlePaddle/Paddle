@@ -23,6 +23,7 @@ from initializer import Constant
 from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
 from clip import append_gradient_clip_ops, error_clip_callback
+import py_paddle.swig_paddle as api
 
 __all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
 
@@ -230,14 +231,30 @@ class Optimizer(object):
 
         parallel_scopes = None
         places = None
+        parallel_place = None
         for op in loss.block.ops:
             if op.type == "parallel_do":
                 places = [loss.block.var(arg) for arg in op.input("places")]
                 parallel_scopes = [
                     loss.block.var(arg) for arg in op.output("parallel_scopes")
                 ]
+            if op.type == "get_places":
+                parallel_place = op.attrs['device_type']
 
-        need_parallel_optimize = parallel_scopes is not None and places is not None
+        if parallel_place is None:
+            parallel_place = "AUTO"
+
+        cpu_place = True
+        if parallel_place is "CUDA":
+            cpu_place = False
+
+        if parallel_place is "AUTO" and api.isUsingGpu():
+            # It's still possible that the program is run on a CPU place executor,
+            # however it can't be detect when the program is compiling.
+            # TODO(helin): improve this situation.
+            cpu_place = False
+
+        need_parallel_optimize = not cpu_place and parallel_scopes is not None and places is not None
 
         if need_parallel_optimize:
             program = loss.block.program

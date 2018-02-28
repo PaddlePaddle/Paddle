@@ -144,17 +144,16 @@ class ParallelDoOp : public framework::OperatorBase {
                      "Only support parameter type as LoDTensor");
       auto &src = scope.FindVar(param)->Get<LoDTensor>();
 
-      // Make a copy starting from the second place. The first place
-      // will use the parameters in the global scope, the other places
-      // will use the parameters in the sub scope.
+      // make a copy of each GPU place, starting from the second
+      // place
       for (size_t i = 1; i < sub_scopes.size(); ++i) {
-        auto *sub_scope = sub_scopes[i];
-        auto exists = sub_scope->FindVarLocally(param) != nullptr;
-        if (!exists) {
-          auto &place = places[i];
+	auto &place = places[i];
+	auto *sub_scope = sub_scopes[i];
+	auto exists = sub_scope->FindVarLocally(param) != nullptr;
+	if (!exists && platform::is_gpu_place(place)) {
           auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
           framework::TensorCopy(src, place, dst);
-        }
+	}
       }
     }
     WaitOnPlaces(places);
