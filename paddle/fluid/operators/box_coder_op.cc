@@ -92,14 +92,13 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
                          "the code type used with the target box")
         .SetDefault("encode_center_size")
         .InEnum({"encode_center_size", "decode_center_size"});
-    AddOutput(
-        "OutputBox",
-        "(LoDTensor or Tensor) "
-        "(Tensor) The output of box_coder_op, a tensor with shape [N, M, 4] "
-        "representing the result of N target boxes encoded with "
-        "M Prior boxes and variances when code_type is 'encode_center_size'. "
-        "When code_type is 'decode_center_size', N represents the batch size "
-        "and M represents the deocded boxes.");
+    AddOutput("OutputBox",
+              "(LoDTensor or Tensor) "
+              "When code_type is 'encode_center_size', the output tensor of "
+              "box_coder_op with shape [N, M, 4] representing the result of N "
+              "target boxes encoded with M Prior boxes and variances. When "
+              "code_type is 'decode_center_size', N represents the batch size "
+              "and M represents the number of deocded boxes.");
 
     AddComment(R"DOC(
 Bounding Box Coder Operator.
