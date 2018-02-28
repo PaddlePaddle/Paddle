@@ -35,12 +35,12 @@ class TestDetection(unittest.TestCase):
                 dtype='float32')
             loc = layers.data(
                 name='target_box',
-                shape=[20, 4],
+                shape=[2, 10, 4],
                 append_batch_size=False,
                 dtype='float32')
             scores = layers.data(
                 name='scores',
-                shape=[2, 20, 10],
+                shape=[2, 10, 20],
                 append_batch_size=False,
                 dtype='float32')
             out = layers.detection_output(
@@ -117,9 +117,7 @@ class TestMultiBoxHead(unittest.TestCase):
         assert len(box.shape) == 2
         assert box.shape == var.shape
         assert box.shape[1] == 4
-
-        for loc, conf in zip(mbox_locs, mbox_confs):
-            assert loc.shape[1:3] == conf.shape[1:3]
+        assert mbox_locs.shape[1] == mbox_confs.shape[1]
 
     def multi_box_head_output(self, data_shape):
         images = fluid.layers.data(
