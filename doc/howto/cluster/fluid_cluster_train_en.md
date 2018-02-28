@@ -32,7 +32,7 @@ The non-cluster version of this demo with fluid API is as follows:
 
 ``` python
 import paddle.v2 as paddle
-import paddle.v2.fluid as fluid
+import paddle.fluid as fluid
 
 x = fluid.layers.data(name='x', shape=[13], dtype='float32')
 y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -125,11 +125,11 @@ for pass_id in range(100):
 
 ### E2E demo
 
-Please find the complete demo from [here](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/v2/fluid/tests/book_distribute/notest_dist_fit_a_line.py).
+Please find the complete demo from [here](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book_distribute/notest_dist_fit_a_line.py).
 First `cd` into the folder that contains the `python` files. In this case:
 
 ```bash
-cd /paddle/python/paddle/v2/fluid/tests/book_distribute
+cd /paddle/python/paddle/fluid/tests/book_distribute
 ```
 
 In parameter server node run the following in the command line:

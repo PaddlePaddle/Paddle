@@ -15,7 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include <iomanip>
 #include <map>
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#endif  // PADDLE_WITH_CUDA
 #include "glog/logging.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace platform {
@@ -132,10 +138,13 @@ RecordEvent::RecordEvent(const std::string& name,
   dev_ctx_ = dev_ctx;
   name_ = name;
   PushEvent(name_, dev_ctx_);
+  // Maybe need the same push/pop behavior.
+  SetCurAnnotation(name_.c_str());
 }
 
 RecordEvent::~RecordEvent() {
   if (g_state == ProfilerState::kDisabled) return;
+  ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
 }
 
@@ -147,7 +156,14 @@ void EnableProfiler(ProfilerState state) {
                  "The profiling state should be disabled when calling ",
                  "EnableProfiler.");
   g_state = state;
-  g_profiler_place = (g_state == ProfilerState::kCUDA) ? "CUDA" : "CPU";
+  if (g_state == ProfilerState::kCUDA) {
+    g_profiler_place = "CUDA";
+  } else if (g_state == ProfilerState::kCPU) {
+    g_profiler_place = "CPU";
+  } else {
+    g_profiler_place = "All";
+    GetDeviceTracer()->Enable();
+  }
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA) {
     // Generate some dummy evenets first to reduce the startup overhead.
@@ -189,6 +205,12 @@ void DisableProfiler(EventSortingKey sorted_key) {
   // Mark the profiling stop.
   Mark("_stop_profiler_", nullptr);
   g_state = ProfilerState::kDisabled;
+
+  DeviceTracer* tracer = GetDeviceTracer();
+  if (g_profiler_place == "All" && tracer && tracer->IsEnabled()) {
+    tracer->Disable();
+    tracer->GenProfile();
+  }
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
   ParseEvents(all_events, sorted_key);
@@ -254,9 +276,11 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
         }
 
         if (rit != pushed_events.rend()) {
-          double event_time = (g_profiler_place == "CUDA")
-                                  ? rit->CudaElapsedMs(events[i][j])
-                                  : rit->CpuElapsedMs(events[i][j]);
+          double event_time =
+              (g_profiler_place == "CUDA" || g_profiler_place == "All")
+                  ? rit->CudaElapsedMs(events[i][j])
+                  : rit->CpuElapsedMs(events[i][j]);
+
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
           max_name_width = std::max(max_name_width, event_name.size());
