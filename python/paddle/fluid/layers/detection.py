@@ -586,10 +586,10 @@ def multi_box_head(inputs,
        name(str): Name of the prior box layer. Default: None.
 
     Returns:
-        mbox_loc(list): The predicted boxes' location of the inputs.
+        mbox_loc(Variable): The predicted boxes' location of the inputs.
              The layout of each element is [N, H*W*Priors, 4]. Priors
              is the number of predicted boxof each position of each input.
-        mbox_conf(list): The predicted boxes' confidence of the inputs.
+        mbox_conf(Variable): The predicted boxes' confidence of the inputs.
              The layout of each element is [N, H*W*Priors, C]. Priors
              is the number of predicted box of each position of each input.
              C is the number of Classes.
