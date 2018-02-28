@@ -1,4 +1,4 @@
-# Cluster Training Using Fabric
+# Fabric
 
 ## Prepare a Linux cluster
 
