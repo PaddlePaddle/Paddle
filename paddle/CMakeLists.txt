@@ -17,11 +17,9 @@ else()
     add_subdirectory(capi)
   endif()
 
-  if(NOT ANDROID AND NOT IOS)
-    add_subdirectory(fluid)
-  endif()
-
   if(WITH_SWIG_PY)
     add_subdirectory(api)
   endif()
 endif()
+
+add_subdirectory(fluid)

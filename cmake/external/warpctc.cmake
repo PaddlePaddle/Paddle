@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(MOBILE_INFERENCE)
-    return()
-ENDIF()
+# TODO(liuyiqun): disable the dependency of warpctc for fluid mobile
+#IF(MOBILE_INFERENCE)
+#    return()
+#ENDIF()
 
 INCLUDE(ExternalProject)
 

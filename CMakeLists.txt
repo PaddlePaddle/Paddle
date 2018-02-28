@@ -90,7 +90,7 @@ if(ANDROID OR IOS)
         "Disable golang when cross-compiling for Android and iOS" FORCE)
 
     # Compile PaddlePaddle mobile inference library
-    if (NOT WITH_C_API)
+    if(NOT WITH_C_API)
         set(WITH_C_API ON CACHE STRING
             "Always compile the C_API when cross-compiling for Android and iOS" FORCE)
     endif()
@@ -101,14 +101,14 @@ endif()
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
-if (WITH_C_API AND WITH_PYTHON)
+if(WITH_C_API AND WITH_PYTHON)
   message(WARNING "It is suggest not embedded a python interpreter in Paddle "
     "when using C-API. It will give an unpredictable behavior when using a "
     "different Python interpreter from compiling.")
 endif()
 
-if (WITH_C_API)
-  set(WITH_FLUID OFF CACHE STRING "Disable install fluid when compile the C_API" FORCE)
+if(WITH_C_API)
+    set(WITH_FLUID OFF CACHE STRING "Disable install fluid when compile the C_API" FORCE)
 endif()
 
 if(MOBILE_INFERENCE)
