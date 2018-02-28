@@ -747,13 +747,8 @@ class Block(object):
         if not self.has_var(name):
             raise ValueError("var %s is not in current" % name)
         v = self.var(name)
-        stop_gradient = None
-        trainable = None
-        optimize_attr = None
-        regularizer = None
-        gradient_clip_attr = None
-        error_clip = None
         if type(v) == Parameter:
+            var_type = "Parameter"
             stop_gradient = v.stop_gradient
             trainable = v.trainable
             optimize_attr = v.optimize_attr
@@ -761,6 +756,7 @@ class Block(object):
             gradient_clip_attr = v.gradient_clip_attr
             error_clip = v.error_clip
         elif type(v) == Variable:
+            var_type = "Variable"
             error_clip = v.error_clip
             stop_gradient = v.stop_gradient
         else:
@@ -768,8 +764,7 @@ class Block(object):
 
         self.desc.rename_var(name, new_name)
         d = self.desc.find_var(new_name)
-        var = None
-        if type(v) == Parameter:
+        if var_type == "Parameter":
             var = Parameter(
                 self,
                 d.shape(),
@@ -781,7 +776,7 @@ class Block(object):
                 regularizer=regularizer,
                 gradient_clip_attr=gradient_clip_attr,
                 error_clip=error_clip)
-        elif type(v) == Variable:
+        elif var_type == "Variable":
             var = Variable(
                 self,
                 name=new_name,
