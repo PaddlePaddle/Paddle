@@ -31,6 +31,7 @@ void SetReceiveStatus(const platform::Place &dev_place,
                       framework::Variable &status_var, bool status) {
   auto cpu = platform::CPUPlace();
   auto status_tensor = status_var.GetMutable<framework::LoDTensor>();
+  status_tensor->Resize({1});
   status_tensor->mutable_data(
       cpu, framework::ToTypeIndex(framework::proto::VarType::BOOL));
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

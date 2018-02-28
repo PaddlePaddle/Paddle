@@ -16,26 +16,29 @@ import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
+from paddle.fluid.layers import fill_constant
 
 
 class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
-        ch = fluid.make_channel(dtype='int64')
+        ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
 
         with fluid.Go():
-            fluid.channel_send(ch, 1, dtype='int64')
+            input_value = fill_constant(
+                shape=[1], dtype=core.VarDesc.VarType.FP64, value=99)
+            fluid.channel_send(ch, input_value, dtype=core.VarDesc.VarType.LOD_TENSOR)
 
-        result = fluid.channel_recv(ch, dtype='int64')
+        result, status = fluid.channel_recv(ch, dtype=core.VarDesc.VarType.LOD_TENSOR)
         fluid.channel_close(ch)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
 
         outs = exe.run(fetch_list=[result])
-        self.assertEqual(outs[0], True)
+        self.assertEqual(outs[0], 99)
 
     def test_daisy_chain(self):
-        n = 10000
+        n = 1000
 
         i = fluid.layers.zeros(shape=[1], dtype='int64')
         array_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=n)

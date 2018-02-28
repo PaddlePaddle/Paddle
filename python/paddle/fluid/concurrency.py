@@ -15,7 +15,6 @@
 from layers.control_flow import BlockGuard
 from layer_helper import LayerHelper, unique_name
 from layers import fill_constant
-from framework import convert_np_dtype_to_dtype_
 import core
 
 
@@ -48,27 +47,32 @@ class Go(BlockGuard):
         parent_block = main_program.block(main_program.current_block()
                                           .parent_idx)
 
+        inner_outputs = set()
         x_name_list = set()
-        out_vars = []
         for op in go_block.ops:
             # Iterate over all operators, get all the inputs
             # and add as input to the Go operator.
             for iname in op.input_names:
                 for in_var_name in op.input(iname):
-                    x_name_list.add(in_var_name)
+                    if in_var_name not in inner_outputs:
+                        x_name_list.add(in_var_name)
 
-            # Iterate over all operators , get all the outputs
-            # add to the output list of Go operator only if
-            # they exist in the parent block.
             for oname in op.output_names:
                 for out_var_name in op.output(oname):
-                    if out_var_name in parent_block.vars:
-                        out_vars.add(parent_block.var(out_var_name))
+                    inner_outputs.add(out_var_name)
+
+        # Iterate over all operators , get all the outputs
+        # add to the output list of Go operator only if
+        # they exist in the parent block.
+        out_vars = []
+        for inner_out_name in inner_outputs:
+            if inner_out_name in parent_block.vars:
+                out_vars.append(parent_block.var(inner_out_name))
 
         parent_block.append_op(
             type='go',
-            inputs={'X': [parent_block.var(x_name) for x_name in x_name_list]},
-            outputs={'Out': out_vars},
+            inputs={'X': [parent_block.var_recursive(x_name) for x_name in x_name_list]},
+            outputs={},
             attrs={'sub_block': go_block})
 
 
@@ -108,7 +112,7 @@ def make_channel(dtype, capacity=0):
           fluid.channel_send(ch, 100)
           fluid.channel_close(ch)
     """
-    helper = LayerHelper('make_channel', **locals())
+    helper = LayerHelper('channel_create', **locals())
     main_program = helper.main_program
     make_channel_block = main_program.current_block()
 
@@ -116,12 +120,13 @@ def make_channel(dtype, capacity=0):
     # persists into the global scope.
     channel = helper.create_variable(
         name=unique_name.generate('channel'),
-        dtype=core.VarDesc.VarType.CHANNEL, persistable=True)
+        dtype=core.VarDesc.VarType.CHANNEL,
+        persistable=True)
 
     create_channel_op = make_channel_block.append_op(
         type="channel_create",
         outputs={"Out": channel},
-        attrs={"data_type": convert_np_dtype_to_dtype_(dtype),
+        attrs={"data_type": dtype,
                "capacity": capacity})
 
     return channel
@@ -157,14 +162,11 @@ def channel_send(channel, value, dtype):
         name=unique_name.generate('status'),
         dtype=core.VarDesc.VarType.LOD_TENSOR)
 
-    input_value = fill_constant(
-        shape=[1], dtype=convert_np_dtype_to_dtype_(dtype), value=value)
-
     channel_send_op = channel_send_block.append_op(
         type="channel_send",
         inputs={
             "Channel": channel,
-            "X": input_value,
+            "X": value,
         },
         outputs={"Status": status})
 
