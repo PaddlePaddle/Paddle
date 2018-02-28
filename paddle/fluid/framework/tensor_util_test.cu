@@ -31,7 +31,7 @@ static __global__ void FillInf(float* buf) {
   buf[2] = 0.5;
 }
 
-TEST(HasNAN, GPU) {
+TEST(TensorContainsNAN, GPU) {
   Tensor tensor;
   platform::CUDAPlace gpu(0);
   auto& pool = platform::DeviceContextPool::Instance();
@@ -39,10 +39,10 @@ TEST(HasNAN, GPU) {
   float* buf = tensor.mutable_data<float>({3}, gpu);
   FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
   cuda_ctx->Wait();
-  ASSERT_TRUE(HasNAN(tensor));
+  ASSERT_TRUE(TensorContainsNAN(tensor));
 }
 
-TEST(HasInf, GPU) {
+TEST(TensorContainsInf, GPU) {
   Tensor tensor;
   platform::CUDAPlace gpu(0);
   auto& pool = platform::DeviceContextPool::Instance();
@@ -50,7 +50,7 @@ TEST(HasInf, GPU) {
   float* buf = tensor.mutable_data<float>({3}, gpu);
   FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
   cuda_ctx->Wait();
-  ASSERT_TRUE(HasInf(tensor));
+  ASSERT_TRUE(TensorContainsInf(tensor));
 }
 
 }  // namespace framework

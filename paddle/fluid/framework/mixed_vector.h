@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -37,9 +37,8 @@ class Vector {
 
   // Fill vector with value. The vector size is `count`.
   explicit Vector(size_t count, const T& value = T()) {
-    if (count == 0) {
-      InitEmpty();
-    } else {
+    InitEmpty();
+    if (count != 0) {
       resize(count);
       T* ptr = begin();
       for (size_t i = 0; i < count; ++i) {
@@ -107,9 +106,11 @@ class Vector {
   // std::vector iterator methods. Based on CPU data access method
   size_t size() const { return size_; }
 
-  T* begin() { return &this->operator[](0); }
+  T* begin() { return capacity() == 0 ? &EmptyDummy() : &this->operator[](0); }
 
-  T* end() { return &this->operator[](size()); }
+  T* end() {
+    return capacity() == 0 ? &EmptyDummy() : &this->operator[](size());
+  }
 
   T& front() { return *begin(); }
 
@@ -119,8 +120,17 @@ class Vector {
     return *it;
   }
 
-  const T* begin() const { return &this->operator[](0); }
-  const T* end() const { return &this->operator[](size()); }
+  const T* begin() const {
+    return capacity() == 0 ? &EmptyDummy() : &this->operator[](0);
+  }
+
+  const T* end() const {
+    return capacity() == 0 ? &EmptyDummy() : &this->operator[](size());
+  }
+
+  const T* cbegin() const { return begin(); }
+
+  const T* cend() const { return end(); }
 
   const T& back() const {
     auto it = end();
@@ -244,7 +254,9 @@ class Vector {
 
   bool operator==(const Vector<T>& other) const {
     if (size() != other.size()) return false;
-    for (auto it1 = begin(), it2 = other.begin(); it1 < end(); ++it1, ++it2) {
+    auto it1 = cbegin();
+    auto it2 = other.cbegin();
+    for (; it1 < cend(); ++it1, ++it2) {
       if (*it1 != *it2) {
         return false;
       }
@@ -279,7 +291,7 @@ class Vector {
 
   void CopyToCPU() const {
     // COPY GPU Data To CPU
-    Copy(cuda_vec_, platform::CPUPlace(), &cpu_vec_);
+    TensorCopy(cuda_vec_, platform::CPUPlace(), &cpu_vec_);
     WaitPlace(cuda_vec_.place());
   }
 
@@ -293,13 +305,14 @@ class Vector {
   void ImmutableCUDA(platform::Place place) const {
     if (IsDirty()) {
       if (IsInCPU()) {
-        Copy(cpu_vec_, boost::get<platform::CUDAPlace>(place), &cuda_vec_);
+        TensorCopy(cpu_vec_, boost::get<platform::CUDAPlace>(place),
+                   &cuda_vec_);
         WaitPlace(place);
         UnsetFlag(kDirty);
         SetFlag(kDataInCUDA);
       } else if (IsInCUDA() && !(place == cuda_vec_.place())) {
         framework::Tensor tmp;
-        Copy(cuda_vec_, boost::get<platform::CUDAPlace>(place), &tmp);
+        TensorCopy(cuda_vec_, boost::get<platform::CUDAPlace>(place), &tmp);
         WaitPlace(cuda_vec_.place());
         cuda_vec_.ShareDataWith(tmp);
         // Still dirty
@@ -310,13 +323,14 @@ class Vector {
     } else {
       if (!IsInCUDA()) {
         // Even data is not dirty. However, data is not in CUDA. Copy data.
-        Copy(cpu_vec_, boost::get<platform::CUDAPlace>(place), &cuda_vec_);
+        TensorCopy(cpu_vec_, boost::get<platform::CUDAPlace>(place),
+                   &cuda_vec_);
         WaitPlace(place);
         SetFlag(kDataInCUDA);
       } else if (!(place == cuda_vec_.place())) {
         framework::Tensor tmp;
         WaitPlace(cuda_vec_.place());
-        Copy(cuda_vec_, boost::get<platform::CUDAPlace>(place), &tmp);
+        TensorCopy(cuda_vec_, boost::get<platform::CUDAPlace>(place), &tmp);
         WaitPlace(cuda_vec_.place());
         WaitPlace(place);
         cuda_vec_.ShareDataWith(tmp);
@@ -351,6 +365,11 @@ class Vector {
           .Get(boost::get<platform::CUDAPlace>(place))
           ->Wait();
     }
+  }
+
+  static T& EmptyDummy() {
+    static T dummy = T();
+    return dummy;
   }
 
   mutable int flag_;

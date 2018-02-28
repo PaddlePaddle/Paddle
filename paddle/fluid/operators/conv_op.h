@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,10 +28,17 @@ using Tensor = framework::Tensor;
 
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
-inline int OutputSize(int input_size, int filter_size, int dilation,
-                      int padding, int stride) {
+inline int ConvOutputSize(int input_size, int filter_size, int dilation,
+                          int padding, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
-  const int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
+  int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
+  PADDLE_ENFORCE(
+      output_size > 0,
+      "Due to the settings of padding(%d), filter_size(%d), dilation(%d) and "
+      "stride(%d), the output size is less than 0, please check "
+      "again. Input_size:%d",
+      padding, filter_size, dilation, stride, input_size);
+
   return output_size;
 }
 inline bool IsExpand(std::vector<int64_t>& filter_dim,

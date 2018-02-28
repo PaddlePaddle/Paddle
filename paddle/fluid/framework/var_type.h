@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -23,17 +24,19 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-inline proto::VarDesc::VarType ToVarType(std::type_index type) {
+inline proto::VarType::Type ToVarType(std::type_index type) {
   if (type.hash_code() == typeid(LoDTensor).hash_code()) {
-    return proto::VarDesc_VarType_LOD_TENSOR;
+    return proto::VarType_Type_LOD_TENSOR;
   } else if (type.hash_code() == typeid(LoDRankTable).hash_code()) {
-    return proto::VarDesc_VarType_LOD_RANK_TABLE;
+    return proto::VarType_Type_LOD_RANK_TABLE;
   } else if (type.hash_code() == typeid(LoDTensorArray).hash_code()) {
-    return proto::VarDesc_VarType_LOD_TENSOR_ARRAY;
+    return proto::VarType_Type_LOD_TENSOR_ARRAY;
   } else if (type.hash_code() == typeid(SelectedRows).hash_code()) {
-    return proto::VarDesc_VarType_SELECTED_ROWS;
+    return proto::VarType_Type_SELECTED_ROWS;
   } else if (type.hash_code() == typeid(ReaderHolder).hash_code()) {
-    return proto::VarDesc_VarType_READER;
+    return proto::VarType_Type_READER;
+  } else if (type.hash_code() == typeid(ChannelHolder).hash_code()) {
+    return proto::VarType_Type_CHANNEL;
   } else {
     PADDLE_THROW("ToVarType:Unsupported type %s", type.name());
   }
@@ -42,20 +45,23 @@ inline proto::VarDesc::VarType ToVarType(std::type_index type) {
 template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (ToVarType(var.Type())) {
-    case proto::VarDesc_VarType_LOD_TENSOR:
+    case proto::VarType_Type_LOD_TENSOR:
       visitor(var.Get<LoDTensor>());
       return;
-    case proto::VarDesc_VarType_LOD_RANK_TABLE:
+    case proto::VarType_Type_LOD_RANK_TABLE:
       visitor(var.Get<LoDRankTable>());
       return;
-    case proto::VarDesc_VarType_LOD_TENSOR_ARRAY:
+    case proto::VarType_Type_LOD_TENSOR_ARRAY:
       visitor(var.Get<LoDTensorArray>());
       return;
-    case proto::VarDesc_VarType_SELECTED_ROWS:
+    case proto::VarType_Type_SELECTED_ROWS:
       visitor(var.Get<SelectedRows>());
       return;
-    case proto::VarDesc_VarType_READER:
+    case proto::VarType_Type_READER:
       visitor(var.Get<ReaderHolder>());
+      return;
+    case proto::VarType_Type_CHANNEL:
+      visitor(var.Get<ChannelHolder>());
       return;
     default:
       PADDLE_THROW("Not supported visit type, %d", ToVarType(var.Type()));

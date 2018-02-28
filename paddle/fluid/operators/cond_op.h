@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,8 +77,9 @@ class CondOp : public framework::OperatorBase {
     sub_net_op_[FALSE_BRANCH] = std::move(net);
   }
 
-  void Run(const framework::Scope& scope,
-           const platform::Place& place) const override;
+ private:
+  void RunImpl(const framework::Scope& scope,
+               const platform::Place& place) const override;
 
  private:
   const int TRUE_BRANCH = 0;

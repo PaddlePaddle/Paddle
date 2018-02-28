@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -314,5 +314,15 @@ DDim stride(const DDim& ddim) {
   }
   return framework::make_ddim(strides);
 }
+
+DDim stride_numel(const framework::DDim& ddim) {
+  std::vector<int64_t> strides(ddim.size());
+  strides[ddim.size() - 1] = ddim[ddim.size() - 1];
+  for (int i = ddim.size() - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * ddim[i];
+  }
+  return framework::make_ddim(strides);
+}
+
 }  // namespace framework
 }  // namespace paddle

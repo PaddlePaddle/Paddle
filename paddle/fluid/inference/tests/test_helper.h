@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -101,8 +101,8 @@ void TestInference(const std::string& dirname,
   if (IsCombined) {
     // All parameters are saved in a single file.
     // Hard-coding the file names of program and parameters in unittest.
-    // Users are free to specify different filename
-    // (provided: the filenames are changed in the python api as well: io.py)
+    // The file names should be consistent with that used in Python API
+    //  `fluid.io.save_inference_model`.
     std::string prog_filename = "__model_combined__";
     std::string param_filename = "__params_combined__";
     inference_program = paddle::inference::Load(executor,

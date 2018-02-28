@@ -105,7 +105,7 @@ void BatchReader::ReadNext(std::vector<LoDTensor>* out) {
         }
       }
       Tensor dst = out_tensor.Slice(dst_offset, dst_offset + ins_shape[0]);
-      Copy(buffer_[i][j], platform::CPUPlace(), &dst);
+      TensorCopy(buffer_[i][j], platform::CPUPlace(), &dst);
       dst_offset += ins_shape[0];
     }
     out_tensor.set_lod(batch_lod);

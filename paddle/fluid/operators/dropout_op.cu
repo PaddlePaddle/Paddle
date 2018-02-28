@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,24 +23,23 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename AttrType>
-struct MaskGenerator {
-  AttrType dropout_prob;
-  int seed;
+__global__ void RandomGenerator(const size_t n, const int seed,
+                                const AttrType dropout_prob, const T* src,
+                                T* mask_data, T* dst) {
+  thrust::minstd_rand rng;
+  rng.seed(seed);
+  thrust::uniform_real_distribution<AttrType> dist(0, 1);
 
-  __host__ __device__ MaskGenerator(AttrType dropout_prob, int seed)
-      : dropout_prob(dropout_prob), seed(seed) {}
-
-  inline __host__ __device__ T operator()(const unsigned int n) const {
-    thrust::minstd_rand rng;
-    rng.seed(seed);
-    thrust::uniform_real_distribution<AttrType> dist(0, 1);
-    rng.discard(n);
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (; idx < n; idx += blockDim.x * gridDim.x) {
     if (dist(rng) < dropout_prob) {
-      return static_cast<T>(0);
+      mask_data[idx] = static_cast<T>(0);
+    } else {
+      mask_data[idx] = static_cast<T>(1);
     }
-    return static_cast<T>(1);
+    dst[idx] = mask_data[idx] * src[idx];
   }
-};
+}
 
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
@@ -61,18 +60,19 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
-      int size = framework::product(mask->dims());
+      size_t size = framework::product(mask->dims());
+      auto* x_data = x->data<T>();
+      auto* y_data = y->mutable_data<T>(context.GetPlace());
 
       std::random_device rnd;
       int seed =
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
 
-      thrust::counting_iterator<unsigned int> index_sequence_begin(0);
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<T>(mask_data),
-                        MaskGenerator<T, AttrType>(dropout_prob, seed));
-      auto M = EigenMatrix<T>::Reshape(*mask, 1);
-      Y.device(place) = X * M;
+      int threads = 512;
+      int grid = (x->numel() + threads - 1) / threads;
+      RandomGenerator<T, AttrType><<<grid, threads, 0,
+                                     context.cuda_device_context().stream()>>>(
+          size, seed, dropout_prob, x_data, mask_data, y_data);
     } else {
       Y.device(place) = X * (1.0f - dropout_prob);
     }

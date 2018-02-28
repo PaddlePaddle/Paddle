@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -121,10 +121,15 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
+using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OP(reshape, ops::ReshapeOp, ops::ReshapeOpMaker, reshape_grad,
             ops::ReshapeGradOp);
-REGISTER_OP_CPU_KERNEL(reshape,
-                       ops::ReshapeKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    reshape_grad, ops::ReshapeGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(reshape, ops::ReshapeKernel<CPU, float>,
+                       ops::ReshapeKernel<CPU, double>,
+                       ops::ReshapeKernel<CPU, int>,
+                       ops::ReshapeKernel<CPU, int64_t>);
+REGISTER_OP_CPU_KERNEL(reshape_grad, ops::ReshapeGradKernel<CPU, float>,
+                       ops::ReshapeGradKernel<CPU, double>,
+                       ops::ReshapeGradKernel<CPU, int>,
+                       ops::ReshapeGradKernel<CPU, int64_t>);

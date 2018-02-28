@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -89,6 +89,7 @@ TEST(NCCL, all_reduce) {
 
   VLOG(1) << "Invoking ncclAllReduce";
 
+  dynload::ncclGroupStart();
   for (int i = 0; i < dev_count; ++i) {
     VLOG(1) << "Invoking ncclAllReduce with device " << i;
     SetDeviceId(i);
@@ -97,6 +98,7 @@ TEST(NCCL, all_reduce) {
         ncclSum, comms[i], data[i]->dev_ctx.stream()));
     VLOG(1) << "Invoked ncclAllReduce for device " << i;
   }
+  dynload::ncclGroupEnd();
 
   VLOG(1) << "Invoked ncclAllReduce";
 
@@ -127,9 +129,6 @@ TEST(NCCL, all_reduce) {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  // FIXME(tonyyang-svail):
-  //   Due to the driver issue on our CI, disable for now
-  return 0;
   dev_count = paddle::platform::GetCUDADeviceCount();
   if (dev_count <= 1) {
     LOG(WARNING)

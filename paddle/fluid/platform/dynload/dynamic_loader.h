@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,6 +33,8 @@ void GetCublasDsoHandle(void** dso_handle);
  *
  */
 void GetCUDNNDsoHandle(void** dso_handle);
+
+void GetCUPTIDsoHandle(void** dso_handle);
 
 /**
  * @brief    load the DSO of CURAND

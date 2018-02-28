@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -34,7 +34,7 @@ void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows,
     os.write(reinterpret_cast<const char*>(&height), sizeof(height));
   }
   // the 4st field, Tensor data
-  SerializeToStream(os, selected_rows.value(), dev_ctx);
+  TensorToStream(os, selected_rows.value(), dev_ctx);
 }
 
 void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
@@ -62,7 +62,7 @@ void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
     selected_rows->set_height(height);
   }
   // the 4st field, tensor which contains the data
-  DeserializeFromStream(is, selected_rows->mutable_value(), dev_ctx);
+  TensorFromStream(is, selected_rows->mutable_value(), dev_ctx);
 }
 
 }  // namespace framework
