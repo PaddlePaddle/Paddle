@@ -141,6 +141,8 @@ class Variable(object):
         dtype(np.dtype|core.VarDesc.VarType|str): The data type of variable.
         lod_level(int): The level of lod tensor. 0 means it is not a time
             series data.
+        capacity(int): The capacity of Channel variable. Ignored
+            for other types.
         persistable(bool): True if the variable should be saved as check point.
             Defaults to False.
         stop_gradient(bool): True if the variable will stop to calculate
@@ -154,6 +156,7 @@ class Variable(object):
                  shape=None,
                  dtype=None,
                  lod_level=None,
+                 capacity=None,
                  persistable=None,
                  error_clip=None,
                  stop_gradient=False,
@@ -223,6 +226,14 @@ class Variable(object):
                         "The previous persistable is {1}; the new "
                         "persistable is {2}. They are not matched".format(
                             self.name, self.persistable, persistable))
+
+        if capacity is not None:
+            if is_new_var:
+                self.desc.set_capacity(capacity)
+            else:
+                # TODO(abhinavarora) : Compare with set capacity once,
+                # get_capacity is implemented
+                pass
 
         self.block.vars[name] = self
         self.op = None
@@ -472,10 +483,11 @@ class Operator(object):
 
         self.desc.check_attrs()
         no_kernel_op_set = {
-            'feed', 'fetch', 'save', 'load', 'recurrent',
+            'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
-            'load_combine', 'ncclInit'
+            'load_combine', 'ncclInit', 'channel_create', 'channel_close',
+            'channel_send', 'channel_recv'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
