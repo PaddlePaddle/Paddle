@@ -132,21 +132,19 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
   GetEventList().Record(EventKind::kPopRange, name, g_thread_id, dev_ctx);
 }
 
-RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx,
-                         int32_t block_id) {
+RecordEvent::RecordEvent(const std::string& name,
+                         const DeviceContext* dev_ctx) {
   if (g_state == ProfilerState::kDisabled) return;
   dev_ctx_ = dev_ctx;
   name_ = name;
   PushEvent(name_, dev_ctx_);
-
-  full_name_ = string::Sprintf("%s_b%d", name, block_id);
   // Maybe need the same push/pop behavior.
-  SetCurAnnotation(full_name_.c_str());
+  SetCurAnnotation(name_.c_str());
 }
 
 RecordEvent::~RecordEvent() {
-  ClearCurAnnotation();
   if (g_state == ProfilerState::kDisabled) return;
+  ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
 }
 

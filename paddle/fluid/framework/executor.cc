@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
@@ -125,11 +124,6 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 
   for (auto& op_desc : block.AllOps()) {
     auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    // TODO(panyx0718): Need a program id to distinguish programs.
-    platform::RecordEvent record_event(op->Type(), pool.Get(place_),
-                                       op_desc->Block()->ID());
 
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
