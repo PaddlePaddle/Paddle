@@ -35,7 +35,7 @@ class TestDetection(unittest.TestCase):
                 dtype='float32')
             loc = layers.data(
                 name='target_box',
-                shape=[2, 20, 4],
+                shape=[2, 10, 4],
                 append_batch_size=False,
                 dtype='float32')
             scores = layers.data(
