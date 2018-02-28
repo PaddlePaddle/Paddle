@@ -1,18 +1,19 @@
-## Command-line arguments
+# Command-line arguments
 
 We'll take `doc/howto/cluster/src/word2vec` as an example to introduce distributed training using PaddlePaddle v2 API.
 
-### Starting parameter server
+## Starting parameter server
 
 Type the below command to start a parameter server which will wait for trainers to connect:
 
 ```bash
-$ paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradient_servers=1
+$ paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradient_servers=1 --nics=eth0
 ```
 
 If you wish to run parameter servers in background, and save a log file, you can type:
+
 ```bash
-$ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradient_servers=1 &> pserver.log
+$ stdbuf -oL /usr/bin/nohup paddle pserver --port=7164 --ports_num=1 --ports_num_for_sparse=1 --num_gradient_servers=1 --nics=eth0 &> pserver.log &
 ```
 
 Parameter Description
@@ -21,8 +22,10 @@ Parameter Description
 - ports_num: **required, default 1**, total number of ports will listen on.
 - ports_num_for_sparse: **required, default 0**, number of ports which serves sparse parameter update.
 - num_gradient_servers: **required, default 1**, total number of gradient servers.
+- nics: **optional, default xgbe0,xgbe1**, network device name which paramter server will listen on.
 
-### Starting trainer
+## Starting trainer
+
 Type the command below to start the trainer(name the file whatever you want, like "train.py")
 
 ```bash
@@ -70,7 +73,7 @@ Parameter Description
 - trainer_id: **required, default 0**, ID for every trainer, start from 0.
 - pservers: **required, default 127.0.0.1**, list of IPs of parameter servers, separated by ",".
 
-### Prepare Training Dataset
+## Prepare Training Dataset
 
 Here's some example code [prepare.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/prepare.py), it will download public `imikolov` dataset and split it into multiple files according to job parallelism(trainers count). Modify `SPLIT_COUNT` at the begining of `prepare.py` to change the count of output files.
 
@@ -88,7 +91,7 @@ for f in flist:
 
 Example code `prepare.py` will split training data and testing data into 3 files with digital suffix like `-00000`, `-00001` and`-00002`:
 
-```
+```bash
 train.txt
 train.txt-00000
 train.txt-00001
@@ -103,13 +106,13 @@ When job started, every trainer needs to get it's own part of data. In some dist
 
 Different training jobs may have different data format and `reader()` function, developers may need to write different data prepare scripts and `reader()` functions for their job.
 
-### Prepare Training program
+## Prepare Training program
 
 We'll create a *workspace* directory on each node, storing your training program, dependencies, mounted or downloaded dataset directory.
 
-
 Your workspace may looks like:
-```
+
+```bash
 .
 |-- my_lib.py
 |-- word_dict.pickle
@@ -138,3 +141,21 @@ Your workspace may looks like:
 
 - `train_data_dir`: containing training data. Mount from storage service or copy trainning data to here.
 - `test_data_dir`: containing testing data.
+
+## Async SGD Update
+
+We can set some parameters of the optimizer to make it support async SGD update.
+For example, we can set the `is_async` and `async_lagged_grad_discard_ratio` of the `AdaGrad` optimizer:
+
+```python
+adagrad = paddle.optimizer.AdaGrad(
+    is_async=True,
+    async_lagged_grad_discard_ratio=1.6,
+    learning_rate=3e-3,
+    regularization=paddle.optimizer.L2Regularization(8e-4))
+```
+
+- `is_async`: Is Async-SGD or not.
+- `async_lagged_grad_discard_ratio`: For async SGD gradient commit control.
+  when `async_lagged_grad_discard_ratio * num_gradient_servers` commit passed,
+  current async gradient will be discard silently.

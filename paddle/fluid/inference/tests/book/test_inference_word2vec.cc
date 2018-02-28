@@ -31,12 +31,12 @@ TEST(inference, word2vec) {
 
   paddle::framework::LoDTensor first_word, second_word, third_word, fourth_word;
   paddle::framework::LoD lod{{0, 1}};
-  int64_t dict_size = 2072;  // Hard-coding the size of dictionary
+  int64_t dict_size = 2073;  // The size of dictionary
 
-  SetupLoDTensor(first_word, lod, static_cast<int64_t>(0), dict_size);
-  SetupLoDTensor(second_word, lod, static_cast<int64_t>(0), dict_size);
-  SetupLoDTensor(third_word, lod, static_cast<int64_t>(0), dict_size);
-  SetupLoDTensor(fourth_word, lod, static_cast<int64_t>(0), dict_size);
+  SetupLoDTensor(first_word, lod, static_cast<int64_t>(0), dict_size - 1);
+  SetupLoDTensor(second_word, lod, static_cast<int64_t>(0), dict_size - 1);
+  SetupLoDTensor(third_word, lod, static_cast<int64_t>(0), dict_size - 1);
+  SetupLoDTensor(fourth_word, lod, static_cast<int64_t>(0), dict_size - 1);
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&first_word);

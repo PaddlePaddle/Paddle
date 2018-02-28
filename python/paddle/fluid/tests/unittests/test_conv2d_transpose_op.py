@@ -200,7 +200,8 @@ class TestCUDNNWithStride(TestWithStride):
         self.op_type = "conv2d_transpose"
 
 
-# #cudnn v5 does not support dilation conv.
+# Please Don't remove the following code.
+# Currently, CI use cudnn V5.0 which not support dilation conv.
 # class TestCUDNNWithDilation(TestWithDilation):
 #     def init_test_case(self):
 #         self.pad = [1, 1]
