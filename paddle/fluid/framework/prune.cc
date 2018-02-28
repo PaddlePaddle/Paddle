@@ -186,9 +186,7 @@ void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output) {
   prune_impl(input, output, 0, -1, dependent_vars);
 }
 
-void inference_optimize_impl(const proto::ProgramDesc& input,
-                             proto::ProgramDesc* output, int block_id) {
-  *output = input;
+void inference_optimize_impl(proto::ProgramDesc* output, int block_id) {
   auto* op_field = output->mutable_blocks(block_id)->mutable_ops();
   for (auto& op_desc : *op_field) {
     if (op_desc.type() == kDropOutOpType ||
@@ -205,7 +203,10 @@ void inference_optimize_impl(const proto::ProgramDesc& input,
 
 void InferenceOptimize(const proto::ProgramDesc& input,
                        proto::ProgramDesc* output) {
-  inference_optimize_impl(input, output, 0);
+  *output = input;
+  for (int i = 0; i < input.blocks_size(); ++i) {
+    inference_optimize_impl(output, i);
+  }
 }
 
 }  // namespace framework
