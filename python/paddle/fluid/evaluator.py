@@ -22,6 +22,7 @@ from layer_helper import LayerHelper
 __all__ = [
     'Accuracy',
     'ChunkEvaluator',
+    'EditDistance',
 ]
 
 
@@ -211,7 +212,7 @@ class ChunkEvaluator(Evaluator):
 class EditDistance(Evaluator):
     """
     Accumulate edit distance sum and sequence number from mini-batches and
-    compute the average edit_distance of all batches.
+    compute the average edit_distance and instance error of all batches.
 
     Args:
         input: the sequences predicted by network.
@@ -228,11 +229,11 @@ class EditDistance(Evaluator):
             distance_evaluator.reset(exe)
             for data in batches:
                 loss = exe.run(fetch_list=[cost])
-            distance, sequence_error = distance_evaluator.eval(exe)
+            distance, instance_error = distance_evaluator.eval(exe)
 
         In the above example:
         'distance' is the average of the edit distance rate in a pass.
-        'sequence_error' is the sequence error rate in a pass.
+        'instance_error' is the instance error rate in a pass.
 
     """
 
@@ -246,8 +247,8 @@ class EditDistance(Evaluator):
             dtype='float32', shape=[1], suffix='total_distance')
         self.seq_num = self.create_state(
             dtype='int64', shape=[1], suffix='seq_num')
-        self.seq_error = self.create_state(
-            dtype='int64', shape=[1], suffix='seq_error')
+        self.instance_error = self.create_state(
+            dtype='int64', shape=[1], suffix='instance_error')
         distances, seq_num = layers.edit_distance(
             input=input, label=label, ignored_tokens=ignored_tokens)
 
@@ -255,15 +256,18 @@ class EditDistance(Evaluator):
         compare_result = layers.equal(distances, zero)
         compare_result_int = layers.cast(x=compare_result, dtype='int')
         seq_right_count = layers.reduce_sum(compare_result_int)
-        seq_error_count = layers.elementwise_sub(x=seq_num, y=seq_right_count)
+        instance_error_count = layers.elementwise_sub(
+            x=seq_num, y=seq_right_count)
         total_distance = layers.reduce_sum(distances)
         layers.sums(
             input=[self.total_distance, total_distance],
             out=self.total_distance)
         layers.sums(input=[self.seq_num, seq_num], out=self.seq_num)
-        layers.sums(input=[self.seq_error, seq_error_count], out=self.seq_error)
+        layers.sums(
+            input=[self.instance_error, instance_error_count],
+            out=self.instance_error)
         self.metrics.append(total_distance)
-        self.metrics.append(seq_error_count)
+        self.metrics.append(instance_error_count)
 
     def eval(self, executor, eval_program=None):
         if eval_program is None:
@@ -272,11 +276,12 @@ class EditDistance(Evaluator):
         with program_guard(main_program=eval_program):
             total_distance = _clone_var_(block, self.total_distance)
             seq_num = _clone_var_(block, self.seq_num)
-            seq_error = _clone_var_(block, self.seq_error)
+            instance_error = _clone_var_(block, self.instance_error)
             seq_num = layers.cast(x=seq_num, dtype='float32')
-            seq_error = layers.cast(x=seq_error, dtype='float32')
+            instance_error = layers.cast(x=instance_error, dtype='float32')
             avg_distance = layers.elementwise_div(x=total_distance, y=seq_num)
-            avg_seq_error = layers.elementwise_div(x=seq_error, y=seq_num)
-            result = executor.run(eval_program,
-                                  fetch_list=[avg_distance, avg_seq_error])
+            avg_instance_error = layers.elementwise_div(
+                x=instance_error, y=seq_num)
+            result = executor.run(
+                eval_program, fetch_list=[avg_distance, avg_instance_error])
         return np.array(result[0]), np.array(result[1])
