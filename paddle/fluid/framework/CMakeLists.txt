@@ -96,3 +96,5 @@ cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_contex
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
       
 cc_test(channel_test SRCS channel_test.cc)
+cc_test(concurrency_test SRCS concurrency_test.cc DEPS go_op channel_close_op channel_create_op
+        channel_send_op channel_recv_op sum_op elementwise_add_op executor proto_desc)
