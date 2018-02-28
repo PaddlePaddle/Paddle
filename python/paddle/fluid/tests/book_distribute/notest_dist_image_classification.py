@@ -138,6 +138,7 @@ current_endpoint = os.getenv("SERVER_ENDPOINT")
 # run as trainer or parameter server
 training_role = os.getenv("TRAINING_ROLE",
                           "TRAINER")  # get the training role: trainer/pserver
+
 t.transpile(
     optimize_ops, params_grads, pservers=pserver_endpoints, trainers=TRAINERS)
 
