@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 
@@ -497,7 +498,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto dev_ctx = pool.Get(place);
-
+  // profile
+  platform::RecordEvent record_event(Type(), dev_ctx);
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
