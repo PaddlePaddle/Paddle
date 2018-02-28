@@ -1,14 +1,24 @@
-在不同集群中运行
+集群训练
 ================
+用户的集群环境不尽相同，为了方便大家的部署，我们提供了多种的集群部署方式，方便提交集群训练任务，以下将一一介绍:
 
-PaddlePaddle可以使用多种分布式计算平台构建分布式计算任务，包括：
-- `Kubernetes <http://kubernetes.io>`_ Google开源的容器集群的调度框架，支持大规模集群生产环境的完整集群方案。
-- `OpenMPI <https://www.open-mpi.org>`_ 成熟的高性能并行计算框架。
-- `Fabric <http://www.fabfile.org>`_ 集群管理工具。可以使用`Fabric`编写集群任务提交和管理脚本。
+`Kubernetes <http://kubernetes.io>`_ 是Google开源的容器集群的调度框架，支持大规模集群生产环境的完整集群方案。以下指南展示了PaddlePaddle对Kubernetes的支持：
 
-对于不同的集群平台，会分别介绍集群作业的启动和停止方法。这些例子都可以在 `cluster_train_v2 <https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/scripts/cluster_train_v2>`_ 找到。
+- `Kubernetes单机训练 <http://www.paddlepaddle.org/docs/develop/documentation/zh/howto/cluster/multi_cluster/k8s_cn.html>`_
+- `Kubernetes分布式训练 <http://www.paddlepaddle.org/docs/develop/documentation/zh/howto/cluster/multi_cluster/k8s_distributed_cn.html>`_
 
-在使用分布式计算平台进行训练时，任务被调度在集群中时，分布式计算平台通常会通过API或者环境变量提供任务运行需要的参数，比如节点的ID、IP和任务节点个数等。
+`OpenMPI <https://www.open-mpi.org>`_  是成熟的高性能并行计算框架，在HPC领域使用非常的广泛。以下指南介绍了如何使用OpenMPI来搭建PaddlePaddle的集群训练任务:
+
+- `在OpenMPI集群中提交训练作业 <http://www.paddlepaddle.org/docs/develop/documentation/zh/howto/cluster/multi_cluster/openmpi_cn.html>`_  
+
+`Fabric <http://www.fabfile.org>`_ 是一个方便的程序部署和管理工具。我们提供了使用Fabric 进行部署、管理的方法，如果想详细了解，请阅读以下指南:
+
+- `使用fabric启动集群训练 <http://www.paddlepaddle.org/docs/develop/documentation/zh/howto/cluster/multi_cluster/fabric_cn.html>`_
+
+我们也支持在AWS上部署PaddlePaddle，详细请了解:
+
+- `Distributed PaddlePaddle Training on AWS with Kubernetes <http://www.paddlepaddle.org/docs/develop/documentation/zh/howto/cluster/multi_cluster/k8s_aws_cn.html>`_
+
 
 ..  toctree::
   :maxdepth: 1
