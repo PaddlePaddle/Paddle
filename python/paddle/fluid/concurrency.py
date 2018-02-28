@@ -132,7 +132,7 @@ def make_channel(dtype, capacity=0):
     return channel
 
 
-def channel_send(channel, value, dtype):
+def channel_send(channel, value):
     """
     Sends a value through a channel variable. Used by an unbuffered or buffered
     channel to pass data from within or to a concurrent Go block, where
@@ -160,7 +160,8 @@ def channel_send(channel, value, dtype):
 
     status = helper.create_variable(
         name=unique_name.generate('status'),
-        dtype=core.VarDesc.VarType.LOD_TENSOR)
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        dtype=core.VarDesc.VarType.BOOL)
 
     channel_send_op = channel_send_block.append_op(
         type="channel_send",
@@ -173,7 +174,7 @@ def channel_send(channel, value, dtype):
     return status
 
 
-def channel_recv(channel, dtype):
+def channel_recv(channel, type):
     """
     Receives a value through a channel variable. Used by an unbuffered or
     buffered channel within a concurrent Go block to get data from originally
@@ -207,10 +208,11 @@ def channel_recv(channel, dtype):
 
     return_value = helper.create_variable(
         name=unique_name.generate('channel_return'),
-        dtype=dtype)
+        type=type)
     status = helper.create_variable(
         name=unique_name.generate('status'),
-        dtype=core.VarDesc.VarType.LOD_TENSOR)
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        dtype=core.VarDesc.VarType.BOOL)
 
     channel_recv_op = channel_recv_block.append_op(
         type="channel_recv",

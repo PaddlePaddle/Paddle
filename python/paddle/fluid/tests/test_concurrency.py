@@ -51,10 +51,9 @@ class TestRoutineOp(unittest.TestCase):
             right = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
             with fluid.Go():
                 one_tensor = self._create_one_dim_tensor(1)
-                result, status = fluid.channel_recv(right, dtype=core.VarDesc.VarType.LOD_TENSOR)
-                import pdb; pdb.set_trace()
+                result, status = fluid.channel_recv(right, type=core.VarDesc.VarType.LOD_TENSOR)
                 one_added = fluid.layers.elementwise_add(x=one_tensor, y=result)
-                fluid.channel_send(left, one_added, dtype=core.VarDesc.VarType.LOD_TENSOR)
+                fluid.channel_send(left, one_added, type=core.VarDesc.VarType.LOD_TENSOR)
             left = right
 
         #fluid.layers.assign(leftmost, right)
@@ -76,9 +75,9 @@ class TestRoutineOp(unittest.TestCase):
 
         with fluid.Go():
             one_tensor = self._create_one_dim_tensor(1)
-            fluid.channel_send(right, one_tensor, dtype=core.VarDesc.VarType.LOD_TENSOR)
+            fluid.channel_send(right, one_tensor, type=core.VarDesc.VarType.LOD_TENSOR)
 
-        leftmost_received, status = fluid.channel_recv(leftmost, dtype=core.VarDesc.VarType.LOD_TENSOR)
+        leftmost_received, status = fluid.channel_recv(leftmost, type=core.VarDesc.VarType.LOD_TENSOR)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
@@ -87,7 +86,7 @@ class TestRoutineOp(unittest.TestCase):
         self.assertEqual(outs[0][0], 51)
 
     def _create_one_dim_tensor(self, value):
-        one_dim_tensor = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=value)
+        one_dim_tensor = fill_constant(shape=[1], type=core.VarDesc.VarType.INT64, value=value)
         one_dim_tensor.stop_gradient = True
         return one_dim_tensor
 
