@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_tracer.h"
 #include <map>
 #include <mutex>
+#include <numeric>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/string/printf.h"
