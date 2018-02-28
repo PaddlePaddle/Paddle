@@ -9,7 +9,7 @@
 为了编译PaddlePaddle，我们需要
 
 1. 一台电脑，可以装的是 Linux, Windows 或者 MacOS 操作系统
-1. Docker
+2. Docker
 
 不需要依赖其他任何软件了。即便是 Python 和 GCC 都不需要，因为我们会把所有编译工具都安装进一个 Docker 镜像里。
 

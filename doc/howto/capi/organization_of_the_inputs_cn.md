@@ -274,6 +274,7 @@ PaddlePaddle中一个计算层的输出数据组织方式和输入数据组织�
 如果是一个序列输入/输出由 `sequence start positions` 来记录输入/输出的序列信息。
 
 于是，在组织神经网络输入时，需要思考完成以下工作：
+
 1. 为每一个输入/输出创建`argument`。
     - C-API 中操作`argument`的接口请查看[argument.h](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/arguments.h)。
 1. 为每一个`argument`创建`paddle_matrix`或者`paddle_ivector`来存储数据。
