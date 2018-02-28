@@ -31,12 +31,10 @@ namespace operators {
 void SetSendStatus(const platform::Place &dev_place,
                    framework::Variable &status_var, bool status) {
   auto cpu = platform::CPUPlace();
-  auto status_tensor = status_var.GetMutable<framework::LoDTensor>();
-  status_tensor->mutable_data(
-      cpu, framework::ToTypeIndex(framework::proto::VarType::BOOL));
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &dev_ctx = *pool.Get(dev_place);
-  math::set_constant(dev_ctx, status_tensor, status);
+  auto status_tensor =
+      status_var.GetMutable<framework::LoDTensor>()->mutable_data<bool>({1},
+                                                                        cpu);
+  status_tensor[0] = status;
 }
 
 bool ChannelSend(framework::ChannelHolder *ch, framework::Variable *var) {
