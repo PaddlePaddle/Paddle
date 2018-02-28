@@ -25,6 +25,12 @@ Users can directly use the published Docker image.
 $ docker pull paddlepaddle/paddle:latest-dev-android
 ```
 
+For users in China, we provide a faster mirror.
+
+```bash
+$ docker pull docker.paddlepaddlehub.com/paddle:latest-dev-android
+```
+
 ### Build the Inference Library
 
 We can run the Docker image we just created to build the inference library of PaddlePaddle for Android using the command below:
@@ -86,19 +92,19 @@ Android NDK includes everything we need to build the [*standalone toolchain*](ht
 
 - To build the standalone toolchain for `armeabi-v7a` and Android API level 21:
 
-  ```bash
-  your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
-          --arch=arm --platform=android-21 --install-dir=your/path/to/arm_standalone_toolchain
-  ```
+```bash
+your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
+        --arch=arm --platform=android-21 --install-dir=your/path/to/arm_standalone_toolchain
+```
   
   The generated standalone toolchain will be in `your/path/to/arm_standalone_toolchain`.
 
 - To build the standalone toolchain for `arm64-v8a` and Android API level 21:
 
-  ```bash
-  your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
-          --arch=arm64 --platform=android-21 --install-dir=your/path/to/arm64_standalone_toolchain
-  ```
+```bash
+your/path/to/android-ndk-r14b-linux-x86_64/build/tools/make-standalone-toolchain.sh \
+        --arch=arm64 --platform=android-21 --install-dir=your/path/to/arm64_standalone_toolchain
+```
 
   The generated standalone toolchain will be in `your/path/to/arm64_standalone_toolchain`.
 
