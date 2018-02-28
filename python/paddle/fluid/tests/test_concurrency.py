@@ -38,43 +38,58 @@ class TestRoutineOp(unittest.TestCase):
         self.assertEqual(outs[0], 99)
 
     def test_daisy_chain(self):
-        n = 1000
+        n = 50
 
-        i = fluid.layers.zeros(shape=[1], dtype='int64')
-        array_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=n)
-        array_len.stop_gradient = True
+        cond = fluid.layers.less_than(
+            x=fluid.layers.zeros(shape=[1], dtype='int64'),
+            y=self._create_one_dim_tensor(n))
 
-        cond = fluid.layers.less_than(x=i, y=array_len)
-
-        leftmost = fluid.make_channel(dtype='int32')
-        right = leftmost
+        leftmost = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
         left = leftmost
+
+        for i in range(n):
+            right = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
+            with fluid.Go():
+                one_tensor = self._create_one_dim_tensor(1)
+                result, status = fluid.channel_recv(right, dtype=core.VarDesc.VarType.LOD_TENSOR)
+                import pdb; pdb.set_trace()
+                one_added = fluid.layers.elementwise_add(x=one_tensor, y=result)
+                fluid.channel_send(left, one_added, dtype=core.VarDesc.VarType.LOD_TENSOR)
+            left = right
+
+        #fluid.layers.assign(leftmost, right)
+        # fluid.layers.assign(leftmost, left)
 
         # with fluid.While(steps=n):
 
-        while_op = fluid.layers.While(cond=cond)
-        with while_op.block():
-            right = fluid.make_channel(dtype='int32')
-
-            with fluid.Go():
-                fluid.channel_send(left, 1 + fluid.channel_recv(
-                    right, dtype='int32')[0], dtype='int32')
-
-            left = right
-
-            i = fluid.layers.increment(x=i, in_place=True)
+        # while_op = fluid.layers.While(cond=cond)
+        # with while_op.block():
+        #     right = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
+        #
+        #     with fluid.Go():
+        #         result, status = fluid.channel_recv(right, dtype=core.VarDesc.VarType.LOD_TENSOR)
+        #         one_added = fluid.layers.elementwise_add(x=one_tensor, y=result, act='relu')
+        #         fluid.channel_send(left, one_added, dtype=core.VarDesc.VarType.LOD_TENSOR)
+        #
+        #     fluid.layers.assign(right, left)
+        #     fluid.layers.increment(x=i, in_place=True)
 
         with fluid.Go():
-            fluid.channel_send(right, 1)
+            one_tensor = self._create_one_dim_tensor(1)
+            fluid.channel_send(right, one_tensor, dtype=core.VarDesc.VarType.LOD_TENSOR)
 
-        leftmost_received = fluid.channel_recv(leftmost, dtype='int32')
+        leftmost_received, status = fluid.channel_recv(leftmost, dtype=core.VarDesc.VarType.LOD_TENSOR)
 
         cpu = core.CPUPlace()
         exe = Executor(cpu)
 
         outs = exe.run(fetch_list=[leftmost_received])
-        self.assertEqual(outs[0][1], True)
+        self.assertEqual(outs[0][0], 51)
 
+    def _create_one_dim_tensor(self, value):
+        one_dim_tensor = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=value)
+        one_dim_tensor.stop_gradient = True
+        return one_dim_tensor
 
 if __name__ == '__main__':
     unittest.main()
