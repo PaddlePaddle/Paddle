@@ -587,12 +587,12 @@ def multi_box_head(inputs,
 
     Returns:
         mbox_loc(Variable): The predicted boxes' location of the inputs.
-             The layout of each element is [N, H*W*Priors, 4]. Priors
-             is the number of predicted boxof each position of each input.
+             The layout is [N, H*W*Priors, 4]. where Priors
+             is the number of predicted boxes each position of each input.
         mbox_conf(Variable): The predicted boxes' confidence of the inputs.
-             The layout of each element is [N, H*W*Priors, C]. Priors
-             is the number of predicted box of each position of each input.
-             C is the number of Classes.
+             The layout is [N, H*W*Priors, C]. where Priors
+             is the number of predicted boxes each position of each input
+             and C is the number of Classes.
         boxes(Variable): the output prior boxes of PriorBox.
              The layout is [num_priors, 4]. num_priors is the total
              box count of each position of inputs.
