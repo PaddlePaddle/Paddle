@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -125,6 +125,8 @@ DDim flatten_to_2d(const DDim& src, int num_col_dims);
 DDim flatten_to_1d(const DDim& src);
 
 DDim stride(const DDim& ddim);
+
+DDim stride_numel(const DDim& ddim);
 }  // namespace framework
 }  // namespace paddle
 

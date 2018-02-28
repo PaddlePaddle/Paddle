@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,7 +28,10 @@ class OpWithoutKernelTest : public OperatorBase {
   OpWithoutKernelTest(const std::string& type, const VariableNameMap& inputs,
                       const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
-  void Run(const Scope& scope, const platform::Place& place) const override {
+
+ private:
+  void RunImpl(const Scope& scope,
+               const platform::Place& place) const override {
     ++op_run_num;
     ASSERT_EQ(static_cast<int>(inputs_.size()), 1);
     ASSERT_EQ(static_cast<int>(outputs_.size()), 1);
@@ -116,7 +119,7 @@ class OpWithKernelTest : public OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return OpKernelType(proto::DataType::FP32, ctx.GetPlace());
+    return OpKernelType(proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -259,8 +262,10 @@ class OperatorClone : public paddle::framework::OperatorBase {
                 const paddle::framework::VariableNameMap& outputs,
                 const paddle::framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-  void Run(const paddle::framework::Scope& scope,
-           const paddle::platform::Place& place) const override {}
+
+ private:
+  void RunImpl(const paddle::framework::Scope& scope,
+               const paddle::platform::Place& place) const override {}
 };
 
 TEST(Operator, Clone) {

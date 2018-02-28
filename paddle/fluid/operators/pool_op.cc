@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-int OutputSizePool(int input_size, int filter_size, int padding, int stride) {
+int PoolOutputSize(int input_size, int filter_size, int padding, int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
+  PADDLE_ENFORCE(output_size > 0,
+                 "Due to the settings of padding(%d), filter_size(%d) and "
+                 "stride(%d), the output size is less than 0, please check "
+                 "again. Input_size:%d",
+                 padding, filter_size, stride, input_size);
   return output_size;
 }
 
@@ -55,7 +60,7 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
   for (size_t i = 0; i < ksize.size(); ++i) {
     output_shape.push_back(
-        OutputSizePool(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
+        PoolOutputSize(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
   }
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   ctx->ShareLoD("X", "Out");

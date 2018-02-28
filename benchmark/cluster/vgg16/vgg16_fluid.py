@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -68,6 +68,21 @@ parser.add_argument(
     type=str2bool,
     default=True,
     help='Whether to run as local mode.')
+
+parser.add_argument(
+    "--ps_hosts",
+    type=str,
+    default="",
+    help="Comma-separated list of hostname:port pairs")
+parser.add_argument(
+    "--trainer_hosts",
+    type=str,
+    default="",
+    help="Comma-separated list of hostname:port pairs")
+
+# Flags for defining the tf.train.Server
+parser.add_argument(
+    "--task_index", type=int, default=0, help="Index of task within the job")
 args = parser.parse_args()
 
 
@@ -180,8 +195,9 @@ def main():
                     iters += 1
                     num_samples += len(data)
                     print(
-                        "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, spent %f"
-                        % (pass_id, iters, loss, acc, time.time() - ts)
+                        "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, Speed = %.2f img/s"
+                        % (pass_id, iters, loss, acc,
+                           len(data) / (time.time() - ts))
                     )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
@@ -209,27 +225,24 @@ def main():
             batch_size=args.batch_size)
         train_loop(exe, fluid.default_main_program())
     else:
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # all pserver endpoints
-        eplist = []
-        for ip in pserver_ips.split(","):
-            eplist.append(':'.join([ip, "6174"]))
-        pserver_endpoints = ",".join(eplist)
-        print("pserver endpoints: ", pserver_endpoints)
         trainers = int(os.getenv("TRAINERS"))  # total trainer count
         print("trainers total: ", trainers)
-        current_endpoint = os.getenv(
-            "POD_IP") + ":6174"  # current pserver endpoint
+
         training_role = os.getenv(
             "TRAINING_ROLE",
             "TRAINER")  # get the training role: trainer/pserver
+
         t = fluid.DistributeTranspiler()
         t.transpile(
             optimize_ops,
             params_grads,
-            pservers=pserver_endpoints,
+            trainer_id=args.task_index,
+            pservers=args.ps_hosts,
             trainers=trainers)
 
         if training_role == "PSERVER":
+            current_endpoint = os.getenv("POD_IP") + ":" + os.getenv(
+                "PADDLE_INIT_PORT")
             if not current_endpoint:
                 print("need env SERVER_ENDPOINT")
                 exit(1)

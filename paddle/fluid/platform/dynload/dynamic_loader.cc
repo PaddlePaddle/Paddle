@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,9 +40,13 @@ DEFINE_string(nccl_dir, "",
               "libcurand. For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
 
+DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
+
 namespace paddle {
 namespace platform {
 namespace dynload {
+
+static const char* cupti_lib_path = CUPTI_LIB_PATH;
 
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {
@@ -140,6 +144,18 @@ void GetCUDNNDsoHandle(void** dso_handle) {
                              false);
 #else
   GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", dso_handle, false);
+#endif
+}
+
+void GetCUPTIDsoHandle(void** dso_handle) {
+  std::string cupti_path = cupti_lib_path;
+  if (!FLAGS_cupti_dir.empty()) {
+    cupti_path = FLAGS_cupti_dir;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  GetDsoHandleFromSearchPath(cupti_path, "libcupti.dylib", dso_handle, false);
+#else
+  GetDsoHandleFromSearchPath(cupti_path, "libcupti.so", dso_handle, false);
 #endif
 }
 

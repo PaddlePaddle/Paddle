@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-inline int OutputSizeMaxPool(int input_size, int filter_size, int padding,
+inline int MaxPoolOutputSize(int input_size, int filter_size, int padding,
                              int stride) {
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;
@@ -61,7 +61,7 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
-      output_shape.push_back(OutputSizeMaxPool(in_x_dims[i + 2], ksize[i],
+      output_shape.push_back(MaxPoolOutputSize(in_x_dims[i + 2], ksize[i],
                                                paddings[i], strides[i]));
     }
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));

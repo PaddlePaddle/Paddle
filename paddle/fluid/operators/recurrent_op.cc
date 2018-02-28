@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -226,8 +226,9 @@ class RecurrentOp : public RecurrentBase {
               const framework::AttributeMap &attrs)
       : RecurrentBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
     VLOG(3) << "Static RNN input sequence length = " << seq_len;
     StepScopes scopes = CreateStepScopes(scope, seq_len);
@@ -290,7 +291,7 @@ class RecurrentOp : public RecurrentBase {
             auto dst_out = dst_tensor->Slice(seq_offset, seq_offset + 1);
             // Explicit copy output since the local RNN scope can be destroyed
             // early.
-            framework::Copy(src_tensor, place, dev_ctx, &dst_out);
+            framework::TensorCopy(src_tensor, place, dev_ctx, &dst_out);
           });
 
       scopes.Next();
@@ -315,8 +316,9 @@ class RecurrentGradOp : public RecurrentBase {
                   const framework::AttributeMap &attrs)
       : RecurrentBase(type, inputs, outputs, attrs) {}
 
-  void Run(const framework::Scope &scope,
-           const platform::Place &place) const override {
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
     auto seq_len = static_cast<size_t>(GetSequenceLength(scope));
     StepScopes scopes = CreateStepScopes(scope, seq_len);
     auto reverse = Attr<bool>(kReverse);
@@ -376,7 +378,7 @@ class RecurrentGradOp : public RecurrentBase {
           auto *cur_grad_var = cur_scope.Var(cur_grad);
           auto cur_grad_tensor =
               cur_grad_var->GetMutable<framework::LoDTensor>();
-          framework::Copy(ex_tensor, place, dev_ctx, cur_grad_tensor);
+          framework::TensorCopy(ex_tensor, place, dev_ctx, cur_grad_tensor);
         }
       }
 
@@ -450,7 +452,7 @@ class RecurrentGradOp : public RecurrentBase {
             }
 
             auto dst = outside->Slice(seq_offset, seq_offset + 1);
-            framework::Copy(inside, place, dev_ctx, &dst);
+            framework::TensorCopy(inside, place, dev_ctx, &dst);
           });
       VLOG(5) << "Link outside gradient finished ";
 
@@ -463,7 +465,7 @@ class RecurrentGradOp : public RecurrentBase {
                 framework::LoDTensor *outside) {
               outside->Resize(inside.dims());
               outside->mutable_data(place, inside.type());
-              framework::Copy(inside, place, dev_ctx, outside);
+              framework::TensorCopy(inside, place, dev_ctx, outside);
             });
         VLOG(5) << "Link initialize state gradient finished ";
       }

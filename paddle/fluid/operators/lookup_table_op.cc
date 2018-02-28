@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -123,11 +123,11 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
       block->Var(out_var_name)
-          ->SetType(framework::proto::VarDesc::SELECTED_ROWS);
+          ->SetType(framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to LoDTensor";
-      block->Var(out_var_name)->SetType(framework::proto::VarDesc::LOD_TENSOR);
+      block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
   }
 };

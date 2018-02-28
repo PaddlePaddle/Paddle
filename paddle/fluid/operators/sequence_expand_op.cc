@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,9 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"));
     PADDLE_ENFORCE(ctx->HasInput("Y"));
     framework::DDim out_dim;
-    out_dim = ctx->GetInputDim("Y");
+    auto y_dim = ctx->GetInputDim("Y");
+    out_dim = ctx->GetInputDim("X");
+    out_dim[0] = y_dim[0];
     ctx->ShareLoD("Y", "Out");
     ctx->SetOutputDim("Out", out_dim);
   }
