@@ -153,7 +153,6 @@ def train(nn_type,
     else:
         port = os.getenv("PADDLE_INIT_PORT", "6174")
         pserver_endpoints = os.getenv("PADDLE_PSERVER_EPS")
-        eplist = pserver_endpoints.split(",")
         pserver_endpoints = os.getenv("PSERVERS")
         trainers = int(os.getenv("TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port

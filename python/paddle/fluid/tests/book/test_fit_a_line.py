@@ -71,7 +71,6 @@ def train(use_cuda, save_dirname, is_local):
     else:
         port = os.getenv("PADDLE_INIT_PORT", "6174")
         pserver_endpoints = os.getenv("PADDLE_PSERVER_EPS")
-        eplist = pserver_endpoints.split(",")
         trainers = int(os.getenv("TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
