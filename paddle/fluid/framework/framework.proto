@@ -167,4 +167,6 @@ message BlockDesc {
 // Please refer to
 // https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
 // for more details.
+// TODO(panyx0718): A model can have multiple programs. Need a
+// way to distinguish them. Maybe ID or name?
 message ProgramDesc { repeated BlockDesc blocks = 1; }
