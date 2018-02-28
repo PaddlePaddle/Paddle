@@ -496,9 +496,14 @@ def ssd_loss(location,
     # 5.1 Compute confidence loss.
     target_label = __reshape_to_2d(target_label)
     target_label = tensor.cast(x=target_label, dtype='int64')
+
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
     target_conf_weight = __reshape_to_2d(target_conf_weight)
     conf_loss = conf_loss * target_conf_weight
+
+    # the target_label and target_conf_weight do not have gradient.
+    target_label.stop_gradient = True
+    target_conf_weight.stop_gradient = True
 
     # 5.2 Compute regression loss.
     location = __reshape_to_2d(location)
@@ -507,6 +512,10 @@ def ssd_loss(location,
     loc_loss = nn.smooth_l1(location, target_bbox)
     target_loc_weight = __reshape_to_2d(target_loc_weight)
     loc_loss = loc_loss * target_loc_weight
+
+    # the target_bbox and target_loc_weight do not have gradient.
+    target_bbox.stop_gradient = True
+    target_loc_weight.stop_gradient = True
 
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
