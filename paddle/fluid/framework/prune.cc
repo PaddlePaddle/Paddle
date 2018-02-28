@@ -204,7 +204,9 @@ void inference_optimize_impl(proto::ProgramDesc* output, int block_id) {
 void InferenceOptimize(const proto::ProgramDesc& input,
                        proto::ProgramDesc* output) {
   *output = input;
-  for (int i = 0; i < input.blocks_size(); ++i) {
+  int num_blocks = output.blocks_size();
+  PADDLE_ENFORCE_GT(num_blocks, 0, "ProgramDesc must have at least one block");
+  for (int i = 0; i < num_blocks; ++i) {
     inference_optimize_impl(output, i);
   }
 }
