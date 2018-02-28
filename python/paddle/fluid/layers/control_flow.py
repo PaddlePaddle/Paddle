@@ -294,7 +294,8 @@ class ParallelDo(object):
 
         params = list(set(params))
 
-        return [parent_block.var(name) for name in params]
+        param_list = [parent_block.var(name) for name in params]
+        return filter(lambda param: param.stop_gradient is False, param_list)
 
     def complete_op(self):
         main_program = self.helper.main_program
