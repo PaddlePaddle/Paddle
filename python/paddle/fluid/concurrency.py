@@ -122,7 +122,7 @@ def make_channel(dtype, capacity=0):
     # persists into the global scope.
     channel = helper.create_variable(
         name=unique_name.generate('channel'),
-        dtype=core.VarDesc.VarType.CHANNEL,
+        type=core.VarDesc.VarType.CHANNEL,
         persistable=True)
 
     create_channel_op = make_channel_block.append_op(

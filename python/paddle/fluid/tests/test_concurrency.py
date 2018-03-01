@@ -23,6 +23,9 @@ from paddle.fluid.layers import fill_constant
 class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
         ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
+
+        # Create LOD_TENSOR<INT64> and put it into the scope.  This placeholder
+        # variable will be filled in and returned by fluid.channel_recv
         result = self._create_tensor('return_value',
                                      core.VarDesc.VarType.LOD_TENSOR,
                                      core.VarDesc.VarType.INT64)
@@ -43,14 +46,9 @@ class TestRoutineOp(unittest.TestCase):
 
     def test_daisy_chain(self):
         '''
-        Minics classic Daisy-chain test:  https://talks.golang.org/2012/concurrency.slide#39
+        Mimics classic Daisy-chain test:  https://talks.golang.org/2012/concurrency.slide#39
         '''
         n = 100
-
-        cond = fluid.layers.less_than(
-            x=fluid.layers.zeros(
-                shape=[1], dtype='int64'),
-            y=self._create_one_dim_tensor(n))
 
         leftmost = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
         left = leftmost
@@ -70,7 +68,7 @@ class TestRoutineOp(unittest.TestCase):
                 fluid.channel_send(left, one_added)
             left = right
 
-        # Trigger the channel propegation by sending a "1" to rightmost channel
+        # Trigger the channel propagation by sending a "1" to rightmost channel
         with fluid.Go():
             one_tensor = self._create_one_dim_tensor(1)
             fluid.channel_send(right, one_tensor)
