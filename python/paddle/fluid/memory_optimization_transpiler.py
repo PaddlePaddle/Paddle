@@ -173,7 +173,6 @@ class ControlFlowGraph(object):
                         cache_var = cache_pair[0]
                         cache_shape = cache_pair[1]
                         if compare_shape(x_shape, cache_shape, level):
-                            # if x_shape == cache_shape:
                             if self._has_var(block_desc, cache_var, is_forward):
                                 x_dtype = self._find_var(block_desc, x,
                                                          is_forward).dtype()
