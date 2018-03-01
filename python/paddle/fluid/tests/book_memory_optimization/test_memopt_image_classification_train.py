@@ -124,7 +124,7 @@ opts = optimizer.minimize(avg_cost)
 
 accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
-fluid.memory_optimize(fluid.default_main_program(), level=0)
+fluid.memory_optimize(fluid.default_main_program(), level=1)
 
 BATCH_SIZE = 16
 PASS_NUM = 1
@@ -155,7 +155,7 @@ for pass_id in range(PASS_NUM):
             pass_acc))
         # this model is slow, so if we can train two mini batch, we think it works properly.
 
-        if i > 2:
+        if i > 0:
             exit(0)
         if math.isnan(float(loss)):
             sys.exit("got NaN loss, training failed.")
