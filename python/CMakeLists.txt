@@ -57,7 +57,7 @@ add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_PYTHON_BUILD_DIR}/lib* ${PADDLE_PYTHON_BUILD_DIR}/lib-python
-    DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
+    DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 
 set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp paddle_pserver_main paddle_trainer paddle_merge_model ${MKL_DEPENDS})
 if(WITH_SWIG_PY)

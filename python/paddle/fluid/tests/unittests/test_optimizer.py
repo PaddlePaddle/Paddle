@@ -46,43 +46,6 @@ class TestOptimizer(unittest.TestCase):
         self.assertEqual([op.type for op in opts],
                          ["fill_constant", "elementwise_mul", "sgd"])
 
-    def test_sgd_optimizer_with_global_step(self):
-        init_program = framework.Program()
-        program = framework.Program()
-        block = program.global_block()
-        mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
-        mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
-        block.append_op(
-            type="mul",
-            inputs={"X": mul_x,
-                    "Y": mul_y},
-            outputs={"Out": mul_out},
-            attrs={"x_num_col_dims": 1})
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out")
-        block.append_op(
-            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
-        global_step = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="step")
-        learning_rate = 0.01
-        sgd_optimizer = optimizer.SGDOptimizer(
-            learning_rate=learning_rate, global_step=global_step)
-        opts, _ = sgd_optimizer.minimize(mean_out, init_program)
-        self.assertEqual(len(opts), 4)
-        self.assertEqual(
-            [op.type for op in opts],
-            ["fill_constant", "elementwise_mul", "sgd", "increment"])
-
-        # Check init_program
-        init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 1)
-        self.assertEqual(init_ops[0].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
-
 
 class TestMomentumOptimizer(unittest.TestCase):
     class MockMomentum(optimizer.MomentumOptimizer):

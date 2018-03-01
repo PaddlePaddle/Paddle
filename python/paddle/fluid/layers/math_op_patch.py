@@ -1,11 +1,11 @@
 #   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,12 +53,22 @@ def monkey_patch_variable():
         value = float(value)
         tmp_name = unique_tmp_name()
         var = ref_var.block.create_var(name=tmp_name, dtype=dtype)
+        batch_dim = -1
+        for i, d in enumerate(ref_var.shape):
+            if d < 0:
+                batch_dim = i
+                break
+        assert batch_dim != -1
         ref_var.block.append_op(
             type='fill_constant_batch_size_like',
             outputs={'Out': [var]},
             inputs={'Input': [ref_var]},
-            attrs={'shape': ref_var.shape,
-                   'value': value})
+            attrs={
+                'shape': ref_var.shape,
+                'value': value,
+                'input_dim_idx': batch_dim,
+                'output_dim_idx': batch_dim
+            })
         return var
 
     def astype(self, dtype):
@@ -118,11 +128,20 @@ def monkey_patch_variable():
             tmp_name = unique_tmp_name()
             out = self.block.create_var(name=tmp_name, dtype=lhs_dtype)
 
+            axis = -1
+            if other_var.shape[0] == -1:
+                axis = 0
+            assert len(self.shape) >= len(other_var.shape), (
+                "The rank of the first argument of an binary operator cannot "
+                "be smaller than the rank of its second argument: %s vs %s" %
+                (len(self.shape), len(other_var.shape)))
+
             self.block.append_op(
                 type=op_type,
                 inputs={'X': [self],
                         'Y': [other_var]},
-                outputs={'Out': out})
+                outputs={'Out': out},
+                attrs={'axis': axis})
             return out
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
@@ -131,7 +150,7 @@ def monkey_patch_variable():
         {0}
         Args:
             self(Variable): left hand variable
-            other_var(Variable|float|int): right hand variable 
+            other_var(Variable|float|int): right hand variable
 
         Returns:
             Variable
