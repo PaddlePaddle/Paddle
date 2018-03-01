@@ -24,9 +24,9 @@ class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor& dst,
-                  bool is_src_index) {
-    size_t* index = index_lod.data();
+                  const framework::Vector<size_t>& index_lod,
+                  framework::Tensor& dst, bool is_src_index) {
+    const size_t* index = index_lod.data();
     auto src_dims = src.dims();
     auto dst_dims = dst.dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2UL,

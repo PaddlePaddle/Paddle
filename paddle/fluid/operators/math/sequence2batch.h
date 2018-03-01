@@ -35,8 +35,8 @@ class CopyMatrixRowsFunctor {
   // copy the input src to the indexed rows of output dst.
   // The indexed rows are based on the input index.
   void operator()(const DeviceContext& context, const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor& dst,
-                  bool is_src_index);
+                  const framework::Vector<size_t>& index_lod,
+                  framework::Tensor& dst, bool is_src_index);
 };
 
 template <typename DeviceContext, typename T>
@@ -154,7 +154,7 @@ class Batch2LoDTensorFunctor {
   void operator()(const DeviceContext& context,
                   const framework::LoDTensor& batch,
                   framework::LoDTensor& lod_tensor) const {
-    auto in_lod = batch.lod();
+    auto& in_lod = batch.lod();
     PADDLE_ENFORCE_GT(in_lod.size(), 2UL);
     PADDLE_ENFORCE_EQ(in_lod[1].size(),
                       static_cast<size_t>(lod_tensor.dims()[0]));

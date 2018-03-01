@@ -35,7 +35,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
-                             framework::Vector<size_t> index,
+                             const framework::Vector<size_t>& index,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
