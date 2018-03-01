@@ -42,6 +42,15 @@ class DeviceTracer {
     uint64_t end_ns;
     uint64_t thread_id;
   };
+  struct MemRecord {
+    std::string name;
+    uint64_t start_ns;
+    uint64_t end_ns;
+    uint32_t device_id;
+    uint32_t stream_id;
+    uint32_t correlation_id;
+    uint64_t bytes;
+  };
 
   virtual ~DeviceTracer() {}
   // Needs to be called once before use.
@@ -53,6 +62,11 @@ class DeviceTracer {
   // annotation (string). So cuda statistics can be represented by
   // human-readable annotations.
   virtual void AddAnnotation(uint64_t id, const std::string& anno) = 0;
+
+  virtual void AddMemRecords(const std::string& name, uint64_t start_ns,
+                             uint64_t end_ns, uint32_t device_id,
+                             uint32_t stream_id, uint32_t correlation_id,
+                             uint64_t bytes) = 0;
 
   virtual void AddCPURecords(const char* anno, uint64_t start_ns,
                              uint64_t end_ns) = 0;
