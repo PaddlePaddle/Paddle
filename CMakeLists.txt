@@ -166,11 +166,11 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 
 set(EXTERNAL_LIBS
-    ${GFLAGS_LIBRARIES}
-    ${GLOG_LIBRARIES}
-    ${CBLAS_LIBRARIES}
-    ${PROTOBUF_LIBRARY}
-    ${ZLIB_LIBRARIES}
+    gflags
+    glog
+    cblas
+    protobuf
+    zlib
     ${PYTHON_LIBRARIES}
 )
 
