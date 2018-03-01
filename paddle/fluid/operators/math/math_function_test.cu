@@ -114,7 +114,7 @@ TEST(math_function, trans_mul_notrans_fp32) {
   paddle::operators::math::matmul<paddle::platform::CUDADeviceContext, float>(
       context, input1_gpu, true, input2_gpu, false, 1, &out_gpu, 0);
 
-  TensorCopy(out_gpu, *cpu_place, context, &out);
+  TensorCopy(out_gpu, cpu_place, context, &out);
 
   float* out_ptr = out.data<float>();
   context.Wait();
@@ -161,15 +161,15 @@ TEST(math_function, trans_mul_notrans_fp16) {
 
   float16* out_ptr = out.data<float16>();
   context.Wait();
-  EXPECT_EQ(static_cast<float> out_ptr[0], 9);
-  EXPECT_EQ(static_cast<float> out_ptr[1], 12);
-  EXPECT_EQ(static_cast<float> out_ptr[2], 15);
-  EXPECT_EQ(static_cast<float> out_ptr[3], 12);
-  EXPECT_EQ(static_cast<float> out_ptr[4], 17);
-  EXPECT_EQ(static_cast<float> out_ptr[5], 22);
-  EXPECT_EQ(static_cast<float> out_ptr[6], 15);
-  EXPECT_EQ(static_cast<float> out_ptr[7], 22);
-  EXPECT_EQ(static_cast<float> out_ptr[8], 29);
+  EXPECT_EQ(static_cast<float>(out_ptr[0]), 9);
+  EXPECT_EQ(static_cast<float>(out_ptr[1]), 12);
+  EXPECT_EQ(static_cast<float>(out_ptr[2]), 15);
+  EXPECT_EQ(static_cast<float>(out_ptr[3]), 12);
+  EXPECT_EQ(static_cast<float>(out_ptr[4]), 17);
+  EXPECT_EQ(static_cast<float>(out_ptr[5]), 22);
+  EXPECT_EQ(static_cast<float>(out_ptr[6]), 15);
+  EXPECT_EQ(static_cast<float>(out_ptr[7]), 22);
+  EXPECT_EQ(static_cast<float>(out_ptr[8]), 29);
 }
 
 TEST(math_function, gemm_notrans_cublas_fp32) {
@@ -400,22 +400,27 @@ TEST(math_function, gemm_trans_cublas_fp16) {
 
 template <typename T>
 void GemvTest(int m, int n, bool trans) {
-  paddle::framework::Tensor mat_a;
-  paddle::framework::Tensor vec_b;
-  paddle::framework::Tensor vec_c;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  using namespace paddle::framework;
+  using namespace paddle::platform;
 
-  T* data_a = mat_a.mutable_data<T>({m, n}, *cpu_place);
-  T* data_b = vec_b.mutable_data<T>({trans ? m : n}, *cpu_place);
-  T* data_c = vec_c.mutable_data<T>({trans ? n : m}, *cpu_place);
+  Tensor mat_a;
+  Tensor vec_b;
+  Tensor vec_c;
 
-  auto* gpu_place = new paddle::platform::CUDAPlace(0);
-  paddle::framework::Tensor g_mat_a;
-  paddle::framework::Tensor g_vec_b;
-  paddle::framework::Tensor g_vec_c;
-  T* g_data_a = g_mat_a.mutable_data<T>(mat_a.dims(), *gpu_place);
-  T* g_data_b = g_vec_b.mutable_data<T>(vec_b.dims(), *gpu_place);
-  T* g_data_c = g_vec_c.mutable_data<T>(vec_c.dims(), *gpu_place);
+  CPUPlace cpu_place;
+  CUDAPlace gpu_place(0);
+  CUDADeviceContext context(gpu_place);
+
+  T* data_a = mat_a.mutable_data<T>({m, n}, cpu_place);
+  T* data_b = vec_b.mutable_data<T>({trans ? m : n}, cpu_place);
+  T* data_c = vec_c.mutable_data<T>({trans ? n : m}, cpu_place);
+
+  Tensor g_mat_a;
+  Tensor g_vec_b;
+  Tensor g_vec_c;
+  T* g_data_a = g_mat_a.mutable_data<T>(mat_a.dims(), gpu_place);
+  T* g_data_b = g_vec_b.mutable_data<T>(vec_b.dims(), gpu_place);
+  T* g_data_c = g_vec_c.mutable_data<T>(vec_c.dims(), gpu_place);
 
   for (int i = 0; i < mat_a.numel(); ++i) {
     data_a[i] = static_cast<T>(i);
@@ -424,16 +429,14 @@ void GemvTest(int m, int n, bool trans) {
     data_b[i] = static_cast<T>(i);
   }
 
-  paddle::platform::CUDADeviceContext context(*gpu_place);
-  paddle::framework::TensorCopy(mat_a, *gpu_place, context, &g_mat_a);
-  paddle::framework::TensorCopy(vec_b, *gpu_place, context, &g_vec_b);
+  TensorCopy(mat_a, gpu_place, context, &g_mat_a);
+  TensorCopy(vec_b, gpu_place, context, &g_vec_b);
 
-  paddle::operators::math::gemv<paddle::platform::CUDADeviceContext, T>(
+  paddle::operators::math::gemv<CUDADeviceContext, T>(
       context, trans, static_cast<int>(m), static_cast<int>(n), 1., g_data_a,
       g_data_b, 0., g_data_c);
 
-  paddle::framework::TensorCopy(g_vec_c, paddle::platform::CPUPlace(), context,
-                                &vec_c);
+  TensorCopy(g_vec_c, cpu_place, context, &vec_c);
 
   if (!trans) {
     for (int i = 0; i < m; ++i) {
