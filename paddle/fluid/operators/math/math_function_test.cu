@@ -14,30 +14,33 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
-TEST(math_function, notrans_mul_trans) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor out_gpu;
-  paddle::framework::Tensor out;
+TEST(math_function, notrans_mul_trans_fp32) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
 
-  auto* cpu_place = new paddle::platform::CPUPlace();
-  float* input1_ptr = input1.mutable_data<float>({2, 3}, *cpu_place);
+  Tensor input1;
+  Tensor input1_gpu;
+  Tensor input2_gpu;
+  Tensor out_gpu;
+  Tensor out;
+
+  CPUPlace cpu_place;
+  CUDAPlace gpu_place(0);
+  CUDADeviceContext context(gpu_place);
+
+  float* input1_ptr = input1.mutable_data<float>({2, 3}, cpu_place);
   float arr[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr, 6 * sizeof(float));
 
-  auto* gpu_place = new paddle::platform::CUDAPlace(0);
-  paddle::platform::CUDADeviceContext context(*gpu_place);
+  TensorCopy(input1, gpu_place, context, &input1_gpu);
+  TensorCopy(input1, gpu_place, context, &input2_gpu);
 
-  paddle::framework::TensorCopy(input1, *gpu_place, context, &input1_gpu);
-  paddle::framework::TensorCopy(input1, *gpu_place, context, &input2_gpu);
+  out_gpu.mutable_data<float>({2, 2}, gpu_place);
 
-  out_gpu.mutable_data<float>({2, 2}, *gpu_place);
-
-  paddle::operators::math::matmul<paddle::platform::CUDADeviceContext, float>(
+  paddle::operators::math::matmul<CUDADeviceContext, float>(
       context, input1_gpu, false, input2_gpu, true, 1, &out_gpu, 0);
 
-  paddle::framework::TensorCopy(out_gpu, *cpu_place, context, &out);
+  TensorCopy(out_gpu, cpu_place, context, &out);
 
   float* out_ptr = out.data<float>();
   context.Wait();
@@ -45,7 +48,43 @@ TEST(math_function, notrans_mul_trans) {
   EXPECT_EQ(out_ptr[1], 14);
   EXPECT_EQ(out_ptr[2], 14);
   EXPECT_EQ(out_ptr[3], 50);
-  delete gpu_place;
+}
+
+TEST(math_function, notrans_mul_trans_fp16) {
+  using namespace paddle::framework;
+  using namespace paddle::platform;
+
+  Tensor input1;
+  Tensor input1_gpu;
+  Tensor input2_gpu;
+  Tensor out_gpu;
+  Tensor out;
+
+  CPUPlace cpu_place;
+  CUDAPlace gpu_place(0);
+  CUDADeviceContext context(gpu_place);
+
+  float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
+  float16 arr[6] = {float16(0), float16(1), float16(2),
+                    float16(3), float16(4), float16(5)};
+  memcpy(input1_ptr, arr, 6 * sizeof(float16));
+
+  TensorCopy(input1, gpu_place, context, &input1_gpu);
+  TensorCopy(input1, gpu_place, context, &input2_gpu);
+
+  out_gpu.mutable_data<float16>({2, 2}, gpu_place);
+
+  paddle::operators::math::matmul<CUDADeviceContext, float16>(
+      context, input1_gpu, false, input2_gpu, true, 1, &out_gpu, 0);
+
+  TensorCopy(out_gpu, cpu_place, context, &out);
+
+  float16* out_ptr = out.data<float16>();
+  context.Wait();
+  EXPECT_EQ(out_ptr[0], 5);
+  EXPECT_EQ(out_ptr[1], 14);
+  EXPECT_EQ(out_ptr[2], 14);
+  EXPECT_EQ(out_ptr[3], 50);
 }
 
 TEST(math_function, trans_mul_notrans) {
