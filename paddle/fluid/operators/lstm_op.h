@@ -158,13 +158,14 @@ class LSTMKernel : public framework::OpKernel<T> {
     }
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
-    batch_hidden.set_lod(batch_gate->lod());
+    auto& gate_lod = batch_gate->lod();
     // restore the output hidden in LoDTensor from the batch hidden
-    to_seq(device_ctx, batch_hidden, *hidden_out);
+    to_seq(device_ctx, batch_hidden, gate_lod, *hidden_out);
+    batch_hidden.set_lod(gate_lod);
 
-    batch_cell.set_lod(batch_gate->lod());
     // restore the output cell state in LoDTensor from the batch cell
-    to_seq(device_ctx, batch_cell, *cell_out);
+    to_seq(device_ctx, batch_cell, gate_lod, *cell_out);
+    batch_cell.set_lod(gate_lod);
   }
 };
 
@@ -205,7 +206,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     // ordered_h0_g/c0_g is the reordered gradient of hidden/cell
     // initialization.
     Tensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    auto& order = batch_gate->lod()[2];
 
     if (c0) {
       ReorderInitState<DeviceContext, T>(device_ctx, *c0, order, &ordered_c0,
@@ -256,7 +257,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
         const framework::DDim& dims, framework::LoDTensor& dst) {
       dst.mutable_data<T>(dims, ctx.GetPlace());
       dst.set_lod(batch_gate->lod());
-      to_batch(ctx, src, dst, false);
+      to_batch(ctx, src, dst, batch_gate->lod());
     };
 
     LoDTensor batch_hidden, batch_hidden_g, batch_cell;
@@ -346,11 +347,11 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     if (in_g) {
+      math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
       /* backward data */
       in_g->mutable_data<T>(ctx.GetPlace());
-      to_seq(device_ctx, batch_gate_g, *in_g);
+      to_seq(device_ctx, batch_gate_g, batch_gate->lod(), *in_g);
     }
     if (bias && bias_g) {
       /* backward bias */
