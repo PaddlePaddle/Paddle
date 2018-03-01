@@ -93,8 +93,8 @@ template <>
 void matmul<platform::CPUDeviceContext, float16>(
     const platform::CPUDeviceContext& context,
     const framework::Tensor& matrix_a, bool trans_a,
-    const framework::Tensor& matrix_b, bool trans_b, float alpha,
-    framework::Tensor* matrix_out, float beta) {
+    const framework::Tensor& matrix_b, bool trans_b, float16 alpha,
+    framework::Tensor* matrix_out, float16 beta) {
   PADDLE_THROW("float16 matmul not supported on CPU");
 }
 
@@ -157,11 +157,11 @@ void matmul<platform::CPUDeviceContext, double>(
 }
 
 template <>
-void batched_gemm<platform::CPUDeviceContext, float>(
+void batched_gemm<platform::CPUDeviceContext, float16>(
     const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
-    const float alpha, const float* A, const float* B, const float beta,
-    float* C, const int batchCount, const int strideA, const int strideB) {
+    const float16 alpha, const float16* A, const float16* B, const float16 beta,
+    float16* C, const int batchCount, const int strideA, const int strideB) {
   PADDLE_THROW("float16 batched_gemm not supported on CPU");
 }
 
