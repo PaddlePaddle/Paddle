@@ -118,7 +118,7 @@ class ControlFlowGraph(object):
         else:
             return block_desc.find_var_recursive(str(var_name))
 
-    def memory_optimize(self):
+    def memory_optimize(self, level=0):
         def check_var_validity(block_desc, x, is_forward):
             if str(x) == "@EMPTY@":
                 return False
@@ -135,6 +135,18 @@ class ControlFlowGraph(object):
             if not self._find_var(block_desc, x, is_forward).shape():
                 return False
             return True
+
+        def compare_shape(x_shape, cache_shape, opt_level):
+            if opt_level == 0:
+                return x_shape == cache_shape
+            if opt_level == 1:
+                if (x_shape[0] == -1) ^ (cache_shape[0] == -1):
+                    return False
+                x_size = abs(reduce(lambda x, y: x * y, x_shape))
+                cache_size = abs(reduce(lambda x, y: x * y, cache_shape))
+                if x_size <= cache_size:
+                    return True
+            return False
 
         self._build_graph()
         self._dataflow_analyze()
@@ -160,7 +172,8 @@ class ControlFlowGraph(object):
                     for index, cache_pair in enumerate(self.pool):
                         cache_var = cache_pair[0]
                         cache_shape = cache_pair[1]
-                        if x_shape == cache_shape:
+                        if compare_shape(x_shape, cache_shape, level):
+                            # if x_shape == cache_shape:
                             if self._has_var(block_desc, cache_var, is_forward):
                                 x_dtype = self._find_var(block_desc, x,
                                                          is_forward).dtype()
@@ -267,7 +280,7 @@ def get_cfgs(input_program):
     return cfgs
 
 
-def memory_optimize(input_program):
+def memory_optimize(input_program, level=0):
     cfgs = get_cfgs(input_program)
     for cfg in cfgs:
-        cfg.memory_optimize()
+        cfg.memory_optimize(level)
