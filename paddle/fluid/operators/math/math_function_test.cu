@@ -75,16 +75,17 @@ TEST(math_function, notrans_mul_trans_fp16) {
   out_gpu.mutable_data<float16>({2, 2}, gpu_place);
 
   paddle::operators::math::matmul<CUDADeviceContext, float16>(
-      context, input1_gpu, false, input2_gpu, true, 1, &out_gpu, 0);
+      context, input1_gpu, false, input2_gpu, true, float16(1), &out_gpu,
+      float16(0));
 
   TensorCopy(out_gpu, cpu_place, context, &out);
 
   float16* out_ptr = out.data<float16>();
   context.Wait();
-  EXPECT_EQ(out_ptr[0], 5);
-  EXPECT_EQ(out_ptr[1], 14);
-  EXPECT_EQ(out_ptr[2], 14);
-  EXPECT_EQ(out_ptr[3], 50);
+  EXPECT_EQ(static_cast<float>(out_ptr[0]), 5);
+  EXPECT_EQ(static_cast<float>(out_ptr[1]), 14);
+  EXPECT_EQ(static_cast<float>(out_ptr[2]), 14);
+  EXPECT_EQ(static_cast<float>(out_ptr[3]), 50);
 }
 
 TEST(math_function, trans_mul_notrans) {
