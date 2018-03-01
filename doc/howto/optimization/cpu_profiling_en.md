@@ -49,7 +49,7 @@ port, we will see the output like the following:
 ```
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
         1    0.284    0.284   29.514   29.514 main.py:1(<module>)
-     4696    0.128    0.000   15.748    0.003 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/fluid/executor.py:20(run)
+     4696    0.128    0.000   15.748    0.003 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/fluid/executor.py:20(run)
      4696   12.040    0.003   12.040    0.003 {built-in method run}
         1    0.144    0.144    6.534    6.534 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/__init__.py:14(<module>)
 ```
@@ -74,9 +74,9 @@ focus on. We can sort above profiling file by tottime:
 ```text
      4696   12.040    0.003   12.040    0.003 {built-in method run}
    300005    0.874    0.000    1.681    0.000 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/dataset/mnist.py:38(reader)
-   107991    0.676    0.000    1.519    0.000 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/fluid/framework.py:219(__init__)
-     4697    0.626    0.000    2.291    0.000 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/fluid/framework.py:428(sync_with_cpp)
-        1    0.618    0.618    0.618    0.618 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/fluid/__init__.py:1(<module>)
+   107991    0.676    0.000    1.519    0.000 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/fluid/framework.py:219(__init__)
+     4697    0.626    0.000    2.291    0.000 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/fluid/framework.py:428(sync_with_cpp)
+        1    0.618    0.618    0.618    0.618 /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/fluid/__init__.py:1(<module>)
 ```
 
 We can see that the most time-consuming function is the `built-in
@@ -93,9 +93,9 @@ Called By:
 
 Function                                                                                                 was called by...
                                                                                                              ncalls  tottime  cumtime
-/home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/fluid/framework.py:428(sync_with_cpp)  <-    4697    0.626    2.291  /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/fluid/framework.py:562(sync_with_cpp)
-/home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/fluid/framework.py:562(sync_with_cpp)  <-    4696    0.019    2.316  /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/fluid/framework.py:487(clone)
-                                                                                                                  1    0.000    0.001  /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/v2/fluid/framework.py:534(append_backward)
+/home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/fluid/framework.py:428(sync_with_cpp)  <-    4697    0.626    2.291  /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/fluid/framework.py:562(sync_with_cpp)
+/home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/fluid/framework.py:562(sync_with_cpp)  <-    4696    0.019    2.316  /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/fluid/framework.py:487(clone)
+                                                                                                                  1    0.000    0.001  /home/yuyang/perf_test/.env/lib/python2.7/site-packages/paddle/fluid/framework.py:534(append_backward)
 
 
 Called:

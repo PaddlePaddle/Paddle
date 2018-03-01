@@ -1,4 +1,4 @@
-# 在OpenMPI集群中提交训练作业
+# 在OpenMPI集群中启动训练
 
 ## 准备OpenMPI集群
 

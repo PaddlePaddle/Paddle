@@ -34,6 +34,8 @@ void GetCublasDsoHandle(void** dso_handle);
  */
 void GetCUDNNDsoHandle(void** dso_handle);
 
+void GetCUPTIDsoHandle(void** dso_handle);
+
 /**
  * @brief    load the DSO of CURAND
  *

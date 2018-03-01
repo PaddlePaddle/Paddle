@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
+#include <queue>
+
 namespace paddle {
 namespace framework {
 
@@ -64,12 +66,36 @@ VarDesc *BlockDesc::RenameVar(const std::string &old_name,
 VarDesc *BlockDesc::FindVarRecursive(const std::string &name) const {
   if (name == kEmptyVarName) return nullptr;
 
-  auto it = vars_.find(name);
-  if (it == vars_.end()) {
-    return Parent() == kNoneBlockIndex ? nullptr
-                                       : ParentBlock()->FindVarRecursive(name);
+  std::queue<const BlockDesc *> frontier;
+  std::unordered_set<const BlockDesc *> visited;
+
+  frontier.push(this);
+
+  while (!frontier.empty()) {  // BFS
+    auto cur = frontier.front();
+    frontier.pop();
+    if (visited.count(cur) != 0) {
+      continue;
+    }
+    auto var = cur->FindVar(name);
+    if (var != nullptr) {
+      return var;
+    }
+
+    auto fwd = cur->ForwardBlock();
+    auto parent = cur->ParentBlock();
+
+    if (fwd != nullptr) {
+      frontier.push(fwd);
+    }
+    if (parent != nullptr) {
+      frontier.push(parent);
+    }
+
+    visited.insert(cur);
   }
-  return it->second.get();
+
+  return nullptr;
 }
 
 VarDesc &BlockDesc::FindRecursiveOrCreateVar(const std::string &name_bytes) {
@@ -155,10 +181,7 @@ void BlockDesc::Flush() {
 }
 
 BlockDesc *BlockDesc::ParentBlock() const {
-  if (this->desc_->parent_idx() == kNoneBlockIndex) {
-    return nullptr;
-  }
-  return prog_->MutableBlock(static_cast<size_t>(this->desc_->parent_idx()));
+  return prog_->MutableBlock(static_cast<size_t>(desc_->parent_idx()));
 }
 
 proto::BlockDesc *BlockDesc::Proto() {
@@ -203,6 +226,17 @@ void BlockDesc::ClearPBVars() {
     // we do not own the VarDesc, so release the ownership.
     vars->ReleaseLast();
   }
+}
+
+void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
+  PADDLE_ENFORCE(!desc_->has_forward_block_idx(),
+                 "Parent block ID has been set to %d. Cannot set to %d",
+                 desc_->forward_block_idx(), forward_block_id);
+  desc_->set_forward_block_idx(forward_block_id);
+}
+
+BlockDesc *BlockDesc::ForwardBlock() const {
+  return prog_->MutableBlock(static_cast<size_t>(desc_->forward_block_idx()));
 }
 
 }  // namespace framework

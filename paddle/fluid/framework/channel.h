@@ -91,6 +91,11 @@ class ChannelHolder {
 
   inline bool IsInitialized() const { return holder_ != nullptr; }
 
+  inline const std::type_index Type() {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    return holder_->Type();
+  }
+
  private:
   /**
    * @note    Placeholder hides type T, so it doesn't appear as a template
@@ -100,8 +105,7 @@ class ChannelHolder {
     virtual ~Placeholder() {}
     virtual const std::type_index Type() const = 0;
     virtual void* Ptr() const = 0;
-    virtual void Close() const = 0;
-    std::type_info type_;
+    virtual void Close() = 0;
   };
 
   template <typename T>
@@ -116,7 +120,7 @@ class ChannelHolder {
       if (channel_) channel_->Close();
     }
 
-    std::unique_ptr<Channel<T>*> channel_;
+    std::unique_ptr<Channel<T>> channel_;
     const std::type_index type_;
   };
 
