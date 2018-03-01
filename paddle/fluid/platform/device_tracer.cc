@@ -18,6 +18,7 @@ limitations under the License. */
 #include <map>
 #include <mutex>
 #include <numeric>
+#include <thread>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/string/printf.h"
@@ -140,6 +141,13 @@ class DeviceTracerImpl : public DeviceTracer {
     correlations_[id] = anno;
   }
 
+  void AddCPURecords(const char *anno, uint64_t start_ns, uint64_t end_ns) {
+    std::lock_guard<std::mutex> l(trace_mu_);
+    cpu_records_.push_back(
+        CPURecord{anno, start_ns, end_ns,
+                  std::hash<std::thread::id>{}(std::this_thread::get_id())});
+  }
+
   void AddKernelRecords(uint64_t start, uint64_t end, uint32_t device_id,
                         uint32_t stream_id, uint32_t correlation_id) {
     std::lock_guard<std::mutex> l(trace_mu_);
@@ -185,7 +193,6 @@ class DeviceTracerImpl : public DeviceTracer {
     proto::Profile profile_pb;
     profile_pb.set_start_ns(start_ns_);
     profile_pb.set_end_ns(end_ns_);
-    std::map<std::string, std::vector<uint64_t>> event_times;
     for (const KernelRecord &r : kernel_records_) {
       if (correlations_.find(r.correlation_id) == correlations_.end()) {
         fprintf(stderr, "cannot relate a kernel activity\n");
@@ -197,7 +204,15 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_end_ns(r.end_ns);
       event->set_stream_id(r.stream_id);
       event->set_device_id(r.device_id);
-      event_times[event->name()].push_back(r.end_ns - r.start_ns);
+    }
+
+    for (const CPURecord &r : cpu_records_) {
+      auto *event = profile_pb.add_events();
+      event->set_name(r.name);
+      event->set_start_ns(r.start_ns);
+      event->set_end_ns(r.end_ns);
+      event->set_stream_id(r.thread_id);
+      event->set_device_id(-1);
     }
     std::string profile_str;
     google::protobuf::TextFormat::PrintToString(profile_pb, &profile_str);
@@ -242,6 +257,7 @@ class DeviceTracerImpl : public DeviceTracer {
   uint64_t start_ns_;
   uint64_t end_ns_;
   std::vector<KernelRecord> kernel_records_;
+  std::vector<CPURecord> cpu_records_;
   std::unordered_map<uint32_t, std::string> correlations_;
   CUpti_SubscriberHandle subscriber_;
 };
@@ -253,6 +269,8 @@ class DeviceTracerDummy : public DeviceTracer {
   DeviceTracerDummy() {}
 
   void AddAnnotation(uint64_t id, const std::string &anno) {}
+
+  void AddCPURecords(const char *anno, uint64_t start_ns, uint64_t end_ns) {}
 
   void AddKernelRecords(uint64_t start, uint64_t end, uint32_t device_id,
                         uint32_t stream_id, uint32_t correlation_id) {}
@@ -284,6 +302,8 @@ DeviceTracer *GetDeviceTracer() {
 void SetCurAnnotation(const char *anno) { cur_annotation = anno; }
 
 void ClearCurAnnotation() { cur_annotation = nullptr; }
+
+const char *CurAnnotation() { return cur_annotation; }
 
 }  // namespace platform
 }  // namespace paddle

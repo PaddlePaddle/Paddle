@@ -124,15 +124,22 @@ class Timeline(object):
             if event.device_id not in self._devices:
                 pid = self._allocate_pid()
                 self._devices[event.device_id] = pid
-                self._chrome_trace.emit_pid("device:%s" % pid, pid)
+                if event.device_id >= 0:
+                    self._chrome_trace.emit_pid("gpu:%s:stream:%d" %
+                                                (pid, event.stream_id), pid)
+                elif event.device_id == -1:
+                    self._chrome_trace.emit_pid("cpu:thread_hash:%d" %
+                                                event.stream_id, pid)
 
     def _allocate_events(self):
         for event in self._profile_pb.events:
             pid = self._devices[event.device_id]
             args = {'name': event.name}
-            self._chrome_trace.emit_region(
-                event.start_ns, (event.end_ns - event.start_ns) / 1000000.0,
-                pid, 0, 'Op', event.name, args)
+            # TODO(panyx0718): Chrome tracing only handles ms. However, some
+            # ops takes micro-seconds. Hence, we keep the ns here.
+            self._chrome_trace.emit_region(event.start_ns,
+                                           (event.end_ns - event.start_ns) /
+                                           1.0, pid, 0, 'Op', event.name, args)
 
     def generate_chrome_trace(self):
         self._allocate_pids()

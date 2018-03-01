@@ -36,6 +36,12 @@ class DeviceTracer {
     uint32_t stream_id;
     uint32_t correlation_id;
   };
+  struct CPURecord {
+    std::string name;
+    uint64_t start_ns;
+    uint64_t end_ns;
+    uint64_t thread_id;
+  };
 
   virtual ~DeviceTracer() {}
   // Needs to be called once before use.
@@ -47,6 +53,9 @@ class DeviceTracer {
   // annotation (string). So cuda statistics can be represented by
   // human-readable annotations.
   virtual void AddAnnotation(uint64_t id, const std::string& anno) = 0;
+
+  virtual void AddCPURecords(const char* anno, uint64_t start_ns,
+                             uint64_t end_ns) = 0;
 
   // Add a cuda kernel stats. `correlation_id` will be mapped to annotation
   // added before for human readability.
@@ -67,6 +76,7 @@ DeviceTracer* GetDeviceTracer();
 void SetCurAnnotation(const char* anno);
 // Clear the name after the operation is done.
 void ClearCurAnnotation();
-
+// Current name of the operation being run in the thread.
+const char* CurAnnotation();
 }  // namespace platform
 }  // namespace paddle
