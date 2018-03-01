@@ -169,16 +169,12 @@ def train(use_cuda, save_dirname=None, is_local=True):
 
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
-    global_step = fluid.layers.create_global_var(
-        shape=[1], value=0, dtype='float32', force_cpu=True, persistable=True)
     sgd_optimizer = fluid.optimizer.SGD(
         learning_rate=fluid.learning_rate_decay.exponential_decay(
             learning_rate=0.0001,
-            global_step=global_step,
             decay_steps=100000,
             decay_rate=0.5,
-            staircase=True),
-        global_step=global_step)
+            staircase=True))
     optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
 
     # TODO(qiao)
