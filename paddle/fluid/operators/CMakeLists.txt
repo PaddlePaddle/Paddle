@@ -173,11 +173,11 @@ op_library(parallel_do_op DEPS executor)
 op_library(create_reader_op DEPS reader)
 
 if (WITH_GPU)
-    op_library(conv_op DEPS vol2col depthwise_conv)
+    op_library(conv_op DEPS vol2col depthwise_conv im2col)
 else()
-    op_library(conv_op DEPS vol2col)
+    op_library(conv_op DEPS vol2col im2col)
 endif()
-op_library(conv_transpose_op DEPS vol2col)
+op_library(conv_transpose_op DEPS vol2col im2col)
 
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
