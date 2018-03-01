@@ -9,7 +9,7 @@ Requirements
 To build PaddlePaddle, you need
 
 1. A computer -- Linux, Windows, MacOS.
-1. Docker.
+2. Docker.
 
 Nothing else.  Not even Python and GCC, because you can install all build tools into a Docker image. 
 We run all the tools by running this image.

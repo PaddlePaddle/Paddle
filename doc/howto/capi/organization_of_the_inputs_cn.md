@@ -4,12 +4,15 @@
 
 ### 输入/输出数据类型
 在C-API中，按照基本数据类型在PaddlePaddle内部的定义和实现，输入数据可分为：
+
 1. 一维整型数组
 1. 二维浮点型矩阵
+
     - 稠密矩阵
     - 稀疏矩阵
 
 说明：
+
 1. 一维数组**仅支持整型值**；
     - 常用于自然语言处理任务，例如：表示词语在词典中的序号；
     - 分类任务中类别标签；
@@ -274,6 +277,7 @@ PaddlePaddle中一个计算层的输出数据组织方式和输入数据组织�
 如果是一个序列输入/输出由 `sequence start positions` 来记录输入/输出的序列信息。
 
 于是，在组织神经网络输入时，需要思考完成以下工作：
+
 1. 为每一个输入/输出创建`argument`。
     - C-API 中操作`argument`的接口请查看[argument.h](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/arguments.h)。
 1. 为每一个`argument`创建`paddle_matrix`或者`paddle_ivector`来存储数据。

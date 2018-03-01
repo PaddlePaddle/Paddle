@@ -132,21 +132,19 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
   GetEventList().Record(EventKind::kPopRange, name, g_thread_id, dev_ctx);
 }
 
-RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx,
-                         int32_t block_id) {
+RecordEvent::RecordEvent(const std::string& name,
+                         const DeviceContext* dev_ctx) {
   if (g_state == ProfilerState::kDisabled) return;
   dev_ctx_ = dev_ctx;
   name_ = name;
   PushEvent(name_, dev_ctx_);
-
-  full_name_ = string::Sprintf("%s_b%d", name, block_id);
   // Maybe need the same push/pop behavior.
-  SetCurAnnotation(full_name_.c_str());
+  SetCurAnnotation(name_.c_str());
 }
 
 RecordEvent::~RecordEvent() {
-  ClearCurAnnotation();
   if (g_state == ProfilerState::kDisabled) return;
+  ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
 }
 
@@ -201,7 +199,8 @@ std::vector<std::vector<Event>> GetAllEvents() {
   return result;
 }
 
-void DisableProfiler(EventSortingKey sorted_key) {
+void DisableProfiler(EventSortingKey sorted_key,
+                     const std::string& profile_path) {
   PADDLE_ENFORCE(g_state != ProfilerState::kDisabled,
                  "Can't disable profiling, since it's not starting.");
   // Mark the profiling stop.
@@ -211,7 +210,7 @@ void DisableProfiler(EventSortingKey sorted_key) {
   DeviceTracer* tracer = GetDeviceTracer();
   if (g_profiler_place == "All" && tracer && tracer->IsEnabled()) {
     tracer->Disable();
-    tracer->GenProfile();
+    tracer->GenProfile(profile_path);
   }
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
