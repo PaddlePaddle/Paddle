@@ -64,19 +64,11 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
-#ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
-  }
-#endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  if (CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
+  } else if (CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
   }
 
   std::string data_format = ctx.Attr<std::string>("data_format");
@@ -130,6 +122,9 @@ Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -224,6 +219,9 @@ Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -284,20 +282,11 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
-#ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
-  }
-#endif
-
-  framework::LibraryType library_;
-  if (use_cudnn) {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  if (CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
+  } else if (CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
   }
 
   std::string data_format = ctx.Attr<std::string>("data_format");

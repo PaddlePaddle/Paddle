@@ -392,6 +392,8 @@ class OperatorWithKernel : public OperatorBase {
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
+  bool CanCUDNNBeUsed(const ExecutionContext& ctx) const;
+  bool CanMKLDNNBeUsed(const ExecutionContext& ctx) const;
 
  private:
   // indicate kernel DataType by input data. By default all input data must be

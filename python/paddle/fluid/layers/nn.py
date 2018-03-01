@@ -1146,6 +1146,7 @@ def conv2d(input,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
+           use_mkldnn=False,
            act=None):
     """
     **Convlution2D Layer**
@@ -1287,7 +1288,8 @@ def conv2d(input,
             'strides': stride,
             'paddings': padding,
             'groups': groups,
-            'use_cudnn': use_cudnn
+            'use_cudnn': use_cudnn,
+            'use_mkldnn': use_mkldnn
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
