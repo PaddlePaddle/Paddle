@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/softmax_op.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 namespace paddle {
 namespace operators {
 
@@ -51,13 +54,18 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     if (use_cudnn && runtime_cudnn_support) {
       library_ = framework::LibraryType::kCUDNN;
     }
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+    }
+#endif
     std::string data_format = ctx.Attr<std::string>("data_format");
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
         framework::StringToDataLayout(data_format), library_);
   }
 };
-
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
@@ -77,6 +85,9 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Softmax Operator.
 
