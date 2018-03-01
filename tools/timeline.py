@@ -135,6 +135,8 @@ class Timeline(object):
         for event in self._profile_pb.events:
             pid = self._devices[event.device_id]
             args = {'name': event.name}
+            if event.memcopy.bytes > 0:
+                args = {'mem_bytes': event.memcopy.bytes}
             # TODO(panyx0718): Chrome tracing only handles ms. However, some
             # ops takes micro-seconds. Hence, we keep the ns here.
             self._chrome_trace.emit_region(event.start_ns,
