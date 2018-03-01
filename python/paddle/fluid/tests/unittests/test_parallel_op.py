@@ -170,6 +170,7 @@ class ParallelOpTest(BaseParallelForTest):
         x = fluid.layers.data(shape=[784], dtype='float32', name='img')
         x = yield x
         hidden = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+        hidden = fluid.layers.batch_norm(input=hidden)
         loss = fluid.layers.mean(hidden)
         yield loss
 

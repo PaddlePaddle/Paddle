@@ -55,7 +55,7 @@ class DeviceTracer {
                                 uint32_t correlation_id) = 0;
 
   // Generate a proto after done (Disabled).
-  virtual proto::Profile GenProfile() = 0;
+  virtual proto::Profile GenProfile(const std::string& profile_path) = 0;
 
   virtual bool IsEnabled() = 0;
 };

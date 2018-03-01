@@ -20,7 +20,8 @@ from paddle.fluid.executor import Executor
 
 class TestRoutineOp(unittest.TestCase):
     def test_simple_routine(self):
-        ch = fluid.make_channel(dtype=bool)
+        ch = fluid.make_channel(
+            dtype=core.VarDesc.VarType.BOOL, name="CreateChannel")
         with fluid.Go():
             fluid.channel_send(ch, True)
 

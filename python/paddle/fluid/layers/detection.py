@@ -43,8 +43,8 @@ for _OP in set(__auto__):
     globals()[_OP] = generate_layer_fn(_OP)
 
 
-def detection_output(scores,
-                     loc,
+def detection_output(loc,
+                     scores,
                      prior_box,
                      prior_box_var,
                      background_label=0,
@@ -61,14 +61,14 @@ def detection_output(scores,
     be zero if there is no valid bounding box.
 
     Args:
-        scores(Variable): A 3-D Tensor with shape [N, C, M] represents the
-            predicted confidence predictions. N is the batch size, C is the
-            class number, M is number of bounding boxes. For each category
-            there are total M scores which corresponding M bounding boxes.
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
             predicted locations of M bounding bboxes. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
+        scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
+            predicted confidence predictions. N is the batch size, C is the
+            class number, M is number of bounding boxes. For each category
+            there are total M scores which corresponding M bounding boxes.
         prior_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
             each box is represented as [xmin, ymin, xmax, ymax],
             [xmin, ymin] is the left top coordinate of the anchor box,
@@ -100,7 +100,7 @@ def detection_output(scores,
                          append_batch_size=False, dtype='float32')
         pbv = layers.data(name='prior_box_var', shape=[10, 4],
                           append_batch_size=False, dtype='float32')
-        loc = layers.data(name='target_box', shape=[21, 4],
+        loc = layers.data(name='target_box', shape=[2, 21, 4],
                           append_batch_size=False, dtype='float32')
         scores = layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
@@ -109,7 +109,6 @@ def detection_output(scores,
                                        prior_box=pb,
                                        prior_box_var=pbv)
     """
-
     helper = LayerHelper("detection_output", **locals())
     decoded_box = box_coder(
         prior_box=prior_box,
@@ -118,6 +117,7 @@ def detection_output(scores,
         code_type='decode_center_size')
 
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
+    scores = nn.transpose(scores, perm=[0, 2, 1])
     helper.append_op(
         type="multiclass_nms",
         inputs={'Scores': scores,
@@ -328,6 +328,7 @@ def ssd_loss(location,
              conf_loss_weight=1.0,
              match_type='per_prediction',
              mining_type='max_negative',
+             normalize=True,
              sample_size=None):
     """
     **Multi-box loss layer for object dection algorithm of SSD**
@@ -376,18 +377,20 @@ def ssd_loss(location,
             `overlap_threshold` to determine the extra matching bboxes when
              finding matched boxes. 0.5 by default.
         neg_pos_ratio (float): The ratio of the negative boxes to the positive
-            boxes, used only when mining_type is max_negative, 3.0 by defalut.
+            boxes, used only when mining_type is 'max_negative', 3.0 by defalut.
         neg_overlap (float): The negative overlap upper bound for the unmatched
-            predictions. Use only when mining_type is max_negative,
+            predictions. Use only when mining_type is 'max_negative',
             0.5 by default.
-        sample_size (int): The max sample size of negative box, used only when
-            mining_type is hard_example.
         loc_loss_weight (float): Weight for localization loss, 1.0 by default.
         conf_loss_weight (float): Weight for confidence loss, 1.0 by default.
         match_type (str): The type of matching method during training, should
             be 'bipartite' or 'per_prediction', 'per_prediction' by defalut.
         mining_type (str): The hard example mining type, should be 'hard_example'
             or 'max_negative', now only support `max_negative`.
+        normalize (bool): Whether to normalize the SSD loss by the total number
+            of output locations, True by defalut.
+        sample_size (int): The max sample size of negative box, used only when
+            mining_type is 'hard_example'.
 
     Returns:
         Variable: The weighted sum of the localization loss and confidence loss,
@@ -493,9 +496,14 @@ def ssd_loss(location,
     # 5.1 Compute confidence loss.
     target_label = __reshape_to_2d(target_label)
     target_label = tensor.cast(x=target_label, dtype='int64')
+
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
     target_conf_weight = __reshape_to_2d(target_conf_weight)
     conf_loss = conf_loss * target_conf_weight
+
+    # the target_label and target_conf_weight do not have gradient.
+    target_label.stop_gradient = True
+    target_conf_weight.stop_gradient = True
 
     # 5.2 Compute regression loss.
     location = __reshape_to_2d(location)
@@ -505,8 +513,19 @@ def ssd_loss(location,
     target_loc_weight = __reshape_to_2d(target_loc_weight)
     loc_loss = loc_loss * target_loc_weight
 
+    # the target_bbox and target_loc_weight do not have gradient.
+    target_bbox.stop_gradient = True
+    target_loc_weight.stop_gradient = True
+
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
+    # reshape to [N, Np], N is the batch size and Np is the prior box number.
+    loss = ops.reshape(x=loss, shape=[-1, num_prior])
+    loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
+    if normalize:
+        normalizer = nn.reduce_sum(target_loc_weight)
+        loss = loss / normalizer
+
     return loss
 
 
@@ -576,12 +595,13 @@ def multi_box_head(inputs,
        name(str): Name of the prior box layer. Default: None.
 
     Returns:
-        mbox_loc(list): The predicted boxes' location of the inputs.
-             The layout of each element is [N, H, W, Priors]. Priors
-             is the number of predicted boxof each position of each input.
-        mbox_conf(list): The predicted boxes' confidence of the inputs.
-             The layout of each element is [N, H, W, Priors]. Priors
-             is the number of predicted box of each position of each input.
+        mbox_loc(Variable): The predicted boxes' location of the inputs.
+             The layout is [N, H*W*Priors, 4]. where Priors
+             is the number of predicted boxes each position of each input.
+        mbox_conf(Variable): The predicted boxes' confidence of the inputs.
+             The layout is [N, H*W*Priors, C]. where Priors
+             is the number of predicted boxes each position of each input
+             and C is the number of Classes.
         boxes(Variable): the output prior boxes of PriorBox.
              The layout is [num_priors, 4]. num_priors is the total
              box count of each position of inputs.
@@ -732,7 +752,7 @@ def multi_box_head(inputs,
         num_boxes = box.shape[2]
 
         # get box_loc
-        num_loc_output = num_boxes * num_classes * 4
+        num_loc_output = num_boxes * 4
         mbox_loc = nn.conv2d(
             input=input,
             num_filters=num_loc_output,
@@ -741,7 +761,12 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        mbox_locs.append(mbox_loc)
+        new_shape = [
+            mbox_loc.shape[0],
+            mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3] / 4, 4
+        ]
+        mbox_loc_flatten = ops.reshape(mbox_loc, shape=new_shape)
+        mbox_locs.append(mbox_loc_flatten)
 
         # get conf_loc
         num_conf_output = num_boxes * num_classes
@@ -752,11 +777,18 @@ def multi_box_head(inputs,
             padding=pad,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        mbox_confs.append(conf_loc)
+        new_shape = [
+            conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
+            conf_loc.shape[3] / num_classes, num_classes
+        ]
+        conf_loc_flatten = ops.reshape(conf_loc, shape=new_shape)
+        mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
         box = box_results[0]
         var = var_results[0]
+        mbox_locs_concat = mbox_locs[0]
+        mbox_confs_concat = mbox_confs[0]
     else:
         reshaped_boxes = []
         reshaped_vars = []
@@ -766,5 +798,7 @@ def multi_box_head(inputs,
 
         box = tensor.concat(reshaped_boxes)
         var = tensor.concat(reshaped_vars)
+        mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
+        mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
 
-    return mbox_locs, mbox_confs, box, var
+    return mbox_locs_concat, mbox_confs_concat, box, var
