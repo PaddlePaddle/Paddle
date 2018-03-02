@@ -773,7 +773,7 @@ class Block(object):
             stop_gradient = v.stop_gradient
         else:
             raise ValueError("unsupported var type: %s", type(v))
-
+        orig_var_type = v.type
         self.desc.rename_var(name, new_name)
         # NOTE: v is destroyed by C++ after calling rename_var.
         d = self.desc.find_var(new_name)
@@ -782,6 +782,7 @@ class Block(object):
                 self,
                 d.shape(),
                 d.dtype(),
+                type=orig_var_type,
                 name=new_name,
                 stop_gradient=stop_gradient,
                 trainable=trainable,
@@ -792,7 +793,7 @@ class Block(object):
         elif var_type == "Variable":
             var = Variable(
                 self,
-                type=v.type,
+                type=orig_var_type,
                 name=new_name,
                 error_clip=error_clip,
                 stop_gradient=stop_gradient)
