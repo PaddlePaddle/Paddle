@@ -14,14 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include <dlfcn.h>     // for dladdr
-#include <execinfo.h>  // for backtrace
+#include <dlfcn.h>  // for dladdr
 #include <iomanip>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 
+#include "paddle/fluid/platform/execinfo.h"  // for backtrace
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"

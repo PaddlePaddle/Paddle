@@ -183,8 +183,8 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
       for (size_t i = 0; i < dup_op.size(); ++i) {
         // rename each duplicate output to an alias
         auto op_offset = dup_op[i];
-        dup_outputs.push_back(name + "@RENAME@" + std::to_string(uid) + "@" +
-                              std::to_string(i));
+        dup_outputs.push_back(name + "@RENAME@" + string::to_string(uid) + "@" +
+                              string::to_string(i));
         net->ops_[op_offset]->Rename(name, dup_outputs.back());
       }
       // collect all the offset for each alias,
@@ -479,7 +479,7 @@ std::vector<std::unique_ptr<OpDesc>> MakeBlockBackward(
       for (size_t i = 0; i < dup_op.size(); ++i) {
         VLOG(10) << backward_descs[dup_op[i]]->Type() << " has " << out_name
                  << " duplicated";
-        std::string new_name = out_name + "@RENAME@" + std::to_string(i);
+        std::string new_name = out_name + "@RENAME@" + string::to_string(i);
         backward_descs[dup_op[i]]->RenameOutput(out_name, new_name);
         backward_descs[dup_op[i]]->RenameInput(out_name, next_g_name);
         sum_op_inputs.emplace_back(new_name);

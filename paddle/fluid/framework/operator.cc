@@ -232,7 +232,7 @@ void OperatorBase::GenerateTemporaryNames() {
       if (output_name == kTempVarName) {
         output_name += type_;
         output_name += "@";
-        output_name += std::to_string(gUniqId.fetch_add(1));
+        output_name += string::to_string(gUniqId.fetch_add(1));
       }
     }
   }
