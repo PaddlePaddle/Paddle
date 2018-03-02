@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(USE_EIGEN_FOR_BLAS)
+# TODO(liuyiqun): enable using eigen to do blas computations
+IF(USE_EIGEN_FOR_BLAS AND NOT WITH_FLUID)
     return()
-ENDIF(USE_EIGEN_FOR_BLAS)
+ENDIF()
 
 INCLUDE(cblas)
 

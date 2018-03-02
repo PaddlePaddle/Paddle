@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # TODO(liuyiqun): disable the dependency of warpctc for fluid mobile
-#IF(MOBILE_INFERENCE)
-#    return()
-#ENDIF()
+IF(MOBILE_INFERENCE AND NOT WITH_FLUID)
+    return()
+ENDIF()
 
 INCLUDE(ExternalProject)
 
