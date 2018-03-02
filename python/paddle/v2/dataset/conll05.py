@@ -41,6 +41,26 @@ EMB_MD5 = 'bf436eb0faa1f6f9103017f8be57cdb7'
 UNK_IDX = 0
 
 
+def load_label_dict(filename):
+    d = dict()
+    tag_dict = set()
+    with open(filename, 'r') as f:
+        for i, line in enumerate(f):
+            line = line.strip()
+            if line.startswith("B-"):
+                tag_dict.add(line[2:])
+            elif line.startswith("I-"):
+                tag_dict.add(line[2:])
+        index = 0
+        for tag in tag_dict:
+            d["B-" + tag] = index
+            index += 1
+            d["I-" + tag] = index
+            index += 1
+        d["O"] = index
+    return d
+
+
 def load_dict(filename):
     d = dict()
     with open(filename, 'r') as f:
@@ -188,7 +208,7 @@ def get_dict():
     verb_dict = load_dict(
         paddle.v2.dataset.common.download(VERBDICT_URL, 'conll05st',
                                           VERBDICT_MD5))
-    label_dict = load_dict(
+    label_dict = load_label_dict(
         paddle.v2.dataset.common.download(TRGDICT_URL, 'conll05st',
                                           TRGDICT_MD5))
     return word_dict, verb_dict, label_dict

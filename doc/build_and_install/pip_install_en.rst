@@ -1,4 +1,4 @@
-Install Using pip
+Install using pip
 ================================
 
 You can use current widely used Python package management
@@ -8,7 +8,7 @@ most of current Linux systems or MacOS.
 
 .. _pip_install:
 
-Install Using pip
+Install using pip
 ------------------------------
 
 Run the following command to install PaddlePaddle on the current

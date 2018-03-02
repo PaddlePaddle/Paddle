@@ -56,7 +56,7 @@ cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor)
+    shape_inference data_transform lod_tensor profiler)
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry init)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 
@@ -80,7 +80,7 @@ cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
 
 cc_library(executor SRCS executor.cc DEPS op_registry device_context scope
-framework_proto backward glog lod_rank_table profiler feed_fetch_method)
+framework_proto backward glog lod_rank_table feed_fetch_method)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
@@ -96,3 +96,6 @@ cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_contex
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
       
 cc_test(channel_test SRCS channel_test.cc)
+cc_test(tuple_test SRCS tuple_test.cc )
+cc_test(concurrency_test SRCS concurrency_test.cc DEPS go_op channel_close_op channel_create_op
+        channel_send_op channel_recv_op sum_op elementwise_add_op executor proto_desc)

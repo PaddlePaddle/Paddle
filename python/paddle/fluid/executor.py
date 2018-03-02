@@ -14,7 +14,7 @@
 
 import numpy as np
 import contextlib
-from framework import Program, default_main_program
+from framework import Program, default_main_program, Variable
 from . import core
 
 __all__ = [
@@ -281,6 +281,8 @@ class Executor(object):
 
         if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
+                assert isinstance(var, Variable) or isinstance(var, str), (
+                    "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
                 global_block.append_op(
                     type='fetch',
                     inputs={'X': [var]},

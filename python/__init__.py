@@ -11,27 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import unittest
-import paddle.fluid as fluid
-
-
-class TestCSPFramework(unittest.TestCase):
-    def daisy_chain(self):
-        n = 10000
-        leftmost = fluid.make_channel(dtype=int)
-        right = leftmost
-        left = leftmost
-        with fluid.While(steps=n):
-            right = fluid.make_channel(dtype=int)
-            with fluid.go():
-                fluid.send(left, 1 + fluid.recv(right))
-            left = right
-
-        with fluid.go():
-            fluid.send(right, 1)
-        fluid.Print(fluid.recv(leftmost))
-
-
-if __name__ == '__main__':
-    unittest.main()
