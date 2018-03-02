@@ -190,8 +190,7 @@ def train(learning_rate,
     train_reader_iter.next()
 
     for pass_id in range(num_passes):
-        #with profiler.profiler('GPU', 'total') as prof:
-        #with profiler.profiler(state="All"):
+        #with profiler.profiler('ALL', 'total', '/tmp/timeline') as prof:
         train_time = 0.0
         reader_time = 0.0
 
@@ -211,8 +210,7 @@ def train(learning_rate,
         print("\n\n\n")
         print("train_time=" + str(train_time))
         print("reader_time=" + str(reader_time))
-        break
-    #break
+        exit(0)
 
 
 if __name__ == '__main__':
