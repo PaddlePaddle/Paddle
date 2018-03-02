@@ -21,7 +21,9 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+#ifndef FLT_MAX
 #define FLT_MAX __FLT_MAX__
+#endif
 
 template <typename DeviceContext, typename T>
 class MaxSeqPoolFunctor {

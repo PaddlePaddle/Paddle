@@ -282,8 +282,9 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
                   ? rit->CudaElapsedMs(events[i][j])
                   : rit->CpuElapsedMs(events[i][j]);
 
-          std::string event_name =
-              "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+          std::string event_name = "thread" +
+                                   string::to_string(rit->thread_id()) + "::" +
+                                   rit->name();
           max_name_width = std::max(max_name_width, event_name.size());
 
           if (event_idx.find(event_name) == event_idx.end()) {

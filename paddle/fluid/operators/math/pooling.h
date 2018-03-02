@@ -22,9 +22,11 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+#ifndef FLT_MAX
 #define FLT_MAX \
   __FLT_MAX__  // It might need to be placed in another file, but I'm still
                // wondering where to put it.
+#endif
 
 /*
  * \brief Extracting simple operations from pooling.
