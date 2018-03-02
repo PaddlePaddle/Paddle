@@ -239,7 +239,7 @@ class Optimizer(object):
                     loss.block.var(arg) for arg in op.output("parallel_scopes")
                 ]
             if op.type == "get_places":
-                parallel_place = op.attrs['device_type']
+                parallel_place = op.attrs.get('device_type', None)
 
         if parallel_place is None:
             parallel_place = "AUTO"
