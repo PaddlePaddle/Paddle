@@ -20,16 +20,21 @@ namespace operators {
 namespace math {
 
 /*
- * the tensor's shape of input will be changed,
- * so the second parameter is not const.
  *
  */
 template <typename DeviceContext, typename T>
 class ConcatFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  std::vector<framework::Tensor>& input, const int axis,
+                  const std::vector<framework::Tensor>& input, const int axis,
                   framework::Tensor* output);
+};
+
+template <typename DeviceContext, typename T>
+class ConcatGradFunctor {
+ public:
+  void operator()(const DeviceContext& context, const framework::Tensor& input,
+                  const int axis, std::vector<framework::Tensor>& outputs);
 };
 
 }  // namespace math

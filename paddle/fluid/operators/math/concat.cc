@@ -25,16 +25,12 @@ template <typename T>
 class ConcatFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  std::vector<framework::Tensor>& input, const int axis,
+                  const std::vector<framework::Tensor>& input, const int axis,
                   framework::Tensor* output) {
     // assume the the max size of input is less than 8 and see the performance
     // save origin dim
     int num = input.size();
     std::vector<paddle::framework::DDim> origin_dim(num);
-    //    for (int j = 0; j < num; ++j) {
-    //      origin_dim[j] = input[j].dims();
-    //    }
-    auto out_dim = output->dims();
 
     // get the matrix size
     int rows = 1;
@@ -42,40 +38,72 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
     for (int i = 0; i < axis; ++i) {
       rows *= dim_0[i];
     }
-    int cols = input[0].numel() / rows;
     int out_rows = rows, out_cols = 0;
-    bool sameShape = true;
 
-    // reshape to matrix
+    // get input's cols
+    std::vector<int64_t> input_cols(input.size());
     for (int i = 0; i < num; ++i) {
       int t_cols = input[i].numel() / rows;
-      if (sameShape) {
-        if (t_cols != cols) sameShape = false;
-      }
       out_cols += t_cols;
-      input[i].Resize({rows, t_cols});
+      input_cols[i] = t_cols;
     }
-    output->Resize({out_rows, out_cols});
     auto& cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+
     // computation
-    for (int k = 0; k < rows; ++k) {
-      // offset k * out_cols
+    for (int k = 0; k < out_rows; ++k) {
       T* dst_ptr = output->data<T>() + k * out_cols;
       int col_idx = 0;
       for (int j = 0; j < num; ++j) {
-        int col_len = input[j].dims()[1];
+        int col_len = input_cols[j];
         const T* src_prt = input[j].data<T>() + k * col_len;
         memory::Copy(cpu_place, dst_ptr + col_idx, cpu_place, src_prt,
                      sizeof(T) * col_len);
         col_idx += col_len;
       }
     }
+  }
+};
 
-    // recover origin dim
-    //    for (int j = 0; j < num; ++j) {
-    //      input[j]->Resize(origin_dim[j]);
-    //    }
-    output->Resize(out_dim);
+template <typename T>
+class ConcatGradFunctor<platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::Tensor& input, const int axis,
+                  std::vector<framework::Tensor>& outputs) {
+    // assume the the max size of input is less than 8 and see the performance
+    // save origin dim
+    int num = outputs.size();
+    std::vector<paddle::framework::DDim> origin_dim(num);
+
+    // get the matrix size
+    int input_rows = 1;
+    auto dim_0 = outputs[0].dims();
+    for (int i = 0; i < axis; ++i) {
+      input_rows *= dim_0[i];
+    }
+    int input_cols = 0;
+
+    // get outputs' cols
+    std::vector<int64_t> output_cols(outputs.size());
+    for (int i = 0; i < num; ++i) {
+      int t_cols = outputs[i].numel() / input_rows;
+      input_cols += t_cols;
+      output_cols[i] = t_cols;
+    }
+    auto& cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+
+    // computation
+    for (int k = 0; k < input_rows; ++k) {
+      const T* src_ptr = input.data<T>() + k * input_cols;
+      int col_idx = 0;
+      for (int j = 0; j < num; ++j) {
+        int col_len = output_cols[j];
+        T* dst_ptr = outputs[j].data<T>() + k * col_len;
+        memory::Copy(cpu_place, dst_ptr, cpu_place, src_ptr + col_idx,
+                     sizeof(T) * col_len);
+        col_idx += col_len;
+      }
+    }
   }
 };
 
@@ -83,6 +111,11 @@ template class ConcatFunctor<platform::CPUDeviceContext, int>;
 template class ConcatFunctor<platform::CPUDeviceContext, int64_t>;
 template class ConcatFunctor<platform::CPUDeviceContext, float>;
 template class ConcatFunctor<platform::CPUDeviceContext, double>;
+
+template class ConcatGradFunctor<platform::CPUDeviceContext, int>;
+template class ConcatGradFunctor<platform::CPUDeviceContext, int64_t>;
+template class ConcatGradFunctor<platform::CPUDeviceContext, float>;
+template class ConcatGradFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators
