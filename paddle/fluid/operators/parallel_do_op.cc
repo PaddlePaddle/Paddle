@@ -147,13 +147,13 @@ class ParallelDoOp : public framework::OperatorBase {
       // make a copy of each GPU place, starting from the second
       // place
       for (size_t i = 1; i < sub_scopes.size(); ++i) {
-	auto &place = places[i];
-	auto *sub_scope = sub_scopes[i];
-	auto exists = sub_scope->FindVarLocally(param) != nullptr;
-	if (!exists && platform::is_gpu_place(place)) {
+        auto &place = places[i];
+        auto *sub_scope = sub_scopes[i];
+        auto exists = sub_scope->FindVarLocally(param) != nullptr;
+        if (!exists && platform::is_gpu_place(place)) {
           auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
           framework::TensorCopy(src, place, dst);
-	}
+        }
       }
     }
     WaitOnPlaces(places);
