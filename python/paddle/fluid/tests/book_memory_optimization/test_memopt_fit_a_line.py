@@ -31,7 +31,7 @@ use_nccl = False
 place = fluid.CPUPlace()
 if fluid.core.is_compiled_with_cuda():
     device_type = 'CUDA'
-    use_nccl = False
+    use_nccl = True
     place = fluid.CUDAPlace(0)
 
 places = fluid.layers.get_places(device_count=0, device_type=device_type)
