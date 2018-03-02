@@ -15,7 +15,6 @@
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/conv_op.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +40,7 @@ class ConvOpMkldnnKernel : public paddle::framework::OpKernel<T> {
                    "It must use CPUPlace.");
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    auto mkldnn_engine = dev_ctx.GetEngine();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
@@ -57,6 +56,7 @@ class ConvOpMkldnnKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
 
+    // TODO(pzelazko-intel) enable group convolution
     PADDLE_ENFORCE(groups == 1, "MKLDNN doesn't support group convolution yet");
     PADDLE_ENFORCE(
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
@@ -87,6 +87,7 @@ class ConvOpMkldnnKernel : public paddle::framework::OpKernel<T> {
     memory::dims conv_strides = {strides[0], strides[1]};
     memory::dims conv_padding = {paddings[0], paddings[1]};
 
+    // TODO(pzelazko-intel): support more formats
     auto conv_src_md = memory::desc({conv_src_tz}, memory::data_type::f32,
                                     memory::format::nchw);
     auto conv_weights_md = memory::desc(
@@ -135,7 +136,7 @@ class ConvGradOpMkldnnKernel : public paddle::framework::OpKernel<T> {
                    "It must use CPUPlace.");
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    auto mkldnn_engine = dev_ctx.GetEngine();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const Tensor* input = ctx.Input<Tensor>("Input");
     const Tensor* filter = ctx.Input<Tensor>("Filter");
@@ -184,6 +185,7 @@ class ConvGradOpMkldnnKernel : public paddle::framework::OpKernel<T> {
     memory::dims conv_strides = {strides[0], strides[1]};
     memory::dims conv_padding = {paddings[0], paddings[1]};
 
+    // TODO(pzelazko-intel): support more formats
     auto conv_src_md = memory::desc({conv_src_tz}, memory::data_type::f32,
                                     memory::format::nchw);
     auto conv_diff_src_md = memory::desc({conv_src_tz}, memory::data_type::f32,
