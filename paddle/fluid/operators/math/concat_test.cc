@@ -251,6 +251,80 @@ void testConcat() {
       }
     }
   }
+
+  /**
+    * cast4:
+    *    inputs:
+    *        axis = 1
+    *        t_a.shape: [2, 3, 4]
+    *        t_b.shape: [2, 3, 4]
+    *    output:
+    *        out.shape: [2, 6, 4]
+    */
+  dim_a = make_ddim({2, 3, 4});
+  dim_b = make_ddim({2, 3, 4});
+  dim_out = make_ddim({2, 6, 4});
+
+  input_a.Resize(dim_a);
+  input_b.Resize(dim_b);
+  out.Resize(dim_out);
+  if (paddle::platform::is_gpu_place(Place())) {
+    input_a_cpu.Resize(dim_a);
+    input_b_cpu.Resize(dim_b);
+    out_cpu.Resize(dim_out);
+  }
+
+  if (paddle::platform::is_gpu_place(Place())) {
+    a_ptr = input_a_cpu.data<int>();
+    b_ptr = input_b_cpu.data<int>();
+  } else {
+    a_ptr = input_a.data<int>();
+    b_ptr = input_b.data<int>();
+  }
+
+  for (int i = 0; i < 2 * 3 * 4; ++i) {
+    a_ptr[i] = i;
+  }
+  for (int i = 0; i < 2 * 3 * 4; ++i) {
+    b_ptr[i] = i;
+  }
+
+  if (paddle::platform::is_gpu_place(Place())) {
+    TensorCopy(input_a_cpu, Place(), *context, &input_a);
+    TensorCopy(input_b_cpu, Place(), *context, &input_b);
+  }
+
+  input.clear();
+  input.push_back(input_a);
+  input.push_back(input_b);
+
+  concat_functor(*context, input, 1, &out);
+
+  // check the dim of input_a, input_b
+  PADDLE_ENFORCE_EQ(input_a.dims(), dim_a);
+  PADDLE_ENFORCE_EQ(input_b.dims(), dim_b);
+
+  if (paddle::platform::is_gpu_place(Place())) {
+    TensorCopy(out, CPUPlace(), *context, &out_cpu);
+    out_ptr = out_cpu.data<int>();
+  } else {
+    out_ptr = out.data<int>();
+  }
+
+  // check the data
+  cols = 12;
+  idx_a = 0, idx_b = 0;
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 24; ++j) {
+      if (j >= cols) {
+        PADDLE_ENFORCE_EQ(out_ptr[i * 24 + j], b_ptr[idx_b]);
+        ++idx_b;
+      } else {
+        PADDLE_ENFORCE_EQ(out_ptr[i * 24 + j], a_ptr[idx_a]);
+        ++idx_a;
+      }
+    }
+  }
 }
 
 TEST(math, concat) {
