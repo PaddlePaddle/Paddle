@@ -91,12 +91,9 @@ class ConvEncoder:
         x = self.embed_tokens(src_tokens) + self.embed_positions(src_positions)
         x = pd.dropout(x, dropout_prob=self.dropout, is_test=is_test)
         input_embedding = x
-        log("input_embedding", get_dims(input_embedding))
 
         # project to size of convolution
-        log('before fc1:', get_tensor(x).dims)
         x = self.fc1(x)
-        log('after fc1:', get_tensor(x).dims)
 
         # # B x T x C -> T x B x C
         # x = Op.transpose(x, 0, 1)
@@ -104,27 +101,18 @@ class ConvEncoder:
         # temporal convolutions
         for proj, conv in zip(self.projections, self.convolutions):
             residual = x if proj is None else proj(x)
-            log('residual.dims', get_tensor(x).dims)
             x = Op.dropout(x, self.dropout)
-            log(">conv", get_tensor(x).dims)
             x = conv(x)
-            log("<conv", get_tensor(x).dims)
-            log(">glu", get_tensor(x).dims)
             x = fluid.nets.glu(x, dim=2)
-            log("<glu", get_tensor(x).dims)
             x = (x + residual) * math.sqrt(0.5)
 
         # # T x B x C -> B x T x C
         # x = Op.transpose(x, 1, 2)
 
-        log(">fc2", get_dims(x))
         # project back to size of embedding
         x = self.fc2(x)
-        log("<fc2", get_dims(x))
 
         y = (x + input_embedding) * math.sqrt(0.5)
-        log("encoder.x", get_dims(x))
-        log("encoder.y", get_dims(y))
 
         return x, y
 
@@ -185,19 +173,16 @@ class ConvDecoder:
         only works in train mode
         '''
         encoder_a, encoder_b = self._split_encoder_out(encoder_out)
-        log('encoder_a:', get_dims(encoder_a))
 
         x = self.embed_tokens(prev_output_tokens)
         x += self.embed_positions(prev_positions)
         x = Op.dropout(x, self.dropout)
         target_embedding = x
-        log('target_embedding', get_dims(target_embedding))
 
         # project to size of convolution
         x = self.fc1(x)
 
         x = self._transpose_if_training(x)
-        log('> _transpose_if_training', get_dims(x))
 
         # temporal covolutoins
         avg_attn_scores = None
@@ -206,17 +191,11 @@ class ConvDecoder:
                                          self.attention):
             residual = x if proj is None else proj(x)
             x = Op.dropout(x, self.dropout)
-            log('>conv', get_dims(x))
             x = conv(x)
-            log('<conv', get_dims(x))
             x = fluid.nets.glu(x, dim=2)
-            log('>glu', get_dims(x))
 
-            log('to apply attention')
             if attention is not None:
-                log('>_transpose_if_training', get_dims(x))
                 x = self._transpose_if_training(x)
-                log('<_transpose_if_training', get_dims(x))
 
                 x, attn_scores = attention(x, target_embedding,
                                            (encoder_a, encoder_b))
@@ -230,16 +209,13 @@ class ConvDecoder:
 
             x = (x + residual) * math.sqrt(0.5)
 
-        log('after attention', get_dims(x))
         # T x B x C -> B x T x C
         x = self._transpose_if_training(x)
 
         # project back to size of vocabulary
         x = self.fc2(x)
-        log('<fc2', get_dims(x))
         x = Op.dropout(x, self.dropout)
         x = self.fc3(x)
-        log('<fc3', get_dims(x))
         return x, avg_attn_scores
 
     def _transpose_if_training(self, x):
@@ -268,43 +244,30 @@ class AttentionLayer:
         residual = x
         encoder_a, encoder_b = encoder_out
         # here just a trick
-        log('encoder_a', get_dims(encoder_a))
-        log('encoder_b', get_dims(encoder_b))
         encoder_a = Op.transpose(encoder_a, 1, 2)
         encoder_b = Op.transpose(encoder_b, 1, 2)
 
 
         # di = fc(hi) + gi(decoder embedding)
         x = self.in_projection(x)
-        log('<in_projection', get_dims(x))
-        log('target_embedding', get_dims(target_embedding))
         x = (x + target_embedding) * math.sqrt(0.5)
-        log('>bmm', get_dims(x))
         x = pd.matmul(x, encoder_a, transpose_y=True)
-        log('<bmm', get_dims(x))
 
         sz = get_tensor(x).dims
-        log('sz', sz)
         x = pd.softmax(Op.reshape(x, (sz[0] * sz[1], sz[2])), dim=1)
-        log('<softmax', get_dims(x))
         x = Op.reshape(x, sz)
         # x = x.view(sz)
         attn_scores = x
 
         # x = Op.reshape(x, [1] + list(get_dims(x)))
-        log('x', get_dims(x))
-        log('encoder_b', get_dims(encoder_b))
         x = pd.matmul(x, encoder_b, transpose_y=True)
         # x = pd.matmul(encoder_b, x, transpose_y=True)
-        log('<bmm', get_dims(x))
 
         # scale attention output
         s = get_tensor(encoder_b).dims[1]
         x = x * (s * math.sqrt(1. / s))
 
         x = (self.out_projection(x) + residual) * math.sqrt(0.5)
-        log('attention.out.x', get_dims(x))
-        log('attn_scores', get_dims(attn_scores))
         return x, attn_scores
 
 
@@ -452,13 +415,11 @@ class Op:
     def transpose(x, *offsets):
         ndims = len(list(get_tensor(x).dims))
         dims = [i for i in range(ndims)]
-        # log("before transpose", dims)
         assert len(dims) >= 2
         assert len(offsets) == 2
         l = offsets[0]
         r = offsets[1]
         dims[l], dims[r] = dims[r], dims[l]
-        # log("after transpose", dims)
         return pd.transpose(x, dims)
 
     @staticmethod
@@ -479,17 +440,14 @@ class Embedding:
         # need some reshape here
         # x should be a Tensor, not LoDTensor or others
         dims = list(get_tensor(x).dims)
-        logging.warning("[Embedding] x.dims: %s" % str(dims))
         # pd.embedding can only accept 2D tensor, need a reshape
         if len(dims) > 2:
             dims1 = [np.prod(dims), 1]
-            logging.warning("[Embedding] reshape to dims: %s" % str(dims1))
             x = Op.reshape(x, dims1)
         x = self.atom(x)
         # restore to original shape
         if len(dims) > 2:
             dims[-1] = -1
-            logging.warning("[Embedding] output dims: %s" % str(dims))
             x = Op.reshape(x, dims)
         return x
 
@@ -547,7 +505,6 @@ class Conv1D:
 
     def __call__(self, x):
         dims = get_dims(x)
-        log('>Conv1D', dims)
         # format: batch_size, seq, word_vec
         # NOTE here is different from fairseq
         assert len(dims) == 3, "format shoud be BTC, get shape: %s" % str(dims)
@@ -557,9 +514,7 @@ class Conv1D:
         x = Op.transpose(x, 1, 2)
         x = Op.reshape(x, (B, C, 1, T))
 
-        # log("> conv2d", get_dims(x))
         x = self.atom(x)
-        # log("< conv2d", get_dims(x))
 
         # here something bug, conv2d will change the original width and height by padding.
         # just use a fc to map to the original size, need to change latter
