@@ -190,7 +190,7 @@ def train(learning_rate,
     train_reader_iter.next()
 
     for pass_id in range(num_passes):
-        #with profiler.profiler('ALL', 'total', '/tmp/timeline') as prof:
+        #with profiler.profiler('All', 'total', '/tmp/timeline') as prof:
         train_time = 0.0
         reader_time = 0.0
 
