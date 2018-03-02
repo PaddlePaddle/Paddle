@@ -176,6 +176,7 @@ function(merge_static_libs TARGET_NAME)
   endif()
 endfunction(merge_static_libs)
 
+set(ENV{FLUID_MODULES}) # used for building fluid static library
 function(cc_library TARGET_NAME)
   set(options STATIC static SHARED shared)
   set(oneValueArgs "")
@@ -186,7 +187,13 @@ function(cc_library TARGET_NAME)
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
     else()
       add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
+      get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
+      string(FIND "${__target_path}" "fluid" pos)
+      if(pos GREATER 1)
+        set(ENV{FLUID_MODULES} "$ENV{FLUID_MODULES};${TARGET_NAME}")
+      endif()
     endif()
+
     if(cc_library_DEPS)
       # Don't need link libwarpctc.so
       if("${cc_library_DEPS};" MATCHES "warpctc;")

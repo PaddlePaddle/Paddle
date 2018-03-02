@@ -45,7 +45,7 @@ copy(glog_lib
 IF(NOT PROTOBUF_FOUND)
     set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/protobuf")
     copy(protobuf_lib
-      SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LITE_LIBRARY}
+      SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
       DSTS ${dst_dir} ${dst_dir}/lib
     )
 ENDIF(NOT PROTOBUF_FOUND)
@@ -73,7 +73,7 @@ copy(memory_lib
 
 set(module "inference")
 copy(inference_lib DEPENDS paddle_fluid_shared
-  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/inference/libpaddle_fluid.*
+  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}
 )
 
