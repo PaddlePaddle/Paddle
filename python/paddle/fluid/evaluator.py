@@ -18,11 +18,13 @@ import layers
 from framework import Program, Variable, program_guard
 import unique_name
 from layer_helper import LayerHelper
+from initializer import Constant
 
 __all__ = [
     'Accuracy',
     'ChunkEvaluator',
     'EditDistance',
+    'DetectionMAP',
 ]
 
 
@@ -285,3 +287,108 @@ class EditDistance(Evaluator):
             result = executor.run(
                 eval_program, fetch_list=[avg_distance, avg_instance_error])
         return np.array(result[0]), np.array(result[1])
+
+
+class DetectionMAP(Evaluator):
+    """
+    Calculate the detection mean average precision (mAP).
+
+    TODO (Dang Qingqing): update the following doc.
+    The general steps are as follows:
+    1. calculate the true positive and false positive according to the input
+        of detection and labels.
+    2. calculate mAP value, support two methods: '11 point' and 'integral'.
+
+    Please get more information from the following articles:
+      https://sanchom.wordpress.com/tag/average-precision/
+      https://arxiv.org/abs/1512.02325
+
+    Args:
+        input (Variable): the detection results, which is a LoDTensor with shape
+            [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
+        label (Variable): the ground truth label, which is a LoDTensor with shape
+            [N, 6]. The layout is [label, is_difficult, xmin, ymin, xmax, ymax].
+        overlap_threshold (float): the threshold for deciding true/false
+            positive, 0.5 by defalut.
+        evaluate_difficult (bool): whether to consider difficult ground truth
+            for evaluation, True by defalut.
+        ap_version (string): the average precision calculation ways, it must be
+            'integral' or '11point'. Please check
+            https://sanchom.wordpress.com/tag/average-precision/ for details.
+            - 11point: the 11-point interpolated average precision.
+            - integral: the natural integral of the precision-recall curve.
+
+    Example:
+
+        exe = fluid.executor(place)
+        map_evaluator = fluid.Evaluator.DetectionMAP(input, label)
+        cur_map, accum_map = map_evaluator.get_map_var()
+        for epoch in PASS_NUM:
+            map_evaluator.reset(exe)
+            for data in batches:
+                loss, cur_map_v, accum_map_v = exe.run(fetch_list=[cost, cur_map, accum_map])
+
+        In the above example:
+
+        'cur_map_v' is the mAP of current mini-batch.
+        'accum_map_v' is the accumulative mAP of one pass.
+    """
+
+    def __init__(self,
+                 input,
+                 label,
+                 overlap_threshold=0.5,
+                 evaluate_difficult=True,
+                 ap_version='integral'):
+        super(DetectionMAP, self).__init__("map_eval")
+
+        # calculate mean average precision (mAP) of current mini-batch
+        map = layers.detection_map(
+            input,
+            label,
+            overlap_threshold=overlap_threshold,
+            evaluate_difficult=evaluate_difficult,
+            ap_version=ap_version)
+
+        self.create_state(dtype='int32', shape=None, suffix='accum_pos_count')
+        self.create_state(dtype='float32', shape=None, suffix='accum_true_pos')
+        self.create_state(dtype='float32', shape=None, suffix='accum_false_pos')
+
+        self.has_state = None
+        var = self.helper.create_variable(
+            persistable=True, dtype='int32', shape=[1])
+        self.helper.set_variable_initializer(
+            var, initializer=Constant(value=int(0)))
+        self.has_state = var
+
+        # calculate accumulative mAP
+        accum_map = layers.detection_map(
+            input,
+            label,
+            overlap_threshold=overlap_threshold,
+            evaluate_difficult=evaluate_difficult,
+            has_states=self.has_state,
+            input_states=self.states,
+            out_states=self.states,
+            ap_version=ap_version)
+
+        layers.fill_constant(
+            shape=self.has_state.shape,
+            value=1,
+            dtype=self.has_state.dtype,
+            out=self.has_state)
+
+        self.cur_map = map
+        self.accum_map = accum_map
+
+    def get_map_var(self):
+        return self.cur_map, self.accum_map
+
+    def reset(self, executor, reset_program=None):
+        if reset_program is None:
+            reset_program = Program()
+        with program_guard(main_program=reset_program):
+            var = _clone_var_(reset_program.current_block(), self.has_state)
+            layers.fill_constant(
+                shape=var.shape, value=0, dtype=var.dtype, out=var)
+        executor.run(reset_program)
