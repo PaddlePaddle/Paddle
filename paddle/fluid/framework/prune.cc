@@ -186,16 +186,13 @@ void Prune(const proto::ProgramDesc& input, proto::ProgramDesc* output) {
   prune_impl(input, output, 0, -1, dependent_vars);
 }
 
-void inference_optimize_impl(proto::ProgramDesc* output, int block_id) {
-  auto* op_field = output->mutable_blocks(block_id)->mutable_ops();
+void inference_optimize_impl(proto::ProgramDesc* input, int block_id) {
+  auto* op_field = input->mutable_blocks(block_id)->mutable_ops();
   for (auto& op_desc : *op_field) {
-    if (op_desc.type() == kDropOutOpType ||
-        op_desc.type() == kBatchNormOpType) {
-      for (auto& attr : *op_desc.mutable_attrs()) {
-        if (attr.name() == "is_test") {
-          attr.set_b(true);
-          break;
-        }
+    for (auto& attr : *op_desc.mutable_attrs()) {
+      if (attr.name() == "is_test") {
+        attr.set_b(true);
+        break;
       }
     }
   }
