@@ -124,7 +124,7 @@ opts = optimizer.minimize(avg_cost)
 
 accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
 
-fluid.memory_optimize(fluid.default_main_program(), level=1)
+fluid.memory_optimize(fluid.default_main_program(), level=0)
 
 BATCH_SIZE = 16
 PASS_NUM = 1
