@@ -54,12 +54,17 @@ def detection_output(loc,
                      score_threshold=0.01,
                      nms_eta=1.0):
     """
-    **Detection Output Layer for SSD.**
+    **Detection Output Layer for Single Shot Multibox Detector (SSD).**
 
-    This operation decode the predicted bboxes according to the prior bboxes
-    at first, then applying multi-class non maximum suppression (NMS) on the
-    decoded boxes and scores to get the detected bounding boxed. The output
-    layout is described as follows.
+    This operation is to get the detection results by performing following
+    two steps:
+    
+    1. Decode input bounding box predictions according to the prior boxes.
+    2. Get the final detection results by applying multi-class non maximum
+       suppression (NMS).
+
+    Please note, this operation doesn't clip the final output bounding boxes
+    to the image window.
 
     Args:
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
@@ -92,14 +97,15 @@ def detection_output(loc,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        Variable: The detection outputs which is a LoDTensor with shape [No, 6].
-            Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax],
-            No is the total number of detections in this mini-batch. For each
-            instance, the offsets in first dimension are called LoD, the number
-            offset is N + 1, N is the batch size. If LoD[i + 1] - LoD[i] == 0,
-            means there is no detected bboxes for for i-th image. If there is
-            no detected boxes for all images, all the elements in LoD are 0,
-            and the Out only contains one value which is -1.
+        Variable: The detection outputs is a LoDTensor with shape [No, 6].
+            Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
+            `No` is the total number of detections in this mini-batch. For each
+            instance, the offsets in first dimension are called LoD, the offset
+            number is N + 1, N is the batch size. The i-th image has
+            `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
+            has no detected results. If all images have not detected results,
+            all the elements in LoD are 0, and output tensor only contains one
+            value, which is -1.
 
     Examples:
         .. code-block:: python
