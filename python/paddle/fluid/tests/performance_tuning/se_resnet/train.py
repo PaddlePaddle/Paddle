@@ -1,3 +1,17 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import paddle.v2 as paddle
 import paddle.fluid as fluid
@@ -14,13 +28,14 @@ cards_num = len(cards.split(","))
 total_batch_num = 40
 batch_num = total_batch_num / cards_num
 
-per_gpu_batch_size=6
-batch_size=per_gpu_batch_size * cards_num
+per_gpu_batch_size = 6
+batch_size = per_gpu_batch_size * cards_num
 
 print("cards_num=" + str(cards_num))
 print("per_gpu_batch_size=" + str(per_gpu_batch_size))
 print("batch_size=" + str(batch_size))
 print("batch_num=" + str(batch_num))
+
 
 def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
                   act=None):
@@ -175,21 +190,20 @@ def train(learning_rate,
     train_reader_iter.next()
 
     for pass_id in range(num_passes):
-      #with profiler.profiler('GPU', 'total') as prof:
-      #with profiler.profiler(state="All"):
+        #with profiler.profiler('GPU', 'total') as prof:
+        #with profiler.profiler(state="All"):
         train_time = 0.0
         reader_time = 0.0
 
         data = train_reader_iter.next()
+        feed_dict = feeder.feed(data)
         for batch_id in range(batch_num):
             reader_start = time.time()
             reader_stop = time.time()
             reader_time += reader_stop - reader_start
 
             train_start = time.time()
-            exe.run(fluid.default_main_program(),
-                           feed=feeder.feed(data),
-                           fetch_list=[])
+            exe.run(fluid.default_main_program(), feed=feed_dict, fetch_list=[])
             train_stop = time.time()
             train_time += train_stop - train_start
             print("Pass {0}, batch {1}".format(pass_id, batch_id))
@@ -198,7 +212,7 @@ def train(learning_rate,
         print("train_time=" + str(train_time))
         print("reader_time=" + str(reader_time))
         break
-      #break
+    #break
 
 
 if __name__ == '__main__':
