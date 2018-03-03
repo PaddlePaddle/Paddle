@@ -238,7 +238,8 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 }
 
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
-                       const platform::DeviceContext &dev_ctx) {
+                       const platform::DeviceContext &dev_ctx,
+                       const std::string var_name) {
   {  // the 1st field, uint32_t version for LoDTensor
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char *>(&version), sizeof(version));
@@ -261,7 +262,7 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
     }
   }
   // the 3st field, Tensor
-  TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx);
+  TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx, var_name);
 }
 
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor,

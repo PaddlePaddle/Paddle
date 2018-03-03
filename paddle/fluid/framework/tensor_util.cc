@@ -13,6 +13,11 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/tensor_util.h"
+#include <sys/time.h>
+#include <chrono>
+#include <iostream>
+#include <mutex>
+#include <thread>
 
 namespace paddle {
 namespace framework {
@@ -186,7 +191,8 @@ bool TensorContainsInf(const framework::Tensor& tensor) {
 }
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
-                    const platform::DeviceContext& dev_ctx) {
+                    const platform::DeviceContext& dev_ctx,
+                    const std::string& var_name) {
   // TODO(typhoonzero): serialize to ostream
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
@@ -213,6 +219,8 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
                    "Index overflow when writing tensor");
     if (platform::is_gpu_place(tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
+      struct timeval t1, t0;
+      gettimeofday(&t0, 0);
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
       auto& gpu_dev_ctx =
@@ -230,6 +238,21 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
         data += size_to_write;
         size -= size_to_write;
       }
+      gettimeofday(&t1, 0);
+      double dif = double((t1.tv_sec - t0.tv_sec) * 1000 +
+                          (t1.tv_usec - t0.tv_usec) / 1000);
+
+      std::thread::id this_id = std::this_thread::get_id();
+      // printf("TensorToStream copy from GPU, time is %.2f ms\n", dif);
+      char tmp[256];
+      snprintf(tmp, sizeof(tmp) - 1,
+               "var_name:%s copy and write time is %.2f ms", var_name.c_str(),
+               dif);
+
+      std::stringstream ss;
+      ss << tmp << ", dims: " << tensor.dims() << ", thread_id:" << this_id;
+
+      std::cout << ss.str() << '\n';
 #else
       PADDLE_THROW("Unexpected branch");
 #endif

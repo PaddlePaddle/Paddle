@@ -21,6 +21,10 @@ limitations under the License. */
 
 #include <future>
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+
+#include <sys/time.h>
+#include "paddle/fluid/framework/threadpool.h"
 
 namespace paddle {
 namespace operators {
@@ -41,6 +45,39 @@ static bool IsVariableInitialized(const framework::Scope& scope,
   return false;
 }
 
+static void PrintVarDims(const framework::Scope& scope,
+                         const std::string& varname) {
+  auto* var = scope.FindVar(varname);
+  PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
+                          varname);
+  if (var->IsType<framework::LoDTensor>()) {
+    VLOG(3) << "sending LoDTensor  varname: " << varname
+            << ", dims: " << var->Get<framework::LoDTensor>().dims();
+  } else if (var->IsType<framework::SelectedRows>()) {
+    VLOG(3) << "sending SelectedRows varname: " << varname << ", dims: "
+            << var->Get<framework::SelectedRows>().GetCompleteDims();
+  }
+}
+
+void TestOne(const std::string& ep, const platform::DeviceContext& ctx,
+             const framework::Scope& scope, const std::string& var_name) {
+  const platform::DeviceContext* p_ctx = &ctx;
+  const std::string ep_val = ep;
+  const std::string var_name_val = var_name;
+  const framework::Scope* p_scope = &scope;
+  // const auto ch = GetChannel(ep_val);
+  auto* var = p_scope->FindVar(var_name_val);
+  sendrecv::VariableMessage req;
+
+  struct timeval t1, t0;
+  gettimeofday(&t0, 0);
+  paddle::operators::detail::SerializeToMessage(var_name_val, var, *p_ctx, req);
+  gettimeofday(&t1, 0);
+  double dif =
+      double((t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_usec - t0.tv_usec) / 1000);
+  printf("Test in single %s time is %.2f ms.\n", var_name.c_str(), dif);
+}
+
 class SendOp : public framework::OperatorBase {
  public:
   SendOp(const std::string& type, const framework::VariableNameMap& inputs,
@@ -50,6 +87,9 @@ class SendOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
+    struct timeval t1, t0;
+    gettimeofday(&t0, 0);
+
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
@@ -66,22 +106,45 @@ class SendOp : public framework::OperatorBase {
     auto* client_var = scope.FindVar(client_var_name);
     detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
 
+    struct timeval t2;
+    gettimeofday(&t1, 0);
+    for (size_t i = 0; i < ins.size(); i++) {
+      TestOne(epmap[i], ctx, scope, ins[i]);
+    }
+    gettimeofday(&t2, 0);
+    double dif = double((t2.tv_sec - t1.tv_sec) * 1000 +
+                        (t2.tv_usec - t1.tv_usec) / 1000);
+    printf("TestOne is %.2f ms.\n", dif);
+
     for (size_t i = 0; i < ins.size(); i++) {
       if (IsVariableInitialized(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-        rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
+        rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i],
+                                      600 * 1000, );
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
+
+      // PrintVarDims(scope, ins[i]);
     }
     PADDLE_ENFORCE(rpc_client->Wait());
+    gettimeofday(&t1, 0);
+    dif = double((t1.tv_sec - t0.tv_sec) * 1000 +
+                 (t1.tv_usec - t0.tv_usec) / 1000);
+    printf("Sending time is %.2f ms.\n", dif);
 
+    gettimeofday(&t0, 0);
     for (auto& ep : endpoints) {
       VLOG(3) << "batch barrier, ep: " << ep;
       rpc_client->AsyncSendBatchBarrier(ep);
     }
     PADDLE_ENFORCE(rpc_client->Wait());
+    gettimeofday(&t1, 0);
+    dif = double((t1.tv_sec - t0.tv_sec) * 1000 +
+                 (t1.tv_usec - t0.tv_usec) / 1000);
+    printf("barrier time is %.2f ms.\n", dif);
 
+    gettimeofday(&t0, 0);
     if (outs.size() > 0) {
       for (size_t i = 0; i < outs.size(); i++) {
         VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
@@ -89,6 +152,10 @@ class SendOp : public framework::OperatorBase {
       }
       PADDLE_ENFORCE(rpc_client->Wait());
     }
+    gettimeofday(&t1, 0);
+    dif = double((t1.tv_sec - t0.tv_sec) * 1000 +
+                 (t1.tv_usec - t0.tv_usec) / 1000);
+    printf("getting time is %.2f ms.\n", dif);
   }
 };
 

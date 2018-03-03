@@ -205,7 +205,8 @@ void AppendLoD(LoD* lod, const LoD& lod_length);
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
 void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
-                       const platform::DeviceContext& dev_ctx);
+                       const platform::DeviceContext& dev_ctx,
+                       const std::string var_name = "non");
 void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx);
 

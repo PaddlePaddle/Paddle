@@ -43,7 +43,8 @@ bool TensorContainsNAN(const framework::Tensor& tensor);
 bool TensorContainsInf(const framework::Tensor& tensor);
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
-                    const platform::DeviceContext& dev_ctx);
+                    const platform::DeviceContext& dev_ctx,
+                    const std::string& var_name = "non");
 void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx);
 
