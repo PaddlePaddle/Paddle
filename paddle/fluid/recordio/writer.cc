@@ -29,12 +29,13 @@ Writer::Writer(std::ostream& os, int maxChunkSize, int compressor)
   chunk_.reset(new Chunk);
 }
 
-size_t Writer::Write(const std::string& buf) {}
+size_t Writer::Write(const std::string& buf) { return Write(std::string(buf)); }
 
 size_t Writer::Write(const char* buf, size_t length) {
-  // std::string s(buf, length);
-  Write(std::string(buf, length));
+  return Write(std::string(buf, length));
 }
+
+size_t Writer::Write(std::string&& buf) {}
 
 void Writer::Close() {
   stream_.flush();
