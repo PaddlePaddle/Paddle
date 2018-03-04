@@ -238,8 +238,7 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 }
 
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
-                       const platform::DeviceContext &dev_ctx,
-                       const std::string var_name) {
+                       const platform::DeviceContext &dev_ctx) {
   {  // the 1st field, uint32_t version for LoDTensor
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char *>(&version), sizeof(version));
@@ -262,7 +261,35 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
     }
   }
   // the 3st field, Tensor
-  TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx, var_name);
+  TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx);
+}
+
+void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
+                       const platform::DeviceContext &dev_ctx,
+                       const std::string var_name, char *buf) {
+  {  // the 1st field, uint32_t version for LoDTensor
+    constexpr uint32_t version = 0;
+    os.write(reinterpret_cast<const char *>(&version), sizeof(version));
+  }
+  {
+    // the 2st field, LoD information
+    // uint64_t lod_level
+    // uint64_t lod_level_1 size in byte.
+    // int*     lod_level_1 data
+    // ...
+    auto lod = tensor.lod();
+    uint64_t size = lod.size();
+    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+
+    for (auto &each : lod) {
+      size = each.size() * sizeof(framework::LoD::value_type::value_type);
+      os.write(reinterpret_cast<const char *>(&size), sizeof(size));
+      os.write(reinterpret_cast<const char *>(each.data()),
+               static_cast<std::streamsize>(size));
+    }
+  }
+  // the 3st field, Tensor
+  TensorToStream(os, static_cast<Tensor>(tensor), dev_ctx, var_name, buf);
 }
 
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor,

@@ -191,8 +191,63 @@ bool TensorContainsInf(const framework::Tensor& tensor) {
 }
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
+                    const platform::DeviceContext& dev_ctx) {
+  // TODO(typhoonzero): serialize to ostream
+  {  // the 1st field, uint32_t version
+    constexpr uint32_t version = 0;
+    os.write(reinterpret_cast<const char*>(&version), sizeof(version));
+  }
+  {  // the 2nd field, tensor description
+     // int32_t  size
+     // void*    protobuf message
+    proto::VarType::TensorDesc desc;
+    desc.set_data_type(framework::ToDataType(tensor.type()));
+    auto dims = framework::vectorize(tensor.dims());
+    auto* pb_dims = desc.mutable_dims();
+    pb_dims->Resize(static_cast<int>(dims.size()), 0);
+    std::copy(dims.begin(), dims.end(), pb_dims->begin());
+    int32_t size = desc.ByteSize();
+    os.write(reinterpret_cast<const char*>(&size), sizeof(size));
+    auto out = desc.SerializeAsString();
+    os.write(out.data(), size);
+  }
+  {  // the 3rd field, tensor data
+    uint64_t size = tensor.memory_size();
+    auto* data_ptr = tensor.data<void>();
+    PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
+                   "Index overflow when writing tensor");
+    if (platform::is_gpu_place(tensor.place())) {
+#ifdef PADDLE_WITH_CUDA
+      constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
+      std::unique_ptr<char[]> buf(new char[kBufSize]);
+      auto& gpu_dev_ctx =
+          static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+      platform::CPUPlace cpu;
+      uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
+      while (size != 0) {
+        size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
+        memory::Copy(cpu, buf.get(),
+                     boost::get<platform::CUDAPlace>(tensor.place()),
+                     reinterpret_cast<const void*>(data), size_to_write,
+                     gpu_dev_ctx.stream());
+        gpu_dev_ctx.Wait();
+        os.write(buf.get(), size_to_write);
+        data += size_to_write;
+        size -= size_to_write;
+      }
+#else
+      PADDLE_THROW("Unexpected branch");
+#endif
+    } else {
+      os.write(static_cast<const char*>(data_ptr),
+               static_cast<std::streamsize>(size));
+    }
+  }
+}
+
+void TensorToStream(std::ostream& os, const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx,
-                    const std::string& var_name) {
+                    const std::string& var_name, char* buf) {
   // TODO(typhoonzero): serialize to ostream
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
@@ -222,32 +277,53 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
       struct timeval t1, t0;
       gettimeofday(&t0, 0);
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
-      std::unique_ptr<char[]> buf(new char[kBufSize]);
+      // std::unique_ptr<char[]> buf(new char[kBufSize]);
+      // char* buf = (char*)hl_malloc_host_2(kBufSize);
+
       auto& gpu_dev_ctx =
           static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+
       platform::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
+
+      double t_wait = 0;
+      double t_copy = 0;
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
-        memory::Copy(cpu, buf.get(),
-                     boost::get<platform::CUDAPlace>(tensor.place()),
+
+        struct timeval t0_copy, t1_copy;
+        gettimeofday(&t0_copy, 0);
+        memory::Copy(cpu, buf, boost::get<platform::CUDAPlace>(tensor.place()),
                      reinterpret_cast<const void*>(data), size_to_write,
                      gpu_dev_ctx.stream());
+        gettimeofday(&t1_copy, 0);
+        t_copy += double((t1_copy.tv_sec - t0_copy.tv_sec) * 1000.0 +
+                         (t1_copy.tv_usec - t0_copy.tv_usec) / 1000.0);
+
+        struct timeval t0_wait, t1_wait;
+        gettimeofday(&t0_wait, 0);
         gpu_dev_ctx.Wait();
-        os.write(buf.get(), size_to_write);
+        gettimeofday(&t1_wait, 0);
+        t_wait += double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
+                         (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
+
+        os.write(buf, size_to_write);
         data += size_to_write;
         size -= size_to_write;
       }
+
+      // hl_free_mem_host_2(buf);
       gettimeofday(&t1, 0);
-      double dif = double((t1.tv_sec - t0.tv_sec) * 1000 +
-                          (t1.tv_usec - t0.tv_usec) / 1000);
+      double dif = double((t1.tv_sec - t0.tv_sec) * 1000.0 +
+                          (t1.tv_usec - t0.tv_usec) / 1000.0);
 
       std::thread::id this_id = std::this_thread::get_id();
       // printf("TensorToStream copy from GPU, time is %.2f ms\n", dif);
       char tmp[256];
       snprintf(tmp, sizeof(tmp) - 1,
-               "var_name:%s copy and write time is %.2f ms", var_name.c_str(),
-               dif);
+               "var_name:%s copy and write time: %.2f ms, copy: %.2f ms, wait: "
+               "%.2f ms",
+               var_name.c_str(), dif, t_copy, t_wait);
 
       std::stringstream ss;
       ss << tmp << ", dims: " << tensor.dims() << ", thread_id:" << this_id;

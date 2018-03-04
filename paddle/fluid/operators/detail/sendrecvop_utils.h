@@ -37,6 +37,10 @@ void SerializeToMessage(const std::string& name, const framework::Variable* var,
                         const platform::DeviceContext& ctx,
                         sendrecv::VariableMessage* msg);
 
+void SerializeToMessage(const std::string& name, const framework::Variable* var,
+                        const platform::DeviceContext& ctx,
+                        sendrecv::VariableMessage* msg, char* buf);
+
 void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
                             const platform::DeviceContext& ctx,
                             framework::Variable* var);

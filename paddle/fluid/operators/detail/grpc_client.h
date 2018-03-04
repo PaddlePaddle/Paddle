@@ -143,33 +143,29 @@ class RPCClient {
                          const platform::DeviceContext& ctx,
                          const framework::Scope& scope,
                          const std::string& var_name,
+                         const sendrecv::VariableMessage* req,
                          int64_t time_out = 600 * 1000);
 
-  bool RPCClient::AsyncSendVariable2(const std::string& ep,
-                                     const platform::DeviceContext& ctx,
-                                     const framework::Scope& scope,
-                                     const std::string& var_name,
-                                     int64_t time_out,
-                                     const sendrecv::VariableMessage& req) {
-    bool AsyncGetVariable(
-        const std::string& ep, const platform::DeviceContext& ctx,
-        const framework::Scope& scope, const std::string& var_name,
-        int64_t time_out = 600 * 1000);
+  bool AsyncGetVariable(const std::string& ep,
+                        const platform::DeviceContext& ctx,
+                        const framework::Scope& scope,
+                        const std::string& var_name,
+                        int64_t time_out = 600 * 1000);
 
-    bool AsyncSendBatchBarrier(const std::string& ep,
-                               int64_t time_out = 600 * 1000);
+  bool AsyncSendBatchBarrier(const std::string& ep,
+                             int64_t time_out = 600 * 1000);
 
-    bool Wait();
+  bool Wait();
 
-   private:
-    bool Proceed();
-    std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
+ private:
+  bool Proceed();
+  std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
 
-   private:
-    grpc::CompletionQueue cq_;
-    std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
-    int64_t req_count_ = 0;
-  };
+ private:
+  grpc::CompletionQueue cq_;
+  std::map<std::string, std::shared_ptr<grpc::Channel>> channels_;
+  int64_t req_count_ = 0;
+};
 
 }  // namespace detail
 }  // namespace operators

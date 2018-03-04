@@ -20,14 +20,14 @@ namespace detail {
 
 void SerializeToMessage(const std::string& name, const framework::Variable* var,
                         const platform::DeviceContext& ctx,
-                        sendrecv::VariableMessage* msg) {
+                        sendrecv::VariableMessage* msg, char* buf) {
   msg->set_varname(name);
   std::ostringstream oss;
   switch (framework::ToVarType(var->Type())) {
     case framework::proto::VarType_Type_LOD_TENSOR:
       msg->set_type(sendrecv::VarType::LOD_TENSOR);
       framework::SerializeToStream(oss, var->Get<framework::LoDTensor>(), ctx,
-                                   name);
+                                   name, buf);
       break;
     case framework::proto::VarType_Type_SELECTED_ROWS:
       msg->set_type(sendrecv::VarType::SELECTED_ROWS);

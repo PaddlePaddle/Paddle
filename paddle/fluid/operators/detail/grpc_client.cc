@@ -20,47 +20,11 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-bool RPCClient::AsyncSendVariable2(const std::string& ep,
-                                   const platform::DeviceContext& ctx,
-                                   const framework::Scope& scope,
-                                   const std::string& var_name,
-                                   int64_t time_out,
-                                   const sendrecv::VariableMessage& req) {
-  const platform::DeviceContext* p_ctx = &ctx;
-  const std::string ep_val = ep;
-  const std::string var_name_val = var_name;
-  const framework::Scope* p_scope = &scope;
-  const auto ch = GetChannel(ep_val);
-
-  framework::Async([var_name_val, p_ctx, ep_val, p_scope, time_out, ch,
-                    var_name, req, this] {
-    auto* var = p_scope->FindVar(var_name_val);
-
-    // varhandle
-    VarHandle var_h;
-    var_h.ep = ep_val;
-    var_h.scope = p_scope;
-    var_h.name = var_name_val;
-    var_h.ctx = p_ctx;
-
-    // stub context
-    SendProcessor* s = new SendProcessor(ch);
-    s->Prepare(var_h, time_out);
-    s->response_call_back_ = NULL;
-
-    auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-    rpc->Finish(&s->reply_, &s->status_, (void*)s);
-  });
-
-  req_count_++;
-
-  return true;
-}
-
 bool RPCClient::AsyncSendVariable(const std::string& ep,
                                   const platform::DeviceContext& ctx,
                                   const framework::Scope& scope,
                                   const std::string& var_name,
+                                  const sendrecv::VariableMessage* req,
                                   int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
@@ -69,7 +33,8 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
   const auto ch = GetChannel(ep_val);
 
   framework::Async([var_name_val, p_ctx, ep_val, p_scope, time_out, ch,
-                    var_name, this] {
+                    var_name, req, this] {
+    /*
     auto* var = p_scope->FindVar(var_name_val);
     sendrecv::VariableMessage req;
 
@@ -80,6 +45,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     double dif = double((t1.tv_sec - t0.tv_sec) * 1000 +
                         (t1.tv_usec - t0.tv_usec) / 1000);
     printf("SerializeToMessage %s time is %.2f ms.\n", var_name.c_str(), dif);
+    */
 
     // varhandle
     VarHandle var_h;
@@ -93,8 +59,16 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     s->Prepare(var_h, time_out);
     s->response_call_back_ = NULL;
 
-    auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+    struct timeval t1, t0;
+    gettimeofday(&t0, 0);
+
+    auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), *req, &cq_);
     rpc->Finish(&s->reply_, &s->status_, (void*)s);
+
+    gettimeofday(&t1, 0);
+    double dif = double((t1.tv_sec - t0.tv_sec) * 1000 +
+                        (t1.tv_usec - t0.tv_usec) / 1000);
+    printf("AsyncSend %s time is %.2f ms.\n", var_name.c_str(), dif);
   });
 
   req_count_++;
