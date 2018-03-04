@@ -155,7 +155,8 @@ class SendOp : public framework::OperatorBase {
     gettimeofday(&t1, 0);
     double dif = double((t1.tv_sec - t0.tv_sec) * 1000.0 +
                         (t1.tv_usec - t0.tv_usec) / 1000.0);
-    printf("Sending time is %.2f ms, copy_time:%.2f ms .\n", dif, copy_time);
+    printf("Sending time is %.2f ms, copy_and_write time:%.2f ms .\n", dif,
+           copy_time);
 
     for (size_t i = 0; i < ins.size(); i++) {
       delete req[i];
