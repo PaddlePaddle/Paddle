@@ -39,15 +39,16 @@ In the backward pass
 This implementation allows to write mixed device program like this
 
 ```python
-# get embedding feature on CPU
-feature = some_cpu_only_op(data)
+W1 = fluid.tensor(size=[100,20], parameter=true)
+W2 = fluid.tensor(size=[20,15], parameter=true)
 
-gpu_places = get_place(use_gpu=True)
+data = layers.data()
+
+gpu_places = layers.get_place(use_gpu=True)
 # parallel processing on multiple GPUs
 pd = ParallelDo(gpu_places)
-with pd.do():
-    read_input(feature)
-    prediction = my_net(feature)
+with pd.do(input=data):
+    prediction = softmax(fc(fc(data, W1), W2))
     write_output(prediction)
 prediction = pd()
 loss = cross_entropy(prediction, label)
@@ -66,20 +67,20 @@ start_program
 main_program
 {
 block0 {
-  vars: data, places, w1, w2
+  vars: data, places, w1, w2, w1_grad, w2_grad,
   ops: data, get_place, parallel_do(block1),
        parallel_do_grad(block2),
        sgd(w2, w2_grad),
        sgd(w1, w1_grad)
 }
-block1 {
+block1 { # the forward pass
   parent_block: 0
   vars: data, h1, h2, loss
   ops: fc, fc, softmax
 }
-block2 {
+block2 { # the backward pass
   parent_block: 1
-  vars: data_grad, h1_grad, h2_grad, loss_gard, w1_grad, w2_grad
+  vars: data_grad, h1_grad, h2_grad, loss_gard, local_w1_grad, local_w2_grad
   ops: softmax_grad,
        fc_grad
        fc_grad

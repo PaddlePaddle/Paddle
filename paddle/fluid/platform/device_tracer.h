@@ -36,6 +36,21 @@ class DeviceTracer {
     uint32_t stream_id;
     uint32_t correlation_id;
   };
+  struct CPURecord {
+    std::string name;
+    uint64_t start_ns;
+    uint64_t end_ns;
+    uint64_t thread_id;
+  };
+  struct MemRecord {
+    std::string name;
+    uint64_t start_ns;
+    uint64_t end_ns;
+    uint32_t device_id;
+    uint32_t stream_id;
+    uint32_t correlation_id;
+    uint64_t bytes;
+  };
 
   virtual ~DeviceTracer() {}
   // Needs to be called once before use.
@@ -48,6 +63,14 @@ class DeviceTracer {
   // human-readable annotations.
   virtual void AddAnnotation(uint64_t id, const std::string& anno) = 0;
 
+  virtual void AddMemRecords(const std::string& name, uint64_t start_ns,
+                             uint64_t end_ns, uint32_t device_id,
+                             uint32_t stream_id, uint32_t correlation_id,
+                             uint64_t bytes) = 0;
+
+  virtual void AddCPURecords(const char* anno, uint64_t start_ns,
+                             uint64_t end_ns) = 0;
+
   // Add a cuda kernel stats. `correlation_id` will be mapped to annotation
   // added before for human readability.
   virtual void AddKernelRecords(uint64_t start, uint64_t end,
@@ -55,7 +78,7 @@ class DeviceTracer {
                                 uint32_t correlation_id) = 0;
 
   // Generate a proto after done (Disabled).
-  virtual proto::Profile GenProfile() = 0;
+  virtual proto::Profile GenProfile(const std::string& profile_path) = 0;
 
   virtual bool IsEnabled() = 0;
 };
@@ -67,6 +90,7 @@ DeviceTracer* GetDeviceTracer();
 void SetCurAnnotation(const char* anno);
 // Clear the name after the operation is done.
 void ClearCurAnnotation();
-
+// Current name of the operation being run in the thread.
+const char* CurAnnotation();
 }  // namespace platform
 }  // namespace paddle

@@ -62,7 +62,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         framework::ToDataType(
             ctx.Input<framework::LoDTensor>("Scores")->type()),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 

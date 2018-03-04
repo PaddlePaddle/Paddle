@@ -104,7 +104,9 @@ function(merge_static_libs TARGET_NAME)
   foreach(lib ${libs})
     list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
   endforeach()
-  list(REMOVE_DUPLICATES libs_deps)
+  if(libs_deps)
+    list(REMOVE_DUPLICATES libs_deps)
+  endif()
 
   # To produce a library we need at least one source file.
   # It is created by add_custom_command below and will helps
@@ -191,10 +193,13 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
-      # Support linking flags: --whole-archive (Linux) / -force_load (MacOS)
-      target_circle_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       if("${cc_library_DEPS}" MATCHES "ARCHIVE_START")
+        # Support linking flags: --whole-archive (Linux) / -force_load (MacOS).
+        # WARNING: Please don't use ARCHIVE_START&ARCHIVE_END if TARGET_NAME will be linked by other libraries.
+        target_circle_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
         list(REMOVE_ITEM cc_library_DEPS ARCHIVE_START ARCHIVE_END)
+      else()
+        target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       endif()
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()

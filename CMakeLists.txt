@@ -19,7 +19,7 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
 
-project(paddle CXX C Go)
+project(paddle CXX C)
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
@@ -166,16 +166,16 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 
 set(EXTERNAL_LIBS
-    ${GFLAGS_LIBRARIES}
-    ${GLOG_LIBRARIES}
+    gflags
+    glog
     ${CBLAS_LIBRARIES}
-    ${PROTOBUF_LIBRARY}
-    ${ZLIB_LIBRARIES}
+    protobuf
+    zlib
     ${PYTHON_LIBRARIES}
 )
 
 if(WITH_GPU)
-  include(cuda)
+    include(cuda)
 endif(WITH_GPU)
 
 if(WITH_MKLML)
@@ -202,17 +202,18 @@ endif()
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
 # placed after this block, because they depends on it.
 if(WITH_GOLANG)
+    enable_language(Go)
     add_subdirectory(go)
 endif(WITH_GOLANG)
 
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
-SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
-SET(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
 add_subdirectory(paddle)
 if(WITH_PYTHON)
-  add_subdirectory(python)
+    add_subdirectory(python)
 endif()
 
 if(WITH_DOC)
