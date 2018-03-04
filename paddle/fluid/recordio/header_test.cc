@@ -32,14 +32,5 @@ TEST(Recordio, ChunkHead) {
   std::ostringstream oss2;
   hdr2.Write(oss2);
   EXPECT_STREQ(oss2.str().c_str(), oss.str().c_str());
-}
-
-TEST(Recordio, Stream) {
-  Header hdr(0, 1, static_cast<Compressor>(2), 3);
-  std::ostringstream oss1;
-  hdr.Write(oss1);
-
-  std::ostringstream oss2;
-  oss2 << hdr;
-  EXPECT_STREQ(oss2.str().c_str(), oss1.str().c_str());
+  EXPECT_EQ(hdr == hdr2);
 }
