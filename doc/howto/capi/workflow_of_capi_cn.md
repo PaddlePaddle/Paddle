@@ -11,6 +11,7 @@
 </p>
 
 - 准备预测模型
+
     1. 只将神经网络结构进行序列化。
         - 只对神经网络结构进行序列化，加载模型需同时指定：网络结构的序列化结果和模型参数存储目录。
     1. 将网络结构定义和训练结束存储下来的模型参数文件（多个）合并入一个文件。
@@ -18,6 +19,7 @@
         - 预测时只需加载一个文件便于发布。
     - **注意**：以上两种方式只需选择其一即可。
 - 调用 C-API 开发预测序
+
     1. 初始化PaddlePaddle运行环境。
     1. 加载预测模型。
     1. 创建神经网络输入，组织输入数据。
@@ -90,6 +92,7 @@
 1. 调用[`paddle_gradient_machine_create_shared_param`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/gradient_machine.h#L88)接口，与其它`gradient machine`的共享已经加载的预测模型。这种情况多出现在使用多线程预测时，通过多个线程共享同一个模型来减少内存开销。可参考[此示例](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/examples/model_inference/multi_thread/main.c)。
 
 - 注意事项
+
     1. 使用PaddlePaddle V2 API训练，模型中所有可学习参数会被存为一个压缩文件，需要手动进行解压，将它们放在同一目录中，C-API不会直接加载 V2 API 存储的压缩文件。
     1. 如果使用`merge model`方式将神经网络结构和训练好的参数序列化到一个文件，请参考此[示例](https://github.com/PaddlePaddle/Mobile/blob/develop/Demo/linux/paddle_image_recognizer.cpp#L59)。
     1. 通过灵活使用以上两个接口，加载模型可其它多种方式，例如也可在程序运行过程中再加载另外一个模型。
@@ -106,6 +109,7 @@ C-API支持的所有输入数据类型和他们的组织方式，请参考“输
 这篇文档的之后部分会使用`argument`来特指PaddlePaddle C-API中神经网络的一个输入/输出，使用`paddle_matrix`**特指**`argument`中用于存储数据的`Matrix`类的对象。
 
 在组织神经网络输入，获取输出时，需要思考完成以下工作：
+
 1. 为每一个输入/输出创建`argument`；
 1. 为每一个`argument`创建`paddle_matrix`来存储数据；
 

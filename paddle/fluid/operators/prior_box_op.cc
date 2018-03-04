@@ -67,6 +67,14 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Boxes", framework::make_ddim(dim_vec));
     ctx->SetOutputDim("Variances", framework::make_ddim(dim_vec));
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),
+        platform::CPUPlace());
+  }
 };
 
 class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {

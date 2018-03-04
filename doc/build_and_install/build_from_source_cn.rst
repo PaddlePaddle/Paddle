@@ -9,7 +9,7 @@
 为了编译PaddlePaddle，我们需要
 
 1. 一台电脑，可以装的是 Linux, Windows 或者 MacOS 操作系统
-1. Docker
+2. Docker
 
 不需要依赖其他任何软件了。即便是 Python 和 GCC 都不需要，因为我们会把所有编译工具都安装进一个 Docker 镜像里。
 
@@ -189,7 +189,7 @@ PaddlePaddle的编译选项，包括生成CPU/GPU二进制文件、链接何种B
     "WITH_TESTING", "是否开启单元测试", "OFF"
     "WITH_DOC", "是否编译中英文文档", "OFF"
     "WITH_SWIG_PY", "是否编译PYTHON的SWIG接口，该接口可用于预测和定制化训练", "Auto"
-    "WITH_GOLANG", "是否编译go语言的可容错parameter server", "ON"
+    "WITH_GOLANG", "是否编译go语言的可容错parameter server", "OFF"
     "WITH_MKL", "是否使用MKL数学库，如果为否则是用OpenBLAS", "ON"
 
 BLAS

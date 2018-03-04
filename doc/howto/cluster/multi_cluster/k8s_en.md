@@ -1,4 +1,4 @@
-# PaddlePaddle On Kubernetes
+# Kubernetes
 
 In this article, we will introduce how to run PaddlePaddle training job on single CPU machine using Kubernetes. In next article, we will introduce how to run PaddlePaddle training job on distributed cluster.
 

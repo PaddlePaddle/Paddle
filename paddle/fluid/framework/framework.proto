@@ -117,6 +117,7 @@ message VarType {
     // raw variables should manage their own allocations
     // in operators like nccl_op
     RAW = 17;
+    TUPLE = 18;
   }
 
   required Type type = 1;
@@ -148,6 +149,9 @@ message VarType {
     required int64 capacity = 2;
   }
   optional ChannelDesc channel = 6;
+
+  message Tuple { repeated Type element_type = 1; }
+  optional Tuple tuple = 7;
 }
 
 message VarDesc {

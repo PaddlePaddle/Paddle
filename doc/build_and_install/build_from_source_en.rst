@@ -9,7 +9,7 @@ Requirements
 To build PaddlePaddle, you need
 
 1. A computer -- Linux, Windows, MacOS.
-1. Docker.
+2. Docker.
 
 Nothing else.  Not even Python and GCC, because you can install all build tools into a Docker image. 
 We run all the tools by running this image.
@@ -191,7 +191,7 @@ You can add :code:`-D` argument to pass such options, like:
     "WITH_TESTING", "Build unit tests", "OFF"
     "WITH_DOC", "Build documentations", "OFF"
     "WITH_SWIG_PY", "Build Python SWIG interface for V2 API", "Auto"
-    "WITH_GOLANG", "Build fault-tolerant parameter server written in go", "ON"
+    "WITH_GOLANG", "Build fault-tolerant parameter server written in go", "OFF"
     "WITH_MKL", "Use MKL as BLAS library, else use OpenBLAS", "ON"
 
 
