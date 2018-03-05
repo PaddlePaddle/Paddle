@@ -13,15 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
+using framework::OpKernelType;
 using framework::Tensor;
 
-class MulOpShapeInference : public framework::InferShapeBase {
+class MulOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext* ctx) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -67,7 +71,23 @@ class MulOpShapeInference : public framework::InferShapeBase {
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
-};
+
+ protected:
+  OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    if (ctx.Attr<bool>(use_float16)) {
+      return OpKernelType(framework::proto::VarType::FP16, ctx.GetPlace());
+    } else {
+      return framework::OperatorWithKernel::GetExpectedKernelType(ctx);
+    }
+  }
+
+  OpKernelType GetKernelTypeForVal(
+      const std::string& var_name, const Tensor& tensor,
+      const OpKernelType& expected_kernel_type) const override {
+    return OpKernelType(framework::ToDataType(tensor.type()), tensor.place());
+  }
+}
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -106,6 +126,16 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
+    AddAttr<bool>(
+        "use_float16",
+        R"DOC((bool, default false), If use_float16 is true, mul_op will convert
+              both input tensors be of float16 data types if they are not already 
+              that type and use the float16 compute kernel to generate the output 
+              tensor also in float16 data type. This attribute is by default false 
+              and normally would only be set to true in inference stage for 
+              performance optimization.
+        )DOC")
+        .SetDefault(false);
     AddComment(R"DOC(
 Mul Operator.
 
@@ -122,7 +152,7 @@ or not. But the output only shares the LoD information with input $X$.
   }
 };
 
-class MulOpGrad : public framework::OperatorWithKernel {
+class MulGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -156,11 +186,10 @@ class MulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mul, paddle::framework::OperatorWithKernel, ops::MulOpMaker,
-                  ops::MulOpShapeInference,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(mul_grad, ops::MulOpGrad);
+REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUDeviceContext,
+                                           paddle::platform::float16>);
 REGISTER_OP_CPU_KERNEL(
     mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
