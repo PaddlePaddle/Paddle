@@ -25,7 +25,7 @@ namespace recordio {
 // A Chunk contains the Header and optionally compressed records.
 class Chunk {
 public:
-  Chunk() {}
+  Chunk() : num_bytes_(0) {}
   void Add(const char* record, size_t size);
   // dump the chunk into w, and clears the chunk and makes it ready for
   // the next add invocation.

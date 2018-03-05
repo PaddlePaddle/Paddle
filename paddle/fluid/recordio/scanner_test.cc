@@ -12,18 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/recordio/writer.h"
+#include "paddle/fluid/recordio/scanner.h"
 
 #include "gtest/gtest.h"
 
 using namespace paddle::recordio;
 
-TEST(Writer, Normal) {
-  Stream* fs = Stream::Open("/tmp/record_21", "w");
-  Writer w(fs);
-  w.Write("123", 4);
-
-  // test exception
-  w.Close();
-  EXPECT_ANY_THROW(w.Write("123", 4));
-}
+TEST(Scanner, Normal) { Scanner s("/tmp/record_*"); }

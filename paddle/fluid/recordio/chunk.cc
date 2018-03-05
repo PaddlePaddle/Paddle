@@ -26,7 +26,7 @@ namespace paddle {
 namespace recordio {
 
 void Chunk::Add(const char* record, size_t length) {
-  records_.emplace_after(std::move(s));
+  records_.emplace_after(std::string(record, length));
   num_bytes_ += s.size() * sizeof(char);
 }
 
@@ -42,13 +42,16 @@ bool Chunk::Dump(Stream* fo, Compressor ct) {
     os.write(record.data(), static_cast<std::streamsize>(record.size()));
   }
 
-  std::unique_ptr<char[]> buffer(new char[kDefaultMaxChunkSize]);
+  std::unique_ptr<char[]> buffer(new char[num_bytes_]);
   size_t compressed =
       CompressData(os.str().c_str(), num_bytes_, ct, buffer.get());
   uint32_t checksum = Crc32(buffer.get(), compressed);
   Header hdr(records_.size(), checksum, ct, static_cast<uint32_t>(compressed));
   hdr.Write(fo);
   fo.Write(buffer.get(), compressed);
+  // clear the content
+  records_.clear();
+  num_bytes_ = 0;
   return true;
 }
 
@@ -57,14 +60,18 @@ void Chunk::Parse(Stream* fi, size_t offset) {
   Header hdr;
   hdr.Parse(fi);
 
-  std::unique_ptr<char[]> buffer(new char[kDefaultMaxChunkSize]);
-  fi->Read(buffer.get(), static_cast<size_t>(hdr.CompressSize()));
-  uint32_t deflated_size =
-      DeflateData(buffer.get(), hdr.CompressSize(), hdr.CompressType());
-  std::istringstream deflated(std::string(buffer.get(), deflated_size));
+  size_t size = static_cast<size_t>(hdr.CompressSize());
+  std::unique_ptr<char[]> buffer(new char[size]);
+  fi->Read(buffer.get(), size);
+  size_t deflated_size = 0;
+  snappy::GetUncompressedLength(buffer.get(), size, &deflated_size);
+  std::unique_ptr<char[]> deflated_buffer(new char[deflated_size]);
+  DeflateData(buffer.get(), size, hdr.CompressType(), deflated_buffer.get());
+  std::istringstream deflated(
+      std::string(deflated_buffer.get(), deflated_size));
   for (size_t i = 0; i < hdr.NumRecords(); ++i) {
-    uint32_t rs;
-    deflated >> rs;
+    size_t rs;
+    deflated.read(&rs, sizeof(size_t));
     std::string record(rs, '\0');
     deflated.read(&record[0], rs);
     records_.emplace_back(record);

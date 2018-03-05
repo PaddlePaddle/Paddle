@@ -14,16 +14,23 @@
 
 #pragma once
 
-#include <fstream>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <utility>
-#include <vector>
+#include "paddle/fluid/recordio/io.h"
 
+namespace paddle {
+namespace recordio {
+
+// Index consists offsets and sizes of the consequetive chunks in a RecordIO
+// file.
+//
+// Index supports Gob. Every field in the Index needs to be exported
+// for the correct encoding and decoding using Gob.
 class Index {
 public:
   int NumRecords() { return num_records_; }
+  // NumChunks returns the total number of chunks in a RecordIO file.
+  int NumChunks() { return chunk_lens_.size(); }
+  // ChunkIndex return the Index of i-th Chunk.
+  int ChunkIndex(int i);
 
   // Locate returns the index of chunk that contains the given record,
   // and the record index within the chunk.  It returns (-1, -1) if the
@@ -44,9 +51,13 @@ public:
   }
 
 private:
+  // the offset of each chunk in a file.
   std::vector<int64_t> chunk_offsets_;
+  // the length of each chunk in a file.
   std::vector<uint32_t> chunk_lens_;
+  // the numer of all records in a file.
   int num_records_;
+  // the number of records in chunks.
   std::vector<int> chunk_records_;
 };
 
@@ -56,14 +67,17 @@ private:
 // beginning.  If len < 0, it scans till the end of file.
 class RangeScanner {
 public:
-  RangeScanner(std::istream is, Index idx, int start, int end);
+  RangeScanner(Stream* fi, Index idx, int start, int end);
   bool Scan();
   const std::string Record();
 
 private:
-  std::istream stream_;
+  Stream* fi;
   Index index_;
   int start_, end_, cur_;
   int chunk_index_;
   std::unique_ptr<Chunk> chunk_;
 };
+
+}  // namespace recordio
+}  // namespace paddle
