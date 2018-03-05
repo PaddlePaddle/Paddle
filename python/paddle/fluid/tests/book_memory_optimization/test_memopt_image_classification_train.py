@@ -122,7 +122,8 @@ avg_cost = fluid.layers.mean(cost)
 optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 opts = optimizer.minimize(avg_cost)
 
-accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+batch_size = fluid.layers.create_tensor(dtype='int64')
+batch_acc = fluid.layers.accuracy(input=predict, label=label, total=batch_size)
 
 fluid.memory_optimize(fluid.default_main_program())
 
@@ -144,13 +145,17 @@ feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
 exe.run(fluid.default_startup_program())
 
 i = 0
+
+accuracy = fluid.average.WeightedAverage()
 for pass_id in range(PASS_NUM):
-    accuracy.reset(exe)
+    accuracy.reset()
     for data in train_reader():
-        loss, acc = exe.run(fluid.default_main_program(),
-                            feed=feeder.feed(data),
-                            fetch_list=[avg_cost] + accuracy.metrics)
-        pass_acc = accuracy.eval(exe)
+        loss, acc, weight = exe.run(
+            fluid.default_main_program(),
+            feed=feeder.feed(data),
+            fetch_list=[avg_cost, batch_acc, batch_size])
+        accuracy.add(value=acc, weight=weight)
+        pass_acc = accuracy.eval()
         print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
             pass_acc))
         # this model is slow, so if we can train two mini batch, we think it works properly.
