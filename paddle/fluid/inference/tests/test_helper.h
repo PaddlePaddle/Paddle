@@ -15,6 +15,7 @@ limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/profiler.h"
 
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor& input,
@@ -90,51 +91,85 @@ void CheckError(paddle::framework::LoDTensor& output1,
 template <typename Place, bool IsCombined = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
-                   std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
+                   std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
+                   const int repeat = 1) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
 
-  // 2. Initialize the inference_program and load parameters
-  std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
-  if (IsCombined) {
-    // All parameters are saved in a single file.
-    // Hard-coding the file names of program and parameters in unittest.
-    // The file names should be consistent with that used in Python API
-    //  `fluid.io.save_inference_model`.
-    std::string prog_filename = "__model_combined__";
-    std::string param_filename = "__params_combined__";
-    inference_program = paddle::inference::Load(executor,
-                                                *scope,
-                                                dirname + "/" + prog_filename,
-                                                dirname + "/" + param_filename);
+  // Profile the performance
+  paddle::platform::ProfilerState state;
+  if (paddle::platform::is_cpu_place(place)) {
+    state = paddle::platform::ProfilerState::kCPU;
   } else {
-    // Parameters are saved in separate files sited in the specified `dirname`.
-    inference_program = paddle::inference::Load(executor, *scope, dirname);
+#ifdef PADDLE_WITH_CUDA
+    state = paddle::platform::ProfilerState::kCUDA;
+#endif
   }
 
-  // 3. Get the feed_target_names and fetch_target_names
-  const std::vector<std::string>& feed_target_names =
-      inference_program->GetFeedTargetNames();
-  const std::vector<std::string>& fetch_target_names =
-      inference_program->GetFetchTargetNames();
+  // Enable the profiler
+  paddle::platform::EnableProfiler(state);
 
-  // 4. Prepare inputs: set up maps for feed targets
-  std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
-  for (size_t i = 0; i < feed_target_names.size(); ++i) {
-    // Please make sure that cpu_feeds[i] is right for feed_target_names[i]
-    feed_targets[feed_target_names[i]] = cpu_feeds[i];
+  std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
+  {
+    // paddle::platform::RecordEvent record_event(
+    //     "init_program",
+    //     paddle::platform::DeviceContextPool::Instance().Get(place));
+
+    // 2. Initialize the inference_program and load parameters
+    if (IsCombined) {
+      // All parameters are saved in a single file.
+      // Hard-coding the file names of program and parameters in unittest.
+      // The file names should be consistent with that used in Python API
+      //  `fluid.io.save_inference_model`.
+      std::string prog_filename = "__model_combined__";
+      std::string param_filename = "__params_combined__";
+      inference_program =
+          paddle::inference::Load(executor,
+                                  *scope,
+                                  dirname + "/" + prog_filename,
+                                  dirname + "/" + param_filename);
+    } else {
+      // Parameters are saved in separate files sited in the specified
+      // `dirname`.
+      inference_program = paddle::inference::Load(executor, *scope, dirname);
+    }
   }
 
-  // 5. Define Tensor to get the outputs: set up maps for fetch targets
-  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
-  for (size_t i = 0; i < fetch_target_names.size(); ++i) {
-    fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
+  {
+    // Comment this because nested RecordEvent is not supported yet.
+    // paddle::platform::RecordEvent record_event("run_inference",
+    //   paddle::platform::DeviceContextPool::Instance().Get(place));
+
+    // 3. Get the feed_target_names and fetch_target_names
+    const std::vector<std::string>& feed_target_names =
+        inference_program->GetFeedTargetNames();
+    const std::vector<std::string>& fetch_target_names =
+        inference_program->GetFetchTargetNames();
+
+    // 4. Prepare inputs: set up maps for feed targets
+    std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
+    for (size_t i = 0; i < feed_target_names.size(); ++i) {
+      // Please make sure that cpu_feeds[i] is right for feed_target_names[i]
+      feed_targets[feed_target_names[i]] = cpu_feeds[i];
+    }
+
+    // 5. Define Tensor to get the outputs: set up maps for fetch targets
+    std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
+    for (size_t i = 0; i < fetch_target_names.size(); ++i) {
+      fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
+    }
+
+    // 6. Run the inference program
+    for (int i = 0; i < repeat; ++i) {
+      executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+    }
   }
 
-  // 6. Run the inference program
-  executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+  // Disable the profiler and print the timing information
+  paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kTotal,
+                                    "profiler.txt");
 
   delete scope;
 }

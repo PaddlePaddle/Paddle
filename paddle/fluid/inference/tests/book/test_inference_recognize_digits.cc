@@ -17,10 +17,13 @@ limitations under the License. */
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
+DEFINE_int32(batch_size, 1, "Batch size of input data");
+DEFINE_int32(repeat, 1, "Running the inference program repeat times");
 
 TEST(inference, recognize_digits) {
-  if (FLAGS_dirname.empty()) {
-    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
+  if (FLAGS_dirname.empty() || FLAGS_batch_size < 1 || FLAGS_repeat < 1) {
+    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model "
+                  "--batch_size=1 --repeat=1";
   }
 
   LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
@@ -29,13 +32,11 @@ TEST(inference, recognize_digits) {
   // 0. Call `paddle::framework::InitDevices()` initialize all the devices
   // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
 
-  int64_t batch_size = 1;
-
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [-1.0, 1.0].
   SetupTensor<float>(input,
-                     {batch_size, 1, 28, 28},
+                     {FLAGS_batch_size, 1, 28, 28},
                      static_cast<float>(-1),
                      static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
@@ -46,7 +47,8 @@ TEST(inference, recognize_digits) {
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
-  TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
+  TestInference<paddle::platform::CPUPlace>(
+      dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -55,7 +57,8 @@ TEST(inference, recognize_digits) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
-  TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
+  TestInference<paddle::platform::CUDAPlace>(
+      dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat);
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);
@@ -63,8 +66,9 @@ TEST(inference, recognize_digits) {
 }
 
 TEST(inference, recognize_digits_combine) {
-  if (FLAGS_dirname.empty()) {
-    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
+  if (FLAGS_dirname.empty() || FLAGS_batch_size < 1 || FLAGS_repeat < 1) {
+    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model "
+                  "--batch_size=1 --repeat=1";
   }
 
   LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
@@ -76,8 +80,10 @@ TEST(inference, recognize_digits_combine) {
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [-1.0, 1.0].
-  SetupTensor<float>(
-      input, {1, 1, 28, 28}, static_cast<float>(-1), static_cast<float>(1));
+  SetupTensor<float>(input,
+                     {FLAGS_batch_size, 1, 28, 28},
+                     static_cast<float>(-1),
+                     static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -87,7 +93,7 @@ TEST(inference, recognize_digits_combine) {
 
   // Run inference on CPU
   TestInference<paddle::platform::CPUPlace, true>(
-      dirname, cpu_feeds, cpu_fetchs1);
+      dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
   LOG(INFO) << output1.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -97,7 +103,7 @@ TEST(inference, recognize_digits_combine) {
 
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace, true>(
-      dirname, cpu_feeds, cpu_fetchs2);
+      dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat);
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);
