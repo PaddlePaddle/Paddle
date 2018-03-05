@@ -16,8 +16,9 @@
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/platform/macros.h"  // for DISABLE COPY ASSIGN
+#include "paddle/fluid/platform/macros.h"  // DISABLE_COPY_ASSIGN
 #include "paddle/fluid/recordio/header.h"
+#include "paddle/fluid/recordio/io.h"
 
 namespace paddle {
 namespace recordio {
@@ -25,32 +26,27 @@ namespace recordio {
 // Writer creates a RecordIO file.
 class Writer {
 public:
-  Writer(std::ostream& os);
-  Writer(std::ostream& os, int maxChunkSize, int c);
+  Writer(Stream* fo);
+  Writer(Stream* fo, int maxChunkSize, int c);
 
   // Writes a record.  It returns an error if Close has been called.
   size_t Write(const char* buf, size_t length);
-  size_t Write(const std::string& buf);
-  size_t Write(std::string&& buf);
 
   // Close flushes the current chunk and makes the writer invalid.
   void Close();
 
 private:
-  // Set rdstate to mark a closed writer
-  std::ostream stream_;
+  // Set nullptr to mark a closed writer
+  Stream* stream_;
+  // Chunk for store object
   std::unique_ptr<Chunk> chunk_;
   // total records size, excluding metadata, before compression.
   int max_chunk_size_;
-  int compressor_;
+  // Compressor used for chuck
+  Compressor compressor_;
+
   DISABLE_COPY_AND_ASSIGN(Writer);
 };
-
-template <typename T>
-Writer& operator<<(const T& val) {
-  stream_ << val;
-  return *this;
-}
 
 }  // namespace recordio
 }  // namespace paddle

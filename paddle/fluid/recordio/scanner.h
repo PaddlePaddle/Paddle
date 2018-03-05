@@ -21,8 +21,9 @@
 #include <utility>
 #include <vector>
 
-// Scanner
+class RangeScanner;
 
+// Scanner is a scanner for multiple recordio files.
 class Scanner {
 public:
   Scanner(const char* paths);

@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/recordio/header.h"
-
-#include <sstream>
+#include "paddle/fluid/recordio/io.h"
 
 #include "gtest/gtest.h"
 
 using namespace paddle::recordio;
 
-TEST(Recordio, ChunkHead) {
-  Header hdr(0, 1, Compressor::kGzip, 3);
-  std::ostringstream oss;
-  hdr.Write(oss);
-
-  std::istringstream iss(oss.str());
-  Header hdr2;
-  hdr2.Parse(iss);
-
-  std::ostringstream oss2;
-  hdr2.Write(oss2);
-  EXPECT_STREQ(oss2.str().c_str(), oss.str().c_str());
-  EXPECT_TRUE(hdr == hdr2);
+TEST(FileStream, IO) {
+  {
+    // Write
+    Stream* fs = Stream::Open("/tmp/record_0", "rw");
+    fs->Write("hello", 6);
+    delete fs;
+  }
+  {
+    // Read
+    Stream* fs = Stream::Open("/tmp/record_0", "r+");
+    char buf[10];
+    fs->Read(&buf, 6);
+    EXPECT_STREQ(buf, "hello");
+    delete fs;
+  }
 }
