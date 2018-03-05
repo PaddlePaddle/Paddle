@@ -84,6 +84,8 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("shape",
                               "(vector<int>) "
                               "Target shape of reshape operator.");
+    AddAttr<bool>("inplace",
+                  "Change the source tensor's shape without copy memory.");
     AddComment(R"DOC(
 Reshape Operator.
 
