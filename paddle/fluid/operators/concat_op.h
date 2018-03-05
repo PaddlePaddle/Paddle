@@ -33,6 +33,7 @@ class ConcatKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
+    // TODO(zcd): Sometimes direct copies will be faster
     std::vector<framework::Tensor> inputs(ins.size());
     for (size_t j = 0; j < ins.size(); ++j) {
       inputs[j] = *ins[j];
@@ -51,6 +52,7 @@ class ConcatGradKernel : public framework::OpKernel<T> {
     auto outs = ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
     int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
 
+    // TODO(zcd): Sometimes direct copies will be faster
     std::vector<framework::Tensor> outputs(outs.size());
     for (size_t j = 0; j < outs.size(); ++j) {
       outs[j]->mutable_data<T>(ctx.GetPlace());
