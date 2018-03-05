@@ -79,6 +79,9 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;
 
+  /*! \brief  Return the max physical thread count in the device context */
+  int GetMaxPhysicalThreadCount() const;
+
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
@@ -100,6 +103,9 @@ class CUDADeviceContext : public DeviceContext {
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
+
+  int multi_process;
+  int max_threads_per_mp;
 };
 
 template <>
