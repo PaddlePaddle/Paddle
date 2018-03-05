@@ -42,7 +42,7 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
     int seq_num = in_lod_l0.size() - 1;
 
     if (in_width == out_width) {
-      out->set_lod(in->lod());
+      out->set_lod(in->lod_ptr());
     } else {
       auto& out_lod = *out->mutable_lod();
       out_lod.resize(1);

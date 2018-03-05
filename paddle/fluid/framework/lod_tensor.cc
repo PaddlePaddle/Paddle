@@ -107,17 +107,20 @@ LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
   return res;
 }
 
-LoD ToAbsOffset(const LoD &in) {
+LoDPtr ToAbsOffset(const LoDPtr &in_ptr) {
   // the lowest level stores relative offsets
-  if (in.empty() || in.size() == 1) return in;
-  LoD result = in;
+  auto &in = in_ptr.Data();
+  if (in.empty() || in.size() == 1) return in_ptr;
+  LoD *result_ptr = new LoD();
+  LoD &result = *result_ptr;
+  result = in;
   for (auto level = static_cast<int>(in.size() - 2); level >= 0; level--) {
     for (size_t i = 0; i < in[level].size(); ++i) {
       size_t index = in[level][i];
       result[level][i] = result[level + 1][index];
     }
   }
-  return result;
+  return LoDPtr(result_ptr);
 }
 
 bool operator==(const LoD &a, const LoD &b) {
@@ -249,7 +252,7 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
     // uint64_t lod_level_1 size in byte.
     // int*     lod_level_1 data
     // ...
-    auto lod = tensor.lod();
+    auto &lod = tensor.lod();
     uint64_t size = lod.size();
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
 
@@ -323,15 +326,15 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
       auto &dst_place = places[i];
       framework::TensorCopy(src, dst_place, &dst);
 
-      LoD my_lod;
+      LoD *my_lod = new LoD();
       for (auto &l : lod_and_offset.first) {
         std::vector<size_t> v{0};
         for (auto &ll : l) {
           v.push_back(ll + v.back());
         }
-        my_lod.emplace_back(v);
+        my_lod->emplace_back(v);
       }
-      dst.set_lod(my_lod);
+      dst.set_lod(LoDPtr(my_lod));
     }
     results.emplace_back(dst);
   }
@@ -347,7 +350,10 @@ void LoDTensor::MergeLoDTensor(
   framework::DDim new_dim = lod_tensors[0]->dims();
   std::type_index new_type = lod_tensors[0]->type();
   framework::DataLayout new_layout = lod_tensors[0]->layout();
-  LoD new_lod = lod_tensors[0]->lod();
+  auto *new_lod_ptr = new LoD();
+  auto &new_lod = *new_lod_ptr;
+  new_lod = lod_tensors[0]->lod();
+
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
     PADDLE_ENFORCE_EQ(new_type.hash_code(), t->type().hash_code());
@@ -368,7 +374,7 @@ void LoDTensor::MergeLoDTensor(
   }
   Resize(new_dim);
   set_layout(new_layout);
-  set_lod(new_lod);
+  set_lod(LoDPtr(new_lod_ptr));
   mutable_data(dst_place, new_type);
 
   int begin = 0;

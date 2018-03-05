@@ -141,7 +141,7 @@ class WhileGradOp : public framework::OperatorBase {
           auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
           auto &inside_tensor =
               detail::Ref(og_inside.GetMutable<framework::LoDTensor>());
-          inside_tensor.set_lod(outside_tensor.lod());
+          inside_tensor.set_lod(outside_tensor.lod_ptr());
           inside_tensor.ShareDataWith(outside_tensor);
         } else if (og_outside.Type().hash_code() ==
                    typeid(framework::LoDTensorArray).hash_code()) {
@@ -154,7 +154,7 @@ class WhileGradOp : public framework::OperatorBase {
           for (size_t j = 0; j < inside_array.size(); ++j) {
             VLOG(8) << j << " " << outside_array[j].numel();
             if (outside_array[j].numel() != 0) {
-              inside_array[j].set_lod(outside_array[j].lod());
+              inside_array[j].set_lod(outside_array[j].lod_ptr());
               inside_array[j].ShareDataWith(outside_array[j]);
             } else {
               PADDLE_ENFORCE_EQ(inside_array[j].numel(), 0);
@@ -201,7 +201,7 @@ class WhileGradOp : public framework::OperatorBase {
             zero_op->Run(scope, dev_place);
             scope.FindVar(var_name)
                 ->GetMutable<framework::LoDTensor>()
-                ->set_lod(inside_tensor.lod());
+                ->set_lod(inside_tensor.lod_ptr());
           }
         }
 

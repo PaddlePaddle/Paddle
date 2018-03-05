@@ -129,14 +129,16 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
     const size_t level = 0;
 
-    auto logits_lod = framework::ToAbsOffset(logits->lod());
+    auto abs_logits_lod = framework::ToAbsOffset(logits->lod_ptr());
+    auto& logits_lod = abs_logits_lod.Data();
     auto logits_dims = logits->dims();
     PADDLE_ENFORCE_EQ(logits_dims[0],
                       static_cast<int64_t>(logits_lod[level].back()),
                       "The first dimension of Input(Logits) should be equal to "
                       "the sum of all sequences' lengths.");
 
-    auto label_lod = framework::ToAbsOffset(label->lod());
+    auto abs_label_lod = framework::ToAbsOffset(label->lod_ptr());
+    auto& label_lod = abs_label_lod.Data();
     auto label_dims = label->dims();
     PADDLE_ENFORCE_EQ(
         label_dims[0], label->numel(),
@@ -154,7 +156,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     // warpctc needs sequences data stored in transposed padding format
     Tensor warpctc_logits;
     const size_t max_sequence_length =
-        math::MaximumSequenceLength(logits_lod, level);
+        math::MaximumSequenceLength(abs_logits_lod, level);
     auto warpctc_logits_dims =
         framework::make_ddim({static_cast<int64_t>(max_sequence_length),
                               static_cast<int64_t>(num_sequences),

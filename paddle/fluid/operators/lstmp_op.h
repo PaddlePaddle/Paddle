@@ -131,7 +131,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     batch_proj.mutable_data<T>(proj_dims, ctx.GetPlace());  // T x P
     batch_cell.mutable_data<T>(dims, ctx.GetPlace());       // T x D
 
-    auto batch_starts = batch_gate->lod()[0];
+    auto& batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
     auto gate_act = math::detail::GetActivationType(
         ctx.Attr<std::string>("gate_activation"));
@@ -205,11 +205,11 @@ class LSTMPKernel : public framework::OpKernel<T> {
     }
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
-    batch_proj.set_lod(batch_gate->lod());
+    batch_proj.set_lod(batch_gate->lod_ptr());
     // restore the output hidden in LoDTensor from the batch hidden
     to_seq(device_ctx, batch_proj, *proj_out);
 
-    batch_cell.set_lod(batch_gate->lod());
+    batch_cell.set_lod(batch_gate->lod_ptr());
     // restore the output cell state in LoDTensor from the batch cell
     to_seq(device_ctx, batch_cell, *cell_out);
   }
@@ -330,7 +330,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
         const DeviceContext& ctx, const framework::LoDTensor& src,
         const framework::DDim& dims, framework::LoDTensor& dst) {
       dst.mutable_data<T>(dims, ctx.GetPlace());
-      dst.set_lod(batch_gate->lod());
+      dst.set_lod(batch_gate->lod_ptr());
       to_batch(ctx, src, dst, false);
     };
 
@@ -346,7 +346,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     // to_batch(device_ctx, *cell_g, batch_cell_g, false);
     zero(device_ctx, &batch_cell_g, static_cast<T>(0.0));
     batch_gate_g.mutable_data<T>(batch_gate->dims(), ctx.GetPlace());
-    batch_gate_g.set_lod(batch_gate->lod());
+    batch_gate_g.set_lod(batch_gate->lod_ptr());
 
     auto gate_act = math::detail::GetActivationType(
         ctx.Attr<std::string>("gate_activation"));
@@ -358,7 +358,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("proj_activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
-    auto batch_starts = batch_gate->lod()[0];
+    auto& batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
       int bstart = static_cast<int>(batch_starts[n]);

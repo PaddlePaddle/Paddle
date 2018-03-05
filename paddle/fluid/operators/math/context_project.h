@@ -89,7 +89,7 @@ class ContextProjectFunctor {
                   const int context_start, const int context_length,
                   const int context_stride, const int up_pad,
                   const int down_pad, Tensor* col) {
-    auto lod_level_0 = in.lod()[0];
+    auto& lod_level_0 = in.lod()[0];
 
     math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, float> im2col_ocf;
 
@@ -198,7 +198,7 @@ class ContextProjectGradFunctor {
                   const int context_length, const int context_stride,
                   const int up_pad, const int down_pad, bool pad_grad,
                   bool input_grad, Tensor* padding_data, Tensor* col) {
-    auto lod_level_0 = in.lod()[0];
+    auto& lod_level_0 = in.lod()[0];
 
     math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, float> col2im_ocf;
 

@@ -63,7 +63,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     auto* in = ctx.Input<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    auto lod = in->lod();
+    auto& lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(lod[0].back(), (size_t)in->numel(),
                       "The actual size mismatches with the LoD information.");
@@ -97,9 +97,8 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
         num_erased_ptr, dev_in_lod_ptr, lod_len, dev_out_lod_ptr);
     // Set LoD for output
     std::vector<size_t> out_lod0(dev_out_lod.begin(), dev_out_lod.end());
-    framework::LoD out_lod;
+    framework::LoD& out_lod = *out->mutable_lod();
     out_lod.push_back(out_lod0);
-    out->set_lod(out_lod);
 
     // Set output
     out->Resize({static_cast<int64_t>(out_lod0.back()), 1});

@@ -76,13 +76,13 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
 
     // set lod information
     // TODO(wanghaoshuang): Move this to InferShape
-    framework::LoD lod(1);
+    framework::LoD& lod = *out->mutable_lod();
+    lod.resize(1);
     lod[0].reserve(batch_size + 1);
     for (int i = 0, offset = 0; i < batch_size + 1; ++i) {
       lod[0].push_back(offset);
       offset += output_height * output_width;
     }
-    out->set_lod(lod);
   }
 };
 

@@ -61,7 +61,7 @@ TEST(LoDTensor, LoDInGPU) {
   EXPECT_EQ(lod_tensor.lod_element(0, 2).first, 4UL);
   EXPECT_EQ(lod_tensor.lod_element(0, 4).first, 8UL);
 
-  auto lod = lod_tensor.lod();
+  auto& lod = lod_tensor.lod();
 
   test<<<1, 8>>>(lod[0].CUDAMutableData(place), lod[0].size());
   cudaDeviceSynchronize();

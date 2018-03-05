@@ -43,7 +43,7 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
     auto &mem_tensor = mem_var->Get<framework::LoDTensor>();
     out_tensor->ShareDataWith(mem_tensor);
-    out_tensor->set_lod(mem_tensor.lod());
+    out_tensor->set_lod(mem_tensor.lod_ptr());
   }
 };
 
@@ -109,7 +109,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
       auto &out_grad_tensor = out_grad_var->Get<framework::LoDTensor>();
       auto *in_grad_tensor = in_grad_var->GetMutable<framework::LoDTensor>();
       in_grad_tensor->ShareDataWith(out_grad_tensor);
-      in_grad_tensor->set_lod(out_grad_tensor.lod());
+      in_grad_tensor->set_lod(out_grad_tensor.lod_ptr());
     }
   }
 };

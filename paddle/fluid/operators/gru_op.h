@@ -115,7 +115,7 @@ class GRUKernel : public framework::OpKernel<T> {
     }
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
-    batch_hidden->set_lod(batch_gate->lod());
+    batch_hidden->set_lod(batch_gate->lod_ptr());
     to_seq(dev_ctx, *batch_hidden, *hidden);
   }
 
@@ -176,7 +176,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     }
 
     bool is_reverse = context.Attr<bool>("is_reverse");
-    batch_hidden_grad.set_lod(batch_hidden->lod());
+    batch_hidden_grad.set_lod(batch_hidden->lod_ptr());
     to_batch(dev_ctx, *hidden_grad, batch_hidden_grad, false, is_reverse);
 
     math::GRUMetaValue<T> gru_value;
@@ -196,7 +196,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
       gru_grad.state_weight_grad = nullptr;
     }
 
-    auto batch_starts = batch_hidden_grad.lod()[0];
+    auto& batch_starts = batch_hidden_grad.lod()[0];
     size_t num_batch = batch_starts.size() - 1;
     auto active_node = math::detail::GetActivationType(
         context.Attr<std::string>("activation"));
@@ -238,7 +238,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
       math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
-      batch_gate_grad.set_lod(batch_gate->lod());
+      batch_gate_grad.set_lod(batch_gate->lod_ptr());
       to_seq(dev_ctx, batch_gate_grad, *input_grad);
     }
     if (bias_grad) {

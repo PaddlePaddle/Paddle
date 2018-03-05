@@ -24,7 +24,8 @@ namespace operators {
 void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
                             framework::LoDTensor *selected_ids,
                             framework::LoDTensor *selected_scores) {
-  auto abs_lod = framework::ToAbsOffset(ids_->lod());
+  auto abs_lod_ptr = framework::ToAbsOffset(ids_->lod_ptr());
+  auto &abs_lod = abs_lod_ptr.Data();
   auto &high_level = abs_lod[lod_level_];
 
   auto items = SelectTopBeamSizeItems();
@@ -73,14 +74,14 @@ void BeamSearch::operator()(const framework::LoDTensor &pre_ids,
   low_level.push_back(low_offset);
 
   // fill lod
-  framework::LoD lod(2);
+  auto &lod = *selected_ids->mutable_lod();
+  lod.resize(2);
   lod[0].assign(high_level.begin(), high_level.end());
   lod[1].assign(low_level.begin(), low_level.end());
   if (!framework::CheckLoD(lod)) {
     PADDLE_THROW("lod %s is not right", framework::LoDToString(lod));
   }
-  selected_ids->set_lod(lod);
-  selected_scores->set_lod(lod);
+  selected_scores->set_lod(selected_ids->lod_ptr());
 }
 
 int BeamSearch::PruneEndidCandidates(const framework::LoDTensor &pre_ids,
@@ -151,7 +152,8 @@ bool BeamSearch::NextItemSet(std::vector<BeamSearch::Item> *items) {
   auto ids = *ids_;
   auto scores = *scores_;
 
-  auto abs_lod = framework::ToAbsOffset(ids.lod());
+  auto abs_lod_ptr = framework::ToAbsOffset(ids.lod_ptr());
+  auto &abs_lod = abs_lod_ptr.Data();
 
   auto *ids_data = ids.data<int64_t>();
   auto *scores_data = scores.data<float>();

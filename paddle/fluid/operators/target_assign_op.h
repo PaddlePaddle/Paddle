@@ -105,8 +105,8 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     int64_t p = x->dims()[1];
     int64_t k = x->dims()[2];
 
-    auto x_lod = x->lod().back();
-    size_t* x_lod_data = x_lod.MutableData(ctx.GetPlace());
+    auto& x_lod = x->lod().back();
+    const size_t* x_lod_data = x_lod.Data(ctx.GetPlace());
 
     TargetAssignFunctor<T, WT> functor(x_data, match_idx_data, x_lod_data,
                                        mismatch_value, n, m, p, k, out_data,
@@ -120,8 +120,8 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     if (neg_indices) {
       PADDLE_ENFORCE_EQ(neg_indices->lod().size(), 1UL);
       const int* neg_idx_data = neg_indices->data<int>();
-      auto neg_lod = neg_indices->lod().back();
-      size_t* neg_lod_data = neg_lod.MutableData(ctx.GetPlace());
+      auto& neg_lod = neg_indices->lod().back();
+      const size_t* neg_lod_data = neg_lod.Data(ctx.GetPlace());
       NegTargetAssignFunctor<DeviceContext, T, WT> neg_trg_functor;
       neg_trg_functor(device_ctx, neg_idx_data, neg_lod_data, n, m, k,
                       mismatch_value, out_data, out_wt_data);

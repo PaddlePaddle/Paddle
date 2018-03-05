@@ -24,10 +24,10 @@ class ScaleLoDTensorFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   framework::LoDTensor& seq, const T* scales) {
     const size_t level = 0;
-    auto lod = seq.lod();
+    auto& lod = seq.lod();
     const size_t num_seq = lod[level].size() - 1;
     size_t seq_width = seq.dims()[1];
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    //    framework::LoD abs_offset_lod = framework::ToAbsOffset(seq.lod_ptr());
 
     T* seq_data = seq.mutable_data<T>(context.GetPlace());
     for (size_t i = 0; i < num_seq; ++i) {

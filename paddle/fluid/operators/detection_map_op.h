@@ -70,8 +70,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     float evaluate_difficult = ctx.Attr<bool>("evaluate_difficult");
     auto ap_type = GetAPType(ctx.Attr<std::string>("ap_type"));
 
-    auto label_lod = in_label->lod();
-    auto detect_lod = in_detect->lod();
+    auto& label_lod = in_label->lod();
+    auto& detect_lod = in_detect->lod();
     PADDLE_ENFORCE_EQ(label_lod.size(), 1UL,
                       "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(label_lod[0].size(), detect_lod[0].size(),
@@ -143,8 +143,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto labels = framework::EigenTensor<T, 2>::From(input_label);
     auto detect = framework::EigenTensor<T, 2>::From(input_detect);
 
-    auto label_lod = input_label.lod();
-    auto detect_lod = input_detect.lod();
+    auto& label_lod = input_label.lod();
+    auto& detect_lod = input_detect.lod();
 
     int batch_size = label_lod[0].size() - 1;
     auto label_index = label_lod[0];
@@ -241,13 +241,12 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       false_pos_starts.push_back(false_pos_count);
     }
 
-    framework::LoD true_pos_lod;
+    auto& true_pos_lod = *output_true_pos.mutable_lod();
+    true_pos_lod.clear();
     true_pos_lod.emplace_back(true_pos_starts);
-    framework::LoD false_pos_lod;
+    auto& false_pos_lod = *output_false_pos.mutable_lod();
+    false_pos_lod.clear();
     false_pos_lod.emplace_back(false_pos_starts);
-
-    output_true_pos.set_lod(true_pos_lod);
-    output_false_pos.set_lod(false_pos_lod);
     return;
   }
 
@@ -268,7 +267,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto SetData = [](const framework::LoDTensor& pos_tensor,
                       std::map<int, std::vector<std::pair<T, int>>>& pos) {
       const T* pos_data = pos_tensor.data<T>();
-      auto pos_data_lod = pos_tensor.lod();
+      auto& pos_data_lod = pos_tensor.lod();
       for (size_t i = 0; i < pos_data_lod.size(); ++i) {
         for (size_t j = pos_data_lod[0][i]; j < pos_data_lod[0][i + 1]; ++j) {
           T score = pos_data[j * 2];

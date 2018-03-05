@@ -30,7 +30,7 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    auto lod = x->lod();
+    auto& lod = x->lod();
     auto dims = x->dims();
 
     const size_t level = lod.size() - 1;
@@ -67,7 +67,7 @@ class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<LoDTensor>("X");
     auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
 
-    auto lod = x->lod();
+    auto& lod = x->lod();
     const size_t level = lod.size() - 1;
 
     x_grad->mutable_data<T>(ctx.GetPlace());

@@ -26,7 +26,7 @@ class SequenceEraseKernel : public framework::OpKernel<T> {
     auto* in = ctx.Input<framework::LoDTensor>("X");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
 
-    auto lod = in->lod();
+    auto& lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(lod[0].back(), (size_t)in->numel(),
                       "The actual size mismatches with the LoD information.");
@@ -60,9 +60,8 @@ class SequenceEraseKernel : public framework::OpKernel<T> {
         out_dat[i - num_erased[i]] = in_dat[i];
       }
     }
-    framework::LoD out_lod;
+    framework::LoD& out_lod = *out->mutable_lod();
     out_lod.push_back(out_lod0);
-    out->set_lod(out_lod);
   }
 };
 

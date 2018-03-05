@@ -61,7 +61,7 @@ class MaxSeqPoolFunctor<platform::CUDADeviceContext, T> {
     }
     PADDLE_ENFORCE_EQ(idx_dims, out_dims);
 
-    auto starts = input.lod()[0];
+    auto& starts = input.lod()[0];
     const T* in_data = input.data<T>();
     T* out_data = output->data<T>();
     int* max_index = index->data<int>();

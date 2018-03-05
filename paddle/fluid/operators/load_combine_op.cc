@@ -63,12 +63,12 @@ class LoadCombineOp : public framework::OperatorBase {
         // copy CPU to GPU
         framework::LoDTensor cpu_tensor;
         cpu_tensor.ShareDataWith(*tensor);
-        cpu_tensor.set_lod(tensor->lod());
+        cpu_tensor.set_lod(tensor->lod_ptr());
 
         // reset tensor
         out_var->Clear();
         tensor = out_var->GetMutable<framework::LoDTensor>();
-        tensor->set_lod(cpu_tensor.lod());
+        tensor->set_lod(cpu_tensor.lod_ptr());
         TensorCopy(cpu_tensor, place, dev_ctx, tensor);
       }
     }

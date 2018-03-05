@@ -37,12 +37,12 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
                       y->lod().back().size() - 1,
                       "The size of last lod level in Input(Y)"
                       "must be equal to dims[0] of Input(X).");
-    out->set_lod(y->lod());
+    out->set_lod(y->lod_ptr());
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
     size_t element_len = framework::product(x_dims) / x_dims[0];
     T* out_data = out->mutable_data<T>(context.GetPlace());
-    auto out_starts = out->lod().back();
+    auto& out_starts = out->lod().back();
 
     for (size_t i = 0; i < out_starts.size() - 1; i++) {
       int scale = out_starts[i + 1] - out_starts[i];
@@ -79,8 +79,8 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
     auto* x = context.Input<LoDTensor>("X");
     auto* out = context.Input<LoDTensor>("Out");
     auto* d_x = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto out_last_level = out->lod().back();
-    d_x->set_lod(x->lod());
+    auto& out_last_level = out->lod().back();
+    d_x->set_lod(x->lod_ptr());
     const T* d_out_data = d_out->data<T>();
     T* d_x_data = d_x->mutable_data<T>(context.GetPlace());
     size_t element_len = d_out->numel() / d_out->dims()[0];

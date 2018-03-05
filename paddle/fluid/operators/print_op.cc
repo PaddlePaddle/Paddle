@@ -160,7 +160,7 @@ class TensorPrintOp : public framework::OperatorBase {
     // Just copy data from input tensor to output tensor
     // output tensor share same memory with input tensor
     out_tensor.ShareDataWith(in_tensor);
-    out_tensor.set_lod(in_tensor.lod());
+    out_tensor.set_lod(in_tensor.lod_ptr());
 
     std::string print_phase = Attr<std::string>("print_phase");
     if (print_phase != phase && print_phase != kBoth) {
@@ -171,7 +171,7 @@ class TensorPrintOp : public framework::OperatorBase {
     if (first_n > 0 && ++times_ > first_n) return;
 
     framework::LoDTensor printed_tensor;
-    printed_tensor.set_lod(in_tensor.lod());
+    printed_tensor.set_lod(in_tensor.lod_ptr());
     printed_tensor.Resize(in_tensor.dims());
 
     if (platform::is_cpu_place(in_tensor.place())) {

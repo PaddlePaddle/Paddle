@@ -77,7 +77,7 @@ inline void CopyOrShare(const framework::Variable &src,
   if (src.IsType<LoDTensor>()) {
     if (src.Get<LoDTensor>().place() == dst_place) {
       dst->GetMutable<LoDTensor>()->ShareDataWith(src.Get<LoDTensor>());
-      dst->GetMutable<LoDTensor>()->set_lod(src.Get<LoDTensor>().lod());
+      dst->GetMutable<LoDTensor>()->set_lod(src.Get<LoDTensor>().lod_ptr());
     } else {
       TensorCopy(src.Get<LoDTensor>(), dst_place, dst->GetMutable<LoDTensor>());
     }

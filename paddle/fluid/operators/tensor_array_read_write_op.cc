@@ -46,7 +46,7 @@ class WriteToArrayOp : public ArrayOp {
       auto &dev_ctx = *pool.Get(place);
 
       TensorCopy(x_tensor, place, dev_ctx, out_tensor);
-      out_tensor->set_lod(x_tensor.lod());
+      out_tensor->set_lod(x_tensor.lod_ptr());
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
                   "nothing has been written to output array["
@@ -139,7 +139,7 @@ class ReadFromArrayOp : public ArrayOp {
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
       framework::TensorCopy(x_array[offset], place, dev_ctx, out_tensor);
-      out_tensor->set_lod(x_array[offset].lod());
+      out_tensor->set_lod(x_array[offset].lod_ptr());
     } else {
       VLOG(10) << "offset " << offset << " >= " << x_array.size();
     }

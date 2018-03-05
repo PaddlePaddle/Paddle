@@ -66,7 +66,7 @@ void CopyVariableWithTensor(const Variable& in_var, const Tensor& tensor,
   if (in_var.IsType<LoDTensor>()) {
     auto& in_lod_tensor = in_var.Get<LoDTensor>();
     auto* tran_lod_tensor = out_var.GetMutable<LoDTensor>();
-    tran_lod_tensor->set_lod(in_lod_tensor.lod());
+    tran_lod_tensor->set_lod(in_lod_tensor.lod_ptr());
     tran_lod_tensor->set_layout(in_lod_tensor.layout());
     tran_lod_tensor->ShareDataWith(tensor);
   } else if (in_var.IsType<SelectedRows>()) {

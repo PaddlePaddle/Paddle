@@ -63,12 +63,13 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::LoDTensor& seq, framework::Tensor& padding,
                   bool norm_by_times) {
-    auto lod = seq.lod();
+    auto& lod = seq.lod();
     PADDLE_ENFORCE_GT(lod.size(), 0UL,
                       "The lod of LoDTensor seq should not be null.");
 
     const size_t level = 0;
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    auto abs_offset_lod_ptr = framework::ToAbsOffset(seq.lod_ptr());
+    auto& abs_offset_lod = abs_offset_lod_ptr.Data();
 
     auto seq_dims = seq.dims();
     PADDLE_ENFORCE_EQ(seq_dims[0],
@@ -81,7 +82,7 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                       "The input padding should be a 3-D Tensor of shape "
                       "[max_sequence_length, num_sequences, sequence_width].");
 
-    int64_t max_sequence_length = MaximumSequenceLength(lod, level);
+    int64_t max_sequence_length = MaximumSequenceLength(seq.lod_ptr(), level);
     PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
                       "The first dimension of Tensor padding should be the "
                       "maximum length of all sequences in LoDTensor seq.");
@@ -138,12 +139,12 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   framework::LoDTensor& seq, const framework::Tensor& padding,
                   bool norm_by_times) {
-    auto lod = seq.lod();
-    PADDLE_ENFORCE_GT(lod.size(), 0UL,
+    PADDLE_ENFORCE_GT(seq.lod().size(), 0UL,
                       "The lod of LoDTensor seq should not be null.");
 
     const size_t level = 0;
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    auto abs_offset_lod_ptr = framework::ToAbsOffset(seq.lod_ptr());
+    auto& abs_offset_lod = abs_offset_lod_ptr.Data();
 
     auto seq_dims = seq.dims();
     PADDLE_ENFORCE_EQ(seq_dims[0],
@@ -156,7 +157,7 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                       "The input padding should be a 3-D Tensor of shape "
                       "[max_sequnece_length, num_sequences, sequence_width].");
 
-    int64_t max_sequence_length = MaximumSequenceLength(lod, level);
+    int64_t max_sequence_length = MaximumSequenceLength(seq.lod_ptr(), level);
     PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
                       "The first dimension of Tensor padding should be "
                       "the maximum length of all sequences in LoDTensor seq.");

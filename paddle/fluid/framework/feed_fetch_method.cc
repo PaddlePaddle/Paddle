@@ -33,7 +33,7 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
   // shared data with input tensor
   feed_inputs[index].ShareDataWith(input);
   // set lod
-  feed_inputs[index].set_lod(input.lod());
+  feed_inputs[index].set_lod(input.lod_ptr());
 }
 
 LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,

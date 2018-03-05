@@ -169,7 +169,7 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     *num_label_chunks_data = 0;
     *num_correct_chunks_data = 0;
 
-    auto lod = label->lod();
+    auto& lod = label->lod();
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
     PADDLE_ENFORCE(lod == inference->lod(),
                    "LoD must be same between Inference and Label.");

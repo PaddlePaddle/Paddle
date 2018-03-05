@@ -14,17 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
-#ifdef PADDLE_WITH_CUDA
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#endif
-
 #include <glog/logging.h>
+#include <memory>
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/details/cow_ptr.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -47,6 +44,7 @@ namespace framework {
  *    0 2 5 7 10 12 15 20
  */
 using LoD = std::vector<Vector<size_t>>;
+using LoDPtr = details::COWPtr<LoD>;
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
@@ -58,7 +56,7 @@ LoD SliceInLevel(const LoD& in, size_t level, size_t elem_begin,
 /*
  * Transform an LoD from relative offsets to absolute offsets.
  */
-LoD ToAbsOffset(const LoD& in);
+LoDPtr ToAbsOffset(const LoDPtr& in);
 
 bool operator==(const LoD& a, const LoD& b);
 
@@ -100,18 +98,21 @@ bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
  */
 class LoDTensor : public Tensor {
  public:
-  LoDTensor() : Tensor() {}
+  LoDTensor() : Tensor(), lod_(new LoD()) {}
 
   /* Constructor with place should only be used in pybind */
-  explicit LoDTensor(const platform::Place& place) : Tensor(place) {}
+  explicit LoDTensor(const platform::Place& place)
+      : Tensor(place), lod_(new LoD()) {}
 
-  explicit LoDTensor(const LoD& lod) : lod_(lod) {}
+  //  explicit LoDTensor(const LoD& lod) : lod_(lod) {}
 
-  void set_lod(const LoD& lod) { lod_ = lod; }
+  void set_lod(const LoDPtr& lod) { lod_ = lod; }
 
-  const LoD& lod() const { return lod_; }
+  const LoD& lod() const { return lod_.Data(); }
 
-  LoD* mutable_lod() { return &lod_; }
+  const LoDPtr& lod_ptr() const { return lod_; }
+
+  LoD* mutable_lod() { return lod_.MutableData(); }
 
   /*
    * Get the start offset and end offset of an  element from LoD.
@@ -119,21 +120,22 @@ class LoDTensor : public Tensor {
   std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
     PADDLE_ENFORCE_LT(level, NumLevels());
     PADDLE_ENFORCE_LT(elem, NumElements(level));
-    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
+    return std::make_pair((lod_.Data())[level][elem],
+                          (lod_.Data())[level][elem + 1]);
   }
 
   /*
    * Number of LoDTensor's levels, each level has units of data, for example,
    * in the sentence's view, article, paragraph, sentence are 3 levels.
    */
-  size_t NumLevels() const { return lod_.size(); }
+  size_t NumLevels() const { return lod_.Data().size(); }
   /*
    * Number of elements in a level.
    */
   size_t NumElements(size_t level = 0) const {
     PADDLE_ENFORCE_LT(level, NumLevels());
     // the last offset is the end of last element
-    return (lod_)[level].size() - 1;
+    return (lod_.Data())[level].size() - 1;
   }
 
   std::vector<LoDTensor> SplitLoDTensor(
@@ -143,7 +145,7 @@ class LoDTensor : public Tensor {
                       platform::Place place);
 
  private:
-  LoD lod_;
+  LoDPtr lod_;
 };
 
 /*
@@ -157,15 +159,17 @@ class LoDTensor : public Tensor {
  *  - [a0 a0 a0 a1 a1]
  */
 template <typename T>
-LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
-                    const platform::Place& place) {
-  LoD abs_lod = ToAbsOffset(lod);
+LoDTensor LodExpand(const LoDTensor& source, const LoDPtr& lod_ptr,
+                    size_t level, const platform::Place& place) {
+  auto abs_lod_ptr = ToAbsOffset(lod_ptr);
+  auto& abs_lod = abs_lod_ptr.Data();
+  auto& lod = lod_ptr.Data();
   const auto& lod_level = lod[level];
   size_t num_instances = source.dims()[0];
 
   // new tensor
   LoDTensor tensor;
-  tensor.set_lod(lod);
+  tensor.set_lod(lod_ptr);
   auto dims = source.dims();
   dims[0] = lod_level.back();
   tensor.Resize(dims);

@@ -50,7 +50,8 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
     const size_t level = 0;
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* output = ctx.Output<LoDTensor>("Output");
-    auto input_lod = framework::ToAbsOffset(input->lod());
+    auto input_lod_ptr = framework::ToAbsOffset(input->lod_ptr());
+    auto& input_lod = *input_lod_ptr.MutableData();
 
     const T* tokens = input->data<T>();
     const int64_t num_tokens = input->dims()[0];
@@ -75,9 +76,8 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
 
     // set output lod
     std::vector<size_t> host_out_lod0(dev_out_lod0.begin(), dev_out_lod0.end());
-    framework::LoD out_lod;
+    auto& out_lod = *output->mutable_lod();
     out_lod.push_back(host_out_lod0);
-    output->set_lod(out_lod);
 
     // resize output dims
     output->Resize({static_cast<int64_t>(host_out_lod0.back()), 1});

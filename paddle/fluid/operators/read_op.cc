@@ -74,7 +74,7 @@ class ReadOp : public framework::OperatorBase {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
       out->ShareDataWith(ins[i]);
-      out->set_lod(ins[i].lod());
+      out->set_lod(ins[i].lod_ptr());
     }
   }
 };

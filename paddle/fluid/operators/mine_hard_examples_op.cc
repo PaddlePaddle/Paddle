@@ -143,8 +143,8 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
       batch_starts.push_back(batch_starts.back() + neg_indices.size());
     }
 
-    framework::LoD out_neg_indices_lod;
-    out_neg_indices_lod.emplace_back(batch_starts);
+    framework::LoD* out_neg_indices_lod = new framework::LoD();
+    out_neg_indices_lod->emplace_back(batch_starts);
     int neg_offset = 0;
     auto neg_data = out_neg_indices->mutable_data<int>(
         framework::make_ddim({static_cast<int>(batch_starts.back()), 1}),
@@ -154,7 +154,7 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
       std::copy(neg_indices.begin(), neg_indices.end(), neg_data + neg_offset);
       neg_offset += neg_indices.size();
     }
-    out_neg_indices->set_lod(out_neg_indices_lod);
+    out_neg_indices->set_lod(framework::LoDPtr(out_neg_indices_lod));
     return;
   }
 };

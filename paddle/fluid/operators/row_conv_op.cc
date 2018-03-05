@@ -133,7 +133,7 @@ class RowConvKernel<platform::CPUDeviceContext, T>
 
     out->mutable_data<T>(context.GetPlace());
 
-    auto batch_indices = x->lod()[0];
+    auto &batch_indices = x->lod()[0];
     auto input_dim = x->dims()[1];  // 'in' is of size T x N
     size_t num_sequence = batch_indices.size() - 1;
 
@@ -180,7 +180,7 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
     auto *d_filter = context.Output<Tensor>(framework::GradVarName("Filter"));
 
     auto input_dim = x->dims()[1];  // 'x' is of size T x N
-    auto batch_indices = x->lod()[0];
+    auto &batch_indices = x->lod()[0];
     size_t num_sequence = batch_indices.size() - 1;
     auto future_context = filter->dims()[0];
 

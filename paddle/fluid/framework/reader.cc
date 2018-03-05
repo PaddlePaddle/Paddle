@@ -89,7 +89,8 @@ void BatchReader::ReadNext(std::vector<LoDTensor>* out) {
     int64_t dst_offset = 0;
 
     // Merge lod and data
-    LoD batch_lod;
+    LoD* batch_lod_ptr = new LoD();
+    LoD& batch_lod = *batch_lod_ptr;
     for (size_t i = 0; i < buffer_.size(); ++i) {
       DDim ins_shape = buffer_[i][j].dims();
       LoD ins_lod = buffer_[i][j].lod();
@@ -108,7 +109,7 @@ void BatchReader::ReadNext(std::vector<LoDTensor>* out) {
       TensorCopy(buffer_[i][j], platform::CPUPlace(), &dst);
       dst_offset += ins_shape[0];
     }
-    out_tensor.set_lod(batch_lod);
+    out_tensor.set_lod(LoDPtr(batch_lod_ptr));
     out->push_back(out_tensor);
   }
 }

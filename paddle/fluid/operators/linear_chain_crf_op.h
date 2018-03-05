@@ -60,7 +60,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
                       "The Input(Emission) should be a sequence.");
     PADDLE_ENFORCE_EQ(ctx.Input<LoDTensor>("Label")->NumLevels(), 1UL,
                       "The Input(Label) should be a sequence.");
-    auto in_lod = ctx.Input<LoDTensor>("Label")->lod();
+    auto& in_lod = ctx.Input<LoDTensor>("Label")->lod();
     PADDLE_ENFORCE(in_lod.size(), "Input(Label) must be a sequence.");
     const size_t level = 0;
     const size_t seq_num = in_lod[level].size() - 1;
@@ -198,7 +198,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const size_t level = 0;  // currently, only support sequence.
-    auto lod = ctx.Input<LoDTensor>("Label")->lod();
+    auto& lod = ctx.Input<LoDTensor>("Label")->lod();
     PADDLE_ENFORCE(lod.size(), "Input(Label) must be a sequence.");
 
     const Tensor* label = ctx.Input<LoDTensor>("Label");

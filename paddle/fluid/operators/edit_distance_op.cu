@@ -81,8 +81,8 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
                       ctx.device_context())
                       .stream();
 
-    auto hyp_lod = x1_t->lod()[0];
-    auto ref_lod = x2_t->lod()[0];
+    auto& hyp_lod = x1_t->lod()[0];
+    auto& ref_lod = x2_t->lod()[0];
     PADDLE_ENFORCE(
         hyp_lod.size() == ref_lod.size(),
         "Input(Hyps) and Input(Refs) must have the same batch size.");

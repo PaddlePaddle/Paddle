@@ -120,21 +120,21 @@ PYBIND11_PLUGIN(core) {
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
-            LoD new_lod;
+            new (&instance) LoDTensor();
+            auto &new_lod = *instance.mutable_lod();
             new_lod.reserve(lod.size());
             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-            new (&instance) LoDTensor(new_lod);
           })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       .def("set_lod",
            [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
-             LoD new_lod;
+             auto &new_lod = *self.mutable_lod();
+             new_lod.clear();
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
-             self.set_lod(new_lod);
            })
       .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
-        auto lod = self.lod();
+        auto &lod = self.lod();
         std::vector<std::vector<size_t>> new_lod;
         new_lod.reserve(lod.size());
         std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
@@ -154,26 +154,9 @@ PYBIND11_PLUGIN(core) {
            py::return_value_policy::reference)
       .def("set_height", &SelectedRows::set_height)
       .def("height", &SelectedRows::height)
-      .def("set_rows",
-           [](SelectedRows &self, std::vector<int64_t> rows) {
-#ifndef PADDLE_WITH_CUDA
-             self.set_rows(rows);
-#else
-        Vector<int64_t> new_rows(rows);
-        self.set_rows(new_rows);
-#endif
-           })
-      .def("rows", [](SelectedRows &self) {
-#ifndef PADDLE_WITH_CUDA
-        return self.rows();
-#else
-         auto rows = self.rows();
-         std::vector<int64_t> new_rows;
-         new_rows.reserve(rows.size());
-         std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
-         return new_rows;
-#endif
-      });
+      .def("set_rows", [](SelectedRows &self,
+                          std::vector<int64_t> rows) { self.set_rows(rows); })
+      .def("rows", [](SelectedRows &self) { return self.rows(); });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
@@ -438,12 +421,12 @@ All parameter, weight, gradient are variables in Paddle.
            [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
              PADDLE_ENFORCE_LT(i, self.size());
              self[i].ShareDataWith(t);
-             self[i].set_lod(t.lod());
+             self[i].set_lod(t.lod_ptr());
            })
       .def("append", [](LoDTensorArray &self, const LoDTensor &t) {
         self.emplace_back();
         self.back().ShareDataWith(t);
-        self.back().set_lod(t.lod());
+        self.back().set_lod(t.lod_ptr());
       });
 
   m.def("op_support_gpu", OpSupportGPU);

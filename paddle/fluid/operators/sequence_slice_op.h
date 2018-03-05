@@ -25,9 +25,12 @@ using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 template <typename T>
-inline LoD SequenceSliceLoD(const T& in, const int64_t* offset_data,
-                            const int64_t* length_data) {
-  auto out_lod = in.lod();
+static inline framework::LoDPtr SequenceSliceLoD(const T& in,
+                                                 const int64_t* offset_data,
+                                                 const int64_t* length_data) {
+  auto* out_lod_ptr = new LoD();
+  auto& out_lod = *out_lod_ptr;
+  out_lod = in.lod();
   size_t lod_offset = 0;
 
   auto n = in.lod()[0].size() - 1;
@@ -36,7 +39,7 @@ inline LoD SequenceSliceLoD(const T& in, const int64_t* offset_data,
     lod_offset += length_data[i];
     out_lod[0][i + 1] = lod_offset;
   }
-  return out_lod;
+  return framework::LoDPtr(out_lod_ptr);
 }
 
 template <typename DeviceContext, typename T>
@@ -48,7 +51,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     auto* length = ctx.Input<Tensor>("Length");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    auto lod = in->lod();
+    auto& lod = in->lod();
     auto n = lod[0].size() - 1;
 
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
@@ -86,11 +89,12 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     }
 
     out->mutable_data<T>(ctx.GetPlace());
-    auto out_lod = SequenceSliceLoD(*in, offset_data, length_data);
+    auto out_lod_ptr = SequenceSliceLoD(*in, offset_data, length_data);
+    auto& out_lod = out_lod_ptr.Data();
     auto out_dims = in->dims();
     out_dims[0] = out_lod[0][out_lod[0].size() - 1];
     out->Resize(out_dims);
-    out->set_lod(out_lod);
+    out->set_lod(out_lod_ptr);
 
     auto in_stride = framework::stride(in->dims());
     auto out_stride = framework::stride(out->dims());
@@ -137,12 +141,12 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
       length_data = length_cpu.data<int64_t>();
     }
 
-    auto lod = in->lod();
-    auto out_lod = out_grad->lod();
+    auto& lod = in->lod();
+    auto& out_lod = out_grad->lod();
 
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());
-      x_grad->set_lod(in->lod());
+      x_grad->set_lod(in->lod_ptr());
       math::SetConstant<DeviceContext, T> set_zero;
       set_zero(ctx.template device_context<DeviceContext>(), x_grad,
                static_cast<T>(0));

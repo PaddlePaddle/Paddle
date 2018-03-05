@@ -91,7 +91,6 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
                       "Only support one level sequence now.");
-    auto lod_g_level_0 = in->lod()[0];
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
@@ -116,7 +115,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
     if (in_g) {
       in_g->mutable_data<T>(context.GetPlace());
-      in_g->set_lod(in->lod());
+      in_g->set_lod(in->lod_ptr());
       set_zero(dev_ctx, in_g, static_cast<T>(0));
 
       seq_project_grad_functor(dev_ctx, *in_g, padding_trainable, context_start,

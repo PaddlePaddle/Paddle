@@ -39,7 +39,7 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     std::string pooltype = context.Attr<std::string>("pooltype");
 
     auto dims = in->dims();
-    auto lod = in->lod();
+    auto& lod = in->lod();
     int64_t w = in->numel() / dims[0];
 
     // InferShape by lod
@@ -102,7 +102,7 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     std::string pooltype = context.Attr<std::string>("pooltype");
 
     auto dims = in->dims();
-    auto lod = in->lod()[0];
+    auto& lod = in->lod()[0];
     int64_t w = in->numel() / dims[0];
 
     in_g->mutable_data<T>(context.GetPlace());

@@ -303,11 +303,11 @@ class RowConvKernel<platform::CUDADeviceContext, T>
     const T *weight = Filter->data<T>();
     T *out = Out->mutable_data<T>(context.GetPlace());
 
-    auto batch_indices = X->lod()[0];
+    auto &batch_indices = X->lod()[0];
     int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    const size_t *idx = batch_indices.Data(context.GetPlace());
     auto stream = context.cuda_device_context().stream();
 
     if (future_context <= 32) {
@@ -341,11 +341,11 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     Tensor *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
     Tensor *dFilter = context.Output<Tensor>(framework::GradVarName("Filter"));
 
-    auto batch_indices = X->lod()[0];
+    auto &batch_indices = X->lod()[0];
     int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    const size_t *idx = batch_indices.Data(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();
     math::SetConstant<platform::CUDADeviceContext, T> zero;

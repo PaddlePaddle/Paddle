@@ -67,8 +67,9 @@ class COWPtr {
   COWPtr& operator=(COWPtr&& origin) = default;
 
   // Copy methods. Not own payload
-  COWPtr(const COWPtr& other) : payload_(other.payload_), ownership_{false} {}
-  COWPtr& operator=(const COWPtr& other) {
+  COWPtr(const COWPtr<T>& other)
+      : payload_(other.payload_), ownership_{false} {}
+  COWPtr& operator=(const COWPtr<T>& other) {
     payload_ = other.payload_;
     ownership_.SetOwnership(false);
     return *this;

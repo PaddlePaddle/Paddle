@@ -58,7 +58,7 @@ class FetchOp : public framework::OperatorBase {
 
     TensorCopy(src_item, platform::CPUPlace(), dev_ctx, &dst_item);
     dev_ctx.Wait();
-    dst_item.set_lod(src_item.lod());
+    dst_item.set_lod(src_item.lod_ptr());
 
     VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;
   }

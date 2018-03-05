@@ -21,11 +21,13 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-inline static size_t MaximumSequenceLength(const framework::LoD& lod,
+inline static size_t MaximumSequenceLength(const framework::LoDPtr& lod,
                                            const size_t level) {
-  const size_t num_sequences = lod[level].size() - 1;
+  const size_t num_sequences = lod.Data()[level].size() - 1;
   size_t max_sequence_length = 0;
-  framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+  auto abs_offset_lod_ptr = framework::ToAbsOffset(lod);
+  auto& abs_offset_lod = abs_offset_lod_ptr.Data();
+
   for (size_t i = 0; i < num_sequences; ++i) {
     max_sequence_length =
         std::max(max_sequence_length,

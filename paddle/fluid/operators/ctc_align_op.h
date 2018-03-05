@@ -31,7 +31,8 @@ class CTCAlignKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* output = ctx.Output<LoDTensor>("Output");
     const size_t level = 0;
-    auto input_lod = framework::ToAbsOffset(input->lod());
+    auto input_lod_ptr = framework::ToAbsOffset(input->lod_ptr());
+    auto& input_lod = input_lod_ptr.Data();
 
     // check input dims and lod
     auto input_dims = input->dims();
@@ -64,9 +65,8 @@ class CTCAlignKernel : public framework::OpKernel<T> {
     }
 
     // set output lod
-    framework::LoD output_lod;
+    framework::LoD& output_lod = *output->mutable_lod();
     output_lod.push_back(output_lod0);
-    output->set_lod(output_lod);
     // resize output dims
     output->Resize({static_cast<int64_t>(output_lod0.back()), 1});
     // for empty sequence

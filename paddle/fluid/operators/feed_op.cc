@@ -59,7 +59,7 @@ class FeedOp : public framework::OperatorBase {
     } else {
       framework::TensorCopy(feed_item, place, dev_ctx, out_item);
     }
-    out_item->set_lod(feed_item.lod());
+    out_item->set_lod(feed_item.lod_ptr());
   }
 };
 

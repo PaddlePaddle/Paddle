@@ -201,7 +201,7 @@ TEST(BeamSearchDecodeOp, PackAllSteps) {
   LoDTensor score_tensor;
   helper.PackAllSteps(ids, scores, &id_tensor, &score_tensor);
 
-  LoD lod = id_tensor.lod();
+  auto& lod = id_tensor.lod();
   std::vector<size_t> expect_source_lod = {0, 4, 8};
   EXPECT_EQ(lod[0], expect_source_lod);
   std::vector<size_t> expect_sentence_lod = {0, 1, 3, 6, 9, 10, 13, 16, 19};

@@ -24,8 +24,11 @@ using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 template <typename T>
-LoD ConcatLoD(const std::vector<const T*> ins, const size_t level) {
-  auto out_lod = ins[0]->lod();
+framework::LoDPtr ConcatLoD(const std::vector<const T*> ins,
+                            const size_t level) {
+  auto* out_lod_ptr = new LoD();
+  auto& out_lod = *out_lod_ptr;
+  out_lod = ins[0]->lod();
   auto numLevels = ins[0]->NumLevels();
   const size_t n = ins.size();
   const size_t level_idx = ins[0]->NumLevels() - 1 - level;
@@ -56,7 +59,7 @@ LoD ConcatLoD(const std::vector<const T*> ins, const size_t level) {
     }
   }
 
-  return out_lod;
+  return framework::LoDPtr(out_lod_ptr);
 }
 
 template <typename DeviceContext, typename T>
@@ -92,21 +95,23 @@ class SequenceConcatOpKernel : public framework::OpKernel<T> {
                       "should be greater than the specify level");
 
     out->mutable_data<T>(ctx.GetPlace());
-    auto out_lod = ins[0]->lod();
+    auto out_lod_ptr = ins[0]->lod_ptr();
     if (axis == 0) {
-      out_lod = ConcatLoD<LoDTensor>(ins, level);
+      out_lod_ptr = ConcatLoD<LoDTensor>(ins, level);
     }
-    out->set_lod(out_lod);
+    out->set_lod(out_lod_ptr);
 
-    const size_t level_idx = out_lod.size() - level - 1;
-    auto out_lod_level = framework::ToAbsOffset(out_lod)[level_idx];
+    const size_t level_idx = out_lod_ptr.Data().size() - level - 1;
+    auto abs_out_lod_ptr = framework::ToAbsOffset(out_lod_ptr);
+    auto& out_lod_level = abs_out_lod_ptr.Data()[level_idx];
     for (size_t i = 0; i < out_lod_level.size() - 1; ++i) {
       Tensor out_t = out->Slice(static_cast<int>(out_lod_level[i]),
                                 static_cast<int>(out_lod_level[i + 1]));
       auto out_stride = framework::stride(out_t.dims());
       size_t offset = 0;
       for (size_t j = 0; j < n; ++j) {
-        auto in_lod_level = framework::ToAbsOffset(ins[j]->lod())[level_idx];
+        auto abs_in_lod = framework::ToAbsOffset(ins[j]->lod_ptr());
+        auto& in_lod_level = abs_in_lod.Data()[level_idx];
         auto in_stride = framework::stride(ins[j]->dims());
         Tensor in_t = ins[j]->Slice(static_cast<int>(in_lod_level[i]),
                                     static_cast<int>(in_lod_level[i + 1]));
@@ -134,16 +139,16 @@ class SequenceConcatGradOpKernel : public framework::OpKernel<T> {
 
     // Set Grad(X) LoD as X
     for (size_t i = 0; i < n; i++) {
-      x_grads[i]->set_lod(ins[i]->lod());
+      x_grads[i]->set_lod(ins[i]->lod_ptr());
       x_grads[i]->mutable_data<T>(ctx.GetPlace());
     }
-    auto out_lod = ins[0]->lod();
+    auto out_lod_ptr = ins[0]->lod_ptr();
     if (axis == 0UL) {
-      out_lod = ConcatLoD<LoDTensor>(ins, level);
+      out_lod_ptr = ConcatLoD<LoDTensor>(ins, level);
     }
-    const size_t level_idx = out_lod.size() - level - 1;
-    auto out_lod_level = framework::ToAbsOffset(out_lod)[level_idx];
-
+    const size_t level_idx = out_lod_ptr.Data().size() - level - 1;
+    auto abs_out_lod_level = framework::ToAbsOffset(out_lod_ptr);
+    auto& out_lod_level = abs_out_lod_level.Data()[level_idx];
     for (size_t i = 0; i < out_lod_level.size() - 1; ++i) {
       Tensor out_grad_t =
           out_grad->Slice(static_cast<int>(out_lod_level[i]),
@@ -152,8 +157,9 @@ class SequenceConcatGradOpKernel : public framework::OpKernel<T> {
       size_t offset = 0;
 
       for (size_t j = 0; j < n; ++j) {
-        auto x_grad_lod_level =
-            framework::ToAbsOffset(x_grads[j]->lod())[level_idx];
+        auto abs_x_grad_lod_level =
+            framework::ToAbsOffset(x_grads[j]->lod_ptr());
+        auto& x_grad_lod_level = abs_x_grad_lod_level.Data()[level_idx];
         auto x_grad_stride = framework::stride(x_grads[j]->dims());
         Tensor x_grad_t =
             x_grads[j]->Slice(static_cast<int>(x_grad_lod_level[i]),

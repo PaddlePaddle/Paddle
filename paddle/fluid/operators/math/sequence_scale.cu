@@ -38,10 +38,11 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   framework::LoDTensor& seq, const T* scales) {
     const size_t level = 0;
-    auto lod = seq.lod();
+    auto& lod = seq.lod();
     const size_t num_seq = lod[level].size() - 1;
     const size_t seq_width = seq.numel() / seq.dims()[0];
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    auto abs_offset_lod_ptr = framework::ToAbsOffset(seq.lod_ptr());
+    auto& abs_offset_lod = *abs_offset_lod_ptr.MutableData();
     T* seq_data = seq.mutable_data<T>(context.GetPlace());
 
     SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<

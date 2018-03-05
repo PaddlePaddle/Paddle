@@ -58,7 +58,7 @@ class AssignFunctor {
                    framework::LoDTensor *out) const {
     auto &out_tensor = *out;
     TensorCopy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
-    out_tensor.set_lod(lod_tensor.lod());
+    out_tensor.set_lod(lod_tensor.lod_ptr());
   }
 
   framework::Variable *out_;

@@ -300,10 +300,10 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::LoD lod;
-    lod.emplace_back(batch_starts);
+    framework::LoD* lod = new framework::LoD();
+    lod->emplace_back(batch_starts);
 
-    outs->set_lod(lod);
+    outs->set_lod(framework::LoDPtr(lod));
   }
 };
 

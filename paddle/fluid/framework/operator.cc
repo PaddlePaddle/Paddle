@@ -402,7 +402,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
     auto in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
-    out_tensor->set_lod(in_tensor.lod());
+    out_tensor->set_lod(in_tensor.lod_ptr());
 
     // TODO(dzhwinter) : reuse ShareLoD in most operators.
     // Need to call ShareLayout explicitly in sequence related ops.
