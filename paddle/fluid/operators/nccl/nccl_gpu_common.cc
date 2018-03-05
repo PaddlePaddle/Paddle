@@ -16,5 +16,44 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
-namespace platform {}  // namespace platform
+namespace platform {
+namespace {
+// TODO(panyx0718): Where to destroy them.
+std::unique_ptr<std::vector<ncclComm_t>> global_comms;
+std::unique_ptr<std::unordered_map<int, int>> comm_id_map;
+bool inited = false;
+size_t last_num_gpus = -1;
+}
+
+int Communicator::GetCommId(int device_id) const {
+  return comm_id_map->at(device_id);
+}
+
+void Communicator::InitAll(const std::vector<int>& gpus) {
+  if (inited && last_num_gpus == gpus.size()) {
+    return;
+  }
+  last_num_gpus = gpus.size();
+  if (global_comms) {
+    for (size_t i = 0; i < global_comms->size(); ++i) {
+      // FIXME(dzh) : PADDLE_ENFORCE return void
+      dynload::ncclCommDestroy((*global_comms)[i]);
+    }
+  }
+  global_comms.reset(new std::vector<ncclComm_t>());
+  comm_id_map.reset(new std::unordered_map<int, int>());
+  global_comms->resize(gpus.size());
+  for (size_t i = 0; i < gpus.size(); ++i) {
+    (*comm_id_map)[gpus[i]] = i;
+  }
+  PADDLE_ENFORCE(
+      dynload::ncclCommInitAll(global_comms->data(), gpus.size(), gpus.data()));
+  inited = true;
+}
+
+const std::vector<ncclComm_t>& Communicator::comms() const {
+  return *global_comms;
+}
+
+}  // namespace platform
 }  // namespace paddle
