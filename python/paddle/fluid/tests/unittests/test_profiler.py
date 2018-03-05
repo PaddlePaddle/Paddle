@@ -49,7 +49,7 @@ class TestProfiler(unittest.TestCase):
         exe.run(startup_program)
 
         pass_acc_calculator = fluid.average.WeightedAverage()
-        with profiler.profiler(state, 'total') as prof:
+        with profiler.profiler(state, 'total', profile_path) as prof:
             for iter in range(10):
                 if iter == 2:
                     profiler.reset_profiler()
