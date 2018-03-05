@@ -37,28 +37,27 @@ struct Communicator {
   std::unordered_map<int, int> comm_id_map_;
   bool inited_;
 
-  Communicator() {}
+  explicit Communicator() : inited_(false) {}
+
+  ~Communicator() {
+    if (inited_) {
+      for (size_t i = 0; i < comms_.size(); ++i) {
+        dynload::ncclCommDestroy(comms_[i]);
+      }
+    }
+  }
 
   int GetCommId(int device_id) const { return comm_id_map_.at(device_id); }
 
   void InitAll(const std::vector<int>& gpus) {
+    if (inited_) return;
     comms_.resize(gpus.size());
-    inited_ = false;
     for (size_t i = 0; i < gpus.size(); ++i) {
       comm_id_map_[gpus[i]] = i;
     }
     PADDLE_ENFORCE(
         dynload::ncclCommInitAll(comms_.data(), gpus.size(), gpus.data()));
     inited_ = true;
-  }
-
-  ~Communicator() {
-    if (inited_) {
-      for (size_t i = 0; i < comms_.size(); ++i) {
-        // FIXME(dzh) : PADDLE_ENFORCE return void
-        dynload::ncclCommDestroy(comms_[i]);
-      }
-    }
   }
 
   DISABLE_COPY_AND_ASSIGN(Communicator);

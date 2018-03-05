@@ -238,6 +238,7 @@ def _callback_lookup_(op):
                         "ncclInit",
                         {"parallel_scopes": self.parallel_scopes_name},
                         {"Communicator": ['nccl_com__do_not_change_']}, {})
+                    op_desc.set_persistable(True)
                     block.program.global_block().desc.append_op().copy_from(
                         op_desc)
                     self.has_inserted_nccl_init = True
