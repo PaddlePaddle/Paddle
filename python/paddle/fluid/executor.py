@@ -275,17 +275,6 @@ class Executor(object):
                         outputs={'Out': [out]},
                         attrs={'col': i})
 
-            for op in global_block.ops:
-                if op.desc.type() == 'feed':
-                    feed_target_name = op.desc.output('Out')[0]
-                    cur_feed = feed[feed_target_name]
-                    if not isinstance(cur_feed, core.LoDTensor):
-                        cur_feed = self.aslodtensor(cur_feed)
-                    idx = op.desc.attr('col')
-                    core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
-                else:
-                    break
-
             if not has_fetch_operators(global_block, fetch_list,
                                        fetch_var_name):
                 for i, var in enumerate(fetch_list):
@@ -296,6 +285,18 @@ class Executor(object):
                         inputs={'X': [var]},
                         outputs={'Out': [fetch_var]},
                         attrs={'col': i})
+
+        # feed var to framework
+        for op in program_cache.global_block().ops:
+            if op.desc.type() == 'feed':
+                feed_target_name = op.desc.output('Out')[0]
+                cur_feed = feed[feed_target_name]
+                if not isinstance(cur_feed, core.LoDTensor):
+                    cur_feed = self.aslodtensor(cur_feed)
+                idx = op.desc.attr('col')
+                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+            else:
+                break
 
         self.executor.run(program_cache.desc, scope, 0, True, True)
         outs = [
