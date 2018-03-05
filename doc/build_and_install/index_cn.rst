@@ -35,14 +35,13 @@ PaddlePaddle提供了基于Docker的安装方式，请参照以下教程：
 对于有定制化二进制文件需求的用户，我们同样提供了从源码编译安装PaddlePaddle的方法：
 
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 1
 
-	build_from_source_cn.rst
-
+    build_from_source_cn.rst
 
 .. warning::
 
-	需要提醒的是，这种安装方式会涉及到一些第三方库的下载、编译及安装，安装过程较长。
+	需要提醒的是，这种安装方式会涉及到一些第三方库的下载、编译及安装，整个安装过程耗时较长。
 
 
 常见问题汇总
@@ -50,7 +49,7 @@ PaddlePaddle提供了基于Docker的安装方式，请参照以下教程：
 
 如果在安装过程中遇到了问题，请先尝试在下面的页面寻找答案：
 
-:ref:`faq/build_and_install/index_cn.rst`
+:ref:`常见问题解答 <install_faq>`
 
 如果问题没有得到解决，欢迎向PaddlePaddle社区反馈问题：
 
