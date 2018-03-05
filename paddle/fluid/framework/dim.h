@@ -157,8 +157,7 @@ HOSTDEVICE int64_t& indexer<0>(Dim<0>& dim, int idx) {
   throw std::invalid_argument("Invalid index");
 #else
   PADDLE_ASSERT(false);
-#endif
-#if (defined __CUDA_ARCH__) && (CUDA_VERSION < 8000)
+#if CUDA_VERSION < 8000
   // On CUDA versions previous to 8.0, only __shared__ variables
   // could be declared as static in the device code.
   int64_t head = 0;
@@ -166,6 +165,7 @@ HOSTDEVICE int64_t& indexer<0>(Dim<0>& dim, int idx) {
   static int64_t head = 0;
 #endif
   return head;
+#endif
 }
 
 template <int D>
@@ -189,8 +189,7 @@ HOSTDEVICE int64_t indexer<0>(const Dim<0>& dim, int idx) {
   throw std::invalid_argument("Invalid index");
 #else
   PADDLE_ASSERT(false);
-#endif
-#if (defined __CUDA_ARCH__) && (CUDA_VERSION < 8000)
+#if CUDA_VERSION < 8000
   // On CUDA versions previous to 8.0, only __shared__ variables
   // could be declared as static in the device code.
   int64_t head = 0;
@@ -198,6 +197,7 @@ HOSTDEVICE int64_t indexer<0>(const Dim<0>& dim, int idx) {
   static int64_t head = 0;
 #endif
   return head;
+#endif
 }
 
 }  // namespace
