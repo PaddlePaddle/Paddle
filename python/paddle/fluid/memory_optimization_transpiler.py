@@ -118,6 +118,50 @@ class ControlFlowGraph(object):
         else:
             return block_desc.find_var_recursive(str(var_name))
 
+    def release_memory(self):
+        def check_var_validity(block_desc, x, is_forward):
+            if str(x) == "@EMPTY@":
+                return False
+            if not self._has_var(block_desc, x, is_forward):
+                return False
+            if self._find_var(block_desc, x, is_forward).persistable():
+                return False
+            if self._find_var(
+                    block_desc, x,
+                    is_forward).type() != core.VarDesc.VarType.LOD_TENSOR:
+                return False
+            if x in self._skip_opt:
+                return False
+            if not self._find_var(block_desc, x, is_forward).shape():
+                return False
+            return True
+
+        self._build_graph()
+        self._dataflow_analyze()
+
+        fwd_id = 0
+        bwd_id = 0
+        for i in range(self.op_size):
+            op = self._ops[i]
+            if op.type() == "while" or op.type() == "while_grad":
+                continue
+            block_desc = op.block()
+            is_forward = i < self._forward_num
+            in_diff, out_diff = self._get_diff(self._live_in[i],
+                                               self._live_out[i])
+            can_optimize = filter(
+                lambda x: check_var_validity(block_desc, x, is_forward),
+                in_diff)
+            if can_optimize:
+                index = i + fwd_id + 1 if is_forward else i - self._forward_num + bwd_id + 1
+                delete_op = block_desc.insert_op(index)
+                delete_op.set_type("delete_var")
+                delete_op.set_input("X", can_optimize)
+                if is_forward:
+                    fwd_id += 1
+                else:
+                    bwd_id += 1
+
     def memory_optimize(self, level=0):
         def check_var_validity(block_desc, x, is_forward):
             if str(x) == "@EMPTY@":
@@ -209,11 +253,10 @@ class ControlFlowGraph(object):
                 for var_name in can_optimize:
                     self.pool.append((var_name, self._find_var(
                         block_desc, var_name, is_forward).shape()))
-        print self.pool
-        var_names = [x[0] for x in self.pool]
-        op_desc = self.current_block_desc.append_op()
-        op_desc.set_type("delete_var")
-        op_desc.set_input("X", var_names)
+        # var_names = [x[0] for x in self.pool]
+        # op_desc = self.current_block_desc.append_op()
+        # op_desc.set_type("delete_var")
+        # op_desc.set_input("X", var_names)
 
 
 def get_cfgs(input_program):
@@ -289,3 +332,9 @@ def memory_optimize(input_program, level=0):
     cfgs = get_cfgs(input_program)
     for cfg in cfgs:
         cfg.memory_optimize(level)
+
+
+def release_memory(input_program):
+    cfgs = get_cfgs(input_program)
+    for cfg in cfgs:
+        cfg.release_memory()
