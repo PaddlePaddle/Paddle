@@ -253,12 +253,24 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        program_cache_key = str(feed.keys() + fetch_list)
-        program_cache = self.program_caches.get(program_cache_key, None)
+        program_cache = None
+        program_cache_key = None
+        if use_program_cache:
+            # find program cache by cache_key
+            feed_var_names = feed.keys()
+            fetch_var_names = [var.desc.name() for var in fetch_list]
+            program_cache_key = str(feed_var_names + fetch_var_names)
+            program_cache = self.program_caches.get(program_cache_key, None)
+            if program_cache is not None:
+                # TODO: should make sure program and program_cache are exactly the same.
+                if program.desc != program_cache.desc:
+                    program_cache = None
 
-        if program_cache is None or not use_program_cache:
+        if program_cache is None:
             program_cache = program.clone()
-            self.program_caches[program_cache_key] = program_cache
+
+            if use_program_cache:
+                self.program_caches[program_cache_key] = program_cache
 
             global_block = program_cache.global_block()
 
