@@ -3289,7 +3289,7 @@ def save(x, file_path, overwrite=True):
 
 def save_combine(x, file_path, overwrite=True):
     """
-    Saves a variable as a file.
+    Saves a list of variables into a single file.
 
     Args:
         x(list): A list of Tensor/LoDTensor to be saved together in a single file.
@@ -3309,6 +3309,8 @@ def save_combine(x, file_path, overwrite=True):
 
 def load(out, file_path):
     """
+    Loads a variable from a given file.
+
     Args:
         out(variable): The variable to be read from the disk file.
         file_path(str): The path of the disk file.
@@ -3323,6 +3325,8 @@ def load(out, file_path):
 
 def load_combine(out, file_path):
     """
+    Loads a list of vairables from a single file.
+
     Args:
         out(list): The list of variables to be read from the disk file.
         file_path(str): The path of the disk file.
