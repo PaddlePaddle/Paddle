@@ -54,11 +54,17 @@ def detection_output(loc,
                      score_threshold=0.01,
                      nms_eta=1.0):
     """
-    **Detection Output Layer**
+    **Detection Output Layer for Single Shot Multibox Detector (SSD).**
 
-    This layer applies the NMS to the output of network and computes the
-    predict bounding box location. The output's shape of this layer could
-    be zero if there is no valid bounding box.
+    This operation is to get the detection results by performing following
+    two steps:
+    
+    1. Decode input bounding box predictions according to the prior boxes.
+    2. Get the final detection results by applying multi-class non maximum
+       suppression (NMS).
+
+    Please note, this operation doesn't clip the final output bounding boxes
+    to the image window.
 
     Args:
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
@@ -91,7 +97,15 @@ def detection_output(loc,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        The detected bounding boxes which are a Tensor.
+        Variable: The detection outputs is a LoDTensor with shape [No, 6].
+            Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
+            `No` is the total number of detections in this mini-batch. For each
+            instance, the offsets in first dimension are called LoD, the offset
+            number is N + 1, N is the batch size. The i-th image has
+            `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
+            has no detected results. If all images have not detected results,
+            all the elements in LoD are 0, and output tensor only contains one
+            value, which is -1.
 
     Examples:
         .. code-block:: python
