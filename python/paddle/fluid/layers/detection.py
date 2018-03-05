@@ -43,8 +43,8 @@ for _OP in set(__auto__):
     globals()[_OP] = generate_layer_fn(_OP)
 
 
-def detection_output(scores,
-                     loc,
+def detection_output(loc,
+                     scores,
                      prior_box,
                      prior_box_var,
                      background_label=0,
@@ -54,21 +54,27 @@ def detection_output(scores,
                      score_threshold=0.01,
                      nms_eta=1.0):
     """
-    **Detection Output Layer**
+    **Detection Output Layer for Single Shot Multibox Detector (SSD).**
 
-    This layer applies the NMS to the output of network and computes the
-    predict bounding box location. The output's shape of this layer could
-    be zero if there is no valid bounding box.
+    This operation is to get the detection results by performing following
+    two steps:
+    
+    1. Decode input bounding box predictions according to the prior boxes.
+    2. Get the final detection results by applying multi-class non maximum
+       suppression (NMS).
+
+    Please note, this operation doesn't clip the final output bounding boxes
+    to the image window.
 
     Args:
-        scores(Variable): A 3-D Tensor with shape [N, C, M] represents the
-            predicted confidence predictions. N is the batch size, C is the
-            class number, M is number of bounding boxes. For each category
-            there are total M scores which corresponding M bounding boxes.
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
             predicted locations of M bounding bboxes. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
+        scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
+            predicted confidence predictions. N is the batch size, C is the
+            class number, M is number of bounding boxes. For each category
+            there are total M scores which corresponding M bounding boxes.
         prior_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
             each box is represented as [xmin, ymin, xmax, ymax],
             [xmin, ymin] is the left top coordinate of the anchor box,
@@ -91,7 +97,15 @@ def detection_output(scores,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        The detected bounding boxes which are a Tensor.
+        Variable: The detection outputs is a LoDTensor with shape [No, 6].
+            Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
+            `No` is the total number of detections in this mini-batch. For each
+            instance, the offsets in first dimension are called LoD, the offset
+            number is N + 1, N is the batch size. The i-th image has
+            `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
+            has no detected results. If all images have not detected results,
+            all the elements in LoD are 0, and output tensor only contains one
+            value, which is -1.
 
     Examples:
         .. code-block:: python
@@ -100,7 +114,7 @@ def detection_output(scores,
                          append_batch_size=False, dtype='float32')
         pbv = layers.data(name='prior_box_var', shape=[10, 4],
                           append_batch_size=False, dtype='float32')
-        loc = layers.data(name='target_box', shape=[21, 4],
+        loc = layers.data(name='target_box', shape=[2, 21, 4],
                           append_batch_size=False, dtype='float32')
         scores = layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
@@ -109,7 +123,6 @@ def detection_output(scores,
                                        prior_box=pb,
                                        prior_box_var=pbv)
     """
-
     helper = LayerHelper("detection_output", **locals())
     decoded_box = box_coder(
         prior_box=prior_box,
@@ -118,6 +131,7 @@ def detection_output(scores,
         code_type='decode_center_size')
 
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
+    scores = nn.transpose(scores, perm=[0, 2, 1])
     helper.append_op(
         type="multiclass_nms",
         inputs={'Scores': scores,
@@ -595,12 +609,13 @@ def multi_box_head(inputs,
        name(str): Name of the prior box layer. Default: None.
 
     Returns:
-        mbox_loc(list): The predicted boxes' location of the inputs.
-             The layout of each element is [N, H, W, Priors]. Priors
-             is the number of predicted boxof each position of each input.
-        mbox_conf(list): The predicted boxes' confidence of the inputs.
-             The layout of each element is [N, H, W, Priors]. Priors
-             is the number of predicted box of each position of each input.
+        mbox_loc(Variable): The predicted boxes' location of the inputs.
+             The layout is [N, H*W*Priors, 4]. where Priors
+             is the number of predicted boxes each position of each input.
+        mbox_conf(Variable): The predicted boxes' confidence of the inputs.
+             The layout is [N, H*W*Priors, C]. where Priors
+             is the number of predicted boxes each position of each input
+             and C is the number of Classes.
         boxes(Variable): the output prior boxes of PriorBox.
              The layout is [num_priors, 4]. num_priors is the total
              box count of each position of inputs.
@@ -751,7 +766,7 @@ def multi_box_head(inputs,
         num_boxes = box.shape[2]
 
         # get box_loc
-        num_loc_output = num_boxes * num_classes * 4
+        num_loc_output = num_boxes * 4
         mbox_loc = nn.conv2d(
             input=input,
             num_filters=num_loc_output,
@@ -760,7 +775,12 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        mbox_locs.append(mbox_loc)
+        new_shape = [
+            mbox_loc.shape[0],
+            mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3] / 4, 4
+        ]
+        mbox_loc_flatten = ops.reshape(mbox_loc, shape=new_shape)
+        mbox_locs.append(mbox_loc_flatten)
 
         # get conf_loc
         num_conf_output = num_boxes * num_classes
@@ -771,11 +791,18 @@ def multi_box_head(inputs,
             padding=pad,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        mbox_confs.append(conf_loc)
+        new_shape = [
+            conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
+            conf_loc.shape[3] / num_classes, num_classes
+        ]
+        conf_loc_flatten = ops.reshape(conf_loc, shape=new_shape)
+        mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
         box = box_results[0]
         var = var_results[0]
+        mbox_locs_concat = mbox_locs[0]
+        mbox_confs_concat = mbox_confs[0]
     else:
         reshaped_boxes = []
         reshaped_vars = []
@@ -785,5 +812,7 @@ def multi_box_head(inputs,
 
         box = tensor.concat(reshaped_boxes)
         var = tensor.concat(reshaped_vars)
+        mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
+        mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
 
-    return mbox_locs, mbox_confs, box, var
+    return mbox_locs_concat, mbox_confs_concat, box, var

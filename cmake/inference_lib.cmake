@@ -72,7 +72,7 @@ copy(inference_lib DEPENDS paddle_fluid_shared
 )
 
 set(module "platform")
-copy(platform_lib
+copy(platform_lib DEPS profiler_py_proto
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details
 )

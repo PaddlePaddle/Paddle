@@ -41,6 +41,14 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ColToRowMatchIndices", dims);
     ctx->SetOutputDim("ColToRowMatchDist", dims);
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<LoDTensor>("DistMat")->type()),
+        platform::CPUPlace());
+  }
 };
 
 template <typename T>

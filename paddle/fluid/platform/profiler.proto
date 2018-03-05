@@ -15,12 +15,17 @@ limitations under the License. */
 syntax = "proto2";
 package paddle.platform.proto;
 
+message MemCopy { optional uint64 bytes = 3; }
+
 message Event {
   optional string name = 1;
   optional uint64 start_ns = 2;
   optional uint64 end_ns = 3;
-  optional uint32 device_id = 5;
+  // When positive, it represents gpu id. When -1, it represents CPU.
+  optional int64 device_id = 5;
   optional uint32 stream_id = 6;
+
+  optional MemCopy memcopy = 7;
 }
 
 message Profile {
