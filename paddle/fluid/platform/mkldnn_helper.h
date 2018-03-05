@@ -22,6 +22,7 @@ namespace platform {
 using MKLDNNStream = mkldnn::stream;
 using MKLDNNEngine = mkldnn::engine;
 using MKLDNNMemory = mkldnn::memory;
+using MKLDNNMemoryDescriptor = mkldnn::memory::desc;
 using MKLDNNPrimitive = mkldnn::primitive;
 using MKLDNNPrimitiveDesc = mkldnn::handle<mkldnn_primitive_desc_t>;
 
@@ -30,6 +31,13 @@ typedef std::unique_ptr<MKLDNNEngine> MKLDNNEnginePtr;
 typedef std::unique_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
 typedef std::unique_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
 typedef std::unique_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
+
+inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
+                                          mkldnn::memory::data_type data_type,
+                                          mkldnn::memory::format format) {
+  mkldnn::memory::dims tz = dims;
+  return mkldnn::memory::desc({tz}, data_type, format);
+}
 
 }  // namespace platform
 }  // namespace paddle

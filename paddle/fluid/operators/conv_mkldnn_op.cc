@@ -15,12 +15,14 @@
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/conv_op.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
 
 namespace paddle {
 namespace operators {
 
 using paddle::framework::Tensor;
 using paddle::platform::MKLDNNDeviceContext;
+using paddle::platform::MKLDNNMemDesc;
 
 using mkldnn::memory;  // Note: paddle has also "memory" namespace
 using mkldnn::primitive;
@@ -31,6 +33,28 @@ using mkldnn::convolution_direct;
 using mkldnn::prop_kind;
 using mkldnn::padding_kind;
 using mkldnn::stream;
+
+namespace {
+std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
+ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
+                     const memory::desc& dst, const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     const mkldnn::engine& engine);
+
+convolution_backward_weights::primitive_desc ConvBwdWeightsPrimitiveDesc(
+    const memory::desc& src, const memory::desc& diff_weights,
+    const memory::desc& diff_dst, const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const convolution_forward::primitive_desc& conv_pd,
+    const mkldnn::engine& engine);
+
+convolution_backward_data::primitive_desc ConvBwdDataPrimitiveDesc(
+    const memory::desc& diff_src, const memory::desc& weights,
+    const memory::desc& diff_dst, const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const convolution_forward::primitive_desc& conv_pd,
+    const mkldnn::engine& engine);
+}  // anonymous namespace
 
 template <typename T>
 class ConvOpMkldnnKernel : public paddle::framework::OpKernel<T> {
@@ -56,11 +80,11 @@ class ConvOpMkldnnKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
 
-    // TODO(pzelazko-intel) enable group convolution
-    PADDLE_ENFORCE(groups == 1, "MKLDNN doesn't support group convolution yet");
+    // TODO(pzelazko-intel) add support for group convolution and dilation
+    PADDLE_ENFORCE(groups == 1, "group convolution is not implemented yet");
     PADDLE_ENFORCE(
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-        "MKLDNN doesn't support dilation in convolution yet");
+        "dilation in convolution is not implemented yet");
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -77,23 +101,14 @@ class ConvOpMkldnnKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::vectorize2int(filter->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
-    // MKLDNN primitives
-    // memory descriptors for convolution src/weight/dst
-    memory::dims conv_src_tz = {src_tz[0], src_tz[1], src_tz[2], src_tz[3]};
-    memory::dims conv_weights_tz = {weights_tz[0], weights_tz[1], weights_tz[2],
-                                    weights_tz[3]};
-    memory::dims conv_dst_tz = {dst_tz[0], dst_tz[1], dst_tz[2], dst_tz[3]};
-
-    memory::dims conv_strides = {strides[0], strides[1]};
-    memory::dims conv_padding = {paddings[0], paddings[1]};
-
     // TODO(pzelazko-intel): support more formats
-    auto conv_src_md = memory::desc({conv_src_tz}, memory::data_type::f32,
-                                    memory::format::nchw);
-    auto conv_weights_md = memory::desc(
-        {conv_weights_tz}, memory::data_type::f32, memory::format::oihw);
-    auto conv_dst_md = memory::desc({conv_dst_tz}, memory::data_type::f32,
-                                    memory::format::nchw);
+    // memory descriptors for convolution src/weight/dst
+    auto conv_src_md =
+        MKLDNNMemDesc(src_tz, memory::data_type::f32, memory::format::nchw);
+    auto conv_weights_md =
+        MKLDNNMemDesc(weights_tz, memory::data_type::f32, memory::format::oihw);
+    auto conv_dst_md =
+        MKLDNNMemDesc(dst_tz, memory::data_type::f32, memory::format::nchw);
 
     // create memory primitives
     auto conv_src_memory =
@@ -102,21 +117,14 @@ class ConvOpMkldnnKernel : public paddle::framework::OpKernel<T> {
         memory({conv_weights_md, mkldnn_engine}, (void*)filter_data);
     auto conv_dst_memory = memory({conv_dst_md, mkldnn_engine}, output_data);
 
-    // create convolution op descriptor
-    auto conv_desc = convolution_forward::desc(
-        prop_kind::forward, convolution_direct, conv_src_md, conv_weights_md,
-        conv_dst_md, conv_strides, conv_padding, conv_padding,
-        padding_kind::zero);
+    std::unique_ptr<convolution_forward::primitive_desc> conv_pd =
+        ConvFwdPrimitiveDesc(conv_src_md, conv_weights_md, conv_dst_md, strides,
+                             paddings, mkldnn_engine);
 
-    // conv primitive desc need be used in backward path
-    // so we need allocate it in heap (instead of in stack)
-    convolution_forward::primitive_desc* p_conv_pd;
-    p_conv_pd =
-        new convolution_forward::primitive_desc(conv_desc, mkldnn_engine);
-    // save conv_pd into dev_ctx to be referred in backward path
-    std::shared_ptr<void> conv_pd;
-    conv_pd.reset(p_conv_pd);
-    dev_ctx.SetBlob(key_conv_pd, conv_pd);
+    // save p_conv_pd into dev_ctx to be referred in backward path
+    auto p_conv_pd = conv_pd.get();
+    std::shared_ptr<void> conv_pd_value = std::move(conv_pd);
+    dev_ctx.SetBlob(key_conv_pd, conv_pd_value);
 
     // create convolution op primitive
     auto conv_prim = convolution_forward(*p_conv_pd, conv_src_memory,
@@ -175,27 +183,17 @@ class ConvGradOpMkldnnKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::vectorize2int(filter->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
-    // MKLDNN primitives
-    // memory descriptors for convolution src/weight/dst
-    memory::dims conv_src_tz = {src_tz[0], src_tz[1], src_tz[2], src_tz[3]};
-    memory::dims conv_weights_tz = {weights_tz[0], weights_tz[1], weights_tz[2],
-                                    weights_tz[3]};
-    memory::dims conv_dst_tz = {dst_tz[0], dst_tz[1], dst_tz[2], dst_tz[3]};
-
-    memory::dims conv_strides = {strides[0], strides[1]};
-    memory::dims conv_padding = {paddings[0], paddings[1]};
-
     // TODO(pzelazko-intel): support more formats
-    auto conv_src_md = memory::desc({conv_src_tz}, memory::data_type::f32,
-                                    memory::format::nchw);
-    auto conv_diff_src_md = memory::desc({conv_src_tz}, memory::data_type::f32,
-                                         memory::format::nchw);
-    auto conv_weights_md = memory::desc(
-        {conv_weights_tz}, memory::data_type::f32, memory::format::oihw);
-    auto conv_diff_weights_md = memory::desc(
-        {conv_weights_tz}, memory::data_type::f32, memory::format::oihw);
-    auto conv_diff_dst_md = memory::desc({conv_dst_tz}, memory::data_type::f32,
-                                         memory::format::nchw);
+    auto conv_src_md =
+        MKLDNNMemDesc(src_tz, memory::data_type::f32, memory::format::nchw);
+    auto conv_diff_src_md =
+        MKLDNNMemDesc(src_tz, memory::data_type::f32, memory::format::nchw);
+    auto conv_weights_md =
+        MKLDNNMemDesc(weights_tz, memory::data_type::f32, memory::format::oihw);
+    auto conv_diff_weights_md =
+        MKLDNNMemDesc(weights_tz, memory::data_type::f32, memory::format::oihw);
+    auto conv_diff_dst_md =
+        MKLDNNMemDesc(dst_tz, memory::data_type::f32, memory::format::nchw);
 
     // create memory
     auto conv_diff_dst_memory =
@@ -212,20 +210,17 @@ class ConvGradOpMkldnnKernel : public paddle::framework::OpKernel<T> {
 
     // create backward conv primitive for weights
     if (filter_grad) {
+      // create primitive descriptor
+      convolution_backward_weights::primitive_desc conv_bwd_weights_pd =
+          ConvBwdWeightsPrimitiveDesc(conv_src_md, conv_diff_weights_md,
+                                      conv_diff_dst_md, strides, paddings,
+                                      *p_conv_pd, mkldnn_engine);
+
       // create memory
       auto conv_diff_weights_memory = memory(
           {conv_diff_weights_md, mkldnn_engine}, (void*)filter_grad_data);
       auto conv_src_memory =
           memory({conv_src_md, mkldnn_engine}, (void*)input_data);
-
-      // create primitive descriptor
-      auto conv_bwd_weights_desc = convolution_backward_weights::desc(
-          convolution_direct, conv_src_md, conv_diff_weights_md,
-          conv_diff_dst_md, conv_strides, conv_padding, conv_padding,
-          padding_kind::zero);
-      auto conv_bwd_weights_pd = convolution_backward_weights::primitive_desc(
-          conv_bwd_weights_desc, mkldnn_engine,
-          *p_conv_pd);  // Need to hint forward desc
 
       // create backward conv primitive for weights
       auto conv_bwd_weights_prim = convolution_backward_weights(
@@ -238,19 +233,17 @@ class ConvGradOpMkldnnKernel : public paddle::framework::OpKernel<T> {
     }
 
     if (input_grad) {
+      // create primitive descriptor
+      convolution_backward_data::primitive_desc conv_bwd_data_pd =
+          ConvBwdDataPrimitiveDesc(conv_diff_src_md, conv_weights_md,
+                                   conv_diff_dst_md, strides, paddings,
+                                   *p_conv_pd, mkldnn_engine);
+
       // create memory
       auto conv_diff_src_memory =
           memory({conv_diff_src_md, mkldnn_engine}, (void*)input_grad_data);
       auto conv_weights_memory =
           memory({conv_weights_md, mkldnn_engine}, (void*)filter_data);
-      // create primitive descriptor
-      auto conv_bwd_data_desc = convolution_backward_data::desc(
-          convolution_direct, conv_diff_src_md, conv_weights_md,
-          conv_diff_dst_md, conv_strides, conv_padding, conv_padding,
-          padding_kind::zero);
-      auto conv_bwd_data_pd = convolution_backward_data::primitive_desc(
-          conv_bwd_data_desc, mkldnn_engine,
-          *p_conv_pd);  // Need to hint forward desc
 
       // create backward conv primitive for data
       auto conv_bwd_data_prim =
@@ -264,6 +257,50 @@ class ConvGradOpMkldnnKernel : public paddle::framework::OpKernel<T> {
   }  // Compute()
 };
 
+namespace {
+std::unique_ptr<convolution_forward::primitive_desc> ConvFwdPrimitiveDesc(
+    const memory::desc& src, const memory::desc& weights,
+    const memory::desc& dst, const std::vector<int>& strides,
+    const std::vector<int>& paddings, const mkldnn::engine& engine) {
+  mkldnn::memory::dims stride_dims = {strides[0], strides[1]};
+  mkldnn::memory::dims padding_dims = {paddings[0], paddings[1]};
+
+  auto conv_desc = mkldnn::convolution_forward::desc(
+      mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights, dst,
+      stride_dims, padding_dims, padding_dims, mkldnn::padding_kind::zero);
+
+  auto p_conv_pd = new convolution_forward::primitive_desc(conv_desc, engine);
+
+  return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
+      p_conv_pd);
+}
+
+convolution_backward_weights::primitive_desc ConvBwdWeightsPrimitiveDesc(
+    const memory::desc& src, const memory::desc& diff_weights,
+    const memory::desc& diff_dst, const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const convolution_forward::primitive_desc& conv_pd,
+    const mkldnn::engine& engine) {
+  auto conv_bwd_weights_desc = convolution_backward_weights::desc(
+      convolution_direct, src, diff_weights, diff_dst, strides, paddings,
+      paddings, padding_kind::zero);
+  return convolution_backward_weights::primitive_desc(conv_bwd_weights_desc,
+                                                      engine, conv_pd);
+}
+
+convolution_backward_data::primitive_desc ConvBwdDataPrimitiveDesc(
+    const memory::desc& diff_src, const memory::desc& weights,
+    const memory::desc& diff_dst, const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const convolution_forward::primitive_desc& conv_pd,
+    const mkldnn::engine& engine) {
+  auto conv_bwd_data_desc = convolution_backward_data::desc(
+      convolution_direct, diff_src, weights, diff_dst, strides, paddings,
+      paddings, padding_kind::zero);
+  return convolution_backward_data::primitive_desc(conv_bwd_data_desc, engine,
+                                                   conv_pd);
+}
+}  // anonymous namespace
 }  // namespace operators
 }  // namespace paddle
 
