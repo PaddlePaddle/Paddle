@@ -96,7 +96,7 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
              "the number of offset is N + 1, if LoD[i + 1] - LoD[i] == 0, "
              "means there is no ground-truth data.");
     AddInput("HasState",
-             "(Tensor<int>) A tensor with shape [1], 0 mean ignoring input "
+             "(Tensor<int>) A tensor with shape [1], 0 means ignoring input "
              "states, which including PosCount, TruePos, FalsePos.")
         .AsDispensable();
     AddInput("PosCount",

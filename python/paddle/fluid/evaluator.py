@@ -297,26 +297,26 @@ class DetectionMAP(Evaluator):
     The general steps are as follows:
     1. calculate the true positive and false positive according to the input
         of detection and labels.
-    2. calculate mAP value, support two methods: '11 point' and 'integral'.
+    2. calculate mAP value, support two versions: '11 point' and 'integral'.
 
     Please get more information from the following articles:
       https://sanchom.wordpress.com/tag/average-precision/
       https://arxiv.org/abs/1512.02325
 
     Args:
-        input (Variable): the detection results, which is a LoDTensor with shape
+        input (Variable): The detection results, which is a LoDTensor with shape
             [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
-        gt_label (Variable): the ground truth label index, which is a LoDTensor
+        gt_label (Variable): The ground truth label index, which is a LoDTensor
             with shape [N, 1]. 
-        gt_difficult (Variable): whether this ground truth is a difficult
+        gt_difficult (Variable): Whether this ground truth is a difficult
             bounding box (bbox), which is a LoDTensor [N, 1].
-        gt_box (Variable): the ground truth bounding box (bbox), which is a
+        gt_box (Variable): The ground truth bounding box (bbox), which is a
             LoDTensor with shape [N, 6]. The layout is [xmin, ymin, xmax, ymax].
-        overlap_threshold (float): the threshold for deciding true/false
+        overlap_threshold (float): The threshold for deciding true/false
             positive, 0.5 by defalut.
-        evaluate_difficult (bool): whether to consider difficult ground truth
+        evaluate_difficult (bool): Whether to consider difficult ground truth
             for evaluation, True by defalut.
-        ap_version (string): the average precision calculation ways, it must be
+        ap_version (string): The average precision calculation ways, it must be
             'integral' or '11point'. Please check
             https://sanchom.wordpress.com/tag/average-precision/ for details.
             - 11point: the 11-point interpolated average precision.
