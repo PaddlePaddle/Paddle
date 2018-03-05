@@ -37,12 +37,19 @@ class BoxCoderOp : public framework::OperatorWithKernel {
                       "The rank of Input of PriorBoxVar must be 2");
     PADDLE_ENFORCE_EQ(prior_box_dims[1], 4, "The shape of PriorBox is [N, 4]");
     PADDLE_ENFORCE_EQ(prior_box_dims, prior_box_var_dims);
-    PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
-                      "The rank of Input of TargetBox must be 2");
-    PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
-                      "The shape of TargetBox is [M, 4]");
 
-    GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
+    auto code_type = GetBoxCodeType(ctx->Attrs().Get<std::string>("code_type"));
+    if (code_type == BoxCodeType::kEncodeCenterSize) {
+      PADDLE_ENFORCE_EQ(target_box_dims.size(), 2,
+                        "The rank of Input of TargetBox must be 2");
+      PADDLE_ENFORCE_EQ(target_box_dims[1], 4,
+                        "The shape of TargetBox is [M, 4]");
+    } else if (code_type == BoxCodeType::kDecodeCenterSize) {
+      PADDLE_ENFORCE_EQ(target_box_dims.size(), 3,
+                        "The rank of Input of TargetBox must be 3");
+      PADDLE_ENFORCE_EQ(target_box_dims[1], prior_box_dims[0]);
+      PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
+    }
 
     ctx->SetOutputDim(
         "OutputBox",
@@ -70,25 +77,28 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
              "of variance.");
     AddInput(
         "TargetBox",
-        "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
-        "[N, 4], each box is represented as [xmin, ymin, xmax, ymax], "
-        "[xmin, ymin] is the left top coordinate of the box if the input "
-        "is image feature map, they are close to the origin of the coordinate "
-        "system. [xmax, ymax] is the right bottom coordinate of the box. "
-        "This tensor can contain LoD information to represent a batch "
-        "of inputs. One instance of this batch can contain different "
-        "numbers of entities.");
+        "(LoDTensor or Tensor) This input can be a 2-D LoDTensor with shape "
+        "[N, 4] when code_type is 'encode_center_size'. This input also can "
+        "be a 3-D Tensor with shape [N, M, 4] when code_type is "
+        "'decode_center_size'. [N, 4], each box is represented as "
+        "[xmin, ymin, xmax, ymax], [xmin, ymin] is the left top coordinate "
+        "of the box if the input is image feature map, they are close to "
+        "the origin of the coordinate system. [xmax, ymax] is the right "
+        "bottom coordinate of the box. This tensor can contain LoD "
+        "information to represent a batch of inputs. One instance of this "
+        "batch can contain different numbers of entities.");
     AddAttr<std::string>("code_type",
                          "(string, default encode_center_size) "
                          "the code type used with the target box")
         .SetDefault("encode_center_size")
         .InEnum({"encode_center_size", "decode_center_size"});
-    AddOutput(
-        "OutputBox",
-        "(LoDTensor or Tensor) "
-        "(Tensor) The output of box_coder_op, a tensor with shape [N, M, 4] "
-        "representing the result of N target boxes encoded/decoded with "
-        "M Prior boxes and variances.");
+    AddOutput("OutputBox",
+              "(LoDTensor or Tensor) "
+              "When code_type is 'encode_center_size', the output tensor of "
+              "box_coder_op with shape [N, M, 4] representing the result of N "
+              "target boxes encoded with M Prior boxes and variances. When "
+              "code_type is 'decode_center_size', N represents the batch size "
+              "and M represents the number of deocded boxes.");
 
     AddComment(R"DOC(
 Bounding Box Coder Operator.

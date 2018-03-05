@@ -91,6 +91,11 @@ class ChannelHolder {
 
   inline bool IsInitialized() const { return holder_ != nullptr; }
 
+  inline const std::type_index Type() {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    return holder_->Type();
+  }
+
  private:
   /**
    * @note    Placeholder hides type T, so it doesn't appear as a template

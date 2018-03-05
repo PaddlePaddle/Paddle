@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+import math
 import unittest
 
-import math
-import copy
-
-import paddle.fluid.framework as framework
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+import paddle.fluid.framework as framework
 import paddle.fluid.learning_rate_decay as lr_decay
 
 
@@ -28,7 +26,7 @@ def exponential_decay(learning_rate,
                       decay_steps,
                       decay_rate,
                       staircase=False):
-    exponent = float(global_step) / float(decay_steps)
+    exponent = global_step / decay_steps
     if staircase:
         exponent = math.floor(exponent)
     return learning_rate * decay_rate**exponent
@@ -83,22 +81,24 @@ def piecewise_decay(global_step, boundaries, values):
 
 class TestLearningRateDecay(unittest.TestCase):
     def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
-        global_step = layers.create_global_var(
-            shape=[1], value=0.0, dtype='float32', persistable=True)
-
-        decayed_lr = fluid_decay_fn(global_step=global_step, **kwargs)
-        layers.increment(global_step, 1.0)
+        decayed_lr = fluid_decay_fn(**kwargs)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
 
         exe.run(fluid.default_startup_program())
         for step in range(10):
-            step_val, lr_val = exe.run(fluid.default_main_program(),
-                                       feed=[],
-                                       fetch_list=[global_step, decayed_lr])
-            python_decayed_lr = python_decay_fn(global_step=step, **kwargs)
-            self.assertAlmostEqual(python_decayed_lr, lr_val[0])
+            lr_val, = exe.run(fluid.default_main_program(),
+                              feed=[],
+                              fetch_list=[decayed_lr])
+            python_decayed_lr = python_decay_fn(
+                global_step=float(step), **kwargs)
+            self.assertAlmostEqual(
+                python_decayed_lr,
+                lr_val[0],
+                msg='Failed fn is {0}, Python result is {1}, Fluid result is {2}'.
+                format(python_decay_fn.__name__,
+                       str(python_decayed_lr), str(lr_val[0])))
 
     def test_decay(self):
         common_kwargs_true = {

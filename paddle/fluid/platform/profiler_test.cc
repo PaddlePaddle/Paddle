@@ -125,5 +125,5 @@ TEST(RecordEvent, RecordEvent) {
   EXPECT_EQ(start_profiler_count, 1);
 
   // Will remove parsing-related code from test later
-  DisableProfiler(EventSortingKey::kTotal);
+  DisableProfiler(EventSortingKey::kTotal, "/tmp/profiler");
 }
