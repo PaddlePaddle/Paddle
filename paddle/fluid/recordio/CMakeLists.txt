@@ -1,2 +1,4 @@
 cc_library(header SRCS header.cc)
 cc_test(header_test SRCS header_test.cc DEPS header)
+cc_library(io SRCS io.cc DEPS stringpiece)
+cc_test(io_test SRCS io_test.cc DEPS io)

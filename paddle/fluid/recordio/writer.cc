@@ -17,29 +17,36 @@
 namespace paddle {
 namespace recordio {
 
-Writer::Writer(std::ostream& os)
-    : stream_(os.rdbuf()), max_chunk_size_(0), compressor_(0) {}
+Writer::Writer(Stream* fo) : stream_(fo), max_chunk_size_(0), compressor_(0) {}
 
-Writer::Writer(std::ostream& os, int maxChunkSize, int compressor)
-    : stream_(os.rdbuf()),
+Writer::Writer(Stream* fo, int maxChunkSize, int compressor)
+    : stream_(fo),
       max_chunk_size_(maxChunkSize),
-      compressor_(compressor) {
-  // clear rdstate
-  stream_.clear();
+      compressor_(static_cast<Compressor>(compressor)) {
   chunk_.reset(new Chunk);
 }
 
-size_t Writer::Write(const std::string& buf) { return Write(std::string(buf)); }
-
-size_t Writer::Write(const char* buf, size_t length) {
-  return Write(std::string(buf, length));
+size_t Writer::Write(const std::string& record) {
+  if (stream_ == nullptr) {
+    LOG(WARNING) << "Cannot write since writer had been closed.";
+    return 0;
+  }
+  if ((record.size() + chunk_->NumBytes()) > max_chunk_size_) {
+    chunk_->Dump(stream_, compressor_);
+  }
+  chunk_->Add(record);
+  return record.size();
 }
 
-size_t Writer::Write(std::string&& buf) {}
+// size_t Writer::Write(const char* buf, size_t length) {
+//   return Write(std::string(buf, length));
+// }
+
+// size_t Writer::Write(std::string&& buf) {}
 
 void Writer::Close() {
-  stream_.flush();
-  stream_.setstate(std::ios::eofbit);
+  chunk_->Dump(stream_, compressor_);
+  stream_ = nullptr;
 }
 
 }  // namespace recordio

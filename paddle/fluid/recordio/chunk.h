@@ -32,9 +32,11 @@ public:
   bool Dump(std::ostream& os, Compressor ct);
   void Parse(std::istream& iss, int64_t offset);
   const std::string Record(int i) { return records_[i]; }
+  size_t NumBytes() { return num_bytes_; }
 
 private:
   std::vector<std::string> records_;
+  // sum of record lengths in bytes.
   size_t num_bytes_;
 };
 
