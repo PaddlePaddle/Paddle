@@ -139,7 +139,7 @@ def detection_map(detect_res,
                   label,
                   overlap_threshold=0.3,
                   evaluate_difficult=True,
-                  has_states=None,
+                  has_state=None,
                   input_states=None,
                   out_states=None,
                   ap_version='integral'):
@@ -164,7 +164,7 @@ def detection_map(detect_res,
         inputs={
             'Label': label,
             'DetectRes': detect_res,
-            'HasState': has_states,
+            'HasState': has_state,
             'PosCount': pos_count,
             'TruePos': true_pos,
             'FalsePos': false_pos

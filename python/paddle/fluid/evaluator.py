@@ -306,8 +306,12 @@ class DetectionMAP(Evaluator):
     Args:
         input (Variable): the detection results, which is a LoDTensor with shape
             [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
-        label (Variable): the ground truth label, which is a LoDTensor with shape
-            [N, 6]. The layout is [label, is_difficult, xmin, ymin, xmax, ymax].
+        gt_label (Variable): the ground truth label index, which is a LoDTensor
+            with shape [N, 1]. 
+        gt_difficult (Variable): whether this ground truth is a difficult
+            bounding box (bbox), which is a LoDTensor [N, 1].
+        gt_box (Variable): the ground truth bounding box (bbox), which is a
+            LoDTensor with shape [N, 6]. The layout is [xmin, ymin, xmax, ymax].
         overlap_threshold (float): the threshold for deciding true/false
             positive, 0.5 by defalut.
         evaluate_difficult (bool): whether to consider difficult ground truth
@@ -321,12 +325,14 @@ class DetectionMAP(Evaluator):
     Example:
 
         exe = fluid.executor(place)
-        map_evaluator = fluid.Evaluator.DetectionMAP(input, label)
+        map_evaluator = fluid.Evaluator.DetectionMAP(input,
+            gt_label, gt_difficult, gt_box)
         cur_map, accum_map = map_evaluator.get_map_var()
+        fetch = [cost, cur_map, accum_map]
         for epoch in PASS_NUM:
             map_evaluator.reset(exe)
             for data in batches:
-                loss, cur_map_v, accum_map_v = exe.run(fetch_list=[cost, cur_map, accum_map])
+                loss, cur_map_v, accum_map_v = exe.run(fetch_list=fetch)
 
         In the above example:
 
@@ -336,11 +342,17 @@ class DetectionMAP(Evaluator):
 
     def __init__(self,
                  input,
-                 label,
+                 gt_label,
+                 gt_box,
+                 gt_difficult,
                  overlap_threshold=0.5,
                  evaluate_difficult=True,
                  ap_version='integral'):
         super(DetectionMAP, self).__init__("map_eval")
+
+        gt_label = layers.cast(x=gt_label, dtype=gt_box.dtype)
+        gt_difficult = layers.cast(x=gt_difficult, dtype=gt_box.dtype)
+        label = layers.concat([gt_label, gt_difficult, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
         map = layers.detection_map(
@@ -367,7 +379,7 @@ class DetectionMAP(Evaluator):
             label,
             overlap_threshold=overlap_threshold,
             evaluate_difficult=evaluate_difficult,
-            has_states=self.has_state,
+            has_state=self.has_state,
             input_states=self.states,
             out_states=self.states,
             ap_version=ap_version)
