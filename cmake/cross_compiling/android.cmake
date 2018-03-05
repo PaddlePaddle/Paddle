@@ -196,6 +196,8 @@ IF("${CMAKE_VERSION}" VERSION_LESS "3.7.0")
     ENDIF()
 
     IF(ANDROID_TOOLCHAIN STREQUAL clang)
+        # To avoid the warning from Boost codes
+        LIST(APPEND ANDROID_COMPILER_FLAGS -Wno-unused-local-typedef)
         # CMake automatically forwards all compiler flags to the linker,
         # and clang doesn't like having -Wa flags being used for linking.
         # To prevent CMake from doing this would require meddling with

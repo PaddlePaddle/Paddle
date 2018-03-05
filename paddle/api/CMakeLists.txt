@@ -31,7 +31,7 @@ SET(SWIG_NEED_FLAGS
     -Wno-self-assign
     -Wno-maybe-uninitialized
     -Wno-missing-field-initializers)
-  FOREACH(flag ${SWIG_NEED_FLAGS})
+FOREACH(flag ${SWIG_NEED_FLAGS})
   safe_set_cxxflag(SWIG_CXX_FLAGS ${flag})
 ENDFOREACH()
 

@@ -30,7 +30,12 @@ IF(NOT ${CBLAS_FOUND})
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
-    SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
+    IF(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang" )
+        SET(OPENBLAS_C_FLAGS "-Wno-unused-const-variable -Wno-unused-variable -Wno-parentheses-equality")
+    ELSE()
+        SET(OPENBLAS_C_FLAGS "-Wno-unused-but-set-variable -Wno-unused-variable -Wno-parentheses-equality")
+    ENDIF()
+    SET(OPENBLAS_CC "${CMAKE_C_COMPILER} ${OPENBLAS_C_FLAGS}")
     SET(OPENBLAS_COMMIT "v0.2.20")
 
     IF(CMAKE_CROSSCOMPILING)
@@ -59,7 +64,7 @@ IF(NOT ${CBLAS_FOUND})
         ENDIF()
     ELSE()
         IF(APPLE)
-            SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT}")
+            SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT} ${OPENBLAS_C_FLAGS}")
         ENDIF()
         SET(OPTIONAL_ARGS "")
         IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^x86(_64)?$")
@@ -69,6 +74,8 @@ IF(NOT ${CBLAS_FOUND})
 
     SET(COMMON_ARGS CC=${OPENBLAS_CC} NO_SHARED=1 NO_LAPACK=1 libs)
 
+    message(STATUS "COMMON_ARGS: ${COMMON_ARGS}")
+    message(STATUS "OPTIONAL_ARGS: ${OPTIONAL_ARGS}")
     ExternalProject_Add(
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
