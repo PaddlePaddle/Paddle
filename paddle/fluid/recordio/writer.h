@@ -16,7 +16,6 @@
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/platform/macros.h"  // DISABLE_COPY_ASSIGN
 #include "paddle/fluid/recordio/header.h"
 #include "paddle/fluid/recordio/io.h"
 
@@ -44,7 +43,6 @@ private:
   int max_chunk_size_;
   // Compressor used for chuck
   Compressor compressor_;
-
   DISABLE_COPY_AND_ASSIGN(Writer);
 };
 

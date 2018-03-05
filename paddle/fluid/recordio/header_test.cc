@@ -22,15 +22,12 @@ using namespace paddle::recordio;
 
 TEST(Recordio, ChunkHead) {
   Header hdr(0, 1, Compressor::kGzip, 3);
-  std::ostringstream oss;
+  Stream* oss = Stream::Open("/tmp/record_1", "w");
   hdr.Write(oss);
 
-  std::istringstream iss(oss.str());
+  Stream* iss = Stream::Open("/tmp/record_1", "r");
   Header hdr2;
   hdr2.Parse(iss);
 
-  std::ostringstream oss2;
-  hdr2.Write(oss2);
-  EXPECT_STREQ(oss2.str().c_str(), oss.str().c_str());
   EXPECT_TRUE(hdr == hdr2);
 }

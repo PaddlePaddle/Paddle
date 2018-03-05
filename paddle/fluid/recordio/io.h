@@ -16,19 +16,21 @@
 
 #include <stdio.h>
 #include <string>
+
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/macros.h"  // DISABLE_COPY_ASSIGN
 
 namespace paddle {
 namespace recordio {
 
-// Stream abstract object for read and write
+// Seekable Stream Interface for read and write
 class Stream {
 public:
   virtual ~Stream() {}
-  virtual size_t Read(void* ptr, size_t size);
-  virtual void Write(const void* ptr, size_t size);
-  virtual size_t Tell();
-  virtual void Seek();
+  virtual size_t Read(void* ptr, size_t size) = 0;
+  virtual void Write(const void* ptr, size_t size) = 0;
+  virtual size_t Tell() = 0;
+  virtual void Seek(size_t p) = 0;
   // Create Stream Instance
   static Stream* Open(const char* filename, const char* mode);
 };
@@ -47,6 +49,7 @@ public:
 
 private:
   FILE* fp_;
+  DISABLE_COPY_AND_ASSIGN(FileStream);
 };
 
 }  // namespace recordio

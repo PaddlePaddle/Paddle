@@ -21,7 +21,7 @@ using namespace paddle::recordio;
 TEST(FileStream, IO) {
   {
     // Write
-    Stream* fs = Stream::Open("/tmp/record_0", "rw");
+    Stream* fs = Stream::Open("/tmp/record_0", "w");
     fs->Write("hello", 6);
     delete fs;
   }

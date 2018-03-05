@@ -16,6 +16,8 @@
 
 #include <sstream>
 
+#include "paddle/fluid/recordio/io.h"
+
 namespace paddle {
 namespace recordio {
 
@@ -43,8 +45,8 @@ public:
   Header();
   Header(uint32_t num, uint32_t sum, Compressor ct, uint32_t cs);
 
-  void Write(std::ostream& os);
-  void Parse(std::istream& iss);
+  void Write(Stream* os);
+  void Parse(Stream* iss);
 
   uint32_t NumRecords() const { return num_records_; }
   uint32_t Checksum() const { return checksum_; }

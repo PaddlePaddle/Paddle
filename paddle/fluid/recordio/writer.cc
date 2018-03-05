@@ -26,16 +26,16 @@ Writer::Writer(Stream* fo, int maxChunkSize, int compressor)
   chunk_.reset(new Chunk);
 }
 
-size_t Writer::Write(const std::string& record) {
+size_t Writer::Write(const char* buf, size_t length) {
   if (stream_ == nullptr) {
     LOG(WARNING) << "Cannot write since writer had been closed.";
     return 0;
   }
-  if ((record.size() + chunk_->NumBytes()) > max_chunk_size_) {
+  if ((length + chunk_->NumBytes()) > max_chunk_size_) {
     chunk_->Dump(stream_, compressor_);
   }
-  chunk_->Add(record);
-  return record.size();
+  chunk_->Add(buf, length);
+  return length;
 }
 
 // size_t Writer::Write(const char* buf, size_t length) {

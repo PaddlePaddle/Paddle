@@ -15,6 +15,8 @@
 #include "paddle/fluid/recordio/io.h"
 #include "paddle/fluid/string/piece.h"
 
+#include <iostream>
+
 namespace paddle {
 namespace recordio {
 Stream* Stream::Open(const char* filename, const char* mode) {
@@ -38,7 +40,7 @@ void FileStream::Write(const void* ptr, size_t size) {
 }
 
 size_t FileStream::Tell() { return ftell(fp_); }
-void FileStream::Seek(size_t p) { fseek(fp_, static_cast<long>(p), SEEK_SET); }
+void FileStream::Seek(size_t p) { fseek(fp_, p, SEEK_SET); }
 
 bool FileStream::Eof() { return feof(fp_); }
 
