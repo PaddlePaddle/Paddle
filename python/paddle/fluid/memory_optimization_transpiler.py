@@ -231,7 +231,7 @@ class ControlFlowGraph(object):
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
             can_optimize = filter(
-                lambda x: check_var_validity(block_desc, x, is_forward),
+                lambda x: self._check_var_validity(block_desc, x, is_forward),
                 in_diff)
             if can_optimize:
                 for var_name in can_optimize:
