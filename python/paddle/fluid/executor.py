@@ -261,6 +261,7 @@ class Executor(object):
             fetch_var_names = [var.desc.name() for var in fetch_list]
             program_cache_key = str(feed_var_names + fetch_var_names)
             program_cache = self.program_caches.get(program_cache_key, None)
+            # TODO(qiao): Should check program_cache and program are exactly the same.
 
         if program_cache is None:
             program_cache = program.clone()
