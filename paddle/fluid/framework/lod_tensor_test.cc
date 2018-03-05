@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "lod_tensor.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -37,14 +38,14 @@ TEST(LoD, data) {
 TEST(LodExpand, test) {
   LoD lod{{0, 2}};
   LoDTensor tensor;
-  tensor.set_lod(lod);
+  *tensor.mutable_lod() = lod;
   tensor.Resize({2, 1});
   tensor.mutable_data<float>(platform::CPUPlace());
   tensor.data<float>()[0] = 0;
   tensor.data<float>()[1] = 1;
 
-  LoD target;
-  target.emplace_back(std::vector<size_t>{0, 3, 5});
+  paddle::framework::LoDPtr target(new LoD());
+  target.MutableData()->emplace_back(std::vector<size_t>{0, 3, 5});
   auto new_tensor = LodExpand<float>(tensor, target, 0UL, platform::CPUPlace());
   std::vector<int> result{{0, 0, 0, 1, 1}};
   for (size_t i = 0; i < 5; i++) {
@@ -96,19 +97,19 @@ TEST(LoD, AppendLoD) {
 }
 
 TEST(LoD, ToAbsOffset) {
-  LoD relative_lod;
-  relative_lod.push_back(std::vector<size_t>({0, 2}));
-  relative_lod.push_back(std::vector<size_t>({0, 1, 3}));
-  relative_lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
+  LoDPtr relative_lod(new LoD());
+  relative_lod.MutableData()->push_back(std::vector<size_t>({0, 2}));
+  relative_lod.MutableData()->push_back(std::vector<size_t>({0, 1, 3}));
+  relative_lod.MutableData()->push_back(std::vector<size_t>({0, 2, 4, 5}));
 
-  LoD abs_lod = paddle::framework::ToAbsOffset(relative_lod);
+  auto abs_lod = paddle::framework::ToAbsOffset(relative_lod);
 
   LoD expected;
   expected.push_back(std::vector<size_t>({0, 5}));
   expected.push_back(std::vector<size_t>({0, 2, 5}));
   expected.push_back(std::vector<size_t>({0, 2, 4, 5}));
 
-  EXPECT_EQ(abs_lod, expected);
+  EXPECT_EQ(abs_lod.Data(), expected);
 }
 
 TEST(LoD, SplitLoDTensor) {
@@ -123,7 +124,7 @@ TEST(LoD, SplitLoDTensor) {
   for (int i = 0; i < lod_tensor.numel(); ++i) {
     dst_ptr[i] = i;
   }
-  lod_tensor.set_lod(lod);
+  *lod_tensor.mutable_lod() = lod;
 
   std::vector<platform::Place> places{platform::CPUPlace(),
                                       platform::CPUPlace()};
@@ -150,7 +151,7 @@ TEST(LoD, MergeLoDTensor) {
   LoD lod0;
   lod0.push_back(std::vector<size_t>({0, 2, 4}));
   lod0.push_back(std::vector<size_t>({0, 1, 6, 8, 13}));
-  lod_tensor0.set_lod(lod0);
+  *lod_tensor0.mutable_lod() = lod0;
 
   lod_tensor0.Resize({13, 1});
   float* dst_ptr = lod_tensor0.mutable_data<float>(place);
@@ -162,7 +163,7 @@ TEST(LoD, MergeLoDTensor) {
   LoD lod1;
   lod1.push_back(std::vector<size_t>({0, 1, 2}));
   lod1.push_back(std::vector<size_t>({0, 2, 7}));
-  lod_tensor1.set_lod(lod1);
+  *lod_tensor1.mutable_lod() = lod1;
   lod_tensor1.Resize({7, 1});
   dst_ptr = lod_tensor1.mutable_data<float>(place);
   for (int i = 0; i < lod_tensor1.numel(); ++i) {
@@ -203,12 +204,14 @@ TEST(LoD, CheckLoD) {
 }
 
 TEST(LoD, CheckAbsLoD) {
-  LoD relative_lod;
+  LoDPtr relative_lod_ptr(new LoD());
+  auto& relative_lod = *relative_lod_ptr.MutableData();
   relative_lod.push_back(std::vector<size_t>({0, 2}));
   relative_lod.push_back(std::vector<size_t>({0, 1, 3}));
   relative_lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
 
-  auto abs_lod = ToAbsOffset(relative_lod);
+  auto abs_lod_ptr = ToAbsOffset(relative_lod_ptr);
+  auto& abs_lod = *abs_lod_ptr.MutableData();
 
   ASSERT_TRUE(CheckAbsLoD(abs_lod));
 

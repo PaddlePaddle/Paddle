@@ -32,7 +32,7 @@ TEST(SaveLoadOp, CPU) {
   expect_lod[0].push_back(2);
   expect_lod[0].push_back(3);
 
-  tensor->set_lod(expect_lod);
+  *tensor->mutable_lod() = expect_lod;
   int* expect = tensor->mutable_data<int>(place);
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     expect[i] = static_cast<int>(i);

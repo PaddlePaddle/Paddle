@@ -34,8 +34,8 @@ void CreateInput(LoDTensor* ids, LoDTensor* scores) {
   vector<size_t> level1({0, 1, 2, 3, 4});
   lod.push_back(level0);
   lod.push_back(level1);
-  ids->set_lod(lod);
-  scores->set_lod(lod);
+  *ids->mutable_lod() = lod;
+  scores->set_lod(ids->lod_ptr());
 
   auto dims = framework::make_ddim(vector<int64_t>({4, 3}));
   ids->Resize(dims);

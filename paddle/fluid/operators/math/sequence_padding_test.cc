@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_padding.h"
 #include <gtest/gtest.h>
+#include <paddle/fluid/framework/lod_tensor.h>
 
 template <typename DeviceContext, typename Place, typename T>
 void TestSequencePadding(const paddle::framework::LoD& lod,
@@ -29,7 +30,7 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
       paddle::framework::make_ddim({static_cast<int64_t>(lod[level].back()),
                                     static_cast<int64_t>(sequence_width)});
 
-  cpu_seq.set_lod(lod);
+  *cpu_seq.mutable_lod() = lod;
   cpu_seq.mutable_data<T>(seq_dims, paddle::platform::CPUPlace());
   for (int64_t i = 0; i < cpu_seq.numel(); ++i) {
     cpu_seq.data<T>()[i] = static_cast<T>(i);
@@ -41,11 +42,13 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
     seq = cpu_seq;
   } else {
     TensorCopy(cpu_seq, *place, *context, &seq);
-    seq.set_lod(lod);
+    *seq.mutable_lod() = lod;
   }
 
+  paddle::framework::LoDPtr lod_ptr(new paddle::framework::LoD(lod));
+
   const size_t max_sequence_length =
-      paddle::operators::math::MaximumSequenceLength(lod, level);
+      paddle::operators::math::MaximumSequenceLength(lod_ptr, level);
   const size_t num_sequences = lod[level].size() - 1;
   auto padding_dims =
       paddle::framework::make_ddim({static_cast<int64_t>(max_sequence_length),
@@ -55,7 +58,7 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
   paddle::operators::math::PaddingLoDTensorFunctor<DeviceContext, T>()(
       *context, seq, padding, false);
 
-  seq_back.set_lod(lod);
+  seq_back.set_lod(lod_ptr);
   seq_back.mutable_data<T>(seq_dims, *place);
   paddle::operators::math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
       *context, seq_back, padding, false);
@@ -64,7 +67,7 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
     cpu_seq_back = seq_back;
   } else {
     TensorCopy(seq_back, paddle::platform::CPUPlace(), *context, &cpu_seq_back);
-    cpu_seq_back.set_lod(lod);
+    cpu_seq_back.set_lod(lod_ptr);
   }
 
   EXPECT_EQ(cpu_seq.numel(), cpu_seq_back.numel());

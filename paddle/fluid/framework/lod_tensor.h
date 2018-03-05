@@ -162,7 +162,6 @@ template <typename T>
 LoDTensor LodExpand(const LoDTensor& source, const LoDPtr& lod_ptr,
                     size_t level, const platform::Place& place) {
   auto abs_lod_ptr = ToAbsOffset(lod_ptr);
-  auto& abs_lod = abs_lod_ptr.Data();
   auto& lod = lod_ptr.Data();
   const auto& lod_level = lod[level];
   size_t num_instances = source.dims()[0];
