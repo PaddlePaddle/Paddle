@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/recordio/writer.h"
+#include "paddle/fluid/recordio/chunk.h"
+
+#include <sstream>
 
 #include "gtest/gtest.h"
 
 using namespace paddle::recordio;
 
-TEST(Writer, Normal) {}
+TEST(Chunk, SaveLoad) {}
