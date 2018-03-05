@@ -12,33 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/recordio/io.h"
+#include "paddle/fluid/recordio/range_scanner.h"
 
 namespace paddle {
 namespace recordio {
 
-class RangeScanner;
+Index Index::ChunkIndex(int i) { Index idx; }
 
-// Scanner is a scanner for multiple recordio files.
-class Scanner {
-public:
-  Scanner(const char* paths);
-  const std::string Record();
-  bool Scan();
-  void Close();
-  bool NextFile();
-  int Err() { return err_; }
+RangeScanner::RangeScanner(std::istream is, Index idx, int start, int len)
+    : stream_(is.rdbuf()), index_(idx) {
+  if (start < 0) {
+    start = 0;
+  }
+  if (len < 0 || start + len >= idx.NumRecords()) {
+    len = idx.NumRecords() - start;
+  }
 
-private:
-  std::vector<std::string> paths_;
-  Stream* cur_file_;
-  RangeScanner* cur_scanner_;
-  int path_idx_;
-  bool end_;
-  int err_;
-};
+  start_ = start;
+  end_ = start + len;
+  cur_ = start - 1;
+  chunk_index_ = -1;
+  // chunk_->reset(new Chunk());
+}
+
+bool RangeScanner::Scan() {}
+
+const std::string RangeScanner::Record() {
+  // int i = index_.Locate(cur_);
+  // return chunk_->Record(i);
+}
 
 }  // namespace recordio
 }  // namespace paddle

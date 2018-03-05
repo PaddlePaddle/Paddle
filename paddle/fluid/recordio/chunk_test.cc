@@ -20,4 +20,36 @@
 
 using namespace paddle::recordio;
 
-TEST(Chunk, SaveLoad) {}
+TEST(Chunk, SaveLoad) {
+  Chunk ch;
+  ch.Add("12345", 6);
+  ch.Add("123", 4);
+  {
+    Stream* fs = Stream::Open("/tmp/record_11", "w");
+    ch.Dump(fs, Compressor::kNoCompress);
+    EXPECT_EQ(ch.NumBytes(), 0);
+  }
+  {
+    Stream* fs = Stream::Open("/tmp/record_11", "r");
+    ch.Parse(fs, 0);
+    EXPECT_EQ(ch.NumBytes(), 10);
+  }
+}
+
+TEST(Chunk, Compressor) {
+  Chunk ch;
+  ch.Add("12345", 6);
+  ch.Add("123", 4);
+  ch.Add("123", 4);
+  ch.Add("123", 4);
+  {
+    Stream* fs = Stream::Open("/tmp/record_12", "w");
+    ch.Dump(fs, Compressor::kSnappy);
+    EXPECT_EQ(ch.NumBytes(), 0);
+  }
+  {
+    Stream* fs = Stream::Open("/tmp/record_12", "r");
+    ch.Parse(fs, 0);
+    EXPECT_EQ(ch.NumBytes(), 10);
+  }
+}
