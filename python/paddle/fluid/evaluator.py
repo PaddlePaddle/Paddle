@@ -105,44 +105,6 @@ class Evaluator(object):
         return state
 
 
-class Accuracy(Evaluator):
-    """
-    Average Accuracy for multiple mini-batches.
-    """
-
-    def __init__(self, input, label, k=1, **kwargs):
-        super(Accuracy, self).__init__("accuracy", **kwargs)
-        main_program = self.helper.main_program
-        if main_program.current_block().idx != 0:
-            raise ValueError("You can only invoke Evaluator in root block")
-
-        self.total = self.create_state(dtype='int64', shape=[1], suffix='total')
-        self.correct = self.create_state(
-            dtype='int64', shape=[1], suffix='correct')
-        total = self.helper.create_tmp_variable(dtype='int')
-        correct = self.helper.create_tmp_variable(dtype='int')
-        acc = layers.accuracy(
-            input=input, label=label, k=k, total=total, correct=correct)
-        total = layers.cast(x=total, dtype='int64')
-        correct = layers.cast(x=correct, dtype='int64')
-        layers.sums(input=[self.total, total], out=self.total)
-        layers.sums(input=[self.correct, correct], out=self.correct)
-
-        self.metrics.append(acc)
-
-    def eval(self, executor, eval_program=None):
-        if eval_program is None:
-            eval_program = Program()
-        block = eval_program.current_block()
-        with program_guard(main_program=eval_program):
-            total = _clone_var_(block, self.total)
-            correct = _clone_var_(block, self.correct)
-            total = layers.cast(total, dtype='float32')
-            correct = layers.cast(correct, dtype='float32')
-            out = layers.elementwise_div(x=correct, y=total)
-        return np.array(executor.run(eval_program, fetch_list=[out])[0])
-
-
 class ChunkEvaluator(Evaluator):
     """
     Accumulate counter numbers output by chunk_eval from mini-batches and
