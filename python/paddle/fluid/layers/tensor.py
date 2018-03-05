@@ -362,3 +362,75 @@ def zeros(shape, dtype, force_cpu=False):
           data = fluid.layers.zeros(shape=[1], dtype='int64')
     """
     return fill_constant(value=0.0, **locals())
+
+
+def save(x, file_path, overwrite=True):
+    """
+    Saves a variable as a file.
+
+    Args:
+        x(variable): The Tensor/LoDTensor to be saved.
+        file_path(str): The file path where the variable will be saved.
+        overwrite(bool): Whether or not cover the given file when it has already 
+            existed. If it's set 'False' and the file is existed, a runtime 
+            error will be thrown. 
+    """
+    helper = LayerHelper("save", **locals())
+    helper.append_op(
+        type="save",
+        inputs={"input": x},
+        outputs={},
+        args={"file_path": file_path,
+              "overwrite": overwrite})
+
+
+def save_combine(x, file_path, overwrite=True):
+    """
+    Saves a list of variables into a single file.
+
+    Args:
+        x(list): A list of Tensor/LoDTensor to be saved together in a single file.
+        file_path(str): The file path where variables will be saved.
+        overwrite(bool): Whether or not cover the given file when it has already 
+            existed. If it's set 'False' and the file is existed, a runtime 
+            error will be thrown. 
+    """
+    helper = LayerHelper("save_combine", **locals())
+    helper.append_op(
+        type="save_combine",
+        inputs={"input": x},
+        outputs={},
+        args={"file_path": file_path,
+              "overwrite": overwrite})
+
+
+def load(out, file_path):
+    """
+    Loads a variable from a given file.
+
+    Args:
+        out(variable): The variable to be read from the disk file.
+        file_path(str): The path of the disk file.
+    """
+    helper = LayerHelper("load", **locals())
+    helper.append_op(
+        type="load",
+        inputs={},
+        output={"Out": out},
+        args={"file_path": file_path})
+
+
+def load_combine(out, file_path):
+    """
+    Loads a list of vairables from a single file.
+
+    Args:
+        out(list): The list of variables to be read from the disk file.
+        file_path(str): The path of the disk file.
+    """
+    helper = LayerHelper("load_combine", **locals())
+    helper.append_op(
+        type="load_combine",
+        inputs={},
+        output={"Out": out},
+        args={"file_path": file_path})
