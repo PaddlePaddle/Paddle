@@ -1,22 +1,32 @@
-## 安装与编译C-API预测库
+## 安装、编译与链接C-API预测库
 
-### 概述
+### 直接下载安装
 
-使用 C-API 进行预测依赖于将 PaddlePaddle 核心代码编译成链接库，只需在编译时需配制下面这些编译选项：
+从CI系统中下载最新的C-API开发包进行安装，用户可以从下面的表格中找到需要的版本：
 
-必须配置选项：
-- `WITH_C_API`，必须配置为`ON`。
+| 版本说明 |C-API|
+|-------|-----|
+| cpu\_avx\_mkl | [paddle.tgz](https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddle.tgz) |
+| cpu\_avx\_openblas | 暂无 |
+| cpu\_noavx\_openblas | 暂无 |
+| cuda7.5\_cudnn5\_avx\_mkl | [paddle.tgz](https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz) |
+| cuda8.0\_cudnn5\_avx\_mkl | [paddle.tgz](https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz) |
+| cuda8.0\_cudnn7\_avx\_mkl | [paddle.tgz](https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddle.tgz) |
 
-推荐配置选项：
-- `WITH_PYTHON`，推荐配置为`OFF`
-- `WITH_SWIG_PY`，推荐配置为`OFF`
-- `WITH_GOLANG`，推荐设置为`OFF`
+### 从源码编译
 
-可选配置选项：
-- `WITH_GPU`，可配置为`ON/OFF`
-- `WITH_MKL`，可配置为`ON/OFF`
+用户也可以从 PaddlePaddle 核心代码编译C-API链接库，只需在编译时配制下面这些编译选项：
 
-对推荐配置中的选项建议按照设置，以避免链接不必要的库。其它可选编译选项按需进行设定。
+|      选项      | 值 |
+|----------------|----|
+| WITH\_C\_API   | ON |
+| WITH\_PYTHON   | OFF（推荐） |
+| WITH\_SWIG\_PY | OFF（推荐） |
+| WITH\_GOLANG   | OFF（推荐） |
+| WITH\_GPU      | ON/OFF |
+| WITH\_MKL      | ON/OFF |
+
+建议按照推荐值设置，以避免链接不必要的库。其它可选编译选项按需进行设定。
 
 下面的代码片段从github拉取最新代码，配制编译选项（需要将PADDLE_ROOT替换为PaddlePaddle预测库的安装路径）：
 
@@ -100,23 +110,19 @@ cmake -DCMAKE_INSTALL_PREFIX=$PADDLE_ROOT \
 
 目前提供三种链接方式：
 
-1. 链接`libpaddle_capi_shared.so` 动态库
-    - 使用 PaddlePaddle C-API 开发预测程序链接`libpaddle_capi_shared.so`时，需注意：
-        1. 如果编译时指定编译CPU版本，且使用`OpenBLAS`数学库，在使用C-API开发预测程序时，只需要链接`libpaddle_capi_shared.so`这一个库。
-        1. 如果是用编译时指定CPU版本，且使用`MKL`数学库，由于`MKL`库有自己独立的动态库文件，在使用PaddlePaddle C-API开发预测程序时，需要自己链接MKL链接库。
-        1. 如果编译时指定编译GPU版本，CUDA相关库会在预测程序运行时动态装载，需要将CUDA相关的库设置到`LD_LIBRARY_PATH`环境变量中。
-    - 这种方式最为简便，链接相对容易，**在无特殊需求情况下，推荐使用此方式**。
+1. 链接`libpaddle_capi_shared.so` 动态库（这种方式最为简便，链接相对容易，**在无特殊需求情况下，推荐使用此方式**），需注意：
+    1. 如果编译时指定编译CPU版本，且使用`OpenBLAS`数学库，在使用C-API开发预测程序时，只需要链接`libpaddle_capi_shared.so`这一个库。
+    1. 如果是用编译时指定CPU版本，且使用`MKL`数学库，由于`MKL`库有自己独立的动态库文件，在使用PaddlePaddle C-API开发预测程序时，需要自己链接MKL链接库。
+    1. 如果编译时指定编译GPU版本，CUDA相关库会在预测程序运行时动态装载，需要将CUDA相关的库设置到`LD_LIBRARY_PATH`环境变量中。
 
-2. 链接静态库 `libpaddle_capi_whole.a`
-    - 使用PaddlePaddle C-API 开发预测程序链接`libpaddle_capi_whole.a`时，需注意：
-        1. 需要指定`-Wl,--whole-archive`链接选项。
-        1. 需要显式地链接 `gflags`、`glog`、`libz`、`protobuf` 等第三方库，可在`PADDLE_ROOT/third_party`下找到。
-        1. 如果在编译 C-API 时使用OpenBLAS数学库，需要显示地链接`libopenblas.a`。
-        1. 如果在编译 C-API 是使用MKL数学库，需要显示地链接MKL的动态库。
+2. 链接静态库 `libpaddle_capi_whole.a`，需注意：
+    1. 需要指定`-Wl,--whole-archive`链接选项。
+    1. 需要显式地链接 `gflags`、`glog`、`libz`、`protobuf` 等第三方库，可在`PADDLE_ROOT/third_party`下找到。
+    1. 如果在编译 C-API 时使用OpenBLAS数学库，需要显示地链接`libopenblas.a`。
+    1. 如果在编译 C-API 是使用MKL数学库，需要显示地链接MKL的动态库。
 
-3. 链接静态库 `libpaddle_capi_layers.a`和`libpaddle_capi_engine.a`
-    - 使用PaddlePaddle C-API 开发预测程序链接`libpaddle_capi_whole.a`时，需注意：
-        1. 这种链接方式主要用于移动端预测。
-        1. 为了减少生成链接库的大小把`libpaddle_capi_whole.a`拆成以上两个静态链接库。
-        1. 需指定`-Wl,--whole-archive -lpaddle_capi_layers` 和 `-Wl,--no-whole-archive -lpaddle_capi_engine` 进行链接。
-        1. 第三方依赖库需要按照与方式2同样方法显示地进行链接。
+3. 链接静态库 `libpaddle_capi_layers.a`和`libpaddle_capi_engine.a`，需注意：
+    1. 这种链接方式主要用于移动端预测。
+    1. 为了减少生成链接库的大小把`libpaddle_capi_whole.a`拆成以上两个静态链接库。
+    1. 需指定`-Wl,--whole-archive -lpaddle_capi_layers` 和 `-Wl,--no-whole-archive -lpaddle_capi_engine` 进行链接。
+    1. 第三方依赖库需要按照与方式2同样方法显示地进行链接。
