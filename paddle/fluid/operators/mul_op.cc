@@ -75,19 +75,19 @@ class MulOp : public framework::OperatorWithKernel {
  protected:
   OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    if (ctx.Attr<bool>(use_float16)) {
+    if (ctx.Attr<bool>("use_float16")) {
       return OpKernelType(framework::proto::VarType::FP16, ctx.GetPlace());
     } else {
       return framework::OperatorWithKernel::GetExpectedKernelType(ctx);
     }
   }
 
-  OpKernelType GetKernelTypeForVal(
+  OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const override {
     return OpKernelType(framework::ToDataType(tensor.type()), tensor.place());
   }
-}
+};
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -186,10 +186,9 @@ class MulGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulGradOp);
-REGISTER_OP_CPU_KERNEL(
-    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<paddle::platform::CPUDeviceContext,
-                                           paddle::platform::float16>);
-REGISTER_OP_CPU_KERNEL(
-    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<plat::CPUDeviceContext, float>,
+                       ops::MulKernel<plat::CPUDeviceContext, plat::float16>);
+REGISTER_OP_CPU_KERNEL(mul_grad,
+                       ops::MulGradKernel<plat::CPUDeviceContext, float>);

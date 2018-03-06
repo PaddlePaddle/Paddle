@@ -14,6 +14,7 @@
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 from op_test import OpTest
 
 
@@ -67,6 +68,21 @@ class TestMulOp2(OpTest):
     def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+
+
+class TestMulOpFp16(OpTest):
+    def setUp(self):
+        self.op_type = "mul"
+        self.inputs = {
+            'X': np.random.random((32, 84)).astype("float32"),
+            'Y': np.random.random((84, 100)).astype("float32")
+        }
+        self.attrs = {'use_float16': True}
+        self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), atol=1e-5)
 
 
 if __name__ == "__main__":
