@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <utility>
+
+#include "paddle/fluid/recordio/chunk.h"
 #include "paddle/fluid/recordio/io.h"
 
 namespace paddle {
@@ -26,29 +29,22 @@ namespace recordio {
 // for the correct encoding and decoding using Gob.
 class Index {
 public:
+  Index() : num_records_(0) {}
+  // LoadIndex scans the file and parse chunkOffsets, chunkLens, and len.
+  void LoadIndex(Stream* fi);
+  // NumRecords returns the total number of all records in a RecordIO file.
   int NumRecords() { return num_records_; }
   // NumChunks returns the total number of chunks in a RecordIO file.
   int NumChunks() { return chunk_lens_.size(); }
   // ChunkIndex return the Index of i-th Chunk.
   int ChunkIndex(int i);
 
+  int64_t ChunkOffsets(int i) { return chunk_offsets_[i]; }
+
   // Locate returns the index of chunk that contains the given record,
   // and the record index within the chunk.  It returns (-1, -1) if the
   // record is out of range.
-  void Locate(int record_idx, std::pair<int, int>* out) {
-    size_t sum = 0;
-    for (size_t i = 0; i < chunk_lens_.size(); ++i) {
-      sum += chunk_lens_[i];
-      if (static_cast<size_t>(record_idx) < sum) {
-        out->first = i;
-        out->second = record_idx - sum + chunk_lens_[i];
-        return;
-      }
-    }
-    // out->swap(std::make_pair<int,int>(-1, -1));
-    out->first = -1;
-    out->second = -1;
-  }
+  std::pair<int, int> Locate(int record_idx);
 
 private:
   // the offset of each chunk in a file.
@@ -62,12 +58,14 @@ private:
 };
 
 // RangeScanner
-// creates a scanner that sequencially reads records in the
-// range [start, start+len).  If start < 0, it scans from the
-// beginning.  If len < 0, it scans till the end of file.
 class RangeScanner {
 public:
+  // creates a scanner that sequencially reads records in the
+  // range [start, start+len).  If start < 0, it scans from the
+  // beginning.  If len < 0, it scans till the end of file.
   RangeScanner(Stream* fi, Index idx, int start, int end);
+  // Scan moves the cursor forward for one record and loads the chunk
+  // containing the record if not yet.
   bool Scan();
   const std::string Record();
 

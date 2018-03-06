@@ -31,7 +31,7 @@ Scanner::Scanner(const char* paths)
 }
 
 bool Scanner::Scan() {
-  if (err_ == -1 || end_ == true) {
+  if (end_ == true) {
     return false;
   }
   if (cur_scanner_ == nullptr) {
@@ -39,20 +39,30 @@ bool Scanner::Scan() {
       end_ = true;
       return false;
     }
-    if (err_ == -1) {
-      return false;
-    }
   }
   if (!cur_scanner_->Scan()) {
-    if (err_ == -1) {
-      return false;
-    }
+    end_ = true;
+    cur_file_ = nullptr;
+    return false;
   }
-
   return true;
 }
 
-bool Scanner::NextFile() {}
+bool Scanner::NextFile() {
+  if (path_idx_ >= paths_.size()) {
+    return false;
+  }
+  std::string path = paths_[path_idx_];
+  ++path_idx_;
+  cur_file_ = Stream::Open(path);
+  if (cur_file_ == nullptr) {
+    return false;
+  }
+  Index idx;
+  idx.LoadIndex(cur_file_);
+  cur_scanner_ = RangeScanner(cur_file_, idx, 0, -1);
+  return true;
+}
 
 }  // namespace recordio
 }  // namespace paddle

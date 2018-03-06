@@ -32,9 +32,10 @@ public:
   bool Dump(Stream* fo, Compressor ct);
   void Parse(Stream* fi, size_t offset);
   size_t NumBytes() { return num_bytes_; }
+  const std::string Record(int i) { return records_[i]; }
 
 private:
-  std::forward_list<std::string> records_;
+  std::forward_list<const std::string> records_;
   // sum of record lengths in bytes.
   size_t num_bytes_;
   DISABLE_COPY_AND_ASSIGN(Chunk);

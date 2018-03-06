@@ -12,28 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/recordio/header.h"
+#include "paddle/fluid/recordio/io.h"
+#include "paddle/fluid/string/piece.h"
 
-#include <sstream>
-
-#include "gtest/gtest.h"
-
-using namespace paddle::recordio;
-
-TEST(Recordio, ChunkHead) {
-  Header hdr(0, 1, Compressor::kGzip, 3);
-  {
-    Stream* oss = Stream::Open("/tmp/record_1", "w");
-    hdr.Write(oss);
-    delete oss;
-  }
-
-  Header hdr2;
-  {
-    Stream* iss = Stream::Open("/tmp/record_1", "r");
-    hdr2.Parse(iss);
-    delete iss;
-  }
-
-  EXPECT_TRUE(hdr == hdr2);
-}
+namespace paddle {
+namespace recordio {}  // namespace recordio
+}  // namespace paddle
