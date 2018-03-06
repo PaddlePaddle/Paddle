@@ -95,6 +95,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     CalcTrueAndFalsePositive(gt_boxes, detect_boxes, evaluate_difficult,
                              overlap_threshold, label_pos_count, true_pos,
                              false_pos);
+    int background_label = ctx.Attr<int>("background_label");
 
     T map = CalcMAP(ap_type, label_pos_count, true_pos, false_pos);
 
