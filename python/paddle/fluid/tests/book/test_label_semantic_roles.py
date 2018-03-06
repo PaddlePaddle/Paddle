@@ -170,7 +170,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(
-        learning_rate=fluid.learning_rate_decay.exponential_decay(
+        learning_rate=fluid.layers.exponential_decay(
             learning_rate=0.0001,
             decay_steps=100000,
             decay_rate=0.5,
