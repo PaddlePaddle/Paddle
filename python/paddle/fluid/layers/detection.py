@@ -151,6 +151,7 @@ def detection_output(loc,
 @autodoc()
 def detection_map(detect_res,
                   label,
+                  class_num,
                   overlap_threshold=0.3,
                   evaluate_difficult=True,
                   has_state=None,
@@ -192,7 +193,8 @@ def detection_map(detect_res,
         attrs={
             'overlap_threshold': overlap_threshold,
             'evaluate_difficult': evaluate_difficult,
-            'ap_type': ap_version
+            'ap_type': ap_version,
+            'class_num': class_num,
         })
     return map_out
 
