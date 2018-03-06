@@ -23,13 +23,18 @@ std::unique_ptr<std::vector<ncclComm_t>> global_comms;
 std::unique_ptr<std::unordered_map<int, int>> comm_id_map;
 bool inited = false;
 size_t last_num_gpus = -1;
+// TODO(panyx0718): Need to decide whether Paddle supports parallel
+// runs with different number GPUs. If true, current solution is not enough.
+std::mutex comm_mu;
 }
 
 int Communicator::GetCommId(int device_id) const {
+  std::lock_guard<std::mutex> guard(comm_mu);
   return comm_id_map->at(device_id);
 }
 
 void Communicator::InitAll(const std::vector<int>& gpus) {
+  std::lock_guard<std::mutex> guard(comm_mu);
   if (inited && last_num_gpus == gpus.size()) {
     return;
   }
@@ -52,6 +57,7 @@ void Communicator::InitAll(const std::vector<int>& gpus) {
 }
 
 const std::vector<ncclComm_t>& Communicator::comms() const {
+  std::lock_guard<std::mutex> guard(comm_mu);
   return *global_comms;
 }
 
