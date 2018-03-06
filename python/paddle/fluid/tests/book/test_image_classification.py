@@ -115,7 +115,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     acc = fluid.layers.accuracy(input=predict, label=label)
 
     # Test program 
-    test_program = fluid.default_main_program().clone_as_test_program()
+    test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimize_ops, params_grads = optimizer.minimize(avg_cost)

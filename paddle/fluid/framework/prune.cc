@@ -27,8 +27,6 @@ namespace framework {
 
 const std::string kFeedOpType = "feed";
 const std::string kFetchOpType = "fetch";
-const std::string kDropOutOpType = "dropout";
-const std::string kBatchNormOpType = "batch_norm";
 
 bool HasDependentVar(const proto::OpDesc& op_desc,
                      const std::set<std::string>& dependent_vars) {

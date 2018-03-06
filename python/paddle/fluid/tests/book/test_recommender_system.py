@@ -157,7 +157,7 @@ def train(use_cuda, save_dirname, is_local=True):
     scale_infer, avg_cost = model()
 
     # test program
-    test_program = fluid.default_main_program().clone_as_test_program()
+    test_program = fluid.default_main_program().clone(for_test=True)
 
     sgd_optimizer = SGDOptimizer(learning_rate=0.2)
     optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
