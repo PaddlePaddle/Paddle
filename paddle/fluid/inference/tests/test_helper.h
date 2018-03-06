@@ -111,13 +111,13 @@ void TestInference(const std::string& dirname,
   // Enable the profiler
   paddle::platform::EnableProfiler(state);
 
+  // 2. Initialize the inference_program and load parameters
   std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
   {
-    // paddle::platform::RecordEvent record_event(
-    //     "init_program",
-    //     paddle::platform::DeviceContextPool::Instance().Get(place));
+    paddle::platform::RecordEvent record_event(
+        "init_program",
+        paddle::platform::DeviceContextPool::Instance().Get(place));
 
-    // 2. Initialize the inference_program and load parameters
     if (IsCombined) {
       // All parameters are saved in a single file.
       // Hard-coding the file names of program and parameters in unittest.
@@ -137,31 +137,33 @@ void TestInference(const std::string& dirname,
     }
   }
 
+  // 3. Get the feed_target_names and fetch_target_names
+  const std::vector<std::string>& feed_target_names =
+      inference_program->GetFeedTargetNames();
+  const std::vector<std::string>& fetch_target_names =
+      inference_program->GetFetchTargetNames();
+
+  // 4. Prepare inputs: set up maps for feed targets
+  std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
+  for (size_t i = 0; i < feed_target_names.size(); ++i) {
+    // Please make sure that cpu_feeds[i] is right for feed_target_names[i]
+    feed_targets[feed_target_names[i]] = cpu_feeds[i];
+  }
+
+  // 5. Define Tensor to get the outputs: set up maps for fetch targets
+  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
+  for (size_t i = 0; i < fetch_target_names.size(); ++i) {
+    fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
+  }
+
+  // 6. Run the inference program
   {
-    // Comment this because nested RecordEvent is not supported yet.
-    // paddle::platform::RecordEvent record_event("run_inference",
-    //   paddle::platform::DeviceContextPool::Instance().Get(place));
+    executor.Run(*inference_program, scope, feed_targets, fetch_targets);
 
-    // 3. Get the feed_target_names and fetch_target_names
-    const std::vector<std::string>& feed_target_names =
-        inference_program->GetFeedTargetNames();
-    const std::vector<std::string>& fetch_target_names =
-        inference_program->GetFetchTargetNames();
-
-    // 4. Prepare inputs: set up maps for feed targets
-    std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
-    for (size_t i = 0; i < feed_target_names.size(); ++i) {
-      // Please make sure that cpu_feeds[i] is right for feed_target_names[i]
-      feed_targets[feed_target_names[i]] = cpu_feeds[i];
-    }
-
-    // 5. Define Tensor to get the outputs: set up maps for fetch targets
-    std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
-    for (size_t i = 0; i < fetch_target_names.size(); ++i) {
-      fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
-    }
-
-    // 6. Run the inference program
+    // Run repeat times to profile the performance
+    paddle::platform::RecordEvent record_event(
+        "run_inference",
+        paddle::platform::DeviceContextPool::Instance().Get(place));
     for (int i = 0; i < repeat; ++i) {
       executor.Run(*inference_program, scope, feed_targets, fetch_targets);
     }
