@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include <forward_list>
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/recordio/header.h"
 #include "paddle/fluid/recordio/io.h"
@@ -35,7 +35,7 @@ public:
   const std::string Record(int i) { return records_[i]; }
 
 private:
-  std::forward_list<const std::string> records_;
+  std::vector<std::string> records_;
   // sum of record lengths in bytes.
   size_t num_bytes_;
   DISABLE_COPY_AND_ASSIGN(Chunk);

@@ -11,23 +11,3 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-// A wrapper on crc library https://github.com/d-bahr/CRCpp
-#include <cstdint>
-
-#include "paddle/fluid/recordio/detail/crc.h"
-
-namespace paddle {
-namespace recordio {
-
-// usage
-// char data[] = "hello,world";
-// crc = Crc32(data, 12);
-// Assert_EQ(crc, 68a85159);
-
-uint32_t Crc32(const char* data, size_t size) {
-  return CRC::Calculate(data, size, CRC::CRC_32());
-}
-
-}  // namespace recordio
-}  // namespace paddle

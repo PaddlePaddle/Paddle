@@ -26,8 +26,8 @@ namespace paddle {
 namespace recordio {
 
 void Chunk::Add(const char* record, size_t length) {
-  records_.emplace_after(std::string(record, length));
-  num_bytes_ += s.size() * sizeof(char);
+  records_.emplace_back(std::string(record, length));
+  num_bytes_ += records_.back().size() * sizeof(char);
 }
 
 bool Chunk::Dump(Stream* fo, Compressor ct) {
@@ -38,7 +38,8 @@ bool Chunk::Dump(Stream* fo, Compressor ct) {
   // pack the record into consecutive memory for compress
   std::ostringstream os;
   for (auto& record : records_) {
-    os.write(record.size(), sizeof(size_t));
+    size_t size = record.size();
+    os.write(reinterpret_cast<char*>(&size), sizeof(size));
     os.write(record.data(), static_cast<std::streamsize>(record.size()));
   }
 
@@ -48,7 +49,7 @@ bool Chunk::Dump(Stream* fo, Compressor ct) {
   uint32_t checksum = Crc32(buffer.get(), compressed);
   Header hdr(records_.size(), checksum, ct, static_cast<uint32_t>(compressed));
   hdr.Write(fo);
-  fo.Write(buffer.get(), compressed);
+  fo->Write(buffer.get(), compressed);
   // clear the content
   records_.clear();
   num_bytes_ = 0;
@@ -71,7 +72,7 @@ void Chunk::Parse(Stream* fi, size_t offset) {
       std::string(deflated_buffer.get(), deflated_size));
   for (size_t i = 0; i < hdr.NumRecords(); ++i) {
     size_t rs;
-    deflated.read(&rs, sizeof(size_t));
+    deflated.read(reinterpret_cast<char*>(&rs), sizeof(size_t));
     std::string record(rs, '\0');
     deflated.read(&record[0], rs);
     records_.emplace_back(record);
@@ -93,17 +94,23 @@ size_t CompressData(const char* in,
     case Compressor::kSnappy:
       snappy::RawCompress(in, in_length, out, &compressd_size);
       break;
+    case Compressor::kGzip:
+      // TODO(dzhwinter): support gzip
+      break;
   }
   return compressd_size;
 }
 
 void DeflateData(const char* in, size_t in_length, Compressor ct, char* out) {
-  switch (c) {
+  switch (ct) {
     case Compressor::kNoCompress:
       memcpy(out, in, in_length);
       break;
     case Compressor::kSnappy:
       snappy::RawUncompress(in, in_length, out);
+      break;
+    case Compressor::kGzip:
+      // TODO(dzhwinter): support gzip
       break;
   }
 }
