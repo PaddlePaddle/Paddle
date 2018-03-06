@@ -312,6 +312,10 @@ class DetectionMAP(Evaluator):
             bounding box (bbox), which is a LoDTensor [N, 1].
         gt_box (Variable): The ground truth bounding box (bbox), which is a
             LoDTensor with shape [N, 6]. The layout is [xmin, ymin, xmax, ymax].
+        class_num (int): The class number.
+        background_label (int): The index of background label, the background
+            label will be ignored. If set to -1, then all categories will be
+            considered, 0 by defalut.
         overlap_threshold (float): The threshold for deciding true/false
             positive, 0.5 by defalut.
         evaluate_difficult (bool): Whether to consider difficult ground truth
@@ -345,6 +349,8 @@ class DetectionMAP(Evaluator):
                  gt_label,
                  gt_box,
                  gt_difficult,
+                 class_num,
+                 background_label=0,
                  overlap_threshold=0.5,
                  evaluate_difficult=True,
                  ap_version='integral'):
@@ -358,6 +364,8 @@ class DetectionMAP(Evaluator):
         map = layers.detection_map(
             input,
             label,
+            class_num,
+            background_label,
             overlap_threshold=overlap_threshold,
             evaluate_difficult=evaluate_difficult,
             ap_version=ap_version)
@@ -377,6 +385,8 @@ class DetectionMAP(Evaluator):
         accum_map = layers.detection_map(
             input,
             label,
+            class_num,
+            background_label,
             overlap_threshold=overlap_threshold,
             evaluate_difficult=evaluate_difficult,
             has_state=self.has_state,
