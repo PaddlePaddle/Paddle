@@ -47,3 +47,5 @@ sphinx_add_target(paddle_docs_cn
                   ${SPHINX_CACHE_DIR_CN}
                   ${CMAKE_CURRENT_SOURCE_DIR}
                   ${SPHINX_HTML_DIR_CN})
+
+add_subdirectory(api)
