@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/channel.h"
 
 #include <chrono>
-#include <iostream>
 #include <thread>
 
 #include "gtest/gtest.h"
