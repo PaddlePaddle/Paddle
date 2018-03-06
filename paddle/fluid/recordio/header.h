@@ -16,8 +16,6 @@
 
 #include <sstream>
 
-#include "paddle/fluid/recordio/io.h"
-
 namespace paddle {
 namespace recordio {
 
@@ -26,7 +24,7 @@ constexpr size_t kDefaultMaxChunkSize = 32 * 1024 * 1024;
 // MagicNumber for memory checking
 constexpr uint32_t kMagicNumber = 0x01020304;
 
-enum class Compressor {
+enum class Compressor : uint32_t {
   // NoCompression means writing raw chunk data into files.
   // With other choices, chunks are compressed before written.
   kNoCompress = 0,
@@ -45,8 +43,8 @@ public:
   Header();
   Header(uint32_t num, uint32_t sum, Compressor ct, uint32_t cs);
 
-  void Write(Stream* os);
-  void Parse(Stream* iss);
+  void Write(std::ostream& os) const;
+  void Parse(std::istream& is);
 
   uint32_t NumRecords() const { return num_records_; }
   uint32_t Checksum() const { return checksum_; }

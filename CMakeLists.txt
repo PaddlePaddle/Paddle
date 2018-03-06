@@ -145,6 +145,7 @@ include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/grpc)
 include(external/snappy)    # download snappy
+include(external/snappystream)
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(cupti)

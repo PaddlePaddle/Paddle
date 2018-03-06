@@ -22,34 +22,28 @@ using namespace paddle::recordio;
 
 TEST(Chunk, SaveLoad) {
   Chunk ch;
-  ch.Add("12345", 6);
-  ch.Add("123", 4);
-  {
-    Stream* fs = Stream::Open("/tmp/record_11", "w");
-    ch.Dump(fs, Compressor::kNoCompress);
-    EXPECT_EQ(ch.NumBytes(), 0);
-  }
-  {
-    Stream* fs = Stream::Open("/tmp/record_11", "r");
-    ch.Parse(fs, 0);
-    EXPECT_EQ(ch.NumBytes(), 10);
-  }
+  ch.Add(std::string("12345", 6));
+  ch.Add(std::string("123", 4));
+  std::stringstream ss;
+  ch.Write(ss, Compressor::kNoCompress);
+  ch.Clear();
+  ch.Parse(ss);
+  ASSERT_EQ(ch.NumBytes(), 10U);
 }
 
 TEST(Chunk, Compressor) {
   Chunk ch;
-  ch.Add("12345", 6);
-  ch.Add("123", 4);
-  ch.Add("123", 4);
-  ch.Add("123", 4);
-  {
-    Stream* fs = Stream::Open("/tmp/record_12", "w");
-    ch.Dump(fs, Compressor::kSnappy);
-    EXPECT_EQ(ch.NumBytes(), 0);
-  }
-  {
-    Stream* fs = Stream::Open("/tmp/record_12", "r");
-    ch.Parse(fs, 0);
-    EXPECT_EQ(ch.NumBytes(), 10);
-  }
+  ch.Add(std::string("12345", 6));
+  ch.Add(std::string("123", 4));
+  ch.Add(std::string("123", 4));
+  ch.Add(std::string("123", 4));
+  std::stringstream ss;
+  ch.Write(ss, Compressor::kSnappy);
+  std::stringstream ss2;
+  ch.Write(ss2, Compressor::kNoCompress);
+  ASSERT_LE(ss.tellp(), ss2.tellp());  // Compress should contain less data;
+
+  ch.Clear();
+  ch.Parse(ss);
+  ASSERT_EQ(ch.NumBytes(), 18);
 }
