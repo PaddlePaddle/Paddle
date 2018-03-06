@@ -76,7 +76,6 @@ PYBIND11_PLUGIN(core) {
           OpKernelType in_type(proto::VarType::FP16, self.place());
           OpKernelType out_type(proto::VarType::FP32, platform::CPUPlace());
           DataTransform(out_type, in_type, self, &out);
-          std::cout << "Succeed in converting fp16 to fp32" << std::endl;
           return CastToPyBuffer(out);
         }
         return CastToPyBuffer(self);
@@ -127,8 +126,16 @@ PYBIND11_PLUGIN(core) {
       .def("dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def_buffer([](Tensor &self) -> py::buffer_info {
+        if (ToDataType(self.type()) == proto::VarType::FP16) {
+          Tensor out;
+          OpKernelType in_type(proto::VarType::FP16, self.place());
+          OpKernelType out_type(proto::VarType::FP32, platform::CPUPlace());
+          DataTransform(out_type, in_type, self, &out);
+          return CastToPyBuffer(out);
+        }
+        return CastToPyBuffer(self);
+      })
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {

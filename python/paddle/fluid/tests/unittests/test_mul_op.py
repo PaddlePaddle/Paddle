@@ -70,7 +70,7 @@ class TestMulOp2(OpTest):
             ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
 
 
-class TestMulOpFp16(OpTest):
+class TestFP16MulOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
         self.inputs = {
@@ -81,8 +81,32 @@ class TestMulOpFp16(OpTest):
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
+        # mul_op using fp16 compute kernel is only supported on GPU.
         if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), atol=1e-5)
+            self.check_output_with_place(core.CUDAPlace(0), atol=1e-1)
+
+
+class TestFP16MulOp2(OpTest):
+    def setUp(self):
+        self.op_type = "mul"
+        self.inputs = {
+            'X': np.random.random((15, 4, 12, 10)).astype("float32"),
+            'Y': np.random.random((4, 30, 8, 2, 9)).astype("float32")
+        }
+        self.attrs = {
+            'x_num_col_dims': 2,
+            'y_num_col_dims': 2,
+            'use_float16': True
+        }
+        result = np.dot(self.inputs['X'].reshape(15 * 4, 12 * 10),
+                        self.inputs['Y'].reshape(4 * 30, 8 * 2 * 9))
+        result = result.reshape(15, 4, 8, 2, 9)
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        # mul_op using fp16 compute kernel is only supported on GPU.
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), atol=2e-1)
 
 
 if __name__ == "__main__":
