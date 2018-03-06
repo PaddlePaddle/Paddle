@@ -89,7 +89,7 @@ class TestLearningRateDecay(unittest.TestCase):
         exe.run(fluid.default_startup_program())
         for step in range(10):
             lr_val, = exe.run(fluid.default_main_program(),
-                              feed=[],
+                              feed={},
                               fetch_list=[decayed_lr])
             python_decayed_lr = python_decay_fn(
                 global_step=float(step), **kwargs)
