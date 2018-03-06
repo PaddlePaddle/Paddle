@@ -93,9 +93,8 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
             avg_cost, predict_word = __network__(
-                map(pd.read_input, [
-                    first_word, second_word, third_word, forth_word, next_word
-                ]))
+                pd.read_input(first_word, second_word, third_word, forth_word,
+                              next_word))
             pd.write_output(avg_cost)
 
         avg_cost = fluid.layers.mean(pd())
@@ -122,9 +121,10 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
                                       fetch_list=[avg_cost])
                 if avg_cost_np[0] < 5.0:
                     if save_dirname is not None:
-                        fluid.io.save_inference_model(save_dirname, [
-                            'firstw', 'secondw', 'thirdw', 'forthw'
-                        ], [predict_word], exe)
+                        fluid.io.save_inference_model(
+                            save_dirname,
+                            ['firstw', 'secondw', 'thirdw', 'forthw'],
+                            [predict_word], exe)
                     return
                 if math.isnan(float(avg_cost_np[0])):
                     sys.exit("got NaN loss, training failed.")

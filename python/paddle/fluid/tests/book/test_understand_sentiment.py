@@ -156,8 +156,7 @@ def train(word_dict,
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
             cost, acc, _ = net_method(
-                pd.read_input(data),
-                pd.read_input(label),
+                pd.read_input(data, label),
                 input_dim=dict_dim,
                 class_dim=class_dim)
             pd.write_output(cost)

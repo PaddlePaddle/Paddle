@@ -265,9 +265,9 @@ class ParallelDo(object):
         else:
             return self.outputs
 
-    def read_input(self, var):
-        self.inputs.append(var)
-        return var
+    def read_input(self, *vars):
+        self.inputs += vars
+        return vars
 
     def write_output(self, var):
         self.outputs.append(var)
