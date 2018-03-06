@@ -3206,7 +3206,7 @@ def one_hot(input, depth):
     operator.
 
     Args:
-        input(Tensor/LodTensor):  A Tensor/LodTensor of indices, last dimension must be 1.
+        input(variable):  A Tensor/LodTensor of indices, last dimension must be 1.
         depth(scalar): an interger defining the depth of the one hot dimension.
 
     Returns:

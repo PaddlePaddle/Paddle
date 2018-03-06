@@ -34,10 +34,12 @@ class TestDetectionMAPOp(OpTest):
                 'int32')
             self.true_pos = np.array(self.true_pos).astype('float32')
             self.false_pos = np.array(self.false_pos).astype('float32')
+            self.has_state = np.array([1]).astype('int32')
 
             self.inputs = {
                 'Label': (self.label, self.label_lod),
                 'DetectRes': (self.detect, self.detect_lod),
+                'HasState': self.has_state,
                 'PosCount': self.class_pos_count,
                 'TruePos': (self.true_pos, self.true_pos_lod),
                 'FalsePos': (self.false_pos, self.false_pos_lod)
