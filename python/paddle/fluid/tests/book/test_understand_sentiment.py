@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import contextlib
 import math
 import numpy as np
 import sys
+import os
 
 
 def convolution_net(data, label, input_dim, class_dim=2, emb_dim=32,
@@ -132,7 +133,12 @@ def create_random_lodtensor(lod, place, low, high):
     return res
 
 
-def train(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
+def train(word_dict,
+          net_method,
+          use_cuda,
+          parallel=False,
+          save_dirname=None,
+          is_local=True):
     BATCH_SIZE = 128
     PASS_NUM = 5
     dict_dim = len(word_dict)
@@ -164,7 +170,7 @@ def train(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
         assert save_dirname is None
 
     adagrad = fluid.optimizer.Adagrad(learning_rate=0.002)
-    adagrad.minimize(cost)
+    optimize_ops, params_grads = adagrad.minimize(cost)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -174,55 +180,88 @@ def train(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
 
-    exe.run(fluid.default_startup_program())
+    def train_loop(main_program):
+        exe.run(fluid.default_startup_program())
 
-    for pass_id in xrange(PASS_NUM):
-        for data in train_data():
-            cost_val, acc_val = exe.run(fluid.default_main_program(),
-                                        feed=feeder.feed(data),
-                                        fetch_list=[cost, acc_out])
-            print("cost=" + str(cost_val) + " acc=" + str(acc_val))
-            if cost_val < 0.4 and acc_val > 0.8:
-                if save_dirname is not None:
-                    fluid.io.save_inference_model(save_dirname, ["words"],
-                                                  prediction, exe)
-                return
-            if math.isnan(float(cost_val)):
-                sys.exit("got NaN loss, training failed.")
-    raise AssertionError("Cost is too large for {0}".format(
-        net_method.__name__))
+        for pass_id in xrange(PASS_NUM):
+            for data in train_data():
+                cost_val, acc_val = exe.run(main_program,
+                                            feed=feeder.feed(data),
+                                            fetch_list=[cost, acc_out])
+                print("cost=" + str(cost_val) + " acc=" + str(acc_val))
+                if cost_val < 0.4 and acc_val > 0.8:
+                    if save_dirname is not None:
+                        fluid.io.save_inference_model(save_dirname, ["words"],
+                                                      prediction, exe)
+                    return
+                if math.isnan(float(cost_val)):
+                    sys.exit("got NaN loss, training failed.")
+        raise AssertionError("Cost is too large for {0}".format(
+            net_method.__name__))
+
+    if is_local:
+        train_loop(fluid.default_main_program())
+    else:
+        port = os.getenv("PADDLE_INIT_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        eplist = []
+        for ip in pserver_ips.split(","):
+            eplist.append(':'.join([ip, port]))
+        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        trainers = int(os.getenv("TRAINERS"))
+        current_endpoint = os.getenv("POD_IP") + ":" + port
+        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
+        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            optimize_ops,
+            params_grads,
+            trainer_id,
+            pservers=pserver_endpoints,
+            trainers=trainers)
+        if training_role == "PSERVER":
+            pserver_prog = t.get_pserver_program(current_endpoint)
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
+            exe.run(pserver_startup)
+            exe.run(pserver_prog)
+        elif training_role == "TRAINER":
+            train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, save_dirname=None):
+def infer(word_dict, use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    # Use fluid.io.load_inference_model to obtain the inference program desc,
-    # the feed_target_names (the names of variables that will be feeded 
-    # data using feed operators), and the fetch_targets (variables that 
-    # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    lod = [0, 4, 10]
-    word_dict = paddle.dataset.imdb.word_dict()
-    tensor_words = create_random_lodtensor(
-        lod, place, low=0, high=len(word_dict) - 1)
+        word_dict_len = len(word_dict)
 
-    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-    # and results will contain a list of data corresponding to fetch_targets.
-    assert feed_target_names[0] == "words"
-    results = exe.run(inference_program,
-                      feed={feed_target_names[0]: tensor_words},
-                      fetch_list=fetch_targets,
-                      return_numpy=False)
-    print(results[0].lod())
-    np_data = np.array(results[0])
-    print("Inference Shape: ", np_data.shape)
-    print("Inference results: ", np_data)
+        lod = [0, 4, 10]
+        tensor_words = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        assert feed_target_names[0] == "words"
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: tensor_words},
+                          fetch_list=fetch_targets,
+                          return_numpy=False)
+        print(results[0].lod())
+        np_data = np.array(results[0])
+        print("Inference Shape: ", np_data.shape)
+        print("Inference results: ", np_data)
 
 
 def main(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
@@ -235,7 +274,7 @@ def main(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
         use_cuda,
         parallel=parallel,
         save_dirname=save_dirname)
-    infer(use_cuda, save_dirname)
+    infer(word_dict, use_cuda, save_dirname)
 
 
 class TestUnderstandSentiment(unittest.TestCase):
@@ -258,7 +297,7 @@ class TestUnderstandSentiment(unittest.TestCase):
                 self.word_dict,
                 net_method=convolution_net,
                 use_cuda=False,
-                save_dirname="understand_sentiment.inference.model")
+                save_dirname="understand_sentiment_conv.inference.model")
 
     def test_conv_cpu_parallel(self):
         with self.new_program_scope():
@@ -271,7 +310,11 @@ class TestUnderstandSentiment(unittest.TestCase):
     @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_cpu(self):
         with self.new_program_scope():
-            main(self.word_dict, net_method=stacked_lstm_net, use_cuda=False)
+            main(
+                self.word_dict,
+                net_method=stacked_lstm_net,
+                use_cuda=False,
+                save_dirname="understand_sentiment_stacked_lstm.inference.model")
 
     def test_stacked_lstm_cpu_parallel(self):
         with self.new_program_scope():
@@ -287,7 +330,7 @@ class TestUnderstandSentiment(unittest.TestCase):
                 self.word_dict,
                 net_method=convolution_net,
                 use_cuda=True,
-                save_dirname="understand_sentiment.inference.model")
+                save_dirname="understand_sentiment_conv.inference.model")
 
     def test_conv_gpu_parallel(self):
         with self.new_program_scope():
@@ -300,7 +343,11 @@ class TestUnderstandSentiment(unittest.TestCase):
     @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_gpu(self):
         with self.new_program_scope():
-            main(self.word_dict, net_method=stacked_lstm_net, use_cuda=True)
+            main(
+                self.word_dict,
+                net_method=stacked_lstm_net,
+                use_cuda=True,
+                save_dirname="understand_sentiment_stacked_lstm.inference.model")
 
     def test_stacked_lstm_gpu_parallel(self):
         with self.new_program_scope():

@@ -21,6 +21,7 @@ import math
 import sys
 import numpy
 import unittest
+import os
 
 
 def resnet_cifar10(input, depth=32):
@@ -85,14 +86,14 @@ def vgg16_bn_drop(input):
     conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
-    fc1 = fluid.layers.fc(input=drop, size=512, act=None)
+    fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
     bn = fluid.layers.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
-    fc2 = fluid.layers.fc(input=drop2, size=512, act=None)
+    fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
     return fc2
 
 
-def train(net_type, use_cuda, save_dirname):
+def train(net_type, use_cuda, save_dirname, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
@@ -114,10 +115,10 @@ def train(net_type, use_cuda, save_dirname):
     acc = fluid.layers.accuracy(input=predict, label=label)
 
     # Test program 
-    test_program = fluid.default_main_program().clone()
+    test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-    optimizer.minimize(avg_cost)
+    optimize_ops, params_grads = optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 128
     PASS_NUM = 1
@@ -133,38 +134,68 @@ def train(net_type, use_cuda, save_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
-    exe.run(fluid.default_startup_program())
 
-    loss = 0.0
-    for pass_id in range(PASS_NUM):
-        for batch_id, data in enumerate(train_reader()):
-            exe.run(feed=feeder.feed(data))
+    def train_loop(main_program):
+        exe.run(fluid.default_startup_program())
+        loss = 0.0
+        for pass_id in range(PASS_NUM):
+            for batch_id, data in enumerate(train_reader()):
+                exe.run(main_program, feed=feeder.feed(data))
 
-            if (batch_id % 10) == 0:
-                acc_list = []
-                avg_loss_list = []
-                for tid, test_data in enumerate(test_reader()):
-                    loss_t, acc_t = exe.run(program=test_program,
-                                            feed=feeder.feed(test_data),
-                                            fetch_list=[avg_cost, acc])
-                    if math.isnan(float(loss_t)):
-                        sys.exit("got NaN loss, training failed.")
-                    acc_list.append(float(acc_t))
-                    avg_loss_list.append(float(loss_t))
-                    break  # Use 1 segment for speeding up CI
+                if (batch_id % 10) == 0:
+                    acc_list = []
+                    avg_loss_list = []
+                    for tid, test_data in enumerate(test_reader()):
+                        loss_t, acc_t = exe.run(program=test_program,
+                                                feed=feeder.feed(test_data),
+                                                fetch_list=[avg_cost, acc])
+                        if math.isnan(float(loss_t)):
+                            sys.exit("got NaN loss, training failed.")
+                        acc_list.append(float(acc_t))
+                        avg_loss_list.append(float(loss_t))
+                        break  # Use 1 segment for speeding up CI
 
-                acc_value = numpy.array(acc_list).mean()
-                avg_loss_value = numpy.array(avg_loss_list).mean()
+                    acc_value = numpy.array(acc_list).mean()
+                    avg_loss_value = numpy.array(avg_loss_list).mean()
 
-                print(
-                    'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
-                    format(pass_id, batch_id + 1,
-                           float(avg_loss_value), float(acc_value)))
+                    print(
+                        'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
+                        format(pass_id, batch_id + 1,
+                               float(avg_loss_value), float(acc_value)))
 
-                if acc_value > 0.01:  # Low threshold for speeding up CI
-                    fluid.io.save_inference_model(save_dirname, ["pixel"],
-                                                  [predict], exe)
-                    return
+                    if acc_value > 0.01:  # Low threshold for speeding up CI
+                        fluid.io.save_inference_model(save_dirname, ["pixel"],
+                                                      [predict], exe)
+                        return
+
+    if is_local:
+        train_loop(fluid.default_main_program())
+    else:
+        port = os.getenv("PADDLE_INIT_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        eplist = []
+        for ip in pserver_ips.split(","):
+            eplist.append(':'.join([ip, port]))
+        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        trainers = int(os.getenv("TRAINERS"))
+        current_endpoint = os.getenv("POD_IP") + ":" + port
+        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
+        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            optimize_ops,
+            params_grads,
+            trainer_id,
+            pservers=pserver_endpoints,
+            trainers=trainers)
+        if training_role == "PSERVER":
+            pserver_prog = t.get_pserver_program(current_endpoint)
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
+            exe.run(pserver_startup)
+            exe.run(pserver_prog)
+        elif training_role == "TRAINER":
+            train_loop(t.get_trainer_program())
 
 
 def infer(use_cuda, save_dirname=None):
@@ -174,32 +205,36 @@ def infer(use_cuda, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    # Use fluid.io.load_inference_model to obtain the inference program desc,
-    # the feed_target_names (the names of variables that will be feeded 
-    # data using feed operators), and the fetch_targets (variables that 
-    # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    # The input's dimension of conv should be 4-D or 5-D.
-    tensor_img = numpy.random.rand(1, 3, 32, 32).astype("float32")
+        # The input's dimension of conv should be 4-D or 5-D.
+        # Use normilized image pixels as input data, which should be in the range [0, 1.0].
+        batch_size = 1
+        tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
-    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-    # and results will contain a list of data corresponding to fetch_targets.
-    results = exe.run(inference_program,
-                      feed={feed_target_names[0]: tensor_img},
-                      fetch_list=fetch_targets)
-    print("infer results: ", results[0])
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        results = exe.run(inference_program,
+                          feed={feed_target_names[0]: tensor_img},
+                          fetch_list=fetch_targets)
+        print("infer results: ", results[0])
 
 
-def main(net_type, use_cuda):
+def main(net_type, use_cuda, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
     save_dirname = "image_classification_" + net_type + ".inference.model"
 
-    train(net_type, use_cuda, save_dirname)
+    train(net_type, use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
 
 

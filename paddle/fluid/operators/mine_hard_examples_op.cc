@@ -247,7 +247,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("ClsLoss")->type()),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 

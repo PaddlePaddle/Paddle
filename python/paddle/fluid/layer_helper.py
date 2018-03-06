@@ -330,8 +330,27 @@ class LayerHelper(object):
         return self.main_program.current_block().create_var(*args, **kwargs)
 
     def create_global_variable(self, persistable=False, *args, **kwargs):
+        """
+        create global variable, note that there is no initializer for this global variable.
+        Args:
+            persistable(bool): True if it is a checkpoint value.
+            *args: See create_var's documentation
+            **kwargs: See create_var's documentation
+
+        Returns(Variable): the created variable.
+        """
         return self.main_program.global_block().create_var(
             *args, persistable=persistable, **kwargs)
+
+    def create_or_get_global_variable(self, name, *args, **kwargs):
+        """
+        Creates a global variable if not exists and returns the variable and
+        a boolean flag which is true when it is a new variable.
+        """
+        if self.main_program.global_block().has_var(name):
+            return self.main_program.global_block().var(name), False
+        else:
+            return self.create_global_variable(name=name, *args, **kwargs), True
 
     def set_variable_initializer(self, var, initializer):
         assert isinstance(var, Variable)

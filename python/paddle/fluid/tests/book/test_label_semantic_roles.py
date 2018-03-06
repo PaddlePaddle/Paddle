@@ -22,11 +22,12 @@ from paddle.fluid.initializer import init_on_cpu
 import contextlib
 import time
 import unittest
+import os
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)
 label_dict_len = len(label_dict)
-pred_len = len(verb_dict)
+pred_dict_len = len(verb_dict)
 
 mark_dict_len = 2
 word_dim = 32
@@ -53,7 +54,7 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
     # 8 features
     predicate_embedding = fluid.layers.embedding(
         input=predicate,
-        size=[pred_len, word_dim],
+        size=[pred_dict_len, word_dim],
         dtype='float32',
         is_sparse=IS_SPARSE,
         param_attr='vemb')
@@ -138,7 +139,7 @@ def create_random_lodtensor(lod, place, low, high):
     return res
 
 
-def train(use_cuda, save_dirname=None):
+def train(use_cuda, save_dirname=None, is_local=True):
     # define network topology
     word = fluid.layers.data(
         name='word_data', shape=[1], dtype='int64', lod_level=1)
@@ -168,17 +169,13 @@ def train(use_cuda, save_dirname=None):
 
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
-    global_step = fluid.layers.create_global_var(
-        shape=[1], value=0, dtype='float32', force_cpu=True, persistable=True)
     sgd_optimizer = fluid.optimizer.SGD(
-        learning_rate=fluid.learning_rate_decay.exponential_decay(
+        learning_rate=fluid.layers.exponential_decay(
             learning_rate=0.0001,
-            global_step=global_step,
             decay_steps=100000,
             decay_rate=0.5,
-            staircase=True),
-        global_step=global_step)
-    sgd_optimizer.minimize(avg_cost)
+            staircase=True))
+    optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
@@ -204,44 +201,78 @@ def train(use_cuda, save_dirname=None):
         place=place)
     exe = fluid.Executor(place)
 
-    exe.run(fluid.default_startup_program())
+    def train_loop(main_program):
+        exe.run(fluid.default_startup_program())
 
-    embedding_param = fluid.global_scope().find_var(embedding_name).get_tensor()
-    embedding_param.set(
-        load_parameter(conll05.get_embedding(), word_dict_len, word_dim), place)
+        embedding_param = fluid.global_scope().find_var(
+            embedding_name).get_tensor()
+        embedding_param.set(
+            load_parameter(conll05.get_embedding(), word_dict_len, word_dim),
+            place)
 
-    start_time = time.time()
-    batch_id = 0
-    for pass_id in xrange(PASS_NUM):
-        chunk_evaluator.reset(exe)
-        for data in train_data():
-            cost, precision, recall, f1_score = exe.run(
-                fluid.default_main_program(),
-                feed=feeder.feed(data),
-                fetch_list=[avg_cost] + chunk_evaluator.metrics)
-            pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
-                exe)
+        start_time = time.time()
+        batch_id = 0
+        for pass_id in xrange(PASS_NUM):
+            chunk_evaluator.reset(exe)
+            for data in train_data():
+                cost, precision, recall, f1_score = exe.run(
+                    main_program,
+                    feed=feeder.feed(data),
+                    fetch_list=[avg_cost] + chunk_evaluator.metrics)
+                pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
+                    exe)
 
-            if batch_id % 10 == 0:
-                print("avg_cost:" + str(cost) + " precision:" + str(
-                    precision) + " recall:" + str(recall) + " f1_score:" + str(
-                        f1_score) + " pass_precision:" + str(
-                            pass_precision) + " pass_recall:" + str(pass_recall)
-                      + " pass_f1_score:" + str(pass_f1_score))
-                if batch_id != 0:
-                    print("second per batch: " + str((time.time() - start_time)
-                                                     / batch_id))
-                # Set the threshold low to speed up the CI test
-                if float(pass_precision) > 0.05:
-                    if save_dirname is not None:
-                        fluid.io.save_inference_model(save_dirname, [
-                            'word_data', 'verb_data', 'ctx_n2_data',
-                            'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
-                            'ctx_p2_data', 'mark_data'
-                        ], [feature_out], exe)
-                    return
+                if batch_id % 10 == 0:
+                    print("avg_cost:" + str(cost) + " precision:" + str(
+                        precision) + " recall:" + str(recall) + " f1_score:" +
+                          str(f1_score) + " pass_precision:" + str(
+                              pass_precision) + " pass_recall:" + str(
+                                  pass_recall) + " pass_f1_score:" + str(
+                                      pass_f1_score))
+                    if batch_id != 0:
+                        print("second per batch: " + str((time.time(
+                        ) - start_time) / batch_id))
+                    # Set the threshold low to speed up the CI test
+                    if float(pass_precision) > 0.05:
+                        if save_dirname is not None:
+                            # TODO(liuyiqun): Change the target to crf_decode
+                            fluid.io.save_inference_model(save_dirname, [
+                                'word_data', 'verb_data', 'ctx_n2_data',
+                                'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
+                                'ctx_p2_data', 'mark_data'
+                            ], [feature_out], exe)
+                        return
 
-            batch_id = batch_id + 1
+                batch_id = batch_id + 1
+
+    if is_local:
+        train_loop(fluid.default_main_program())
+    else:
+        port = os.getenv("PADDLE_INIT_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        eplist = []
+        for ip in pserver_ips.split(","):
+            eplist.append(':'.join([ip, port]))
+        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        trainers = int(os.getenv("TRAINERS"))
+        current_endpoint = os.getenv("POD_IP") + ":" + port
+        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
+        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            optimize_ops,
+            params_grads,
+            trainer_id,
+            pservers=pserver_endpoints,
+            trainers=trainers)
+        if training_role == "PSERVER":
+            pserver_prog = t.get_pserver_program(current_endpoint)
+            pserver_startup = t.get_startup_program(current_endpoint,
+                                                    pserver_prog)
+            exe.run(pserver_startup)
+            exe.run(pserver_prog)
+        elif training_role == "TRAINER":
+            train_loop(t.get_trainer_program())
 
 
 def infer(use_cuda, save_dirname=None):
@@ -251,61 +282,70 @@ def infer(use_cuda, save_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
 
-    # Use fluid.io.load_inference_model to obtain the inference program desc,
-    # the feed_target_names (the names of variables that will be feeded 
-    # data using feed operators), and the fetch_targets (variables that 
-    # we want to obtain data from using fetch operators).
-    [inference_program, feed_target_names,
-     fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be feeded
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-    lod = [0, 4, 10]
-    ts_word = create_random_lodtensor(lod, place, low=0, high=1)
-    ts_pred = create_random_lodtensor(lod, place, low=0, high=1)
-    ts_ctx_n2 = create_random_lodtensor(lod, place, low=0, high=1)
-    ts_ctx_n1 = create_random_lodtensor(lod, place, low=0, high=1)
-    ts_ctx_0 = create_random_lodtensor(lod, place, low=0, high=1)
-    ts_ctx_p1 = create_random_lodtensor(lod, place, low=0, high=1)
-    ts_ctx_p2 = create_random_lodtensor(lod, place, low=0, high=1)
-    ts_mark = create_random_lodtensor(lod, place, low=0, high=1)
+        lod = [0, 4, 10]
+        word = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        pred = create_random_lodtensor(
+            lod, place, low=0, high=pred_dict_len - 1)
+        ctx_n2 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        ctx_n1 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        ctx_0 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        ctx_p1 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        ctx_p2 = create_random_lodtensor(
+            lod, place, low=0, high=word_dict_len - 1)
+        mark = create_random_lodtensor(
+            lod, place, low=0, high=mark_dict_len - 1)
 
-    # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-    # and results will contain a list of data corresponding to fetch_targets.
-    assert feed_target_names[0] == 'word_data'
-    assert feed_target_names[1] == 'verb_data'
-    assert feed_target_names[2] == 'ctx_n2_data'
-    assert feed_target_names[3] == 'ctx_n1_data'
-    assert feed_target_names[4] == 'ctx_0_data'
-    assert feed_target_names[5] == 'ctx_p1_data'
-    assert feed_target_names[6] == 'ctx_p2_data'
-    assert feed_target_names[7] == 'mark_data'
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        assert feed_target_names[0] == 'word_data'
+        assert feed_target_names[1] == 'verb_data'
+        assert feed_target_names[2] == 'ctx_n2_data'
+        assert feed_target_names[3] == 'ctx_n1_data'
+        assert feed_target_names[4] == 'ctx_0_data'
+        assert feed_target_names[5] == 'ctx_p1_data'
+        assert feed_target_names[6] == 'ctx_p2_data'
+        assert feed_target_names[7] == 'mark_data'
 
-    results = exe.run(inference_program,
-                      feed={
-                          feed_target_names[0]: ts_word,
-                          feed_target_names[1]: ts_pred,
-                          feed_target_names[2]: ts_ctx_n2,
-                          feed_target_names[3]: ts_ctx_n1,
-                          feed_target_names[4]: ts_ctx_0,
-                          feed_target_names[5]: ts_ctx_p1,
-                          feed_target_names[6]: ts_ctx_p2,
-                          feed_target_names[7]: ts_mark
-                      },
-                      fetch_list=fetch_targets,
-                      return_numpy=False)
-    print(results[0].lod())
-    np_data = np.array(results[0])
-    print("Inference Shape: ", np_data.shape)
-    print("Inference results: ", np_data)
+        results = exe.run(inference_program,
+                          feed={
+                              feed_target_names[0]: word,
+                              feed_target_names[1]: pred,
+                              feed_target_names[2]: ctx_n2,
+                              feed_target_names[3]: ctx_n1,
+                              feed_target_names[4]: ctx_0,
+                              feed_target_names[5]: ctx_p1,
+                              feed_target_names[6]: ctx_p2,
+                              feed_target_names[7]: mark
+                          },
+                          fetch_list=fetch_targets,
+                          return_numpy=False)
+        print(results[0].lod())
+        np_data = np.array(results[0])
+        print("Inference Shape: ", np_data.shape)
 
 
-def main(use_cuda):
+def main(use_cuda, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
     save_dirname = "label_semantic_roles.inference.model"
 
-    train(use_cuda, save_dirname)
+    train(use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
 
 

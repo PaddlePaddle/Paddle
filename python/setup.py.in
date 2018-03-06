@@ -73,6 +73,7 @@ packages=['paddle',
           'paddle.v2.plot',
           'paddle.fluid',
           'paddle.fluid.proto',
+          'paddle.fluid.proto.profiler',
           'paddle.fluid.layers',
           'py_paddle']
 
@@ -109,6 +110,7 @@ setup(name='${PACKAGE_NAME}',
           '': '${CMAKE_CURRENT_SOURCE_DIR}',
           # The paddle.fluid.proto will be generated while compiling.
           # So that package points to other directory.
+          'paddle.fluid.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
           'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
           'py_paddle': '${PADDLE_SOURCE_DIR}/paddle/py_paddle'
       },
