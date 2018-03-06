@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import layers
-from initializer import init_on_cpu
+import control_flow
+import nn
+import ops
+import tensor
+from ..initializer import init_on_cpu
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
@@ -31,9 +34,9 @@ strategy according to this module.
 
 def _decay_step_counter():
     # the first global step is zero in learning rate decay
-    global_step = layers.autoincreased_step_counter(
+    global_step = nn.autoincreased_step_counter(
         counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
-    global_step = layers.cast(global_step, 'float32')
+    global_step = tensor.cast(global_step, 'float32')
     return global_step
 
 
@@ -60,7 +63,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         # update learning_rate
         div_res = global_step / decay_steps
         if staircase:
-            div_res = layers.floor(x=div_res)
+            div_res = ops.floor(div_res)
         decayed_lr = learning_rate * (decay_rate**div_res)
 
     return decayed_lr
@@ -89,8 +92,8 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     with init_on_cpu():
         div_res = global_step / decay_steps
         if staircase:
-            div_res = layers.floor(x=div_res)
-        decayed_lr = learning_rate * layers.exp(x=(-1 * decay_rate * div_res))
+            div_res = ops.floor(div_res)
+        decayed_lr = learning_rate * ops.exp(-1 * decay_rate * div_res)
 
     return decayed_lr
 
@@ -118,7 +121,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     with init_on_cpu():
         div_res = global_step / decay_steps
         if staircase:
-            div_res = layers.floor(x=div_res)
+            div_res = ops.floor(div_res)
 
         decayed_lr = learning_rate / (1 + decay_rate * div_res)
 
@@ -154,21 +157,20 @@ def polynomial_decay(learning_rate,
 
     with init_on_cpu():
         if cycle:
-            div_res = layers.ceil(x=(global_step / decay_steps))
-            zero_var = layers.fill_constant(
+            div_res = ops.ceil(global_step / decay_steps)
+            zero_var = tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.0)
-            one_var = layers.fill_constant(
+            one_var = tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.0)
 
-            with layers.Switch() as switch:
+            with control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
-                    layers.assign(input=one_var, output=div_res)
+                    tensor.assign(input=one_var, output=div_res)
             decay_steps = decay_steps * div_res
         else:
-            decay_steps_var = layers.fill_constant(
+            decay_steps_var = tensor.fill_constant(
                 shape=[1], dtype='float32', value=float(decay_steps))
-            global_step = layers.elementwise_min(
-                x=global_step, y=decay_steps_var)
+            global_step = ops.elementwise_min(x=global_step, y=decay_steps_var)
 
         decayed_lr = (learning_rate - end_learning_rate) * \
                      ((1 - global_step / decay_steps) ** power) + end_learning_rate
@@ -195,26 +197,26 @@ def piecewise_decay(boundaries, values):
     global_step = _decay_step_counter()
 
     with init_on_cpu():
-        lr = layers.create_global_var(
+        lr = tensor.create_global_var(
             shape=[1],
             value=0.0,
             dtype='float32',
             persistable=True,
             name="learning_rate")
 
-        with layers.Switch() as switch:
+        with control_flow.Switch() as switch:
             for i in range(len(boundaries)):
-                boundary_val = layers.fill_constant(
+                boundary_val = tensor.fill_constant(
                     shape=[1], dtype='float32', value=float(boundaries[i]))
-                value_var = layers.fill_constant(
+                value_var = tensor.fill_constant(
                     shape=[1], dtype='float32', value=float(values[i]))
                 with switch.case(global_step < boundary_val):
-                    layers.assign(value_var, lr)
-            last_value_var = layers.fill_constant(
+                    tensor.assign(value_var, lr)
+            last_value_var = tensor.fill_constant(
                 shape=[1],
                 dtype='float32',
                 value=float(values[len(values) - 1]))
             with switch.default():
-                layers.assign(last_value_var, lr)
+                tensor.assign(last_value_var, lr)
 
     return lr
