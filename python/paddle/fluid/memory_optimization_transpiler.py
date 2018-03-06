@@ -139,10 +139,16 @@ class ControlFlowGraph(object):
             return False
         return True
 
+    def _update_skip_opt_set(self):
+        for i in range(self.op_size):
+            op = self._ops[i]
+            if op.type() == "fill_constant" and op.attr("force_cpu") == True:
+                self._skip_opt.update(op.output_arg_names())
+
     def release_memory(self):
         self._build_graph()
         self._dataflow_analyze()
-
+        self._update_skip_opt_set()
         fwd_id = 0
         bwd_id = 0
         for i in range(self.op_size):
@@ -181,6 +187,7 @@ class ControlFlowGraph(object):
 
         self._build_graph()
         self._dataflow_analyze()
+        self._update_skip_opt_set()
         for i in range(self.op_size):
             op = self._ops[i]
             if op.type() == "fill_constant" and op.attr("force_cpu") == True:
