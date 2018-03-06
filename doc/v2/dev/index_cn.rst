@@ -6,3 +6,4 @@
 
   contribute_to_paddle_cn.md
   write_docs_cn.rst
+  new_layer_cn.rst
