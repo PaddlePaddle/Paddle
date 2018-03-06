@@ -12,28 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/recordio/header.h"
-
-#include <sstream>
+#include "paddle/fluid/recordio/range_scanner.h"
 
 #include "gtest/gtest.h"
 
 using namespace paddle::recordio;
 
-TEST(Recordio, ChunkHead) {
-  Header hdr(0, 1, Compressor::kGzip, 3);
-  {
-    Stream* oss = Stream::Open("/tmp/record_1", "w");
-    hdr.Write(oss);
-    delete oss;
-  }
-
-  Header hdr2;
-  {
-    Stream* iss = Stream::Open("/tmp/record_1", "r");
-    hdr2.Parse(iss);
-    delete iss;
-  }
-
-  EXPECT_TRUE(hdr == hdr2);
+TEST(RangeScanner, Recordio) {
+  Stream* fo = Stream::Open("/tmp/record_range", "w");
 }

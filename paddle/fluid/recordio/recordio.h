@@ -11,14 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
-#include <fcntl.h>
-#include <stdio.h>
-#include <unistd.h>
-
-class DefaultFileSys {
-public:
-private:
-};
+#include "paddle/fluid/recordio/chunk.h"
+#include "paddle/fluid/recordio/header.h"
+#include "paddle/fluid/recordio/io.h"
+#include "paddle/fluid/recordio/scanner.h"
+#include "paddle/fluid/recordio/writer.h"
