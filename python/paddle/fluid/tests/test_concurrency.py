@@ -95,6 +95,49 @@ class TestRoutineOp(unittest.TestCase):
         return framework.default_main_program().current_block().create_var(
             name=unique_name.generate(name), type=type, dtype=dtype)
 
+    def test_select(self):
+        ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
+        ch2 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
+
+        result1 = self._create_tensor('return_value',
+                                     core.VarDesc.VarType.LOD_TENSOR,
+                                     core.VarDesc.VarType.INT64)
+
+        result2 = self._create_tensor('return_value',
+                                      core.VarDesc.VarType.LOD_TENSOR,
+                                      core.VarDesc.VarType.INT64)
+
+        with fluid.Go():
+            with fluid.Select() as select:
+                input_value = fill_constant(
+                    shape=[1], dtype=core.VarDesc.VarType.FP64, value=1234)
+
+                with select.case(fluid.channel_send, ch1, input_value):
+                    # Execute something.
+                    pass
+
+                with select.case(fluid.channel_recv, ch2, result2):
+                    # Execute something.
+                    print result2
+
+                with select.default():
+                    pass
+
+        result1, status = fluid.channel_recv(ch1, result1)
+        fluid.channel_close(ch1)
+
+        input_value_2 = fill_constant(
+            shape=[1], dtype=core.VarDesc.VarType.FP64, value=1234)
+
+        fluid.channel_send(ch1, input_value_2)
+        fluid.channel_close(ch2)
+
+        cpu = core.CPUPlace()
+        exe = Executor(cpu)
+
+        result = exe.run(fetch_list=[result1])
+        #self.assertEqual(result[0][0], n + 1)
+
 
 if __name__ == '__main__':
     unittest.main()
