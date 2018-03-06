@@ -73,7 +73,12 @@ else()
     if(NOT CUDNN_FOUND)
         message(FATAL_ERROR "Paddle needs cudnn to compile")
     endif()
-
+    if(CUPTI_FOUND)
+        include_directories(${CUPTI_INCLUDE_DIR})
+        add_definitions(-DPADDLE_WITH_CUPTI)
+    else()
+        message(STATUS "Cannot find CUPTI, GPU Profiling is incorrect.")
+    endif()
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
 
     # Include cuda and cudnn

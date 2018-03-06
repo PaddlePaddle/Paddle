@@ -276,17 +276,17 @@ class DistributeTranspiler:
             pserver_program.global_block().create_var(
                 name=orig_var_name,
                 persistable=True,
+                type=v.type,
                 dtype=v.dtype,
                 shape=v.shape)
-            print("create origin var: ", orig_var_name)
             for trainer_id in xrange(self.trainers):
                 var = pserver_program.global_block().create_var(
                     name="%s.trainer_%d" % (orig_var_name, trainer_id),
                     persistable=False,
+                    type=v.type,
                     dtype=v.dtype,
                     shape=v.shape)
                 recv_inputs.append(var)
-                print("create per trainer var: ", var.name)
         # step3
         optimize_block = pserver_program.create_block(0)
         # step 4
@@ -551,11 +551,12 @@ class DistributeTranspiler:
                         type="sum",
                         inputs={"X": vars2merge},
                         outputs={"Out": merged_var})
-                    optimize_block.append_op(
-                        type="scale",
-                        inputs={"X": merged_var},
-                        outputs={"Out": merged_var},
-                        attrs={"scale": 1.0 / float(self.trainers)})
+                    if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
+                        optimize_block.append_op(
+                            type="scale",
+                            inputs={"X": merged_var},
+                            outputs={"Out": merged_var},
+                            attrs={"scale": 1.0 / float(self.trainers)})
                 new_inputs[key] = merged_var
             elif key == "Param":
                 # param is already created on global program

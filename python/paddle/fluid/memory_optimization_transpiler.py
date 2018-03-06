@@ -29,6 +29,8 @@ dtype_to_size = {
     core.VarDesc.VarType.BOOL: 1
 }
 
+sub_block_ops = ["while", "while_grad", "parallel_do", "parallel_do_grad"]
+
 
 class ControlFlowGraph(object):
     def __init__(self, Program, ops, forward_num, skip_opt):
@@ -141,7 +143,7 @@ class ControlFlowGraph(object):
         self.pool = []
         for i in range(self.op_size):
             op = self._ops[i]
-            if op.type() == "while" or op.type() == "while_grad":
+            if op.type() in sub_block_ops:
                 continue
             block_desc = op.block()
             is_forward = i < self._forward_num
@@ -198,7 +200,63 @@ class ControlFlowGraph(object):
                         block_desc, var_name, is_forward).shape()))
 
 
-def get_cfgs(input_program):
+def _process_sub_block_pair(pdesc, sub_block_pair):
+    ops_list = []
+    block_desc = pdesc.block(0)
+    op_size = block_desc.op_size()
+    for fwd_op, bwd_op in sub_block_pair:
+        sub_block_ids = []
+        grad_sub_block_ids = []
+        sub_block_id_pair = []
+        sub_op_dict = {}
+        for i in range(op_size):
+            op = block_desc.op(i)
+            if op.type() == fwd_op:
+                sub_block_ids.append(op.attr("sub_block").id)
+                sub_op_dict[op.attr("sub_block").id] = op
+            elif op.type() == bwd_op:
+                grad_sub_block_ids.append(op.attr("sub_block").id)
+                sub_op_dict[op.attr("sub_block").id] = op
+
+        # Find fwd_op/bwd_op block pair
+        for grad_id in grad_sub_block_ids:
+            fwd_id = pdesc.block(grad_id).get_forward_block_idx()
+            if fwd_id in sub_block_ids:
+                sub_block_id_pair.append((fwd_id, grad_id))
+                sub_block_ids.remove(fwd_id)
+
+        # Get fwd_op/bwd_op block ops
+        for fwd_id, grad_id in sub_block_id_pair:
+            sub_block_ops = []
+            sub_block = pdesc.block(fwd_id)
+            block_op_size = sub_block.op_size()
+            for i in range(block_op_size):
+                sub_block_ops.append(sub_block.op(i))
+
+            grad_sub_block = pdesc.block(grad_id)
+            grad_sub_block_op_size = grad_sub_block.op_size()
+            for i in range(grad_sub_block_op_size):
+                sub_block_ops.append(grad_sub_block.op(i))
+
+            sub_op_output = set()
+            sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[grad_id].output_arg_names())
+            ops_list.append((sub_block_ops, block_op_size, sub_op_output))
+
+        # Process rest fwd_op block ops
+        for fwd_id in sub_block_ids:
+            sub_block_ops = []
+            sub_block = pdesc.block(fwd_id)
+            sub_block_op_size = sub_block.op_size()
+            for i in range(sub_block_op_size):
+                sub_block_ops.append(sub_block.op(i))
+            sub_op_output = set()
+            sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
+            ops_list.append((sub_block_ops, sub_block_op_size, sub_op_output))
+    return ops_list
+
+
+def _get_cfgs(input_program):
     ops_list = []
     pdesc = input_program.get_desc()
     block_desc = pdesc.block(0)
@@ -207,58 +265,10 @@ def get_cfgs(input_program):
     ops_list.append(
         ([block_desc.op(i) for i in range(op_size)], op_size, set()))
 
-    while_sub_block_ids = []
-    while_grad_sub_block_ids = []
-    while_block_id_pair = []
-    while_op_dict = {}
+    sub_block_pair = [("while", "while_grad"), ("parallel_do",
+                                                "parallel_do_grad")]
 
-    for i in range(op_size):
-        op = block_desc.op(i)
-        if op.type() == "while":
-            while_sub_block_ids.append(op.attr("sub_block").id)
-            while_op_dict[op.attr("sub_block").id] = op
-        elif op.type() == "while_grad":
-            while_grad_sub_block_ids.append(op.attr("sub_block").id)
-            while_op_dict[op.attr("sub_block").id] = op
-
-    # Find while/while_grad block pair
-    for grad_id in while_grad_sub_block_ids:
-        forward_id = pdesc.block(grad_id).get_forward_block_idx()
-        if forward_id in while_sub_block_ids:
-            while_block_id_pair.append((forward_id, grad_id))
-            while_sub_block_ids.remove(forward_id)
-
-    # Get while/while_grad block ops
-    for forward_id, grad_id in while_block_id_pair:
-        while_block_ops = []
-        while_block = pdesc.block(forward_id)
-        while_block_op_size = while_block.op_size()
-        for i in range(while_block_op_size):
-            while_block_ops.append(while_block.op(i))
-
-        while_grad_block = pdesc.block(grad_id)
-        while_grad_block_op_size = while_grad_block.op_size()
-        for i in range(while_grad_block_op_size):
-            while_block_ops.append(while_grad_block.op(i))
-
-        while_op_output = set()
-        while_op_output.update(while_op_dict[forward_id].output_arg_names())
-        while_op_output.update(while_op_dict[grad_id].output_arg_names())
-
-        ops_list.append((while_block_ops, while_block_op_size, while_op_output))
-
-    # Process rest while block ops
-    for forward_id in while_sub_block_ids:
-        while_block_ops = []
-        while_block = pdesc.block(forward_id)
-        while_block_op_size = while_block.op_size()
-        for i in range(while_block_op_size):
-            while_block_ops.append(while_block.op(i))
-
-        while_op_output = set()
-        while_op_output.update(while_op_dict[forward_id].output_arg_names())
-
-        ops_list.append((while_block_ops, while_block_op_size, while_op_output))
+    ops_list.extend(_process_sub_block_pair(pdesc, sub_block_pair))
 
     cfgs = [
         ControlFlowGraph(input_program, ops, forward_num, skip_opt)
@@ -268,6 +278,6 @@ def get_cfgs(input_program):
 
 
 def memory_optimize(input_program):
-    cfgs = get_cfgs(input_program)
+    cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
         cfg.memory_optimize()

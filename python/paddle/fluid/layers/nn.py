@@ -21,6 +21,7 @@ from ..framework import Variable
 from ..param_attr import ParamAttr
 from layer_function_generator import autodoc
 from tensor import concat
+import utils
 
 __all__ = [
     'fc',
@@ -69,6 +70,7 @@ __all__ = [
     'softmax_with_cross_entropy',
     'smooth_l1',
     'one_hot',
+    'autoincreased_step_counter',
 ]
 
 
@@ -1138,8 +1140,8 @@ def sequence_conv(input,
 def conv2d(input,
            num_filters,
            filter_size,
-           stride=None,
-           padding=None,
+           stride=1,
+           padding=0,
            groups=None,
            param_attr=None,
            bias_attr=None,
@@ -1252,12 +1254,10 @@ def conv2d(input,
             raise ValueError("num_channels must be divisible by groups.")
         num_filter_channels = num_channels / groups
 
-    if isinstance(filter_size, int):
-        filter_size = [filter_size, filter_size]
-    if isinstance(stride, int):
-        stride = [stride, stride]
-    if isinstance(padding, int):
-        padding = [padding, padding]
+    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+    stride = utils.convert_to_list(stride, 2, 'stride')
+    padding = utils.convert_to_list(padding, 2, 'padding')
+
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
 
@@ -1432,10 +1432,10 @@ def sequence_last_step(input):
 
 
 def pool2d(input,
-           pool_size,
-           pool_type,
-           pool_stride=None,
-           pool_padding=None,
+           pool_size=-1,
+           pool_type="max",
+           pool_stride=1,
+           pool_padding=0,
            global_pooling=False,
            use_cudnn=True,
            name=None):
@@ -1443,20 +1443,20 @@ def pool2d(input,
     This function adds the operator for pooling in 2 dimensions, using the
     pooling configurations mentioned in input parameters.
     """
-    if pool_padding is None:
-        pool_padding = [0, 0]
-    if pool_stride is None:
-        pool_stride = [1, 1]
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
             str(pool_type))
-    if isinstance(pool_size, int):
-        pool_size = [pool_size, pool_size]
-    if isinstance(pool_stride, int):
-        pool_stride = [pool_stride, pool_stride]
-    if isinstance(pool_padding, int):
-        pool_padding = [pool_padding, pool_padding]
+
+    if global_pooling is False and pool_size == -1:
+        raise ValueError(
+            "When the global_pooling is False, pool_size must be passed "
+            "and be a valid value. Received pool_size: " + str(pool_size))
+
+    pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
+    pool_padding = utils.convert_to_list(pool_padding, 2, 'pool_padding')
+    pool_stride = utils.convert_to_list(pool_stride, 2, 'pool_stride')
+
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
 
@@ -1685,9 +1685,9 @@ def conv2d_transpose(input,
                      num_filters,
                      output_size=None,
                      filter_size=None,
-                     padding=None,
-                     stride=None,
-                     dilation=None,
+                     padding=0,
+                     stride=1,
+                     dilation=1,
                      param_attr=None,
                      use_cudnn=True,
                      name=None):
@@ -1783,36 +1783,18 @@ def conv2d_transpose(input,
         raise TypeError("Input of conv2d_transpose must be Variable")
     input_channel = input.shape[1]
 
-    op_attr = dict()
-
-    if isinstance(padding, int):
-        op_attr['paddings'] = [padding, padding]
-    elif padding is not None:
-        op_attr['paddings'] = padding
-
-    if isinstance(stride, int):
-        op_attr['strides'] = [stride, stride]
-    elif stride is not None:
-        op_attr['strides'] = stride
-
-    if isinstance(dilation, int):
-        op_attr['dilations'] = [dilation, dilation]
-    elif dilation is not None:
-        op_attr['dilations'] = dilation
+    padding = utils.convert_to_list(padding, 2, 'padding')
+    stride = utils.convert_to_list(stride, 2, 'stride')
+    dilation = utils.convert_to_list(dilation, 2, 'dilation')
 
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
-    op_attr['use_cudnn'] = use_cudnn
 
     if filter_size is None:
         if output_size is None:
             raise ValueError("output_size must be set when filter_size is None")
         if isinstance(output_size, int):
             output_size = [output_size, output_size]
-
-        padding = op_attr.get('paddings', [0, 0])
-        stride = op_attr.get('strides', [1, 1])
-        dilation = op_attr.get('dilations', [1, 1])
 
         h_in = input.shape[2]
         w_in = input.shape[3]
@@ -1822,9 +1804,9 @@ def conv2d_transpose(input,
         filter_size_w = (output_size[1] - (w_in - 1) * stride[1] + 2 *
                          padding[1] - 1) / dilation[1] + 1
         filter_size = [filter_size_h, filter_size_w]
-
-    elif isinstance(filter_size, int):
-        filter_size = [filter_size, filter_size]
+    else:
+        filter_size = utils.convert_to_list(filter_size, 2,
+                                            'conv2d_transpose.filter_size')
 
     filter_shape = [input_channel, num_filters] + filter_size
     img_filter = helper.create_parameter(
@@ -1836,7 +1818,12 @@ def conv2d_transpose(input,
         inputs={'Input': [input],
                 'Filter': [img_filter]},
         outputs={'Output': out},
-        attrs=op_attr)
+        attrs={
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'use_cudnn': use_cudnn
+        })
 
     return out
 
@@ -2492,10 +2479,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
-def edit_distance(input,
-                  label,
-                  normalized=False,
-                  ignored_tokens=None,
+def edit_distance(input, label, normalized=True, ignored_tokens=None,
                   name=None):
     """
     EditDistance operator computes the edit distances between a batch of
@@ -3222,7 +3206,7 @@ def one_hot(input, depth):
     operator.
 
     Args:
-        input(Tensor/LodTensor):  A Tensor/LodTensor of indices, last dimension must be 1.
+        input(variable):  A Tensor/LodTensor of indices, last dimension must be 1.
         depth(scalar): an interger defining the depth of the one hot dimension.
 
     Returns:
@@ -3250,3 +3234,34 @@ def one_hot(input, depth):
         attrs={'depth': depth},
         outputs={'Out': one_hot_out})
     return one_hot_out
+
+
+def autoincreased_step_counter(counter_name=None, begin=1, step=1):
+    """
+    NOTE: The counter will be automatically increased by 1 every mini-batch
+    Return the run counter of the main program, which is started with 1.
+
+    Args:
+        counter_name(str): The counter name, default is '@STEP_COUNTER@'.
+        begin(int): The first value of this counter.
+        step(int): The increment step between each execution.
+
+    Returns(Variable): The global run counter.
+    """
+    helper = LayerHelper('global_step_counter')
+    if counter_name is None:
+        counter_name = '@STEP_COUNTER@'
+    counter, is_new_var = helper.create_or_get_global_variable(
+        name=counter_name, dtype='int64', shape=[1], persistable=True)
+    if is_new_var:
+        helper.set_variable_initializer(
+            counter, initializer=Constant(
+                value=begin - 1, force_cpu=True))
+        helper.main_program.global_block().prepend_op(
+            type='increment',
+            inputs={'X': [counter]},
+            outputs={'Out': [counter]},
+            attrs={'step': float(step)})
+        counter.stop_gradient = True
+
+    return counter

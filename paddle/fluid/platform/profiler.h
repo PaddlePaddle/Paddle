@@ -18,6 +18,7 @@ limitations under the License. */
 #include <mutex>
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler.pb.h"
 
 namespace paddle {
 namespace platform {
@@ -93,6 +94,7 @@ enum ProfilerState {
   kDisabled,  // disabled state
   kCPU,       // CPU profiling state
   kCUDA,      // GPU profiling state
+  kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
 void Mark(const std::string& name, const DeviceContext* dev_ctx);
@@ -102,17 +104,21 @@ void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
 void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 struct RecordEvent {
-  explicit RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
+  RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
 
   ~RecordEvent();
 
+  uint64_t start_ns_;
   // The device context is used by Event to get the current cuda stream.
   const DeviceContext* dev_ctx_;
   // Event name
   std::string name_;
+  // Need to distinguish name by op type, block_id, program_id and perhaps
+  // different kernel invocations within an op.
+  std::string full_name_;
 };
 
-// Return the event list of all threads. Asummed the returned value calls
+// Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();
 
@@ -135,7 +141,8 @@ void EnableProfiler(ProfilerState state);
 // Clear the g_all_event_lists, which is total event lists of all threads.
 void ResetProfiler();
 
-void DisableProfiler(EventSortingKey sorted_key);
+void DisableProfiler(EventSortingKey sorted_key,
+                     const std::string& profile_path);
 
 // Parse the event list and output the profiling report
 void ParseEvents(std::vector<std::vector<Event>>&,

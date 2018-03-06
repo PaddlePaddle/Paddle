@@ -35,11 +35,10 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self, learning_rate, global_step=None, regularization=None):
+    def __init__(self, learning_rate, regularization=None):
         if not isinstance(learning_rate, float) and \
                 not isinstance(learning_rate, framework.Variable):
             raise TypeError("learning rate should be float or Variable")
-        self._global_step = global_step
         self.regularization = regularization
         self._learning_rate = learning_rate
         # each program should have a independent learning rate
@@ -159,26 +158,6 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
-    def _increment_global_step(self, block):
-        """Increment the global step by 1 after every iteration
-
-        Args:
-            block: the block in which the loss variable is present
-
-        Returns:
-            list with global_step increment op as its only element
-        """
-        assert isinstance(block, framework.Block)
-        assert self._global_step is not None
-        # create the increment op
-        increment_op = block.append_op(
-            type="increment",
-            inputs={"X": self._global_step},
-            outputs={"Out": self._global_step},
-            attrs={"step": 1.0})
-
-        return increment_op
-
     def create_optimization_pass(self,
                                  parameters_and_grads,
                                  loss,
@@ -225,8 +204,6 @@ class Optimizer(object):
             # FIXME: Need to fix this once we figure out how to handle dependencies
             self._finish_update(loss.block)
 
-            if self._global_step is not None:
-                self._increment_global_step(loss.block)
             end = len(global_block.ops)
             return global_block.slice_ops(start, end)
 

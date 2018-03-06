@@ -26,12 +26,15 @@ Dim<i> make_dim(const int64_t* d) {
 }
 
 template <>
-Dim<1> make_dim<1>(const int64_t* d) {
-  return Dim<1>(*d);
+Dim<0> make_dim<0>(const int64_t* d) {
+  return Dim<0>(*d);
 }
 
 void make_ddim(DDim& ddim, const int64_t* dims, int n) {
   switch (n) {
+    case 0:
+      ddim = make_dim<0>(dims);
+      break;
     case 1:
       ddim = make_dim<1>(dims);
       break;
@@ -190,7 +193,7 @@ struct VectorizeVisitor : public boost::static_visitor<> {
     this->operator()(t.tail);
   }
 
-  void operator()(const Dim<1>& t) { vector.push_back(t.head); }
+  void operator()(const Dim<0>& t) {}
 };
 /// @endcond
 
@@ -247,9 +250,8 @@ struct SliceVectorizeVisitor : public boost::static_visitor<> {
     }
   }
 
-  void operator()(const Dim<1>& dim) {
-    PADDLE_ENFORCE(end == 1, "End index in ddim slice is out of bound.");
-    vector.push_back(dim.head);
+  void operator()(const Dim<0>& dim) {
+    PADDLE_ENFORCE(end == 0, "End index in ddim slice is out of bound.");
   }
 };
 

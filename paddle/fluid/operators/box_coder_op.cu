@@ -66,7 +66,6 @@ __global__ void DecodeCenterSizeKernel(const T* prior_box_data,
                                        T* output) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < row * col) {
-    const int row_idx = idx / col;
     const int col_idx = idx % col;
     T prior_box_width =
         prior_box_data[col_idx * len + 2] - prior_box_data[col_idx * len];
@@ -79,17 +78,16 @@ __global__ void DecodeCenterSizeKernel(const T* prior_box_data,
                            2;
 
     T target_box_width = exp(prior_box_var_data[col_idx * len + 2] *
-                             target_box_data[row_idx * len + 2]) *
+                             target_box_data[idx * len + 2]) *
                          prior_box_width;
     T target_box_height = exp(prior_box_var_data[col_idx * len + 3] *
-                              target_box_data[row_idx * len + 3]) *
+                              target_box_data[idx * len + 3]) *
                           prior_box_height;
     T target_box_center_x = prior_box_var_data[col_idx * len] *
-                                target_box_data[row_idx * len] *
-                                prior_box_width +
+                                target_box_data[idx * len] * prior_box_width +
                             prior_box_center_x;
     T target_box_center_y = prior_box_var_data[col_idx * len + 1] *
-                                target_box_data[row_idx * len + 1] *
+                                target_box_data[idx * len + 1] *
                                 prior_box_height +
                             prior_box_center_y;
 

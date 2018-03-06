@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import control_flow
+import nn
 import ops
 import tensor
-from ..framework import Variable
 from ..initializer import init_on_cpu
 
 __all__ = [
@@ -32,11 +32,15 @@ strategy according to this module.
 """
 
 
-def exponential_decay(learning_rate,
-                      global_step,
-                      decay_steps,
-                      decay_rate,
-                      staircase=False):
+def _decay_step_counter():
+    # the first global step is zero in learning rate decay
+    global_step = nn.autoincreased_step_counter(
+        counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
+    global_step = nn.cast(global_step, 'float32')
+    return global_step
+
+
+def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """Applies exponential decay to the learning rate.
 
     ```python
@@ -46,7 +50,6 @@ def exponential_decay(learning_rate,
     Args:
         learning_rate: A scalar float32 value or a Variable. This
           will be the initial learning rate during training
-        global_step: A Variable that record the training step.
         decay_steps: A Python `int32` number.
         decay_rate: A Python `float` number.
         staircase: Boolean. If set true, decay the learning rate every decay_steps.
@@ -54,8 +57,7 @@ def exponential_decay(learning_rate,
     Returns:
         The decayed learning rate
     """
-    if not isinstance(global_step, Variable):
-        raise ValueError("global_step is required for exponential_decay.")
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         # update learning_rate
@@ -67,23 +69,17 @@ def exponential_decay(learning_rate,
     return decayed_lr
 
 
-def natural_exp_decay(learning_rate,
-                      global_step,
-                      decay_steps,
-                      decay_rate,
-                      staircase=False):
+def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """Applies natural exponential decay to the initial learning rate.
 
-    ```python
-    if not staircase:
-        decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
-    else:
-        decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
-    ```
+    >>> if not staircase:
+    >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
+    >>> else:
+    >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
+
     Args:
         learning_rate: A scalar float32 value or a Variable. This
           will be the initial learning rate during training
-        global_step: A Variable that record the training step.
         decay_steps: A Python `int32` number.
         decay_rate: A Python `float` number.
         staircase: Boolean. If set true, decay the learning rate every decay_steps.
@@ -91,8 +87,7 @@ def natural_exp_decay(learning_rate,
     Returns:
         The decayed learning rate
     """
-    if not isinstance(global_step, Variable):
-        raise ValueError("global_step is required for natural_exp_decay.")
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         div_res = global_step / decay_steps
@@ -103,23 +98,17 @@ def natural_exp_decay(learning_rate,
     return decayed_lr
 
 
-def inverse_time_decay(learning_rate,
-                       global_step,
-                       decay_steps,
-                       decay_rate,
-                       staircase=False):
+def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """Applies inverse time decay to the initial learning rate.
 
-    ```python
-    if staircase:
-      decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
-    else:
-      decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
-    ```
+    >>> if staircase:
+    >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
+    >>> else:
+    >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
+
     Args:
         learning_rate: A scalar float32 value or a Variable. This
-          will be the initial learning rate during training
-        global_step: A Variable that record the training step.
+          will be the initial learning rate during training.
         decay_steps: A Python `int32` number.
         decay_rate: A Python `float` number.
         staircase: Boolean. If set true, decay the learning rate every decay_steps.
@@ -127,8 +116,7 @@ def inverse_time_decay(learning_rate,
     Returns:
         The decayed learning rate
     """
-    if not isinstance(global_step, Variable):
-        raise ValueError("global_step is required for inverse_time_decay.")
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         div_res = global_step / decay_steps
@@ -141,26 +129,22 @@ def inverse_time_decay(learning_rate,
 
 
 def polynomial_decay(learning_rate,
-                     global_step,
                      decay_steps,
                      end_learning_rate=0.0001,
                      power=1.0,
                      cycle=False):
     """Applies polynomial decay to the initial learning rate.
 
-    ```python
-    if cycle:
-        decay_steps = decay_steps * ceil(global_step / decay_steps)
-    else:
-        global_step = min(global_step, decay_steps)
-    decayed_learning_rate = (learning_rate - end_learning_rate) *
-                      (1 - global_step / decay_steps) ^ power +
-                      end_learning_rate
-    ```
+    >>> if cycle:
+    >>>     decay_steps = decay_steps * ceil(global_step / decay_steps)
+    >>> else:
+    >>>     global_step = min(global_step, decay_steps)
+    >>> decayed_learning_rate = (learning_rate - end_learning_rate) *
+    >>>                   (1 - global_step / decay_steps) ^ power +
+    >>>                   end_learning_rate
     Args:
         learning_rate: A scalar float32 value or a Variable. This
           will be the initial learning rate during training
-        global_step: A Variable that record the training step.
         decay_steps: A Python `int32` number.
         end_learning_rate: A Python `float` number.
         power: A Python `float` number
@@ -169,8 +153,7 @@ def polynomial_decay(learning_rate,
     Returns:
         The decayed learning rate
     """
-    if not isinstance(global_step, Variable):
-        raise ValueError("global_step is required for inverse_time_decay.")
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         if cycle:
@@ -194,27 +177,24 @@ def polynomial_decay(learning_rate,
     return decayed_lr
 
 
-def piecewise_decay(global_step, boundaries, values):
+def piecewise_decay(boundaries, values):
     """Applies piecewise decay to the initial learning rate.
 
-    ```python
-    boundaries = [10000, 20000]
-    values = [1.0, 0.5, 0.1]
-
-    if step < 10000:
-        learning_rate = 1.0
-    elif step >= 10000 and step < 20000:
-        learning_rate = 0.5
-    else:
-        learning_rate = 0.1
-    ```
+    >>> boundaries = [10000, 20000]
+    >>> values = [1.0, 0.5, 0.1]
+    >>>
+    >>> if step < 10000:
+    >>>     learning_rate = 1.0
+    >>> elif 10000 <= step < 20000:
+    >>>     learning_rate = 0.5
+    >>> else:
+    >>>     learning_rate = 0.1
     """
 
     if len(values) - len(boundaries) != 1:
         raise ValueError("len(values) - len(boundaries) should be 1")
 
-    if not isinstance(global_step, Variable):
-        raise ValueError("global_step is required for piecewise_decay.")
+    global_step = _decay_step_counter()
 
     with init_on_cpu():
         lr = tensor.create_global_var(

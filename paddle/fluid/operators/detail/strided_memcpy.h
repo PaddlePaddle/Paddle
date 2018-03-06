@@ -25,6 +25,29 @@ template <typename T, int Rank>
 struct StridedMemcpyFunctor;
 
 template <typename T>
+struct StridedMemcpyFunctor<T, 0> {
+  void operator()(const platform::DeviceContext& dev_ctx, const T* src,
+                  framework::Dim<0> src_stride, framework::Dim<0> dst_dim,
+                  framework::Dim<0> dst_stride, T* dst) const {
+    auto place = dev_ctx.GetPlace();
+    if (platform::is_cpu_place(place)) {
+      auto& cpu_place = boost::get<platform::CPUPlace>(place);
+      memory::Copy(cpu_place, dst, cpu_place, src, sizeof(T));
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      auto& gpu_place = boost::get<platform::CUDAPlace>(place);
+      auto& cuda_ctx =
+          reinterpret_cast<const platform::CUDADeviceContext&>(dev_ctx);
+      memory::Copy(gpu_place, dst, gpu_place, src, sizeof(T),
+                   cuda_ctx.stream());
+#else
+      PADDLE_THROW("Paddle is not compiled with GPU");
+#endif
+    }
+  }
+};
+
+template <typename T>
 struct StridedMemcpyFunctor<T, 1> {
   void operator()(const platform::DeviceContext& dev_ctx, const T* src,
                   framework::Dim<1> src_stride, framework::Dim<1> dst_dim,

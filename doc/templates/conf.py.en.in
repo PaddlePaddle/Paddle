@@ -18,15 +18,15 @@ import shlex
 from recommonmark import parser, transform
 import paddle
 import paddle.v2
-import paddle.fluid
 
 
 MarkdownParser = parser.CommonMarkParser
 AutoStructify = transform.AutoStructify
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-templates_path = ["@PADDLE_SOURCE_DIR@/doc_theme/templates"]
+templates_path = ["@PADDLE_SOURCE_DIR@/doc/templates"]
 
 # -- General configuration ------------------------------------------------
 
