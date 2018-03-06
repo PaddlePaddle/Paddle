@@ -112,5 +112,46 @@ void BatchReader::ReadNext(std::vector<LoDTensor>* out) {
     out->push_back(out_tensor);
   }
 }
+
+void DoubleBufferReader::ReadNext(std::vector<LoDTensor>* out) {
+  std::unique_lock<std::mutex> lck(mtx_);
+  while (write_pos_ == read_pos_) {
+    buffer_not_empty_.wait(lck);
+  }
+
+  out->clear();
+  out->resize(buffer_[read_pos_].size());
+  // TODO(fengjiayi): This copy shall be reduced.
+  for (size_t i = 0; i < buffer_[read_pos_].size(); ++i) {
+    TensorCopy(buffer_[read_pos_][i], platform::CPUPlace(), &out[i]);
+    out[i].set_lod(buffer_[read_pos_][i].lod());
+  }
+
+  ++read_pos_;
+  if (read_pos_ >= kDoubleBufferSize) {
+    read_pos_ = 0;
+  }
+  buffer_not_full_.notify_all();
+}
+
+bool DoubleBufferReader::HasNext() {
+  return reader_->HasNext() || !buffer_.empty();
+}
+
+void DoubleBufferReader::ProducerThreadFunc() {
+  while (reader_->HasNext()) {
+    std::unique_lock<std::mutex> lck(mtx);
+    while (((write_pos_ + 1) % kDoubleBufferSize) == read_pos_) {
+      buffer_not_full_.wait(lck);
+    }
+    reader_->ReadNext(&buffer_[write_pos_]);
+    ++write_pos_;
+    if (write_pos_ >= kDoubleBufferSize) {
+      write_pos_ = 0;
+    }
+    buffer_not_empty_.notify_all();
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

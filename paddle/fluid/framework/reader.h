@@ -16,9 +16,12 @@
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/threadpool.h"
 
 namespace paddle {
 namespace framework {
+
+static constexpr size_t kDoubleBufferSize = 3;
 
 class ReaderBase {
  public:
@@ -133,6 +136,28 @@ class BatchReader : public DecoratedReader {
  private:
   int batch_size_;
   std::vector<std::vector<LoDTensor>> buffer_;
+};
+
+class DoubleBufferReader : public DecoratedReader {
+ public:
+  DoubleBufferReader(ReaderBase* reader)
+      : DecoratedReader(reader), buffer_(kDoubleBufferSize) {
+    framework::Async(std::bind(&DoubleBufferReader::ProducerThreadFunc, this));
+  }
+
+  void ReadNext(std::vector<LoDTensor>* out) override;
+  bool HasNext() const override;
+
+ private:
+  void ProducerThreadFunc();
+
+  std::vector<std::vector<LoDTensor>> buffer_;
+  size_t write_pos_;
+  size_t read_pos_;
+
+  std::mutex mtx_;
+  std::condition_variable buffer_not_full_;
+  std::condition_variable buffer_not_empty_;
 };
 
 // The ReaderHolder is used as readers' unified wrapper,
