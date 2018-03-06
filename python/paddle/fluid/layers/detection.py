@@ -151,23 +151,34 @@ def detection_output(loc,
 @autodoc()
 def detection_map(detect_res,
                   label,
-                  pos_count=None,
-                  true_pos=None,
-                  false_pos=None,
                   overlap_threshold=0.3,
                   evaluate_difficult=True,
-                  ap_type='integral'):
+                  has_state=None,
+                  input_states=None,
+                  out_states=None,
+                  ap_version='integral'):
     helper = LayerHelper("detection_map", **locals())
 
-    map_out = helper.create_tmp_variable(dtype='float32')
-    accum_pos_count_out = helper.create_tmp_variable(dtype='int32')
-    accum_true_pos_out = helper.create_tmp_variable(dtype='float32')
-    accum_false_pos_out = helper.create_tmp_variable(dtype='float32')
+    def __create_var(type):
+        return helper.create_tmp_variable(dtype=type)
+
+    map_out = __create_var('float32')
+    accum_pos_count_out = out_states[0] if out_states else __create_var('int32')
+    accum_true_pos_out = out_states[1] if out_states else __create_var(
+        'float32')
+    accum_false_pos_out = out_states[2] if out_states else __create_var(
+        'float32')
+
+    pos_count = input_states[0] if input_states else None
+    true_pos = input_states[1] if input_states else None
+    false_pos = input_states[2] if input_states else None
+
     helper.append_op(
         type="detection_map",
         inputs={
             'Label': label,
             'DetectRes': detect_res,
+            'HasState': has_state,
             'PosCount': pos_count,
             'TruePos': true_pos,
             'FalsePos': false_pos
@@ -181,9 +192,9 @@ def detection_map(detect_res,
         attrs={
             'overlap_threshold': overlap_threshold,
             'evaluate_difficult': evaluate_difficult,
-            'ap_type': ap_type
+            'ap_type': ap_version
         })
-    return map_out, accum_pos_count_out, accum_true_pos_out, accum_false_pos_out
+    return map_out
 
 
 def bipartite_match(dist_matrix,
