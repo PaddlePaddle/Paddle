@@ -29,7 +29,10 @@ dtype_to_size = {
     core.VarDesc.VarType.BOOL: 1
 }
 
-sub_block_ops = ["while", "while_grad", "parallel_do", "parallel_do_grad"]
+sub_block_ops = [
+    "while", "while_grad", "parallel_do", "parallel_do_grad",
+    "conditional_block", "conditional_block_grad"
+]
 
 
 class ControlFlowGraph(object):
@@ -140,6 +143,10 @@ class ControlFlowGraph(object):
 
         self._build_graph()
         self._dataflow_analyze()
+        for i in range(self.op_size):
+            op = self._ops[i]
+            if op.type() == "fill_constant" and op.attr("force_cpu") == True:
+                self._skip_opt.update(op.output_arg_names())
         self.pool = []
         for i in range(self.op_size):
             op = self._ops[i]
@@ -266,7 +273,8 @@ def _get_cfgs(input_program):
         ([block_desc.op(i) for i in range(op_size)], op_size, set()))
 
     sub_block_pair = [("while", "while_grad"), ("parallel_do",
-                                                "parallel_do_grad")]
+                                                "parallel_do_grad"),
+                      ("conditional_block", "conditional_block_grad")]
 
     ops_list.extend(_process_sub_block_pair(pdesc, sub_block_pair))
 
@@ -279,5 +287,6 @@ def _get_cfgs(input_program):
 
 def memory_optimize(input_program):
     cfgs = _get_cfgs(input_program)
+    print len(cfgs)
     for cfg in cfgs:
         cfg.memory_optimize()
