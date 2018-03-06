@@ -287,6 +287,5 @@ def _get_cfgs(input_program):
 
 def memory_optimize(input_program):
     cfgs = _get_cfgs(input_program)
-    print len(cfgs)
     for cfg in cfgs:
         cfg.memory_optimize()
