@@ -6,5 +6,6 @@ HOW TO
 
   cmd_parameter/index_en.rst
   cluster/index_en.rst
+  capi/index_en.rst
   rnn/index_en.rst
   optimization/gpu_profiling_en.rst

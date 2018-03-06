@@ -55,7 +55,7 @@ above profilers.
 
 :code:`paddle/math/test` 目录中的 :code:`test_GpuProfiler` 就是用于展示上述分析工具的用法。
 
-.. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
+.. literalinclude:: ../../../../paddle/math/tests/test_GpuProfiler.cpp
    :language: c++
    :lines: 137-151
    :linenos:
@@ -83,7 +83,7 @@ program crashes when CPU version of PaddlePaddle invokes them.
 
 1. 加入 :code:`REGISTER_TIMER_INFO` 和 :code:`printAllStatus` 函数（如高亮部分）。
 
-    .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
+    .. literalinclude:: ../../../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
         :lines: 137-151
         :emphasize-lines: 8-12,14
@@ -130,7 +130,7 @@ nvprof 工具
 
 1. 将 :code:`REGISTER_GPU_PROFILER` 函数加到代码中（参考强调部分）。
 
-    .. literalinclude:: ../../../paddle/math/tests/test_GpuProfiler.cpp
+    .. literalinclude:: ../../../../paddle/math/tests/test_GpuProfiler.cpp
         :language: c++
         :lines: 137-151
         :emphasize-lines: 6-7
