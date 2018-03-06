@@ -26,18 +26,18 @@ Header::Header()
 Header::Header(uint32_t num, uint32_t sum, Compressor c, uint32_t cs)
     : num_records_(num), checksum_(sum), compressor_(c), compress_size_(cs) {}
 
-void Header::Parse(Stream* iss) {
-  iss->Read(reinterpret_cast<char*>(&num_records_), sizeof(uint32_t));
-  iss->Read(reinterpret_cast<char*>(&checksum_), sizeof(uint32_t));
-  iss->Read(reinterpret_cast<char*>(&compressor_), sizeof(uint32_t));
-  iss->Read(reinterpret_cast<char*>(&compress_size_), sizeof(uint32_t));
+void Header::Parse(std::istream& is) {
+  is.read(reinterpret_cast<char*>(&num_records_), sizeof(uint32_t))
+      .read(reinterpret_cast<char*>(&checksum_), sizeof(uint32_t))
+      .read(reinterpret_cast<char*>(&compressor_), sizeof(uint32_t))
+      .read(reinterpret_cast<char*>(&compress_size_), sizeof(uint32_t));
 }
 
-void Header::Write(Stream* os) {
-  os->Write(reinterpret_cast<char*>(&num_records_), sizeof(uint32_t));
-  os->Write(reinterpret_cast<char*>(&checksum_), sizeof(uint32_t));
-  os->Write(reinterpret_cast<char*>(&compressor_), sizeof(uint32_t));
-  os->Write(reinterpret_cast<char*>(&compress_size_), sizeof(uint32_t));
+void Header::Write(std::ostream& os) const {
+  os.write(reinterpret_cast<const char*>(&num_records_), sizeof(uint32_t))
+      .write(reinterpret_cast<const char*>(&checksum_), sizeof(uint32_t))
+      .write(reinterpret_cast<const char*>(&compressor_), sizeof(uint32_t))
+      .write(reinterpret_cast<const char*>(&compress_size_), sizeof(uint32_t));
 }
 
 std::ostream& operator<<(std::ostream& os, Header h) {

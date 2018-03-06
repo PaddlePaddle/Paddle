@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include <forward_list>
 #include <string>
+#include <vector>
 
+#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/recordio/header.h"
-#include "paddle/fluid/recordio/io.h"
 
 namespace paddle {
 namespace recordio {
@@ -26,16 +26,23 @@ namespace recordio {
 class Chunk {
 public:
   Chunk() : num_bytes_(0) {}
-  void Add(const char* record, size_t size);
+  void Add(std::string buf) {
+    records_.push_back(buf);
+    num_bytes_ += buf.size();
+  }
   // dump the chunk into w, and clears the chunk and makes it ready for
   // the next add invocation.
-  bool Dump(Stream* fo, Compressor ct);
-  void Parse(Stream* fi, size_t offset);
+  bool Write(std::ostream& fo, Compressor ct) const;
+  void Clear() {
+    records_.clear();
+    num_bytes_ = 0;
+  }
+  void Parse(std::istream& sin);
   size_t NumBytes() { return num_bytes_; }
-  const std::string Record(int i) { return records_[i]; }
+  const std::string& Record(int i) const { return records_[i]; }
 
 private:
-  std::forward_list<const std::string> records_;
+  std::vector<std::string> records_;
   // sum of record lengths in bytes.
   size_t num_bytes_;
   DISABLE_COPY_AND_ASSIGN(Chunk);
