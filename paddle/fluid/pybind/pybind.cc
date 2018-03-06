@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -37,6 +38,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
+
+#include <iostream>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -67,8 +70,17 @@ PYBIND11_PLUGIN(core) {
   BindException(m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def_buffer([](Tensor &self) -> py::buffer_info {
+        if (ToDataType(self.type()) == proto::VarType::FP16) {
+          Tensor out;
+          OpKernelType in_type(proto::VarType::FP16, self.place());
+          OpKernelType out_type(proto::VarType::FP32, platform::CPUPlace());
+          DataTransform(out_type, in_type, self, &out);
+          std::cout << "Succeed in converting fp16 to fp32" << std::endl;
+          return CastToPyBuffer(out);
+        }
+        return CastToPyBuffer(self);
+      })
       .def("get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("set_dims",
