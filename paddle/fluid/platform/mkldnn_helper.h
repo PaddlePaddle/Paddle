@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <mkldnn.hpp>
 
+#include "paddle/fluid/framework/operator.h"
+
 namespace paddle {
 namespace platform {
 
@@ -37,6 +39,11 @@ inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
                                           mkldnn::memory::format format) {
   mkldnn::memory::dims tz = dims;
   return mkldnn::memory::desc({tz}, data_type, format);
+}
+
+inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
+  bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
+  return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
 }
 
 }  // namespace platform

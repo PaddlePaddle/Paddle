@@ -22,7 +22,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include <mkldnn.hpp>
 #endif
 
 #include "paddle/fluid/platform/enforce.h"
