@@ -228,16 +228,22 @@ class Executor(object):
             scope=None,
             return_numpy=True,
             use_program_cache=False):
-        """
-        :param program: the program that need to run
-        :param feed: feed variable list
-        :param fetch_list: fetch variable list
-        :param feed_var_name: feed_var_name default to 'feed'
-        :param fetch_var_name: fetch_var_name default to 'fetch'
-        :param scope: the scope used to run this program, you can switch it to different scope.
-        :param return_numpy: convert the fetched tensor to numpy
+        """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
+
+        Python executor takes a program, add feed operators and fetch operators to this program according
+        to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
+        the variables that user want to get after program run. Note: the executor will run all
+        operators in the program but not only the operators dependent by the fetch_list
+
+        :param program: the program that need to run, if not provied, then default_main_program will be used.
+        :param feed: feed variable map, e.g. {"image": ImageData, "label": LableData}
+        :param fetch_list: a list of variable that user want to get, run will return them according to this list.
+        :param feed_var_name: the name for the input variable of feed Operator.
+        :param fetch_var_name: the name for the output variable of feed Operator.
+        :param scope: the scope used to run this program, you can switch it to different scope. default is global_scope
+        :param return_numpy: if convert the fetched tensor to numpy
         :param use_program_cache: set use_program_cache to true if program not changed compare to the last step.
-        :return:
+        :return: result according to fetch_list.
         """
         if feed is None:
             feed = {}
