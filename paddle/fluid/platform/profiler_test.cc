@@ -114,16 +114,13 @@ TEST(RecordEvent, RecordEvent) {
    *   }
    * }
    */
-  LOG(INFO) << "Usage 3: nested RecordEvent:";
   for (int i = 1; i < 5; ++i) {
     std::string name = "ano_evs_op_" + std::to_string(i);
-    LOG(INFO) << name;
     RecordEvent record_event(name, dev_ctx);
     int counter = 1;
     while (counter != i * 1000) counter++;
     {
       std::string nested_name = "nested_ano_evs_op_" + std::to_string(i);
-      LOG(INFO) << nested_name;
       RecordEvent nested_record_event(nested_name, dev_ctx);
       int nested_counter = 1;
       while (nested_counter != i * 1000) nested_counter++;
