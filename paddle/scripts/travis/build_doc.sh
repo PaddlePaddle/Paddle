@@ -12,8 +12,8 @@ make -j `nproc` copy_paddle_pybind
 make -j `nproc` paddle_docs paddle_docs_cn paddle_api_docs
 
 # check websites for broken links
-linkchecker doc/en/html/index.html
-linkchecker doc/cn/html/index.html
+linkchecker doc/v2/en/html/index.html
+linkchecker doc/v2/cn/html/index.html
 linkchecker doc/api/en/html/index.html
 
 # Parse Github URL
@@ -55,8 +55,8 @@ function deploy_docs() {
   set +e
   rm -rf ${DIR}/doc ${DIR}/doc_cn ${DIR}/api_doc
   set -e
-  cp -r ../doc/cn/html ${DIR}/doc_cn
-  cp -r ../doc/en/html ${DIR}/doc
+  cp -r ../doc/v2/cn/html ${DIR}/doc_cn
+  cp -r ../doc/v2/en/html ${DIR}/doc
   cp -r ../doc/api/en/html ${DIR}/api_doc
   git add .
 }

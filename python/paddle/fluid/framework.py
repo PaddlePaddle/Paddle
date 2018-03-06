@@ -956,9 +956,26 @@ class Program(object):
     def get_desc(self):
         return self.desc
 
-    def clone(self):
+    def clone(self, for_test=False):
+        """Clone the Program object
+
+        Set for_test to False when we want to clone the program for training.
+        Set for_test to True when we want to clone the program for testing.         
+
+        Args:
+            for_test(bool): Some operators, such as batch_norm and drop_out ops,
+                behave differently in training and testing. If for_test is True,
+                the is_test attributes in these operators will be set to True for
+                testing purposes, otherwise, they remain unchanged.  
+                
+        Returns(Program):
+            The cloned Program object.
+        """
         p = Program()
-        p.desc = core.ProgramDesc(self.desc)
+        if for_test:
+            p.desc = core.inference_optimize(self.desc)
+        else:
+            p.desc = core.ProgramDesc(self.desc)
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
         p.sync_with_cpp()
         p.copy_param_info_from(self)
