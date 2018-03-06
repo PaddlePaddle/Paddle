@@ -198,7 +198,7 @@ def channel_recv(channel, return_value):
 
           ch = fluid.make_channel(dtype='int32', capacity=10)
           with fluid.Go():
-            returned_value = fluid.channel_recv(ch, 'int32')
+            returned_value, return_status = fluid.channel_recv(ch, 'int32')
 
           # Code to send data through the channel.
     """
