@@ -31,7 +31,12 @@ TEST(inference, understand_sentiment) {
 
   paddle::framework::LoDTensor words;
   paddle::framework::LoD lod{{0, 4, 10}};
-  SetupLoDTensor(words, lod, static_cast<int64_t>(0), static_cast<int64_t>(10));
+  int64_t word_dict_len = 5147;
+
+  SetupLoDTensor(words,
+                 lod,
+                 static_cast<int64_t>(0),
+                 static_cast<int64_t>(word_dict_len - 1));
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&words);

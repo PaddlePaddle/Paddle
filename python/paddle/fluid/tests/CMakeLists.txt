@@ -7,5 +7,4 @@ endforeach()
 
 add_subdirectory(unittests)
 add_subdirectory(book)
-add_subdirectory(book_distribute)
 add_subdirectory(book_memory_optimization)
