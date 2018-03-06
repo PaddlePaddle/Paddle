@@ -145,6 +145,12 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("class_num",
                  "(int) "
                  "The class number.");
+    AddAttr<int>(
+        "background_label",
+        "(int, defalut: 0) "
+        "The index of background label, the background label will be ignored. "
+        "If set to -1, then all categories will be considered.")
+        .SetDefault(0);
     AddAttr<float>(
         "overlap_threshold",
         "(float) "

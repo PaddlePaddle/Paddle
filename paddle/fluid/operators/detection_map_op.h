@@ -103,7 +103,9 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
                              overlap_threshold, label_pos_count, true_pos,
                              false_pos);
 
-    T map = CalcMAP(ap_type, label_pos_count, true_pos, false_pos);
+    int background_label = ctx.Attr<int>("background_label");
+    T map = CalcMAP(ap_type, label_pos_count, true_pos, false_pos,
+                    background_label);
 
     GetOutputPos(ctx, label_pos_count, true_pos, false_pos, *out_pos_count,
                  *out_true_pos, *out_false_pos, class_num);
@@ -387,17 +389,19 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     }
   }
 
-  T CalcMAP(
-      APType ap_type, const std::map<int, int>& label_pos_count,
-      const std::map<int, std::vector<std::pair<T, int>>>& true_pos,
-      const std::map<int, std::vector<std::pair<T, int>>>& false_pos) const {
+  T CalcMAP(APType ap_type, const std::map<int, int>& label_pos_count,
+            const std::map<int, std::vector<std::pair<T, int>>>& true_pos,
+            const std::map<int, std::vector<std::pair<T, int>>>& false_pos,
+            const int background_label) const {
     T mAP = 0.0;
     int count = 0;
     for (auto it = label_pos_count.begin(); it != label_pos_count.end(); ++it) {
       int label = it->first;
       int label_num_pos = it->second;
-      if (label_num_pos == 0 || true_pos.find(label) == true_pos.end())
+      if (label_num_pos == background_label ||
+          true_pos.find(label) == true_pos.end()) {
         continue;
+      }
       auto label_true_pos = true_pos.find(label)->second;
       auto label_false_pos = false_pos.find(label)->second;
       // Compute average precision.

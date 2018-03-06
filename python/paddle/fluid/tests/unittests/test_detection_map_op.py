@@ -22,7 +22,7 @@ from op_test import OpTest
 
 class TestDetectionMAPOp(OpTest):
     def set_data(self):
-        self.class_num = 3
+        self.class_num = 4
         self.init_test_case()
         self.mAP = [self.calc_map(self.tf_pos, self.tf_pos_lod)]
         self.label = np.array(self.label).astype('float32')
