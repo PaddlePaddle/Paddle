@@ -87,7 +87,13 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     std::map<int, std::vector<std::pair<T, int>>> true_pos;
     std::map<int, std::vector<std::pair<T, int>>> false_pos;
 
-    if (in_pos_count != nullptr) {
+    auto* has_state = ctx.Input<framework::LoDTensor>("HasState");
+    int state = 0;
+    if (has_state) {
+      state = has_state->data<int>()[0];
+    }
+
+    if (in_pos_count != nullptr && state) {
       GetInputPos(*in_pos_count, *in_true_pos, *in_false_pos, label_pos_count,
                   true_pos, false_pos);
     }
@@ -203,6 +209,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
 
     int* pos_count_data = output_pos_count.mutable_data<int>(
         framework::make_ddim({max_class_id + 1, 1}), ctx.GetPlace());
+
     T* true_pos_data = output_true_pos.mutable_data<T>(
         framework::make_ddim({true_pos_count, 2}), ctx.GetPlace());
     T* false_pos_data = output_false_pos.mutable_data<T>(
