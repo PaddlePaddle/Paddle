@@ -36,7 +36,7 @@ def _decay_step_counter():
     # the first global step is zero in learning rate decay
     global_step = nn.autoincreased_step_counter(
         counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
-    global_step = nn.cast(global_step, 'float32')
+    global_step = tensor.cast(global_step, 'float32')
     return global_step
 
 
