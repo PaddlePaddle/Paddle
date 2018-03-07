@@ -33,6 +33,12 @@ namespace detail {
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
 
+inline int64_t GetTimestamp() {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
+}
+
 void SerializeToMessage(const std::string& name, const framework::Variable* var,
                         const platform::DeviceContext& ctx,
                         sendrecv::VariableMessage* msg);
@@ -40,6 +46,33 @@ void SerializeToMessage(const std::string& name, const framework::Variable* var,
 void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
                             const platform::DeviceContext& ctx,
                             framework::Variable* var);
+
+void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
+                           const platform::DeviceContext& ctx,
+                           ::grpc::ByteBuffer* msg);
+
+void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
+                               const platform::DeviceContext& ctx,
+                               framework::Variable* var);
+
+inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
+  using namespace paddle::framework::proto;
+  switch (type) {
+    case sendrecv::VariableMessage::FP32:
+      return typeid(float);
+    case sendrecv::VariableMessage::FP64:
+      return typeid(double);
+    case sendrecv::VariableMessage::INT32:
+      return typeid(int);
+    case sendrecv::VariableMessage::INT64:
+      return typeid(int64_t);
+    case sendrecv::VariableMessage::BOOL:
+      return typeid(bool);
+    default:
+      PADDLE_THROW("Not support type %d", type);
+  }
+}
+
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle
