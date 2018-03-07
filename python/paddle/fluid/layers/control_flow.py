@@ -1370,11 +1370,17 @@ class Select(BlockGuard):
             if var_name in intermediate
         ]
 
+        X = [cases_block.var_recursive(x_name) for x_name in params]
+
+        # Needs to be used by `equal` inside the cases block.
+        X.append(self.case_to_execute)
+
         # Construct the select op.
         select_block.append_op(
             type="select",
             inputs={
-                'X': [cases_block.var_recursive(x_name) for x_name in params]
+                'X': X,
+                'case_to_execute': self.case_to_execute
             },
             outputs={'Out': out_list,
                      'Condition': self.case_to_execute
