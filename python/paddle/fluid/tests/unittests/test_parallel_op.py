@@ -116,7 +116,7 @@ class BaseParallelForTest(unittest.TestCase):
                     data = [data]
 
                 with pd.do():
-                    ins = pd.read_input(data)
+                    ins = pd.read_input(*data)
                     if len(ins) == 1:
                         ins = ins[0]
                     loss = generator.send(ins)  # patch input
