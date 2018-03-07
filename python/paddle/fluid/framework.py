@@ -773,7 +773,7 @@ class Block(object):
             stop_gradient = v.stop_gradient
         else:
             raise ValueError("unsupported var type: %s", type(v))
-
+        orig_var_type = v.type
         self.desc.rename_var(name, new_name)
         # NOTE: v is destroyed by C++ after calling rename_var.
         d = self.desc.find_var(new_name)
@@ -782,6 +782,7 @@ class Block(object):
                 self,
                 d.shape(),
                 d.dtype(),
+                type=orig_var_type,
                 name=new_name,
                 stop_gradient=stop_gradient,
                 trainable=trainable,
@@ -792,7 +793,7 @@ class Block(object):
         elif var_type == "Variable":
             var = Variable(
                 self,
-                type=v.type,
+                type=orig_var_type,
                 name=new_name,
                 error_clip=error_clip,
                 stop_gradient=stop_gradient)
@@ -955,9 +956,26 @@ class Program(object):
     def get_desc(self):
         return self.desc
 
-    def clone(self):
+    def clone(self, for_test=False):
+        """Clone the Program object
+
+        Set for_test to False when we want to clone the program for training.
+        Set for_test to True when we want to clone the program for testing.         
+
+        Args:
+            for_test(bool): Some operators, such as batch_norm and drop_out ops,
+                behave differently in training and testing. If for_test is True,
+                the is_test attributes in these operators will be set to True for
+                testing purposes, otherwise, they remain unchanged.  
+                
+        Returns(Program):
+            The cloned Program object.
+        """
         p = Program()
-        p.desc = core.ProgramDesc(self.desc)
+        if for_test:
+            p.desc = core.inference_optimize(self.desc)
+        else:
+            p.desc = core.ProgramDesc(self.desc)
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
         p.sync_with_cpp()
         p.copy_param_info_from(self)

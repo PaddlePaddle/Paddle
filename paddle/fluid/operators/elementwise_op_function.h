@@ -301,7 +301,7 @@ struct ElemwiseGradNoBroadcast {
       dx_[i] = dx_op_(x_[i], y_[i], out_[i], dout_[i]);
     }
     if (dy_ != nullptr) {
-      dy_[i] = dx_op_(x_[i], y_[i], out_[i], dout_[i]);
+      dy_[i] = dy_op_(x_[i], y_[i], out_[i], dout_[i]);
     }
   }
 

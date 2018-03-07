@@ -19,13 +19,24 @@ import paddle.fluid.core as core
 from op_test import OpTest
 
 
-def max_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=0):
+def max_pool3D_forward_naive(x,
+                             ksize,
+                             strides,
+                             paddings,
+                             global_pool=0,
+                             ceil_mode=False):
     N, C, D, H, W = x.shape
     if global_pool == 1:
         ksize = [D, H, W]
-    D_out = (D - ksize[0] + 2 * paddings[0]) / strides[0] + 1
-    H_out = (H - ksize[1] + 2 * paddings[1]) / strides[1] + 1
-    W_out = (W - ksize[2] + 2 * paddings[2]) / strides[2] + 1
+    D_out = (D - ksize[0] + 2 * paddings[0] + strides[0] - 1
+             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
+                                                   paddings[0]) / strides[0] + 1
+    H_out = (H - ksize[1] + 2 * paddings[1] + strides[1] - 1
+             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
+                                                   paddings[1]) / strides[1] + 1
+    W_out = (W - ksize[2] + 2 * paddings[2] + strides[2] - 1
+             ) / strides[2] + 1 if ceil_mode else (W - ksize[2] + 2 *
+                                                   paddings[2]) / strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
     for k in xrange(D_out):
         d_start = np.max((k * strides[0] - paddings[0], 0))
@@ -42,13 +53,24 @@ def max_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=0):
     return out
 
 
-def avg_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=0):
+def avg_pool3D_forward_naive(x,
+                             ksize,
+                             strides,
+                             paddings,
+                             global_pool=0,
+                             ceil_mode=False):
     N, C, D, H, W = x.shape
     if global_pool == 1:
         ksize = [D, H, W]
-    D_out = (D - ksize[0] + 2 * paddings[0]) / strides[0] + 1
-    H_out = (H - ksize[1] + 2 * paddings[1]) / strides[1] + 1
-    W_out = (W - ksize[2] + 2 * paddings[2]) / strides[2] + 1
+    D_out = (D - ksize[0] + 2 * paddings[0] + strides[0] - 1
+             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
+                                                   paddings[0]) / strides[0] + 1
+    H_out = (H - ksize[1] + 2 * paddings[1] + strides[1] - 1
+             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
+                                                   paddings[1]) / strides[1] + 1
+    W_out = (W - ksize[2] + 2 * paddings[2] + strides[2] - 1
+             ) / strides[2] + 1 if ceil_mode else (W - ksize[2] + 2 *
+                                                   paddings[2]) / strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
     for k in xrange(D_out):
         d_start = np.max((k * strides[0] - paddings[0], 0))
@@ -73,13 +95,14 @@ class TestPool3d_Op(OpTest):
         self.init_global_pool()
         self.init_op_type()
         self.init_pool_type()
+        self.init_ceil_mode()
 
         if self.global_pool:
             self.paddings = [0 for _ in range(len(self.paddings))]
         input = np.random.random(self.shape).astype("float32")
         output = self.pool3D_forward_naive(input, self.ksize, self.strides,
-                                           self.paddings,
-                                           self.global_pool).astype("float32")
+                                           self.paddings, self.global_pool,
+                                           self.ceil_mode).astype("float32")
         self.inputs = {'X': input}
 
         self.attrs = {
@@ -89,6 +112,7 @@ class TestPool3d_Op(OpTest):
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
             'use_cudnn': self.use_cudnn,
+            'ceil_mode': self.ceil_mode,
             'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
 
@@ -124,6 +148,9 @@ class TestPool3d_Op(OpTest):
 
     def init_global_pool(self):
         self.global_pool = True
+
+    def init_ceil_mode(self):
+        self.ceil_mode = False
 
 
 class TestCase1(TestPool3d_Op):
@@ -225,6 +252,26 @@ class TestCUDNNCase6(TestCase5):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "pool3d"
+
+
+class TestCeilModeCase1(TestCUDNNCase1):
+    def init_ceil_mode(self):
+        self.ceil_mode = True
+
+
+class TestCeilModeCase2(TestCUDNNCase2):
+    def init_ceil_mode(self):
+        self.ceil_mode = True
+
+
+class TestCeilModeCase3(TestCase1):
+    def init_ceil_mode(self):
+        self.ceil_mode = True
+
+
+class TestCeilModeCase4(TestCase2):
+    def init_ceil_mode(self):
+        self.ceil_mode = True
 
 
 if __name__ == '__main__':
