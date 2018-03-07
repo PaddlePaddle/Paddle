@@ -457,7 +457,8 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         "Out": [_append_grad_suffix_(loss.name)]
     }, {"shape": [1],
         "value": 1.0,
-        "dtype": loss.dtype})
+        "dtype": loss.dtype,
+        "force_cpu": False})
     root_block.desc.append_op().copy_from(op_desc)
 
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
