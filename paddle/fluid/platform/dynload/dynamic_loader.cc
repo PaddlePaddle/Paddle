@@ -72,7 +72,6 @@ static inline void GetDsoHandleFromDefaultPath(std::string& dso_path,
           << " from default system path.";
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   *dso_handle = dlopen(dso_path.c_str(), dynload_flags);
-  PADDLE_ENFORCE_NOT_NULL(*dso_handle, "Can't find dso %s", dso_path);
 
 // DYLD_LIBRARY_PATH is disabled after Mac OS 10.11 to
 // bring System Integrity Projection (SIP), if dso_handle
