@@ -42,7 +42,9 @@ public:
   Header(uint32_t num, uint32_t sum, Compressor ct, uint32_t cs);
 
   void Write(std::ostream& os) const;
-  void Parse(std::istream& is);
+
+  // returns true if OK, false if eof
+  bool Parse(std::istream& is);
 
   uint32_t NumRecords() const { return num_records_; }
   uint32_t Checksum() const { return checksum_; }

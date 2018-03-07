@@ -97,9 +97,12 @@ bool Chunk::Write(std::ostream& os, Compressor ct) const {
   return true;
 }
 
-void Chunk::Parse(std::istream& sin) {
+bool Chunk::Parse(std::istream& sin) {
   Header hdr;
-  hdr.Parse(sin);
+  bool ok = hdr.Parse(sin);
+  if (!ok) {
+    return ok;
+  }
   auto beg_pos = sin.tellg();
   auto crc = Crc32Stream(sin, hdr.CompressSize());
   PADDLE_ENFORCE_EQ(hdr.Checksum(), crc);
@@ -128,6 +131,7 @@ void Chunk::Parse(std::istream& sin) {
     stream.read(&buf[0], rec_len);
     Add(buf);
   }
+  return true;
 }
 
 }  // namespace recordio
