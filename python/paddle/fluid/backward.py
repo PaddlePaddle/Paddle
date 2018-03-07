@@ -486,7 +486,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     params_and_grads = []
     for param in parameters:
         if param not in grad_info_map:
-            raise ValueError("param %s is not in map" % param)
+            continue
         grad_info = grad_info_map[param]
         grad_block = grad_info[1]
         if not grad_block.has_var(grad_info[0]):
