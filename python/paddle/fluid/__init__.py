@@ -26,7 +26,6 @@ import initializer
 import layers
 import nets
 import optimizer
-import learning_rate_decay
 import backward
 import regularizer
 from param_attr import ParamAttr, WeightNormParamAttr
