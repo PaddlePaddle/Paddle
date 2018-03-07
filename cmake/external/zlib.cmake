@@ -28,7 +28,7 @@ ENDIF(WIN32)
 INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
 
 ExternalProject_Add(
-    zlib
+    extern_zlib
     ${EXTERNAL_PROJECT_LOG_ARGS}
     GIT_REPOSITORY  "https://github.com/madler/zlib.git"
     GIT_TAG         "v1.2.8"
@@ -49,9 +49,11 @@ ExternalProject_Add(
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
 
+ADD_LIBRARY(zlib STATIC IMPORTED GLOBAL)
+SET_PROPERTY(TARGET zlib PROPERTY IMPORTED_LOCATION ${ZLIB_LIBRARIES})
+ADD_DEPENDENCIES(zlib extern_zlib)
+
 LIST(APPEND external_project_dependencies zlib)
-ADD_LIBRARY(zlib_target STATIC IMPORTED GLOBAL)
-SET_PROPERTY(TARGET zlib_target PROPERTY IMPORTED_LOCATION ${ZLIB_LIBRARIES})
 
 IF(WITH_C_API)
   INSTALL(DIRECTORY ${ZLIB_INCLUDE_DIR} DESTINATION third_party/zlib)

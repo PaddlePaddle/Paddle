@@ -144,6 +144,8 @@ include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/grpc)
+include(external/snappy)    # download snappy
+include(external/snappystream)
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(cupti)
@@ -166,11 +168,11 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 
 set(EXTERNAL_LIBS
-    ${GFLAGS_LIBRARIES}
-    ${GLOG_LIBRARIES}
+    gflags
+    glog
     ${CBLAS_LIBRARIES}
-    ${PROTOBUF_LIBRARY}
-    ${ZLIB_LIBRARIES}
+    protobuf
+    zlib
     ${PYTHON_LIBRARIES}
 )
 

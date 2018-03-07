@@ -54,11 +54,17 @@ def detection_output(loc,
                      score_threshold=0.01,
                      nms_eta=1.0):
     """
-    **Detection Output Layer**
+    **Detection Output Layer for Single Shot Multibox Detector (SSD).**
 
-    This layer applies the NMS to the output of network and computes the
-    predict bounding box location. The output's shape of this layer could
-    be zero if there is no valid bounding box.
+    This operation is to get the detection results by performing following
+    two steps:
+    
+    1. Decode input bounding box predictions according to the prior boxes.
+    2. Get the final detection results by applying multi-class non maximum
+       suppression (NMS).
+
+    Please note, this operation doesn't clip the final output bounding boxes
+    to the image window.
 
     Args:
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
@@ -91,7 +97,15 @@ def detection_output(loc,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        The detected bounding boxes which are a Tensor.
+        Variable: The detection outputs is a LoDTensor with shape [No, 6].
+            Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
+            `No` is the total number of detections in this mini-batch. For each
+            instance, the offsets in first dimension are called LoD, the offset
+            number is N + 1, N is the batch size. The i-th image has
+            `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
+            has no detected results. If all images have not detected results,
+            all the elements in LoD are 0, and output tensor only contains one
+            value, which is -1.
 
     Examples:
         .. code-block:: python
@@ -137,23 +151,36 @@ def detection_output(loc,
 @autodoc()
 def detection_map(detect_res,
                   label,
-                  pos_count=None,
-                  true_pos=None,
-                  false_pos=None,
+                  class_num,
+                  background_label=0,
                   overlap_threshold=0.3,
                   evaluate_difficult=True,
-                  ap_type='integral'):
+                  has_state=None,
+                  input_states=None,
+                  out_states=None,
+                  ap_version='integral'):
     helper = LayerHelper("detection_map", **locals())
 
-    map_out = helper.create_tmp_variable(dtype='float32')
-    accum_pos_count_out = helper.create_tmp_variable(dtype='int32')
-    accum_true_pos_out = helper.create_tmp_variable(dtype='float32')
-    accum_false_pos_out = helper.create_tmp_variable(dtype='float32')
+    def __create_var(type):
+        return helper.create_tmp_variable(dtype=type)
+
+    map_out = __create_var('float32')
+    accum_pos_count_out = out_states[0] if out_states else __create_var('int32')
+    accum_true_pos_out = out_states[1] if out_states else __create_var(
+        'float32')
+    accum_false_pos_out = out_states[2] if out_states else __create_var(
+        'float32')
+
+    pos_count = input_states[0] if input_states else None
+    true_pos = input_states[1] if input_states else None
+    false_pos = input_states[2] if input_states else None
+
     helper.append_op(
         type="detection_map",
         inputs={
             'Label': label,
             'DetectRes': detect_res,
+            'HasState': has_state,
             'PosCount': pos_count,
             'TruePos': true_pos,
             'FalsePos': false_pos
@@ -167,9 +194,10 @@ def detection_map(detect_res,
         attrs={
             'overlap_threshold': overlap_threshold,
             'evaluate_difficult': evaluate_difficult,
-            'ap_type': ap_type
+            'ap_type': ap_version,
+            'class_num': class_num,
         })
-    return map_out, accum_pos_count_out, accum_true_pos_out, accum_false_pos_out
+    return map_out
 
 
 def bipartite_match(dist_matrix,
