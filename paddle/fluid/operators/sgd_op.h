@@ -47,6 +47,11 @@ class SGDOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(param, param_out);
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
 
+      // if sparse variable is not initialized, skip update
+      if (grad->rows().size() == 0) {
+        return;
+      }
+
       auto in_height = grad->height();
       auto out_dims = param_out->dims();
       PADDLE_ENFORCE_EQ(in_height, out_dims[0]);
@@ -60,7 +65,6 @@ class SGDOpKernel : public framework::OpKernel<T> {
       auto* in_data = in_value.data<T>();
       auto* out_data = param_out->data<T>();
       auto* lr = learning_rate->data<T>();
-
       for (size_t i = 0; i < in_rows.size(); i++) {
         for (int64_t j = 0; j < in_row_numel; j++) {
           out_data[in_rows[i] * in_row_numel + j] -=
