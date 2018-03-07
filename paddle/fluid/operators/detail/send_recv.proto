@@ -44,6 +44,8 @@ message VariableMessage {
     FP64 = 6;
   }
 
+  message LodData { repeated int64 lod_data = 1; }
+
   string varname = 1;
   // TODO(Yancey1989): reference framework::proto::VarDesc::VarType
   VarType type = 2;
@@ -54,7 +56,7 @@ message VariableMessage {
 
   // lod details:
   int64 lod_level = 5;
-  repeated bytes lod = 6;
+  repeated LodData lod = 6;
   // tensor data
   bytes serialized = 7;
   // selected_rows data

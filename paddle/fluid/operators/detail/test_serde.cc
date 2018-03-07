@@ -32,6 +32,9 @@ TEST(Tensor, CPU) {
   framework::Variable var;
   auto* tensor = var.GetMutable<framework::LoDTensor>();
   tensor->Resize(framework::make_ddim({4, 8, 4, 2}));
+  framework::LoD lod;
+  lod.push_back(framework::Vector<size_t>({1, 3, 8}));
+  tensor->set_lod(lod);
   int tensor_numel = 4 * 8 * 4 * 2;
   platform::CPUPlace place;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -58,7 +61,11 @@ TEST(Tensor, CPU) {
   EXPECT_EQ(varmsg.dims()[1], 8);
   EXPECT_EQ(varmsg.dims()[2], 4);
   EXPECT_EQ(varmsg.dims()[3], 2);
-  std::cout << "payload size " << varmsg.serialized().size() << std::endl;
+  EXPECT_EQ(varmsg.lod_level(), 1);
+  EXPECT_EQ(varmsg.lod(0).lod_data(0), 1);
+  EXPECT_EQ(varmsg.lod(0).lod_data(1), 3);
+  EXPECT_EQ(varmsg.lod(0).lod_data(2), 8);
+
   const float* tensor_data =
       reinterpret_cast<const float*>(varmsg.serialized().data());
   for (int i = 0; i < tensor_numel; ++i)
@@ -69,6 +76,10 @@ TEST(Tensor, CPU) {
   operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
   auto tensor2 = var2.Get<framework::LoDTensor>();
   const float* tensor_data2 = tensor2.data<float>();
+  EXPECT_EQ(varmsg.lod_level(), 1);
+  EXPECT_EQ(varmsg.lod(0).lod_data(0), 1);
+  EXPECT_EQ(varmsg.lod(0).lod_data(1), 3);
+  EXPECT_EQ(varmsg.lod(0).lod_data(2), 8);
   for (int i = 0; i < tensor_numel; ++i)
     EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
 }

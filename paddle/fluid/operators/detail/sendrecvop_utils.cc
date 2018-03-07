@@ -71,6 +71,7 @@ void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg) {
+  using VarMsg = sendrecv::VariableMessage;
   sendrecv::VariableMessage request;
   std::string header;
   request.AppendToString(&header);
@@ -78,46 +79,54 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   void* payload;
   size_t payload_size;
   ProtoEncodeHelper e((char*)buf, 1024);
-  e.WriteString(1, name);
+  e.WriteString(VarMsg::kVarnameFieldNumber, name);
   if (var->IsType<framework::LoDTensor>()) {
-    e.WriteUint64(2, 0);
+    e.WriteUint64(VarMsg::kTypeFieldNumber, 0);
   } else if (var->IsType<framework::SelectedRows>()) {
-    e.WriteUint64(2, 1);
+    e.WriteUint64(VarMsg::kTypeFieldNumber, 1);
   }
 
   switch (framework::ToVarType(var->Type())) {
     case framework::proto::VarType_Type_LOD_TENSOR: {
       auto tensor = var->Get<framework::LoDTensor>();
-      e.WriteUint64(3, framework::ToDataType(tensor.type()));
+      e.WriteUint64(VarMsg::kDataTypeFieldNumber,
+                    framework::ToDataType(tensor.type()));
       for (auto& dim : framework::vectorize(tensor.dims())) {
-        e.WriteUint64(4, dim);
+        e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
       }
       auto lod = tensor.lod();  // std::vector<Vector<size_t>>
       if (lod.size() > 0) {
-        e.WriteUint64(5, lod.size());
+        e.WriteUint64(VarMsg::kLodLevelFieldNumber, lod.size());
+
         for (auto& each : lod) {
-          e.WriteVarlengthBeginning(6, each.size());
-          // auto copy from GPU
-          e.WriteRawBytes(*reinterpret_cast<const std::string*>(each.data()));
+          e.WriteVarlengthBeginning(VarMsg::kLodFieldNumber,
+                                    2 +      // tag + varintlength of submessage
+                                        1 +  // kLodDataFieldNumber
+                                        each.size());
+          // auto copied from GPU
+          for (auto& d : each) {
+            e.WriteUint64(VarMsg::LodData::kLodDataFieldNumber, d);
+          }
         }
       }
       // TODO(typhoonzero): Copy from GPU if needed
       payload = tensor.data<void>();
       payload_size = tensor.memory_size();
-      e.WriteVarlengthBeginning(7, payload_size);
+      e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     case framework::proto::VarType_Type_SELECTED_ROWS: {
       // TODO(typhoonzero): selectedrows implement should not use unique_ptr
       auto* slr = var->GetMutable<framework::SelectedRows>();
-      e.WriteUint64(3, framework::ToDataType(slr->value().type()));
+      e.WriteUint64(VarMsg::kDataTypeFieldNumber,
+                    framework::ToDataType(slr->value().type()));
       for (auto& dim : framework::vectorize(slr->GetCompleteDims())) {
-        e.WriteUint64(4, dim);
+        e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
       }
-      e.WriteUint64(5, 0);
+      e.WriteUint64(VarMsg::kLodLevelFieldNumber, 0);
       // TODO(typhoonzero): Copy from GPU if needed
       payload = slr->mutable_value()->data<void>();
       payload_size = slr->value().memory_size();
-      e.WriteVarlengthBeginning(7, payload_size);
+      e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     default:
       PADDLE_THROW("Serialize does not support type: %s",
@@ -150,7 +159,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     // NOTE(typhoonzero): rows is of type int64_t
     size_t rows_memory_size =
         slr->rows().capacity() * framework::SizeOfType(typeid(int64_t));
-    e2.WriteVarlengthBeginning(8, rows_memory_size);
+    e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
     slices[2] = ::grpc::Slice(e2.size());
     memcpy(const_cast<uint8_t*>(slices[2].begin()), e2.data(), e2.size());
 
@@ -195,14 +204,13 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
         paddle::operators::detail::ToTypeIndex(meta.data_type()));
     framework::LoD lod;
     for (int i = 0; i < meta.lod_level(); ++i) {
-      // lod elements are of type size_t
-      int elem_num = meta.lod(i).size() / sizeof(size_t);
-      std::string vvv;
-      const size_t* begin = reinterpret_cast<const size_t*>(meta.lod(i).data());
-      for (int j = 0; j < elem_num; ++j) {
-        lod[i].push_back(begin[j]);
+      framework::Vector<size_t> v;
+      for (int j = 0; j < meta.lod(i).lod_data_size(); ++j) {
+        v.push_back(meta.lod(i).lod_data(j));
       }
+      lod.push_back(v);
     }
+    tensor->set_lod(lod);
     // How to avoid copying and use the message buffer directly?
     // Maybe need to find a way to release all memory except tensor content.
     if (platform::is_gpu_place(ctx.GetPlace())) {
