@@ -42,6 +42,7 @@ void DataTransform(const OpKernelType& expected_kernel_type,
     PassTensorData(&out, &in);
   }
 
+  // do data type transform
   if (expected_kernel_type.data_type_ != kernel_type_for_var.data_type_) {
     TransDataType(kernel_type_for_var, expected_kernel_type, in, &out);
     transformed = true;
