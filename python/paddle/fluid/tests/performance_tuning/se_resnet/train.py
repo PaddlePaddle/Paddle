@@ -209,14 +209,13 @@ def train():
     test_reader = paddle.batch(flowers.test(), batch_size=batch_size)
     feeder = fluid.DataFeeder(place=place, feed_list=[image, label])
     train_reader_iter = train_reader()
-    train_reader_iter.next()
+    data = train_reader_iter.next()
+    feed_dict = feeder.feed(data)
 
     for pass_id in range(1):
         with profiler.profiler('All', 'total', '/tmp/profile') as prof:
             train_time = 0.0
 
-            data = train_reader_iter.next()
-            feed_dict = feeder.feed(data)
             for step_id in range(step_num):
                 train_start = time.time()
                 if args.use_python_reader:
