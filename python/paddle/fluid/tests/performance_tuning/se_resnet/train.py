@@ -13,28 +13,45 @@
 # limitations under the License.
 
 import os
+import time
+import argparse
+
 import paddle.v2 as paddle
 import paddle.fluid as fluid
 import paddle.v2.dataset.flowers as flowers
 import paddle.fluid.profiler as profiler
 
-import time
 
-import os
+def parse_args():
+    parser = argparse.ArgumentParser('resnet152 parallel profile.')
+    parser.add_argument('--per_gpu_batch_size', type=int, default=12, help='')
+    parser.add_argument(
+        '--skip_first_steps',
+        type=int,
+        default=2,
+        help='The first num of steps to skip, for better performance profile')
+    parser.add_argument(
+        '--total_batch_num',
+        type=int,
+        default=40,
+        help='total batch num for per_gpu_batch_size')
+    parser.add_argument(
+        '--parallel', type=bool, default=True, help='use parallel_do')
+    parser.add_argument('--use_nccl', type=bool, default=True, help='use_nccl')
+    parser.add_argument(
+        '--use_python_reader',
+        type=bool,
+        default=True,
+        help='use python reader to feed data')
 
-cards = os.getenv("CUDA_VISIBLE_DEVICES") or ""
-cards_num = len(cards.split(","))
+    args = parser.parse_args()
+    return args
 
-total_batch_num = 40
-batch_num = total_batch_num / cards_num
 
-per_gpu_batch_size = 6
-batch_size = per_gpu_batch_size * cards_num
-
-print("cards_num=" + str(cards_num))
-print("per_gpu_batch_size=" + str(per_gpu_batch_size))
-print("batch_size=" + str(batch_size))
-print("batch_num=" + str(batch_num))
+def print_arguments(args):
+    print('-----------  Configuration Arguments -----------')
+    for arg, value in sorted(vars(args).iteritems()):
+        print('%s=%s' % (arg, value))
 
 
 def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
@@ -132,21 +149,33 @@ def SE_ResNeXt(input, class_dim, infer=False):
     return out
 
 
-def train(learning_rate,
-          batch_size,
-          num_passes,
-          init_model=None,
-          model_save_dir='model',
-          parallel=True):
+def time_stamp():
+    return int(round(time.time() * 1000))
+
+
+def train():
+    args = parse_args()
+
+    cards = os.getenv("CUDA_VISIBLE_DEVICES") or ""
+    cards_num = len(cards.split(","))
+    step_num = args.total_batch_num / cards_num
+    batch_size = args.per_gpu_batch_size * cards_num
+
+    print_arguments(args)
+    print("cards_num=" + str(cards_num))
+    print("batch_size=" + str(batch_size))
+    print("total_batch_num=" + str(args.total_batch_num))
+    print("step_num=" + str(step_num))
+
     class_dim = 1000
     image_shape = [3, 224, 224]
 
     image = fluid.layers.data(name='image', shape=image_shape, dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    if parallel:
+    if args.parallel:
         places = fluid.layers.get_places()
-        pd = fluid.layers.ParallelDo(places, use_nccl=True)
+        pd = fluid.layers.ParallelDo(places, use_nccl=args.use_nccl)
 
         with pd.do():
             image_ = pd.read_input(image)
@@ -167,10 +196,6 @@ def train(learning_rate,
         avg_cost = fluid.layers.mean(x=cost)
         accuracy = fluid.layers.accuracy(input=out, label=label)
 
-    #optimizer = fluid.optimizer.Momentum(
-    #    learning_rate=learning_rate,
-    #    momentum=0.9,
-    #    regularization=fluid.regularizer.L2Decay(1e-4))
     optimizer = fluid.optimizer.SGD(learning_rate=0.002)
     opts = optimizer.minimize(avg_cost)
 
@@ -180,42 +205,37 @@ def train(learning_rate,
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
 
-    if init_model is not None:
-        fluid.io.load_persistables(exe, init_model)
-
     train_reader = paddle.batch(flowers.train(), batch_size=batch_size)
     test_reader = paddle.batch(flowers.test(), batch_size=batch_size)
     feeder = fluid.DataFeeder(place=place, feed_list=[image, label])
     train_reader_iter = train_reader()
     train_reader_iter.next()
 
-    for pass_id in range(num_passes):
-        #with profiler.profiler('All', 'total', '/tmp/profile') as prof:
-        train_time = 0.0
-        reader_time = 0.0
+    for pass_id in range(1):
+        with profiler.profiler('All', 'total', '/tmp/profile') as prof:
+            train_time = 0.0
 
-        data = train_reader_iter.next()
-        feed_dict = feeder.feed(data)
-        for batch_id in range(batch_num):
-            reader_start = time.time()
-            reader_stop = time.time()
-            reader_time += reader_stop - reader_start
+            data = train_reader_iter.next()
+            feed_dict = feeder.feed(data)
+            for batch_id in range(step_num):
+                train_start = time.time()
+                if args.use_python_reader:
+                    exe.run(fluid.default_main_program(),
+                            feed=feeder.feed(train_reader_iter.next()),
+                            fetch_list=[],
+                            use_program_cache=True)
+                else:
+                    exe.run(fluid.default_main_program(),
+                            feed=feed_dict,
+                            fetch_list=[],
+                            use_program_cache=True)
+                train_stop = time.time()
+                if batch_id > args.skip_first_steps:
+                    train_time += train_stop - train_start
 
-            train_start = time.time()
-            exe.run(fluid.default_main_program(), feed=feed_dict, fetch_list=[])
-            train_stop = time.time()
-            train_time += train_stop - train_start
-            print("Pass {0}, batch {1}".format(pass_id, batch_id))
-
-        print("\n\n\n")
-        print("train_time=" + str(train_time))
-        print("reader_time=" + str(reader_time))
+            print("\n\n\n")
+            print("train_time=" + str(train_time))
 
 
 if __name__ == '__main__':
-    train(
-        learning_rate=0.1,
-        batch_size=batch_size,
-        num_passes=1,
-        init_model=None,
-        parallel=True)
+    train()
