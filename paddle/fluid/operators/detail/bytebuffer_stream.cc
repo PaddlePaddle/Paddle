@@ -79,10 +79,10 @@ bool GrpcByteBufferSource::Skip(int count) {
   return false;
 }
 
-grpc::protobuf::int64 GrpcByteBufferSource::ByteCount() const {
+google::protobuf::int64 GrpcByteBufferSource::ByteCount() const {
   return byte_count_;
 }
 
-}  // detail
-}  // operators
-}  // paddle
+}  // namespace detail
+}  // namespace operators
+}  // namespace paddle

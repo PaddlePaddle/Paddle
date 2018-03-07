@@ -92,7 +92,7 @@ def train(nn_type,
     else:
         prediction, avg_loss, acc = net_conf(img, label)
 
-    test_program = fluid.default_main_program().clone()
+    test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimize_ops, params_grads = optimizer.minimize(avg_loss)

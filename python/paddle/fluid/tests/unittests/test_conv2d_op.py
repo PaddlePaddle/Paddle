@@ -64,6 +64,7 @@ def conv2d_forward_naive(input, filter, group, conv_param):
 class TestConv2dOp(OpTest):
     def setUp(self):
         self.use_cudnn = False
+        self.use_mkldnn = False
         self.init_op_type()
         self.init_group()
         self.init_dilation()
@@ -85,7 +86,8 @@ class TestConv2dOp(OpTest):
             'paddings': self.pad,
             'groups': self.groups,
             'dilations': self.dilations,
-            'use_cudnn': self.use_cudnn
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn
         }
         self.outputs = {'Output': output}
 
@@ -210,6 +212,19 @@ class TestWithDilation(TestConv2dOp):
         self.groups = 3
 
 
+class TestWithInput1x1Filter1x1(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 1, 1]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] / self.groups
+        self.filter_size = [6, f_c, 1, 1]
+
+    def init_group(self):
+        self.groups = 3
+
+
 #----------------Conv2dCUDNN----------------
 class TestCUDNN(TestConv2dOp):
     def init_op_type(self):
@@ -241,6 +256,12 @@ class TestCUDNNWith1x1(TestWith1x1):
         self.op_type = "conv2d"
 
 
+class TestCUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
+
+
 class TestDepthwiseConv(TestConv2dOp):
     def init_test_case(self):
         self.pad = [1, 1]
@@ -265,10 +286,31 @@ class TestDepthwiseConv2(TestConv2dOp):
         self.op_type = "depthwise_conv2d"
 
 
-#  cudnn v5 does not support dilation conv.
+# Please Don't remove the following code.
+# Currently, CI use cudnn V5.0 which not support dilation conv.
 # class TestCUDNNWithDilation(TestWithDilation):
 #     def init_op_type(self):
 #         self.op_type = "conv_cudnn"
+
+
+#----------------Conv2dMKLDNN----------------
+class TestMKLDNN(TestConv2dOp):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "conv2d"
+
+
+class TestMKLDNNWithPad(TestWithPad):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "conv2d"
+
+
+class TestMKLDNNWithStride(TestWithStride):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "conv2d"
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -84,6 +84,9 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("shape",
                               "(vector<int>) "
                               "Target shape of reshape operator.");
+    AddAttr<bool>("inplace",
+                  "Change the source tensor's shape without copy memory.")
+        .SetDefault(true);
     AddComment(R"DOC(
 Reshape Operator.
 
@@ -121,10 +124,15 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
+using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OP(reshape, ops::ReshapeOp, ops::ReshapeOpMaker, reshape_grad,
             ops::ReshapeGradOp);
-REGISTER_OP_CPU_KERNEL(reshape,
-                       ops::ReshapeKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    reshape_grad, ops::ReshapeGradKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OP_CPU_KERNEL(reshape, ops::ReshapeKernel<CPU, float>,
+                       ops::ReshapeKernel<CPU, double>,
+                       ops::ReshapeKernel<CPU, int>,
+                       ops::ReshapeKernel<CPU, int64_t>);
+REGISTER_OP_CPU_KERNEL(reshape_grad, ops::ReshapeGradKernel<CPU, float>,
+                       ops::ReshapeGradKernel<CPU, double>,
+                       ops::ReshapeGradKernel<CPU, int>,
+                       ops::ReshapeGradKernel<CPU, int64_t>);

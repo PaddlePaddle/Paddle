@@ -27,7 +27,7 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace operators = paddle::operators;
 
-TEST(TensorSerde, CPU) {
+TEST(Tensor, CPU) {
   // serialize var to ByteBuffer
   framework::Variable var;
   auto* tensor = var.GetMutable<framework::LoDTensor>();
@@ -46,7 +46,6 @@ TEST(TensorSerde, CPU) {
   // deserialize
   std::vector<::grpc::Slice> slices;
   (void)msg.Dump(&slices);
-  std::cout << "slice count " << slices.size() << std::endl;
   std::string tmp;
   for (const auto& s : slices) {
     tmp.append(reinterpret_cast<const char*>(s.begin()), s.size());
@@ -64,4 +63,12 @@ TEST(TensorSerde, CPU) {
       reinterpret_cast<const float*>(varmsg.serialized().data());
   for (int i = 0; i < tensor_numel; ++i)
     EXPECT_EQ(tensor_data[i], orig_tensor_data[i]);
+
+  // deserialize zero-copy
+  framework::Variable var2;
+  operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
+  auto tensor2 = var2.Get<framework::LoDTensor>();
+  const float* tensor_data2 = tensor2.data<float>();
+  for (int i = 0; i < tensor_numel; ++i)
+    EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
 }

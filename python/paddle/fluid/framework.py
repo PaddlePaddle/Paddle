@@ -141,6 +141,8 @@ class Variable(object):
         dtype(np.dtype|core.VarDesc.VarType|str): The data type of variable.
         lod_level(int): The level of lod tensor. 0 means it is not a time
             series data.
+        capacity(int): The capacity of Channel variable. Ignored
+            for other types.
         persistable(bool): True if the variable should be saved as check point.
             Defaults to False.
         stop_gradient(bool): True if the variable will stop to calculate
@@ -154,6 +156,7 @@ class Variable(object):
                  shape=None,
                  dtype=None,
                  lod_level=None,
+                 capacity=None,
                  persistable=None,
                  error_clip=None,
                  stop_gradient=False,
@@ -223,6 +226,14 @@ class Variable(object):
                         "The previous persistable is {1}; the new "
                         "persistable is {2}. They are not matched".format(
                             self.name, self.persistable, persistable))
+
+        if capacity is not None:
+            if is_new_var:
+                self.desc.set_capacity(capacity)
+            else:
+                # TODO(abhinavarora) : Compare with set capacity once,
+                # get_capacity is implemented
+                pass
 
         self.block.vars[name] = self
         self.op = None
@@ -472,10 +483,11 @@ class Operator(object):
 
         self.desc.check_attrs()
         no_kernel_op_set = {
-            'feed', 'fetch', 'save', 'load', 'recurrent',
+            'feed', 'fetch', 'save', 'load', 'recurrent', 'go',
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
-            'load_combine', 'ncclInit'
+            'load_combine', 'ncclInit', 'channel_create', 'channel_close',
+            'channel_send', 'channel_recv'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -747,13 +759,8 @@ class Block(object):
         if not self.has_var(name):
             raise ValueError("var %s is not in current" % name)
         v = self.var(name)
-        stop_gradient = None
-        trainable = None
-        optimize_attr = None
-        regularizer = None
-        gradient_clip_attr = None
-        error_clip = None
         if type(v) == Parameter:
+            var_type = "Parameter"
             stop_gradient = v.stop_gradient
             trainable = v.trainable
             optimize_attr = v.optimize_attr
@@ -761,19 +768,21 @@ class Block(object):
             gradient_clip_attr = v.gradient_clip_attr
             error_clip = v.error_clip
         elif type(v) == Variable:
+            var_type = "Variable"
             error_clip = v.error_clip
             stop_gradient = v.stop_gradient
         else:
             raise ValueError("unsupported var type: %s", type(v))
-
+        orig_var_type = v.type
         self.desc.rename_var(name, new_name)
+        # NOTE: v is destroyed by C++ after calling rename_var.
         d = self.desc.find_var(new_name)
-        var = None
-        if type(v) == Parameter:
+        if var_type == "Parameter":
             var = Parameter(
                 self,
                 d.shape(),
                 d.dtype(),
+                type=orig_var_type,
                 name=new_name,
                 stop_gradient=stop_gradient,
                 trainable=trainable,
@@ -781,10 +790,10 @@ class Block(object):
                 regularizer=regularizer,
                 gradient_clip_attr=gradient_clip_attr,
                 error_clip=error_clip)
-        elif type(v) == Variable:
+        elif var_type == "Variable":
             var = Variable(
                 self,
-                type=v.type,
+                type=orig_var_type,
                 name=new_name,
                 error_clip=error_clip,
                 stop_gradient=stop_gradient)
@@ -947,9 +956,26 @@ class Program(object):
     def get_desc(self):
         return self.desc
 
-    def clone(self):
+    def clone(self, for_test=False):
+        """Clone the Program object
+
+        Set for_test to False when we want to clone the program for training.
+        Set for_test to True when we want to clone the program for testing.         
+
+        Args:
+            for_test(bool): Some operators, such as batch_norm and drop_out ops,
+                behave differently in training and testing. If for_test is True,
+                the is_test attributes in these operators will be set to True for
+                testing purposes, otherwise, they remain unchanged.  
+                
+        Returns(Program):
+            The cloned Program object.
+        """
         p = Program()
-        p.desc = core.ProgramDesc(self.desc)
+        if for_test:
+            p.desc = core.inference_optimize(self.desc)
+        else:
+            p.desc = core.ProgramDesc(self.desc)
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
         p.sync_with_cpp()
         p.copy_param_info_from(self)

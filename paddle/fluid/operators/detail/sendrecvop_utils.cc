@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "google/protobuf/io/coded_stream.h"
+#include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/detail/bytebuffer_stream.h"
 #include "paddle/fluid/operators/detail/proto_encoder_helper.h"
@@ -176,21 +178,27 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
   sendrecv::VariableMessage meta;
   GrpcByteBufferSource source;
   source.Init(msg);
-  ::grpc::protobuf::io::CodedInputStream input(source.contents());
+  ::google::protobuf::io::CodedInputStream input(&source);
   // do zerocopy parsing
   PADDLE_ENFORCE(meta.ParseFromCodedStream(&input));
   PADDLE_ENFORCE(input.ConsumedEntireMessage());
   if (meta.type() == sendrecv::LOD_TENSOR) {
     auto* tensor = var->GetMutable<framework::LoDTensor>();
-    framework::DDim dims = framework::make_ddim(meta.dims());
+    std::vector<int> vecdims;
+    for (auto& d : meta.dims()) {
+      vecdims.push_back(d);
+    }
+    framework::DDim dims = framework::make_ddim(vecdims);
     tensor->Resize(dims);
-    void* tensor_data =
-        tensor->mutable_data(ctx.GetPlace(), ToTypeIndex(meta.data_type()));
+    void* tensor_data = tensor->mutable_data(
+        ctx.GetPlace(),
+        paddle::operators::detail::ToTypeIndex(meta.data_type()));
     framework::LoD lod;
     for (int i = 0; i < meta.lod_level(); ++i) {
       // lod elements are of type size_t
       int elem_num = meta.lod(i).size() / sizeof(size_t);
-      size_t* begin = static_cast<size_t*>(meta.lod(i).data());
+      std::string vvv;
+      const size_t* begin = reinterpret_cast<const size_t*>(meta.lod(i).data());
       for (int j = 0; j < elem_num; ++j) {
         lod[i].push_back(begin[j]);
       }
@@ -203,8 +211,8 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
 #endif
     } else {
       memcpy(tensor_data,
-        static_cast<void*>(meta.serialized().data(),
-        meta.serialized().size());
+             reinterpret_cast<const void*>(meta.serialized().data()),
+             meta.serialized().size());
     }
   }
 }

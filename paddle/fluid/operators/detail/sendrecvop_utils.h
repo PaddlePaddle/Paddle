@@ -56,18 +56,17 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                framework::Variable* var);
 
 inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
-  using namespace paddle::framework::proto;
   switch (type) {
     case sendrecv::VariableMessage::FP32:
-      return typeid(float);
+      return typeid(float);  // NOLINT
     case sendrecv::VariableMessage::FP64:
-      return typeid(double);
+      return typeid(double);  // NOLINT
     case sendrecv::VariableMessage::INT32:
-      return typeid(int);
+      return typeid(int);  // NOLINT
     case sendrecv::VariableMessage::INT64:
-      return typeid(int64_t);
+      return typeid(int64_t);  // NOLINT
     case sendrecv::VariableMessage::BOOL:
-      return typeid(bool);
+      return typeid(bool);  // NOLINT
     default:
       PADDLE_THROW("Not support type %d", type);
   }

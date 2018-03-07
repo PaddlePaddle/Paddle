@@ -22,7 +22,7 @@ import paddle.fluid.core as core
 
 
 class TestProfiler(unittest.TestCase):
-    def net_profiler(self, state):
+    def net_profiler(self, state, profile_path='/tmp/profile'):
         enable_if_gpu = state == 'GPU' or state == "All"
         if enable_if_gpu and not core.is_compiled_with_cuda():
             return
@@ -37,7 +37,9 @@ class TestProfiler(unittest.TestCase):
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(cost)
-            accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+            batch_size = fluid.layers.create_tensor(dtype='int64')
+            batch_acc = fluid.layers.accuracy(
+                input=predict, label=label, total=batch_size)
 
         optimizer = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
         opts = optimizer.minimize(avg_cost, startup_program=startup_program)
@@ -46,8 +48,8 @@ class TestProfiler(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(startup_program)
 
-        accuracy.reset(exe)
-        with profiler.profiler(state, 'total') as prof:
+        pass_acc_calculator = fluid.average.WeightedAverage()
+        with profiler.profiler(state, 'total', profile_path) as prof:
             for iter in range(10):
                 if iter == 2:
                     profiler.reset_profiler()
@@ -57,9 +59,11 @@ class TestProfiler(unittest.TestCase):
                 outs = exe.run(main_program,
                                feed={'x': x,
                                      'y': y},
-                               fetch_list=[avg_cost] + accuracy.metrics)
+                               fetch_list=[avg_cost, batch_acc, batch_size])
                 acc = np.array(outs[1])
-                pass_acc = accuracy.eval(exe)
+                b_size = np.array(outs[2])
+                pass_acc_calculator.add(value=acc, weight=b_size)
+                pass_acc = pass_acc_calculator.eval()
 
     def test_cpu_profiler(self):
         self.net_profiler('CPU')
@@ -68,7 +72,9 @@ class TestProfiler(unittest.TestCase):
         self.net_profiler('GPU')
 
     def test_all_profiler(self):
-        self.net_profiler('All')
+        self.net_profiler('All', '/tmp/profile_out')
+        with open('/tmp/profile_out', 'r') as f:
+            self.assertGreater(len(f.read()), 0)
 
 
 if __name__ == '__main__':
