@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
