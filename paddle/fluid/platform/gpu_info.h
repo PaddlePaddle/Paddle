@@ -30,6 +30,12 @@ const std::string kEnvFractionGpuMemoryToUse =
 //! Get the total number of GPU devices in system.
 int GetCUDADeviceCount();
 
+//! Get the MultiProcessors of the ith GPU.
+int GetCUDAMultiProcessors(int i);
+
+//! Get the MaxThreads of each MultiProcessor of the ith GPU.
+int GetCUDAMaxThreadsPerMultiProcessor(int i);
+
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
 
