@@ -2206,8 +2206,8 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
 
     Args:
         input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (int|None): The dimension along which the sum is performed. If
-            :attr:`None`, sum all elements of :attr:`input` and return a
+        dim (int|None): The dimension along which the product is performed. If
+            :attr:`None`, multiply all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
             the dimension to reduce is :math:`rank + dim`.
