@@ -35,7 +35,6 @@ __all__ = [
     'cos_sim',
     'cross_entropy',
     'square_error_cost',
-    'accuracy',
     'chunk_eval',
     'sequence_conv',
     'conv2d',
@@ -1022,40 +1021,6 @@ def square_error_cost(input, label):
     return square_out
 
 
-def accuracy(input, label, k=1, correct=None, total=None):
-    """
-    This function computes the accuracy using the input and label.
-    The output is the top_k inputs and their indices.
-    """
-    helper = LayerHelper("accuracy", **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype="int64")
-    helper.append_op(
-        type="top_k",
-        inputs={"X": [input]},
-        outputs={"Out": [topk_out],
-                 "Indices": [topk_indices]},
-        attrs={"k": k})
-    acc_out = helper.create_tmp_variable(dtype="float32")
-    if correct is None:
-        correct = helper.create_tmp_variable(dtype="int64")
-    if total is None:
-        total = helper.create_tmp_variable(dtype="int64")
-    helper.append_op(
-        type="accuracy",
-        inputs={
-            "Out": [topk_out],
-            "Indices": [topk_indices],
-            "Label": [label]
-        },
-        outputs={
-            "Accuracy": [acc_out],
-            "Correct": [correct],
-            "Total": [total],
-        })
-    return acc_out
-
-
 def chunk_eval(input,
                label,
                chunk_scheme,
@@ -1146,6 +1111,7 @@ def conv2d(input,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
+           use_mkldnn=False,
            act=None):
     """
     **Convlution2D Layer**
@@ -1287,7 +1253,8 @@ def conv2d(input,
             'strides': stride,
             'paddings': padding,
             'groups': groups,
-            'use_cudnn': use_cudnn
+            'use_cudnn': use_cudnn,
+            'use_mkldnn': use_mkldnn
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -1438,6 +1405,7 @@ def pool2d(input,
            pool_padding=0,
            global_pooling=False,
            use_cudnn=True,
+           ceil_mode=False,
            name=None):
     """
     This function adds the operator for pooling in 2 dimensions, using the
@@ -1474,7 +1442,8 @@ def pool2d(input,
             "global_pooling": global_pooling,
             "strides": pool_stride,
             "paddings": pool_padding,
-            "use_cudnn": use_cudnn
+            "use_cudnn": use_cudnn,
+            "ceil_mode": ceil_mode
         })
 
     return pool_out
@@ -3180,7 +3149,7 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
             data = fluid.layers.data(name='data', shape=[128], dtype='float32')
             label = fluid.layers.data(name='label', shape=[100], dtype='int64')
             fc = fluid.layers.fc(input=data, size=100)
-            out = fluid.layers.smooth_l1(logits=fc, label=label)
+            out = fluid.layers.smooth_l1(x=fc, y=label)
     """
     helper = LayerHelper('smooth_l1_loss', **locals())
     diff = helper.create_tmp_variable(dtype=x.dtype)

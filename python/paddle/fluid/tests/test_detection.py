@@ -158,7 +158,7 @@ class TestDetectionMAP(unittest.TestCase):
                 append_batch_size=False,
                 dtype='float32')
 
-            map_out = layers.detection_map(detect_res=detect_res, label=label)
+            map_out = layers.detection_map(detect_res, label, 21)
             self.assertIsNotNone(map_out)
             self.assertEqual(map_out.shape, (1, ))
         print(str(program))

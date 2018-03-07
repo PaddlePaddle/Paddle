@@ -1,11 +1,11 @@
 #   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -138,13 +138,14 @@ def main():
     avg_cost = fluid.layers.mean(x=cost)
 
     # Evaluator
-    accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+    batch_size = fluid.layers.create_tensor(dtype='int64')
+    batch_acc = fluid.layers.accuracy(
+        input=predict, label=label, total=batch_size)
 
     # inference program
     inference_program = fluid.default_main_program().clone()
     with fluid.program_guard(inference_program):
-        test_target = accuracy.metrics + accuracy.states
-        inference_program = fluid.io.get_inference_program(test_target)
+        inference_program = fluid.io.get_inference_program(batch_acc)
 
     # Optimization
     optimizer = fluid.optimizer.Adam(learning_rate=args.learning_rate)
@@ -157,27 +158,30 @@ def main():
 
     # test
     def test(exe):
-        accuracy.reset(exe)
+        test_pass_acc = fluid.average.WeightedAverage()
         for batch_id, data in enumerate(test_reader()):
             img_data = np.array(map(lambda x: x[0].reshape(data_shape),
                                     data)).astype("float32")
             y_data = np.array(map(lambda x: x[1], data)).astype("int64")
             y_data = y_data.reshape([-1, 1])
 
-            exe.run(inference_program,
-                    feed={"pixel": img_data,
-                          "label": y_data})
+            outs = exe.run(inference_program,
+                           feed={"pixel": img_data,
+                                 "label": y_data},
+                           fetch_list=[batch_acc, batch_size])
+            test_pass_acc.add(value=np.array(outs[0]), weight=np.array(outs[1]))
 
-        return accuracy.eval(exe)
+        return test_pass_acc.eval()
 
     def train_loop(exe, trainer_prog):
         iters = 0
         ts = time.time()
+        train_pass_acc = fluid.average.WeightedAverage()
         for pass_id in range(args.num_passes):
             # train
             start_time = time.time()
             num_samples = 0
-            accuracy.reset(exe)
+            train_pass_acc.reset()
             with profiler.profiler("CPU", 'total') as prof:
                 for batch_id, data in enumerate(train_reader()):
                     ts = time.time()
@@ -187,13 +191,14 @@ def main():
                     y_data = np.array(map(lambda x: x[1], data)).astype("int64")
                     y_data = y_data.reshape([-1, 1])
 
-                    loss, acc = exe.run(
+                    loss, acc, b_size = exe.run(
                         trainer_prog,
                         feed={"pixel": img_data,
                               "label": y_data},
-                        fetch_list=[avg_cost] + accuracy.metrics)
+                        fetch_list=[avg_cost, batch_acc, batch_size])
                     iters += 1
                     num_samples += len(data)
+                    train_pass_acc.add(value=acc, weight=b_size)
                     print(
                         "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, Speed = %.2f img/s"
                         % (pass_id, iters, loss, acc,
@@ -201,7 +206,7 @@ def main():
                     )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
-            pass_train_acc = accuracy.eval(exe)
+            pass_train_acc = train_pass_acc.eval()
             pass_test_acc = test(exe)
             print(
                 "Pass = %d, Training performance = %f imgs/s, Train accuracy = %f, Test accuracy = %f\n"
