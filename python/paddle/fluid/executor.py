@@ -163,6 +163,22 @@ def fetch_var(name, scope=None, return_numpy=True):
     return tensor
 
 
+def get_program_cache_key(feed, fetch_list):
+    feed_var_names = feed.keys()
+
+    def to_name_str(var):
+        if isinstance(var, Variable):
+            return var.desc.name()
+        elif isinstance(var, str):
+            return var
+        else:
+            raise TypeError(str(var) + " should be Variable or str")
+
+    fetch_var_names = map(to_name_str, fetch_list)
+
+    return str(feed_var_names + fetch_var_names)
+
+
 class Executor(object):
     def __init__(self, places):
         if not isinstance(places, list) and not isinstance(places, tuple):
@@ -226,9 +242,30 @@ class Executor(object):
             feed_var_name='feed',
             fetch_var_name='fetch',
             scope=None,
-            return_numpy=True):
+            return_numpy=True,
+            use_program_cache=False):
+        """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
+
+        Python executor takes a program, add feed operators and fetch operators to this program according
+        to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
+        the variables(or names) that user want to get after program run. Note: the executor will run all
+        operators in the program but not only the operators dependent by the fetch_list
+
+        :param program: the program that need to run, if not provied, then default_main_program will be used.
+        :param feed: feed variable map, e.g. {"image": ImageData, "label": LableData}
+        :param fetch_list: a list of variable or variable names that user want to get, run will return them according
+        to this list.
+        :param feed_var_name: the name for the input variable of feed Operator.
+        :param fetch_var_name: the name for the output variable of feed Operator.
+        :param scope: the scope used to run this program, you can switch it to different scope. default is global_scope
+        :param return_numpy: if convert the fetched tensor to numpy
+        :param use_program_cache: set use_program_cache to true if program not changed compare to the last step.
+        :return: result according to fetch_list.
+        """
         if feed is None:
             feed = {}
+        if not isinstance(feed, dict):
+            raise TypeError("feed should be a map")
         if fetch_list is None:
             fetch_list = []
 
@@ -241,12 +278,21 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        program_cache_key = str(feed.keys() + fetch_list)
-        program_cache = self.program_caches.get(program_cache_key, None)
+        program_cache = None
+        program_cache_key = get_program_cache_key(feed, fetch_list)
+
+        if use_program_cache:
+            # find program cache by cache_key
+            program_cache = self.program_caches.get(program_cache_key, None)
+            # TODO(qiao): Should check program_cache and program are exactly the same.
+        else:
+            self.program_caches.pop(program_cache_key, None)
 
         if program_cache is None:
             program_cache = program.clone()
-            self.program_caches[program_cache_key] = program_cache
+
+            if use_program_cache:
+                self.program_caches[program_cache_key] = program_cache
 
             global_block = program_cache.global_block()
 
@@ -266,6 +312,7 @@ class Executor(object):
                     type=core.VarDesc.VarType.FETCH_LIST,
                     persistable=True)
 
+            # prepend feed operators
             if not has_feed_operators(global_block, feed, feed_var_name):
                 for i, name in enumerate(feed):
                     out = global_block.var(name)
@@ -275,17 +322,7 @@ class Executor(object):
                         outputs={'Out': [out]},
                         attrs={'col': i})
 
-            for op in global_block.ops:
-                if op.desc.type() == 'feed':
-                    feed_target_name = op.desc.output('Out')[0]
-                    cur_feed = feed[feed_target_name]
-                    if not isinstance(cur_feed, core.LoDTensor):
-                        cur_feed = self.aslodtensor(cur_feed)
-                    idx = op.desc.attr('col')
-                    core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
-                else:
-                    break
-
+            # append fetch_operators
             if not has_fetch_operators(global_block, fetch_list,
                                        fetch_var_name):
                 for i, var in enumerate(fetch_list):
@@ -296,6 +333,18 @@ class Executor(object):
                         inputs={'X': [var]},
                         outputs={'Out': [fetch_var]},
                         attrs={'col': i})
+
+        # feed var to framework
+        for op in program_cache.global_block().ops:
+            if op.desc.type() == 'feed':
+                feed_target_name = op.desc.output('Out')[0]
+                cur_feed = feed[feed_target_name]
+                if not isinstance(cur_feed, core.LoDTensor):
+                    cur_feed = self.aslodtensor(cur_feed)
+                idx = op.desc.attr('col')
+                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+            else:
+                break
 
         self.executor.run(program_cache.desc, scope, 0, True, True)
         outs = [

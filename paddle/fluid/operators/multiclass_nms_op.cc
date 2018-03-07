@@ -324,7 +324,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              " Please note, M is equal to the 1st dimension of BBoxes. ");
     AddAttr<int>(
         "background_label",
-        "(int64_t, defalut: 0) "
+        "(int, defalut: 0) "
         "The index of background label, the background label will be ignored. "
         "If set to -1, then all categories will be considered.")
         .SetDefault(0);
