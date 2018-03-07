@@ -27,15 +27,20 @@ Header::Header()
 Header::Header(uint32_t num, uint32_t sum, Compressor c, uint32_t cs)
     : num_records_(num), checksum_(sum), compressor_(c), compress_size_(cs) {}
 
-void Header::Parse(std::istream& is) {
+bool Header::Parse(std::istream& is) {
   uint32_t magic;
-  is.read(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
+  size_t read_size =
+      is.readsome(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
+  if (read_size < sizeof(uint32_t)) {
+    return false;
+  }
   PADDLE_ENFORCE_EQ(magic, kMagicNumber);
 
   is.read(reinterpret_cast<char*>(&num_records_), sizeof(uint32_t))
       .read(reinterpret_cast<char*>(&checksum_), sizeof(uint32_t))
       .read(reinterpret_cast<char*>(&compressor_), sizeof(uint32_t))
       .read(reinterpret_cast<char*>(&compress_size_), sizeof(uint32_t));
+  return true;
 }
 
 void Header::Write(std::ostream& os) const {
