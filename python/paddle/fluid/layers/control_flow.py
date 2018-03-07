@@ -266,8 +266,15 @@ class ParallelDo(object):
             return self.outputs
 
     def read_input(self, *vars):
+        '''
+        usage:
+            a_, b_ = pd.read_input(a, b)
+        '''
+        assert vars, 'at least one var should be passed in'
         self.inputs += vars
-        return vars
+        if len(vars) > 1:
+            return vars
+        return vars[0]
 
     def write_output(self, var):
         self.outputs.append(var)
