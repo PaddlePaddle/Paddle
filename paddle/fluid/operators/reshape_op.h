@@ -26,10 +26,56 @@ class ReshapeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* in = ctx.Input<framework::Tensor>("X");
-    auto out_dims = out->dims();
+
+    auto* shape = ctx.Input<framework::Tensor>("Shape");
+    framework::DDim out_dims;
+    if (shape) {
+      std::vector<int64_t> output_shape;
+      ValidateShape(*shape, framework::product(in->dims()), output_shape);
+
+      for (auto d : output_shape) std::cout << d << " ";
+      std::cout << std::endl;
+
+      out_dims = framework::make_ddim(output_shape);
+    } else {
+      out_dims = out->dims();
+    }
+
     out->mutable_data<T>(ctx.GetPlace());
     framework::TensorCopy(*in, ctx.GetPlace(), ctx.device_context(), out);
     out->Resize(out_dims);
+  }
+
+ private:
+  void ValidateShape(const framework::Tensor& shape, const int64_t in_size,
+                     std::vector<int64_t>& output_shape) const {
+    std::vector<size_t> neg_dims_idx;
+    const int unknown_index = -1;  // only one dimension canbe set to -1, whose
+                                   // size will be automatically infered.
+
+    const int64_t dimension = shape.dims()[1];
+    std::cout << "dimension =" << dimension << std::endl;
+    const T* shape_data = shape.data<T>();
+
+    for (int64_t i = 0; i < dimension; ++i) {
+      PADDLE_ENFORCE(shape_data[i] > 1 || shape_data[i] == unknown_index,
+                     "Each input dimension of Attr(shape) must be positive, or "
+                     "only one input dimension can be -1.");
+      if (shape_data[i] == unknown_index) neg_dims_idx.push_back(i);
+    }
+    PADDLE_ENFORCE_LE(
+        neg_dims_idx.size(), 1,
+        "Only one input dimension of Attr(shape) can be unknown.");
+
+    int64_t capacity = 1;
+    output_shape.resize(dimension, 0);
+    for (int64_t i = 0; i < dimension; ++i) {
+      capacity *= shape_data[i];
+      output_shape[i] = static_cast<int64_t>(shape_data[i]);
+    }
+
+    if (neg_dims_idx.size())
+      output_shape[neg_dims_idx[0]] = in_size / (-capacity);
   }
 };
 
