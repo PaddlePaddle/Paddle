@@ -70,6 +70,7 @@ __all__ = [
     'softmax_with_cross_entropy',
     'smooth_l1',
     'one_hot',
+    'autoincreased_step_counter',
 ]
 
 
@@ -1437,6 +1438,7 @@ def pool2d(input,
            pool_padding=0,
            global_pooling=False,
            use_cudnn=True,
+           ceil_mode=False,
            name=None):
     """
     This function adds the operator for pooling in 2 dimensions, using the
@@ -1473,7 +1475,8 @@ def pool2d(input,
             "global_pooling": global_pooling,
             "strides": pool_stride,
             "paddings": pool_padding,
-            "use_cudnn": use_cudnn
+            "use_cudnn": use_cudnn,
+            "ceil_mode": ceil_mode
         })
 
     return pool_out
@@ -2478,10 +2481,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
-def edit_distance(input,
-                  label,
-                  normalized=False,
-                  ignored_tokens=None,
+def edit_distance(input, label, normalized=True, ignored_tokens=None,
                   name=None):
     """
     EditDistance operator computes the edit distances between a batch of
@@ -3208,7 +3208,7 @@ def one_hot(input, depth):
     operator.
 
     Args:
-        input(Tensor/LodTensor):  A Tensor/LodTensor of indices, last dimension must be 1.
+        input(variable):  A Tensor/LodTensor of indices, last dimension must be 1.
         depth(scalar): an interger defining the depth of the one hot dimension.
 
     Returns:
@@ -3236,3 +3236,34 @@ def one_hot(input, depth):
         attrs={'depth': depth},
         outputs={'Out': one_hot_out})
     return one_hot_out
+
+
+def autoincreased_step_counter(counter_name=None, begin=1, step=1):
+    """
+    NOTE: The counter will be automatically increased by 1 every mini-batch
+    Return the run counter of the main program, which is started with 1.
+
+    Args:
+        counter_name(str): The counter name, default is '@STEP_COUNTER@'.
+        begin(int): The first value of this counter.
+        step(int): The increment step between each execution.
+
+    Returns(Variable): The global run counter.
+    """
+    helper = LayerHelper('global_step_counter')
+    if counter_name is None:
+        counter_name = '@STEP_COUNTER@'
+    counter, is_new_var = helper.create_or_get_global_variable(
+        name=counter_name, dtype='int64', shape=[1], persistable=True)
+    if is_new_var:
+        helper.set_variable_initializer(
+            counter, initializer=Constant(
+                value=begin - 1, force_cpu=True))
+        helper.main_program.global_block().prepend_op(
+            type='increment',
+            inputs={'X': [counter]},
+            outputs={'Out': [counter]},
+            attrs={'step': float(step)})
+        counter.stop_gradient = True
+
+    return counter

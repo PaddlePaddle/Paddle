@@ -274,7 +274,7 @@ def main(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
         use_cuda,
         parallel=parallel,
         save_dirname=save_dirname)
-    infer(use_cuda, save_dirname)
+    infer(word_dict, use_cuda, save_dirname)
 
 
 class TestUnderstandSentiment(unittest.TestCase):

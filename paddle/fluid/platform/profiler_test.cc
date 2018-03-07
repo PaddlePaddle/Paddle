@@ -95,7 +95,7 @@ TEST(RecordEvent, RecordEvent) {
    */
   for (int i = 1; i < 5; ++i) {
     std::string name = "evs_op_" + std::to_string(i);
-    RecordEvent record_event(name, dev_ctx, 0);
+    RecordEvent record_event(name, dev_ctx);
     int counter = 1;
     while (counter != i * 1000) counter++;
   }
@@ -125,5 +125,5 @@ TEST(RecordEvent, RecordEvent) {
   EXPECT_EQ(start_profiler_count, 1);
 
   // Will remove parsing-related code from test later
-  DisableProfiler(EventSortingKey::kTotal);
+  DisableProfiler(EventSortingKey::kTotal, "/tmp/profiler");
 }

@@ -22,7 +22,7 @@ import paddle.fluid.core as core
 
 
 class TestProfiler(unittest.TestCase):
-    def net_profiler(self, state):
+    def net_profiler(self, state, profile_path='/tmp/profile'):
         enable_if_gpu = state == 'GPU' or state == "All"
         if enable_if_gpu and not core.is_compiled_with_cuda():
             return
@@ -47,7 +47,7 @@ class TestProfiler(unittest.TestCase):
         exe.run(startup_program)
 
         accuracy.reset(exe)
-        with profiler.profiler(state, 'total') as prof:
+        with profiler.profiler(state, 'total', profile_path) as prof:
             for iter in range(10):
                 if iter == 2:
                     profiler.reset_profiler()
@@ -68,7 +68,9 @@ class TestProfiler(unittest.TestCase):
         self.net_profiler('GPU')
 
     def test_all_profiler(self):
-        self.net_profiler('All')
+        self.net_profiler('All', '/tmp/profile_out')
+        with open('/tmp/profile_out', 'r') as f:
+            self.assertGreater(len(f.read()), 0)
 
 
 if __name__ == '__main__':

@@ -53,6 +53,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     TransDataType(kernel_fp32, kernel_fp64, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     double* out_data_double = out.data<double>();
     for (int i = 0; i < data_number; ++i) {
@@ -61,6 +62,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     TransDataType(kernel_fp32, kernel_int32, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     int* out_data_int = out.data<int>();
     for (int i = 0; i < data_number; ++i) {
@@ -85,6 +87,7 @@ TEST(DataTypeTransform, GPUTransform) {
     // transform from float16 to other data types
     TransDataType(kernel_fp16, kernel_fp32, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     float* out_data_float = out.data<float>();
     for (int i = 0; i < data_number; ++i) {
@@ -93,6 +96,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     TransDataType(kernel_fp16, kernel_fp64, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     double* out_data_double = out.data<double>();
     for (int i = 0; i < data_number; ++i) {
@@ -101,6 +105,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     TransDataType(kernel_fp16, kernel_int32, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     int* out_data_int = out.data<int>();
     for (int i = 0; i < data_number; ++i) {
@@ -109,6 +114,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     TransDataType(kernel_fp16, kernel_int64, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     int64_t* out_data_int64 = out.data<int64_t>();
     for (int i = 0; i < data_number; ++i) {
@@ -117,6 +123,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     TransDataType(kernel_fp16, kernel_bool, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     bool* out_data_bool = out.data<bool>();
     for (int i = 0; i < data_number; ++i) {
@@ -132,6 +139,7 @@ TEST(DataTypeTransform, GPUTransform) {
     TensorCopy(in, gpu_place, context, &in_gpu);
     TransDataType(kernel_fp32, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
@@ -148,6 +156,7 @@ TEST(DataTypeTransform, GPUTransform) {
     TensorCopy(in, gpu_place, context, &in_gpu);
     TransDataType(kernel_fp64, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
@@ -163,6 +172,7 @@ TEST(DataTypeTransform, GPUTransform) {
     TensorCopy(in, gpu_place, context, &in_gpu);
     TransDataType(kernel_int32, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
@@ -179,6 +189,7 @@ TEST(DataTypeTransform, GPUTransform) {
     TensorCopy(in, gpu_place, context, &in_gpu);
     TransDataType(kernel_int64, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
@@ -194,6 +205,7 @@ TEST(DataTypeTransform, GPUTransform) {
     TensorCopy(in, gpu_place, context, &in_gpu);
     TransDataType(kernel_bool, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
+    context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {

@@ -28,24 +28,19 @@ class Channel {
   virtual bool Send(T*) = 0;
   virtual bool Receive(T*) = 0;
   virtual size_t Cap() = 0;
+  virtual void Lock() = 0;
+  virtual void Unlock() = 0;
   virtual void Close() = 0;
   virtual ~Channel() {}
 };
 
 // Forward declaration of channel implementations.
-namespace details {
 template <typename T>
-class Buffered;
-template <typename T>
-class UnBuffered;
-}  // namespace details
+class ChannelImpl;
 
 template <typename T>
 Channel<T>* MakeChannel(size_t buffer_size) {
-  if (buffer_size > 0) {
-    return new details::Buffered<T>(buffer_size);
-  }
-  return new details::UnBuffered<T>();
+  return new ChannelImpl<T>(buffer_size);
 }
 
 template <typename T>
@@ -89,7 +84,25 @@ class ChannelHolder {
     if (IsInitialized()) holder_->Close();
   }
 
+  size_t Cap() {
+    if (IsInitialized()) return holder_->Cap();
+    return -1;
+  }
+
+  void Lock() {
+    if (IsInitialized()) holder_->Lock();
+  }
+
+  void Unlock() {
+    if (IsInitialized()) holder_->Unlock();
+  }
+
   inline bool IsInitialized() const { return holder_ != nullptr; }
+
+  inline const std::type_index Type() {
+    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    return holder_->Type();
+  }
 
  private:
   /**
@@ -101,6 +114,9 @@ class ChannelHolder {
     virtual const std::type_index Type() const = 0;
     virtual void* Ptr() const = 0;
     virtual void Close() = 0;
+    virtual void Lock() = 0;
+    virtual void Unlock() = 0;
+    virtual size_t Cap() = 0;
   };
 
   template <typename T>
@@ -110,9 +126,26 @@ class ChannelHolder {
     }
 
     virtual const std::type_index Type() const { return type_; }
+
     virtual void* Ptr() const { return static_cast<void*>(channel_.get()); }
+
     virtual void Close() {
       if (channel_) channel_->Close();
+    }
+
+    virtual size_t Cap() {
+      if (channel_)
+        return channel_->Cap();
+      else
+        return -1;
+    }
+
+    virtual void Lock() {
+      if (channel_) channel_->Lock();
+    }
+
+    virtual void Unlock() {
+      if (channel_) channel_->Unlock();
     }
 
     std::unique_ptr<Channel<T>> channel_;
@@ -126,5 +159,4 @@ class ChannelHolder {
 }  // namespace framework
 }  // namespace paddle
 
-#include "paddle/fluid/framework/details/buffered_channel.h"
-#include "paddle/fluid/framework/details/unbuffered_channel.h"
+#include "paddle/fluid/framework/channel_impl.h"

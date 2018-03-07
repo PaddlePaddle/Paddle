@@ -74,7 +74,8 @@ extern void *cupti_dso_handle;
   __macro(cuptiFinalize);                     \
   __macro(cuptiSubscribe);                    \
   __macro(cuptiUnsubscribe);                  \
-  __macro(cuptiEnableCallback);
+  __macro(cuptiEnableCallback);               \
+  __macro(cuptiEnableDomain);
 
 CUPTI_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUPTI_WRAP);
 
