@@ -16,12 +16,9 @@
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/threadpool.h"
 
 namespace paddle {
 namespace framework {
-
-static constexpr size_t kDoubleBufferSize = 3;
 
 class ReaderBase {
  public:
