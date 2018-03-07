@@ -88,11 +88,12 @@ void CheckError(paddle::framework::LoDTensor& output1,
   EXPECT_EQ(count, 0U) << "There are " << count << " different elements.";
 }
 
-template <typename Place, bool IsCombined = false>
+template <typename Place>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
-                   const int repeat = 1) {
+                   const int repeat = 1,
+                   const bool is_combined = false) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
@@ -105,6 +106,10 @@ void TestInference(const std::string& dirname,
   } else {
 #ifdef PADDLE_WITH_CUDA
     state = paddle::platform::ProfilerState::kCUDA;
+    // The default device_id of paddle::platform::CUDAPlace is 0.
+    // Users can get the device_id using:
+    //   int device_id = place.GetDeviceId();
+    paddle::platform::SetDeviceId(0);
 #endif
   }
 
@@ -118,7 +123,7 @@ void TestInference(const std::string& dirname,
         "init_program",
         paddle::platform::DeviceContextPool::Instance().Get(place));
 
-    if (IsCombined) {
+    if (is_combined) {
       // All parameters are saved in a single file.
       // Hard-coding the file names of program and parameters in unittest.
       // The file names should be consistent with that used in Python API
@@ -158,20 +163,20 @@ void TestInference(const std::string& dirname,
 
   // 6. Run the inference program
   {
-    executor.Run(*inference_program, scope, feed_targets, fetch_targets);
-
     // Run repeat times to profile the performance
-    paddle::platform::RecordEvent record_event(
-        "run_inference",
-        paddle::platform::DeviceContextPool::Instance().Get(place));
     for (int i = 0; i < repeat; ++i) {
+      paddle::platform::RecordEvent record_event(
+          "run_inference",
+          paddle::platform::DeviceContextPool::Instance().Get(place));
+
       executor.Run(*inference_program, scope, feed_targets, fetch_targets);
     }
   }
 
   // Disable the profiler and print the timing information
-  paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kTotal,
+  paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
                                     "profiler.txt");
+  paddle::platform::ResetProfiler();
 
   delete scope;
 }
