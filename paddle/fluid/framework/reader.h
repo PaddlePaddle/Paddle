@@ -140,7 +140,7 @@ class BatchReader : public DecoratedReader {
 
 class DoubleBufferReader : public DecoratedReader {
  public:
-  DoubleBufferReader(ReaderBase* reader)
+  explicit DoubleBufferReader(ReaderBase* reader)
       : DecoratedReader(reader), buffer_(kDoubleBufferSize) {
     framework::Async(std::bind(&DoubleBufferReader::ProducerThreadFunc, this));
   }
