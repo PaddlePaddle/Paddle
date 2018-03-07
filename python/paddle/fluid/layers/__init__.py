@@ -28,6 +28,8 @@ import math_op_patch
 from math_op_patch import *
 import detection
 from detection import *
+import metric
+from metric import *
 from learning_rate_scheduler import *
 
 __all__ = []
@@ -39,4 +41,5 @@ __all__ += control_flow.__all__
 __all__ += ops.__all__
 __all__ += device.__all__
 __all__ += detection.__all__
+__all__ += metric.__all__
 __all__ += learning_rate_scheduler.__all__
