@@ -83,3 +83,61 @@ TEST(Tensor, CPU) {
   for (int i = 0; i < tensor_numel; ++i)
     EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
 }
+
+TEST(SelectedRows, CPU) {
+  platform::CPUPlace place;
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& ctx = *pool.Get(place);
+
+  // serialize var to ByteBuffer
+  framework::Variable var;
+  auto* slr = var.GetMutable<framework::SelectedRows>();
+  auto* tensor = slr->mutable_value();
+  auto* rows = slr->mutable_rows();
+
+  tensor->Resize(framework::make_ddim({2, 10}));
+  int tensor_numel = 2 * 10;
+  float* orig_tensor_data = tensor->mutable_data<float>(place);
+  for (int i = 0; i < tensor_numel; ++i) orig_tensor_data[i] = i;
+
+  rows->push_back(3);
+  rows->push_back(10);
+
+  ::grpc::ByteBuffer msg;
+  operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
+  EXPECT_GT(msg.Length(), 0);
+
+  // deserialize
+  std::vector<::grpc::Slice> slices;
+  (void)msg.Dump(&slices);
+  std::string tmp;
+  for (const auto& s : slices) {
+    tmp.append(reinterpret_cast<const char*>(s.begin()), s.size());
+  }
+  sendrecv::VariableMessage varmsg;
+  EXPECT_TRUE(varmsg.ParseFromString(tmp));
+
+  EXPECT_EQ(varmsg.varname(), "myvar");
+  EXPECT_EQ(varmsg.type(), 1);
+
+  const float* tensor_data =
+      reinterpret_cast<const float*>(varmsg.serialized().data());
+  const int64_t* rows_data =
+      reinterpret_cast<const int64_t*>(varmsg.rows().data());
+  for (int i = 0; i < tensor_numel; ++i)
+    EXPECT_EQ(tensor_data[i], orig_tensor_data[i]);
+  EXPECT_EQ(rows_data[0], 3);
+  EXPECT_EQ(rows_data[1], 10);
+
+  // deserialize zero-copy
+  framework::Variable var2;
+  operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
+  auto* slr2 = var2.GetMutable<framework::SelectedRows>();
+  auto* tensor2 = slr2->mutable_value();
+  float* tensor_data2 = tensor2->data<float>();
+  auto* rows_data2 = slr2->mutable_rows();
+  for (int i = 0; i < tensor_numel; ++i)
+    EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
+  EXPECT_EQ((*rows_data2)[0], 3);
+  EXPECT_EQ((*rows_data2)[1], 10);
+}
