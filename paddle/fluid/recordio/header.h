@@ -19,8 +19,6 @@
 namespace paddle {
 namespace recordio {
 
-// Default ChunkSize
-constexpr size_t kDefaultMaxChunkSize = 32 * 1024 * 1024;
 // MagicNumber for memory checking
 constexpr uint32_t kMagicNumber = 0x01020304;
 

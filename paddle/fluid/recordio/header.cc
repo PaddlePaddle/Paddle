@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/recordio/header.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace recordio {
@@ -27,6 +28,10 @@ Header::Header(uint32_t num, uint32_t sum, Compressor c, uint32_t cs)
     : num_records_(num), checksum_(sum), compressor_(c), compress_size_(cs) {}
 
 void Header::Parse(std::istream& is) {
+  uint32_t magic;
+  is.read(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
+  PADDLE_ENFORCE_EQ(magic, kMagicNumber);
+
   is.read(reinterpret_cast<char*>(&num_records_), sizeof(uint32_t))
       .read(reinterpret_cast<char*>(&checksum_), sizeof(uint32_t))
       .read(reinterpret_cast<char*>(&compressor_), sizeof(uint32_t))
@@ -34,7 +39,8 @@ void Header::Parse(std::istream& is) {
 }
 
 void Header::Write(std::ostream& os) const {
-  os.write(reinterpret_cast<const char*>(&num_records_), sizeof(uint32_t))
+  os.write(reinterpret_cast<const char*>(&kMagicNumber), sizeof(uint32_t))
+      .write(reinterpret_cast<const char*>(&num_records_), sizeof(uint32_t))
       .write(reinterpret_cast<const char*>(&checksum_), sizeof(uint32_t))
       .write(reinterpret_cast<const char*>(&compressor_), sizeof(uint32_t))
       .write(reinterpret_cast<const char*>(&compress_size_), sizeof(uint32_t));
