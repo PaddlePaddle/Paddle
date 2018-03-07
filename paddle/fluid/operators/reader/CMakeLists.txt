@@ -2,4 +2,10 @@ cc_library(reader_op_registry SRCS reader_op_registry.cc DEPS operator op_regist
 op_library(create_random_data_generator_op SRCS create_random_data_generator_op.cc DEPS reader_op_registry)
 op_library(create_shuffle_reader_op SRCS create_shuffle_reader_op.cc DEPS reader_op_registry)
 op_library(create_batch_reader_op SRCS create_batch_reader_op.cc DEPS reader_op_registry)
-set(READER_LIBRARY create_random_data_generator_op create_shuffle_reader_op create_batch_reader_op PARENT_SCOPE)
+op_library(create_recordio_file_reader_op SRCS create_recordio_file_reader_op.cc DEPS reader_op_registry)
+set(READER_LIBRARY
+        create_recordio_file_reader_op
+        create_random_data_generator_op
+        create_shuffle_reader_op
+        create_batch_reader_op
+    PARENT_SCOPE)

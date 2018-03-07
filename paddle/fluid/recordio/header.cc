@@ -52,8 +52,8 @@ void Header::Write(std::ostream& os) const {
 }
 
 std::ostream& operator<<(std::ostream& os, Header h) {
-  os << h.NumRecords() << h.Checksum()
-     << static_cast<uint32_t>(h.CompressType()) << h.CompressSize();
+  os << "Header: " << h.NumRecords() << ", " << h.Checksum() << ", "
+     << static_cast<uint32_t>(h.CompressType()) << ", " << h.CompressSize();
   return os;
 }
 

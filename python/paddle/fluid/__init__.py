@@ -39,6 +39,7 @@ import clip
 from memory_optimization_transpiler import memory_optimize
 import profiler
 import unique_name
+import recordio_writer
 
 Tensor = LoDTensor
 
@@ -64,6 +65,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'memory_optimize',
     'profiler',
     'unique_name',
+    'recordio_writer',
 ]
 
 
