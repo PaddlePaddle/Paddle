@@ -217,7 +217,7 @@ def train():
 
             data = train_reader_iter.next()
             feed_dict = feeder.feed(data)
-            for batch_id in range(step_num):
+            for step_id in range(step_num):
                 train_start = time.time()
                 if args.use_python_reader:
                     exe.run(fluid.default_main_program(),
@@ -230,7 +230,7 @@ def train():
                             fetch_list=[],
                             use_program_cache=True)
                 train_stop = time.time()
-                if batch_id > args.skip_first_steps:
+                if step_id > args.skip_first_steps:
                     train_time += train_stop - train_start
 
             print("\n\n\n")
