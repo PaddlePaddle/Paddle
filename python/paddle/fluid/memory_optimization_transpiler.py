@@ -172,13 +172,15 @@ class ControlFlowGraph(object):
                                     block_desc, cache_var, is_forward).dtype()
                                 # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
                                 # and dtype_to_size[cache_dtype]
-                                if x_dtype == cache_dtype and PRINT_LOG:
-                                    print(("Hit Cache !!!! cache pool index "
-                                           "is %d, var name is %s, "
-                                           "cached var name is %s, "
-                                           "var shape is %s ") %
-                                          (index, x, cache_var,
-                                           str(cache_shape)))
+                                if x_dtype == cache_dtype:
+                                    if PRINT_LOG:
+                                        print(
+                                            ("Hit Cache !!!! cache pool index "
+                                             "is %d, var name is %s, "
+                                             "cached var name is %s, "
+                                             "var shape is %s ") %
+                                            (index, x, cache_var,
+                                             str(cache_shape)))
                                     self.pool.pop(index)
                                     if x == cache_var:
                                         break
