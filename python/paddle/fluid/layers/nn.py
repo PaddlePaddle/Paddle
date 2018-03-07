@@ -1438,6 +1438,7 @@ def pool2d(input,
            pool_padding=0,
            global_pooling=False,
            use_cudnn=True,
+           ceil_mode=False,
            name=None):
     """
     This function adds the operator for pooling in 2 dimensions, using the
@@ -1474,7 +1475,8 @@ def pool2d(input,
             "global_pooling": global_pooling,
             "strides": pool_stride,
             "paddings": pool_padding,
-            "use_cudnn": use_cudnn
+            "use_cudnn": use_cudnn,
+            "ceil_mode": ceil_mode
         })
 
     return pool_out
@@ -3206,7 +3208,7 @@ def one_hot(input, depth):
     operator.
 
     Args:
-        input(Tensor/LodTensor):  A Tensor/LodTensor of indices, last dimension must be 1.
+        input(variable):  A Tensor/LodTensor of indices, last dimension must be 1.
         depth(scalar): an interger defining the depth of the one hot dimension.
 
     Returns:
