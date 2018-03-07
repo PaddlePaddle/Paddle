@@ -192,6 +192,12 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   void AddCPURecords(const char *anno, uint64_t start_ns, uint64_t end_ns) {
+    if (!anno) {
+      // TODO(panyx0718): Currently, it doesn't support nested situation
+      // Up-level can be cleared by low-level and therefore get nullptr
+      // here.
+      return;
+    }
     std::lock_guard<std::mutex> l(trace_mu_);
     cpu_records_.push_back(
         CPURecord{anno, start_ns, end_ns,
