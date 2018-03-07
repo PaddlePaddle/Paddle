@@ -15,6 +15,7 @@
 import os
 import time
 import argparse
+import distutils.util
 
 import paddle.v2 as paddle
 import paddle.fluid as fluid
@@ -36,11 +37,18 @@ def parse_args():
         default=40,
         help='total batch num for per_gpu_batch_size')
     parser.add_argument(
-        '--parallel', type=bool, default=True, help='use parallel_do')
-    parser.add_argument('--use_nccl', type=bool, default=True, help='use_nccl')
+        '--parallel',
+        type=distutils.util.strtobool,
+        default=True,
+        help='use parallel_do')
+    parser.add_argument(
+        '--use_nccl',
+        type=distutils.util.strtobool,
+        default=True,
+        help='use_nccl')
     parser.add_argument(
         '--use_python_reader',
-        type=bool,
+        type=distutils.util.strtobool,
         default=True,
         help='use python reader to feed data')
 
