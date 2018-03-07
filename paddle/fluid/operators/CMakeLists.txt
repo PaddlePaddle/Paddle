@@ -190,18 +190,18 @@ op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
 
 if (WITH_GPU)
-    op_library(conv_op DEPS vol2col depthwise_conv)
+    op_library(conv_op DEPS vol2col depthwise_conv im2col)
 else()
-    op_library(conv_op DEPS vol2col)
+    op_library(conv_op DEPS vol2col im2col)
 endif()
-op_library(conv_transpose_op DEPS vol2col)
+op_library(conv_transpose_op DEPS vol2col im2col)
 
 # FIXME(typhoonzero): save/load depends lodtensor serialization functions
 op_library(save_op DEPS lod_tensor)
 op_library(load_op DEPS lod_tensor)
 op_library(save_combine_op DEPS lod_tensor)
 op_library(load_combine_op DEPS lod_tensor)
-op_library(concat_op DEPS concat_functor)
+op_library(concat_op DEPS concat)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 foreach(src ${GENERAL_OPS})
