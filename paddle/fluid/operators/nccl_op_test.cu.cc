@@ -14,19 +14,15 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <algorithm>
 #include <memory>
 #include <mutex>
 #include <thread>
-#include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -95,6 +91,8 @@ class NCCLTester : public ::testing::Test {
     VLOG(1) << "NCCLInitOp finished.";
   }
 
+  int GetGPUData(int gpu_id) { return gpu_id + 42; }
+
   template <class T>
   void PerThreadProgram(int gpu_id, const f::OpDesc &op_desc, f::Scope *scope) {
     std::unique_lock<std::mutex> lk(mu);
@@ -110,7 +108,7 @@ class NCCLTester : public ::testing::Test {
       send_tensor->Resize(kDims);
       send_tensor->mutable_data<T>(kDims, place);
 
-      std::vector<T> send_vector(f::product(kDims), gpu_id);
+      std::vector<T> send_vector(f::product(kDims), GetGPUData(gpu_id));
       paddle::framework::TensorFromVector<T>(send_vector, *ctx, send_tensor);
       ctx->Wait();
       VLOG(1) << "Send Tensor filled with elements " << send_tensor->numel();
@@ -163,8 +161,10 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
     ths[i].join();
   }
 
-  // check results
-  float result = std::accumulate(gpu_list.begin(), gpu_list.end(), 0);
+  float expected_result = 0.0;
+  for (int gpu_id : gpu_list) {
+    expected_result = expected_result + GetGPUData(gpu_id);
+  }
 
   for (size_t i = 0; i < dev_scopes.size(); ++i) {
     p::CPUPlace cpu_place;
@@ -182,7 +182,7 @@ TEST_F(NCCLTester, ncclAllReduceOp) {
         static_cast<p::CUDADeviceContext *>(dev_ctxs[i])->stream());
 
     for (int64_t j = 0; j < f::product(kDims); ++j) {
-      ASSERT_NEAR(ct[j], result, 1e-5);
+      ASSERT_NEAR(ct[j], expected_result, 1e-5);
     }
   }
 }
@@ -212,8 +212,10 @@ TEST_F(NCCLTester, ncclReduceOp) {
     ths[i].join();
   }
 
-  // check results on
-  float result = std::accumulate(gpu_list.begin(), gpu_list.end(), 0);
+  float expected_result = 0.0;
+  for (int gpu_id : gpu_list) {
+    expected_result = expected_result + GetGPUData(gpu_id);
+  }
 
   p::CPUPlace cpu_place;
   p::CUDAPlace gpu_place(gpu_list[kRoot]);
@@ -231,7 +233,7 @@ TEST_F(NCCLTester, ncclReduceOp) {
       static_cast<p::CUDADeviceContext *>(dev_ctxs[kRoot])->stream());
 
   for (int64_t j = 0; j < f::product(kDims); ++j) {
-    ASSERT_NEAR(ct[j], result, 1e-5);
+    ASSERT_NEAR(ct[j], expected_result, 1e-5);
   }
 }
 
@@ -261,8 +263,7 @@ TEST_F(NCCLTester, ncclBcastOp) {
   }
 
   const int idx = 1;
-  // check results on
-  float result = kRoot;
+  float result = GetGPUData(kRoot);
 
   p::CPUPlace cpu_place;
   p::CUDAPlace gpu_place(gpu_list[idx]);
