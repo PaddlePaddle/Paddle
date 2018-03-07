@@ -16,7 +16,7 @@ import contextlib
 from layer_function_generator import autodoc
 from tensor import assign, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator
+from ..framework import Program, Variable, Operator, Block
 from ..layer_helper import LayerHelper, unique_name
 from ops import logical_and, logical_not, logical_or
 
@@ -1353,7 +1353,7 @@ class Select(BlockGuard):
         params = set()
 
         for case_block in cases_block.ops:
-            if isinstance(case_block, core.BlockDesc):
+            if case_block.attrs and 'sub_block' in case_block.attrs:
                 for each_op in case_block.attrs['sub_block'].ops:
                     assert isinstance(each_op, Operator)
                     for iname in each_op.input_names:

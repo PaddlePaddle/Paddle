@@ -117,8 +117,8 @@ class TestRoutineOp(unittest.TestCase):
                     pass
 
                 with select.case(fluid.channel_recv, ch2, result2):
-                    # Execute something.
-                    print result2
+                    # Execute something with result2.
+                    pass
 
                 with select.default():
                     pass
