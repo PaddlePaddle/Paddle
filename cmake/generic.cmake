@@ -176,7 +176,7 @@ function(merge_static_libs TARGET_NAME)
   endif()
 endfunction(merge_static_libs)
 
-set(ENV{FLUID_MODULES}) # used for building fluid static library
+set_property(GLOBAL PROPERTY FLUID_MODULES "") # used for building fluid static library
 function(cc_library TARGET_NAME)
   set(options STATIC static SHARED shared)
   set(oneValueArgs "")
@@ -190,7 +190,9 @@ function(cc_library TARGET_NAME)
       get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
       string(FIND "${__target_path}" "fluid" pos)
       if(pos GREATER 1)
-        set(ENV{FLUID_MODULES} "$ENV{FLUID_MODULES};${TARGET_NAME}")
+        get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
+        set(fluid_modules ${fluid_modules} ${TARGET_NAME})
+        set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
       endif()
     endif()
 
