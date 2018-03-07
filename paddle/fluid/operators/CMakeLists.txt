@@ -190,6 +190,11 @@ foreach(src ${GENERAL_OPS})
 endforeach()
 file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
 
+add_subdirectory(reader)
+foreach(src ${READER_LIBRARY})
+    set(OP_LIBRARY ${src} ${OP_LIBRARY})
+endforeach()
+
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
@@ -203,4 +208,3 @@ if(WITH_GPU)
 endif()
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
-add_subdirectory(reader)
