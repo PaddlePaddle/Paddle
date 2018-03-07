@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/threadpool.h"
+#include <thread>
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
@@ -31,8 +31,6 @@ class DoubleBufferReader : public framework::DecoratedReader {
     std::thread prefetch(
         std::bind(&DoubleBufferReader::PrefetchThreadFunc, this));
     prefetch.detach();
-    // framework::Async(
-    //      std::bind(&DoubleBufferReader::PrefetchThreadFunc, this));
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
