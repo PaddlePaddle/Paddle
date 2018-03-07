@@ -55,21 +55,21 @@ copy(glog_lib
   DSTS ${dst_dir} ${dst_dir}/lib
 )
 
-IF(NOT PROTOBUF_FOUND)
+if(NOT PROTOBUF_FOUND)
     set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/protobuf")
     copy(protobuf_lib
       SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
       DSTS ${dst_dir} ${dst_dir}/lib
     )
-ENDIF(NOT PROTOBUF_FOUND)
+endif()
 
-IF(NOT WITH_MKL)
+if(NOT CBLAS_FOUND)
     set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/openblas")
     copy(openblas_lib
       SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
       DSTS ${dst_dir} ${dst_dir}
     )
-ENDIF(NOT WITH_MKL)
+endif()
 
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
