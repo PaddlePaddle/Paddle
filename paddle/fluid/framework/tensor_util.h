@@ -44,6 +44,11 @@ bool TensorContainsInf(const framework::Tensor& tensor);
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx);
+
+void TensorToStream(std::ostream& os, const Tensor& tensor,
+                    const platform::DeviceContext& dev_ctx,
+                    const std::string& var_name, char* buf);
+
 void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx);
 

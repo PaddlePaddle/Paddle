@@ -143,6 +143,7 @@ class RPCClient {
                          const platform::DeviceContext& ctx,
                          const framework::Scope& scope,
                          const std::string& var_name,
+                         const sendrecv::VariableMessage* req,
                          int64_t time_out = 600 * 1000);
 
   bool AsyncGetVariable(const std::string& ep,

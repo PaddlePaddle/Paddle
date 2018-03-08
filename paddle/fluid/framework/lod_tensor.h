@@ -206,6 +206,11 @@ void AppendLoD(LoD* lod, const LoD& lod_length);
  */
 void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
                        const platform::DeviceContext& dev_ctx);
+
+void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
+                       const platform::DeviceContext& dev_ctx,
+                       const std::string var_name, char* buf);
+
 void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx);
 

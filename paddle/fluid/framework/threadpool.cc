@@ -31,6 +31,7 @@ void ThreadPool::Init() {
   if (threadpool_.get() == nullptr) {
     // TODO(Yancey1989): specify the max threads number
     int num_threads = std::thread::hardware_concurrency();
+    printf("num_threads:%d", num_threads);
     PADDLE_ENFORCE_GT(num_threads, 0);
     threadpool_.reset(new ThreadPool(num_threads));
   }
