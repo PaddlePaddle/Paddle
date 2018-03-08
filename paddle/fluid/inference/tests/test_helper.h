@@ -110,6 +110,8 @@ void TestInference(const std::string& dirname,
     // Users can get the device_id using:
     //   int device_id = place.GetDeviceId();
     paddle::platform::SetDeviceId(0);
+#else
+    PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
   }
 
