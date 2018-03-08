@@ -3,12 +3,14 @@ file(GLOB TRAINER_PY_FILES . ./paddle/trainer/*.py)
 file(GLOB HELPERS_PY_FILES . ./paddle/trainer_config_helpers/*.py)
 file(GLOB UTILS_PY_FILES . ./paddle/utils/*.py)
 file(GLOB_RECURSE V2_PY_FILES ./paddle/v2/ *.py)
+file(GLOB_RECURSE FLUID_PY_FILES ./paddle/fluid/ *.py)
 
 set(PY_FILES paddle/__init__.py
   ${TRAINER_PY_FILES}
   ${HELPERS_PY_FILES}
   ${UTILS_PY_FILES}
-  ${V2_PY_FILES})
+  ${V2_PY_FILES}
+  ${FLUID_PY_FILES})
 
 add_custom_target(copy_paddle_master)
 
@@ -43,10 +45,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 
-add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/python/paddle/v2/fluid/core.so
-        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PADDLE_SOURCE_DIR}/python/paddle/v2/fluid/core.so
+add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/python/paddle/fluid/core.so
+        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PADDLE_SOURCE_DIR}/python/paddle/fluid/core.so
         DEPENDS paddle_pybind)
-add_custom_target(copy_paddle_pybind ALL DEPENDS ${PADDLE_SOURCE_DIR}/python/paddle/v2/fluid/core.so)
+add_custom_target(copy_paddle_pybind ALL DEPENDS ${PADDLE_SOURCE_DIR}/python/paddle/fluid/core.so)
 
 
 add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
@@ -55,7 +57,7 @@ add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_PYTHON_BUILD_DIR}/lib* ${PADDLE_PYTHON_BUILD_DIR}/lib-python
-    DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
+    DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 
 set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp paddle_pserver_main paddle_trainer paddle_merge_model ${MKL_DEPENDS})
 if(WITH_SWIG_PY)
@@ -72,7 +74,7 @@ if (WITH_TESTING)
     add_subdirectory(paddle/v2/tests)
     add_subdirectory(paddle/v2/reader/tests)
     add_subdirectory(paddle/v2/plot/tests)
-    add_subdirectory(paddle/v2/fluid/tests)
+    add_subdirectory(paddle/fluid/tests)
   endif()
 endif()
 install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}

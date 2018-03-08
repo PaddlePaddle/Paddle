@@ -47,11 +47,10 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(det_dims[1], 6UL,
                       "The shape is of Input(DetectRes) [N, 6].");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(label_dims.size(), 2,
                       "The rank of Input(Label) must be 2, "
                       "the shape is [N, 6].");
-    PADDLE_ENFORCE_EQ(label_dims[1], 6UL,
-                      "The shape is of Input(Label) [N, 6].");
+    PADDLE_ENFORCE_EQ(label_dims[1], 6, "The shape is of Input(Label) [N, 6].");
 
     if (ctx->HasInput("PosCount")) {
       PADDLE_ENFORCE(ctx->HasInput("TruePos"),
@@ -72,7 +71,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         framework::ToDataType(
             ctx.Input<framework::Tensor>("DetectRes")->type()),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 
@@ -96,6 +95,10 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
              "instance, the offsets in first dimension are called LoD, "
              "the number of offset is N + 1, if LoD[i + 1] - LoD[i] == 0, "
              "means there is no ground-truth data.");
+    AddInput("HasState",
+             "(Tensor<int>) A tensor with shape [1], 0 means ignoring input "
+             "states, which including PosCount, TruePos, FalsePos.")
+        .AsDispensable();
     AddInput("PosCount",
              "(Tensor) A tensor with shape [Ncls, 1], store the "
              "input positive example count of each class, Ncls is the count of "
@@ -139,13 +142,21 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("MAP",
               "(Tensor) A tensor with shape [1], store the mAP evaluate "
               "result of the detection.");
-
+    AddAttr<int>("class_num",
+                 "(int) "
+                 "The class number.");
+    AddAttr<int>(
+        "background_label",
+        "(int, defalut: 0) "
+        "The index of background label, the background label will be ignored. "
+        "If set to -1, then all categories will be considered.")
+        .SetDefault(0);
     AddAttr<float>(
         "overlap_threshold",
         "(float) "
         "The lower bound jaccard overlap threshold of detection output and "
         "ground-truth data.")
-        .SetDefault(.3f);
+        .SetDefault(.5f);
     AddAttr<bool>("evaluate_difficult",
                   "(bool, default true) "
                   "Switch to control whether the difficult data is evaluated.")

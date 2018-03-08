@@ -13,9 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+#include <sys/time.h>
+#include <time.h>
 #include <iomanip>
 #include <map>
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#endif  // PADDLE_WITH_CUDA
 #include "glog/logging.h"
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace platform {
@@ -44,6 +52,12 @@ inline uint64_t GetTimeInNsec() {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(
              clock::now().time_since_epoch())
       .count();
+}
+
+inline uint64_t PosixInNsec() {
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
 }
 
 Event::Event(EventKind kind, std::string name, uint32_t thread_id,
@@ -126,16 +140,23 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
   GetEventList().Record(EventKind::kPopRange, name, g_thread_id, dev_ctx);
 }
 
-RecordEvent::RecordEvent(const std::string& name,
-                         const DeviceContext* dev_ctx) {
+RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
+    : start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
   dev_ctx_ = dev_ctx;
   name_ = name;
   PushEvent(name_, dev_ctx_);
+  // Maybe need the same push/pop behavior.
+  SetCurAnnotation(name_.c_str());
 }
 
 RecordEvent::~RecordEvent() {
   if (g_state == ProfilerState::kDisabled) return;
+  DeviceTracer* tracer = GetDeviceTracer();
+  if (tracer) {
+    tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec());
+  }
+  ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
 }
 
@@ -147,10 +168,17 @@ void EnableProfiler(ProfilerState state) {
                  "The profiling state should be disabled when calling ",
                  "EnableProfiler.");
   g_state = state;
-  g_profiler_place = (g_state == ProfilerState::kCUDA) ? "CUDA" : "CPU";
+  if (g_state == ProfilerState::kCUDA) {
+    g_profiler_place = "CUDA";
+  } else if (g_state == ProfilerState::kCPU) {
+    g_profiler_place = "CPU";
+  } else {
+    g_profiler_place = "All";
+    GetDeviceTracer()->Enable();
+  }
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA) {
-    // Generate some dummy evenets first to reduce the startup overhead.
+    // Generate some dummy events first to reduce the startup overhead.
     for (int i = 0; i < 5; i++) {
       ForEachDevice([](int d) {
         DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(d));
@@ -183,7 +211,8 @@ std::vector<std::vector<Event>> GetAllEvents() {
   return result;
 }
 
-void DisableProfiler(EventSortingKey sorted_key) {
+void DisableProfiler(EventSortingKey sorted_key,
+                     const std::string& profile_path) {
   PADDLE_ENFORCE(g_state != ProfilerState::kDisabled,
                  "Can't disable profiling, since it's not starting.");
   // Mark the profiling stop.
@@ -193,6 +222,11 @@ void DisableProfiler(EventSortingKey sorted_key) {
   std::vector<std::vector<Event>> all_events = GetAllEvents();
   ParseEvents(all_events, sorted_key);
   ResetProfiler();
+  DeviceTracer* tracer = GetDeviceTracer();
+  if (g_profiler_place == "All" && tracer && tracer->IsEnabled()) {
+    tracer->Disable();
+    tracer->GenProfile(profile_path);
+  }
 }
 
 void ParseEvents(std::vector<std::vector<Event>>& events,
@@ -254,9 +288,11 @@ void ParseEvents(std::vector<std::vector<Event>>& events,
         }
 
         if (rit != pushed_events.rend()) {
-          double event_time = (g_profiler_place == "CUDA")
-                                  ? rit->CudaElapsedMs(events[i][j])
-                                  : rit->CpuElapsedMs(events[i][j]);
+          double event_time =
+              (g_profiler_place == "CUDA" || g_profiler_place == "All")
+                  ? rit->CudaElapsedMs(events[i][j])
+                  : rit->CpuElapsedMs(events[i][j]);
+
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
           max_name_width = std::max(max_name_width, event_name.size());

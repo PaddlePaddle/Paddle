@@ -15,6 +15,7 @@ limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/profiler.h"
 
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor& input,
@@ -87,31 +88,60 @@ void CheckError(paddle::framework::LoDTensor& output1,
   EXPECT_EQ(count, 0U) << "There are " << count << " different elements.";
 }
 
-template <typename Place, bool IsCombined = false>
+template <typename Place>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
-                   std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
+                   std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
+                   const int repeat = 1,
+                   const bool is_combined = false) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
   auto* scope = new paddle::framework::Scope();
 
+  // Profile the performance
+  paddle::platform::ProfilerState state;
+  if (paddle::platform::is_cpu_place(place)) {
+    state = paddle::platform::ProfilerState::kCPU;
+  } else {
+#ifdef PADDLE_WITH_CUDA
+    state = paddle::platform::ProfilerState::kCUDA;
+    // The default device_id of paddle::platform::CUDAPlace is 0.
+    // Users can get the device_id using:
+    //   int device_id = place.GetDeviceId();
+    paddle::platform::SetDeviceId(0);
+#else
+    PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+#endif
+  }
+
+  // Enable the profiler
+  paddle::platform::EnableProfiler(state);
+
   // 2. Initialize the inference_program and load parameters
   std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
-  if (IsCombined) {
-    // All parameters are saved in a single file.
-    // Hard-coding the file names of program and parameters in unittest.
-    // Users are free to specify different filename
-    // (provided: the filenames are changed in the python api as well: io.py)
-    std::string prog_filename = "__model_combined__";
-    std::string param_filename = "__params_combined__";
-    inference_program = paddle::inference::Load(executor,
-                                                *scope,
-                                                dirname + "/" + prog_filename,
-                                                dirname + "/" + param_filename);
-  } else {
-    // Parameters are saved in separate files sited in the specified `dirname`.
-    inference_program = paddle::inference::Load(executor, *scope, dirname);
+  {
+    paddle::platform::RecordEvent record_event(
+        "init_program",
+        paddle::platform::DeviceContextPool::Instance().Get(place));
+
+    if (is_combined) {
+      // All parameters are saved in a single file.
+      // Hard-coding the file names of program and parameters in unittest.
+      // The file names should be consistent with that used in Python API
+      //  `fluid.io.save_inference_model`.
+      std::string prog_filename = "__model_combined__";
+      std::string param_filename = "__params_combined__";
+      inference_program =
+          paddle::inference::Load(executor,
+                                  *scope,
+                                  dirname + "/" + prog_filename,
+                                  dirname + "/" + param_filename);
+    } else {
+      // Parameters are saved in separate files sited in the specified
+      // `dirname`.
+      inference_program = paddle::inference::Load(executor, *scope, dirname);
+    }
   }
 
   // 3. Get the feed_target_names and fetch_target_names
@@ -134,7 +164,21 @@ void TestInference(const std::string& dirname,
   }
 
   // 6. Run the inference program
-  executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+  {
+    // Run repeat times to profile the performance
+    for (int i = 0; i < repeat; ++i) {
+      paddle::platform::RecordEvent record_event(
+          "run_inference",
+          paddle::platform::DeviceContextPool::Instance().Get(place));
+
+      executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+    }
+  }
+
+  // Disable the profiler and print the timing information
+  paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
+                                    "profiler.txt");
+  paddle::platform::ResetProfiler();
 
   delete scope;
 }

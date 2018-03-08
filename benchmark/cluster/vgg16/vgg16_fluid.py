@@ -1,11 +1,11 @@
 #   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -68,6 +68,21 @@ parser.add_argument(
     type=str2bool,
     default=True,
     help='Whether to run as local mode.')
+
+parser.add_argument(
+    "--ps_hosts",
+    type=str,
+    default="",
+    help="Comma-separated list of hostname:port pairs")
+parser.add_argument(
+    "--trainer_hosts",
+    type=str,
+    default="",
+    help="Comma-separated list of hostname:port pairs")
+
+# Flags for defining the tf.train.Server
+parser.add_argument(
+    "--task_index", type=int, default=0, help="Index of task within the job")
 args = parser.parse_args()
 
 
@@ -91,10 +106,10 @@ def vgg16_bn_drop(input):
     conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
-    fc1 = fluid.layers.fc(input=drop, size=512, act=None)
+    fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
     bn = fluid.layers.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
-    fc2 = fluid.layers.fc(input=drop2, size=512, act=None)
+    fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
     return fc2
 
 
@@ -123,13 +138,14 @@ def main():
     avg_cost = fluid.layers.mean(x=cost)
 
     # Evaluator
-    accuracy = fluid.evaluator.Accuracy(input=predict, label=label)
+    batch_size = fluid.layers.create_tensor(dtype='int64')
+    batch_acc = fluid.layers.accuracy(
+        input=predict, label=label, total=batch_size)
 
     # inference program
     inference_program = fluid.default_main_program().clone()
     with fluid.program_guard(inference_program):
-        test_target = accuracy.metrics + accuracy.states
-        inference_program = fluid.io.get_inference_program(test_target)
+        inference_program = fluid.io.get_inference_program(batch_acc)
 
     # Optimization
     optimizer = fluid.optimizer.Adam(learning_rate=args.learning_rate)
@@ -142,27 +158,30 @@ def main():
 
     # test
     def test(exe):
-        accuracy.reset(exe)
+        test_pass_acc = fluid.average.WeightedAverage()
         for batch_id, data in enumerate(test_reader()):
             img_data = np.array(map(lambda x: x[0].reshape(data_shape),
                                     data)).astype("float32")
             y_data = np.array(map(lambda x: x[1], data)).astype("int64")
             y_data = y_data.reshape([-1, 1])
 
-            exe.run(inference_program,
-                    feed={"pixel": img_data,
-                          "label": y_data})
+            outs = exe.run(inference_program,
+                           feed={"pixel": img_data,
+                                 "label": y_data},
+                           fetch_list=[batch_acc, batch_size])
+            test_pass_acc.add(value=np.array(outs[0]), weight=np.array(outs[1]))
 
-        return accuracy.eval(exe)
+        return test_pass_acc.eval()
 
     def train_loop(exe, trainer_prog):
         iters = 0
         ts = time.time()
+        train_pass_acc = fluid.average.WeightedAverage()
         for pass_id in range(args.num_passes):
             # train
             start_time = time.time()
             num_samples = 0
-            accuracy.reset(exe)
+            train_pass_acc.reset()
             with profiler.profiler("CPU", 'total') as prof:
                 for batch_id, data in enumerate(train_reader()):
                     ts = time.time()
@@ -172,20 +191,22 @@ def main():
                     y_data = np.array(map(lambda x: x[1], data)).astype("int64")
                     y_data = y_data.reshape([-1, 1])
 
-                    loss, acc = exe.run(
+                    loss, acc, b_size = exe.run(
                         trainer_prog,
                         feed={"pixel": img_data,
                               "label": y_data},
-                        fetch_list=[avg_cost] + accuracy.metrics)
+                        fetch_list=[avg_cost, batch_acc, batch_size])
                     iters += 1
                     num_samples += len(data)
+                    train_pass_acc.add(value=acc, weight=b_size)
                     print(
-                        "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, spent %f"
-                        % (pass_id, iters, loss, acc, time.time() - ts)
+                        "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, Speed = %.2f img/s"
+                        % (pass_id, iters, loss, acc,
+                           len(data) / (time.time() - ts))
                     )  # The accuracy is the accumulation of batches, but not the current batch.
 
             pass_elapsed = time.time() - start_time
-            pass_train_acc = accuracy.eval(exe)
+            pass_train_acc = train_pass_acc.eval()
             pass_test_acc = test(exe)
             print(
                 "Pass = %d, Training performance = %f imgs/s, Train accuracy = %f, Test accuracy = %f\n"
@@ -209,27 +230,24 @@ def main():
             batch_size=args.batch_size)
         train_loop(exe, fluid.default_main_program())
     else:
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # all pserver endpoints
-        eplist = []
-        for ip in pserver_ips.split(","):
-            eplist.append(':'.join([ip, "6174"]))
-        pserver_endpoints = ",".join(eplist)
-        print("pserver endpoints: ", pserver_endpoints)
         trainers = int(os.getenv("TRAINERS"))  # total trainer count
         print("trainers total: ", trainers)
-        current_endpoint = os.getenv(
-            "POD_IP") + ":6174"  # current pserver endpoint
+
         training_role = os.getenv(
             "TRAINING_ROLE",
             "TRAINER")  # get the training role: trainer/pserver
+
         t = fluid.DistributeTranspiler()
         t.transpile(
             optimize_ops,
             params_grads,
-            pservers=pserver_endpoints,
+            trainer_id=args.task_index,
+            pservers=args.ps_hosts,
             trainers=trainers)
 
         if training_role == "PSERVER":
+            current_endpoint = os.getenv("POD_IP") + ":" + os.getenv(
+                "PADDLE_INIT_PORT")
             if not current_endpoint:
                 print("need env SERVER_ENDPOINT")
                 exit(1)

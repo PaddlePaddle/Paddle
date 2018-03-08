@@ -13,6 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_op.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -54,12 +60,6 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
   for (size_t i = 0; i < strides.size(); ++i) {
-    PADDLE_ENFORCE(in_dims[i + 2] + 2 * paddings[i] -
-                           (dilations[i] * (filter_dims[i + 2] - 1) + 1) >
-                       0,
-                   "Due to the settings of paddings, filter_dims and "
-                   "dilations, the output size is less than 0, please check "
-                   "again.");
     output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
                                           dilations[i], paddings[i],
                                           strides[i]));
@@ -70,22 +70,21 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
   }
 #endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
   }
+#endif
 
   std::string data_format = ctx.Attr<std::string>("data_format");
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
@@ -136,6 +135,9 @@ Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -230,6 +232,9 @@ Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
       .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -290,23 +295,21 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
   }
 #endif
 
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
-  }
-
   std::string data_format = ctx.Attr<std::string>("data_format");
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),

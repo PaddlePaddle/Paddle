@@ -22,33 +22,21 @@ namespace paddle {
 namespace inference {
 
 void ReadBinaryFile(const std::string& filename, std::string& contents) {
-  VLOG(3) << "loading model from " << filename;
-  std::ifstream inputfs(filename, std::ios::in | std::ios::binary);
-  inputfs.seekg(0, std::ios::end);
+  std::ifstream fin(filename, std::ios::in | std::ios::binary);
+  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+  fin.seekg(0, std::ios::end);
   contents.clear();
-  contents.resize(inputfs.tellg());
-  inputfs.seekg(0, std::ios::beg);
-  inputfs.read(&contents[0], contents.size());
-  inputfs.close();
+  contents.resize(fin.tellg());
+  fin.seekg(0, std::ios::beg);
+  fin.read(&contents[0], contents.size());
+  fin.close();
 }
 
-bool IsParameter(const framework::VarDesc* var,
-                 const framework::ProgramDesc& main_program) {
-  if (var->Persistable()) {
-    // There are many unreachable variables in the program
-    for (size_t i = 0; i < main_program.Size(); ++i) {
-      const framework::BlockDesc& block = main_program.Block(i);
-      for (auto* op : block.AllOps()) {
-        if (op->Type() == framework::kFeedOpType) {
-          continue;
-        }
-        for (auto input_argument_name : op->InputArgumentNames()) {
-          if (input_argument_name == var->Name()) {
-            return true;
-          }
-        }
-      }
-    }
+bool IsPersistable(const framework::VarDesc* var) {
+  if (var->Persistable() &&
+      var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
+      var->GetType() != framework::proto::VarType::FETCH_LIST) {
+    return true;
   }
   return false;
 }
@@ -65,8 +53,8 @@ void LoadPersistables(framework::Executor& executor,
   std::vector<std::string> paramlist;
 
   for (auto* var : global_block.AllVars()) {
-    if (IsParameter(var, main_program)) {
-      VLOG(3) << "parameter's name: " << var->Name();
+    if (IsPersistable(var)) {
+      VLOG(3) << "persistable variable's name: " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());
       new_var->SetShape(var->GetShape());
@@ -101,7 +89,6 @@ void LoadPersistables(framework::Executor& executor,
 
   executor.Run(*load_program, &scope, 0, true, true);
 
-  VLOG(3) << "Ran loading successfully";
   delete load_program;
 }
 
@@ -110,6 +97,7 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
                                              const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
   std::string program_desc_str;
+  VLOG(3) << "loading model from " << model_filename;
   ReadBinaryFile(model_filename, program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(

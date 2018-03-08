@@ -16,13 +16,16 @@ limitations under the License. */
 #include <typeindex>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace framework {
 
 inline proto::VarType::Type ToDataType(std::type_index type) {
   using namespace paddle::framework::proto;
-  if (typeid(float).hash_code() == type.hash_code()) {
+  if (typeid(platform::float16).hash_code() == type.hash_code()) {
+    return proto::VarType::FP16;
+  } else if (typeid(float).hash_code() == type.hash_code()) {
     return proto::VarType::FP32;
   } else if (typeid(double).hash_code() == type.hash_code()) {
     return proto::VarType::FP64;
@@ -40,6 +43,8 @@ inline proto::VarType::Type ToDataType(std::type_index type) {
 inline std::type_index ToTypeIndex(proto::VarType::Type type) {
   using namespace paddle::framework::proto;
   switch (type) {
+    case proto::VarType::FP16:
+      return typeid(platform::float16);
     case proto::VarType::FP32:
       return typeid(float);
     case proto::VarType::FP64:
@@ -59,6 +64,9 @@ template <typename Visitor>
 inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
   using namespace paddle::framework::proto;
   switch (type) {
+    case proto::VarType::FP16:
+      visitor.template operator()<platform::float16>();
+      break;
     case proto::VarType::FP32:
       visitor.template operator()<float>();
       break;

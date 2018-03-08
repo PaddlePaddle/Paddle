@@ -235,27 +235,53 @@ TEST(TensorToVector, Tensor) {
 TEST(TensorContainsNAN, CPU) {
   using namespace paddle::framework;
   using namespace paddle::platform;
-  Tensor src;
-  float* buf = src.mutable_data<float>({3}, CPUPlace());
-  buf[0] = 0.0;
-  buf[1] = NAN;
-  buf[2] = 0.0;
-  ASSERT_TRUE(TensorContainsNAN(src));
-  buf[1] = 0.0;
-  ASSERT_FALSE(TensorContainsNAN(src));
+  {
+    Tensor src;
+    float* buf = src.mutable_data<float>({3}, CPUPlace());
+    buf[0] = 0.0;
+    buf[1] = NAN;
+    buf[2] = 0.0;
+    ASSERT_TRUE(TensorContainsNAN(src));
+    buf[1] = 0.0;
+    ASSERT_FALSE(TensorContainsNAN(src));
+  }
+
+  {
+    Tensor src;
+    float16* buf = src.mutable_data<float16>({3}, CPUPlace());
+    buf[0] = 0.0;
+    buf[1].x = 0x7fff;
+    buf[2] = 0.0;
+    ASSERT_TRUE(TensorContainsNAN(src));
+    buf[1] = 0.0;
+    ASSERT_FALSE(TensorContainsNAN(src));
+  }
 }
 
 TEST(TensorContainsInf, CPU) {
   using namespace paddle::framework;
   using namespace paddle::platform;
-  Tensor src;
-  double* buf = src.mutable_data<double>({3}, CPUPlace());
-  buf[0] = 1.0;
-  buf[1] = INFINITY;
-  buf[2] = 0.0;
-  ASSERT_TRUE(TensorContainsInf(src));
-  buf[1] = 1.0;
-  ASSERT_FALSE(TensorContainsInf(src));
+  {
+    Tensor src;
+    double* buf = src.mutable_data<double>({3}, CPUPlace());
+    buf[0] = 1.0;
+    buf[1] = INFINITY;
+    buf[2] = 0.0;
+    ASSERT_TRUE(TensorContainsInf(src));
+    buf[1] = 1.0;
+    ASSERT_FALSE(TensorContainsInf(src));
+  }
+
+  {
+    Tensor src;
+    float16* buf = src.mutable_data<float16>({3}, CPUPlace());
+    buf[0] = 1.0;
+    buf[1].x = 0x7c00;
+    buf[2] = 0.0;
+    ASSERT_TRUE(TensorContainsInf(src));
+    buf[1] = 1.0;
+    ASSERT_FALSE(TensorContainsInf(src));
+  }
 }
 
 TEST(Tensor, FromAndToStream) {
