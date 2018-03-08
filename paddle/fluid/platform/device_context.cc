@@ -33,9 +33,15 @@ DeviceContextPool::DeviceContextPool(
   PADDLE_ENFORCE_GT(places.size(), 0);
   for (size_t i = 0; i < places.size(); i++) {
     if (platform::is_cpu_place(places[i])) {
+#ifdef PADDLE_WITH_MKLDNN
+      device_contexts_.emplace(places[i],
+                               new platform::MKLDNNDeviceContext(
+                                   boost::get<platform::CPUPlace>(places[i])));
+#else
       device_contexts_.emplace(places[i],
                                new platform::CPUDeviceContext(
                                    boost::get<platform::CPUPlace>(places[i])));
+#endif
     } else if (platform::is_gpu_place(places[i])) {
 #ifdef PADDLE_WITH_CUDA
       device_contexts_.emplace(places[i],
@@ -121,6 +127,8 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   SetDeviceId(place_.device);
+  multi_process = GetCUDAMultiProcessors(place_.device);
+  max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
@@ -154,6 +162,10 @@ void CUDADeviceContext::Wait() const {
   PADDLE_ENFORCE(cudaGetLastError());
 }
 
+int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
+  return multi_process * max_threads_per_mp;
+}
+
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
@@ -170,64 +182,38 @@ cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place), ready_(false) {
-  stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
-  engine_.reset(new mkldnn::engine(mkldnn::engine::cpu, 0));
+    : CPUDeviceContext(place), engine_(mkldnn::engine::cpu, 0), p_blobs_() {
+  p_blobs_.reset(new std::unordered_map<std::string, std::shared_ptr<void>>());
 }
 
-template <typename T>
-void MKLDNNDeviceContext::AddElement(const std::string& op_key,
-                                     const T& value) {
-  if (GetElement<T>(op_key)) {
-    return;
+void MKLDNNDeviceContext::SetBlob(const std::string& name,
+                                  std::shared_ptr<void> data) const {
+  std::unordered_map<std::string, std::shared_ptr<void>>* p;
+  p = p_blobs_.get();
+
+  auto it = p->find(name);
+
+  if (it == p->end()) {
+    (*p)[name] = data;  // create new blob
+  } else {
+    it->second = data;  // set data to existing blob
   }
-  GetElementPool<T>().emplace(op_key, std::move(value));
+
+  return;
 }
 
-template <typename T>
-const T& MKLDNNDeviceContext::GetElement(const std::string& op_key) const {
-  auto it = GetElementPool<T>().find(op_key);
-  return it == GetElementPool<T>().end() ? nullptr : it->second;
-}
+std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
+    const std::string& name) const {
+  std::unordered_map<std::string, std::shared_ptr<void>>* p;
+  p = p_blobs_.get();
 
-template <>
-const std::unordered_map<const std::string, const MKLDNNMemoryPtr,
-                         std::hash<std::string>>&
-MKLDNNDeviceContext::GetElementPool<MKLDNNMemoryPtr>() const {
-  return memory_pool_;
-}
+  auto it = p->find(name);
 
-template <>
-const std::unordered_map<const std::string, const MKLDNNPrimitivePtr,
-                         std::hash<std::string>>&
-MKLDNNDeviceContext::GetElementPool<MKLDNNPrimitivePtr>() const {
-  return primitive_pool_;
-}
-
-template <>
-const std::unordered_map<const std::string, const MKLDNNPrimitiveDescPtr,
-                         std::hash<std::string>>&
-MKLDNNDeviceContext::GetElementPool<MKLDNNPrimitiveDescPtr>() const {
-  return primitive_desc_pool_;
-}
-
-void MKLDNNDeviceContext::Execute(bool block) {
-  if (pipeline_.empty()) {
-    return;
+  if (it != p->end()) {
+    return it->second;
   }
-  ResetStream();
-  stream_->submit(pipeline_).wait(block);
-  ready_ = false;
-  pipeline_.clear();
-}
 
-void MKLDNNDeviceContext::ResetStream() {
-  if (ready_) {
-    return;
-  }
-  // TODO(TJ): change me when mkldnn have specific method to reset this state
-  stream_.reset(new mkldnn::stream(mkldnn::stream::kind::eager));
-  ready_ = true;
+  return nullptr;
 }
 
 #endif

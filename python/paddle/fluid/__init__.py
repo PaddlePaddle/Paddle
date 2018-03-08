@@ -28,6 +28,7 @@ import nets
 import optimizer
 import backward
 import regularizer
+import average
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace

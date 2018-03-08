@@ -31,6 +31,8 @@ dtype_to_size = {
 
 sub_block_ops = ["while", "while_grad", "parallel_do", "parallel_do_grad"]
 
+PRINT_LOG = False
+
 
 class ControlFlowGraph(object):
     def __init__(self, Program, ops, forward_num, skip_opt):
@@ -171,12 +173,14 @@ class ControlFlowGraph(object):
                                 # TODO(qijun): actually, we should compare dtype_to_size[x_dtype]
                                 # and dtype_to_size[cache_dtype]
                                 if x_dtype == cache_dtype:
-                                    print(("Hit Cache !!!! cache pool index "
-                                           "is %d, var name is %s, "
-                                           "cached var name is %s, "
-                                           "var shape is %s ") %
-                                          (index, x, cache_var,
-                                           str(cache_shape)))
+                                    if PRINT_LOG:
+                                        print(
+                                            ("Hit Cache !!!! cache pool index "
+                                             "is %d, var name is %s, "
+                                             "cached var name is %s, "
+                                             "var shape is %s ") %
+                                            (index, x, cache_var,
+                                             str(cache_shape)))
                                     self.pool.pop(index)
                                     if x == cache_var:
                                         break
@@ -277,7 +281,9 @@ def _get_cfgs(input_program):
     return cfgs
 
 
-def memory_optimize(input_program):
+def memory_optimize(input_program, print_log=False):
+    global PRINT_LOG
+    PRINT_LOG = print_log
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
         cfg.memory_optimize()
