@@ -12,14 +12,14 @@ for i in xrange(M):  # M is  the iteration number
     op.run();
 ```
 
-In summary, the profiler should have following features:
+In summary, the profiler should have the following features:
 
-- records time span in a loop.
-- supports nested time span.
-- supports multiple threads/multiple GPUs.
-- supports to be enabled and disabled by users.
+- Records time span in a loop.
+- Supports nested time span.
+- Supports multiple threads/multiple GPUs.
+- Supports to be enabled and disabled by users.
 
-But how to record the time for the mixed C++ and CUDA program?  There many C++ APIs to get the current calendar time in the host program. But for GPU, the CUDA kernels may be executed concurrently if they are in different [streams](http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#streams) and the CUDA kernels are asynchronous with the host program if there is no the synchronous after the CUDA kernels. CUDA provides [event](http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#events) to monitor the device and performs accurate timing. Inspired by PyTorch and CUDA event, we also design and apply the events to record the timeline. Then summarize and present statistics based on these events.  
+But how to record the time for a mixed C++ and CUDA program?  There many C++ APIs to get the current calendar time in the host program. But for GPU, the CUDA kernels may be executed concurrently if they are in different [streams](http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#streams) and the CUDA kernels are asynchronous with the host program if there is no the synchronous after the CUDA kernels. CUDA provides [event](http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#events) to monitor the device and performs accurate timing. Inspired by PyTorch and CUDA event, we also design and apply the events to record the timeline. Then summarize and present statistics based on these events.  
 
 The overall flow is shown in the following figure.
 
@@ -27,7 +27,7 @@ The overall flow is shown in the following figure.
 
 ### Event
 
-In above work flow, a pair of events is needed before and after the piece of code to collect time. So the event has a flag to mark whether it is a starting event or an ending event. Except this two kinds of event, sometimes, an only marker with a text message is needed, for example, a marker to specify the profiling start or end. There are three kinds of event:
+In above work flow, a pair of events is needed before and after the piece of code to collect time. So the event has a flag to mark whether it is a starting event or an ending event. Except for this two kinds of event, sometimes, an only marker with a text message is needed, for example, a marker to specify the profiling start or end. There are three kinds of event:
 
 ```c++
 enum EventKind {
