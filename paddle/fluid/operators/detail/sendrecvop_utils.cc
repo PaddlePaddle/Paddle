@@ -75,6 +75,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   sendrecv::VariableMessage request;
   std::string header;
   request.AppendToString(&header);
+  // When using GPU, need to free the copied CPU buffer
+  // when the ByteBuffer destroies
+  // TODO(typhoonzero): add unref here, if we have dependent
+  // parallelism execution, need to know when to free the tensor.
+  DestroyCallback destroy_callback = [](void* backing) {};
+
   void* buf = malloc(1024);
   void* payload;
   size_t payload_size;
@@ -109,9 +115,34 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
           }
         }
       }
-      // TODO(typhoonzero): Copy from GPU if needed
-      payload = tensor.data<void>();
+      if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+        platform::CPUPlace cpu;
+        auto& gpu_dev_ctx =
+            static_cast<const platform::CUDADeviceContext&>(ctx);
+        auto copy_size = tensor.memory_size();
+        payload = memory::Alloc(cpu, copy_size);
+        memory::Copy(cpu, payload,
+                     boost::get<platform::CUDAPlace>(tensor.place()),
+                     reinterpret_cast<const void*>(tensor.data<void>()),
+                     copy_size, gpu_dev_ctx.stream());
+        ctx.Wait();
+        float* ttt = reinterpret_cast<float*>(payload);
+        for (int i = 0; i < copy_size / 4; i++) {
+          std::cout << "copied to cpu: " << ttt[i] << std::endl;
+        }
+        destroy_callback = [](void* backing) {
+          // platform::CPUPlace cpu;
+          // memory::Free(cpu, backing);
+        };
+#endif
+      } else {
+        payload = tensor.data<void>();
+      }
       payload_size = tensor.memory_size();
+      std::cout << "size memory " << tensor.memory_size() << "size cal "
+                << tensor.numel() * framework::SizeOfType(tensor.type())
+                << std::endl;
       e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     case framework::proto::VarType_Type_SELECTED_ROWS: {
@@ -123,9 +154,33 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
       }
       e.WriteUint64(VarMsg::kLodLevelFieldNumber, 0);
-      // TODO(typhoonzero): Copy from GPU if needed
-      payload = slr->mutable_value()->data<void>();
-      payload_size = slr->value().memory_size();
+      auto* tensor = slr->mutable_value();
+      if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+        platform::CPUPlace cpu;
+        auto& gpu_dev_ctx =
+            static_cast<const platform::CUDADeviceContext&>(ctx);
+        auto copy_size = tensor->memory_size();
+        payload = memory::Alloc(cpu, copy_size);
+        memory::Copy(cpu, payload,
+                     boost::get<platform::CUDAPlace>(tensor->place()),
+                     reinterpret_cast<const void*>(tensor->data<void>()),
+                     copy_size, gpu_dev_ctx.stream());
+        ctx.Wait();
+        float* ttt = reinterpret_cast<float*>(payload);
+        for (int i = 0; i < copy_size / 4; i++) {
+          std::cout << "copied to cpu: " << ttt[i] << std::endl;
+        }
+        destroy_callback = [](void* backing) {
+          std::cout << "destroy..." << std::endl;
+          // platform::CPUPlace cpu;
+          // memory::Free(cpu, backing);
+        };
+#endif
+      } else {
+        payload = slr->mutable_value()->data<void>();
+      }
+      payload_size = tensor->memory_size();
       e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     default:
@@ -134,29 +189,21 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       break;
   }
   // steal reference of tensor data
-  ::grpc::Slice slices[4];  // metadata, tensor, rows
+  ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows
   int num_slices = 2;       // only SelectedRows have rows buffer
   slices[0] = ::grpc::Slice(e.size());
   memcpy(const_cast<uint8_t*>(slices[0].begin()), e.data(), e.size());
-  slices[1] =
-      ::grpc::Slice(grpc_slice_new_with_user_data(payload, payload_size,
-                                                  [](void* backing) {
-                                                    // TODO(typhoonzero): add
-                                                    // unref here, if we have
-                                                    // dependent
-                                                    // parallelism execution,
-                                                    // need to know when to free
-                                                    // the tensor.
-                                                  },
-                                                  static_cast<char*>(payload)),
-                    ::grpc::Slice::STEAL_REF);
+  slices[1] = ::grpc::Slice(
+      grpc_slice_new_with_user_data(payload, payload_size, destroy_callback,
+                                    static_cast<char*>(payload)),
+      ::grpc::Slice::STEAL_REF);
 
   if (framework::ToVarType(var->Type()) ==
       framework::proto::VarType_Type_SELECTED_ROWS) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
 
     ProtoEncodeHelper e2((char*)buf, 128);
-    // NOTE(typhoonzero): rows is of type int64_t
+    // NOTE: rows is of type int64_t
     size_t rows_memory_size =
         slr->rows().capacity() * framework::SizeOfType(typeid(int64_t));
     e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
@@ -217,7 +264,12 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
     // Maybe need to find a way to release all memory except tensor content.
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
-// do GPU copy here.
+      platform::CPUPlace cpu;
+      auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
+      memory::Copy(boost::get<platform::CUDAPlace>(tensor->place()),
+                   tensor_data, cpu,
+                   reinterpret_cast<const void*>(meta.serialized().data()),
+                   meta.serialized().size(), gpu_dev_ctx.stream());
 #endif
     } else {
       memcpy(tensor_data,
@@ -228,15 +280,18 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
     auto* slr = var->GetMutable<framework::SelectedRows>();
     auto* tensor = slr->mutable_value();
     int64_t* rows_data = slr->mutable_rows()->data();
-    std::cout << "tensor pointor " << tensor << " rows " << slr->mutable_rows()
-              << std::endl;
     tensor->Resize(dims);
     void* tensor_data = tensor->mutable_data(
         ctx.GetPlace(),
         paddle::operators::detail::ToTypeIndex(meta.data_type()));
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
-// do GPU copy here.
+      platform::CPUPlace cpu;
+      auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
+      memory::Copy(boost::get<platform::CUDAPlace>(tensor->place()),
+                   tensor_data, cpu,
+                   reinterpret_cast<const void*>(meta.serialized().data()),
+                   meta.serialized().size(), gpu_dev_ctx.stream());
 #endif
     } else {
       memcpy(tensor_data,

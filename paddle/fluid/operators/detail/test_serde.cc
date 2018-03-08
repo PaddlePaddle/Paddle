@@ -18,16 +18,20 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace operators = paddle::operators;
+namespace math = paddle::operators::math;
+namespace memory = paddle::memory;
 
-TEST(Tensor, CPU) {
+void RunSerdeTestTensor(platform::Place place) {
   // serialize var to ByteBuffer
   framework::Variable var;
   auto* tensor = var.GetMutable<framework::LoDTensor>();
@@ -36,11 +40,10 @@ TEST(Tensor, CPU) {
   lod.push_back(framework::Vector<size_t>({1, 3, 8}));
   tensor->set_lod(lod);
   int tensor_numel = 4 * 8 * 4 * 2;
-  platform::CPUPlace place;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
   float* orig_tensor_data = tensor->mutable_data<float>(place);
-  for (int i = 0; i < tensor_numel; ++i) orig_tensor_data[i] = i;
+  math::set_constant(ctx, tensor, 31.9);
 
   ::grpc::ByteBuffer msg;
   operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
@@ -68,14 +71,26 @@ TEST(Tensor, CPU) {
 
   const float* tensor_data =
       reinterpret_cast<const float*>(varmsg.serialized().data());
-  for (int i = 0; i < tensor_numel; ++i)
+  for (int i = 0; i < tensor_numel; ++i) {
+    std::cout << "tensor data: " << tensor_data[i] << std::endl;
     EXPECT_EQ(tensor_data[i], orig_tensor_data[i]);
+  }
 
   // deserialize zero-copy
   framework::Variable var2;
   operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
   auto tensor2 = var2.Get<framework::LoDTensor>();
-  const float* tensor_data2 = tensor2.data<float>();
+  float* tensor_data2 = nullptr;
+  framework::Tensor tmp_tensor;
+
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    platform::CPUPlace cpu;
+    framework::TensorCopy(tensor2, cpu, &tmp_tensor);
+    tensor_data2 = tmp_tensor.data<float>();
+  } else {
+    tensor_data2 = const_cast<float*>(tensor2.data<float>());
+  }
+
   EXPECT_EQ(varmsg.lod_level(), 1);
   EXPECT_EQ(varmsg.lod(0).lod_data(0), 1);
   EXPECT_EQ(varmsg.lod(0).lod_data(1), 3);
@@ -84,8 +99,7 @@ TEST(Tensor, CPU) {
     EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
 }
 
-TEST(SelectedRows, CPU) {
-  platform::CPUPlace place;
+void RunSerdeTestSelectedRows(platform::Place place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
 
@@ -98,8 +112,7 @@ TEST(SelectedRows, CPU) {
   tensor->Resize(framework::make_ddim({2, 10}));
   int tensor_numel = 2 * 10;
   float* orig_tensor_data = tensor->mutable_data<float>(place);
-  for (int i = 0; i < tensor_numel; ++i) orig_tensor_data[i] = i;
-
+  math::set_constant(ctx, tensor, 32.7);
   rows->push_back(3);
   rows->push_back(10);
 
@@ -119,16 +132,21 @@ TEST(SelectedRows, CPU) {
 
   EXPECT_EQ(varmsg.varname(), "myvar");
   EXPECT_EQ(varmsg.type(), 1);
-
+  std::cout << "before test1, ser size: " << varmsg.serialized().size()
+            << std::endl;
   const float* tensor_data =
       reinterpret_cast<const float*>(varmsg.serialized().data());
   const int64_t* rows_data =
       reinterpret_cast<const int64_t*>(varmsg.rows().data());
-  for (int i = 0; i < tensor_numel; ++i)
+  std::cout << "deser pointer " << (void*)tensor_data << std::endl;
+  for (int i = 0; i < tensor_numel; ++i) {
+    std::cout << "deser data: " << tensor_data[i] << std::endl;
     EXPECT_EQ(tensor_data[i], orig_tensor_data[i]);
+  }
+  std::cout << "before test rows" << std::endl;
   EXPECT_EQ(rows_data[0], 3);
   EXPECT_EQ(rows_data[1], 10);
-
+  std::cout << "before test2" << std::endl;
   // deserialize zero-copy
   framework::Variable var2;
   operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
@@ -136,12 +154,42 @@ TEST(SelectedRows, CPU) {
   auto* slr2 = var2.GetMutable<framework::SelectedRows>();
   auto* tensor2 = slr2->mutable_value();
   auto* rows2 = slr2->mutable_rows();
-  std::cout << "tensor2 pointor " << tensor2 << " rows " << rows2 << std::endl;
+  float* tensor_data2 = nullptr;
+  framework::Tensor tmp_tensor;
 
-  const float* tensor_data2 = tensor2->data<float>();
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    platform::CPUPlace cpu;
+    framework::TensorCopy(*tensor2, cpu, &tmp_tensor);
+    tensor_data2 = tmp_tensor.data<float>();
+  } else {
+    tensor_data2 = const_cast<float*>(tensor2->data<float>());
+  }
   const int64_t* rows_data2 = rows2->data();
-  for (int i = 0; i < tensor_numel; ++i)
+
+  for (int i = 0; i < tensor_numel; ++i) {
+    std::cout << "data: " << tensor_data2[i] << std::endl;
     EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
+  }
   EXPECT_EQ(rows_data2[0], 3);
   EXPECT_EQ(rows_data2[1], 10);
+}
+
+// TEST(SelectedRows, CPU) {
+//   platform::CPUPlace place;
+//   RunSerdeTestSelectedRows(place);
+// }
+
+// TEST(SelectedRows, GPU) {
+//   platform::CUDAPlace place;
+//   RunSerdeTestSelectedRows(place);
+// }
+
+TEST(Tensor, CPU) {
+  platform::CPUPlace place;
+  RunSerdeTestTensor(place);
+}
+
+TEST(Tensor, GPU) {
+  platform::CUDAPlace place;
+  RunSerdeTestTensor(place);
 }
