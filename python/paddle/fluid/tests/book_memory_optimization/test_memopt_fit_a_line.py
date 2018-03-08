@@ -49,8 +49,8 @@ avg_cost = fluid.layers.mean(x=cost)
 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 sgd_optimizer.minimize(avg_cost)
 
-# fluid.memory_optimize(fluid.default_main_program())
-fluid.release_memory(fluid.default_main_program())
+fluid.memory_optimize(fluid.default_main_program(), print_log=True)
+# fluid.release_memory(fluid.default_main_program())
 
 BATCH_SIZE = 200
 
