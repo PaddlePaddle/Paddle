@@ -119,7 +119,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       auto* slr = var->GetMutable<framework::SelectedRows>();
       e.WriteUint64(VarMsg::kDataTypeFieldNumber,
                     framework::ToDataType(slr->value().type()));
-      for (auto& dim : framework::vectorize(slr->GetCompleteDims())) {
+      for (auto& dim : framework::vectorize(slr->value().dims())) {
         e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
       }
       e.WriteUint64(VarMsg::kLodLevelFieldNumber, 0);
@@ -191,13 +191,15 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
   // do zerocopy parsing
   PADDLE_ENFORCE(meta.ParseFromCodedStream(&input));
   PADDLE_ENFORCE(input.ConsumedEntireMessage());
+  // dims is needed by both tensor and selectedrows
+  std::vector<int> vecdims;
+  for (auto& d : meta.dims()) {
+    vecdims.push_back(d);
+  }
+  framework::DDim dims = framework::make_ddim(vecdims);
+
   if (meta.type() == sendrecv::LOD_TENSOR) {
     auto* tensor = var->GetMutable<framework::LoDTensor>();
-    std::vector<int> vecdims;
-    for (auto& d : meta.dims()) {
-      vecdims.push_back(d);
-    }
-    framework::DDim dims = framework::make_ddim(vecdims);
     tensor->Resize(dims);
     void* tensor_data = tensor->mutable_data(
         ctx.GetPlace(),
@@ -222,6 +224,28 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
              reinterpret_cast<const void*>(meta.serialized().data()),
              meta.serialized().size());
     }
+  } else if (meta.type() == sendrecv::SELECTED_ROWS) {
+    auto* slr = var->GetMutable<framework::SelectedRows>();
+    auto* tensor = slr->mutable_value();
+    int64_t* rows_data = slr->mutable_rows()->data();
+    std::cout << "tensor pointor " << tensor << " rows " << slr->mutable_rows()
+              << std::endl;
+    tensor->Resize(dims);
+    void* tensor_data = tensor->mutable_data(
+        ctx.GetPlace(),
+        paddle::operators::detail::ToTypeIndex(meta.data_type()));
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+// do GPU copy here.
+#endif
+    } else {
+      memcpy(tensor_data,
+             reinterpret_cast<const void*>(meta.serialized().data()),
+             meta.serialized().size());
+    }
+    // copy rows CPU data, GPU data will be copied lazly
+    memcpy(rows_data, reinterpret_cast<const void*>(meta.rows().data()),
+           meta.rows().size());
   }
 }
 

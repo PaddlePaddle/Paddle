@@ -132,12 +132,16 @@ TEST(SelectedRows, CPU) {
   // deserialize zero-copy
   framework::Variable var2;
   operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
+
   auto* slr2 = var2.GetMutable<framework::SelectedRows>();
   auto* tensor2 = slr2->mutable_value();
-  float* tensor_data2 = tensor2->data<float>();
-  auto* rows_data2 = slr2->mutable_rows();
+  auto* rows2 = slr2->mutable_rows();
+  std::cout << "tensor2 pointor " << tensor2 << " rows " << rows2 << std::endl;
+
+  const float* tensor_data2 = tensor2->data<float>();
+  const int64_t* rows_data2 = rows2->data();
   for (int i = 0; i < tensor_numel; ++i)
     EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
-  EXPECT_EQ((*rows_data2)[0], 3);
-  EXPECT_EQ((*rows_data2)[1], 10);
+  EXPECT_EQ(rows_data2[0], 3);
+  EXPECT_EQ(rows_data2[1], 10);
 }
