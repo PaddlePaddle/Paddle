@@ -178,7 +178,7 @@ void EnableProfiler(ProfilerState state) {
   }
 #ifdef PADDLE_WITH_CUDA
   if (g_state == ProfilerState::kCUDA) {
-    // Generate some dummy evenets first to reduce the startup overhead.
+    // Generate some dummy events first to reduce the startup overhead.
     for (int i = 0; i < 5; i++) {
       ForEachDevice([](int d) {
         DeviceContext* dev_ctx = new CUDADeviceContext(CUDAPlace(d));

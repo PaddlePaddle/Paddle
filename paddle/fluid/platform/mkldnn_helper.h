@@ -16,12 +16,15 @@ limitations under the License. */
 
 #include <mkldnn.hpp>
 
+#include "paddle/fluid/framework/operator.h"
+
 namespace paddle {
 namespace platform {
 
 using MKLDNNStream = mkldnn::stream;
 using MKLDNNEngine = mkldnn::engine;
 using MKLDNNMemory = mkldnn::memory;
+using MKLDNNMemoryDescriptor = mkldnn::memory::desc;
 using MKLDNNPrimitive = mkldnn::primitive;
 using MKLDNNPrimitiveDesc = mkldnn::handle<mkldnn_primitive_desc_t>;
 
@@ -30,6 +33,18 @@ typedef std::unique_ptr<MKLDNNEngine> MKLDNNEnginePtr;
 typedef std::unique_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
 typedef std::unique_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
 typedef std::unique_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
+
+inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
+                                          mkldnn::memory::data_type data_type,
+                                          mkldnn::memory::format format) {
+  mkldnn::memory::dims tz = dims;
+  return mkldnn::memory::desc({tz}, data_type, format);
+}
+
+inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
+  bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
+  return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
+}
 
 }  // namespace platform
 }  // namespace paddle
