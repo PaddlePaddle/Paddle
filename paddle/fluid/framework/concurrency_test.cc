@@ -29,6 +29,7 @@ USE_NO_KERNEL_OP(elementwise_add);
 USE_NO_KERNEL_OP(select);
 USE_NO_KERNEL_OP(conditional_block);
 USE_NO_KERNEL_OP(equal);
+USE_NO_KERNEL_OP(assign);
 USE_NO_KERNEL_OP(while);
 
 namespace f = paddle::framework;
@@ -38,9 +39,9 @@ namespace paddle {
 namespace framework {
 
 template <typename T>
-void CreateIntVariable(Scope &scope, p::CPUPlace &place, std::string name,
+void CreateVariable(Scope &scope, p::CPUPlace &place, std::string name,
                        T value) {
-  // Create LoDTensor<int> of dim [1,1]
+  // Create LoDTensor<int> of dim [1]
   auto var = scope.Var(name);
   auto tensor = var->GetMutable<LoDTensor>();
   tensor->Resize({1});
@@ -73,9 +74,9 @@ void AddCase(ProgramDesc *program, Scope *scope, p::CPUPlace *place,
   BlockDesc *caseBlock = program->AppendBlock(*casesBlock);
   func(caseBlock, scope);
 
-  CreateIntVariable(*scope, *place, caseCondName, false);
-  CreateIntVariable(*scope, *place, caseCondXVarName, caseId);
-  CreateIntVariable(*scope, *place, caseVarName, caseId);
+  CreateVariable(*scope, *place, caseCondName, false);
+  CreateVariable(*scope, *place, caseCondXVarName, caseId);
+  CreateVariable(*scope, *place, caseVarName, caseId);
 
   AddOp("equal",
         {{"X", {caseCondXVarName}}, {"Y", {"caseToExecute"}}},
@@ -101,13 +102,13 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
 
   BlockDesc *whileBlock = program->AppendBlock(*parentBlock);
 
-  CreateIntVariable(*scope, *place, "whileExitCond", true);
-  CreateIntVariable(*scope, *place, "caseToExecute", -1);
-  CreateIntVariable(*scope, *place, "case1var", 0);
+  CreateVariable(*scope, *place, "whileExitCond", true);
+  CreateVariable(*scope, *place, "caseToExecute", -1);
+  CreateVariable(*scope, *place, "case1var", 0);
 
-  CreateIntVariable(*scope, *place, "x", 0);
-  CreateIntVariable(*scope, *place, "y", 1);
-  CreateIntVariable(*scope, *place, "quitVar", 0);
+  CreateVariable(*scope, *place, "x", 0);
+  CreateVariable(*scope, *place, "y", 1);
+  CreateVariable(*scope, *place, "quitVar", 0);
 
   BlockDesc *casesBlock = program->AppendBlock(*whileBlock);
   std::function<void (BlockDesc* caseBlock)> f = [](BlockDesc* caseBlock) { };
@@ -115,7 +116,7 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
   // Case 0: Send to dataChanName
   std::function<void (BlockDesc* caseBlock, Scope* scope)> case0Func =
     [&](BlockDesc* caseBlock, Scope* scope) {
-      CreateIntVariable(*scope, *place, "xtemp", 0);
+      CreateVariable(*scope, *place, "xtemp", 0);
       AddOp("assign",
             {{"X", {"x"}}},
             {{"Out", {"xtemp"}}},
@@ -140,14 +141,14 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
         // Exit the while loop after we receive from quit channel.
         // We assign a false to "whileExitCond" variable, which will
         // break out of while_op loop
-        CreateIntVariable(*scope, *place, "whileFalse", false);
+        CreateVariable(*scope, *place, "whileFalse", false);
         AddOp("assign",
             {{"X", {"whileFalse"}}},
             {{"Out", {"whileExitCond"}}},
             {},
             casesBlock);
     };
-  AddCase(program, scope, place, casesBlock, 1, 2, quitChanName, "whileExitCond", case2Func);
+  AddCase(program, scope, place, casesBlock, 1, 2, quitChanName, "quitVar", case2Func);
 
   // Select block
   AddOp("select",
@@ -176,9 +177,9 @@ TEST(Concurrency, Go_Op) {
 
   // Create Variables, x0 will be put into channel,
   // result will be pulled from channel
-  CreateIntVariable(scope, place, "Status", false);
-  CreateIntVariable(scope, place, "x0", 99);
-  CreateIntVariable(scope, place, "result", 0);
+  CreateVariable(scope, place, "Status", false);
+  CreateVariable(scope, place, "x0", 99);
+  CreateVariable(scope, place, "result", 0);
 
   framework::Executor executor(place);
   ProgramDesc program;
@@ -231,8 +232,8 @@ TEST(Concurrency, Select) {
 
   // Create Variables, x0 will be put into channel,
   // result will be pulled from channel
-  CreateIntVariable(scope, place, "Status", false);
-  CreateIntVariable(scope, place, "result", 0);
+  CreateVariable(scope, place, "Status", false);
+  CreateVariable(scope, place, "result", 0);
 
   framework::Executor executor(place);
   ProgramDesc program;
@@ -261,7 +262,7 @@ TEST(Concurrency, Select) {
   BlockDesc *goOpBlock = program.AppendBlock(program.Block(0));
   for (int i=0; i<10; ++i) {
     std::string xVarName = std::string("x") + std::to_string(i);
-    CreateIntVariable(scope, place, xVarName, 0);
+    CreateVariable(scope, place, xVarName, 0);
 
     AddOp("channel_recv",
           {{"Channel", {dataChanName}}},
@@ -271,7 +272,7 @@ TEST(Concurrency, Select) {
           goOpBlock);
   }
 
-  CreateIntVariable(scope, place, "quitSignal", 0);
+  CreateVariable(scope, place, "quitSignal", 0);
   AddOp("channel_send",
         {{"Channel", {quitChanName}},
          {"X", {"quitSignal"}}},

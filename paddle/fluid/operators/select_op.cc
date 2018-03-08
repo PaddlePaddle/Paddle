@@ -103,7 +103,7 @@ private:
     caseToExecuteTensor->data<int>()[0] = caseToExecute;
 
     // Execute the cases block, only one case will be executed since we set the
-    // caseToExecuteTensor value to the index of the case we want to execute
+    // case_to_execute value to the index of the case we want to execute
     framework::Executor executor(dev_place);
     framework::ProgramDesc *program = casesBlock->Program();
     executor.Run(*program, &casesBlockScope, casesBlock->ID(),
