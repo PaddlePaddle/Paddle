@@ -201,6 +201,7 @@ class DeviceTracerImpl : public DeviceTracer {
                      uint32_t correlation_id, uint64_t bytes) {
     // 0 means timestamp information could not be collected for the kernel.
     if (start_ns == 0 || end_ns == 0) {
+      LOG(WARNING) << name << " cannot be traced";
       return;
     }
     std::lock_guard<std::mutex> l(trace_mu_);
@@ -212,6 +213,7 @@ class DeviceTracerImpl : public DeviceTracer {
                         uint32_t stream_id, uint32_t correlation_id) {
     // 0 means timestamp information could not be collected for the kernel.
     if (start == 0 || end == 0) {
+      LOG(WARNING) << correlation_id << " cannot be traced";
       return;
     }
     std::lock_guard<std::mutex> l(trace_mu_);
