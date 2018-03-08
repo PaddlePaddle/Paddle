@@ -96,7 +96,6 @@ bool ChannelImpl<T>::Send(T *item) {
   if (closed_) {
     lock.unlock();
     // TODO(abhinavarora) Should panic on closed channel
-    // return false;
     return send_return(false);
   }
 
@@ -110,7 +109,6 @@ bool ChannelImpl<T>::Send(T *item) {
     // Wake up the blocked process and unlock
     m->Notify();
     lock.unlock();
-    // return true;
     return send_return(true);
   }
 
@@ -122,7 +120,6 @@ bool ChannelImpl<T>::Send(T *item) {
     buf_.push_back(std::move(*item));
     // Release lock and return true
     lock.unlock();
-    // return true;
     return send_return(true);
   }
 
@@ -145,7 +142,6 @@ bool ChannelImpl<T>::Receive(T *item) {
   if (closed_ && buf_.empty()) {
     lock.unlock();
     return recv_return(false);
-    // return false;
   }
 
   // If there is a sender, directly receive the value we want
@@ -158,7 +154,6 @@ bool ChannelImpl<T>::Receive(T *item) {
     // Wake up the blocked process and unlock
     m->Notify();
     lock.unlock();
-    // return true;
     return recv_return(true);
   }
 
@@ -169,7 +164,6 @@ bool ChannelImpl<T>::Receive(T *item) {
     buf_.pop_front();
     // Release lock and return true
     lock.unlock();
-    // return true;
     return recv_return(true);
   }
 
@@ -179,7 +173,6 @@ bool ChannelImpl<T>::Receive(T *item) {
   recvq.push_back(m);
   m->Wait(lock);
 
-  // return !m->chan_closed;
   return recv_return(!m->chan_closed);
 }
 

@@ -199,20 +199,29 @@ class DeviceTracerImpl : public DeviceTracer {
       return;
     }
     std::lock_guard<std::mutex> l(trace_mu_);
-    cpu_records_.push_back(
-        CPURecord{anno, start_ns, end_ns,
-                  std::hash<std::thread::id>{}(std::this_thread::get_id())});
+    cpu_records_.push_back(CPURecord{anno, start_ns, end_ns, 0});
   }
 
   void AddMemRecords(const std::string &name, uint64_t start_ns,
                      uint64_t end_ns, uint32_t device_id, uint32_t stream_id,
                      uint32_t correlation_id, uint64_t bytes) {
+    // 0 means timestamp information could not be collected for the kernel.
+    if (start_ns == 0 || end_ns == 0) {
+      VLOG(3) << name << " cannot be traced";
+      return;
+    }
+    std::lock_guard<std::mutex> l(trace_mu_);
     mem_records_.push_back(MemRecord{name, start_ns, end_ns, device_id,
                                      stream_id, correlation_id, bytes});
   }
 
   void AddKernelRecords(uint64_t start, uint64_t end, uint32_t device_id,
                         uint32_t stream_id, uint32_t correlation_id) {
+    // 0 means timestamp information could not be collected for the kernel.
+    if (start == 0 || end == 0) {
+      VLOG(3) << correlation_id << " cannot be traced";
+      return;
+    }
     std::lock_guard<std::mutex> l(trace_mu_);
     kernel_records_.push_back(
         KernelRecord{start, end, device_id, stream_id, correlation_id});
@@ -285,10 +294,10 @@ class DeviceTracerImpl : public DeviceTracer {
       event->set_device_id(r.device_id);
       event->mutable_memcopy()->set_bytes(r.bytes);
     }
-    std::string profile_str;
-    google::protobuf::TextFormat::PrintToString(profile_pb, &profile_str);
     std::ofstream profile_f;
     profile_f.open(profile_path, std::ios::out | std::ios::trunc);
+    std::string profile_str;
+    profile_pb.SerializeToString(&profile_str);
     profile_f << profile_str;
     profile_f.close();
     return profile_pb;

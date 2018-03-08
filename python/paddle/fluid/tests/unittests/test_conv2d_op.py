@@ -64,6 +64,7 @@ def conv2d_forward_naive(input, filter, group, conv_param):
 class TestConv2dOp(OpTest):
     def setUp(self):
         self.use_cudnn = False
+        self.use_mkldnn = False
         self.init_op_type()
         self.init_group()
         self.init_dilation()
@@ -85,7 +86,8 @@ class TestConv2dOp(OpTest):
             'paddings': self.pad,
             'groups': self.groups,
             'dilations': self.dilations,
-            'use_cudnn': self.use_cudnn
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn
         }
         self.outputs = {'Output': output}
 
@@ -289,6 +291,26 @@ class TestDepthwiseConv2(TestConv2dOp):
 # class TestCUDNNWithDilation(TestWithDilation):
 #     def init_op_type(self):
 #         self.op_type = "conv_cudnn"
+
+
+#----------------Conv2dMKLDNN----------------
+class TestMKLDNN(TestConv2dOp):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "conv2d"
+
+
+class TestMKLDNNWithPad(TestWithPad):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "conv2d"
+
+
+class TestMKLDNNWithStride(TestWithStride):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "conv2d"
+
 
 if __name__ == '__main__':
     unittest.main()
