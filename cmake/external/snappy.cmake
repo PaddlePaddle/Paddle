@@ -39,6 +39,7 @@ ExternalProject_Add(
                     -DCMAKE_INSTALL_LIBDIR=${SNAPPY_INSTALL_DIR}/lib
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DBUILD_TESTING=OFF
+                    -DSNAPPY_BUILD_TESTS:BOOL=OFF
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${SNAPPY_INSTALL_DIR}
