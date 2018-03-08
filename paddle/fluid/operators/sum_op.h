@@ -109,6 +109,9 @@ class SumKernel : public framework::OpKernel<T> {
       in_dim[0] = static_cast<int64_t>(first_dim);
 
       out_value->Resize(framework::make_ddim(in_dim));
+
+      // if all the input sparse vars are empty, no need to
+      // update the param.
       if (first_dim == 0UL) {
         return;
       }

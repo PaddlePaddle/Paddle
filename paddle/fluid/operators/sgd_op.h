@@ -47,7 +47,9 @@ class SGDOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(param, param_out);
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
 
-      // if sparse variable is not initialized, skip update
+      // for distributed training, optimize op would be running on pserver,
+      // and it wouldn't receive any empty sparse vars, if that the
+      // rows.size() is 0 for current batch.
       if (grad->rows().size() == 0) {
         return;
       }
