@@ -20,22 +20,21 @@ import paddle.v2 as paddle
 
 class TestRecordIO(unittest.TestCase):
     def setUp(self):
+        # Convert mnist to recordio file
         with fluid.program_guard(fluid.Program()):
             reader = paddle.batch(mnist.train(), batch_size=32)
             feeder = fluid.DataFeeder(
-                feed_list=[
+                feed_list=[  # order is image and label
                     fluid.layers.data(
-                        name='image', shape=[784]), fluid.layers.data(
-                            name='label', shape=[1], dtype='int64')
+                        name='image', shape=[784]),
+                    fluid.layers.data(
+                        name='label', shape=[1], dtype='int64'),
                 ],
                 place=fluid.CPUPlace())
             fluid.recordio_writer.convert_reader_to_recordio_file(
-                './mnist.recordio',
-                reader,
-                feeder,
-                feed_order=['image', 'label'])
+                './mnist.recordio', reader, feeder)
 
-    def testMain(self):
+    def test_main(self):
         data_file = fluid.layers.open_recordio_file(
             './mnist.recordio',
             shapes=[[-1, 784], [-1, 1]],
@@ -48,9 +47,12 @@ class TestRecordIO(unittest.TestCase):
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_loss = fluid.layers.mean(loss)
 
-        fluid.optimizer.SGD(learning_rate=1e-3).minimize(avg_loss)
+        fluid.optimizer.Adam(learning_rate=1e-3).minimize(avg_loss)
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
-        avg_loss_np, = exe.run(fetch_list=[avg_loss])
-        print avg_loss_np
+        avg_loss_np = []
+        for i in xrange(100):  # train 100 mini-batch
+            tmp, = exe.run(fetch_list=[avg_loss])
+            avg_loss_np.append(tmp)
+        self.assertLess(avg_loss_np[-1], avg_loss_np[0])

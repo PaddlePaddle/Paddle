@@ -24,13 +24,21 @@ namespace paddle {
 namespace recordio {
 constexpr size_t kMaxBufSize = 1024;
 
+/**
+ * Read Stream by a fixed sized buffer.
+ * @param in input stream
+ * @param limit read at most `limit` bytes from input stream. 0 means no limit
+ * @param callback A function object with (const char* buf, size_t size) -> void
+ * as its type.
+ */
 template <typename Callback>
 static void ReadStreamByBuf(std::istream& in, size_t limit, Callback callback) {
   char buf[kMaxBufSize];
   std::streamsize actual_size;
   size_t counter = 0;
   size_t actual_max;
-  while (!in.eof() || (limit != 0 && counter >= limit)) {
+  while (!in.eof() ||
+         (limit != 0 && counter >= limit)) {  // End of file or reach limit
     actual_max =
         limit != 0 ? std::min(limit - counter, kMaxBufSize) : kMaxBufSize;
     in.read(buf, actual_max);
@@ -46,10 +54,17 @@ static void ReadStreamByBuf(std::istream& in, size_t limit, Callback callback) {
   in.clear();  // unset eof state
 }
 
+/**
+ * Copy stream in to another stream
+ */
 static void PipeStream(std::istream& in, std::ostream& os) {
   ReadStreamByBuf(
       in, 0, [&os](const char* buf, size_t len) { os.write(buf, len); });
 }
+
+/**
+ * Calculate CRC32 from an input stream.
+ */
 static uint32_t Crc32Stream(std::istream& in, size_t limit = 0) {
   uint32_t crc = static_cast<uint32_t>(crc32(0, nullptr, 0));
   ReadStreamByBuf(in, limit, [&crc](const char* buf, size_t len) {
@@ -89,7 +104,9 @@ bool Chunk::Write(std::ostream& os, Compressor ct) const {
     compressed_stream.reset();
   }
 
-  uint32_t len = static_cast<uint32_t>(sout.str().size());
+  sout.seekg(0, std::ios::end);
+  uint32_t len = static_cast<uint32_t>(sout.tellg());
+  sout.seekg(0, std::ios::beg);
   uint32_t crc = Crc32Stream(sout);
   Header hdr(static_cast<uint32_t>(records_.size()), crc, ct, len);
   hdr.Write(os);
