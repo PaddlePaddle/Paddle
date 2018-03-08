@@ -4,27 +4,75 @@
 
 从CI系统中下载最新的C-API开发包进行安装，用户可以从下面的表格中找到需要的版本：
 
-| 版本说明 |C-API|
-|-------|-----|
-| cpu\_avx\_mkl | [paddle.tgz](https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddle.tgz) |
-| cpu\_avx\_openblas | 暂无 |
-| cpu\_noavx\_openblas | 暂无 |
-| cuda7.5\_cudnn5\_avx\_mkl | [paddle.tgz](https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz) |
-| cuda8.0\_cudnn5\_avx\_mkl | [paddle.tgz](https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz) |
-| cuda8.0\_cudnn7\_avx\_mkl | [paddle.tgz](https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddle.tgz) |
+<table>
+<thead>
+<tr>
+<th>版本说明</th>
+<th>C-API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cpu_avx_mkl</td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
+</tr>
+<tr>
+<td>cpu_avx_openblas</td>
+<td>暂无</td>
+</tr>
+<tr>
+<td>cpu_noavx_openblas</td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuNoavxOpenblas/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
+</tr>
+<tr>
+<td>cuda7.5_cudnn5_avx_mkl</td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
+</tr>
+<tr>
+<td>cuda8.0_cudnn5_avx_mkl</td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
+</tr>
+<tr>
+<td>cuda8.0_cudnn7_avx_mkl</td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
+</tr></tbody></table>
 
 ### 从源码编译
 
 用户也可以从 PaddlePaddle 核心代码编译C-API链接库，只需在编译时配制下面这些编译选项：
 
-|      选项      | 值 |
-|----------------|----|
-| WITH\_C\_API   | ON |
-| WITH\_PYTHON   | OFF（推荐） |
-| WITH\_SWIG\_PY | OFF（推荐） |
-| WITH\_GOLANG   | OFF（推荐） |
-| WITH\_GPU      | ON/OFF |
-| WITH\_MKL      | ON/OFF |
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WITH_C_API</td>
+<td>ON</td>
+</tr>
+<tr>
+<td>WITH_PYTHON</td>
+<td>OFF（推荐）</td>
+</tr>
+<tr>
+<td>WITH_SWIG_PY</td>
+<td>OFF（推荐）</td>
+</tr>
+<tr>
+<td>WITH_GOLANG</td>
+<td>OFF（推荐）</td>
+</tr>
+<tr>
+<td>WITH_GPU</td>
+<td>ON/OFF</td>
+</tr>
+<tr>
+<td>WITH_MKL</td>
+<td>ON/OFF</td>
+</tr></tbody></table>
 
 建议按照推荐值设置，以避免链接不必要的库。其它可选编译选项按需进行设定。
 
