@@ -138,6 +138,50 @@ class TestRoutineOp(unittest.TestCase):
         result = exe.run(fetch_list=[result1])
         #self.assertEqual(result[0][0], n + 1)
 
+    def test_fibonacci(self):
+        """
+        Mimics Fibonacci Go example: https://tour.golang.org/concurrency/5
+        """
+        input_value = fill_constant(
+            shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
+
+        result2 = fill_constant(
+            shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
+
+        def fibonacci(channel, quit_channel):
+            x = fill_constant(
+                shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
+            y = fill_constant(
+                shape=[1], dtype=core.VarDesc.VarType.FP64, value=1)
+
+            with fluid.Select() as select:
+                with select.case(fluid.channel_send, channel, x):
+                    x = y
+                    y = x + y
+
+                with select.case(fluid.channel_recv, quit_channel, result2):
+                    print 'quit'
+                    return
+
+        ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
+        quit_ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
+
+        result = self._create_tensor('return_value',
+                                      core.VarDesc.VarType.LOD_TENSOR,
+                                      core.VarDesc.VarType.INT64)
+
+        with fluid.Go():
+            for i in xrange(10):
+                print(fluid.channel_recv(ch1, result))
+
+            fluid.channel_send(quit_ch, input_value)
+
+        fibonacci(ch1, quit_ch)
+
+        cpu = core.CPUPlace()
+        exe = Executor(cpu)
+
+        # print framework.default_startup_program()
 
 if __name__ == '__main__':
     unittest.main()
