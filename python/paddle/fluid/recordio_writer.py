@@ -13,33 +13,18 @@
 # limitations under the License.
 
 import core
+import contextlib
+
+__all__ = ['convert_reader_to_recordio_file']
 
 
-class RecordIOWriter(object):
-    def __init__(self,
-                 filename,
-                 compressor=core.RecordIOWriter.Compressor.Snappy,
-                 max_num_records=1000):
-        self.filename = filename
-        self.compressor = compressor
-        self.max_num_records = max_num_records
-        self.writer = None
-
-    def __enter__(self):
-        self.writer = core.RecordIOWriter(self.filename, self.compressor,
-                                          self.max_num_records)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is not None:
-            return False
-        else:
-            self.writer.close()
-
-    def append_tensor(self, tensor):
-        self.writer.append_tensor(tensor)
-
-    def complete_append_tensor(self):
-        self.writer.complete_append_tensor()
+@contextlib.contextmanager
+def create_recordio_writer(filename,
+                           compressor=core.RecordIOWriter.Compressor.Snappy,
+                           max_num_records=1000):
+    writer = core.RecordIOWriter(filename, compressor, max_num_records)
+    yield writer
+    writer.close()
 
 
 def convert_reader_to_recordio_file(
@@ -49,14 +34,12 @@ def convert_reader_to_recordio_file(
         compressor=core.RecordIOWriter.Compressor.Snappy,
         max_num_records=1000,
         feed_order=None):
-    writer = RecordIOWriter(filename, compressor, max_num_records)
-    with writer:
+    if feed_order is None:
+        feed_order = feeder.feed_names
+    with create_recordio_writer(filename, compressor,
+                                max_num_records) as writer:
         for batch in reader_creator():
             res = feeder.feed(batch)
-            if feed_order is None:
-                for each in res:
-                    writer.append_tensor(res[each])
-            else:
-                for each in feed_order:
-                    writer.append_tensor(res[each])
+            for each in feed_order:
+                writer.append_tensor(res[each])
             writer.complete_append_tensor()

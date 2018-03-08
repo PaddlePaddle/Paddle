@@ -272,7 +272,7 @@ def read_file(file_obj):
     out = [
         helper.create_tmp_variable(
             stop_gradient=True, dtype='float32')
-        for i in range(len(file_obj.desc.shapes()))
+        for _ in range(len(file_obj.desc.shapes()))
     ]
     helper.append_op(
         type='read', inputs={'Reader': [file_obj]}, outputs={'Out': out})
