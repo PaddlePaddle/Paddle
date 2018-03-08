@@ -242,7 +242,7 @@ class SelectOpMaker : public framework::OpProtoAndCheckerMaker {
     }
 };
 
-// TODO(thuan): Look into Gradient Operator for SELECT_OP
+// TODO(thuan): Implement Gradient Operator for SELECT_OP
 
 }  // namespace operators
 }  // namespace paddle
