@@ -59,17 +59,10 @@ void* lapack_dso_handle = nullptr;
   } __name;  // struct DynLoad__##__name
 #endif
 
-#ifdef PADDLE_USE_ATLAS
-  #define  PADDLE_SGETRF  clapack_sgetrf
-  #define  PADDLE_DGETRF  clapack_dgetrf
-  #define  PADDLE_SGETRI  clapack_sgetri
-  #define  PADDLE_DGETRI  clapack_dgetri
-#else
-  #define  PADDLE_SGETRF  LAPACKE_sgetrf
-  #define  PADDLE_DGETRF  LAPACKE_dgetrf
-  #define  PADDLE_SGETRI  LAPACKE_sgetri
-  #define  PADDLE_DGETRI  LAPACKE_dgetri
-#endif
+#define  PADDLE_SGETRF  LAPACKE_sgetrf
+#define  PADDLE_DGETRF  LAPACKE_dgetrf
+#define  PADDLE_SGETRI  LAPACKE_sgetri
+#define  PADDLE_DGETRI  LAPACKE_dgetri
 
 #define LAPACK_ROUTINE_EACH(__macro)       \
   __macro(PADDLE_SGETRF)                   \
