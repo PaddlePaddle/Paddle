@@ -50,13 +50,13 @@ TEST(DataTypeTransform, CPUTransform) {
     TransDataType(kernel_fp32, kernel_fp64, in, &out);
     double* out_data_double = out.data<double>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_double[i], static_cast<double>(i / 3));
+      EXPECT_EQ(out_data_double[i], static_cast<double>(i / 3));
     }
 
     TransDataType(kernel_fp32, kernel_int32, in, &out);
     int* out_data_int = out.data<int>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_int[i], static_cast<int>(i / 3));
+      EXPECT_EQ(out_data_int[i], static_cast<int>(i / 3));
     }
   }
 
@@ -76,31 +76,31 @@ TEST(DataTypeTransform, CPUTransform) {
     TransDataType(kernel_fp16, kernel_fp32, in, &out);
     float* out_data_float = out.data<float>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_float[i], static_cast<float>(ptr[i]));
+      EXPECT_EQ(out_data_float[i], static_cast<float>(ptr[i]));
     }
 
     TransDataType(kernel_fp16, kernel_fp64, in, &out);
     double* out_data_double = out.data<double>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_double[i], static_cast<double>(ptr[i]));
+      EXPECT_EQ(out_data_double[i], static_cast<double>(ptr[i]));
     }
 
     TransDataType(kernel_fp16, kernel_int32, in, &out);
     int* out_data_int = out.data<int>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_int[i], static_cast<int>(ptr[i]));
+      EXPECT_EQ(out_data_int[i], static_cast<int>(ptr[i]));
     }
 
     TransDataType(kernel_fp16, kernel_int64, in, &out);
     int64_t* out_data_int64 = out.data<int64_t>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_int64[i], static_cast<int64_t>(ptr[i]));
+      EXPECT_EQ(out_data_int64[i], static_cast<int64_t>(ptr[i]));
     }
 
     TransDataType(kernel_fp16, kernel_bool, in, &out);
     bool* out_data_bool = out.data<bool>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
+      EXPECT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
     }
 
     // transform float to float16
@@ -112,7 +112,7 @@ TEST(DataTypeTransform, CPUTransform) {
     TransDataType(kernel_fp32, kernel_fp16, in, &out);
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_float[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_float[i]).x);
     }
 
     // transform double to float16
@@ -124,7 +124,7 @@ TEST(DataTypeTransform, CPUTransform) {
     TransDataType(kernel_fp64, kernel_fp16, in, &out);
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_double[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_double[i]).x);
     }
 
     // transform int to float16
@@ -136,7 +136,7 @@ TEST(DataTypeTransform, CPUTransform) {
     TransDataType(kernel_int32, kernel_fp16, in, &out);
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_int[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_int[i]).x);
     }
 
     // transform int64 to float16
@@ -148,7 +148,7 @@ TEST(DataTypeTransform, CPUTransform) {
     TransDataType(kernel_int64, kernel_fp16, in, &out);
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_int64[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_int64[i]).x);
     }
 
     // transform bool to float16
@@ -160,7 +160,7 @@ TEST(DataTypeTransform, CPUTransform) {
     TransDataType(kernel_bool, kernel_fp16, in, &out);
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_bool[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_bool[i]).x);
     }
   }
 }
