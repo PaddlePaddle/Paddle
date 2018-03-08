@@ -105,7 +105,6 @@ class NCCLTester : public ::testing::Test {
     auto *recv_tensor = scope->Var("rt")->GetMutable<f::LoDTensor>();
 
     if (!send_tensor->numel()) {
-      send_tensor->Resize(kDims);
       send_tensor->mutable_data<T>(kDims, place);
 
       std::vector<T> send_vector(f::product(kDims), GetGPUData(gpu_id));
