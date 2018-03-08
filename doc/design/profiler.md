@@ -14,10 +14,10 @@ for i in xrange(M):  # M is  the iteration number
 
 In summary, the profiler should have the following features:
 
-- Records time span in a loop.
-- Supports nested time span.
-- Supports multiple threads/multiple GPUs.
-- Supports to be enabled and disabled by users.
+- Record time span in a loop.
+- Support nested time span.
+- Support multiple threads/multiple GPUs.
+- Support to be enabled and disabled by users.
 
 But how to record the time for a mixed C++ and CUDA program?  There many C++ APIs to get the current calendar time in the host program. But for GPU, the CUDA kernels may be executed concurrently if they are in different [streams](http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#streams) and the CUDA kernels are asynchronous with the host program if there is no the synchronous after the CUDA kernels. CUDA provides [event](http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#events) to monitor the device and performs accurate timing. Inspired by PyTorch and CUDA event, we also design and apply the events to record the timeline. Then summarize and present statistics based on these events.  
 
