@@ -24,6 +24,8 @@ namespace operators {
 
 static constexpr char kCasesBlock[] = "sub_block";
 
+static constexpr char kCaseToExecute[] = "case_to_execute";
+
 static constexpr char kAttrCaseIndex[] = "case_index";
 static constexpr char kAttrCaseType[] = "case_type";
 static constexpr char kAttrCaseChannel[] = "case_channel";
@@ -62,15 +64,18 @@ private:
     framework::BlockDesc *casesBlock =
             Attr<framework::BlockDesc *>(kCasesBlock);
 
-    // TODO(thuan): Enforce kCasesBlock exists
+    framework::Scope &casesBlockScope = scope.NewScope();
+
+    std::string caseToExecuteVarName = Input(kCaseToExecute);
+    framework::Variable *caseToExecuteVar =
+            casesBlockScope.FindVar(caseToExecuteVarName);
+
     // Construct cases from "conditional_block_op"(s) in the casesBlock
     std::vector<std::shared_ptr<SelectOpCase>> cases =
             ParseAndShuffleCases(casesBlock);
 
-    // Get all channels involved in select and add them in order to the
-    // channels vector
+    // Get all unique channels involved in select
     std::set<framework::ChannelHolder *> channelsSet;
-    std::vector<framework::ChannelHolder *> channels;
     for (auto c : cases) {
       if (!c->channelName.empty()) {
         auto channelVar = scope.FindVar(c->channelName);
@@ -79,12 +84,30 @@ private:
 
         if (channelsSet.find(ch) == channelsSet.end()) {
           channelsSet.insert(ch);
-          channels.push_back(ch);
         }
       }
     }
 
-    std::cout << "Channels: " << channels.size() << std::endl;
+    // Order all channels by their pointer address
+    std::vector<framework::ChannelHolder *> channels(channelsSet.begin(),
+                                                     channelsSet.end());
+    std::sort(channels.begin(), channels.end());
+
+    // Poll all cases
+    int caseToExecute = pollCases(&scope, &cases, channels);
+
+    // At this point, the case to execute has already been determined,
+    // so we can proceed with executing the cases block
+    framework::LoDTensor *caseToExecuteTensor =
+            caseToExecuteVar->GetMutable<framework::LoDTensor>();
+    caseToExecuteTensor->data<int>()[0] = caseToExecute;
+
+    // Execute the cases block, only one case will be executed since we set the
+    // caseToExecuteTensor value to the index of the case we want to execute
+    framework::Executor executor(dev_place);
+    framework::ProgramDesc *program = casesBlock->Program();
+    executor.Run(*program, &casesBlockScope, casesBlock->ID(),
+                 false /*create_local_scope*/);
   }
 
   /**
@@ -142,6 +165,69 @@ private:
     }
 
     return cases;
+  }
+
+  /**
+   * This method will recursively poll the cases and
+   * @param scope
+   * @param cases
+   * @return
+   */
+  int pollCases(const framework::Scope *scope,
+                std::vector<std::shared_ptr<SelectOpCase>> *cases,
+                std::vector<framework::ChannelHolder *> channels) const {
+    // Lock all involved channels
+    lockChannels(channels);
+
+    int caseToExecute = -1;
+
+    std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
+    while (it != cases->end()) {
+      std::shared_ptr<SelectOpCase> c = *it;
+      std::cout << "CASE: " << c->caseType << std::endl;
+
+//      auto chVar = scope->FindVar(c->channelName);
+//      framework::ChannelHolder *ch =
+//              chVar->GetMutable<framework::ChannelHolder>();
+      // TODO(thuan): Check if operation is send to closed channel.  If it is,
+      //    then PADDLE_ENFORCE
+      // TODO(thuan): Check ch->CanSend() or ch->CanRecv().  If it is, then
+      //    execute case body and exit
+
+      if (c->caseType == DEFAULT) {
+        // TODO(thuan): execute default case body and exit
+        caseToExecute = c->caseIndex;
+        break;
+      }
+
+      ++it;
+    }
+
+    if (caseToExecute == -1) {
+      // None of the cases are eligible to execute, enqueue current thread
+      // into all the sending/receiving Q of each involved channel
+      // TODO(thuan): Atomically unlock all channels and sleep current thread
+    }
+
+    return caseToExecute;
+  }
+
+  void lockChannels(std::vector<framework::ChannelHolder *> chs) const {
+    std::vector<framework::ChannelHolder *>::iterator it = chs.begin();
+    while (it != chs.end()) {
+      // framework::ChannelHolder * ch = *it;
+      // TODO(thuan): Call ch.lock when its implemented;
+      ++it;
+    }
+  }
+
+  void unlockChannels(std::vector<framework::ChannelHolder *> chs) const {
+    std::vector<framework::ChannelHolder *>::reverse_iterator it = chs.rbegin();
+    while (it != chs.rend()) {
+      // framework::ChannelHolder * ch = *it;
+      // TODO(thuan): Call ch.unlock when its implemented;
+      ++it;
+    }
   }
 };
 

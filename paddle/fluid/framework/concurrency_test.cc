@@ -28,6 +28,8 @@ USE_NO_KERNEL_OP(channel_recv);
 USE_NO_KERNEL_OP(channel_send);
 USE_NO_KERNEL_OP(elementwise_add);
 USE_NO_KERNEL_OP(select);
+USE_NO_KERNEL_OP(conditional_block);
+USE_NO_KERNEL_OP(equal);
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
@@ -61,39 +63,53 @@ void AddOp(const std::string &type, const VariableNameMap &inputs,
   op->SetAttrMap(attrs);
 }
 
+void AddCase(ProgramDesc *program, Scope *scope, p::CPUPlace *place,
+             BlockDesc *casesBlock, int caseId, int caseType,
+             std::string caseChannel) {
+  std::string caseCondName = std::string("caseCond") + std::to_string(caseId);
+  std::string caseCondXVarName = std::string("caseCondX") + std::to_string(caseId);
+  std::string caseVarName = std::string("caseVar") + std::to_string(caseId);
+
+  BlockDesc *caseBlock = program->AppendBlock(*casesBlock);
+  // TODO(thuan): Do something in the case
+
+  CreateIntVariable(*scope, *place, caseCondName, false);
+  CreateIntVariable(*scope, *place, caseCondXVarName, caseId);
+  CreateIntVariable(*scope, *place, caseVarName, caseId);
+
+  AddOp("equal",
+        {{"X", {caseCondXVarName}}, {"Y", {"caseToExecute"}}},
+        {{"Out", {caseCondName}}},
+        {},
+        casesBlock);
+
+  AddOp("conditional_block",
+        {{"X", {caseCondName}}},
+        {},
+        {{"sub_block", caseBlock},
+         {"is_scalar_condition", true},
+         {"case_index", caseId},
+         {"case_type", caseType},  /* Channel Send */
+         {"case_channel", std::string(caseChannel)},
+         {"case_channel_var", caseVarName}},
+        casesBlock);
+}
+
 void CreateSelect(Scope *scope, p::CPUPlace *place, ProgramDesc *program, BlockDesc *parentBlock) {
-  CreateIntVariable(*scope, *place, "case0var", 0);
+  CreateIntVariable(*scope, *place, "caseToExecute", -1);
   CreateIntVariable(*scope, *place, "case1var", 0);
-  CreateIntVariable(*scope, *place, "case0cond", true);
 
   BlockDesc *casesBlock = program->AppendBlock(*parentBlock);
-  BlockDesc *case0Block = program->AppendBlock(*casesBlock);
-  BlockDesc *case1Block = program->AppendBlock(*casesBlock);
 
-  AddOp("conditional_block",
-        {{"X", {"case0cond"}}},
-        {},
-        {{"sub_block", case0Block},
-         {"is_scalar_condition", true},
-         {"case_index", 0},
-         {"case_type", 2},
-         {"case_channel", std::string("Channel1")},
-         {"case_channel_var", std::string("case0var")}},
-        casesBlock);
+  // Case 0: Send to Channel1
+  AddCase(program, scope, place, casesBlock, 0, 1, "Channel1");
 
-  AddOp("conditional_block",
-        {{"X", {"case0cond"}}},
-        {},
-        {{"sub_block", case1Block},
-         {"is_scalar_condition", true},
-         {"case_index", 1},
-         {"case_type", 1},
-         {"case_channel", std::string("Channel1")},
-         {"case_channel_var", std::string("case1var")}},
-        casesBlock);
+  // Case 1: Receive from Channel2
+  AddCase(program, scope, place, casesBlock, 1, 2, "Channel2");
 
+  // Select block
   AddOp("select",
-        {{"X", {"Channel1", "Channel2"}}},
+        {{"X", {"Channel1", "Channel2"}}, {"case_to_execute", {"caseToExecute"}}},
         {},
         {{"sub_block", casesBlock}},
         parentBlock);
