@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/recordio/chunk.h"
 namespace paddle {
 namespace recordio {
