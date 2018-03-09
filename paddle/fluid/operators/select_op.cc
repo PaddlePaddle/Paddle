@@ -183,7 +183,7 @@ private:
     // Lock all involved channels
     lockChannels(channels);
 
-    std::atomic<int> caseToExecute =-1;
+    std::atomic<int> caseToExecute(-1);
 
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
@@ -198,14 +198,22 @@ private:
         case SEND:
           PADDLE_ENFORCE(!ch->IsClosed(), "Cannot send to a closed channel");
           if (ch->CanSend()) {
+            // We can send to channel directly, send the data to channel
+            // and execute case
+            auto chVar = scope->FindVar(c->varName);
+            // TODO(thuan): Don't hardcode type
+            ch->Send(chVar->GetMutable<framework::LoDTensor>());
             caseToExecute = c->caseIndex;
-            // TODO(thuan): Perform send operation
           }
           break;
         case RECEIVE:
           if (ch->CanReceive()) {
+            // We can receive from channel directly, send the data to channel
+            // and execute case
+            auto chVar = scope->FindVar(c->varName);
+            // TODO(thuan): Don't hardcode type
+            ch->Receive(chVar->GetMutable<framework::LoDTensor>());
             caseToExecute = c->caseIndex;
-            // TODO(thuan): Perform receive operation
           }
           break;
         case DEFAULT:
@@ -224,7 +232,7 @@ private:
     if (caseToExecute == -1) {
       // None of the cases are eligible to execute, enqueue current thread
       // into all the sending/receiving queue of each involved channel
-      std::atomic<bool> completed = false;
+      std::atomic<bool> completed(false);
       std::recursive_mutex mutex;
       std::unique_lock<std::recursive_mutex> lock{mutex};
       std::condition_variable_any selectCond;
@@ -233,7 +241,7 @@ private:
 
       // TODO(thuan): Atomically unlock all channels and sleep current thread
       unlockChannels(channels);
-      selectCond.wait(lock, [this]() { return completed; });
+      selectCond.wait(lock, [&completed]() { return completed.load(); });
 
       // Select has been woken up by case operation
       lockChannels(channels);
@@ -248,7 +256,8 @@ private:
       }
     }
 
-    // At this point, caseToExecute != -1, and we can proceed with executing the case block
+    // At this point, caseToExecute != -1, and we can proceed with executing
+    // the case block
     unlockChannels(channels);
 
     return caseToExecute;
@@ -276,7 +285,6 @@ private:
         std::vector<std::shared_ptr<SelectOpCase>> *cases,
         std::atomic<int> *caseToExecute,
         std::atomic<bool> *completed) const {
-
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
@@ -286,11 +294,12 @@ private:
       framework::ChannelHolder *ch =
               chVar->GetMutable<framework::ChannelHolder>();
 
-      std::function<void (framework::Channel channel)>
-        cb = [&](framework::Channel channel) {
+      // TODO(thuan): Don't hardcode type
+      std::function<void(framework::Channel<framework::LoDTensor>* channel)>
+        cb = [&](framework::Channel<framework::LoDTensor>* channel) {
           // If the channel wasn't closed, we set the caseToExecute index
           // as this current case
-          if (!channel.IsClosed()) {
+          if (!channel->IsClosed()) {
             *caseToExecute = c->caseIndex;
           }
           // This will allow our conditional variable to break out of wait
@@ -298,11 +307,20 @@ private:
         };
 
       switch (c->caseType) {
-        case SEND:
-          ch->AddToSendQ(this, cb);
+        case SEND: {
+          auto chVar = scope->FindVar(c->varName);
+          // TODO(thuan): Don't hardcode type
+          ch->AddToSendQ<framework::LoDTensor>(this,
+                chVar->GetMutable<framework::LoDTensor>(), cb);
           break;
-        case RECEIVE:
-          ch->AddToReceiveQ(this, cb);
+        }
+        case RECEIVE: {
+          // TODO(thuan): Don't hardcode type
+          ch->AddToReceiveQ<framework::LoDTensor>(this,
+                chVar->GetMutable<framework::LoDTensor>(), cb);
+          break;
+        }
+        default:
           break;
       }
       ++it;
@@ -311,7 +329,6 @@ private:
 
     void removeThreadOnChannelQueues(const framework::Scope *scope,
            std::vector<std::shared_ptr<SelectOpCase>> *cases) const {
-
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
@@ -321,11 +338,17 @@ private:
       framework::ChannelHolder *ch =
               chVar->GetMutable<framework::ChannelHolder>();
       switch (c->caseType) {
-        case SEND:
-          ch->RemoveFromSendQ(this);
+        case SEND: {
+          // TODO(thuan): Don't hardcode type
+          ch->RemoveFromSendQ<framework::LoDTensor>(this);
           break;
-        case RECEIVE:
-          ch->RemoveFromReceiveQ(this);
+        }
+        case RECEIVE: {
+          // TODO(thuan): Don't hardcode type
+          ch->RemoveFromReceiveQ<framework::LoDTensor>(this);
+          break;
+        }
+        default:
           break;
       }
       ++it;

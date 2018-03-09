@@ -25,8 +25,8 @@ namespace framework {
 template <typename T>
 class Channel {
  public:
-  virtual bool CanSend();
-  virtual bool CanReceive();
+  virtual bool CanSend() = 0;
+  virtual bool CanReceive() = 0;
   virtual bool Send(T*) = 0;
   virtual bool Receive(T*) = 0;
   virtual size_t Cap() = 0;
@@ -36,12 +36,12 @@ class Channel {
   virtual void Close() = 0;
   virtual ~Channel() {}
 
-  virtual void AddToSendQ(const void *referrer,
-                 std::function<void (paddle::framework::Channel*)> cb);
-  virtual void AddToReceiveQ(const void *referrer,
-                 std::function<const void (paddle::framework::Channel*)> cb);
-  virtual void RemoveFromSendQ(const void *referrer);
-  virtual void RemoveFromReceiveQ(const void *referrer);
+  virtual void AddToSendQ(const void *referrer, T* data,
+                 std::function<void (paddle::framework::Channel<T>*)> cb) = 0;
+  virtual void AddToReceiveQ(const void *referrer, T* data,
+                 std::function<void (paddle::framework::Channel<T>*)> cb) = 0;
+  virtual void RemoveFromSendQ(const void *referrer) = 0;
+  virtual void RemoveFromReceiveQ(const void *referrer) = 0;
 };
 
 // Forward declaration of channel implementations.
@@ -73,19 +73,21 @@ class ChannelHolder {
     holder_.reset(new PlaceholderImpl<T>(buffer_size));
   }
 
-  bool CanSend() {
-    if (!IsInitialized()) return false;
-    // Static cast should be safe because we have ensured that types are same
-    Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-    return channel != nullptr ? channel->CanSend() : false;
-  }
-
-  bool CanReceive() {
-    if (!IsInitialized()) return false;
-    // Static cast should be safe because we have ensured that types are same
-    Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-    return channel != nullptr ? channel->CanReceive() : false;
-  }
+//  template <typename T>
+//  bool CanSend() {
+//    if (!IsInitialized()) return false;
+//    // Static cast should be safe because we have ensured that types are same
+//    Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
+//    return channel != nullptr ? channel->CanSend() : false;
+//  }
+//
+//  template <typename T>
+//  bool CanReceive() {
+//    if (!IsInitialized()) return false;
+//    // Static cast should be safe because we have ensured that types are same
+//    Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
+//    return channel != nullptr ? channel->CanReceive() : false;
+//  }
 
   template <typename T>
   bool Send(T* data) {
@@ -105,9 +107,24 @@ class ChannelHolder {
   }
 
   bool IsClosed() {
-    if (!IsInitialized()) return false;
-    Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-    return channel != nullptr ? channel->IsClosed() : false;
+    if (IsInitialized()) {
+      return holder_->IsClosed();
+    }
+    return false;
+  }
+
+  bool CanSend() {
+    if (IsInitialized()) {
+      return holder_->CanSend();
+    }
+    return false;
+  }
+
+  bool CanReceive() {
+    if (IsInitialized()) {
+      return holder_->CanReceive();
+    }
+    return false;
   }
 
   void close() {
@@ -127,26 +144,29 @@ class ChannelHolder {
     if (IsInitialized()) holder_->Unlock();
   }
 
-  void AddToSendQ(const void *referrer,
-         std::function<void (paddle::framework::Channel*)> cb) {
+  template <typename T>
+  void AddToSendQ(const void *referrer, T* data,
+         std::function<void (paddle::framework::Channel<T>*)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
-        channel->AddToSendQ(referrer, cb);
+        channel->AddToSendQ(referrer, data, cb);
       }
     }
   }
 
-  void AddToReceiveQ(const void *referrer,
-         std::function<void (paddle::framework::Channel*)> cb) {
+  template <typename T>
+  void AddToReceiveQ(const void *referrer, T* data,
+         std::function<void (paddle::framework::Channel<T>*)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
-        channel->AddToReceiveQ(referrer, cb);
+        channel->AddToReceiveQ(referrer, data, cb);
       }
     }
   }
 
+  template <typename T>
   void RemoveFromSendQ(const void *referrer) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
@@ -156,6 +176,7 @@ class ChannelHolder {
     }
   }
 
+  template <typename T>
   void RemoveFromReceiveQ(const void *referrer) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
@@ -181,6 +202,9 @@ class ChannelHolder {
     virtual ~Placeholder() {}
     virtual const std::type_index Type() const = 0;
     virtual void* Ptr() const = 0;
+    virtual bool IsClosed() = 0;
+    virtual bool CanSend() = 0;
+    virtual bool CanReceive() = 0;
     virtual void Close() = 0;
     virtual void Lock() = 0;
     virtual void Unlock() = 0;
@@ -196,6 +220,27 @@ class ChannelHolder {
     virtual const std::type_index Type() const { return type_; }
 
     virtual void* Ptr() const { return static_cast<void*>(channel_.get()); }
+
+    virtual bool IsClosed() {
+      if (channel_) {
+        return channel_->IsClosed();
+      }
+      return false;
+    }
+
+    virtual bool CanSend() {
+      if (channel_) {
+        return channel_->CanSend();
+      }
+      return false;
+    }
+
+    virtual bool CanReceive() {
+      if (channel_) {
+        return channel_->CanReceive();
+      }
+      return false;
+    }
 
     virtual void Close() {
       if (channel_) channel_->Close();

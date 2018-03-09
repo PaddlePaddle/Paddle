@@ -34,8 +34,8 @@ class ChannelImpl : public paddle::framework::Channel<T> {
     std::condition_variable_any cond;
     bool chan_closed = false;
     bool completed = false;
-    void *referrer;   // TODO(thuan): figure out better way to do this
-    void (*callback)(QueueMessage*);
+    const void *referrer;   // TODO(thuan): figure out better way to do this
+    std::function<void(paddle::framework::Channel<T>*)> callback;
 
     QueueMessage(T *item) : data(item) {}
 
@@ -61,10 +61,10 @@ class ChannelImpl : public paddle::framework::Channel<T> {
   ChannelImpl(size_t);
   virtual ~ChannelImpl();
 
-  virtual void AddToSendQ(const void *referrer,
-                 std::function<void (paddle::framework::Channel*)> cb);
-  virtual void AddToReceiveQ(const void *referrer,
-                 std::function<void (paddle::framework::Channel*)> cb);
+  virtual void AddToSendQ(const void *referrer, T* data,
+                 std::function<void (paddle::framework::Channel<T>*)> cb);
+  virtual void AddToReceiveQ(const void *referrer, T* data,
+                 std::function<void (paddle::framework::Channel<T>*)> cb);
 
   virtual void RemoveFromSendQ(const void *referrer);
   virtual void RemoveFromReceiveQ(const void *referrer);
@@ -100,14 +100,18 @@ ChannelImpl<T>::ChannelImpl(size_t capacity)
   PADDLE_ENFORCE_GE(capacity, 0);
 }
 
+template <typename T>
 bool ChannelImpl<T>::CanSend() {
-  std::scoped_lock lock(mu_);
+  std::unique_lock<std::recursive_mutex> lock{mu_};
   return !closed_ && (!recvq.empty() || buf_.size() < cap_);
+  lock.unlock();
 }
 
+template <typename T>
 bool ChannelImpl<T>::CanReceive() {
-  std::scoped_lock lock(mu_);
+  std::unique_lock<std::recursive_mutex> lock{mu_};
   return !(closed_ && buf_.empty()) && (!sendq.empty() || buf_.size() > 0);
+  lock.unlock();
 }
 
 template <typename T>
@@ -132,7 +136,7 @@ bool ChannelImpl<T>::Send(T *item) {
 
     // Execute callback function (if any)
     if (m->callback != nullptr) {
-      m->callback(m);
+      m->callback(this);
     }
 
     // Wake up the blocked process and unlock
@@ -183,7 +187,7 @@ bool ChannelImpl<T>::Receive(T *item) {
 
     // Execute callback function (if any)
     if (m->callback != nullptr) {
-      m->callback(m);
+      m->callback(this);
     }
 
     // Wake up the blocked process and unlock
@@ -221,8 +225,9 @@ void ChannelImpl<T>::Unlock() {
   mu_.unlock();
 }
 
-bool IsClosed() {
-  std::scoped_lock lock(mu_);
+template <typename T>
+bool ChannelImpl<T>::IsClosed() {
+  std::lock_guard<std::recursive_mutex> lock{mu_};
   return closed_;
 }
 
@@ -246,7 +251,7 @@ void ChannelImpl<T>::Close() {
 
     // Execute callback function (if any)
     if (m->callback != nullptr) {
-      m->callback(m);
+      m->callback(this);
     }
 
     m->Notify();
@@ -260,29 +265,63 @@ void ChannelImpl<T>::Close() {
 
     // Execute callback function (if any)
     if (m->callback != nullptr) {
-      m->callback(m);
+      m->callback(this);
     }
 
     m->Notify();
   }
 }
 
-void ChannelImpl<T>::AddToSendQ(const void *referrer,
-                       std::function<void (paddle::framework::Channel*)> cb) {
-  std::scoped_lock lock(mu_);
+template <typename T>
+void ChannelImpl<T>::AddToSendQ(const void *referrer, T* data,
+                       std::function<void (paddle::framework::Channel<T>*)> cb) {
+  std::lock_guard<std::recursive_mutex> lock{mu_};
+  auto m = std::make_shared<QueueMessage>(data);
+  m->referrer = referrer;
+  m->callback = cb;
+  sendq.push_back(m);
 }
 
-void ChannelImpl<T>::AddToReceiveQ(const void *referrer,
-                       std::function<void (paddle::framework::Channel*)> cb) {
-  std::scoped_lock lock(mu_);
+template <typename T>
+void ChannelImpl<T>::AddToReceiveQ(const void *referrer, T* data,
+                       std::function<void (paddle::framework::Channel<T>*)> cb) {
+  std::lock_guard<std::recursive_mutex> lock{mu_};
+  auto m = std::make_shared<QueueMessage>(data);
+  m->referrer = referrer;
+  m->callback = cb;
+  recvq.push_back(m);
 }
 
+template <typename T>
 void ChannelImpl<T>::RemoveFromSendQ(const void *referrer) {
-  std::scoped_lock lock(mu_);
+  std::lock_guard<std::recursive_mutex> lock{mu_};
+
+  for (auto it = sendq.begin(); it != sendq.end() ; ) {
+    std::shared_ptr<QueueMessage> sendMsg = (std::shared_ptr<QueueMessage>)*it;
+
+    if (sendMsg->referrer == referrer) {
+      it = sendq.erase(it);
+      send_ctr--;
+    } else {
+      ++it;
+    }
+  }
 }
 
+template <typename T>
 void ChannelImpl<T>::RemoveFromReceiveQ(const void *referrer) {
-  std::scoped_lock lock(mu_);
+  std::lock_guard<std::recursive_mutex> lock{mu_};
+
+  for (auto it = recvq.begin(); it != recvq.end() ; ) {
+    std::shared_ptr<QueueMessage> recvMsg = (std::shared_ptr<QueueMessage>)*it;
+
+    if (recvMsg->referrer == referrer) {
+      it = recvq.erase(it);
+      recv_ctr--;
+    } else {
+      ++it;
+    }
+  }
 }
 
 template <typename T>
