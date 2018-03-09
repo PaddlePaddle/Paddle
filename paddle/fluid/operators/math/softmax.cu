@@ -14,17 +14,63 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
+#include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
+using Tensor = framework::Tensor;
+using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
+using DataLayout = platform::DataLayout;
+
+template <typename T>
+void SoftmaxCUDNNFunctor<T>::operator()(
+    const platform::CUDADeviceContext& context, const framework::Tensor* X,
+    framework::Tensor* Y) {
+  // ------------------- cudnn descriptors ---------------------
+  ScopedTensorDescriptor xDesc;
+  ScopedTensorDescriptor yDesc;
+  DataLayout layout = DataLayout::kNCHW;
+
+  cudnnTensorDescriptor_t cudnn_x_desc =
+      xDesc.descriptor<T>(layout, framework::vectorize2int(X->dims()));
+  cudnnTensorDescriptor_t cudnn_y_desc =
+      xDesc.descriptor<T>(layout, framework::vectorize2int(Y->dims()));
+  // NOTE(*) The signature of cudnnSoftmaxForward
+  // final = alpha[0]*softmax + beta[0]*priorDstValue.
+  Tensor alpha, beta;
+  alpha.Resize(X->dims());
+  beta.Resize(X->dims());
+  math::SetConstant<platform::CUDADeviceContext, T> constant;
+  constant(context, &alpha, static_cast<T>(1));
+  constant(context, &beta, static_cast<T>(0));
+
+  PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxForward(
+      context.cudnn_handle(), CUDNN_SOFTMAX_FAST, CUDNN_SOFTMAX_MODE_INSTANCE,
+      alpha->data<T>(), cudnn_x_desc, X->data<T>(), cudnn_y_desc,
+      Y->mutable_data<T>(context.GetPlace())));
+}
+
+// template<typename T>
+// class SoftmaxCUDNNGradFuntor {
+// public:
+//   void operator()(const platform::CUDADeviceContext& context, const
+//   framework::Tensor *Y,
+//                   const framework::Tensor* y_grad, framework::Tensor*
+//                   x_grad);
+// };
+
 template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
+
+template class SoftmaxCUDNNFunctor<float>;
+template class SoftmaxCUDNNFunctor<double>;
 
 }  // namespace math
 }  // namespace operators
