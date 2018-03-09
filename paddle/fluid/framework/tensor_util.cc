@@ -187,7 +187,6 @@ bool TensorContainsInf(const framework::Tensor& tensor) {
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx) {
-  // TODO(typhoonzero): serialize to ostream
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char*>(&version), sizeof(version));
