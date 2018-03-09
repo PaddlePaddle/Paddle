@@ -33,8 +33,13 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
 
-    PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
-    PADDLE_ENFORCE_EQ(ids_dims[1], 1);
+    auto ids_var_type = ctx->GetInputsVarType("Ids").front();
+    // ids_var_types also can be LOD_TENSOR_ARRAY, it's used as concat_rows.
+    // Maybe near future we will add concat_rows op.
+    if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
+      PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
+      PADDLE_ENFORCE_EQ(ids_dims[1], 1);
+    }
 
     ctx->SetOutputDim("Out", {ids_dims[0], table_dims[1]});
     ctx->ShareLoD("Ids", /*->*/ "Out");
