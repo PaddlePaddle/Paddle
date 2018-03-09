@@ -177,7 +177,7 @@ class ReduceProdOpMaker : public ReduceOpMaker {
  public:
   ReduceProdOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : ReduceOpMaker(proto, op_checker) {
-    SetComment("ReduceProd", "prod");
+    SetComment("ReduceProd", "production");
     AddComment(comment_);
   }
 };

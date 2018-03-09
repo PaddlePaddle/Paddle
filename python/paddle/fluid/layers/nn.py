@@ -2215,8 +2215,8 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         keep_dim (bool|False): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        name(str|None): A name for this layer(optional). If set None, the 
+            layer will be named automatically.
 
     Returns:
         Variable: The reduced Tensor variable.
@@ -2231,7 +2231,8 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(x)  # [0.0002268]
             fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
             fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
-            fluid.layers.reduce_prod(x, dim=1, keep_dim=True)  # [[0.027], [0.0084]]
+            fluid.layers.reduce_prod(x, dim=1, 
+                                     keep_dim=True)  # [[0.027], [0.0084]]
     """
     helper = LayerHelper('reduce_prod', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
