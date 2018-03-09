@@ -35,19 +35,16 @@ class LookupTableKernel : public framework::OpKernel<T> {
 
     int64_t* ids;
     int64_t ids_numel;
-    Tensor* output_t;
-
-    // ids_var_types also can be LOD_TENSOR_ARRAY, it's used as concat_rows.
-    // Maybe near future we will add concat_rows op.
+    auto* output_t = context.Output<Tensor>("Out");
+    // lookup_table and concat_rows use the same kernel, for lookup_table,
+    // ids_var_type should be LoDTensor, for concat_rows, ids_var_type and
+    // out_var_type should be SelectedRows.
     if (ids_var->IsType<LoDTensor>()) {
       auto* ids_t = context.Input<LoDTensor>("Ids");
-      output_t = context.Output<LoDTensor>("Out");
       ids = const_cast<int64_t*>(ids_t->data<int64_t>());
       ids_numel = ids_t->numel();
     } else if (ids_var->IsType<SelectedRows>()) {
       auto* ids_t = context.Input<SelectedRows>("Ids");
-      output_t =
-          const_cast<Tensor*>(&(context.Output<SelectedRows>("Out")->value()));
       ids = const_cast<int64_t*>(ids_t->rows().data());
       ids_numel = ids_t->rows().size();
       output_t->Resize({ids_numel, table_t->dims()[1]});
