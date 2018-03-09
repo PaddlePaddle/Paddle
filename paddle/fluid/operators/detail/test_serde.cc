@@ -71,10 +71,16 @@ void RunSerdeTestTensor(platform::Place place) {
 
   const float* tensor_data =
       reinterpret_cast<const float*>(varmsg.serialized().data());
-  for (int i = 0; i < tensor_numel; ++i) {
-    std::cout << "tensor data: " << tensor_data[i] << std::endl;
-    EXPECT_EQ(tensor_data[i], orig_tensor_data[i]);
+  for (int i = 0; i < varmsg.serialized().size(); ++i) {
+    printf("%02X ", varmsg.serialized().data()[i]);
   }
+  printf("\n");
+  for (int i = 0; i < tensor_numel; ++i) {
+    std::cout << "#####tensor data: " << tensor_data[i] << std::endl;
+    EXPECT_EQ(tensor_data[i], orig_tensor_data[i]);
+    std::cout << "test end 1 " << std::endl;
+  }
+  std::cout << "tensor data end " << std::endl;
 
   // deserialize zero-copy
   framework::Variable var2;
@@ -132,21 +138,16 @@ void RunSerdeTestSelectedRows(platform::Place place) {
 
   EXPECT_EQ(varmsg.varname(), "myvar");
   EXPECT_EQ(varmsg.type(), 1);
-  std::cout << "before test1, ser size: " << varmsg.serialized().size()
-            << std::endl;
+
   const float* tensor_data =
       reinterpret_cast<const float*>(varmsg.serialized().data());
   const int64_t* rows_data =
       reinterpret_cast<const int64_t*>(varmsg.rows().data());
-  std::cout << "deser pointer " << (void*)tensor_data << std::endl;
   for (int i = 0; i < tensor_numel; ++i) {
-    std::cout << "deser data: " << tensor_data[i] << std::endl;
     EXPECT_EQ(tensor_data[i], orig_tensor_data[i]);
   }
-  std::cout << "before test rows" << std::endl;
   EXPECT_EQ(rows_data[0], 3);
   EXPECT_EQ(rows_data[1], 10);
-  std::cout << "before test2" << std::endl;
   // deserialize zero-copy
   framework::Variable var2;
   operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
@@ -167,7 +168,6 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   const int64_t* rows_data2 = rows2->data();
 
   for (int i = 0; i < tensor_numel; ++i) {
-    std::cout << "data: " << tensor_data2[i] << std::endl;
     EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
   }
   EXPECT_EQ(rows_data2[0], 3);

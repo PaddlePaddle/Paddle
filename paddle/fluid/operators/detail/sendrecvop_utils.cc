@@ -117,6 +117,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       }
       if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
+        PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
         platform::CPUPlace cpu;
         auto& gpu_dev_ctx =
             static_cast<const platform::CUDADeviceContext&>(ctx);
@@ -126,23 +127,22 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                      boost::get<platform::CUDAPlace>(tensor.place()),
                      reinterpret_cast<const void*>(tensor.data<void>()),
                      copy_size, gpu_dev_ctx.stream());
-        ctx.Wait();
-        float* ttt = reinterpret_cast<float*>(payload);
-        for (int i = 0; i < copy_size / 4; i++) {
-          std::cout << "copied to cpu: " << ttt[i] << std::endl;
-        }
         destroy_callback = [](void* backing) {
-          // platform::CPUPlace cpu;
-          // memory::Free(cpu, backing);
+          std::cout << "destroy payload" << std::endl;
+          platform::CPUPlace cpu;
+          memory::Free(cpu, backing);
         };
 #endif
       } else {
         payload = tensor.data<void>();
       }
       payload_size = tensor.memory_size();
-      std::cout << "size memory " << tensor.memory_size() << "size cal "
-                << tensor.numel() * framework::SizeOfType(tensor.type())
-                << std::endl;
+
+      std::string tmp(reinterpret_cast<char*>(payload), payload_size);
+      for (int i = 0; i < tmp.size(); ++i) {
+        printf("%02X ", tmp.data()[i]);
+      }
+      printf("\n");
       e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     case framework::proto::VarType_Type_SELECTED_ROWS: {
