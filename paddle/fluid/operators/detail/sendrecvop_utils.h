@@ -35,12 +35,6 @@ namespace detail {
 
 typedef void (*DestroyCallback)(void*);
 
-inline int64_t GetTimestamp() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
-      .count();
-}
-
 void SerializeToMessage(const std::string& name, const framework::Variable* var,
                         const platform::DeviceContext& ctx,
                         sendrecv::VariableMessage* msg);

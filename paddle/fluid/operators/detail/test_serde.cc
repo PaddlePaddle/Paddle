@@ -42,7 +42,7 @@ void RunSerdeTestTensor(platform::Place place) {
   int tensor_numel = 4 * 8 * 4 * 2;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
-  float* orig_tensor_data = tensor->mutable_data<float>(place);
+  tensor->mutable_data<float>(place);
   math::set_constant(ctx, tensor, 31.9);
 
   ::grpc::ByteBuffer msg;
@@ -71,16 +71,9 @@ void RunSerdeTestTensor(platform::Place place) {
 
   const float* tensor_data =
       reinterpret_cast<const float*>(varmsg.serialized().data());
-  for (int i = 0; i < varmsg.serialized().size(); ++i) {
-    printf("%02X ", varmsg.serialized().data()[i]);
-  }
-  printf("\n");
   for (int i = 0; i < tensor_numel; ++i) {
-    std::cout << "#####tensor data: " << tensor_data[i] << std::endl;
-    EXPECT_EQ(tensor_data[i], orig_tensor_data[i]);
-    std::cout << "test end 1 " << std::endl;
+    EXPECT_FLOAT_EQ(tensor_data[i], 31.9);
   }
-  std::cout << "tensor data end " << std::endl;
 
   // deserialize zero-copy
   framework::Variable var2;
@@ -101,8 +94,7 @@ void RunSerdeTestTensor(platform::Place place) {
   EXPECT_EQ(varmsg.lod(0).lod_data(0), 1);
   EXPECT_EQ(varmsg.lod(0).lod_data(1), 3);
   EXPECT_EQ(varmsg.lod(0).lod_data(2), 8);
-  for (int i = 0; i < tensor_numel; ++i)
-    EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
+  for (int i = 0; i < tensor_numel; ++i) EXPECT_FLOAT_EQ(tensor_data2[i], 31.9);
 }
 
 void RunSerdeTestSelectedRows(platform::Place place) {
@@ -114,10 +106,9 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   auto* slr = var.GetMutable<framework::SelectedRows>();
   auto* tensor = slr->mutable_value();
   auto* rows = slr->mutable_rows();
-
   tensor->Resize(framework::make_ddim({2, 10}));
+  tensor->mutable_data<float>(place);
   int tensor_numel = 2 * 10;
-  float* orig_tensor_data = tensor->mutable_data<float>(place);
   math::set_constant(ctx, tensor, 32.7);
   rows->push_back(3);
   rows->push_back(10);
@@ -144,7 +135,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   const int64_t* rows_data =
       reinterpret_cast<const int64_t*>(varmsg.rows().data());
   for (int i = 0; i < tensor_numel; ++i) {
-    EXPECT_EQ(tensor_data[i], orig_tensor_data[i]);
+    EXPECT_FLOAT_EQ(tensor_data[i], 32.7);
   }
   EXPECT_EQ(rows_data[0], 3);
   EXPECT_EQ(rows_data[1], 10);
@@ -168,21 +159,21 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   const int64_t* rows_data2 = rows2->data();
 
   for (int i = 0; i < tensor_numel; ++i) {
-    EXPECT_EQ(tensor_data2[i], orig_tensor_data[i]);
+    EXPECT_FLOAT_EQ(tensor_data2[i], 32.7);
   }
   EXPECT_EQ(rows_data2[0], 3);
   EXPECT_EQ(rows_data2[1], 10);
 }
 
-// TEST(SelectedRows, CPU) {
-//   platform::CPUPlace place;
-//   RunSerdeTestSelectedRows(place);
-// }
+TEST(SelectedRows, CPU) {
+  platform::CPUPlace place;
+  RunSerdeTestSelectedRows(place);
+}
 
-// TEST(SelectedRows, GPU) {
-//   platform::CUDAPlace place;
-//   RunSerdeTestSelectedRows(place);
-// }
+TEST(SelectedRows, GPU) {
+  platform::CUDAPlace place;
+  RunSerdeTestSelectedRows(place);
+}
 
 TEST(Tensor, CPU) {
   platform::CPUPlace place;
