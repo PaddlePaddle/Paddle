@@ -74,14 +74,34 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* table_t = context.Input<LoDTensor>("W");
-    auto* ids_t = context.Input<LoDTensor>("Ids");
-    auto* output_t = context.Output<LoDTensor>("Out");
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
+    auto* ids_var = context.InputVar("Ids");  // int tensor
+
+    int64_t* ids;
+    int64_t K;
+    framework::Tensor* output_t;
+
+    // ids_var_types also can be LOD_TENSOR_ARRAY, it's used as concat_rows.
+    // Maybe near future we will add concat_rows op.
+    if (ids_var->IsType<framework::LoDTensor>()) {
+      auto* ids_t = context.Input<LoDTensor>("Ids");
+      output_t = context.Output<LoDTensor>("Out");  // float tensor
+      ids = const_cast<int64_t*>(ids_t->data<int64_t>());
+      K = ids_t->numel();
+    } else if (ids_var->IsType<framework::SelectedRows>()) {
+      auto* ids_t = context.Input<framework::SelectedRows>("Ids");
+      output_t = const_cast<framework::Tensor*>(
+          &(context.Output<framework::SelectedRows>("Out")
+                ->value()));  // float tensor
+      ids = const_cast<int64_t*>(ids_t->rows().CUDAData(context.GetPlace()));
+      K = ids_t->rows().size();
+      output_t->Resize({K, table_t->dims()[1]});
+    } else {
+      PADDLE_THROW("Unsupported Variable Type of Ids");
+    }
 
     size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];
-    size_t K = ids_t->numel();
-    auto* ids = ids_t->data<int64_t>();
     auto* table = table_t->data<T>();
     auto* output = output_t->mutable_data<T>(context.GetPlace());
 
