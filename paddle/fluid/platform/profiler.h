@@ -104,11 +104,11 @@ void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
 void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 struct RecordEvent {
-  RecordEvent(const std::string& name, const DeviceContext* dev_ctx,
-              int32_t block_id);
+  RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
 
   ~RecordEvent();
 
+  uint64_t start_ns_;
   // The device context is used by Event to get the current cuda stream.
   const DeviceContext* dev_ctx_;
   // Event name
@@ -141,7 +141,8 @@ void EnableProfiler(ProfilerState state);
 // Clear the g_all_event_lists, which is total event lists of all threads.
 void ResetProfiler();
 
-void DisableProfiler(EventSortingKey sorted_key);
+void DisableProfiler(EventSortingKey sorted_key,
+                     const std::string& profile_path);
 
 // Parse the event list and output the profiling report
 void ParseEvents(std::vector<std::vector<Event>>&,

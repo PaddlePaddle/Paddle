@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/fluid/platform/dynload/cupti_lib_path.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_string(cudnn_dir, "",
@@ -45,8 +46,7 @@ DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-static const char* cupti_lib_path = CUPTI_LIB_PATH;
+static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
 
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {

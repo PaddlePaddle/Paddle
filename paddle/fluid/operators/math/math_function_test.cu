@@ -14,6 +14,14 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
+void fill_fp16_data(paddle::platform::float16* in_ptr, size_t size,
+                    const std::vector<float>& data) {
+  PADDLE_ENFORCE_EQ(size, data.size());
+  for (size_t i = 0; i < data.size(); ++i) {
+    in_ptr[i] = paddle::platform::float16(data[i]);
+  }
+}
+
 TEST(math_function, notrans_mul_trans_fp32) {
   using namespace paddle::framework;
   using namespace paddle::platform;
@@ -65,9 +73,7 @@ TEST(math_function, notrans_mul_trans_fp16) {
   CUDADeviceContext context(gpu_place);
 
   float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
-  float16 arr[6] = {float16(0), float16(1), float16(2),
-                    float16(3), float16(4), float16(5)};
-  memcpy(input1_ptr, arr, 6 * sizeof(float16));
+  fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
 
   TensorCopy(input1, gpu_place, context, &input1_gpu);
   TensorCopy(input1, gpu_place, context, &input2_gpu);
@@ -144,9 +150,7 @@ TEST(math_function, trans_mul_notrans_fp16) {
   CUDADeviceContext context(gpu_place);
 
   float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
-  float16 arr[6] = {float16(0), float16(1), float16(2),
-                    float16(3), float16(4), float16(5)};
-  memcpy(input1_ptr, arr, 6 * sizeof(float16));
+  fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
 
   TensorCopy(input1, gpu_place, context, &input1_gpu);
   TensorCopy(input1, gpu_place, context, &input2_gpu);
@@ -248,18 +252,12 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
   int n = 3;
   int k = 3;
   float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
-  float16 arr1[6] = {float16(0), float16(1), float16(2),
-                     float16(3), float16(4), float16(5)};
-  memcpy(input1_ptr, arr1, 6 * sizeof(float16));
+  fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
   float16* input2_ptr = input2.mutable_data<float16>({3, 4}, cpu_place);
-  float16 arr2[12] = {float16(0), float16(1), float16(2),  float16(3),
-                      float16(4), float16(5), float16(6),  float16(7),
-                      float16(8), float16(9), float16(10), float16(11)};
-  memcpy(input2_ptr, arr2, 12 * sizeof(float16));
+  fill_fp16_data(input2_ptr, input2.numel(),
+                 {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
   float16* input3_ptr = input3.mutable_data<float16>({2, 4}, cpu_place);
-  float16 arr3[8] = {float16(0), float16(1), float16(2), float16(3),
-                     float16(4), float16(5), float16(6), float16(7)};
-  memcpy(input3_ptr, arr3, 8 * sizeof(float16));
+  fill_fp16_data(input3_ptr, input3.numel(), {0, 1, 2, 3, 4, 5, 6, 7});
 
   TensorCopy(input1, gpu_place, context, &input1_gpu);
   TensorCopy(input2, gpu_place, context, &input2_gpu);
@@ -361,18 +359,12 @@ TEST(math_function, gemm_trans_cublas_fp16) {
   int n = 3;
   int k = 3;
   float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
-  float16 arr1[6] = {float16(0), float16(1), float16(2),
-                     float16(3), float16(4), float16(5)};
-  memcpy(input1_ptr, arr1, 6 * sizeof(float16));
+  fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
   float16* input2_ptr = input2.mutable_data<float16>({4, 3}, cpu_place);
-  float16 arr2[12] = {float16(0),  float16(4), float16(8), float16(1),
-                      float16(5),  float16(9), float16(2), float16(6),
-                      float16(10), float16(3), float16(7), float16(11)};
-  memcpy(input2_ptr, arr2, 12 * sizeof(float16));
+  fill_fp16_data(input2_ptr, input2.numel(),
+                 {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11});
   float16* input3_ptr = input3.mutable_data<float16>({2, 4}, cpu_place);
-  float16 arr3[8] = {float16(0), float16(1), float16(2), float16(3),
-                     float16(4), float16(5), float16(6), float16(7)};
-  memcpy(input3_ptr, arr3, 8 * sizeof(float16));
+  fill_fp16_data(input3_ptr, input3.numel(), {0, 1, 2, 3, 4, 5, 6, 7});
 
   TensorCopy(input1, gpu_place, context, &input1_gpu);
   TensorCopy(input2, gpu_place, context, &input2_gpu);

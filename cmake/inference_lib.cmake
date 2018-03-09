@@ -1,9 +1,22 @@
+set_property(GLOBAL PROPERTY FLUID_MODULES "")
+# find all fluid modules is used for paddle fluid static library
+function(find_fluid_modules TARGET_NAME)
+  get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
+  string(FIND "${__target_path}" "fluid" pos)
+  if(pos GREATER 1)
+    get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
+    set(fluid_modules ${fluid_modules} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
+  endif()
+endfunction(find_fluid_modules)
+
 # make package for paddle fluid shared and static library
 function(copy TARGET)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DSTS DEPS)
     cmake_parse_arguments(copy_lib "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(inference_lib_dist_dep ${TARGET} ${inference_lib_dist_dep} PARENT_SCOPE)
 
     list(LENGTH copy_lib_SRCS copy_lib_SRCS_len)
     list(LENGTH copy_lib_DSTS copy_lib_DSTS_len)
@@ -42,13 +55,21 @@ copy(glog_lib
   DSTS ${dst_dir} ${dst_dir}/lib
 )
 
-IF(NOT PROTOBUF_FOUND)
+if(NOT PROTOBUF_FOUND)
     set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/protobuf")
     copy(protobuf_lib
-      SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LITE_LIBRARY}
+      SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
       DSTS ${dst_dir} ${dst_dir}/lib
     )
-ENDIF(NOT PROTOBUF_FOUND)
+endif()
+
+if(NOT CBLAS_FOUND)
+    set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/openblas")
+    copy(openblas_lib
+      SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
+      DSTS ${dst_dir} ${dst_dir}
+    )
+endif()
 
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
@@ -66,13 +87,13 @@ copy(memory_lib
 )
 
 set(module "inference")
-copy(inference_lib DEPENDS paddle_fluid_shared
-  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.so
+copy(inference_lib DEPS paddle_fluid_shared paddle_fluid
+  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}
 )
 
 set(module "platform")
-copy(platform_lib
+copy(platform_lib DEPS profiler_py_proto
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details
 )
@@ -83,6 +104,4 @@ copy(string_lib
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
 )
 
-add_custom_target(inference_lib_dist DEPENDS 
-  inference_lib framework_lib memory_lib platform_lib string_lib
-  gflags_lib glog_lib protobuf_lib eigen3_lib)
+add_custom_target(inference_lib_dist DEPENDS ${inference_lib_dist_dep}) 

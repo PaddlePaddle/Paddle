@@ -220,7 +220,10 @@ def _callback_lookup_(op):
     :return: callback function
     """
     if op.type == 'parallel_do' and op.attr('use_nccl'):
+        all_vars = op.block.vars
         param_names = set(op.input('parameters'))
+        param_names = filter(lambda name: all_vars[name].stop_gradient is False,
+                             param_names)
         param_grad_names = [n + "@GRAD" for n in param_names]
 
         class ParallelDoCallBack(object):
@@ -483,7 +486,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     params_and_grads = []
     for param in parameters:
         if param not in grad_info_map:
-            raise ValueError("param %s is not in map" % param)
+            continue
         grad_info = grad_info_map[param]
         grad_block = grad_info[1]
         if not grad_block.has_var(grad_info[0]):
