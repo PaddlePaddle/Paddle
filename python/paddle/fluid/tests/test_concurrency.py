@@ -97,11 +97,13 @@ class TestRoutineOp(unittest.TestCase):
 
     def _create_persistable_tensor(self, name, type, dtype):
         return framework.default_main_program().current_block().create_var(
-            name=unique_name.generate(name), type=type, dtype=dtype, persistable=True)
+            name=unique_name.generate(name), type=type, dtype=dtype,
+            persistable=True)
 
     def test_select(self):
         with framework.program_guard(framework.Program()):
-            ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR, capacity=1)
+            ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR,
+                                     capacity=1)
 
             result1 = self._create_tensor('return_value',
                                           core.VarDesc.VarType.LOD_TENSOR,
@@ -166,12 +168,14 @@ class TestRoutineOp(unittest.TestCase):
                             assign(input=y, output=x)
                             assign(elementwise_add(x=x_tmp, y=y), output=y)
     
-                        with select.case(fluid.channel_recv, quit_channel, result2):
+                        with select.case(fluid.channel_recv, quit_channel,
+                                         result2):
                             print 'quit'
                             assign(input=while_false, output=while_cond)
     
             ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
-            quit_ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
+            quit_ch = fluid.make_channel(
+                dtype=core.VarDesc.VarType.LOD_TENSOR)
     
             result = self._create_persistable_tensor(
                 'return_value', core.VarDesc.VarType.LOD_TENSOR,
