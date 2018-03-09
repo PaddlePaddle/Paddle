@@ -34,8 +34,9 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto ids_dims = ctx->GetInputDim("Ids");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
-    // ids_var_types also can be LOD_TENSOR_ARRAY, it's used as concat_rows.
-    // Maybe near future we will add concat_rows op.
+    // lookup_table and concat_rows use the same InferShape, for lookup_table,
+    // ids_var_type should be LoDTensor, for concat_rows, it should be
+    // SelectedRows.
     if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
       PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
       PADDLE_ENFORCE_EQ(ids_dims[1], 1);
@@ -85,6 +86,44 @@ then concatenated into a dense tensor.
 
 The input Ids can carry the LoD (Level of Details) information,
 or not. And the output only shares the LoD information with input Ids.
+
+)DOC");
+  }
+};
+
+class ConcatRowsOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  ConcatRowsOpMaker(OpProto* proto, OpAttrChecker* op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("W",
+             "(Tensor) The input tensor of concat_rows operator. "
+             "The rank of this tensor is 2.");
+    AddInput(
+        "Ids",
+        "(SelectedRows) The rows of Ids contains the index to be looked up "
+        "in W.");
+    AddOutput("Out",
+              "(SelectedRows or Tensor) The result of concatenating, which "
+              "have the same type as W.");
+    AddAttr<bool>("is_sparse",
+                  "(boolean, default true) This attribution is invalid, it's "
+                  "only used by `Lookup Table Operator`.")
+        .SetDefault(true);
+    AddAttr<int64_t>("padding_idx",
+                     "(int64, default -1) "
+                     "If the value is -1, it makes no effect to lookup. "
+                     "Otherwise the given value indicates padding the output "
+                     "with zeros whenever lookup encounters it in Ids.")
+        .SetDefault(-1);
+
+    AddComment(R"DOC(
+ConcatRows Operator.
+
+This operator is used to perform lookups on the W(dense tensor) according to
+rows contained by Idx(sparse tensor), then concatenates them into a sparse
+tensor or dense tensor.
+
+The type of Ids(Input) is SelectedRows.
 
 )DOC");
   }
@@ -150,3 +189,8 @@ REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
                        ops::LookupTableKernel<double>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
                        ops::LookupTableGradKernel<double>);
+
+// concat_rows is used by regularization and it doesn't have gradient operation.
+REGISTER_OPERATOR(concat_rows, ops::LookupTableOp, ops::ConcatRowsOpMaker);
+REGISTER_OP_CPU_KERNEL(concat_rows, ops::LookupTableKernel<float>,
+                       ops::LookupTableKernel<double>);
