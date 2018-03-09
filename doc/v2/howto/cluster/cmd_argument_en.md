@@ -79,7 +79,7 @@ trainer = paddle.trainer.SGD(..., is_local=False)
 
 Parameter Description
 
-- is_local: **必选, 默认True**, 是否使用PServer更新参数
+- is_local: **required, default True**, whether update paramters by PServer.
 
 ## Prepare Training Dataset
 
