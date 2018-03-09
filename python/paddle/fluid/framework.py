@@ -827,6 +827,9 @@ class Block(object):
             raise e
         self.desc.remove_op(start, end + 1)
 
+    def delete_op(self, idx):
+        self.desc.remove_op(idx, idx + 1)
+
     def slice_ops(self, start, end):
         return list(self.ops)[start:end]
 
