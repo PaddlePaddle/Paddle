@@ -70,11 +70,12 @@ def train(use_cuda, save_dirname, is_local):
         train_loop(fluid.default_main_program())
     else:
         port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
-        eplist = []
-        for ip in pserver_ips.split(","):
-            eplist.append(':'.join([ip, port]))
-        pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        #pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        #eplist = []
+        #for ip in pserver_ips.split(","):
+        #    eplist.append(':'.join([ip, port]))
+        #pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        pserver_endpoints = os.getenv("PADDLE_PSERVER_EPS")
         trainers = int(os.getenv("TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
@@ -136,6 +137,7 @@ def main(use_cuda, is_local=True):
     infer(use_cuda, save_dirname)
 
 
+"""
 class TestFitALine(unittest.TestCase):
     def test_cpu(self):
         with self.program_scope_guard():
@@ -154,6 +156,7 @@ class TestFitALine(unittest.TestCase):
             with fluid.program_guard(prog, startup_prog):
                 yield
 
-
+"""
+train(False, "fit_a_line.inference.model", False)
 if __name__ == '__main__':
     unittest.main()

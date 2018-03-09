@@ -111,7 +111,7 @@ class SumKernel : public framework::OpKernel<T> {
       out_value->Resize(framework::make_ddim(in_dim));
 
       // if all the input sparse vars are empty, no need to
-      // update the param.
+      // merge these vars.
       if (first_dim == 0UL) {
         return;
       }
