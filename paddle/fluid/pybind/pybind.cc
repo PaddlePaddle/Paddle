@@ -401,9 +401,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
-      .def("run",
-           (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
-               Executor::Run);
+      .def("run", [](framework::Executor &self, const ProgramDesc &p, Scope *s,
+                     int i, bool b1, bool b2) -> void {
+        py::gil_scoped_release release_guard;
+        self.Run(p, s, i, b1, b2);
+      });
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
