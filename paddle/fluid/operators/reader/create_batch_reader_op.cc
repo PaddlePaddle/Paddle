@@ -70,7 +70,7 @@ void BatchReader::ReadNext(std::vector<framework::LoDTensor>* out) {
   for (int i = 0; i < batch_size_; ++i) {
     buffer_.push_back(std::vector<framework::LoDTensor>());
     reader_->ReadNext(&buffer_.back());
-    if (buffer.back().empty()) {
+    if (buffer_.back().empty()) {
       buffer_.pop_back();
       break;
     }
