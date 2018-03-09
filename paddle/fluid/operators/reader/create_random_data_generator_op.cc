@@ -50,8 +50,6 @@ class RandomDataGenerator : public framework::FileReader {
     }
   }
 
-  bool HasNext() const override { return true; }
-
   void ReInit() override { return; }
 
  private:

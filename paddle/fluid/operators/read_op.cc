@@ -60,15 +60,16 @@ class ReadOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override {
     framework::ReaderHolder* reader =
         scope.FindVar(Input("Reader"))->GetMutable<framework::ReaderHolder>();
-    if (!reader->HasNext()) {
-      reader->ReInit();
-      PADDLE_ENFORCE(
-          reader->HasNext(),
-          "Reader can not read the next data even it has been re-initialized.");
-    }
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
+    if (ins.empty()) {
+      reader->ReInit();
+      reader->ReadNext(&ins);
+      PADDLE_ENFORCE(
+          !ins.empty(),
+          "Reader can not read the next data even it has been re-initialized.");
+    }
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
     for (size_t i = 0; i < ins.size(); ++i) {
       auto* out =
