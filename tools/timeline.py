@@ -159,7 +159,7 @@ if args.timeline_path:
 with open(profile_path, 'r') as f:
     profile_s = f.read()
     profile_pb = profiler_pb2.Profile()
-    text_format.Merge(profile_s, profile_pb)
+    profile_pb.ParseFromString(profile_s)
 
 tl = Timeline(profile_pb)
 with open(timeline_path, 'w') as f:

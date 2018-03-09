@@ -68,6 +68,8 @@ extern void *cublas_dso_handle;
   __macro(cublasDgemv_v2);                \
   __macro(cublasSgemm_v2);                \
   __macro(cublasDgemm_v2);                \
+  __macro(cublasHgemm);                   \
+  __macro(cublasSgemmEx);                 \
   __macro(cublasSgeam_v2);                \
   __macro(cublasDgeam_v2);                \
   __macro(cublasCreate_v2);               \
@@ -83,6 +85,7 @@ extern void *cublas_dso_handle;
   __macro(cublasDgemmStridedBatched);     \
   __macro(cublasCgemmStridedBatched);     \
   __macro(cublasZgemmStridedBatched);     \
+  __macro(cublasHgemmStridedBatched);     \
   __macro(cublasSgetrfBatched);           \
   __macro(cublasSgetriBatched);           \
   __macro(cublasDgetrfBatched);           \
