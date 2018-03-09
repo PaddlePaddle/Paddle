@@ -67,10 +67,10 @@ class ThreadPool {
       } catch (platform::EnforceNotMet ex) {
         return std::unique_ptr<platform::EnforceNotMet>(
             new platform::EnforceNotMet(ex));
-      } catch (...) {
-        LOG(FATAL)
-            << "Unexpected exception is catched in thread pool. All "
-               "throwable exception in Fluid should be an EnforceNotMet.";
+      } catch (const std::exception& e) {
+        LOG(FATAL) << "Unexpected exception is catched in thread pool. All "
+                      "throwable exception in Fluid should be an EnforceNotMet."
+                   << e.what();
       }
       return nullptr;
     });
