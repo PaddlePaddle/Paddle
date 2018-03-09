@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "mkldnn.hpp"
-
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
@@ -56,7 +54,6 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(ksize.size() == 2, "ksize must be 2D, i.e. 2D pooling");
     PADDLE_ENFORCE(pooling_type == "max" || pooling_type == "avg",
                    "pooling_type must be 'max' or 'avg'");
-    // TODO(pzelazko-intel): support more formats
     PADDLE_ENFORCE(input->dims().size() == 4,
                    "Input dim must be with 4, i.e. NCHW");
 
@@ -66,6 +63,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
+    // TODO(pzelazko-intel): support more formats
     auto src_md = platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
                                           mkldnn::memory::format::nchw);
     auto dst_md = platform::MKLDNNMemDesc(dst_tz, mkldnn::memory::f32,
@@ -92,7 +90,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto pool_prim = mkldnn::pooling_forward(*pool_pd, src_memory, dst_memory,
                                              *workspace_memory);
 
-    // push primitives to stream and wait MKLDNN finish it's job
+    // push primitive to stream and wait until it's executed
     std::vector<mkldnn::primitive> pipeline{pool_prim};
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
   }
@@ -204,7 +202,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto bwd_prim = mkldnn::pooling_backward(
         pool_bwd_pd, diff_dst_memory, *workspace_memory, diff_src_memory);
 
-    // push primitives to stream and wait MKLDNN finish it's job
+    // push primitive to stream and wait until it's executed
     std::vector<mkldnn::primitive> pipeline{bwd_prim};
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
   }  // Compute()
