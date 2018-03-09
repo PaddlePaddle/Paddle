@@ -21,15 +21,24 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static int FindOutIdx(int row, const std::vector<int>& height_sections) {
-  int offset = 0;
-  for (size_t i = 0; i < height_sections.size(); ++i) {
-    if (row >= offset && row < (offset + height_sections[i])) {
-      return i;
+static int FindOutIdx(int row, const std::vector<int>& abs_sections) {
+  for (size_t i = 1; i < abs_sections.size(); ++i) {
+    if (row < abs_sections[i]) {
+      return i - 1;
     }
-    offset += height_sections[i];
   }
-  return -1;
+  return abs_sections.size() - 1;
+}
+
+static std::vector<int> ToAbsoluteSection(
+    const std::vector<int>& height_sections) {
+  std::vector<int> abs_sections;
+  abs_sections.resize(height_sections.size());
+  abs_sections[0] = 0;
+  for (size_t i = 1; i < height_sections.size(); ++i) {
+    abs_sections[i] = height_sections[i - 1] + abs_sections[i - 1];
+  }
+  return abs_sections;
 }
 
 template <typename DeviceContext, typename T>
@@ -40,16 +49,23 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
     auto outs = ctx.MultiOutput<framework::SelectedRows>("Out");
     auto height_sections = ctx.Attr<std::vector<int>>("height_sections");
 
+    auto abs_sections = ToAbsoluteSection(height_sections);
+
     auto x_rows = x->rows();
     std::vector<std::vector<int>> outs_rows_idx;
+    std::vector<std::vector<int>> outs_dense_idx;
+
     outs_rows_idx.resize(outs.size());
+    outs_dense_idx.resize(outs.size());
 
     auto row_numel = x->value().numel() / x->value().dims()[0];
     auto src = x->value().data<T>();
 
+    // split rows index into output sparse vars
     for (size_t i = 0; i < x_rows.size(); ++i) {
-      int out_idx = FindOutIdx(x_rows[i], height_sections);
-      outs_rows_idx[out_idx].push_back(i);
+      int out_idx = FindOutIdx(x_rows[i], abs_sections);
+      outs_rows_idx[out_idx].push_back(x_rows[i]);
+      outs_dense_idx[out_idx].push_back(i);
     }
     auto place = ctx.GetPlace();
 
@@ -61,19 +77,20 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
         dims[0] = rows_idx.size();
         outs[i]->mutable_value()->mutable_data<T>(dims, x->place());
         for (auto idx : rows_idx) {
-          outs[i]->mutable_rows()->push_back(x_rows[idx]);
+          outs[i]->mutable_rows()->push_back(idx - abs_sections[i]);
         }
         auto dst = outs[i]->mutable_value()->mutable_data<T>(ctx.GetPlace());
         for (size_t j = 0; j < rows_idx.size(); j++) {
           if (platform::is_cpu_place(place)) {
-            memory::Copy(platform::CPUPlace(), dst + j * row_numel,
-                         platform::CPUPlace(), src + rows_idx[j] * row_numel,
-                         sizeof(T) * row_numel);
+            memory::Copy(
+                platform::CPUPlace(), dst + j * row_numel, platform::CPUPlace(),
+                src + outs_dense_idx[i][j] * row_numel, sizeof(T) * row_numel);
           } else {
 #ifdef PADDLE_WITH_CUDA
             auto stream = ctx.cuda_device_context().stream();
             memory::Copy(platform::CUDAPlace(), dst + j * row_numel,
-                         platform::CUDAPlace(), src + rows_idx[j] * row_numel,
+                         platform::CUDAPlace(),
+                         src + outs_dense_idx[i][j] * row_numel,
                          sizeof(T) * row_numel, stream);
 #else
             PADDLE_THROW("Paddle is not compiled with GPU");
