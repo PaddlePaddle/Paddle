@@ -41,6 +41,10 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(LoDTensor) 1-D or 2-D output LoDTensor with the 2-nd dimension "
               "of length 1.");
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false);
     AddComment(R"DOC(
 Sequence Softmax Operator.
 

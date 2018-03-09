@@ -43,26 +43,19 @@ void SoftmaxCUDNNFunctor<T>::operator()(
   // NOTE(*) The signature of cudnnSoftmaxForward
   // final = alpha[0]*softmax + beta[0]*priorDstValue.
   Tensor alpha, beta;
-  alpha.Resize(X->dims());
-  beta.Resize(X->dims());
+  alpha.mutable_data<T>(X->dims(), context.GetPlace());
+  beta.mutable_data<T>(X->dims(), context.GetPlace());
+  // alpha.Resize(X->dims());
+  // beta.Resize(X->dims());
   math::SetConstant<platform::CUDADeviceContext, T> constant;
   constant(context, &alpha, static_cast<T>(1));
   constant(context, &beta, static_cast<T>(0));
 
   PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxForward(
       context.cudnn_handle(), CUDNN_SOFTMAX_FAST, CUDNN_SOFTMAX_MODE_INSTANCE,
-      alpha->data<T>(), cudnn_x_desc, X->data<T>(), cudnn_y_desc,
+      alpha.data<T>(), cudnn_x_desc, X->data<T>(), beta.data<T>(), cudnn_y_desc,
       Y->mutable_data<T>(context.GetPlace())));
 }
-
-// template<typename T>
-// class SoftmaxCUDNNGradFuntor {
-// public:
-//   void operator()(const platform::CUDADeviceContext& context, const
-//   framework::Tensor *Y,
-//                   const framework::Tensor* y_grad, framework::Tensor*
-//                   x_grad);
-// };
 
 template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double>;
