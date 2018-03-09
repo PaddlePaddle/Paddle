@@ -1217,6 +1217,7 @@ class SelectCase(object):
                  channel=None, value=None):
         self.helper = LayerHelper('conditional_block')
         self.main_program = self.helper.main_program
+        self.is_scalar_condition = True
 
         self.case_to_execute = case_to_execute
         self.idx = case_idx
@@ -1286,6 +1287,7 @@ class SelectCase(object):
             },
             attrs={
                 'sub_block': self.block,
+                'is_scalar_condition': self.is_scalar_condition,
                 'case_idx': self.idx,
                 'case_action': self.action,
                 'case_channel': self.channel.name if self.channel else None,
@@ -1306,8 +1308,7 @@ class Select(BlockGuard):
 
         super(Select, self).__init__(self.helper.main_program)
 
-        self.case_to_execute = self.helper.main_program.block(
-            self.helper.main_program.current_block().parent_idx).create_var(
+        self.case_to_execute = self.helper.main_program.current_block().create_var(
             type=core.VarDesc.VarType.LOD_TENSOR)
 
     def __enter__(self):
@@ -1342,17 +1343,14 @@ class Select(BlockGuard):
         select_block = self.helper.main_program.current_block()
         parent_block = self.helper.main_program.block(select_block.parent_idx)
 
-        # Set the parent of the cases block to be the current block.
-        cases_block = self.main_program.create_block(select_block.idx)
-
-        # Construct each case op, inside the newly created cases block.
+        # Construct each case op, inside the newly created select block.
         for case in self.cases:
             case.construct_op()
 
         intermediate = set()
         params = set()
 
-        for case_block in cases_block.ops:
+        for case_block in select_block.ops:
             if case_block.attrs and 'sub_block' in case_block.attrs:
                 for each_op in case_block.attrs['sub_block'].ops:
                     assert isinstance(each_op, Operator)
@@ -1365,12 +1363,13 @@ class Select(BlockGuard):
                         for out_var_name in each_op.output(oname):
                             intermediate.add(out_var_name)
 
+        # TODO(varunarora): Figure out if defining output is needed.
         out_list = [
             parent_block.var(var_name) for var_name in parent_block.vars
             if var_name in intermediate
         ]
 
-        X = [cases_block.var_recursive(x_name) for x_name in params]
+        X = [select_block.var_recursive(x_name) for x_name in params]
 
         # Needs to be used by `equal` inside the cases block.
         X.append(self.case_to_execute)
@@ -1379,12 +1378,13 @@ class Select(BlockGuard):
         select_block.append_op(
             type="select",
             inputs={
-                'X': X,
-                'case_to_execute': self.case_to_execute
+                'X': X
             },
-            outputs={'Out': out_list,
-                     'Condition': self.case_to_execute
-            }
+            attrs={
+                'case_to_execute': self.case_to_execute.name,
+                'sub_block': select_block
+            },
+            outputs={}
         )
 
         return super(Select, self).__exit__(exc_type, exc_val, exc_tb)
