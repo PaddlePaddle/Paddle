@@ -18,7 +18,7 @@ def fuse_optimize_op(input_program):
     op_size = len(global_block.ops)
     sgd_op_idxs = list()
     for op_idx in range(op_size):
-        if global_block.ops(op_idx).type() == "sgd":
+        if global_block.ops[op_idx].type == "sgd":
             sgd_op_idxs.append(op_idx)
 
     param_inputs = list()
@@ -27,22 +27,21 @@ def fuse_optimize_op(input_program):
     param_outputs = list()
 
     # TODO should check if these optimize op have no dependency with each other
-    for idx in sgd_op_idxs:
-        op_idx = sgd_op_idxs[idx]
-        sgd_op = global_block.ops(op_idx)
-        param_inputs.append(sgd_op.input("Param"))
-        grad_inputs.append(sgd_op.input("Grad"))
-        lr_inputs.append(sgd_op.input("LearningRate"))
-        param_outputs.append(sgd_op.input("ParamOut"))
+    for op_idx in sgd_op_idxs:
+        sgd_op = global_block.ops[op_idx]
+        param_inputs.append(sgd_op.input("Param")[0])
+        grad_inputs.append(sgd_op.input("Grad")[0])
+        lr_inputs.append(sgd_op.input("LearningRate")[0])
+        param_outputs.append(sgd_op.output("ParamOut")[0])
 
     global_block.append_op(
-        type="sum",
+        type="sgd_group",
         inputs={
             "Params": param_inputs,
             "Grads": grad_inputs,
             "LearningRates": lr_inputs
         },
-        outputs={"ParamOuts": [param_inputs]})
+        outputs={"ParamOuts": param_inputs})
 
     for op_idx in sgd_op_idxs[::-1]:
         global_block.delete_op(op_idx)

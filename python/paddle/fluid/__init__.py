@@ -38,6 +38,7 @@ from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close)
 import clip
 from memory_optimization_transpiler import memory_optimize
+from merge_optimize_op_transpiler import fuse_optimize_op
 import profiler
 import unique_name
 
@@ -63,6 +64,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'SimpleDistributeTranspiler',
     'DistributeTranspiler',
     'memory_optimize',
+    'fuse_optimize_op',
     'profiler',
     'unique_name',
 ]

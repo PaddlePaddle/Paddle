@@ -461,8 +461,11 @@ class Operator(object):
                         (out_proto.name, len(out_args)))
                 out_arg_names = []
                 for arg in out_args:
-                    out_arg_names.append(arg.name)
-                    arg.op = self
+                    if isinstance(arg, basestring):
+                        out_arg_names.append(arg)
+                    else:
+                        out_arg_names.append(arg.name)
+                        arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
         if attrs is not None:
