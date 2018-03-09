@@ -71,7 +71,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         framework::ToDataType(
             ctx.Input<framework::Tensor>("DetectRes")->type()),
-        ctx.device_context());
+        platform::CPUPlace());
   }
 };
 
