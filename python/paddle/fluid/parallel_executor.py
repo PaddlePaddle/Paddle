@@ -37,19 +37,8 @@ def pretty_id_indent(idx):
 
 def run_exe(q, idx, exe, program, feed, fetch_list, feed_var_name,
             fetch_var_name, cur_scope, return_numpy):
-    save_print(pretty_id_indent(idx), "start")
-
-    start = time.time()
-    # time.sleep(0.5)
-    # whatever = None
-    whatever = exe.run(program, feed, fetch_list, feed_var_name, fetch_var_name,
-                       cur_scope, return_numpy)
-    end = time.time()
-    save_print(pretty_id_indent(idx), "elapse=%f" % (end - start), start, end)
-
-    q.put((idx, whatever))
-
-    save_print("end", idx)
+    q.put((idx, exe.run(program, feed, fetch_list, feed_var_name,
+                        fetch_var_name, cur_scope, return_numpy)))
 
 
 class ParallelExecutor(object):
@@ -67,7 +56,6 @@ class ParallelExecutor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True):
-        save_print("****************")
         # TODO(helin): split input
         q = Queue(maxsize=len(self.executors))
         for idx, exe in enumerate(self.executors):
@@ -77,8 +65,6 @@ class ParallelExecutor(object):
                 else:
                     cur_scope = core.Scope()
                     self.scopes[idx] = cur_scope
-
-            save_print(pretty_id_indent(idx), "Thread")
             t = Thread(
                 target=run_exe,
                 args=(q, idx, exe, program, feed, fetch_list, feed_var_name,
