@@ -57,7 +57,7 @@ convolution_backward_data::primitive_desc ConvBwdDataPrimitiveDesc(
 }  // anonymous namespace
 
 template <typename T>
-class ConvOpMkldnnKernel : public paddle::framework::OpKernel<T> {
+class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
@@ -137,7 +137,7 @@ class ConvOpMkldnnKernel : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
-class ConvGradOpMkldnnKernel : public paddle::framework::OpKernel<T> {
+class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
@@ -307,7 +307,7 @@ convolution_backward_data::primitive_desc ConvBwdDataPrimitiveDesc(
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(conv2d, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::ConvOpMkldnnKernel<float>);
+                   ops::ConvMKLDNNOpKernel<float>);
 
 REGISTER_OP_KERNEL(conv2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::ConvGradOpMkldnnKernel<float>);
+                   ops::ConvMKLDNNGradOpKernel<float>);

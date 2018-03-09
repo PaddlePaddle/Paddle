@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class PoolMkldnnKernel : public paddle::framework::OpKernel<T> {
+class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
@@ -130,7 +130,7 @@ class PoolMkldnnKernel : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
-class PoolGradMkldnnKernel : public paddle::framework::OpKernel<T> {
+class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
@@ -214,6 +214,6 @@ class PoolGradMkldnnKernel : public paddle::framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_KERNEL(pool2d, MKLDNN, ::paddle::platform::CPUPlace,
-                   paddle::operators::PoolMkldnnKernel<float>);
+                   paddle::operators::PoolMKLDNNOpKernel<float>);
 REGISTER_OP_KERNEL(pool2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   paddle::operators::PoolGradMkldnnKernel<float>);
+                   paddle::operators::PoolMKLDNNGradOpKernel<float>);
