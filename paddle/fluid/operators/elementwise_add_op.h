@@ -24,19 +24,51 @@ struct AddFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const { return a + b; }
 };
 
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+using SelectedRows = framework::SelectedRows;
+
+inline const Tensor* GetInputTensor(const framework::ExecutionContext& ctx,
+                                    const std::string& var_name) {
+  auto* var = ctx.InputVar(var_name);
+  PADDLE_ENFORCE(var != nullptr, "InputVar(%s) should not be null", var_name);
+  if (var->IsType<LoDTensor>()) {
+    return ctx.Input<Tensor>(var_name);
+  } else if (var->IsType<SelectedRows>()) {
+    auto sr_data = ctx.Input<SelectedRows>(var_name);
+    return &(sr_data->value());
+  }
+  PADDLE_THROW("Unsupported Variable(%s) Type of %s", var_name,
+               var->Type().name());
+  return nullptr;
+}
+
+inline Tensor* GetOutputTensor(const framework::ExecutionContext& ctx,
+                               const std::string& var_name) {
+  auto* var = ctx.OutputVar(var_name);
+  if (var == nullptr) return nullptr;
+  if (var->IsType<LoDTensor>()) {
+    return ctx.Output<Tensor>(var_name);
+  } else if (var->IsType<SelectedRows>()) {
+    return const_cast<Tensor*>(&(ctx.Output<SelectedRows>(var_name)->value()));
+  }
+  PADDLE_THROW("Unsupported Variable(%s) Type of %s", var_name,
+               var->Type().name());
+  return nullptr;
+}
+
 template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
-
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* z = ctx.Output<Tensor>("Out");
-    z->mutable_data<T>(ctx.GetPlace());
     int axis = ctx.Attr<int>("axis");
+    auto* x = GetInputTensor(ctx, "X");
+    auto* y = GetInputTensor(ctx, "Y");
+    auto* out = GetOutputTensor(ctx, "Out");
+
+    out->mutable_data<T>(ctx.GetPlace());
     ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          AddFunctor<T>(), z);
+                                                          AddFunctor<T>(), out);
   }
 };
 
@@ -49,14 +81,13 @@ template <typename DeviceContext, typename T>
 class ElementwiseAddGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
+    auto* x = GetInputTensor(ctx, "X");
+    auto* y = GetInputTensor(ctx, "Y");
+    auto* out = GetInputTensor(ctx, "Out");
+    auto* dout = GetInputTensor(ctx, framework::GradVarName("Out"));
+    auto* dx = GetOutputTensor(ctx, framework::GradVarName("X"));
+    auto* dy = GetOutputTensor(ctx, framework::GradVarName("Y"));
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
     ElemwiseGradCompute<DeviceContext, T, IdentityGrad<T>, IdentityGrad<T>>(
         ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
