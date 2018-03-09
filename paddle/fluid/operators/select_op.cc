@@ -168,9 +168,13 @@ private:
   }
 
   /**
-   * This method will recursively poll the cases and
+   * This method will recursively poll the cases and determines if any case condition is true.
+   * If none of the cases conditions are true (and there is no default case), then block
+   * the thread.  The thread may be woken up by a channel operation, at which point we
+   * execute the case.
    * @param scope
    * @param cases
+   * @param channels
    * @return
    */
   int pollCases(const framework::Scope *scope,
@@ -179,24 +183,38 @@ private:
     // Lock all involved channels
     lockChannels(channels);
 
-    int caseToExecute = -1;
+    std::atomic<int> caseToExecute =-1;
 
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
       std::cout << "CASE: " << c->caseType << std::endl;
 
-//      auto chVar = scope->FindVar(c->channelName);
-//      framework::ChannelHolder *ch =
-//              chVar->GetMutable<framework::ChannelHolder>();
-      // TODO(thuan): Check if operation is send to closed channel.  If it is,
-      //    then PADDLE_ENFORCE
-      // TODO(thuan): Check ch->CanSend() or ch->CanRecv().  If it is, then
-      //    execute case body and exit
+      auto chVar = scope->FindVar(c->channelName);
+      framework::ChannelHolder *ch =
+              chVar->GetMutable<framework::ChannelHolder>();
 
-      if (c->caseType == DEFAULT) {
-        // TODO(thuan): execute default case body and exit
-        caseToExecute = c->caseIndex;
+      switch (c->caseType) {
+        case SEND:
+          PADDLE_ENFORCE(!ch->IsClosed(), "Cannot send to a closed channel");
+          if (ch->CanSend()) {
+            caseToExecute = c->caseIndex;
+            // TODO(thuan): Perform send operation
+          }
+          break;
+        case RECEIVE:
+          if (ch->CanReceive()) {
+            caseToExecute = c->caseIndex;
+            // TODO(thuan): Perform receive operation
+          }
+          break;
+        case DEFAULT:
+          caseToExecute = c->caseIndex;
+          break;
+      }
+
+      if (caseToExecute != -1) {
+        // We found a case to execute, stop looking at other case statements
         break;
       }
 
@@ -205,9 +223,33 @@ private:
 
     if (caseToExecute == -1) {
       // None of the cases are eligible to execute, enqueue current thread
-      // into all the sending/receiving Q of each involved channel
+      // into all the sending/receiving queue of each involved channel
+      std::atomic<bool> completed = false;
+      std::recursive_mutex mutex;
+      std::unique_lock<std::recursive_mutex> lock{mutex};
+      std::condition_variable_any selectCond;
+
+      pushThreadOnChannelQueues(scope, cases, &caseToExecute, &completed);
+
       // TODO(thuan): Atomically unlock all channels and sleep current thread
+      unlockChannels(channels);
+      selectCond.wait(lock, [this]() { return completed; });
+
+      // Select has been woken up by case operation
+      lockChannels(channels);
+      // TODO(thuan): Check to see if this will cause race condition
+      removeThreadOnChannelQueues(scope, cases);
+
+      if (caseToExecute == -1) {
+        // Recursively poll cases, since we were woken up by a channel close
+        // TODO(thuan): Need to test if this is a valid case
+        unlockChannels(channels);
+        return pollCases(scope, cases, channels);
+      }
     }
+
+    // At this point, caseToExecute != -1, and we can proceed with executing the case block
+    unlockChannels(channels);
 
     return caseToExecute;
   }
@@ -215,8 +257,8 @@ private:
   void lockChannels(std::vector<framework::ChannelHolder *> chs) const {
     std::vector<framework::ChannelHolder *>::iterator it = chs.begin();
     while (it != chs.end()) {
-      // framework::ChannelHolder * ch = *it;
-      // TODO(thuan): Call ch.lock when its implemented;
+       framework::ChannelHolder * ch = *it;
+      ch->Lock();
       ++it;
     }
   }
@@ -224,8 +266,68 @@ private:
   void unlockChannels(std::vector<framework::ChannelHolder *> chs) const {
     std::vector<framework::ChannelHolder *>::reverse_iterator it = chs.rbegin();
     while (it != chs.rend()) {
-      // framework::ChannelHolder * ch = *it;
-      // TODO(thuan): Call ch.unlock when its implemented;
+       framework::ChannelHolder * ch = *it;
+      ch->Unlock();
+      ++it;
+    }
+  }
+
+  void pushThreadOnChannelQueues(const framework::Scope *scope,
+        std::vector<std::shared_ptr<SelectOpCase>> *cases,
+        std::atomic<int> *caseToExecute,
+        std::atomic<bool> *completed) const {
+
+    std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
+    while (it != cases->end()) {
+      std::shared_ptr<SelectOpCase> c = *it;
+      std::cout << "CASE: " << c->caseType << std::endl;
+
+      auto chVar = scope->FindVar(c->channelName);
+      framework::ChannelHolder *ch =
+              chVar->GetMutable<framework::ChannelHolder>();
+
+      std::function<void (framework::Channel channel)>
+        cb = [&](framework::Channel channel) {
+          // If the channel wasn't closed, we set the caseToExecute index
+          // as this current case
+          if (!channel.IsClosed()) {
+            *caseToExecute = c->caseIndex;
+          }
+          // This will allow our conditional variable to break out of wait
+          *completed = true;
+        };
+
+      switch (c->caseType) {
+        case SEND:
+          ch->AddToSendQ(this, cb);
+          break;
+        case RECEIVE:
+          ch->AddToReceiveQ(this, cb);
+          break;
+      }
+      ++it;
+    }
+  }
+
+    void removeThreadOnChannelQueues(const framework::Scope *scope,
+           std::vector<std::shared_ptr<SelectOpCase>> *cases) const {
+
+    std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
+    while (it != cases->end()) {
+      std::shared_ptr<SelectOpCase> c = *it;
+      std::cout << "CASE: " << c->caseType << std::endl;
+
+      auto chVar = scope->FindVar(c->channelName);
+      framework::ChannelHolder *ch =
+              chVar->GetMutable<framework::ChannelHolder>();
+      switch (c->caseType) {
+        case SEND:
+          ch->RemoveFromSendQ(this);
+          break;
+        case RECEIVE:
+          ch->RemoveFromReceiveQ(this);
+          break;
+      }
       ++it;
     }
   }

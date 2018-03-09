@@ -281,11 +281,11 @@ TEST(Concurrency, Select) {
         goOpBlock);
 
   // Create Go Op
-//  AddOp("go",
-//        {{"X", {dataChanName, quitChanName}}},
-//        {},
-//        {{"sub_block", goOpBlock}},
-//        block);
+  AddOp("go",
+        {{"X", {dataChanName, quitChanName}}},
+        {},
+        {{"sub_block", goOpBlock}},
+        block);
 
   AddFibonacciSelect(&scope, &place, &program, block, dataChanName, quitChanName);
 

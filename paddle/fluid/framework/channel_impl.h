@@ -29,22 +29,13 @@ class ChannelImpl : public paddle::framework::Channel<T> {
   friend void paddle::framework::CloseChannel<T>(Channel<T> *);
 
  public:
-  virtual bool Send(T *);
-  virtual bool Receive(T *);
-  virtual size_t Cap() { return cap_; }
-  virtual void Lock();
-  virtual void Unlock();
-  virtual void Close();
-
-  ChannelImpl(size_t);
-  virtual ~ChannelImpl();
-
- private:
   struct QueueMessage {
     T *data;
     std::condition_variable_any cond;
     bool chan_closed = false;
     bool completed = false;
+    void *referrer;   // TODO(thuan): figure out better way to do this
+    void (*callback)(QueueMessage*);
 
     QueueMessage(T *item) : data(item) {}
 
@@ -57,6 +48,28 @@ class ChannelImpl : public paddle::framework::Channel<T> {
       cond.notify_all();
     }
   };
+
+  virtual bool CanSend();
+  virtual bool CanReceive();
+  virtual bool Send(T *);
+  virtual bool Receive(T *);
+  virtual size_t Cap() { return cap_; }
+  virtual void Lock();
+  virtual void Unlock();
+  virtual bool IsClosed();
+  virtual void Close();
+  ChannelImpl(size_t);
+  virtual ~ChannelImpl();
+
+  virtual void AddToSendQ(const void *referrer,
+                 std::function<void (paddle::framework::Channel*)> cb);
+  virtual void AddToReceiveQ(const void *referrer,
+                 std::function<void (paddle::framework::Channel*)> cb);
+
+  virtual void RemoveFromSendQ(const void *referrer);
+  virtual void RemoveFromReceiveQ(const void *referrer);
+
+ private:
 
   bool send_return(bool value) {
     send_ctr--;
@@ -87,6 +100,16 @@ ChannelImpl<T>::ChannelImpl(size_t capacity)
   PADDLE_ENFORCE_GE(capacity, 0);
 }
 
+bool ChannelImpl<T>::CanSend() {
+  std::scoped_lock lock(mu_);
+  return !closed_ && (!recvq.empty() || buf_.size() < cap_);
+}
+
+bool ChannelImpl<T>::CanReceive() {
+  std::scoped_lock lock(mu_);
+  return !(closed_ && buf_.empty()) && (!sendq.empty() || buf_.size() > 0);
+}
+
 template <typename T>
 bool ChannelImpl<T>::Send(T *item) {
   send_ctr++;
@@ -106,6 +129,12 @@ bool ChannelImpl<T>::Send(T *item) {
     recvq.pop_front();
     // Do the data transfer
     *(m->data) = std::move(*item);
+
+    // Execute callback function (if any)
+    if (m->callback != nullptr) {
+      m->callback(m);
+    }
+
     // Wake up the blocked process and unlock
     m->Notify();
     lock.unlock();
@@ -151,6 +180,12 @@ bool ChannelImpl<T>::Receive(T *item) {
     sendq.pop_front();
     // Do the data transfer
     *item = std::move(*(m->data));
+
+    // Execute callback function (if any)
+    if (m->callback != nullptr) {
+      m->callback(m);
+    }
+
     // Wake up the blocked process and unlock
     m->Notify();
     lock.unlock();
@@ -186,6 +221,11 @@ void ChannelImpl<T>::Unlock() {
   mu_.unlock();
 }
 
+bool IsClosed() {
+  std::scoped_lock lock(mu_);
+  return closed_;
+}
+
 template <typename T>
 void ChannelImpl<T>::Close() {
   std::unique_lock<std::recursive_mutex> lock{mu_};
@@ -203,6 +243,12 @@ void ChannelImpl<T>::Close() {
     std::shared_ptr<QueueMessage> m = recvq.front();
     recvq.pop_front();
     m->chan_closed = true;
+
+    // Execute callback function (if any)
+    if (m->callback != nullptr) {
+      m->callback(m);
+    }
+
     m->Notify();
   }
 
@@ -211,8 +257,32 @@ void ChannelImpl<T>::Close() {
     std::shared_ptr<QueueMessage> m = sendq.front();
     sendq.pop_front();
     m->chan_closed = true;
+
+    // Execute callback function (if any)
+    if (m->callback != nullptr) {
+      m->callback(m);
+    }
+
     m->Notify();
   }
+}
+
+void ChannelImpl<T>::AddToSendQ(const void *referrer,
+                       std::function<void (paddle::framework::Channel*)> cb) {
+  std::scoped_lock lock(mu_);
+}
+
+void ChannelImpl<T>::AddToReceiveQ(const void *referrer,
+                       std::function<void (paddle::framework::Channel*)> cb) {
+  std::scoped_lock lock(mu_);
+}
+
+void ChannelImpl<T>::RemoveFromSendQ(const void *referrer) {
+  std::scoped_lock lock(mu_);
+}
+
+void ChannelImpl<T>::RemoveFromReceiveQ(const void *referrer) {
+  std::scoped_lock lock(mu_);
 }
 
 template <typename T>
