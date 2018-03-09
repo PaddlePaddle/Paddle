@@ -4,6 +4,6 @@ if(WITH_PYTHON)
     DEPS pybind python backward proto_desc paddle_memory executor prune init profiler feed_fetch_method
     ${GLOB_OP_LIB})
   if(NOT APPLE AND NOT ANDROID)
-    target_link_libraries(paddle_pybind rt)
+    target_link_libraries(paddle_pybind rt pybind)
   endif(NOT APPLE AND NOT ANDROID)
 endif(WITH_PYTHON)
