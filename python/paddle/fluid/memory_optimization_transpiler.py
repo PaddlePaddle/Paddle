@@ -140,7 +140,6 @@ class ControlFlowGraph(object):
                 return False
             return True
 
-        self._build_graph()
         self._dataflow_analyze()
         self.pool = []
         for i in range(self.op_size):

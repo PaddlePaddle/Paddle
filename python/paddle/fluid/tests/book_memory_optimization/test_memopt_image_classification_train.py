@@ -127,7 +127,7 @@ batch_acc = fluid.layers.accuracy(input=predict, label=label, total=batch_size)
 
 fluid.memory_optimize(fluid.default_main_program())
 
-BATCH_SIZE = 128
+BATCH_SIZE = 16
 PASS_NUM = 1
 
 # fix the order of training data
