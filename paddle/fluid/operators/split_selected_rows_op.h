@@ -53,7 +53,10 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
 
     auto x_rows = x->rows();
     std::vector<std::vector<int>> outs_rows_idx;
+    std::vector<std::vector<int>> outs_dense_idx;
+
     outs_rows_idx.resize(outs.size());
+    outs_dense_idx.resize(outs.size());
 
     auto row_numel = x->value().numel() / x->value().dims()[0];
     auto src = x->value().data<T>();
@@ -62,6 +65,7 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < x_rows.size(); ++i) {
       int out_idx = FindOutIdx(x_rows[i], abs_sections);
       outs_rows_idx[out_idx].push_back(x_rows[i]);
+      outs_dense_idx[out_idx].push_back(i);
     }
     auto place = ctx.GetPlace();
 
@@ -78,14 +82,15 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
         auto dst = outs[i]->mutable_value()->mutable_data<T>(ctx.GetPlace());
         for (size_t j = 0; j < rows_idx.size(); j++) {
           if (platform::is_cpu_place(place)) {
-            memory::Copy(platform::CPUPlace(), dst + j * row_numel,
-                         platform::CPUPlace(), src + rows_idx[j] * row_numel,
-                         sizeof(T) * row_numel);
+            memory::Copy(
+                platform::CPUPlace(), dst + j * row_numel, platform::CPUPlace(),
+                src + outs_dense_idx[i][j] * row_numel, sizeof(T) * row_numel);
           } else {
 #ifdef PADDLE_WITH_CUDA
             auto stream = ctx.cuda_device_context().stream();
             memory::Copy(platform::CUDAPlace(), dst + j * row_numel,
-                         platform::CUDAPlace(), src + rows_idx[j] * row_numel,
+                         platform::CUDAPlace(),
+                         src + outs_dense_idx[i][j] * row_numel,
                          sizeof(T) * row_numel, stream);
 #else
             PADDLE_THROW("Paddle is not compiled with GPU");

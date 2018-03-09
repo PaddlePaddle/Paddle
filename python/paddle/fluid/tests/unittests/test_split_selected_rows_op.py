@@ -101,7 +101,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         out0_grad_tensor.set(np_array, place)
 
         out1_grad = scope.var("out1@GRAD").get_selected_rows()
-        rows1 = [7, 5]
+        rows1 = [2, 0]
         out1_grad.set_rows(rows1)
         out1_grad.set_height(height)
         out1_grad_tensor = out1_grad.get_tensor()
