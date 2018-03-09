@@ -19,6 +19,8 @@ from framework import *
 # import all class inside executor into fluid module
 import executor
 from executor import *
+import parallel_executor
+from parallel_executor import *
 
 import io
 import evaluator
@@ -43,7 +45,7 @@ import unique_name
 
 Tensor = LoDTensor
 
-__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
+__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + parallel_executor.__all__ + [
     'io',
     'initializer',
     'layers',

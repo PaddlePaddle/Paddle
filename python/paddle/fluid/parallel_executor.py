@@ -12,16 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+from threading import Lock
+
 import executor
+import time
 from . import core
 from threading import Thread
 from Queue import Queue
 
+__all__ = ['ParallelExecutor']
+
+print_lock = Lock()
+
+
+def save_print(*args, **kwargs):
+    with print_lock:
+        print(time.time(), *args, **kwargs)
+
+
+def pretty_id_indent(idx):
+    return '\t' * idx * 4 + str(idx) + ":"
+
 
 def run_exe(q, idx, exe, program, feed, fetch_list, feed_var_name,
             fetch_var_name, cur_scope, return_numpy):
-    q.put((idx, exe.run(program, feed, fetch_list, feed_var_name,
-                        fetch_var_name, cur_scope, return_numpy)))
+    save_print(pretty_id_indent(idx), "start")
+
+    start = time.time()
+    # time.sleep(0.5)
+    # whatever = None
+    whatever = exe.run(program, feed, fetch_list, feed_var_name, fetch_var_name,
+                       cur_scope, return_numpy)
+    end = time.time()
+    save_print(pretty_id_indent(idx), "elapse=%f" % (end - start), start, end)
+
+    q.put((idx, whatever))
+
+    save_print("end", idx)
 
 
 class ParallelExecutor(object):
@@ -39,19 +67,18 @@ class ParallelExecutor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True):
+        save_print("****************")
         # TODO(helin): split input
         q = Queue(maxsize=len(self.executors))
         for idx, exe in enumerate(self.executors):
             if scope is None:
-                if idx == 0:
-                    cur_scope = executor.global_scope()
+                if idx in self.scopes:
+                    cur_scope = self.scopes[idx]
                 else:
-                    if idx in self.scopes:
-                        cur_scope = self.scopes[idx]
-                    else:
-                        cur_scope = core.Scope()
-                        self.scopes[idx] = cur_scope
+                    cur_scope = core.Scope()
+                    self.scopes[idx] = cur_scope
 
+            save_print(pretty_id_indent(idx), "Thread")
             t = Thread(
                 target=run_exe,
                 args=(q, idx, exe, program, feed, fetch_list, feed_var_name,
