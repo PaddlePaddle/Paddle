@@ -188,7 +188,7 @@ private:
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
-      std::cout << "CASE: " << c->caseType << std::endl;
+//      std::cout << "CASE: " << c->caseType << std::endl;
 
       auto chVar = scope->FindVar(c->channelName);
       framework::ChannelHolder *ch =
@@ -204,6 +204,7 @@ private:
             // TODO(thuan): Don't hardcode type
             ch->Send(chVar->GetMutable<framework::LoDTensor>());
             caseToExecute = c->caseIndex;
+//            std::cout << "SENDING DATA" << std::endl;
           }
           break;
         case RECEIVE:
@@ -214,6 +215,7 @@ private:
             // TODO(thuan): Don't hardcode type
             ch->Receive(chVar->GetMutable<framework::LoDTensor>());
             caseToExecute = c->caseIndex;
+//            std::cout << "RECEIVING DATA" << std::endl;
           }
           break;
         case DEFAULT:
@@ -241,6 +243,7 @@ private:
 
       // TODO(thuan): Atomically unlock all channels and sleep current thread
       unlockChannels(channels);
+//      std::cout << "WAITING..." << std::endl;
       selectCond.wait(lock, [&completed]() { return completed.load(); });
 
       // Select has been woken up by case operation
@@ -255,6 +258,8 @@ private:
         return pollCases(scope, cases, channels);
       }
     }
+
+//    std::cout << "***EXECUTING CASE: " << caseToExecute << std::endl;
 
     // At this point, caseToExecute != -1, and we can proceed with executing
     // the case block
@@ -288,7 +293,6 @@ private:
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
-      std::cout << "CASE: " << c->caseType << std::endl;
 
       auto chVar = scope->FindVar(c->channelName);
       framework::ChannelHolder *ch =
@@ -312,12 +316,14 @@ private:
           // TODO(thuan): Don't hardcode type
           ch->AddToSendQ<framework::LoDTensor>(this,
                 chVar->GetMutable<framework::LoDTensor>(), cb);
+//          std::cout << "ADD TO SEND Q" << std::endl;
           break;
         }
         case RECEIVE: {
           // TODO(thuan): Don't hardcode type
           ch->AddToReceiveQ<framework::LoDTensor>(this,
                 chVar->GetMutable<framework::LoDTensor>(), cb);
+//          std::cout << "ADD TO RECEIVE Q" << std::endl;
           break;
         }
         default:
@@ -332,7 +338,6 @@ private:
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
-      std::cout << "CASE: " << c->caseType << std::endl;
 
       auto chVar = scope->FindVar(c->channelName);
       framework::ChannelHolder *ch =
@@ -341,11 +346,13 @@ private:
         case SEND: {
           // TODO(thuan): Don't hardcode type
           ch->RemoveFromSendQ<framework::LoDTensor>(this);
+//          std::cout << "REMOVE FROM SEND Q" << std::endl;
           break;
         }
         case RECEIVE: {
           // TODO(thuan): Don't hardcode type
           ch->RemoveFromReceiveQ<framework::LoDTensor>(this);
+//          std::cout << "REMOVE FROM RECEIVE Q" << std::endl;
           break;
         }
         default:
