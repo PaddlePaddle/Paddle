@@ -24,15 +24,6 @@ void fill_fp16_data(paddle::platform::float16* in_ptr, size_t size,
   }
 }
 
-bool is_fp16_supported(int device_id) {
-  cudaDeviceProp device_prop;
-  cudaDeviceProperties(&device_prop, device_id);
-  PADDLE_ENFORCE_EQ(cudaGetLastError(), cudaSuccess);
-  int compute_capability = device_prop.major * 10 + device_prop.minor;
-  std::cout << "compute_capability is " << compute_capability << std::endl;
-  return compute_capability >= 53;
-}
-
 TEST(math_function, notrans_mul_trans_fp32) {
   using namespace paddle::framework;
   using namespace paddle::platform;
@@ -73,7 +64,10 @@ TEST(math_function, notrans_mul_trans_fp16) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
-  if (!is_fp16_supported(0)) {
+  // fp16 GEMM in cublas requires GPU compute capability >= 53
+  if (GetCUDAComputeCapability(0) >= 53) {
+    std::cout << "Compute capability is " << GetCUDAComputeCapability(0)
+              << std::endl;
     return;
   }
 
@@ -154,7 +148,8 @@ TEST(math_function, trans_mul_notrans_fp16) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
-  if (!is_fp16_supported(0)) {
+  // fp16 GEMM in cublas requires GPU compute capability >= 53
+  if (GetCUDAComputeCapability(0) >= 53) {
     return;
   }
 
@@ -256,7 +251,8 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
-  if (!is_fp16_supported(0)) {
+  // fp16 GEMM in cublas requires GPU compute capability >= 53
+  if (GetCUDAComputeCapability(0) >= 53) {
     return;
   }
 
@@ -367,7 +363,8 @@ TEST(math_function, gemm_trans_cublas_fp16) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
-  if (!is_fp16_supported(0)) {
+  // fp16 GEMM in cublas requires GPU compute capability >= 53
+  if (GetCUDAComputeCapability(0) >= 53) {
     return;
   }
 

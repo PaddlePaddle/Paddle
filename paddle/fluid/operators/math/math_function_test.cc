@@ -14,10 +14,19 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "gtest/gtest.h"
 
+#include <iostream>
+
 TEST(math_function, gemm_notrans_cblas) {
   paddle::framework::Tensor input1;
   paddle::framework::Tensor input2;
   paddle::framework::Tensor input3;
+
+  // fp16 GEMM in cublas requires GPU compute capability >= 53
+  if (GetCUDAComputeCapability(0) >= 53) {
+    std::cout << "Compute capability is " << GetCUDAComputeCapability(0)
+              << std::endl;
+    return;
+  }
 
   int m = 2;
   int n = 3;
