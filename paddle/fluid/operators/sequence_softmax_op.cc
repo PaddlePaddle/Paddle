@@ -29,6 +29,30 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+    use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+    }
+#endif
+    framework::LibraryType library_;
+    if (use_cudnn) {
+      library_ = framework::LibraryType::kCUDNN;
+    } else {
+      library_ = framework::LibraryType::kPlain;
+    }
+
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        framework::DataLayout::kNCHW, library_);
+  }
 };
 
 class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {

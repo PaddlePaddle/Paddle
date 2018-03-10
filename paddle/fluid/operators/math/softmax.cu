@@ -56,14 +56,13 @@ void SoftmaxCUDNNFunctor<T>::operator()(
       alpha.data<T>(), cudnn_x_desc, X->data<T>(), beta.data<T>(), cudnn_y_desc,
       Y->mutable_data<T>(context.GetPlace())));
 }
+template class SoftmaxCUDNNFunctor<float>;
+template class SoftmaxCUDNNFunctor<double>;
 
 template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
-
-template class SoftmaxCUDNNFunctor<float>;
-template class SoftmaxCUDNNFunctor<double>;
 
 }  // namespace math
 }  // namespace operators
