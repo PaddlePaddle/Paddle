@@ -40,6 +40,7 @@ __all__ = [
     'conv2d',
     'sequence_pool',
     'sequence_softmax',
+    'softmax',
     'pool2d',
     'batch_norm',
     'beam_search_decode',
