@@ -1106,7 +1106,6 @@ def sequence_conv(input,
 def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
     helper = LayerHelper('sequence_softmax', **locals())
     dtype = helper.input_dtype()
-    print("datatype : ", dtype)
     softmax_out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type="sequence_softmax",

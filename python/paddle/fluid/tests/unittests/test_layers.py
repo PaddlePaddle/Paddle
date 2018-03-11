@@ -220,7 +220,7 @@ class TestBook(unittest.TestCase):
             seq_data = layers.data(
                 name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
             seq = layers.fc(input=seq_data, size=20)
-            self.assertIsNotNone(layers.sequence_softmax(x=seq))
+            self.assertIsNotNone(layers.sequence_softmax(input=seq))
         print(str(program))
 
     def test_softmax(self):
