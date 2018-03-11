@@ -22,7 +22,7 @@ import paddle.fluid.core as core
 class TestSequenceSoftmaxOp(OpTest):
     def setUp(self):
         self.op_type = "sequence_softmax"
-        self.use_cudnn = True
+        self.use_cudnn = False
         self.init_op_type()
 
         x = np.random.uniform(0.1, 1, (11, 1)).astype("float32")

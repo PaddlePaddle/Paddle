@@ -33,6 +33,31 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+    use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+    }
+#endif
+    framework::LibraryType library_;
+    if (use_cudnn) {
+      library_ = framework::LibraryType::kCUDNN;
+    } else {
+      library_ = framework::LibraryType::kPlain;
+    }
+    std::string data_format = ctx.Attr<std::string>("data_format");
+
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        framework::StringToDataLayout(data_format), library_);
+  }
 };
 
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -43,6 +68,17 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor of softmax. "
              "2-D with shape [batch_size, input_feature_dimensions].");
     AddOutput("Out", "The normalized values with the same shape as X.");
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Softmax Operator.
 

@@ -59,7 +59,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
 }
 
 template <typename T>
-void SoftmaxCUDNNGradFunctor<T>::operator()(
+void SoftmaxGradCUDNNFunctor<T>::operator()(
     const platform::CUDADeviceContext& context, const framework::Tensor* Y,
     framework::Tensor* YGrad, framework::Tensor* XGrad) {
   // ------------------- cudnn descriptors ---------------------
@@ -92,8 +92,8 @@ void SoftmaxCUDNNGradFunctor<T>::operator()(
 
 template class SoftmaxCUDNNFunctor<float>;
 template class SoftmaxCUDNNFunctor<double>;
-template class SoftmaxCUDNNGradFunctor<float>;
-template class SoftmaxCUDNNGradFunctor<double>;
+template class SoftmaxGradCUDNNFunctor<float>;
+template class SoftmaxGradCUDNNFunctor<double>;
 
 template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double>;

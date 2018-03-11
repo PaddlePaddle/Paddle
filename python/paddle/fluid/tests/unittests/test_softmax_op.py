@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
 
 
 def stable_softmax(x):
@@ -27,18 +28,37 @@ def stable_softmax(x):
 class TestSoftmaxOp(OpTest):
     def setUp(self):
         self.op_type = "softmax"
+        self.use_cudnn = False
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [10, 10]).astype("float32")
         }
         self.outputs = {
             'Out': np.apply_along_axis(stable_softmax, 1, self.inputs['X'])
         }
+        self.attrs = {'use_cudnn': self.use_cudnn, }
+
+    def init_op_type(self):
+        pass
 
     def test_check_output(self):
-        self.check_output()
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ["X"], "Out", max_relative_error=0.01)
+        else:
+            self.check_grad(["X"], "Out", max_relative_error=0.01)
+
+
+class TestSoftmaxCUDNNOp(TestSoftmaxOp):
+    def init_op_type(self):
+        self.use_cudnn = True
 
 
 if __name__ == "__main__":
