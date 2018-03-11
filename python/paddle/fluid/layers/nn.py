@@ -1115,6 +1115,18 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
     return softmax_out
 
 
+def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
+    helper = LayerHelper('softmax', **locals())
+    dtype = helper.input_dtype()
+    softmax_out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="softmax",
+        inputs={"X": input},
+        outputs={"Out": softmax_out},
+        attrs={"use_cudnn": use_cudnn})
+    return softmax_out
+
+
 def conv2d(input,
            num_filters,
            filter_size,

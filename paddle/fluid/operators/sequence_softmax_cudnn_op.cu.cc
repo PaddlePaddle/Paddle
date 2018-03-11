@@ -85,7 +85,7 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
-      math::SoftmaxCUDNNGradFunctor<T>()(
+      math::SoftmaxGradCUDNNFunctor<T>()(
           ctx.template device_context<DeviceContext>(), &out_i, &out_grad_i,
           &x_grad_i);
     }

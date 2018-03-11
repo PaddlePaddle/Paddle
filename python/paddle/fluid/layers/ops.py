@@ -59,8 +59,6 @@ __all__ = [
     'elementwise_pow',
     'clip',
     'clip_by_norm',
-    'softmax',
-    # 'sequence_softmax',
     'logical_and',
     'logical_or',
     'logical_xor',
