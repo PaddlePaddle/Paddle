@@ -42,7 +42,7 @@ class SoftmaxCUDNNFunctor {
 };
 
 template <typename T>
-class SoftmaxCUDNNGradFuntor {
+class SoftmaxCUDNNGradFunctor {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::DataLayout layout,

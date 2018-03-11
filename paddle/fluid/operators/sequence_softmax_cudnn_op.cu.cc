@@ -41,6 +41,8 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
                       "SequenceSoftmaxOp should be 1.");
 
     out->mutable_data<T>(ctx.GetPlace());
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout = framework::StringToDataLayout(data_format);
     for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);
@@ -49,47 +51,49 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
 
       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
       framework::DDim dims_i =
-          framework::make_ddim({1UL, end_pos - start_pos, 1UL, 1UL});
+          // framework::make_ddim({1UL, end_pos - start_pos, 1UL, 1UL});
+          framework::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
       math::SoftmaxCUDNNFunctor<T>()(
-          ctx.template device_context<DeviceContext>(), &x_i, &out_i);
+          ctx.template device_context<DeviceContext>(), layout, &x_i, &out_i);
     }
   }
 };
 
-// template <typename DeviceContext, typename T>
-// class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
-//  public:
-//   void Compute(const framework::ExecutionContext& ctx) const override {
-//     auto* out = ctx.Input<LoDTensor>("Out");
-//     auto* out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-//     auto* x = ctx.Input<LoDTensor>("X");
-//     auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+template <typename DeviceContext, typename T>
+class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out = ctx.Input<LoDTensor>("Out");
+    auto* out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<LoDTensor>("X");
+    auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
 
-//     auto lod = x->lod();
-//     const size_t level = lod.size() - 1;
+    auto lod = x->lod();
+    const size_t level = lod.size() - 1;
 
-//     x_grad->mutable_data<T>(ctx.GetPlace());
-//     for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
+    x_grad->mutable_data<T>(ctx.GetPlace());
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout = framework::StringToDataLayout(data_format);
+    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
+      Tensor out_i = out->Slice(start_pos, end_pos);
+      Tensor out_grad_i = out_grad->Slice(start_pos, end_pos);
+      Tensor x_grad_i = x_grad->Slice(start_pos, end_pos);
 
-//       Tensor out_i = out->Slice(start_pos, end_pos);
-//       Tensor out_grad_i = out_grad->Slice(start_pos, end_pos);
-//       Tensor x_grad_i = x_grad->Slice(start_pos, end_pos);
-
-//       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos -
-//       start_pos)
-//       framework::DDim dims_i = framework::make_ddim({1UL, end_pos -
-//       start_pos});
-//       out_i.Resize(dims_i);
-//       out_grad_i.Resize(dims_i);
-//       x_grad_i.Resize(dims_i);
-//       math::SoftmaxGradFunctor<DeviceContext, T>()(
-//           ctx.template device_context<DeviceContext>(), &out_i, &out_grad_i,
-//           &x_grad_i);
-//     }
-//   }
-// };
+      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos -
+      start_pos)
+      framework::DDim dims_i = framework::make_ddim({1UL, end_pos -
+      start_pos});
+      out_i.Resize(dims_i);
+      out_grad_i.Resize(dims_i);
+      x_grad_i.Resize(dims_i);
+      math::SoftmaxCUDNNGradFunctor<T>()(
+          ctx.template device_context<DeviceContext>(), layout, &out_i,
+          &out_grad_i, &x_grad_i);
+    }
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
