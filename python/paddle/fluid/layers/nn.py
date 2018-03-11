@@ -1432,6 +1432,7 @@ def pool2d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
+           use_mkldnn=False,
            name=None):
     """
     This function adds the operator for pooling in 2 dimensions, using the
@@ -1469,7 +1470,8 @@ def pool2d(input,
             "strides": pool_stride,
             "paddings": pool_padding,
             "use_cudnn": use_cudnn,
-            "ceil_mode": ceil_mode
+            "ceil_mode": ceil_mode,
+            "use_mkldnn": use_mkldnn
         })
 
     return pool_out
