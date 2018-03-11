@@ -60,9 +60,10 @@ class TestSequenceSoftmaxOp(OpTest):
 
 
 # ----------------cudnn Sequencesoftmax----------------
-# class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
-#     def init_op_type(self):
-#         self.use_cudnn = True
+class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
+    def init_op_type(self):
+        self.use_cudnn = True
+
 
 if __name__ == "__main__":
     unittest.main()

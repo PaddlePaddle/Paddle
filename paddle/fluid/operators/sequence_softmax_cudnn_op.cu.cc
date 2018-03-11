@@ -60,7 +60,7 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
+class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out = ctx.Input<LoDTensor>("Out");
@@ -98,4 +98,12 @@ class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(
     sequence_softmax, CUDNN, ::paddle::platform::CUDAPlace,
-    ops::SequenceSoftmaxCUDNNKernel<paddle::platform::CUDADeviceContext, float>)
+    ops::SequenceSoftmaxCUDNNKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SequenceSoftmaxCUDNNKernel<paddle::platform::CUDADeviceContext,
+                                    double>)
+REGISTER_OP_KERNEL(
+    sequence_softmax_grad, CUDNN, ::paddle::platform::CUDAPlace,
+    ops::SequenceSoftmaxGradCUDNNKernel<paddle::platform::CUDADeviceContext,
+                                        float>,
+    ops::SequenceSoftmaxGradCUDNNKernel<paddle::platform::CUDADeviceContext,
+                                        double>)
