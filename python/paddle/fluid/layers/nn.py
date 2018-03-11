@@ -39,6 +39,7 @@ __all__ = [
     'sequence_conv',
     'conv2d',
     'sequence_pool',
+    'sequence_softmax',
     'pool2d',
     'batch_norm',
     'beam_search_decode',
@@ -1100,6 +1101,19 @@ def sequence_conv(input,
         })
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
+
+
+def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
+    helper = LayerHelper('sequence_softmax', **locals())
+    dtype = helper.input_dtype()
+    print("datatype : ", dtype)
+    softmax_out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="sequence_softmax",
+        inputs={"X": input},
+        outputs={"Out": softmax_out},
+        attrs={"use_cudnn": use_cudnn})
+    return softmax_out
 
 
 def conv2d(input,

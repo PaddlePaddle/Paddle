@@ -48,10 +48,11 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     } else {
       library_ = framework::LibraryType::kPlain;
     }
+    std::string data_format = ctx.Attr<std::string>("data_format");
 
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        framework::DataLayout::kNCHW, library_);
+        framework::StringToDataLayout(data_format), library_);
   }
 };
 
@@ -69,6 +70,13 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Sequence Softmax Operator.
 

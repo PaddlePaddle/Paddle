@@ -14,6 +14,7 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
+#include "glog/logging.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
@@ -26,38 +27,67 @@ namespace math {
 using Tensor = framework::Tensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using DataLayout = platform::DataLayout;
+template <typename T>
+using CudnnDataType = platform::CudnnDataType<T>;
 
 template <typename T>
 void SoftmaxCUDNNFunctor<T>::operator()(
-    const platform::CUDADeviceContext& context, const framework::Tensor* X,
+    const platform::CUDADeviceContext& context,
+    const framework::DataLayout layout, const framework::Tensor* X,
     framework::Tensor* Y) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
-  DataLayout layout = DataLayout::kNCHW;
-
+  std::vector<int64_t> cudnn_tensor_dims = framework::vectorize2int(X->dims());
+  // NOTE(*) : cudnn softmax only support >= 4D Tensor,
+  // fill 1Ul at unused dims
+  if (cudnn_tensor_dims.size() <= 2) {
+    cudnn_tensor_dims.resize(4, 1UL);
+  }
   cudnnTensorDescriptor_t cudnn_x_desc =
-      xDesc.descriptor<T>(layout, framework::vectorize2int(X->dims()));
+      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_y_desc =
-      xDesc.descriptor<T>(layout, framework::vectorize2int(Y->dims()));
-  // NOTE(*) The signature of cudnnSoftmaxForward
-  // final = alpha[0]*softmax + beta[0]*priorDstValue.
-  Tensor alpha, beta;
-  alpha.mutable_data<T>(X->dims(), context.GetPlace());
-  beta.mutable_data<T>(X->dims(), context.GetPlace());
-  // alpha.Resize(X->dims());
-  // beta.Resize(X->dims());
-  math::SetConstant<platform::CUDADeviceContext, T> constant;
-  constant(context, &alpha, static_cast<T>(1));
-  constant(context, &beta, static_cast<T>(0));
-
+      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxForward(
-      context.cudnn_handle(), CUDNN_SOFTMAX_FAST, CUDNN_SOFTMAX_MODE_INSTANCE,
-      alpha.data<T>(), cudnn_x_desc, X->data<T>(), beta.data<T>(), cudnn_y_desc,
+      context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
+      CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_x_desc,
+      X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
       Y->mutable_data<T>(context.GetPlace())));
 }
+
+template <typename T>
+void SoftmaxCUDNNGradFunctor<T>::operator()(
+    const platform::CUDADeviceContext& context,
+    const framework::DataLayout layout, const framework::Tensor* Y,
+    framework::Tensor* XGrad, framework::Tensor* YGrad) {
+  // ------------------- cudnn descriptors ---------------------
+  ScopedTensorDescriptor yDesc;
+  ScopedTensorDescriptor dyDesc;
+  ScopedTensorDescriptor dxDesc;
+  std::vector<int64_t> cudnn_tensor_dims = framework::vectorize2int(Y->dims());
+  // NOTE(*) : cudnn softmax only support >= 4D Tensor,
+  // fill 1Ul at unused dims
+  if (cudnn_tensor_dims.size() <= 2) {
+    cudnn_tensor_dims.resize(4, 1UL);
+  }
+  cudnnTensorDescriptor_t cudnn_y_desc =
+      yDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  cudnnTensorDescriptor_t cudnn_xgrad_desc =
+      dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  cudnnTensorDescriptor_t cudnn_ygrad_desc =
+      dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
+      context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
+      CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
+      Y->data<T>(), cudnn_ygrad_desc,
+      YGrad->mutable_data<T>(context.GetPlace()), CudnnDataType<T>::kZero(),
+      cudnn_xgrad_desc, XGrad->mutable_data<T>(context.GetPlace())));
+}
+
 template class SoftmaxCUDNNFunctor<float>;
 template class SoftmaxCUDNNFunctor<double>;
+template class SoftmaxCUDNNGradFunctor<float>;
+template class SoftmaxCUDNNGradFunctor<double>;
 
 template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double>;

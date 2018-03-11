@@ -15,54 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
-// #include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-// using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
-// using DataLayout = platform::DataLayout;
-
-// template <typename T>
-// class SoftmaxCUDNNFunctor {
-//  public:
-//   void operator()(const platform::CUDADeviceContext& context,
-//                   const framework::Tensor* X, framework::Tensor* Y);
-// };
-
-// template <typename T>
-// void SoftmaxCUDNNFunctor<T>::operator()(
-//     const platform::CUDADeviceContext& context, const framework::Tensor* X,
-//     framework::Tensor* Y) {
-//   // ------------------- cudnn descriptors ---------------------
-//   ScopedTensorDescriptor xDesc;
-//   ScopedTensorDescriptor yDesc;
-//   DataLayout layout = DataLayout::kNCHW;
-
-//   cudnnTensorDescriptor_t cudnn_x_desc =
-//       xDesc.descriptor<T>(layout, framework::vectorize2int(X->dims()));
-//   cudnnTensorDescriptor_t cudnn_y_desc =
-//       xDesc.descriptor<T>(layout, framework::vectorize2int(Y->dims()));
-//   // NOTE(*) The signature of cudnnSoftmaxForward
-//   // final = alpha[0]*softmax + beta[0]*priorDstValue.
-//   Tensor alpha, beta;
-//   alpha.mutable_data<T>(X->dims(), context.GetPlace());
-//   beta.mutable_data<T>(X->dims(), context.GetPlace());
-//   // alpha.Resize(X->dims());
-//   // beta.Resize(X->dims());
-//   math::SetConstant<platform::CUDADeviceContext, T> constant;
-//   constant(context, &alpha, static_cast<T>(1));
-//   constant(context, &beta, static_cast<T>(0));
-
-//   PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxForward(
-//       context.cudnn_handle(), CUDNN_SOFTMAX_FAST,
-//       CUDNN_SOFTMAX_MODE_INSTANCE,
-//       alpha.data<T>(), cudnn_x_desc, X->data<T>(), beta.data<T>(),
-//       cudnn_y_desc,
-//       Y->mutable_data<T>(context.GetPlace())));
-// }
 
 template <typename DeviceContext, typename T>
 class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
@@ -90,7 +48,8 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
       Tensor out_i = out->Slice(start_pos, end_pos);
 
       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
+      framework::DDim dims_i =
+          framework::make_ddim({1UL, end_pos - start_pos, 1UL, 1UL});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
       math::SoftmaxCUDNNFunctor<T>()(

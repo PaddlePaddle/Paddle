@@ -60,7 +60,7 @@ __all__ = [
     'clip',
     'clip_by_norm',
     'softmax',
-    'sequence_softmax',
+    # 'sequence_softmax',
     'logical_and',
     'logical_or',
     'logical_xor',
