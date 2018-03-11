@@ -32,17 +32,20 @@ using CudnnDataType = platform::CudnnDataType<T>;
 
 template <typename T>
 void SoftmaxCUDNNFunctor<T>::operator()(
-    const platform::CUDADeviceContext& context,
-    const framework::DataLayout layout, const framework::Tensor* X,
+    const platform::CUDADeviceContext& context, const framework::Tensor* X,
     framework::Tensor* Y) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor xDesc;
   ScopedTensorDescriptor yDesc;
-  std::vector<int64_t> cudnn_tensor_dims = framework::vectorize2int(X->dims());
+  std::vector<int> cudnn_tensor_dims = framework::vectorize2int(X->dims());
+  DataLayout layout = DataLayout::kNCHW;
+  if (cudnn_tensor_dims.size() == 5) {
+    layout = DataLayout::kNCDHW;
+  }
   // NOTE(*) : cudnn softmax only support >= 4D Tensor,
-  // fill 1Ul at unused dims
+  // fill 1 at unused dims
   if (cudnn_tensor_dims.size() <= 2) {
-    cudnn_tensor_dims.resize(4, 1UL);
+    cudnn_tensor_dims.resize(4, 1);
   }
   cudnnTensorDescriptor_t cudnn_x_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
@@ -57,18 +60,21 @@ void SoftmaxCUDNNFunctor<T>::operator()(
 
 template <typename T>
 void SoftmaxCUDNNGradFunctor<T>::operator()(
-    const platform::CUDADeviceContext& context,
-    const framework::DataLayout layout, const framework::Tensor* Y,
-    framework::Tensor* XGrad, framework::Tensor* YGrad) {
+    const platform::CUDADeviceContext& context, const framework::Tensor* Y,
+    framework::Tensor* YGrad, framework::Tensor* XGrad) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
   ScopedTensorDescriptor dxDesc;
-  std::vector<int64_t> cudnn_tensor_dims = framework::vectorize2int(Y->dims());
+  std::vector<int> cudnn_tensor_dims = framework::vectorize2int(Y->dims());
+  DataLayout layout = DataLayout::kNCHW;
+  if (cudnn_tensor_dims.size() == 5) {
+    layout = DataLayout::kNCDHW;
+  }
   // NOTE(*) : cudnn softmax only support >= 4D Tensor,
-  // fill 1Ul at unused dims
+  // fill 1 at unused dims
   if (cudnn_tensor_dims.size() <= 2) {
-    cudnn_tensor_dims.resize(4, 1UL);
+    cudnn_tensor_dims.resize(4, 1);
   }
   cudnnTensorDescriptor_t cudnn_y_desc =
       yDesc.descriptor<T>(layout, cudnn_tensor_dims);
