@@ -39,6 +39,14 @@ class SGDOp : public framework::OperatorWithKernel {
     // and run time.
     ctx->SetOutputDim("ParamOut", param_dim);
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("Param")->type()),
+        ctx.GetPlace());
+  }
 };
 
 class SGDOpMaker : public framework::OpProtoAndCheckerMaker {

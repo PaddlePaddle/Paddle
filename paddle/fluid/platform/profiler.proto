@@ -15,7 +15,7 @@ limitations under the License. */
 syntax = "proto2";
 package paddle.platform.proto;
 
-message MemCopy { optional uint64 bytes = 3; }
+message MemCopy { optional uint64 bytes = 1; }
 
 message Event {
   optional string name = 1;

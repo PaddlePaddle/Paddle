@@ -15,10 +15,22 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
+
+using float16 = paddle::platform::float16;
+
+template <>
+void gemm<platform::CPUDeviceContext, float16>(
+    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const float16 alpha, const float16* A, const float16* B, const float16 beta,
+    float16* C) {
+  PADDLE_THROW("float16 GEMM not supported on CPU");
+}
 
 template <>
 void gemm<platform::CPUDeviceContext, float>(
@@ -47,6 +59,15 @@ void gemm<platform::CPUDeviceContext, double>(
 }
 
 template <>
+void gemm<platform::CPUDeviceContext, float16>(
+    const platform::CPUDeviceContext& context, const bool transA,
+    const bool transB, const int M, const int N, const int K,
+    const float16 alpha, const float16* A, const int lda, const float16* B,
+    const int ldb, const float16 beta, float16* C, const int ldc) {
+  PADDLE_THROW("float16 GEMM not supported on CPU");
+}
+
+template <>
 void gemm<platform::CPUDeviceContext, float>(
     const platform::CPUDeviceContext& context, const bool transA,
     const bool transB, const int M, const int N, const int K, const float alpha,
@@ -66,6 +87,15 @@ void gemm<platform::CPUDeviceContext, double>(
   cblas_dgemm(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
               transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
               lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+void matmul<platform::CPUDeviceContext, float16>(
+    const platform::CPUDeviceContext& context,
+    const framework::Tensor& matrix_a, bool trans_a,
+    const framework::Tensor& matrix_b, bool trans_b, float16 alpha,
+    framework::Tensor* matrix_out, float16 beta) {
+  PADDLE_THROW("float16 matmul not supported on CPU");
 }
 
 template <>
@@ -124,6 +154,15 @@ void matmul<platform::CPUDeviceContext, double>(
   gemm<platform::CPUDeviceContext, double>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
+}
+
+template <>
+void batched_gemm<platform::CPUDeviceContext, float16>(
+    const platform::CPUDeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const float16 alpha, const float16* A, const float16* B, const float16 beta,
+    float16* C, const int batchCount, const int strideA, const int strideB) {
+  PADDLE_THROW("float16 batched_gemm not supported on CPU");
 }
 
 #ifdef PADDLE_WITH_MKLML
@@ -245,11 +284,13 @@ template struct SetConstant<platform::CPUDeviceContext, int>;
 template struct SetConstant<platform::CPUDeviceContext, int64_t>;
 template struct SetConstant<platform::CPUDeviceContext, bool>;
 
-#define DEFINE_CPU_TRANS(RANK)                                          \
-  template struct Transpose<platform::CPUDeviceContext, float, RANK>;   \
-  template struct Transpose<platform::CPUDeviceContext, double, RANK>;  \
-  template struct Transpose<platform::CPUDeviceContext, int, RANK>;     \
-  template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>; \
+#define DEFINE_CPU_TRANS(RANK)                                             \
+  template struct Transpose<platform::CPUDeviceContext, platform::float16, \
+                            RANK>;                                         \
+  template struct Transpose<platform::CPUDeviceContext, float, RANK>;      \
+  template struct Transpose<platform::CPUDeviceContext, double, RANK>;     \
+  template struct Transpose<platform::CPUDeviceContext, int, RANK>;        \
+  template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>;    \
   template struct Transpose<platform::CPUDeviceContext, bool, RANK>;
 
 DEFINE_CPU_TRANS(1);

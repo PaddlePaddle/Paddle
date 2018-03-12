@@ -26,7 +26,6 @@ class ReaderBase {
     PADDLE_ENFORCE(!shapes_.empty());
   }
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
-  virtual bool HasNext() const = 0;
 
   virtual void ReInit() = 0;
 
@@ -52,91 +51,14 @@ class DecoratedReader : public ReaderBase {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
-  bool HasNext() const override { return reader_->HasNext(); }
-
   void ReInit() override { reader_->ReInit(); }
 
  protected:
   ReaderBase* reader_;
 };
 
-// file readers
-
-template <typename T>
-class RandomDataGenerator : public FileReader {
- public:
-  RandomDataGenerator(const std::vector<DDim>& shapes, float min, float max)
-      : FileReader(shapes), min_(min), max_(max) {
-    PADDLE_ENFORCE_LE(
-        min, max, "'min' shouldn't be greater than 'max'.(%f vs %f)", min, max);
-    unsigned int seed = std::random_device()();
-    engine_.seed(seed);
-    dist_ = std::uniform_real_distribution<float>(min_, max_);
-  }
-
-  void ReadNext(std::vector<LoDTensor>* out) override {
-    out->clear();
-    out->reserve(shapes_.size());
-    for (const DDim& shape : shapes_) {
-      PADDLE_ENFORCE_GE(
-          shape.size(), 2,
-          "The rank of reader's output data should be 2 at least.(Now it's %d)",
-          shape.size());
-      LoDTensor out_tensor;
-      out_tensor.Resize(shape);
-      T* data = out_tensor.mutable_data<T>(platform::CPUPlace());
-      int64_t numel = product(shape);
-      for (int64_t i = 0; i < numel; ++i) {
-        data[i] = dist_(engine_);
-      }
-      out->push_back(out_tensor);
-    }
-  }
-
-  bool HasNext() const override { return true; }
-
-  void ReInit() override { return; }
-
- private:
-  float min_;
-  float max_;
-  std::minstd_rand engine_;
-  std::uniform_real_distribution<float> dist_;
-};
-
-// decorated readers
-
-class ShuffleReader : public DecoratedReader {
- public:
-  ShuffleReader(ReaderBase* reader, int buffer_size)
-      : DecoratedReader(reader), buffer_size_(buffer_size), iteration_pos_(0) {
-    buffer_.reserve(buffer_size);
-  }
-
-  void ReadNext(std::vector<LoDTensor>* out) override;
-
- private:
-  int buffer_size_;
-  std::vector<std::vector<LoDTensor>> buffer_;
-  size_t iteration_pos_;
-};
-
-class BatchReader : public DecoratedReader {
- public:
-  BatchReader(ReaderBase* reader, int batch_size)
-      : DecoratedReader(reader), batch_size_(batch_size) {
-    buffer_.reserve(batch_size_);
-  }
-
-  void ReadNext(std::vector<LoDTensor>* out) override;
-
- private:
-  int batch_size_;
-  std::vector<std::vector<LoDTensor>> buffer_;
-};
-
-// The ReaderHolder is used as readers' unified wrapper,
-// making it easier to access different type readers in Variables.
+// The ReaderHolder is used as reader' unified wrapper,
+// making it easier to access different type reader in Variables.
 class ReaderHolder {
  public:
   void Reset(ReaderBase* reader) { reader_.reset(reader); }
@@ -144,7 +66,6 @@ class ReaderHolder {
   ReaderBase* Get() const { return reader_.get(); }
 
   void ReadNext(std::vector<LoDTensor>* out) { reader_->ReadNext(out); }
-  bool HasNext() const { return reader_->HasNext(); }
   void ReInit() { reader_->ReInit(); }
 
   DDim shape(size_t idx) const { return reader_->shape(idx); }
