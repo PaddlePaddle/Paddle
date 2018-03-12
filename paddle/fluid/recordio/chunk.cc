@@ -146,6 +146,7 @@ bool Chunk::Parse(std::istream& sin) {
     std::string buf;
     buf.resize(rec_len);
     stream.read(&buf[0], rec_len);
+    PADDLE_ENFORCE_EQ(rec_len, stream.gcount());
     Add(buf);
   }
   return true;

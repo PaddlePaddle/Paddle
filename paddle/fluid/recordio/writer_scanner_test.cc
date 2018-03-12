@@ -42,3 +42,28 @@ TEST(WriterScanner, Normal) {
     ASSERT_FALSE(scanner.HasNext());
   }
 }
+
+TEST(WriterScanner, TinyChunk) {
+  std::stringstream* stream = new std::stringstream();
+  {
+    paddle::recordio::Writer writer(
+        stream, paddle::recordio::Compressor::kNoCompress, 2 /*max chunk num*/);
+    writer.Write("ABC");
+    writer.Write("BCD");
+    writer.Write("CDE");
+    writer.Write("DEFG");
+    writer.Flush();
+  }
+
+  {
+    stream->seekg(0, std::ios::beg);
+    std::unique_ptr<std::istream> stream_ptr(stream);
+    paddle::recordio::Scanner scanner(std::move(stream_ptr));
+    ASSERT_TRUE(scanner.HasNext());
+    ASSERT_EQ(scanner.Next(), "ABC");
+    ASSERT_EQ(scanner.Next(), "BCD");
+    ASSERT_EQ(scanner.Next(), "CDE");
+    ASSERT_EQ(scanner.Next(), "DEFG");
+    ASSERT_FALSE(scanner.HasNext());
+  }
+}
