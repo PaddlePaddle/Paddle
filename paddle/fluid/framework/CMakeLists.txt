@@ -40,7 +40,7 @@ nv_test(data_device_transform_test SRCS data_device_transform_test.cu
         DEPS operator op_registry init math_function)
 
 if(WITH_GPU)
-  nv_library(data_type_transform SRCS data_type_transform.cu DEPS tensor)
+  nv_library(data_type_transform SRCS data_type_transform.cc DEPS tensor)
   nv_test(data_type_transform_test SRCS data_type_transform_test.cc data_type_transform_test.cu DEPS data_type_transform)
 else()
   cc_library(data_type_transform SRCS data_type_transform.cc DEPS tensor)
