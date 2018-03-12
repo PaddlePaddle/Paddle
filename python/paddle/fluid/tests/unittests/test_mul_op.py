@@ -14,6 +14,7 @@
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 from op_test import OpTest
 
 
@@ -67,6 +68,41 @@ class TestMulOp2(OpTest):
     def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
+
+
+class TestFP16MulOp(OpTest):
+    def setUp(self):
+        self.op_type = "mul"
+        self.inputs = {
+            'X': np.random.random((32, 84)).astype("float32"),
+            'Y': np.random.random((84, 100)).astype("float32")
+        }
+        self.attrs = {'use_float16': True}
+        self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-1)
+
+
+class TestFP16MulOp2(OpTest):
+    def setUp(self):
+        self.op_type = "mul"
+        self.inputs = {
+            'X': np.random.random((15, 4, 12, 10)).astype("float32"),
+            'Y': np.random.random((4, 30, 8, 2, 9)).astype("float32")
+        }
+        self.attrs = {
+            'x_num_col_dims': 2,
+            'y_num_col_dims': 2,
+            'use_float16': True
+        }
+        result = np.dot(self.inputs['X'].reshape(15 * 4, 12 * 10),
+                        self.inputs['Y'].reshape(4 * 30, 8 * 2 * 9))
+        result = result.reshape(15, 4, 8, 2, 9)
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output(atol=2e-1)
 
 
 if __name__ == "__main__":
