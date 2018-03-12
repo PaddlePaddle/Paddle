@@ -722,7 +722,7 @@ def multi_box_head(inputs,
     if num_layer <= 2:
         assert min_sizes is not None and max_sizes is not None
         assert len(min_sizes) == num_layer and len(max_sizes) == num_layer
-    elif len(min_sizes) == 0 and len(min_sizes) == 0:
+    elif min_sizes is None and max_sizes is None:
         min_sizes = []
         max_sizes = []
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
