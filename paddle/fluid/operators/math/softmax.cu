@@ -60,7 +60,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
 template <typename T>
 void SoftmaxGradCUDNNFunctor<T>::operator()(
     const platform::CUDADeviceContext& context, const framework::Tensor* Y,
-    framework::Tensor* YGrad, framework::Tensor* XGrad) {
+    const framework::Tensor* YGrad, framework::Tensor* XGrad) {
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor yDesc;
   ScopedTensorDescriptor dyDesc;
@@ -84,9 +84,9 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
   PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
-      Y->data<T>(), cudnn_ygrad_desc,
-      YGrad->mutable_data<T>(context.GetPlace()), CudnnDataType<T>::kZero(),
-      cudnn_xgrad_desc, XGrad->mutable_data<T>(context.GetPlace())));
+      Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
+      CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
+      XGrad->mutable_data<T>(context.GetPlace())));
 }
 
 template class SoftmaxCUDNNFunctor<float>;

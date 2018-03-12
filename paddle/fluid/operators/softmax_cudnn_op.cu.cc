@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -31,7 +30,7 @@ class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxFunctor<DeviceContext, T>()(
+    math::SoftmaxCUDNNFunctor<T>()(
         context.template device_context<DeviceContext>(), X, Out);
   }
 };
@@ -47,7 +46,7 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
-    math::SoftmaxGradCUDNNFunctor<DeviceContext, T>()(
+    math::SoftmaxGradCUDNNFunctor<T>()(
         context.template device_context<DeviceContext>(), Out, dOut, dX);
   }
 };
@@ -55,9 +54,10 @@ class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    softmax,
+namespace ops = paddle::operators;
+REGISTER_OP_KERNEL(
+    softmax, CUDNN, ::paddle::platform::CUDAPlace,
     ops::SoftmaxCUDNNKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    softmax_grad,
+REGISTER_OP_KERNEL(
+    softmax_grad, CUDNN, ::paddle::platform::CUDAPlace,
     ops::SoftmaxGradCUDNNKernel<paddle::platform::CUDADeviceContext, float>);

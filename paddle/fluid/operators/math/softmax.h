@@ -45,7 +45,7 @@ template <typename T>
 class SoftmaxGradCUDNNFunctor {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor* Y, framework::Tensor* y_grad,
+                  const framework::Tensor* Y, const framework::Tensor* y_grad,
                   framework::Tensor* x_grad);
 };
 #endif
