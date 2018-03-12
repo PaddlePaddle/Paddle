@@ -39,8 +39,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
 
-#include <iostream>
-
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/cuda_profiler.h"
