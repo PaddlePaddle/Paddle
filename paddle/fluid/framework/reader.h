@@ -26,7 +26,6 @@ class ReaderBase {
     PADDLE_ENFORCE(!shapes_.empty());
   }
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
-  virtual bool HasNext() const = 0;
 
   virtual void ReInit() = 0;
 
@@ -52,8 +51,6 @@ class DecoratedReader : public ReaderBase {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
-  bool HasNext() const override { return reader_->HasNext(); }
-
   void ReInit() override { reader_->ReInit(); }
 
  protected:
@@ -69,7 +66,6 @@ class ReaderHolder {
   ReaderBase* Get() const { return reader_.get(); }
 
   void ReadNext(std::vector<LoDTensor>* out) { reader_->ReadNext(out); }
-  bool HasNext() const { return reader_->HasNext(); }
   void ReInit() { reader_->ReInit(); }
 
   DDim shape(size_t idx) const { return reader_->shape(idx); }
