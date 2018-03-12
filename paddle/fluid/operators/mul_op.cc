@@ -73,11 +73,9 @@ class MulOp : public framework::OperatorWithKernel {
   }
 
  protected:
+#ifdef PADDLE_WITH_CUDA
   OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-#ifndef PADDLE_WITH_CUDA
-    return framework::OperatorWithKernel::GetExpectedKernelType(ctx);
-#else
     platform::Place place = ctx.GetPlace();
     if (ctx.Attr<bool>("use_float16") && platform::is_gpu_place(place) &&
         ctx.template device_context<platform::CUDADeviceContext>()
@@ -87,8 +85,8 @@ class MulOp : public framework::OperatorWithKernel {
       // fall back to use float32 kernel if requirements are not met
       return OpKernelType(framework::proto::VarType::FP32, place);
     }
-#endif
   }
+#endif
 
   OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
