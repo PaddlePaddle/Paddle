@@ -61,10 +61,13 @@ After converting:
 
 ### Sparse Update
 
-For an embedding layer, the gradient may have many rows containing only 0 for each mini-batch.
-Fluid use [SelectedRows](../selected_rows.md) to support sparse variables. Distributed training support `Sparse Update`,
-which sends a `SelectedRows` variable to the parameter server to run parameter updates.
-It would save a lot of bandwidth and make the distributed training job have better performance.
+For embedding layers, the gradient may have many rows containing only 0 when training,
+if the gradient use a dense tensor to do parameter optimization,
+it could spend unnessesary memory, slow down the calculations and waste
+the bandwidth while doing distributed training.
+In Fluid, we introduce [SelectedRows](../selected_rows.md) to represent a list of rows containing
+non-zero gradient data. So when we do parameter optimization both locally and remotely,
+we only need to send those non-zero rows to the optimizer operators:
 
 <img src="src/sparse_update.png" width="700" />
 
