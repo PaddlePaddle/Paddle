@@ -79,6 +79,7 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;
 
+  /*! \brief  Return compute capability in the device context. */
   int GetComputeCapability() const;
 
   /*! \brief  Return the max physical thread count in the device context */
