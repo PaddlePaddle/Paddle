@@ -57,13 +57,20 @@ __global__ void SGDGroupKernel(T** grads, T** params, T** learning_rate,
                                const int* p_numbers, int para_num, int ele_num,
                                T** params_out) {
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
-  int segment = upper_bound<int>(p_numbers, para_num, tid_x) - 1;
-  int curr_offset = p_numbers[segment];
+  extern __shared__ int s_p_numbers[];
+
+  if (threadIdx.x < para_num) {
+    s_p_numbers[threadIdx.x] = p_numbers[threadIdx.x];
+  }
+  __syncthreads();
+
+  int segment = upper_bound<int>(s_p_numbers, para_num, tid_x) - 1;
+  int curr_offset = s_p_numbers[segment];
   int curr_segment = segment;
 
   for (; tid_x < ele_num; tid_x += blockDim.x * gridDim.x) {
     int curr_col_offset;
-    while ((curr_col_offset = p_numbers[curr_segment + 1]) <= tid_x) {
+    while ((curr_col_offset = s_p_numbers[curr_segment + 1]) <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
     }
@@ -142,7 +149,8 @@ class SGDGroupOpCUDAKernel : public framework::OpKernel<T> {
 
       int grid = std::min((p_ele_num + block - 1) / block, max_blocks);
 
-      SGDGroupKernel<T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+      SGDGroupKernel<T><<<grid, block, p_num * sizeof(int),
+                          ctx.cuda_device_context().stream()>>>(
           grads_gpu, params_gpu, lrs_data_gpu, param_num_gpu, p_num, p_ele_num,
           param_out_gpu);
     } else {
