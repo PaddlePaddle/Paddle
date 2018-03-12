@@ -107,7 +107,7 @@ void Compute(const framework::ExecutionContext& context) const override {
 
 ### paddle::framework::Tensor到EigenTensor的转换
 
-As shown above, in actual computation, we need to transform the input and output `Tensor`s into formats Eigen supports. We show some functions in [eigen.h](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/eigen.h) to implement the transformation from `paddle::framework::Tensor`to `EigenTensor/EigenMatrix/EigenVector/EigenScalar`.
+As shown above, in actual computation, we need to transform the input and output `Tensor`s into formats Eigen supports. We show some functions in [eigen.h](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/eigen.h) to implement the transformation from `paddle::framework::Tensor`to `EigenTensor/EigenMatrix/EigenVector/EigenScalar`.
 
 Using EigenTensor as an example:
 
@@ -125,7 +125,7 @@ EigenTensor<float, 3>::Type et = EigenTensor<float, 3>::From(t);
 
 In Eigen, tensors with different ranks are different types, with `Vector` bring a rank-1 instance. Note that `EigenVector<T>::From` uses a transformation from an 1-dimensional Paddle tensor to a 1-dimensional Eigen tensor while `EigenVector<T>::Flatten` reshapes a paddle tensor and flattens it into a 1-dimensional Eigen tensor. Both resulting tensors are still typed EigenVector.
 
-For more transformations, see the [unit tests](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/eigen_test.cc) in the `eigen_test.cc` file.
+For more transformations, see the [unit tests](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/eigen_test.cc) in the `eigen_test.cc` file.
 
 
 
