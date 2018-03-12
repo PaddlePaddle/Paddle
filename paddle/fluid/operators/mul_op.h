@@ -48,7 +48,7 @@ class MulKernel : public framework::OpKernel<T> {
     }
     math::matmul<DeviceContext, T>(
         context.template device_context<DeviceContext>(), x_matrix, false,
-        y_matrix, false, 1, z, 0);
+        y_matrix, false, static_cast<T>(1), z, static_cast<T>(0));
     if (z_dim.size() != 2) {
       z->Resize(z_dim);
     }

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/float16.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -90,8 +91,8 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 }  // namespace details
 inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
   auto buffer_info =
-      details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool>()(
-          tensor);
+      details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool,
+                                  platform::float16>()(tensor);
   return buffer_info;
 }
 

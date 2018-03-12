@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -67,8 +68,16 @@ PYBIND11_PLUGIN(core) {
   BindException(m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def_buffer([](Tensor &self) -> py::buffer_info {
+        if (ToDataType(self.type()) == proto::VarType::FP16) {
+          Tensor out;
+          OpKernelType in_type(proto::VarType::FP16, self.place());
+          OpKernelType out_type(proto::VarType::FP32, platform::CPUPlace());
+          DataTransform(out_type, in_type, self, &out);
+          return CastToPyBuffer(out);
+        }
+        return CastToPyBuffer(self);
+      })
       .def("get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("set_dims",
@@ -115,8 +124,16 @@ PYBIND11_PLUGIN(core) {
       .def("dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
-      .def_buffer(
-          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
+      .def_buffer([](Tensor &self) -> py::buffer_info {
+        if (ToDataType(self.type()) == proto::VarType::FP16) {
+          Tensor out;
+          OpKernelType in_type(proto::VarType::FP16, self.place());
+          OpKernelType out_type(proto::VarType::FP32, platform::CPUPlace());
+          DataTransform(out_type, in_type, self, &out);
+          return CastToPyBuffer(out);
+        }
+        return CastToPyBuffer(self);
+      })
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
