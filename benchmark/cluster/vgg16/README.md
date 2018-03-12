@@ -32,7 +32,7 @@ Setting environment variable: `MKL_NUM_THREADS=1`.
 | -- | -- | -- | -- | -- |
 | PaddlePaddle Fluid | 190.20 | 222.15 | 247.40 | 258.18 |
 | PaddlePaddle v2 | 170.96 | 233.71 | 256.14 | 329.23 |
-| TensorFlow | - | - | - | - |
+~~| TensorFlow | - | - | - | - |~~
 
 
 ### Accelerate Rate
