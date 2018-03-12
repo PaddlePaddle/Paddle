@@ -37,6 +37,8 @@ class DoubleBufferReader : public framework::DecoratedReader {
 
   ~DoubleBufferReader() { buffer_->Close(); }
 
+  bool HasNext() const override;
+
  private:
   void PrefetchThreadFunc();
 
@@ -105,6 +107,8 @@ void DoubleBufferReader::PrefetchThreadFunc() {
     }
   }
 }
+
+bool DoubleBufferReader::HasNext() const { PADDLE_THROW("Not Implemented"); }
 
 }  // namespace reader
 }  // namespace operators

@@ -28,7 +28,7 @@ public:
 
   void Reset();
 
-  const std::string& Next();
+  std::string Next();
 
   bool HasNext() const;
 

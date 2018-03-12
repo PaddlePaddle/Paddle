@@ -32,9 +32,9 @@ void Scanner::Reset() {
   ParseNextChunk();
 }
 
-const std::string &Scanner::Next() {
+std::string Scanner::Next() {
   PADDLE_ENFORCE(!eof_, "StopIteration");
-  auto &rec = cur_chunk_.Record(offset_++);
+  auto rec = cur_chunk_.Record(offset_++);
   if (offset_ == cur_chunk_.NumRecords()) {
     ParseNextChunk();
   }
