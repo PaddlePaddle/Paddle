@@ -125,9 +125,10 @@ opts = optimizer.minimize(avg_cost)
 batch_size = fluid.layers.create_tensor(dtype='int64')
 batch_acc = fluid.layers.accuracy(input=predict, label=label, total=batch_size)
 
-fluid.memory_optimize(fluid.default_main_program())
+# fluid.memory_optimize(fluid.default_main_program(), level=0)
+fluid.release_memory(fluid.default_main_program())
 
-BATCH_SIZE = 128
+BATCH_SIZE = 16
 PASS_NUM = 1
 
 # fix the order of training data
@@ -159,8 +160,7 @@ for pass_id in range(PASS_NUM):
         print("loss:" + str(loss) + " acc:" + str(acc) + " pass_acc:" + str(
             pass_acc))
         # this model is slow, so if we can train two mini batch, we think it works properly.
-
-        if i > 2:
+        if i > 0:
             exit(0)
         if math.isnan(float(loss)):
             sys.exit("got NaN loss, training failed.")
