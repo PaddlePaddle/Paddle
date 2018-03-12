@@ -78,7 +78,7 @@ class MulOp : public framework::OperatorWithKernel {
     platform::Place place = ctx.GetPlace();
     if (ctx.Attr<bool>("use_float16") &&
         platform::is_gpu_place(ctx.GetPlace()) &&
-        ctx.device_context<platform::CUDADeviceContext>()
+        ctx.template device_context<platform::CUDADeviceContext>()
                 .GetComputeCapability() >= 53) {
       return OpKernelType(framework::proto::VarType::FP16, place);
     } else {
