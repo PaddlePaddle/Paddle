@@ -16,14 +16,6 @@
 
 namespace paddle {
 namespace framework {
-
-DDim ReaderBase::shape(size_t idx) const {
-  PADDLE_ENFORCE_LT(
-      idx, shapes_.size(),
-      "Cannot get the %d'th shape, 'shapes_' only has %d elements.", idx,
-      shapes_.size());
-  return shapes_[idx];
-}
-
+ReaderBase::~ReaderBase() {}
 }  // namespace framework
 }  // namespace paddle
