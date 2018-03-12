@@ -59,6 +59,13 @@ After converting:
      queue. It will block until the queue has the required number of
      tensors.
 
+### Sparse Update
+
+For an embedding layer, the gradient maybe be very sparse(upper 90% is zero) for each mini-batch.
+Fluid use [SelectedRows](../selected_rows.md) to support the sparse variable. Distributed training support `Sparse Update`,
+it would save a lot of bandwidth and make the distributed training job have better performance.
+
+<img src="src/sparse_update.png" width="700" />
 
 ### Benefits
 
@@ -91,6 +98,6 @@ After converting:
   `min_count` attribute), does our current design support it? (similar
   question for the *Add* OP)
 
+### References
 
-### References:
 [1] [TensorFlow: Large-Scale Machine Learning on Heterogeneous Distributed Systems](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45166.pdf)
