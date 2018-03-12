@@ -62,11 +62,6 @@ TEST(math_function, notrans_mul_trans_fp16) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
-  // fp16 GEMM in cublas requires GPU compute capability >= 53
-  if (GetCUDAComputeCapability(0) < 53) {
-    return;
-  }
-
   Tensor input1;
   Tensor input1_gpu;
   Tensor input2_gpu;
@@ -76,6 +71,11 @@ TEST(math_function, notrans_mul_trans_fp16) {
   CPUPlace cpu_place;
   CUDAPlace gpu_place(0);
   CUDADeviceContext context(gpu_place);
+
+  // fp16 GEMM in cublas requires GPU compute capability >= 53
+  if (context.GetComputeCapability() < 53) {
+    return;
+  }
 
   float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
@@ -144,11 +144,6 @@ TEST(math_function, trans_mul_notrans_fp16) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
-  // fp16 GEMM in cublas requires GPU compute capability >= 53
-  if (GetCUDAComputeCapability(0) < 53) {
-    return;
-  }
-
   Tensor input1;
   Tensor input1_gpu;
   Tensor input2_gpu;
@@ -158,6 +153,11 @@ TEST(math_function, trans_mul_notrans_fp16) {
   CPUPlace cpu_place;
   CUDAPlace gpu_place(0);
   CUDADeviceContext context(gpu_place);
+
+  // fp16 GEMM in cublas requires GPU compute capability >= 53
+  if (context.GetComputeCapability() < 53) {
+    return;
+  }
 
   float16* input1_ptr = input1.mutable_data<float16>({2, 3}, cpu_place);
   fill_fp16_data(input1_ptr, input1.numel(), {0, 1, 2, 3, 4, 5});
@@ -247,11 +247,6 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
-  // fp16 GEMM in cublas requires GPU compute capability >= 53
-  if (GetCUDAComputeCapability(0) < 53) {
-    return;
-  }
-
   Tensor input1;
   Tensor input2;
   Tensor input3;
@@ -262,6 +257,11 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
   CPUPlace cpu_place;
   CUDAPlace gpu_place(0);
   CUDADeviceContext context(gpu_place);
+
+  // fp16 GEMM in cublas requires GPU compute capability >= 53
+  if (context.GetComputeCapability() < 53) {
+    return;
+  }
 
   int m = 2;
   int n = 3;
@@ -359,11 +359,6 @@ TEST(math_function, gemm_trans_cublas_fp16) {
   using namespace paddle::framework;
   using namespace paddle::platform;
 
-  // fp16 GEMM in cublas requires GPU compute capability >= 53
-  if (GetCUDAComputeCapability(0) < 53) {
-    return;
-  }
-
   Tensor input1;
   Tensor input2;
   Tensor input3;
@@ -374,6 +369,11 @@ TEST(math_function, gemm_trans_cublas_fp16) {
   CPUPlace cpu_place;
   CUDAPlace gpu_place(0);
   CUDADeviceContext context(gpu_place);
+
+  // fp16 GEMM in cublas requires GPU compute capability >= 53
+  if (context.GetComputeCapability() < 53) {
+    return;
+  }
 
   int m = 2;
   int n = 3;
