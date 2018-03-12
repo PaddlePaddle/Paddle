@@ -79,6 +79,7 @@ def avg_pool2D_forward_naive(x,
 class TestPool2d_Op(OpTest):
     def setUp(self):
         self.use_cudnn = False
+        self.use_mkldnn = False
         self.init_test_case()
         self.init_global_pool()
         self.init_op_type()
@@ -99,6 +100,7 @@ class TestPool2d_Op(OpTest):
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
             'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn,
             'ceil_mode': self.ceil_mode,
             'data_format': 'AnyLayout'  # TODO(dzhwinter) : should be fix latter
         }
@@ -258,6 +260,43 @@ class TestCeilModeCase3(TestCase1):
 class TestCeilModeCase4(TestCase2):
     def init_ceil_mode(self):
         self.ceil_mode = True
+
+
+#--------------------test pool2d MKLDNN--------------------
+class TestMKLDNNCase1(TestPool2d_Op):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "pool2d"
+
+
+class TestMKLDNNCase2(TestCase1):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "pool2d"
+
+
+class TestMKLDNNCase3(TestCase2):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "pool2d"
+
+
+class TestMKLDNNCase4(TestCase3):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "pool2d"
+
+
+class TestMKLDNNCase5(TestCase4):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "pool2d"
+
+
+class TestMKLDNNCase6(TestCase5):
+    def init_op_type(self):
+        self.use_mkldnn = True
+        self.op_type = "pool2d"
 
 
 if __name__ == '__main__':
