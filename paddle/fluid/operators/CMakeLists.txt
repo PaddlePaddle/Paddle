@@ -122,7 +122,6 @@ function(op_library TARGET)
     # pybind USE_OP_DEVICE_KERNEL for CUDNN
     list(LENGTH cudnn_cu_cc_srcs cudnn_cu_cc_srcs_len)
     if (WITH_GPU AND ${cudnn_cu_cc_srcs_len} GREATER 0)
-        message(STATUS ${cudnn_cu_cc_srcs})
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
     endif()
 

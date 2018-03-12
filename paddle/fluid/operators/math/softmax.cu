@@ -14,7 +14,6 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
-#include "glog/logging.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
