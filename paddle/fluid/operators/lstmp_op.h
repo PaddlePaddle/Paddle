@@ -35,7 +35,7 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
-                             framework::Vector<size_t> index,
+                             const framework::Vector<size_t>& index,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
@@ -205,13 +205,14 @@ class LSTMPKernel : public framework::OpKernel<T> {
     }
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
-    batch_proj.set_lod(batch_gate->lod());
-    // restore the output hidden in LoDTensor from the batch hidden
-    to_seq(device_ctx, batch_proj, *proj_out);
 
-    batch_cell.set_lod(batch_gate->lod());
+    // restore the output hidden in LoDTensor from the batch hidden
+    to_seq(device_ctx, batch_proj, batch_gate->lod(), *proj_out);
+    batch_proj.set_lod(batch_gate->lod());
+
     // restore the output cell state in LoDTensor from the batch cell
-    to_seq(device_ctx, batch_cell, *cell_out);
+    to_seq(device_ctx, batch_cell, batch_gate->lod(), *cell_out);
+    batch_proj.set_lod(batch_gate->lod());
   }
 };
 

@@ -264,6 +264,12 @@ class Vector {
     return true;
   }
 
+  bool IsDirty() const { return flag_ & kDirty; }
+
+  bool IsInCUDA() const { return flag_ & kDataInCUDA; }
+
+  bool IsInCPU() const { return flag_ & kDataInCPU; }
+
  private:
   void InitEmpty() {
     size_ = 0;
@@ -304,21 +310,12 @@ class Vector {
 
   void ImmutableCUDA(platform::Place place) const {
     if (IsDirty()) {
-      if (IsInCPU()) {
+      if (IsInCPU() || !(cuda_vec_.place() == place)) {
         TensorCopy(cpu_vec_, boost::get<platform::CUDAPlace>(place),
                    &cuda_vec_);
         WaitPlace(place);
         UnsetFlag(kDirty);
         SetFlag(kDataInCUDA);
-      } else if (IsInCUDA() && !(place == cuda_vec_.place())) {
-        framework::Tensor tmp;
-        TensorCopy(cuda_vec_, boost::get<platform::CUDAPlace>(place), &tmp);
-        WaitPlace(cuda_vec_.place());
-        cuda_vec_.ShareDataWith(tmp);
-        // Still dirty
-      } else {
-        // Dirty && DataInCUDA && Device is same
-        // Do nothing
       }
     } else {
       if (!IsInCUDA()) {
@@ -352,12 +349,6 @@ class Vector {
 
   void UnsetFlag(int flag) const { flag_ &= ~flag; }
   void SetFlag(int flag) const { flag_ |= flag; }
-
-  bool IsDirty() const { return flag_ & kDirty; }
-
-  bool IsInCUDA() const { return flag_ & kDataInCUDA; }
-
-  bool IsInCPU() const { return flag_ & kDataInCPU; }
 
   static void WaitPlace(const platform::Place place) {
     if (platform::is_gpu_place(place)) {

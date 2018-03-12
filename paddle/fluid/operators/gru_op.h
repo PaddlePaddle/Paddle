@@ -31,7 +31,7 @@ using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
-                             framework::Vector<size_t> index_lod,
+                             const framework::Vector<size_t>& index_lod,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
@@ -115,8 +115,9 @@ class GRUKernel : public framework::OpKernel<T> {
     }
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+
+    to_seq(dev_ctx, *batch_hidden, batch_gate->lod(), *hidden);
     batch_hidden->set_lod(batch_gate->lod());
-    to_seq(dev_ctx, *batch_hidden, *hidden);
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
@@ -177,7 +178,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
     bool is_reverse = context.Attr<bool>("is_reverse");
     batch_hidden_grad.set_lod(batch_hidden->lod());
-    to_batch(dev_ctx, *hidden_grad, batch_hidden_grad, false, is_reverse);
+    to_batch(dev_ctx, *hidden_grad, batch_hidden_grad, batch_hidden->lod(),
+             is_reverse);
 
     math::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
@@ -238,8 +240,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
       math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+      to_seq(dev_ctx, batch_gate_grad, batch_gate->lod(), *input_grad);
       batch_gate_grad.set_lod(batch_gate->lod());
-      to_seq(dev_ctx, batch_gate_grad, *input_grad);
     }
     if (bias_grad) {
       bias_grad->mutable_data<T>(context.GetPlace());
