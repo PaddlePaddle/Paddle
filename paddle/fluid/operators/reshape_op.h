@@ -38,9 +38,15 @@ class ReshapeKernel : public framework::OpKernel<T> {
       out_dims = out->dims();
     }
 
-    out->mutable_data<T>(ctx.GetPlace());
-    framework::TensorCopy(*in, ctx.GetPlace(), ctx.device_context(), out);
-    out->Resize(out_dims);
+    bool inplace = ctx.Attr<bool>("inplace");
+    if (!inplace) {
+      out->mutable_data<T>(ctx.GetPlace());
+      framework::TensorCopy(*in, ctx.GetPlace(), ctx.device_context(), out);
+      out->Resize(out_dims);
+    } else {
+      out->ShareDataWith(*in);
+      out->Resize(out_dims);
+    }
   }
 
  private:

@@ -20,9 +20,8 @@ class ReaderBase {
     PADDLE_ENFORCE(!shapes_.empty());
   }
   // Read the next batch of data. (A 'batch' can be only one instance)
+  // If the next batch doesn't exist, the '*out' will be an empty std::vector.
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
-  // Show whether the next bacth exists.
-  virtual bool HasNext() const = 0;
   
   // Reinitialize the reader and read the file from the begin.
   virtual void ReInit() = 0;
