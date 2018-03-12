@@ -104,7 +104,8 @@ def run_benchmark(args):
 
     # program_summary(fluid.default_main_program())
 
-    exe = fluid.ParallelExecutor(gpu_list=[0, 1])
+    exe = fluid.ParallelExecutor(
+        gpu_list=range(fluid.core.get_cuda_device_count()))
 
     # Parameter initialization
     exe.run(fluid.default_startup_program())
