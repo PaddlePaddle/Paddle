@@ -1224,7 +1224,8 @@ class SelectCase(object):
 
         # Since we aren't going to use the `channel_send` or `channel_recv`
         # functions directly, we just need to capture the name.
-        self.action = channel_action_fn.__name__ if channel_action_fn else None
+        self.action = (1 if channel_action_fn.__name__ == 'channel_send' else (
+            2)) if channel_action_fn else 0
         self.value = value
         self.channel = channel
 
@@ -1288,10 +1289,10 @@ class SelectCase(object):
             attrs={
                 'sub_block': self.block,
                 'is_scalar_condition': self.is_scalar_condition,
-                'case_idx': self.idx,
-                'case_action': self.action,
+                'case_index': self.idx,
+                'case_type': self.action,
                 'case_channel': self.channel.name if self.channel else None,
-                'case_channel_value': self.value.name if self.value else None
+                'case_channel_var': self.value.name if self.value else None
             })
 
     def __exit__(self, exc_type, exc_val, exc_tb):

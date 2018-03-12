@@ -17,7 +17,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import framework, unique_name
 from paddle.fluid.executor import Executor
-from paddle.fluid.layers import fill_constant, assign, While, elementwise_add
+from paddle.fluid.layers import fill_constant, assign, While, elementwise_add, Print
 
 
 class TestRoutineOp(unittest.TestCase):
@@ -100,7 +100,7 @@ class TestRoutineOp(unittest.TestCase):
             name=unique_name.generate(name), type=type, dtype=dtype,
             persistable=True)
 
-    def test_select(self):
+    """def test_select(self):
         with framework.program_guard(framework.Program()):
             ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR,
                                      capacity=1)
@@ -128,7 +128,7 @@ class TestRoutineOp(unittest.TestCase):
             exe = Executor(cpu)
 
             result = exe.run(fetch_list=[result1])
-            #self.assertEqual(result[0][0], n + 1)
+            #self.assertEqual(result[0][0], n + 1)"""
 
     def test_fibonacci(self):
         """
@@ -159,18 +159,24 @@ class TestRoutineOp(unittest.TestCase):
             x_tmp = fill_constant(
                 shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
 
+            x_to_send_tmp = fill_constant(
+                shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
+
+            assign(input=x_to_send_tmp, output=x)
+
             def fibonacci(channel, quit_channel):
                 while_op = While(cond=while_cond)
                 with while_op.block():
                     with fluid.Select() as select:
-                        with select.case(fluid.channel_send, channel, x):
+                        with select.case(fluid.channel_send, channel, x_to_send_tmp):
+                            Print(x_tmp)
                             assign(input=x, output=x_tmp)
                             assign(input=y, output=x)
                             assign(elementwise_add(x=x_tmp, y=y), output=y)
     
                         with select.case(fluid.channel_recv, quit_channel,
                                          result2):
-                            print 'quit'
+                            # Quit
                             assign(input=while_false, output=while_cond)
     
             ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
@@ -180,7 +186,7 @@ class TestRoutineOp(unittest.TestCase):
             result = self._create_persistable_tensor(
                 'return_value', core.VarDesc.VarType.LOD_TENSOR,
                 core.VarDesc.VarType.INT64)
-    
+
             with fluid.Go():
                 for i in xrange(10):
                     fluid.channel_recv(ch1, result)
@@ -189,11 +195,13 @@ class TestRoutineOp(unittest.TestCase):
     
             fibonacci(ch1, quit_ch)
 
+            # with open('/Users/aroravarun/Downloads/programdesc', 'wb') as pd:
+            #     pd.write(str(framework.default_main_program()))
+
             cpu = core.CPUPlace()
             exe = Executor(cpu)
 
             exe_result = exe.run(fetch_list=[result])
-
 
 if __name__ == '__main__':
     unittest.main()
