@@ -32,7 +32,6 @@ class ReshapeOp : public framework::OperatorWithKernel {
                    "Output(Out) of ReshapeOp should not be null.");
 
     const std::vector<int> &shape = ctx->Attrs().Get<std::vector<int>>("shape");
-
     PADDLE_ENFORCE_EQ(shape.empty(), ctx->HasInput("Shape"),
                       "The shape information can only be set by Attr(shape) or "
                       "by Input(Shape). Attr(shape) and Input(Shape) cannot be "
@@ -41,27 +40,29 @@ class ReshapeOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
 
     if (ctx->HasInput("Shape")) {
+      // The shape information in given by Input(Shape).
       auto shape_dims = ctx->GetInputDim("Shape");
 
       PADDLE_ENFORCE(shape_dims.size() == 2UL && shape_dims[0] == 1UL,
                      "The Input(Label) should be a 2-D tensor with the 1st "
                      "dimensions fixed to 1 (a row vector).");
 
-      // The actual output shape will be set at runtime, here temporially the
+      // The actual output shape will be set at runtime, here temporially set
       // the shape of output the same as the shape of input.
       ctx->SetOutputDim("Out", x_dims);
     } else {
+      // The shape information in given by Attr(shape).
       std::vector<int64_t> output_shape;
       ValidateShape(shape, framework::product(x_dims), output_shape);
 
       auto out_dims = framework::make_ddim(output_shape);
       ctx->SetOutputDim("Out", out_dims);
-    }
 
-    if (shape[0] == x_dims[0]) {
-      // Only pass LoD when the first dimension of output and input are the
-      // same.
-      ctx->ShareLoD("X", /*->*/ "Out");
+      if (shape[0] == x_dims[0]) {
+        // Only pass LoD when the first dimension of output and Input(X)
+        // are the same.
+        ctx->ShareLoD("X", /*->*/ "Out");
+      }
     }
   }
 
@@ -94,6 +95,14 @@ class ReshapeOp : public framework::OperatorWithKernel {
                    [](int a) { return static_cast<int64_t>(a); });
     if (neg_dims_idx.size()) output_shape[neg_dims_idx[0]] = inferred_dim;
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        ctx.device_context());
+  }
 };
 
 class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -101,11 +110,13 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
   ReshapeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of reshape operator.");
-    AddInput("Shape", "a 1-D tensor that provides the shape information.")
+    AddInput(
+        "Shape",
+        "Tensor<int64_t>, a 1-D tensor that provides the shape information.")
         .AsDispensable();
     AddOutput("Out", "The output tensor of reshape operator.");
-    AddAttr<std::vector<int>>("shape",
-                              "(vector<int>) Target shape of reshape operator.")
+    AddAttr<std::vector<int>>(
+        "shape", "(std::vector<int>) Target shape of reshape operator.")
         .SetDefault(std::vector<int>());
     AddComment(R"DOC(
 Reshape Operator.
@@ -138,6 +149,14 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shouldn't be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        ctx.device_context());
   }
 };
 

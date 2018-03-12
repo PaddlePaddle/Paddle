@@ -33,9 +33,6 @@ class ReshapeKernel : public framework::OpKernel<T> {
       std::vector<int64_t> output_shape;
       ValidateShape(*shape, framework::product(in->dims()), output_shape);
 
-      for (auto d : output_shape) std::cout << d << " ";
-      std::cout << std::endl;
-
       out_dims = framework::make_ddim(output_shape);
     } else {
       out_dims = out->dims();
@@ -85,11 +82,18 @@ class ReshapeGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+
     d_x->mutable_data<T>(ctx.GetPlace());
+    bool inplace = ctx.Attr<bool>("inplace");
 
     auto in_dims = d_x->dims();
-    framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
-    d_x->Resize(in_dims);
+    if (!inplace) {
+      framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
+      d_x->Resize(in_dims);
+    } else {
+      d_x->ShareDataWith(*d_out);
+      d_x->Resize(in_dims);
+    }
   }
 };
 }  // namespace operators
