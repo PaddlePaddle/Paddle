@@ -39,10 +39,10 @@ public:
           : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
 private:
-  enum SelectOpCaseType {
-      DEFAULT = 0,
-      SEND = 1,
-      RECEIVE = 2
+  enum class SelectOpCaseType {
+    DEFAULT = 0,
+    SEND = 1,
+    RECEIVE = 2,
   };
 
   struct SelectOpCase {
@@ -149,7 +149,7 @@ private:
         auto c = std::make_shared<SelectOpCase>(caseIndex, caseType,
                                                 caseChannel, caseChannelVar);
 
-        if (caseType == DEFAULT) {
+        if (caseType == SelectOpCaseType::DEFAULT) {
           // TODO(thuan): Enforce default isn't already set
           defaultCase = c;
         } else {
@@ -195,7 +195,7 @@ private:
               chVar->GetMutable<framework::ChannelHolder>();
 
       switch (c->caseType) {
-        case SEND:
+        case SelectOpCaseType::SEND:
           PADDLE_ENFORCE(!ch->IsClosed(), "Cannot send to a closed channel");
           if (ch->CanSend()) {
             // We can send to channel directly, send the data to channel
@@ -207,7 +207,7 @@ private:
 //            std::cout << "SENDING DATA" << std::endl;
           }
           break;
-        case RECEIVE:
+        case SelectOpCaseType::RECEIVE:
           if (ch->CanReceive()) {
             // We can receive from channel directly, send the data to channel
             // and execute case
@@ -218,7 +218,7 @@ private:
 //            std::cout << "RECEIVING DATA" << std::endl;
           }
           break;
-        case DEFAULT:
+        case SelectOpCaseType::DEFAULT:
           caseToExecute = c->caseIndex;
           break;
       }
@@ -299,11 +299,11 @@ private:
               chVar->GetMutable<framework::ChannelHolder>();
 
       // TODO(thuan): Don't hardcode type
-      std::function<void(framework::Channel<framework::LoDTensor>* channel)>
-        cb = [&](framework::Channel<framework::LoDTensor>* channel) {
+      std::function<void(framework::ChannelAction channelAction)>
+        cb = [&](framework::ChannelAction channelAction) {
           // If the channel wasn't closed, we set the caseToExecute index
           // as this current case
-          if (!channel->IsClosed()) {
+          if (channelAction != framework::ChannelAction::CLOSE) {
             *caseToExecute = c->caseIndex;
           }
           // This will allow our conditional variable to break out of wait
@@ -311,18 +311,19 @@ private:
         };
 
       switch (c->caseType) {
-        case SEND: {
-          auto chVar = scope->FindVar(c->varName);
+        case SelectOpCaseType::SEND: {
+          auto chOutputVar = scope->FindVar(c->varName);
           // TODO(thuan): Don't hardcode type
           ch->AddToSendQ<framework::LoDTensor>(this,
-                chVar->GetMutable<framework::LoDTensor>(), cb);
+                chOutputVar->GetMutable<framework::LoDTensor>(), cb);
 //          std::cout << "ADD TO SEND Q" << std::endl;
           break;
         }
-        case RECEIVE: {
+        case SelectOpCaseType::RECEIVE: {
           // TODO(thuan): Don't hardcode type
+          auto chOutputVar = scope->FindVar(c->varName);
           ch->AddToReceiveQ<framework::LoDTensor>(this,
-                chVar->GetMutable<framework::LoDTensor>(), cb);
+                chOutputVar->GetMutable<framework::LoDTensor>(), cb);
 //          std::cout << "ADD TO RECEIVE Q" << std::endl;
           break;
         }
@@ -343,13 +344,13 @@ private:
       framework::ChannelHolder *ch =
               chVar->GetMutable<framework::ChannelHolder>();
       switch (c->caseType) {
-        case SEND: {
+        case SelectOpCaseType::SEND: {
           // TODO(thuan): Don't hardcode type
           ch->RemoveFromSendQ<framework::LoDTensor>(this);
 //          std::cout << "REMOVE FROM SEND Q" << std::endl;
           break;
         }
-        case RECEIVE: {
+        case SelectOpCaseType::RECEIVE: {
           // TODO(thuan): Don't hardcode type
           ch->RemoveFromReceiveQ<framework::LoDTensor>(this);
 //          std::cout << "REMOVE FROM RECEIVE Q" << std::endl;

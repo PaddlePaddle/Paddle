@@ -29,26 +29,6 @@ class ChannelImpl : public paddle::framework::Channel<T> {
   friend void paddle::framework::CloseChannel<T>(Channel<T> *);
 
  public:
-  struct QueueMessage {
-    T *data;
-    std::condition_variable_any cond;
-    bool chan_closed = false;
-    bool completed = false;
-    const void *referrer;   // TODO(thuan): figure out better way to do this
-    std::function<void(paddle::framework::Channel<T>*)> callback;
-
-    QueueMessage(T *item) : data(item) {}
-
-    void Wait(std::unique_lock<std::recursive_mutex> &lock) {
-      cond.wait(lock, [this]() { return completed; });
-    }
-
-    void Notify() {
-      completed = true;
-      cond.notify_all();
-    }
-  };
-
   virtual bool CanSend();
   virtual bool CanReceive();
   virtual bool Send(T *);
@@ -62,14 +42,33 @@ class ChannelImpl : public paddle::framework::Channel<T> {
   virtual ~ChannelImpl();
 
   virtual void AddToSendQ(const void *referrer, T* data,
-                 std::function<void (paddle::framework::Channel<T>*)> cb);
+                 std::function<void (ChannelAction)> cb);
   virtual void AddToReceiveQ(const void *referrer, T* data,
-                 std::function<void (paddle::framework::Channel<T>*)> cb);
+                 std::function<void (ChannelAction)> cb);
 
   virtual void RemoveFromSendQ(const void *referrer);
   virtual void RemoveFromReceiveQ(const void *referrer);
 
  private:
+  struct QueueMessage {
+      T *data;
+      std::condition_variable_any cond;
+      bool chan_closed = false;
+      bool completed = false;
+      const void *referrer;   // TODO(thuan): figure out better way to do this
+      std::function<void(ChannelAction)> callback;
+
+      QueueMessage(T *item) : data(item) {}
+
+      void Wait(std::unique_lock<std::recursive_mutex> &lock) {
+        cond.wait(lock, [this]() { return completed; });
+      }
+
+      void Notify() {
+        completed = true;
+        cond.notify_all();
+      }
+  };
 
   bool send_return(bool value) {
     send_ctr--;
@@ -102,16 +101,14 @@ ChannelImpl<T>::ChannelImpl(size_t capacity)
 
 template <typename T>
 bool ChannelImpl<T>::CanSend() {
-  std::unique_lock<std::recursive_mutex> lock{mu_};
+  std::lock_guard<std::recursive_mutex> lock{mu_};
   return !closed_ && (!recvq.empty() || buf_.size() < cap_);
-  lock.unlock();
 }
 
 template <typename T>
 bool ChannelImpl<T>::CanReceive() {
-  std::unique_lock<std::recursive_mutex> lock{mu_};
+  std::lock_guard<std::recursive_mutex> lock{mu_};
   return !(closed_ && buf_.empty()) && (!sendq.empty() || buf_.size() > 0);
-  lock.unlock();
 }
 
 template <typename T>
@@ -136,7 +133,7 @@ bool ChannelImpl<T>::Send(T *item) {
 
     // Execute callback function (if any)
     if (m->callback != nullptr) {
-      m->callback(this);
+      m->callback(ChannelAction::SEND);
     }
 
     // Wake up the blocked process and unlock
@@ -187,7 +184,7 @@ bool ChannelImpl<T>::Receive(T *item) {
 
     // Execute callback function (if any)
     if (m->callback != nullptr) {
-      m->callback(this);
+      m->callback(ChannelAction::RECEIVE);
     }
 
     // Wake up the blocked process and unlock
@@ -251,7 +248,7 @@ void ChannelImpl<T>::Close() {
 
     // Execute callback function (if any)
     if (m->callback != nullptr) {
-      m->callback(this);
+      m->callback(ChannelAction::CLOSE);
     }
 
     m->Notify();
@@ -265,7 +262,7 @@ void ChannelImpl<T>::Close() {
 
     // Execute callback function (if any)
     if (m->callback != nullptr) {
-      m->callback(this);
+      m->callback(ChannelAction::CLOSE);
     }
 
     m->Notify();
@@ -274,7 +271,7 @@ void ChannelImpl<T>::Close() {
 
 template <typename T>
 void ChannelImpl<T>::AddToSendQ(const void *referrer, T* data,
-                       std::function<void (paddle::framework::Channel<T>*)> cb) {
+                       std::function<void (ChannelAction)> cb) {
   std::lock_guard<std::recursive_mutex> lock{mu_};
   auto m = std::make_shared<QueueMessage>(data);
   m->referrer = referrer;
@@ -284,7 +281,7 @@ void ChannelImpl<T>::AddToSendQ(const void *referrer, T* data,
 
 template <typename T>
 void ChannelImpl<T>::AddToReceiveQ(const void *referrer, T* data,
-                       std::function<void (paddle::framework::Channel<T>*)> cb) {
+                       std::function<void (ChannelAction)> cb) {
   std::lock_guard<std::recursive_mutex> lock{mu_};
   auto m = std::make_shared<QueueMessage>(data);
   m->referrer = referrer;

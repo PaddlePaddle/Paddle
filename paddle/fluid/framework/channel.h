@@ -21,6 +21,12 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+enum class ChannelAction {
+  SEND = 0,
+  RECEIVE = 1,
+  CLOSE = 2,
+};
+
 // Channel is the abstract class of buffered and un-buffered channels.
 template <typename T>
 class Channel {
@@ -37,9 +43,9 @@ class Channel {
   virtual ~Channel() {}
 
   virtual void AddToSendQ(const void *referrer, T* data,
-                 std::function<void (paddle::framework::Channel<T>*)> cb) = 0;
+                 std::function<void (ChannelAction)> cb) = 0;
   virtual void AddToReceiveQ(const void *referrer, T* data,
-                 std::function<void (paddle::framework::Channel<T>*)> cb) = 0;
+                 std::function<void (ChannelAction)> cb) = 0;
   virtual void RemoveFromSendQ(const void *referrer) = 0;
   virtual void RemoveFromReceiveQ(const void *referrer) = 0;
 };
@@ -72,22 +78,6 @@ class ChannelHolder {
   void Reset(size_t buffer_size) {
     holder_.reset(new PlaceholderImpl<T>(buffer_size));
   }
-
-//  template <typename T>
-//  bool CanSend() {
-//    if (!IsInitialized()) return false;
-//    // Static cast should be safe because we have ensured that types are same
-//    Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-//    return channel != nullptr ? channel->CanSend() : false;
-//  }
-//
-//  template <typename T>
-//  bool CanReceive() {
-//    if (!IsInitialized()) return false;
-//    // Static cast should be safe because we have ensured that types are same
-//    Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-//    return channel != nullptr ? channel->CanReceive() : false;
-//  }
 
   template <typename T>
   bool Send(T* data) {
@@ -146,7 +136,7 @@ class ChannelHolder {
 
   template <typename T>
   void AddToSendQ(const void *referrer, T* data,
-         std::function<void (paddle::framework::Channel<T>*)> cb) {
+         std::function<void (ChannelAction)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
@@ -157,7 +147,7 @@ class ChannelHolder {
 
   template <typename T>
   void AddToReceiveQ(const void *referrer, T* data,
-         std::function<void (paddle::framework::Channel<T>*)> cb) {
+         std::function<void (ChannelAction)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {

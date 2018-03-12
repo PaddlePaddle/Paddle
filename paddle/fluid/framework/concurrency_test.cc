@@ -40,7 +40,7 @@ namespace paddle {
 namespace framework {
 
 template <typename T>
-void CreateVariable(Scope &scope, p::CPUPlace &place, std::string name,
+LoDTensor* CreateVariable(Scope &scope, p::CPUPlace &place, std::string name,
                        T value) {
   // Create LoDTensor<int> of dim [1]
   auto var = scope.Var(name);
@@ -48,6 +48,7 @@ void CreateVariable(Scope &scope, p::CPUPlace &place, std::string name,
   tensor->Resize({1});
   T *expect = tensor->mutable_data<T>(place);
   expect[0] = value;
+  return tensor;
 }
 
 void AddOp(const std::string &type, const VariableNameMap &inputs,
@@ -109,22 +110,33 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
   CreateVariable(*scope, *place, "caseToExecute", -1);
   CreateVariable(*scope, *place, "case1var", 0);
 
-  CreateVariable(*scope, *place, "fibXLast", 0);
+  CreateVariable(*scope, *place, "xtemp", 0);
+
+  // TODO(thuan): Need to create fibXToSend, since channel send moves the actual data,
+  // which causes the data to be no longer accessible to do the fib calculation
+  // TODO(abhinav): Change channel send to do a copy instead of a move!
+  CreateVariable(*scope, *place, "fibXToSend", 0);
+
   CreateVariable(*scope, *place, "fibX", 0);
   CreateVariable(*scope, *place, "fibY", 1);
   CreateVariable(*scope, *place, "quitVar", 0);
 
-  CreateVariable(*scope, *place, "fibXPrintOut", 0);
-
   BlockDesc *casesBlock = program->AppendBlock(*whileBlock);
   std::function<void (BlockDesc* caseBlock)> f = [](BlockDesc* caseBlock) { };
+
+  // TODO(thuan): Remove this once we change channel send to do a copy instead of move
+  AddOp("assign",
+        {{"X", {"fibX"}}},
+        {{"Out", {"fibXToSend"}}},
+        {},
+        whileBlock);
 
   // Case 0: Send to dataChanName
   std::function<void (BlockDesc* caseBlock, Scope* scope)> case0Func =
     [&](BlockDesc* caseBlock, Scope* scope) {
       AddOp("assign",
             {{"X", {"fibX"}}},
-            {{"Out", {"fibXLast"}}},
+            {{"Out", {"xtemp"}}},
             {},
             caseBlock);
       AddOp("assign",
@@ -133,25 +145,12 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
             {},
             caseBlock);
       AddOp("elementwise_add",
-            {{"X", {"fibXLast"}}, {"Y", {"fibY"}}},
+            {{"X", {"xtemp"}}, {"Y", {"fibY"}}},
             {{"Out", {"fibY"}}},
             {},
             caseBlock);
-
-      AddOp("print",
-            {{"In", {"fibXLast"}}},
-            {{"Out", {"fibXPrintOut"}}},
-            {{"first_n", 100},
-             {"summarize", -1},
-             {"print_tensor_name", false},
-             {"print_tensor_type", true},
-             {"print_tensor_shape", false},
-             {"print_tensor_lod", false},
-             {"print_phase", std::string("FORWARD")},
-             {"message", std::string("X: ")}},
-            caseBlock);
     };
-  AddCase(program, scope, place, casesBlock, 0, 1, dataChanName, "x", case0Func);
+  AddCase(program, scope, place, casesBlock, 0, 1, dataChanName, "fibXToSend", case0Func);
 
   // Case 1: Receive from quitChanName
   std::function<void (BlockDesc* caseBlock, Scope* scope)> case2Func =
@@ -196,6 +195,7 @@ TEST(Concurrency, Go_Op) {
   // Create Variables, x0 will be put into channel,
   // result will be pulled from channel
   CreateVariable(scope, place, "Status", false);
+  CreateVariable(scope, place, "x0", 99);
   CreateVariable(scope, place, "result", 0);
 
   framework::Executor executor(place);
@@ -246,11 +246,10 @@ TEST(Concurrency, Select) {
 
   // Initialize scope variables
   p::CPUDeviceContext ctx(place);
-
-  // Create Variables, x0 will be put into channel,
-  // result will be pulled from channel
+          
   CreateVariable(scope, place, "Status", false);
   CreateVariable(scope, place, "result", 0);
+  CreateVariable(scope, place, "currentXFib", 0);
 
   framework::Executor executor(place);
   ProgramDesc program;
@@ -276,16 +275,27 @@ TEST(Concurrency, Select) {
         block);
 
   // Create Go Op routine, which loops 10 times over fibonacci sequence
+  CreateVariable(scope, place, "xReceiveVar", 0);
+
   BlockDesc *goOpBlock = program.AppendBlock(program.Block(0));
   for (int i=0; i<10; ++i) {
-    std::string xVarName = std::string("x") + std::to_string(i);
-    CreateVariable(scope, place, xVarName, 0);
-
     AddOp("channel_recv",
           {{"Channel", {dataChanName}}},
           {{"Status", {"Status"}},
-           {"Out", {xVarName}}},
+           {"Out", {"currentXFib"}}},
           {},
+          goOpBlock);
+    AddOp("print",
+          {{"In", {"currentXFib"}}},
+          {{"Out", {"currentXFib"}}},
+          {{"first_n", 100},
+           {"summarize", -1},
+           {"print_tensor_name", false},
+           {"print_tensor_type", true},
+           {"print_tensor_shape", false},
+           {"print_tensor_lod", false},
+           {"print_phase", std::string("FORWARD")},
+           {"message", std::string("X: ")}},
           goOpBlock);
   }
 
@@ -314,7 +324,7 @@ TEST(Concurrency, Select) {
 
   // After we call executor.run, "result" variable should be equal to 34
   // (which is 10 loops through fibonacci sequence)
-  const LoDTensor &tensor = (scope.FindVar("fibXLast"))->Get<LoDTensor>();
+  const LoDTensor &tensor = (scope.FindVar("currentXFib"))->Get<LoDTensor>();
   auto *finalData = tensor.data<int>();
   EXPECT_EQ(finalData[0], 34);
 }
