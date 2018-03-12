@@ -61,7 +61,6 @@ class ParallelExecutor(object):
             fetch_list=None,
             feed_var_name='feed',
             fetch_var_name='fetch',
-            scope=None,
             return_numpy=True):
         # TODO(helin): split input
         q = Queue(maxsize=len(self.executors))
