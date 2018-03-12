@@ -11,12 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""VGG16 benchmark in TensorFlow
-You can get distribution example template structure here:
-https://medium.com/clusterone/how-to-write-distributed-tensorflow-code-with-an-example-on-tensorport-70bf3306adcb
-https://www.tensorflow.org/deploy/distributed
-"""
-
+"""VGG16 benchmark in TensorFlow"""
 import tensorflow as tf
 import paddle.v2 as paddle
 import numpy as np
@@ -35,7 +30,7 @@ parser.add_argument('--num_passes', type=int, default=50, help="No. of passes.")
 parser.add_argument(
     '--device',
     type=str,
-    default='CPU',
+    default='GPU',
     choices=['CPU', 'GPU'],
     help="The device type.")
 parser.add_argument(
@@ -51,23 +46,6 @@ parser.add_argument(
     default='cifar10',
     choices=['cifar10', 'flowers'],
     help='Optional dataset for benchmark.')
-
-parser.add_argument(
-    "--ps_hosts",
-    type=str,
-    default="",
-    help="Comma-separated list of hostname:port pairs")
-parser.add_argument(
-    "--worker_hosts",
-    type=str,
-    default="",
-    help="Comma-separated list of hostname:port pairs")
-parser.add_argument(
-    "--job_name", type=str, default="", help="One of 'worker', 'ps'")
-# Flags for defining the tf.train.Server
-parser.add_argument(
-    "--task_index", type=int, default=0, help="Index of task within the job")
-
 args = parser.parse_args()
 
 
@@ -219,7 +197,7 @@ class VGG16Model(object):
         return fc3
 
 
-def run_benchmark(cluster_spec, server):
+def run_benchmark():
     """Run benchmark on cifar10 or flowers."""
 
     if args.data_set == "cifar10":
@@ -233,9 +211,7 @@ def run_benchmark(cluster_spec, server):
         dat_shape = (None, 224, 224, 3) if args.data_format == 'NHWC' else (
             None, 3, 224, 224)
 
-    device = tf.train.replica_device_setter(
-        worker_device="/job:worker/task:{}".format(args.task_index),
-        cluster=cluster_spec)
+    device = '/cpu:0' if args.device == 'CPU' else '/device:GPU:0'
 
     with tf.device(device):
         images = tf.placeholder(tf.float32, shape=dat_shape)
@@ -254,12 +230,8 @@ def run_benchmark(cluster_spec, server):
 
         optimizer = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        global_step = tf.Variable(0, name='global_step', trainable=False)
         with tf.control_dependencies(update_ops):
-            train_op = optimizer.minimize(avg_loss, global_step=global_step)
-
-        summary_op = tf.summary.merge_all()
-        init_op = tf.global_variables_initializer()
+            train_op = optimizer.minimize(avg_loss)
 
     # data reader
     train_reader = paddle.batch(
@@ -292,18 +264,14 @@ def run_benchmark(cluster_spec, server):
         return np.mean(test_accs)
 
     config = tf.ConfigProto(
-        intra_op_parallelism_threads=1,
-        inter_op_parallelism_threads=1,
-        log_device_placement=True)
+        intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
     config.gpu_options.allow_growth = True
 
-    hooks = [tf.train.StopAtStepHook(last_step=1000000)]
-
-    with tf.train.MonitoredTrainingSession(
-            master=server.target,
-            is_chief=(args.task_index == 0),
-            hooks=hooks,
-            config=config) as sess:
+    with tf.Session(config=config) as sess:
+        init_g = tf.global_variables_initializer()
+        init_l = tf.local_variables_initializer()
+        sess.run(init_g)
+        sess.run(init_l)
         iters, num_samples, start_time = 0, 0, 0.0
         for pass_id in range(args.num_passes):
             # train
@@ -315,7 +283,6 @@ def run_benchmark(cluster_spec, server):
                     axes=[1, 2, 0]) if args.data_format == 'NHWC' else x[0], data)).astype("float32")
                 train_labels = np.array(map(lambda x: x[1], data)).astype(
                     'int64')
-                iter_begin_time = time.time()
                 _, loss, acc = sess.run([train_op, avg_loss, accuracy],
                                         feed_dict={
                                             images: train_images,
@@ -344,23 +311,4 @@ def print_arguments():
 
 if __name__ == '__main__':
     print_arguments()
-
-    ps_hosts = args.ps_hosts.split(",")
-    worker_hosts = args.worker_hosts.split(",")
-
-    # Create a cluster from the parameter server and worker hosts.
-    cluster_spec = tf.train.ClusterSpec({
-        "ps": ps_hosts,
-        "worker": worker_hosts
-    })
-
-    # Create and start a server for the local task.
-    server = tf.train.Server(
-        cluster_spec, job_name=args.job_name, task_index=args.task_index)
-
-    if args.job_name == "ps":
-        print("start pserver")
-        server.join()
-    elif args.job_name == "worker":
-        print("start worker")
-        run_benchmark(cluster_spec, server)
+    run_benchmark()
