@@ -1,4 +1,4 @@
-# Performance for Distributed vgg16
+# Performance for CPU Distributed vgg16
 
 ## Test Result
 
@@ -7,6 +7,8 @@
 - CPU: Intel(R) Xeon(R) CPU E5-2620 v4 @ 2.10GHz
 - cpu MHz		: 2101.000
 - cache size	: 20480 KB
+- dataset    : cifar10
+- Tensorflow-cpu : 1.5.0
 
 ### Blas settings
 
@@ -62,6 +64,72 @@ Setting environment variable: `MKL_NUM_THREADS=1`.
 | ~~TensorFlow~~ | - | - | - | - |
 
 *The performance gap between Fuild and v2 comes from the network interference.*  
+
+
+# Performance for GPU Distributed vgg16
+
+## Test Result
+
+### Hardware Infomation
+
+- CPU: Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
+- cpu MHz		: 2200.000
+- cache size	: 30720 KB
+- dataset    : flowers
+- Tensorflow-gpu : 1.4.0
+- GPU        : Tesla P40
+- Fluid-cudnn: 5.1.10
+- Tensorflow-cudnn: 6.0
+
+### Blas settings
+
+Setting environment variable: `MKL_NUM_THREADS=1`.
+
+### Single Node Single Thread
+
+- Metrics: samples / sec
+
+| Batch Size | 16 | 32 | 64 | 128 |
+| -- | -- | -- | -- | -- |
+| PaddlePaddle Fluid | -- | -- | -- | -- |
+| PaddlePaddle v2 | -- | -- | -- | -- |
+| TensorFlow | -- | -- | -- | -- |
+
+### Different Batch Size
+
+- PServer Count: 4
+- Trainer Count: 4
+- Metrics: samples / sec
+
+| Batch Size | 16 | 32 | 64 | 128 |
+| -- | -- | -- | -- | -- |
+| PaddlePaddle Fluid | -- | -- | -- | -- |
+| PaddlePaddle v2 | -- | -- | -- | -- |
+| TensorFlow | -- | -- | -- | -- |
+
+### Accelerate Rate
+
+- Pserver Count: 4
+- Batch Size: 32
+- Metrics: samples / sec
+
+| Trainer Count | 2 | 4 | 8 |
+| -- | -- | -- | -- |
+| PaddlePaddle Fluid | -- | -- | -- |
+| PaddlePaddle v2 | -- | -- | -- | 
+| TensorFlow | -- | -- | -- |
+
+### Different Pserver Count
+
+- Trainer Count: 4
+- Batch Size: 32
+- Metrics: samples/ sec
+
+| PServer Count | 2 | 4 | 8 | 
+| -- | -- | -- | -- | 
+| PaddlePaddle Fluid | -- | -- | -- | 
+| PaddlePaddle v2 | -- | -- | -- | 
+| TensorFlow | -- | -- | -- | 
 
 
 
