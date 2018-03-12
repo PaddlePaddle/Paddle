@@ -59,7 +59,7 @@ __global__ void SGDGroupKernel(T** grads, T** params, T** learning_rate,
   int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
   extern __shared__ int s_p_numbers[];
 
-  if (threadIdx.x < para_num) {
+  if (threadIdx.x < para_num + 1) {
     s_p_numbers[threadIdx.x] = p_numbers[threadIdx.x];
   }
   __syncthreads();
@@ -149,7 +149,7 @@ class SGDGroupOpCUDAKernel : public framework::OpKernel<T> {
 
       int grid = std::min((p_ele_num + block - 1) / block, max_blocks);
 
-      SGDGroupKernel<T><<<grid, block, p_num * sizeof(int),
+      SGDGroupKernel<T><<<grid, block, (p_num + 1) * sizeof(int),
                           ctx.cuda_device_context().stream()>>>(
           grads_gpu, params_gpu, lrs_data_gpu, param_num_gpu, p_num, p_ele_num,
           param_out_gpu);
