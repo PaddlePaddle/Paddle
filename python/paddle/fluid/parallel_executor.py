@@ -44,6 +44,9 @@ def run_exe(q, idx, exe, program, feed, fetch_list, feed_var_name,
 
 class ParallelExecutor(object):
     def __init__(self, gpu_list):
+        if not core.is_compiled_with_cuda():
+            raise RuntimeError("ParallelExecutor only supports GPU version")
+
         self.executors = []
         for gpu_id in gpu_list:
             self.executors.append(executor.Executor(CUDAPlace(gpu_id)))
