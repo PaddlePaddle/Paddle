@@ -31,10 +31,10 @@ class TestRecordIO(unittest.TestCase):
                         name='label', shape=[1], dtype='int64'),
                 ],
                 place=fluid.CPUPlace())
-            fluid.recordio_writer.convert_reader_to_recordio_file(
+            self.num_batches = fluid.recordio_writer.convert_reader_to_recordio_file(
                 './mnist.recordio', reader, feeder)
 
-    def test_main(self):
+    def test_main(self, decorator_callback=None):
         # use new program
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data_file = fluid.layers.open_recordio_file(
@@ -42,6 +42,8 @@ class TestRecordIO(unittest.TestCase):
                 shapes=[[-1, 784], [-1, 1]],
                 lod_levels=[0, 0],
                 dtypes=['float32', 'int64'])
+            if decorator_callback is not None:
+                data_file = decorator_callback(data_file)
             img, label = fluid.layers.read_file(data_file)
 
             hidden = fluid.layers.fc(input=img, size=100, act='tanh')
@@ -56,9 +58,14 @@ class TestRecordIO(unittest.TestCase):
             avg_loss_np = []
 
             # train a pass
+            batch_id = 0
             while not data_file.eof():
                 tmp, = exe.run(fetch_list=[avg_loss])
                 avg_loss_np.append(tmp)
+                batch_id += 1
             data_file.reset()
-
+            self.assertEqual(batch_id, self.num_batches)
             self.assertLess(avg_loss_np[-1], avg_loss_np[0])
+
+    def test_shuffle_reader(self):
+        self.test_main(decorator_callback=lambda reader: fluid.layers.create_shuffle_reader(reader, buffer_size=200))
