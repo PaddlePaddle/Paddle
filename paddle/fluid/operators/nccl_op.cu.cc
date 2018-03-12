@@ -43,9 +43,11 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "This kernel only runs on GPU device.");
-    auto ins = ctx.MultiInput<LoDTensor>("X");
-    auto outs = ctx.MultiOutput<LoDTensor>("Out");
+    auto* x = ctx.Input<LoDTensor>("X");
+    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* comm = ctx.Input<Communicator>("Communicator");
     std::string reduction = ctx.Attr<std::string>("reduction");
+
     ncclRedOp_t reduction_op_ = ncclSum;
     if (reduction == "ncclMin") {
       reduction_op_ = ncclMin;
@@ -58,23 +60,19 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_THROW("Invalid reduction. default ncclSum.");
     }
-    auto* comm = ctx.Input<Communicator>("Communicator");
     // device id
     int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
-
-    for (size_t i = 0; i < ins.size(); ++i) {
-      VLOG(3) << "gpu : "
-              << " invoke allreduce. send " << ins[i]->numel() << " recv "
-              << outs[i]->numel();
-      PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-          ins[i]->data<T>(), outs[i]->mutable_data<T>(ctx.GetPlace()),
-          outs[i]->numel(), NCCLTypeWrapper<T>::type, reduction_op_,
-          comm->comms().at(idx), ctx.cuda_device_context().stream()));
-      VLOG(3) << "gpu : "
-              << " finished allreduce. send " << ins[i]->numel() << " recv "
-              << outs[i]->numel();
-    }
+    VLOG(3) << "gpu : "
+            << " invoke allreduce. send " << x->numel() << " recv "
+            << out->numel();
+    PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
+        x->data<T>(), out->mutable_data<T>(ctx.GetPlace()), out->numel(),
+        NCCLTypeWrapper<T>::type, reduction_op_, comm->comms().at(idx),
+        ctx.cuda_device_context().stream()));
+    VLOG(3) << "gpu : "
+            << " finished allreduce. send " << x->numel() << " recv "
+            << out->numel();
   }
 };
 
@@ -84,9 +82,12 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "This kernel only runs on GPU device.");
-    auto ins = ctx.MultiInput<LoDTensor>("X");  // x0, x1, x2
-    auto outs = ctx.MultiOutput<LoDTensor>("Out");
+    auto x = ctx.Input<LoDTensor>("X");  // x0, x1, x2
+    auto out = ctx.Output<LoDTensor>("Out");
+    auto* comm = ctx.Input<Communicator>("Communicator");
+    int root = ctx.Attr<int>("root");
     std::string reduction = ctx.Attr<std::string>("reduction");
+
     ncclRedOp_t reduction_op_ = ncclSum;
     if (reduction == "ncclMin") {
       reduction_op_ = ncclMin;
@@ -99,31 +100,27 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_THROW("Invalid reduction. default ncclSum.");
     }
-    int root = ctx.Attr<int>("root");
-    auto* comm = ctx.Input<Communicator>("Communicator");
     // device id
     int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
 
-    auto ins_names = ctx.Inputs("X");
+    auto x_name = ctx.Input("X");
     std::hash<std::string> hasher;
-    for (size_t i = 0; i < ins.size(); ++i) {
-      if (root == platform::kInvalidGPUId) {
-        root = hasher(ins_names[i]) % comm->comms().size();
-      }
-      T* recvbuffer = nullptr;
-      if (root == gpu_id) {
-        recvbuffer = outs[i]->mutable_data<T>(ctx.GetPlace());
-      }
-      VLOG(3) << "gpu : " << gpu_id << " invoke reduce. send "
-              << ins[i]->numel() << " recv " << outs[i]->numel();
-      PADDLE_ENFORCE(platform::dynload::ncclReduce(
-          ins[i]->data<T>(), recvbuffer, ins[i]->numel(),
-          NCCLTypeWrapper<T>::type, reduction_op_, root, comm->comms().at(idx),
-          ctx.cuda_device_context().stream()));
-      VLOG(3) << "gpu : " << gpu_id << " finished reduce. send "
-              << ins[i]->numel() << " recv " << outs[i]->numel();
+    if (root == platform::kInvalidGPUId) {
+      root = hasher(x_name) % comm->comms().size();
     }
+    T* recvbuffer = nullptr;
+    if (root == gpu_id) {
+      recvbuffer = out->mutable_data<T>(ctx.GetPlace());
+    }
+    VLOG(3) << "gpu : " << gpu_id << " invoke reduce. send " << x->numel()
+            << " recv " << out->numel();
+    PADDLE_ENFORCE(platform::dynload::ncclReduce(
+        x->data<T>(), recvbuffer, x->numel(), NCCLTypeWrapper<T>::type,
+        reduction_op_, root, comm->comms().at(idx),
+        ctx.cuda_device_context().stream()));
+    VLOG(3) << "gpu : " << gpu_id << " finished reduce. send " << x->numel()
+            << " recv " << out->numel();
   }
 };
 
@@ -139,27 +136,21 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     if (idx == root) {
-      auto ins = ctx.MultiInput<LoDTensor>("X");
-      for (size_t i = 0; i < ins.size(); ++i) {
-        VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. send "
-                << ins[i]->numel();
-        PADDLE_ENFORCE(platform::dynload::ncclBcast(
-            (void*)ins[i]->data<T>(), ins[i]->numel(), NCCLTypeWrapper<T>::type,
-            root, comm->comms().at(idx), ctx.cuda_device_context().stream()));
-        VLOG(3) << "gpu : " << gpu_id << " finished Bcast.";
-      }
+      auto* x = ctx.Input<LoDTensor>("X");
+      VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. send " << x->numel();
+      PADDLE_ENFORCE(platform::dynload::ncclBcast(
+          (void*)x->data<T>(), x->numel(), NCCLTypeWrapper<T>::type, root,
+          comm->comms().at(idx), ctx.cuda_device_context().stream()));
+      VLOG(3) << "gpu : " << gpu_id << " finished Bcast.";
     } else {
-      auto outs = ctx.MultiOutput<LoDTensor>("Out");
-      for (size_t i = 0; i < outs.size(); ++i) {
-        VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
-                << framework::product(outs[i]->dims());
-        PADDLE_ENFORCE(platform::dynload::ncclBcast(
-            outs[i]->mutable_data<T>(ctx.GetPlace()), outs[i]->numel(),
-            NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),
-            ctx.cuda_device_context().stream()));
-        VLOG(3) << "gpu : " << gpu_id << " finished Bcast. recv "
-                << outs[i]->numel();
-      }
+      auto* out = ctx.Output<LoDTensor>("Out");
+      VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. recv buffer "
+              << framework::product(out->dims());
+      PADDLE_ENFORCE(platform::dynload::ncclBcast(
+          out->mutable_data<T>(ctx.GetPlace()), out->numel(),
+          NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),
+          ctx.cuda_device_context().stream()));
+      VLOG(3) << "gpu : " << gpu_id << " finished Bcast. recv " << out->numel();
     }
   }
 };
