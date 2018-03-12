@@ -102,6 +102,9 @@ def save_vars(executor,
 
         save_var_map = {}
         for each_var in vars:
+            # NOTE: don't save the variable which type is RAW
+            if each_var.type == core.VarDesc.VarType.RAW:
+                continue
             new_var = _clone_var_in_block_(save_block, each_var)
             if filename is None:
                 save_block.append_op(

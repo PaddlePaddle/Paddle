@@ -144,6 +144,15 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     }
   }
 
+  inline void ClipBBox(const Box& bbox, Box* clipped_bbox) const {
+    T one = static_cast<T>(1.0);
+    T zero = static_cast<T>(0.0);
+    clipped_bbox->xmin = std::max(std::min(bbox.xmin, one), zero);
+    clipped_bbox->ymin = std::max(std::min(bbox.ymin, one), zero);
+    clipped_bbox->xmax = std::max(std::min(bbox.xmax, one), zero);
+    clipped_bbox->ymax = std::max(std::min(bbox.ymax, one), zero);
+  }
+
   void GetBoxes(const framework::LoDTensor& input_label,
                 const framework::LoDTensor& input_detect,
                 std::vector<std::map<int, std::vector<Box>>>& gt_boxes,
@@ -360,7 +369,9 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
           size_t max_idx = 0;
           auto score = pred_boxes[i].first;
           for (size_t j = 0; j < matched_bboxes.size(); ++j) {
-            T overlap = JaccardOverlap(pred_boxes[i].second, matched_bboxes[j]);
+            Box& pred_box = pred_boxes[i].second;
+            ClipBBox(pred_box, &pred_box);
+            T overlap = JaccardOverlap(pred_box, matched_bboxes[j]);
             if (overlap > max_overlap) {
               max_overlap = overlap;
               max_idx = j;
