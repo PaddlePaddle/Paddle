@@ -17,6 +17,7 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, defaul
 from ..unique_name import generate as unique_name
 from control_flow import BlockGuard
 from ..layer_helper import LayerHelper
+from ..executor import global_scope
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
@@ -230,12 +231,29 @@ def Recv(endpoints, get_vars):
                "epmap": epmap})
 
 
+def monkey_patch_reader_methods(reader):
+    def __get_reader__():
+        scope = global_scope()
+        var = scope.find_var(reader.name)
+        return var.get_reader()
+
+    def eof():
+        return not __get_reader__().has_next()
+
+    def reset():
+        return __get_reader__().reset()
+
+    reader.eof = eof
+    reader.reset = reset
+    return reader
+
+
 def _copy_reader_var_(block, var):
     new_var = block.create_var(name=var.name, type=core.VarDesc.VarType.READER)
     new_var.desc.set_shapes(var.desc.shapes())
     new_var.desc.set_dtypes(var.desc.dtypes())
     new_var.persistable = True
-    return new_var
+    return monkey_patch_reader_methods(new_var)
 
 
 def open_recordio_file(filename, shapes, lod_levels, dtypes):
