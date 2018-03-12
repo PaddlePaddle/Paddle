@@ -70,5 +70,4 @@ class ParallelExecutor(object):
             results.append(q.get())
 
         results.sort(key=lambda x: x[0])
-        # TODO(helin): concat output
-        return results[0][1]
+        return [val for (gpu_id, val) in results]

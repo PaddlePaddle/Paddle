@@ -114,7 +114,7 @@ def run_benchmark(args):
         outs = exe.run(fluid.default_main_program(),
                        feed={},
                        fetch_list=[avg_cost, predict, cost])
-        loss = np.array(outs[0])
+        loss = np.array(outs[0][0])
 
         end = time.time()
         print("iter=%d, error=%f, elapse=%f" % (iter_id, loss, (end - start)))
