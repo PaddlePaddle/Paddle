@@ -61,5 +61,13 @@ const std::vector<ncclComm_t>& Communicator::comms() const {
   return *global_comms;
 }
 
+const char* GlobalNCCLCommunicatorName() { return "__nccl_all_reduce_com__"; }
+
+void InitNCCLCom(framework::Scope* s, std::vector<int> gpus) {
+  auto com = s->Var(GlobalNCCLCommunicatorName())
+                 ->GetMutable<platform::Communicator>();
+  com->InitAll(gpus);
+}
+
 }  // namespace platform
 }  // namespace paddle

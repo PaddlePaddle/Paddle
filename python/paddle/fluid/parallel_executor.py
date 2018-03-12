@@ -20,6 +20,7 @@ import time
 from . import core
 from threading import Thread
 from Queue import Queue
+from core import CUDAPlace
 
 __all__ = ['ParallelExecutor']
 
@@ -42,11 +43,17 @@ def run_exe(q, idx, exe, program, feed, fetch_list, feed_var_name,
 
 
 class ParallelExecutor(object):
-    def __init__(self, places):
-        self.scopes = {}
+    def __init__(self, gpu_list):
         self.executors = []
-        for place in places:
-            self.executors.append(executor.Executor(place))
+        for gpu_id in gpu_list:
+            self.executors.append(executor.Executor(CUDAPlace(gpu_id)))
+
+        self.scope = core.Scope()
+        self.scopes = {}
+        for idx, _ in enumerate(self.executors):
+            self.scopes[idx] = self.scope.new_scope()
+
+        core.init_nccl_com(self.scope, gpu_list)
 
     def run(self,
             program=None,
@@ -59,12 +66,7 @@ class ParallelExecutor(object):
         # TODO(helin): split input
         q = Queue(maxsize=len(self.executors))
         for idx, exe in enumerate(self.executors):
-            if scope is None:
-                if idx in self.scopes:
-                    cur_scope = self.scopes[idx]
-                else:
-                    cur_scope = core.Scope()
-                    self.scopes[idx] = cur_scope
+            cur_scope = self.scopes[idx]
             t = Thread(
                 target=run_exe,
                 args=(q, idx, exe, program, feed, fetch_list, feed_var_name,

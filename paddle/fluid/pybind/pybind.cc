@@ -452,6 +452,9 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
 
+  m.def("get_nccl_com_name", &platform::GlobalNCCLCommunicatorName);
+  m.def("init_nccl_com", &platform::InitNCCLCom);
+
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);

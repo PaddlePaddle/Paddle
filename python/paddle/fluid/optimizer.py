@@ -15,6 +15,7 @@
 from collections import defaultdict
 
 import framework
+import core
 import layers
 from backward import append_backward
 from framework import program_guard
@@ -226,12 +227,12 @@ class Optimizer(object):
                                        [error_clip_callback])
         if self.append_all_reduce:
             global_block = loss.block.program.global_block()
+            dummy_communicator = global_block.create_var(
+                type=core.VarDesc.VarType.RAW,
+                name=str(core.get_nccl_com_name()))
             for (_, grad) in params_grads:
                 if grad is None:
                     continue
-                import core
-                dummy_communicator = global_block.create_var(
-                    type=core.VarDesc.VarType.NCCL_COM)
                 all_reduced_var = global_block.create_var(
                     name=grad.name + '__nccl_all_reduce__')
                 global_block.append_op(
@@ -244,6 +245,10 @@ class Optimizer(object):
                     type="assign",
                     inputs={"X": [all_reduced_var]},
                     outputs={"Out": [grad]})
+
+            # The real nccl_com will be created by the parallel executor.
+            # Change the nccl_com name in the blockDesc to dummy
+            dummy_communicator.name = "__nccl_com_dummy__"
 
         params_grads = append_gradient_clip_ops(params_grads)
 

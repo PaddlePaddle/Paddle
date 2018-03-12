@@ -22,6 +22,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -40,6 +41,10 @@ struct Communicator {
 
   const std::vector<ncclComm_t>& comms() const;
 };
+
+const char* GlobalNCCLCommunicatorName();
+
+void InitNCCLCom(framework::Scope*, std::vector<int>);
 
 }  // namespace platform
 }  // namespace paddle

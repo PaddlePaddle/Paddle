@@ -99,15 +99,15 @@ def run_benchmark(args):
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(x=cost)
 
-    # # Optimization
-    opt = fluid.optimizer.SGDOptimizer(learning_rate=0.001)
+    # Optimization
+    # Note the flag append_all_reduce=True
+    opt = fluid.optimizer.SGDOptimizer(
+        learning_rate=0.001, append_all_reduce=True)
     opt.minimize(avg_cost)
 
     # program_summary(fluid.default_main_program())
 
-    # place = fluid.CPUPlace()
-    exe = fluid.ParallelExecutor([fluid.CUDAPlace(0), fluid.CUDAPlace(1)])
-    # exe = fluid.ParallelExecutor([fluid.CUDAPlace(0)])
+    exe = fluid.ParallelExecutor(gpu_list=[0, 1])
 
     # Parameter initialization
     exe.run(fluid.default_startup_program())
@@ -117,7 +117,6 @@ def run_benchmark(args):
         outs = exe.run(fluid.default_main_program(),
                        feed={},
                        fetch_list=[avg_cost, predict, cost])
-        print(outs)
         loss = np.array(outs[0])
 
         end = time.time()
