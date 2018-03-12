@@ -81,9 +81,7 @@ class TestFP16MulOp(OpTest):
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        # mul_op using fp16 compute kernel is only supported on GPU.
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), atol=1e-1)
+        self.check_output(atol=1e-1)
 
 
 class TestFP16MulOp2(OpTest):
@@ -104,9 +102,7 @@ class TestFP16MulOp2(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        # mul_op using fp16 compute kernel is only supported on GPU.
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), atol=2e-1)
+        self.check_output(atol=2e-1)
 
 
 if __name__ == "__main__":

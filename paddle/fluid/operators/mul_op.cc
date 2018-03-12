@@ -77,7 +77,8 @@ class MulOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     platform::Place place = ctx.GetPlace();
     if (ctx.Attr<bool>("use_float16") && platform::is_gpu_place(place) &&
-        GetCUDAComputeCapability(place.GetDeviceId()) >= 53) {
+        platform::GetCUDAComputeCapability(
+            boost::get<platform::CUDAPlace>(place).GetDeviceId()) >= 53) {
       return OpKernelType(framework::proto::VarType::FP16, place);
     } else {
       // fall back to use float32 kernel if requirements are not met
