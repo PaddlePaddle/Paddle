@@ -16,6 +16,7 @@
 #include <fstream>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/recordio/writer.h"
+
 namespace paddle {
 namespace pybind {
 

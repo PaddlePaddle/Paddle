@@ -54,7 +54,16 @@ class TestRecordIO(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
             avg_loss_np = []
-            for i in xrange(100):  # train 100 mini-batch
-                tmp, = exe.run(fetch_list=[avg_loss])
-                avg_loss_np.append(tmp)
+
+            for i in xrange(2):  # 2 pass
+                batch_id = 0
+                while not data_file.eof():
+                    try:
+                        batch_id += 1
+                        tmp, = exe.run(fetch_list=[avg_loss])
+                        avg_loss_np.append(tmp)
+                    except:
+                        print batch_id
+                        break
+                data_file.reset()
             self.assertLess(avg_loss_np[-1], avg_loss_np[0])
