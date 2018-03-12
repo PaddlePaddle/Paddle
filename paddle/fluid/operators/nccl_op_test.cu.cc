@@ -109,7 +109,6 @@ class NCCLTester : public ::testing::Test {
 
       std::vector<T> send_vector(f::product(kDims), GetGPUData(gpu_id));
       paddle::framework::TensorFromVector<T>(send_vector, *ctx, send_tensor);
-      ctx->Wait();
       VLOG(1) << "Send Tensor filled with elements " << send_tensor->numel();
     }
 
