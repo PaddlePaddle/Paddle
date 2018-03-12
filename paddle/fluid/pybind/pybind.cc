@@ -57,8 +57,8 @@ bool IsCompiledWithCUDA() {
 #endif
 }
 
-PYBIND11_PLUGIN(core) {
-  py::module m("core", "C++ core of PaddlePaddle");
+PYBIND11_MODULE(core, m) {
+  m.doc() = ("C++ core of PaddlePaddle");
 
   // using framework in this function. Since it is inside a function, it will
   // not cause namespace pollution.
@@ -474,7 +474,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("reset_profiler", platform::ResetProfiler);
-  return m.ptr();
 }
 }  // namespace pybind
 }  // namespace paddle
