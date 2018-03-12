@@ -22,6 +22,8 @@ Setting environment variable: `MKL_NUM_THREADS=1`.
 | PaddlePaddle v2 | 15.97 | 17.04 | 17.60 | 17.83 |
 | TensorFlow | 9.09 | 9.10 | 9.24 | 8.66 |
 
+*Since Tensorflow-CPU is much lower than Fluid-CPU, we don't measure it's CPU distribution.*
+
 ### Different Batch Size
 
 - PServer Count: 10
@@ -45,7 +47,7 @@ Setting environment variable: `MKL_NUM_THREADS=1`.
 | -- | -- | -- | -- | -- |
 | PaddlePaddle Fluid | 263.29 (78.64%) | 518.80 (77.47%) | 836.26 (62.44%) | 1019.29 (60.89%) |
 | PaddlePaddle v2 (need more tests) | 326.85 (92.85%) | 534.58 (75.93%) | 853.30 (60.60%) | 1041.99 (59.20%) |
-| TensorFlow | - | - | - | - |
+| ~~TensorFlow~~ | - | - | - | - |
 
 ### Different Pserver Count
 
@@ -57,9 +59,10 @@ Setting environment variable: `MKL_NUM_THREADS=1`.
 | -- | -- | -- | -- | -- |
 | PaddlePaddle Fluid(should fix in next PR) | 589.1 | 592.6 | 656.4 | 655.8 |
 | PaddlePaddle v2 | 593.4 | 791.3 | 729.7 | 821.7 |
-| TensorFlow | - | - | - | - |
+| ~~TensorFlow~~ | - | - | - | - |
 
-*The performance gap between Fuild and v2 comes from the network interference.*
+*The performance gap between Fuild and v2 comes from the network interference.*  
+
 
 
 ## Steps to Run the Performance Test
