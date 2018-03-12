@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import paddle.fluid as fluid
-import paddle.v2.dataset.mnist as mnist
 import paddle.v2 as paddle
+import paddle.v2.dataset.mnist as mnist
 
 
 class TestRecordIO(unittest.TestCase):
@@ -53,7 +54,12 @@ class TestRecordIO(unittest.TestCase):
 
             fluid.optimizer.Adam(learning_rate=1e-3).minimize(avg_loss)
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
+            else:
+                place = fluid.CPUPlace()
+
+            exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             avg_loss_np = []
 
@@ -69,3 +75,7 @@ class TestRecordIO(unittest.TestCase):
 
     def test_shuffle_reader(self):
         self.test_main(decorator_callback=lambda reader: fluid.layers.create_shuffle_reader(reader, buffer_size=200))
+
+    def test_double_buffer_reader(self):
+        self.test_main(decorator_callback=lambda reader: fluid.layers.create_double_buffer_reader(reader,
+                                                                                                  place='cuda:0' if fluid.core.is_compiled_with_cuda() else 'cpu'))

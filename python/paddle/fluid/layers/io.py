@@ -21,7 +21,7 @@ from ..executor import global_scope
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
-    'read_file', 'create_shuffle_reader'
+    'read_file', 'create_shuffle_reader', 'create_double_buffer_reader'
 ]
 
 
@@ -304,6 +304,14 @@ def __create_decorated_reader__(op_type, reader, attrs):
 def create_shuffle_reader(reader, buffer_size):
     return __create_decorated_reader__('create_shuffle_reader', reader,
                                        {'buffer_size': int(buffer_size)})
+
+
+def create_double_buffer_reader(reader, place=None):
+    attrs = dict()
+    if place is not None:
+        attrs['place'] = str(place).upper()
+    return __create_decorated_reader__('create_double_buffer_reader', reader,
+                                       attrs)
 
 
 def read_file(file_obj):
