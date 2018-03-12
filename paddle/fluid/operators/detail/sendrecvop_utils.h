@@ -33,6 +33,8 @@ namespace detail {
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
 
+typedef void (*DestroyCallback)(void*);
+
 void SerializeToMessage(const std::string& name, const framework::Variable* var,
                         const platform::DeviceContext& ctx,
                         sendrecv::VariableMessage* msg);
@@ -40,6 +42,32 @@ void SerializeToMessage(const std::string& name, const framework::Variable* var,
 void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
                             const platform::DeviceContext& ctx,
                             framework::Variable* var);
+
+void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
+                           const platform::DeviceContext& ctx,
+                           ::grpc::ByteBuffer* msg);
+
+void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
+                               const platform::DeviceContext& ctx,
+                               framework::Variable* var);
+
+inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
+  switch (type) {
+    case sendrecv::VariableMessage::FP32:
+      return typeid(float);  // NOLINT
+    case sendrecv::VariableMessage::FP64:
+      return typeid(double);  // NOLINT
+    case sendrecv::VariableMessage::INT32:
+      return typeid(int);  // NOLINT
+    case sendrecv::VariableMessage::INT64:
+      return typeid(int64_t);  // NOLINT
+    case sendrecv::VariableMessage::BOOL:
+      return typeid(bool);  // NOLINT
+    default:
+      PADDLE_THROW("Not support type %d", type);
+  }
+}
+
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle
