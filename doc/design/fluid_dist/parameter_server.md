@@ -61,9 +61,10 @@ After converting:
 
 ### Sparse Update
 
-For an embedding layer, the gradient maybe be very sparse(upper 90% is zero) for each mini-batch.
-Fluid use [SelectedRows](../selected_rows.md) to support the sparse variable. Distributed training support `Sparse Update`,
-it would save a lot of bandwidth and make the distributed training job have better performance.
+For an embedding layer, the gradient may have many rows containing only 0 for each mini-batch.
+Fluid use [SelectedRows](../selected_rows.md) to support sparse variables. Distributed training support `Sparse Update`,
+which sends a `SelectedRows` variable to the parameter server to run parameter updates.
+It would save a lot of bandwidth and make the distributed training job have better performance.
 
 <img src="src/sparse_update.png" width="700" />
 
