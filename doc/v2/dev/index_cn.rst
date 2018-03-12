@@ -26,4 +26,4 @@ PaddlePaddle遵守如下三个部分的代码和文档规范
 
   new_layer_cn.rst
 
-此外，PaddlePaddle项目推荐使用docker作为开发环境。对于GPU环境，使用nvidia-docker，统一开发和集成环境。
+此外，PaddlePaddle推荐使用docker作为开发环境。对于GPU环境，使用nvidia-docker，统一开发和集成环境。
