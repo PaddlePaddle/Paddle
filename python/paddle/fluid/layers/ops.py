@@ -47,7 +47,6 @@ __activations__ = [
 __all__ = [
     'mean',
     'mul',
-    'reshape',
     'scale',
     'sigmoid_cross_entropy_with_logits',
     'elementwise_add',

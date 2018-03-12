@@ -25,39 +25,28 @@ class ReshapeOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    // input check
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of ReshapeOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ReshapeOp should not be null.");
 
     const std::vector<int> &shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    PADDLE_ENFORCE_EQ(shape.empty(), ctx->HasInput("Shape"),
-                      "The shape information can only be set by Attr(shape) or "
-                      "by Input(Shape). Attr(shape) and Input(Shape) cannot be "
-                      "set at the same time.");
+    PADDLE_ENFORCE(!shape.empty(),
+                   "The shape information must be set by Attr(shape).");
 
+    std::vector<int64_t> output_shape;
     auto x_dims = ctx->GetInputDim("X");
+    bool need_copy_dim = ValidateShape(shape, x_dims, output_shape);
 
-    if (ctx->HasInput("Shape")) {
-      // The shape information in given by Input(Shape).
-      auto shape_dims = ctx->GetInputDim("Shape");
-
-      PADDLE_ENFORCE(shape_dims.size() == 2UL && shape_dims[0] == 1UL,
-                     "The Input(Label) should be a 2-D tensor with the 1st "
-                     "dimensions fixed to 1 (a row vector).");
-
-      // The actual output shape will be set at runtime, here temporially set
-      // the shape of output the same as the shape of input.
+    if (need_copy_dim) {
+      // Some dimensions can only be determined during runtime. Here temporarily
+      // set output tensor's shape the same as that of the input tensor.
       ctx->SetOutputDim("Out", x_dims);
     } else {
-      // The shape information in given by Attr(shape).
-      std::vector<int64_t> output_shape;
-      ValidateShape(shape, framework::product(x_dims), output_shape);
+      ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
 
-      auto out_dims = framework::make_ddim(output_shape);
-      ctx->SetOutputDim("Out", out_dims);
-
+      // FIXME(caoying): When shape of the output tensor is determined during
+      // runtime, LoD information of X will not passed to the output.
       if (shape[0] == x_dims[0]) {
         // Only pass LoD when the first dimension of output and Input(X)
         // are the same.
@@ -67,41 +56,51 @@ class ReshapeOp : public framework::OperatorWithKernel {
   }
 
  private:
-  void ValidateShape(const std::vector<int> &shape, const int64_t in_size,
+  bool ValidateShape(const std::vector<int> &shape,
+                     const framework::DDim &input_dim,
                      std::vector<int64_t> &output_shape) const {
-    std::vector<size_t> neg_dims_idx;
-    const int unknown_index = -1;  // only one dimension canbe set to -1, whose
-                                   // size will be automatically infered.
+    // only one dimension canbe set to -1, whose size will be automatically
+    // infered.
+    const int64_t unknown_index = -1;
+    const auto in_size = framework::product(input_dim);
+    const auto x_rank = input_dim.size();
 
+    bool need_dim_copy = false;
+    std::vector<size_t> neg_dims_idx;
     for (size_t i = 0; i < shape.size(); ++i) {
-      PADDLE_ENFORCE(shape[i] > 1 || shape[i] == unknown_index,
+      PADDLE_ENFORCE(shape[i] >= 0 || shape[i] == unknown_index,
                      "Each input dimension of Attr(shape) must be positive, or "
                      "only one input dimension can be -1.");
-      if (shape[i] == unknown_index) neg_dims_idx.push_back(i);
+      if (shape[i] == unknown_index) {
+        neg_dims_idx.push_back(i);
+      } else if (shape[i] == 0) {
+        PADDLE_ENFORCE_LT(
+            i, x_rank,
+            "Only dimension less than rank of Input(X) can be set to 0.");
+        need_dim_copy = true;
+      }
     }
     PADDLE_ENFORCE_LE(
         neg_dims_idx.size(), 1,
         "Only one input dimension of Attr(shape) may be unknown.");
+
+    output_shape.resize(shape.size(), 0);
+    std::transform(shape.begin(), shape.end(), output_shape.begin(),
+                   [](int a) { return static_cast<int64_t>(a); });
+
+    // some dimension can only be determinted during runtime.
+    if (need_dim_copy) return need_dim_copy;
 
     int64_t inferred_dim = 0;
     if (neg_dims_idx.size()) {
       int64_t capacity = std::accumulate(shape.begin(), shape.end(), 1,
                                          std::multiplies<int>());
       inferred_dim = in_size / (-capacity);
+      PADDLE_ENFORCE_EQ(inferred_dim * (-capacity), in_size,
+                        "Invalid shape is given.");
+      output_shape[neg_dims_idx[0]] = inferred_dim;
     }
-
-    output_shape.resize(shape.size(), 0);
-    std::transform(shape.begin(), shape.end(), output_shape.begin(),
-                   [](int a) { return static_cast<int64_t>(a); });
-    if (neg_dims_idx.size()) output_shape[neg_dims_idx[0]] = inferred_dim;
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
+    return false;
   }
 };
 
@@ -110,14 +109,9 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
   ReshapeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The input tensor of reshape operator.");
-    AddInput(
-        "Shape",
-        "Tensor<int64_t>, a 1-D tensor that provides the shape information.")
-        .AsDispensable();
     AddOutput("Out", "The output tensor of reshape operator.");
     AddAttr<std::vector<int>>(
-        "shape", "(std::vector<int>) Target shape of reshape operator.")
-        .SetDefault(std::vector<int>());
+        "shape", "(std::vector<int>) Target shape of reshape operator.");
     AddAttr<bool>("inplace",
                   "Change the source tensor's shape without copy memory.")
         .SetDefault(true);
@@ -152,14 +146,6 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shouldn't be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.device_context());
   }
 };
 

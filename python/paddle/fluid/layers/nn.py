@@ -70,6 +70,7 @@ __all__ = [
     'smooth_l1',
     'one_hot',
     'autoincreased_step_counter',
+    'reshape',
 ]
 
 
@@ -3184,6 +3185,8 @@ def one_hot(input, depth):
          The one-hot tensor or LodTensor, same as input.
 
     Examples:
+        .. code-block:: python
+
         X is a LoDTensor:
           X.lod = [[0, 1, 4]]
           X.shape = [4, 1]
@@ -3236,3 +3239,56 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         counter.stop_gradient = True
 
     return counter
+
+
+def reshape(x, shape, act=None, inplace=True, name=None):
+    """
+    Gives a new shape to Tensor without changing its data.
+    This layer takes a tensor as input and the attribute shape specifying the
+    new shape. The shape attribute must be specified. At most one dimension of
+    the new shape can be -1. In this case, the value is inferred from the size
+    of the tensor and the remaining dimensions. A dimension could also be 0,
+    in which case the actual dimension value is going to be copied from the
+    input tensor.
+
+    Args:
+        input(variable): The input tensor.
+        shape(list): The new shape. At most one dimension of the new shape can
+                     be -1.
+        act (str): The non-linear activation to be applied to output variable.
+        inplace(bool): If this flag is set true, a new output tensor is created
+                       whose data is copied from input x, otherwise the output
+                       shares data with input without copying.
+
+    Returns(variable): The output tensor.
+
+    Examples:
+        .. code-block:: python
+
+        Given a 2-D tensor X with shape [2 x 2], and the new shape: [1, 4].
+        The reshape layer will change tensor X into a 2-D tensor with
+        shape [1 x 4] with its data unchanged.
+
+        Given a 3-D tensor x with shape [2, 3, 4] and the new shape: [3, -1].
+        The reshape layer will change tensor X into a 2-D tensor with shape:
+        [3 x 8] with its data unchanged.
+
+        Given a 3-D tensor x with shape [2, 3, 8] and the new shape:
+        [-1, 0, 2, 2]. The reshape layer will change tensor X into a 4-D tensor
+        with shape [4, 3, 2, 2] with its data unchanged.
+
+    """
+
+    if not (isinstance(shape, list) or isinstance(shape, tuple)):
+        raise ValueError("Input shape must be a python lsit or tuple.")
+
+    helper = LayerHelper("reshape", **locals())
+    reshaped = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type="reshape",
+        inputs={"X": x},
+        attrs={"shape": shape,
+               "inplace": inplace},
+        outputs={"Out": reshaped})
+
+    return helper.append_activation(reshaped)

@@ -27,17 +27,8 @@ class ReshapeKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* in = ctx.Input<framework::Tensor>("X");
 
-    auto* shape = ctx.Input<framework::Tensor>("Shape");
-    framework::DDim out_dims;
-    if (shape) {
-      std::vector<int64_t> output_shape;
-      ValidateShape(*shape, framework::product(in->dims()), output_shape);
-
-      out_dims = framework::make_ddim(output_shape);
-    } else {
-      out_dims = out->dims();
-    }
-
+    auto out_dims =
+        ValidateShape(ctx.Attr<std::vector<int>>("shape"), in->dims());
     bool inplace = ctx.Attr<bool>("inplace");
     if (!inplace) {
       out->mutable_data<T>(ctx.GetPlace());
@@ -50,35 +41,31 @@ class ReshapeKernel : public framework::OpKernel<T> {
   }
 
  private:
-  void ValidateShape(const framework::Tensor& shape, const int64_t in_size,
-                     std::vector<int64_t>& output_shape) const {
-    std::vector<size_t> neg_dims_idx;
-    const int unknown_index = -1;  // only one dimension canbe set to -1, whose
-                                   // size will be automatically infered.
+  framework::DDim ValidateShape(const std::vector<int> shape_attr,
+                                const framework::DDim& in_dims) const {
+    const int64_t in_size = framework::product(in_dims);
+    // only one dimension canbe set to -1, whose size will be automatically
+    // infered.
+    const int64_t unknown_index = -1;
 
-    const int64_t dimension = shape.dims()[1];
-    std::cout << "dimension =" << dimension << std::endl;
-    const T* shape_data = shape.data<T>();
-
-    for (int64_t i = 0; i < dimension; ++i) {
-      PADDLE_ENFORCE(shape_data[i] > 1 || shape_data[i] == unknown_index,
-                     "Each input dimension of Attr(shape) must be positive, or "
-                     "only one input dimension can be -1.");
-      if (shape_data[i] == unknown_index) neg_dims_idx.push_back(i);
-    }
-    PADDLE_ENFORCE_LE(
-        neg_dims_idx.size(), 1,
-        "Only one input dimension of Attr(shape) can be unknown.");
-
+    std::vector<int64_t> output_shape(shape_attr.size(), 0);
     int64_t capacity = 1;
-    output_shape.resize(dimension, 0);
-    for (int64_t i = 0; i < dimension; ++i) {
-      capacity *= shape_data[i];
-      output_shape[i] = static_cast<int64_t>(shape_data[i]);
+    int neg_dim_idx = -1;
+    for (size_t i = 0; i < shape_attr.size(); ++i) {
+      if (shape_attr[i] == unknown_index) neg_dim_idx = i;
+      capacity *= (shape_attr[i] ? shape_attr[i] : in_dims[i]);
+      output_shape[i] =
+          (shape_attr[i] ? static_cast<int64_t>(shape_attr[i]) : in_dims[i]);
     }
 
-    if (neg_dims_idx.size())
-      output_shape[neg_dims_idx[0]] = in_size / (-capacity);
+    if (neg_dim_idx != -1) {
+      output_shape[neg_dim_idx] = -in_size / capacity;
+      PADDLE_ENFORCE_EQ(output_shape[neg_dim_idx] * capacity, -in_size,
+                        "Invalid shape is given.");
+    } else {
+      PADDLE_ENFORCE_EQ(capacity, in_size, "Invalid shape is given.");
+    }
+    return framework::make_ddim(output_shape);
   }
 };
 
