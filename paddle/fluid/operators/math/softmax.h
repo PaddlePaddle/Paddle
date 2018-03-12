@@ -33,6 +33,7 @@ class SoftmaxGradFunctor {
                   const framework::Tensor* y_grad, framework::Tensor* x_grad);
 };
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T>
 class SoftmaxCUDNNFunctor {
  public:
@@ -47,6 +48,7 @@ class SoftmaxGradCUDNNFunctor {
                   const framework::Tensor* Y, framework::Tensor* y_grad,
                   framework::Tensor* x_grad);
 };
+#endif
 
 }  // namespace math
 }  // namespace operators
