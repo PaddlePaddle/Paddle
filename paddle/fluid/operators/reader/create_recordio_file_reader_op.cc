@@ -18,11 +18,10 @@
 namespace paddle {
 namespace operators {
 namespace reader {
-class RecordIOFileReader : public framework::FileReader {
+class RecordIOFileReader : public framework::ReaderBase {
  public:
-  RecordIOFileReader(const std::string& filename,
-                     const std::vector<framework::DDim>& shapes)
-      : FileReader(shapes),
+  explicit RecordIOFileReader(const std::string& filename)
+      : ReaderBase(),
         scanner_(filename),
         dev_ctx_(*platform::DeviceContextPool::Instance().Get(
             platform::CPUPlace())) {}
@@ -54,12 +53,11 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
                       int(shape_concat.size()),
                       "The accumulate of all ranks should be equal to the "
                       "shape concat's length.");
-    std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
     std::string filename = Attr<std::string>("filename");
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new RecordIOFileReader(filename, shapes));
+    out->Reset(new RecordIOFileReader(filename));
   }
 };
 
