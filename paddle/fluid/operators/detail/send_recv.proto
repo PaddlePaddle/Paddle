@@ -33,10 +33,34 @@ enum VarType {
 }
 
 message VariableMessage {
+  enum Type {
+    // Pod Types
+    BOOL = 0;
+    INT16 = 1;
+    INT32 = 2;
+    INT64 = 3;
+    FP16 = 4;
+    FP32 = 5;
+    FP64 = 6;
+  }
+
+  message LodData { repeated int64 lod_data = 1; }
+
   string varname = 1;
   // TODO(Yancey1989): reference framework::proto::VarDesc::VarType
   VarType type = 2;
-  bytes serialized = 3;
+  // bool persistable is not needed for sending.
+  // tensor info:
+  Type data_type = 3;
+  repeated int64 dims = 4;
+
+  // lod details:
+  int64 lod_level = 5;
+  repeated LodData lod = 6;
+  // tensor data
+  bytes serialized = 7;
+  // selected_rows data
+  bytes rows = 8;
 }
 
 message VoidMessage {}
