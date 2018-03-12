@@ -24,17 +24,6 @@ from core import CUDAPlace
 
 __all__ = ['ParallelExecutor']
 
-print_lock = Lock()
-
-
-def save_print(*args, **kwargs):
-    with print_lock:
-        print(time.time(), *args, **kwargs)
-
-
-def pretty_id_indent(idx):
-    return '\t' * idx * 4 + str(idx) + ":"
-
 
 def run_exe(q, idx, exe, program, feed, fetch_list, feed_var_name,
             fetch_var_name, cur_scope, return_numpy):
