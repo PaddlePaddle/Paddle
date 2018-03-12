@@ -82,7 +82,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   DestroyCallback destroy_callback = [](void* backing) {};
 
   void* buf = malloc(1024);
-  void* payload;
+  void* payload = nullptr;
   size_t payload_size;
   ProtoEncodeHelper e((char*)buf, 1024);
   e.WriteString(VarMsg::kVarnameFieldNumber, name);
@@ -127,8 +127,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                      boost::get<platform::CUDAPlace>(tensor.place()),
                      reinterpret_cast<const void*>(tensor.data<void>()),
                      copy_size, gpu_dev_ctx.stream());
+        ctx.Wait();
         destroy_callback = [](void* backing) {
-          std::cout << "destroy payload" << std::endl;
           platform::CPUPlace cpu;
           memory::Free(cpu, backing);
         };
@@ -137,12 +137,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         payload = tensor.data<void>();
       }
       payload_size = tensor.memory_size();
-
-      std::string tmp(reinterpret_cast<char*>(payload), payload_size);
-      for (int i = 0; i < tmp.size(); ++i) {
-        printf("%02X ", tmp.data()[i]);
-      }
-      printf("\n");
       e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     case framework::proto::VarType_Type_SELECTED_ROWS: {
@@ -167,14 +161,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                      reinterpret_cast<const void*>(tensor->data<void>()),
                      copy_size, gpu_dev_ctx.stream());
         ctx.Wait();
-        float* ttt = reinterpret_cast<float*>(payload);
-        for (int i = 0; i < copy_size / 4; i++) {
-          std::cout << "copied to cpu: " << ttt[i] << std::endl;
-        }
         destroy_callback = [](void* backing) {
-          std::cout << "destroy..." << std::endl;
-          // platform::CPUPlace cpu;
-          // memory::Free(cpu, backing);
+          platform::CPUPlace cpu;
+          memory::Free(cpu, backing);
         };
 #endif
       } else {
@@ -270,6 +259,7 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                    tensor_data, cpu,
                    reinterpret_cast<const void*>(meta.serialized().data()),
                    meta.serialized().size(), gpu_dev_ctx.stream());
+      ctx.Wait();
 #endif
     } else {
       memcpy(tensor_data,
@@ -292,6 +282,7 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                    tensor_data, cpu,
                    reinterpret_cast<const void*>(meta.serialized().data()),
                    meta.serialized().size(), gpu_dev_ctx.stream());
+      ctx.Wait();
 #endif
     } else {
       memcpy(tensor_data,
