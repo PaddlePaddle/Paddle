@@ -18,11 +18,11 @@
 namespace paddle {
 namespace operators {
 namespace reader {
-class RecordIOFileReader : public framework::FileReaderBase {
+class RecordIOFileReader : public framework::FileReader {
  public:
   explicit RecordIOFileReader(const std::string& filename,
                               const std::vector<framework::DDim>& dims)
-      : FileReaderBase(dims),
+      : FileReader(dims),
         scanner_(filename),
         dev_ctx_(*platform::DeviceContextPool::Instance().Get(
             platform::CPUPlace())) {}
