@@ -26,7 +26,7 @@ TEST(Chunk, SaveLoad) {
   ch.Add(std::string("123", 4));
   std::stringstream ss;
   ch.Write(ss, Compressor::kNoCompress);
-  ch.Clear();
+  ss.seekg(0);
   ch.Parse(ss);
   ASSERT_EQ(ch.NumBytes(), 10U);
 }
