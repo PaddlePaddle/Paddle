@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/prune.h"
+#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/cond_op.h"
 #include "paddle/fluid/operators/net_op.h"
@@ -35,7 +36,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/pybind.h"
+#include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -217,7 +220,17 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) -> operators::NetOp * {
              return self.GetMutable<operators::NetOp>();
            },
+           py::return_value_policy::reference)
+      .def("get_reader",
+           [](Variable &self) -> framework::ReaderHolder * {
+             PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
+             return self.GetMutable<framework::ReaderHolder>();
+           },
            py::return_value_policy::reference);
+
+  py::class_<framework::ReaderHolder>(m, "Reader", "")
+      .def("has_next", &framework::ReaderHolder::HasNext)
+      .def("reset", &framework::ReaderHolder::ReInit);
 
   py::class_<Scope>(m, "Scope", "")
       .def("var",
@@ -474,6 +487,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("reset_profiler", platform::ResetProfiler);
+
+  BindRecordIOWriter(m);
   return m.ptr();
 }
 }  // namespace pybind
