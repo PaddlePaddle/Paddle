@@ -22,7 +22,7 @@
 pooling
 ========
 
-pooling 的使用示例如下，详细见 :ref:`api_v2.layer_pooling` 配置API。
+pooling 的使用示例如下。
 
 ..	code-block:: bash
 
@@ -47,7 +47,7 @@ pooling 的使用示例如下，详细见 :ref:`api_v2.layer_pooling` 配置API�
 last_seq 和 first_seq
 =====================
 
-last_seq 的使用示例如下（ :ref:`api_v2.layer_first_seq` 类似），详细见 :ref:`api_v2.layer_last_seq` 配置API。
+last_seq 的使用示例如下（first_seq 类似）。
 
 ..	code-block:: bash
 
@@ -68,7 +68,7 @@ last_seq 的使用示例如下（ :ref:`api_v2.layer_first_seq` 类似），详�
 expand
 ======
 
-expand 的使用示例如下，详细见 :ref:`api_v2.layer_expand` 配置API。
+expand 的使用示例如下。
 
 ..	code-block:: bash
 

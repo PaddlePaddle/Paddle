@@ -13,6 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pool_op.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -76,20 +82,18 @@ void PoolOp::InferShape(framework::InferShapeContext *ctx) const {
 
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
   }
 #endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
   }
+#endif
 
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
@@ -107,20 +111,18 @@ void PoolOpGrad::InferShape(framework::InferShapeContext *ctx) const {
 
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
   }
 #endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
   }
+#endif
 
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
@@ -180,6 +182,9 @@ Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       "(bool, default false) Wether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used.")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -275,6 +280,9 @@ Pool3dOpMaker::Pool3dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       "(bool, default false) Wether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used.")
+      .SetDefault(false);
+  AddAttr<bool>("use_mkldnn",
+                "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",

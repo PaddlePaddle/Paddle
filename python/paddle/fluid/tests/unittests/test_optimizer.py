@@ -21,30 +21,42 @@ from paddle.fluid.backward import append_backward
 
 class TestOptimizer(unittest.TestCase):
     def test_sgd_optimizer(self):
-        init_program = framework.Program()
-        program = framework.Program()
-        block = program.global_block()
-        mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
-        mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out")
-        block.append_op(
-            type="mul",
-            inputs={"X": mul_x,
-                    "Y": mul_y},
-            outputs={"Out": mul_out},
-            attrs={"x_num_col_dims": 1})
-        block.append_op(
-            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
-        sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
-        opts, _ = sgd_optimizer.minimize(mean_out, init_program)
+        def check_sgd_optimizer(optimizer_attr):
+            init_program = framework.Program()
+            program = framework.Program()
+            block = program.global_block()
+            mul_x = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="mul.x",
+                optimize_attr=optimizer_attr)
+            mul_y = block.create_var(
+                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+            mul_out = block.create_var(
+                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+            mean_out = block.create_var(
+                dtype="float32", shape=[1], lod_level=0, name="mean.out")
+            block.append_op(
+                type="mul",
+                inputs={"X": mul_x,
+                        "Y": mul_y},
+                outputs={"Out": mul_out},
+                attrs={"x_num_col_dims": 1})
+            block.append_op(
+                type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+            sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
+            opts, _ = sgd_optimizer.minimize(mean_out, init_program)
+            return opts
+
+        opts = check_sgd_optimizer({'learning_rate': 1.1})
         self.assertEqual(len(opts), 3)
         self.assertEqual([op.type for op in opts],
                          ["fill_constant", "elementwise_mul", "sgd"])
+
+        opts = check_sgd_optimizer({'learning_rate': 1.0})
+        self.assertEqual(len(opts), 1)
+        self.assertEqual([op.type for op in opts], ["sgd"])
 
 
 class TestMomentumOptimizer(unittest.TestCase):
@@ -60,7 +72,11 @@ class TestMomentumOptimizer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1})
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
         mul_out = block.create_var(
@@ -110,7 +126,11 @@ class TestMomentumOptimizer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1})
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
         mul_out = block.create_var(
@@ -169,7 +189,11 @@ class TestAdagradOptimizer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1})
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
         mul_out = block.create_var(
@@ -229,7 +253,11 @@ class TestAdamOptimizer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1})
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
         mul_out = block.create_var(
@@ -292,7 +320,11 @@ class TestAdamaxOptimizer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1})
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
         mul_out = block.create_var(
@@ -352,7 +384,11 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1})
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
         mul_out = block.create_var(

@@ -30,6 +30,9 @@ const std::string kEnvFractionGpuMemoryToUse =
 //! Get the total number of GPU devices in system.
 int GetCUDADeviceCount();
 
+//! Get the compute capability of the ith GPU (format: major * 10 + minor)
+int GetCUDAComputeCapability(int i);
+
 //! Get the MultiProcessors of the ith GPU.
 int GetCUDAMultiProcessors(int i);
 
