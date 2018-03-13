@@ -73,6 +73,14 @@ Parameter Description
 - trainer_id: **required, default 0**, ID for every trainer, start from 0.
 - pservers: **required, default 127.0.0.1**, list of IPs of parameter servers, separated by ",".
 
+```python
+trainer = paddle.trainer.SGD(..., is_local=False)
+```
+
+Parameter Description
+
+- is_local: **required, default True**, whether update parameters by PServer.
+
 ## Prepare Training Dataset
 
 Here's some example code [prepare.py](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/howto/usage/cluster/src/word2vec/prepare.py), it will download public `imikolov` dataset and split it into multiple files according to job parallelism(trainers count). Modify `SPLIT_COUNT` at the begining of `prepare.py` to change the count of output files.
