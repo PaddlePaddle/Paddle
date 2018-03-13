@@ -30,15 +30,16 @@ template <typename T>
 class LookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* table_t = context.Input<LoDTensor>("W");  // float tensor
-    auto* ids_var = context.InputVar("Ids");        // int tensor
+    auto* table_t = context.Input<LoDTensor>("W");
+    auto* output_t = context.Output<Tensor>("Out");
+    auto* ids_var = context.InputVar("Ids");
 
     int64_t* ids;
     int64_t ids_numel;
-    auto* output_t = context.Output<Tensor>("Out");
-    // lookup_table and concat_rows use the same kernel, for lookup_table,
-    // ids_var_type should be LoDTensor, for concat_rows, ids_var_type and
-    // out_var_type should be SelectedRows.
+    // The type of Ids(Input) is SelectedRows or LoDTensor, when Ids's type
+    // is LoDTensor, this tensor contains the ids to be looked up in W;
+    // when Ids's type is SelectedRows, the rows of Ids contains the
+    // ids to be looked up in W.
     if (ids_var->IsType<LoDTensor>()) {
       auto* ids_t = context.Input<LoDTensor>("Ids");
       ids = const_cast<int64_t*>(ids_t->data<int64_t>());
