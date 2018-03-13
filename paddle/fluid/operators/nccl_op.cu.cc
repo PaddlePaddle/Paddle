@@ -103,12 +103,6 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     // device id
     int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
-
-    auto x_name = ctx.Input("X");
-    std::hash<std::string> hasher;
-    if (root == platform::kInvalidGPUId) {
-      root = hasher(x_name) % comm->comms().size();
-    }
     T* recvbuffer = nullptr;
     if (root == gpu_id) {
       recvbuffer = out->mutable_data<T>(ctx.GetPlace());
