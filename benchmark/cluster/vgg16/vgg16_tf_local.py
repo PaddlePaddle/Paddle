@@ -283,6 +283,7 @@ def run_benchmark():
                     axes=[1, 2, 0]) if args.data_format == 'NHWC' else x[0], data)).astype("float32")
                 train_labels = np.array(map(lambda x: x[1], data)).astype(
                     'int64')
+                iter_begin_time = time.time()
                 _, loss, acc = sess.run([train_op, avg_loss, accuracy],
                                         feed_dict={
                                             images: train_images,
