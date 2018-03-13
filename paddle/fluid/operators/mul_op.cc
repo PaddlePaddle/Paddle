@@ -193,7 +193,6 @@ class MulGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulGradOp);
-REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<plat::CPUDeviceContext, float>,
-                       ops::MulKernel<plat::CPUDeviceContext, plat::float16>);
+REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<plat::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(mul_grad,
                        ops::MulGradKernel<plat::CPUDeviceContext, float>);

@@ -316,7 +316,6 @@ class OpTest(unittest.TestCase):
                     # paddle float16 is exposed to python as uint16 type
                     # reinterpret the memory as numpy.float16
                     if actual_t.dtype == np.uint16:
-                        print("reinterpret uint16 as float16")
                         actual_t.dtype = np.float16
                     expect_t = expect[0] \
                         if isinstance(expect, tuple) else expect
@@ -336,7 +335,6 @@ class OpTest(unittest.TestCase):
                 # paddle float16 is exposed to python as uint16 type
                 # reinterpret the memory as numpy.float16
                 if actual_t.dtype == np.uint16:
-                    print("reinterpret uint16 as float16")
                     actual_t.dtype = np.float16
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect

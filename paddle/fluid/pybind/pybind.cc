@@ -69,20 +69,8 @@ PYBIND11_PLUGIN(core) {
   BindException(m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
-      .def_buffer([](Tensor &self) -> py::buffer_info {
-        // TODO(kexinzhao): directly expose float16 to the python side,
-        // prefer to bind paddle float16 with numpy float16
-        /*
-        if (ToDataType(self.type()) == proto::VarType::FP16) {
-          Tensor out;
-          OpKernelType in_type(proto::VarType::FP16, self.place());
-          OpKernelType out_type(proto::VarType::FP32, platform::CPUPlace());
-          DataTransform(out_type, in_type, self, &out);
-          return CastToPyBuffer(out);
-        }
-        */
-        return CastToPyBuffer(self);
-      })
+      .def_buffer(
+          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
       .def("get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
       .def("set_dims",
@@ -131,20 +119,8 @@ PYBIND11_PLUGIN(core) {
       .def("dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
-      .def_buffer([](Tensor &self) -> py::buffer_info {
-        // TODO(kexinzhao): directly expose float16 to the python side,
-        // prefer to bind paddle float16 with numpy float16
-        /*
-        if (ToDataType(self.type()) == proto::VarType::FP16) {
-          Tensor out;
-          OpKernelType in_type(proto::VarType::FP16, self.place());
-          OpKernelType out_type(proto::VarType::FP32, platform::CPUPlace());
-          DataTransform(out_type, in_type, self, &out);
-          return CastToPyBuffer(out);
-        }
-        */
-        return CastToPyBuffer(self);
-      })
+      .def_buffer(
+          [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
       .def(
           "__init__",
           [](LoDTensor &instance, const std::vector<std::vector<size_t>> &lod) {
