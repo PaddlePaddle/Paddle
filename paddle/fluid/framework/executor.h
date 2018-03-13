@@ -23,8 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class ExecutorPrepareContext {
- public:
+struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
 
   framework::ProgramDesc prog_;
