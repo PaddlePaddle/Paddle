@@ -107,7 +107,7 @@ void Compute(const framework::ExecutionContext& context) const override {
 
 ### paddle::framework::Tensor到EigenTensor的转换
 
-如上一小节所示，在具体的计算中，我们需要先把输入Tensor和输出Tensor转换为Eigen支持的格式。我们在[eigen.h](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/eigen.h)中提供了一些全局函数用来实现paddle::framework::Tensor到EigenTensor/EigenMatrix/EigenVector/EigenScalar的转换。
+如上一小节所示，在具体的计算中，我们需要先把输入Tensor和输出Tensor转换为Eigen支持的格式。我们在[eigen.h](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/eigen.h)中提供了一些全局函数用来实现paddle::framework::Tensor到EigenTensor/EigenMatrix/EigenVector/EigenScalar的转换。
 
 以EigenTensor为例，做一个介绍
 
@@ -125,7 +125,7 @@ From是EigenTensor模板提供的一个接口，可以实现从paddle::framework
 
 在Eigen中，不同rank的Tensor是不同类型，Vector是rank为1的Tensor。需要额外注意的是，EigenVector<T>::From方法是把paddle中的一维Tensor转为Eigen的一维Tensor，在这里用EigenVector来表示；而EigenVector<T>::Flatten方法是把paddle中的一个Tensor进行reshape操作，压扁成为Eigen的一维Tensor，类型仍然为EigenVector。
 
-更多的转换方法请参考eigen_test.cc中的[单元测试](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/eigen_test.cc)。
+更多的转换方法请参考eigen_test.cc中的[单元测试](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/eigen_test.cc)。
 
 
 

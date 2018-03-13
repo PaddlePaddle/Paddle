@@ -87,6 +87,8 @@ class BlockDesc {
 
   OpDesc *PrependOp();
 
+  OpDesc *InsertOp(size_t index);
+
   void RemoveOp(size_t s, size_t e);
 
   std::vector<OpDesc *> AllOps() const;
