@@ -198,14 +198,11 @@ class TestRoutineOp(unittest.TestCase):
             fluid.channel_close(ch1)
             fluid.channel_close(quit_ch)
 
-            # with open('/Users/thuan/Downloads/programdesc', 'wb') as pd:
-            #     pd.write(str(framework.default_main_program()))
-
             cpu = core.CPUPlace()
             exe = Executor(cpu)
 
             exe_result = exe.run(fetch_list=[result])
-            print(exe_result)
+            self.assertEqual(exe_result[0][0], 34)
 
 if __name__ == '__main__':
     unittest.main()
