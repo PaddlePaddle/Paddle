@@ -250,6 +250,8 @@ class DistributeTranspiler:
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
         self.program.global_block().delete_ops(self.optimize_ops)
+        # FIXME(typhoonzero): serialize once will fix error occurs when clone.
+        self.program.__str__()
         return self.program
 
     def get_pserver_program(self, endpoint):
@@ -309,7 +311,8 @@ class DistributeTranspiler:
             for _, opt_op in enumerate(opt_op_on_pserver):
                 if ufind.is_connected(op, opt_op):
                     if self._is_opt_op(op):
-                        self._append_pserver_ops(optimize_block, op, endpoint)
+                        self._append_pserver_ops(optimize_block, op, endpoint,
+                                                 default_main_program())
                     else:
                         self._append_pserver_non_opt_ops(optimize_block, op)
                     break
@@ -520,7 +523,8 @@ class DistributeTranspiler:
             orig_var_name = varname[:suff_idx]
         return orig_var_name
 
-    def _append_pserver_ops(self, optimize_block, opt_op, endpoint):
+    def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
+                            origin_program):
         program = optimize_block.program
         pserver_block = program.global_block()
         new_inputs = dict()
@@ -576,7 +580,17 @@ class DistributeTranspiler:
             elif key == "LearningRate":
                 # leraning rate variable has already be created by non-optimize op,
                 # don't create it once again.
-                new_inputs[key] = pserver_block.vars[opt_op.input(key)[0]]
+                lr_varname = opt_op.input(key)[0]
+                if pserver_block.vars.has_key(lr_varname):
+                    new_inputs[key] = pserver_block.vars[opt_op.input(key)[0]]
+                else:
+                    origin_var = origin_program.global_block().vars[lr_varname]
+                    tmpvar = pserver_block.create_var(
+                        name=origin_var.name,
+                        persistable=origin_var.persistable,
+                        dtype=origin_var.dtype,
+                        shape=origin_var.shape)
+                    new_inputs[key] = tmpvar
 
         for key in opt_op.input_names:
             new_shape = None

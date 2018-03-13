@@ -84,7 +84,7 @@ class RequestGet final : public RequestBase {
   explicit RequestGet(sendrecv::SendRecvService::AsyncService* service,
                       grpc::ServerCompletionQueue* cq, framework::Scope* scope,
                       const platform::DeviceContext* dev_ctx,
-                      SimpleBlockQueue<char>* queue)
+                      SimpleBlockQueue<MessageWithName>* queue)
       : RequestBase(service, cq),
         responder_(&ctx_),
         scope_(scope),
@@ -101,11 +101,16 @@ class RequestGet final : public RequestBase {
     // proc request.
     std::string var_name = request_.varname();
     auto* var = scope_->FindVar(var_name);
-    SerializeToMessage(var_name, var, *dev_ctx_, &reply_);
+    if (var_name != FETCH_BARRIER_MESSAGE) {
+      SerializeToMessage(var_name, var, *dev_ctx_, &reply_);
+    }
     // TODO(gongwb): check var's info.
     responder_.Finish(reply_, grpc::Status::OK, this);
     status_ = FINISH;
-    queue_->Push('c');
+    MessageWithName msg_with_name =
+        //          request name    reply
+        std::make_pair(var_name, std::move(reply_));
+    queue_->Push(msg_with_name);
   }
 
  protected:
@@ -114,12 +119,16 @@ class RequestGet final : public RequestBase {
   ServerAsyncResponseWriter<sendrecv::VariableMessage> responder_;
   framework::Scope* scope_;
   const platform::DeviceContext* dev_ctx_;
-  SimpleBlockQueue<char>* queue_;
+  SimpleBlockQueue<MessageWithName>* queue_;
 };
 
 void AsyncGRPCServer::WaitClientGet(int count) {
-  for (int i = 0; i < count; ++i) {
-    var_get_queue_.Pop();
+  int fetch_barriers = 0;
+  while (fetch_barriers < count) {
+    auto msg = var_get_queue_.Pop();
+    if (msg.first == FETCH_BARRIER_MESSAGE) {
+      fetch_barriers++;
+    }
   }
 }
 

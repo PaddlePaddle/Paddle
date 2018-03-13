@@ -42,9 +42,11 @@ ProgramDesc::ProgramDesc() {
 }
 
 ProgramDesc::ProgramDesc(const ProgramDesc &o) {
+  VLOG(3) << "### cloning programdesc with desc";
   desc_ = o.desc_;
   for (int i = 0; i < desc_.blocks_size(); ++i) {
     auto *block = desc_.mutable_blocks(i);
+    VLOG(3) << "### adding new block when clone ";
     blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
   }
   for (auto &block : blocks_) {

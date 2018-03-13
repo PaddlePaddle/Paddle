@@ -77,7 +77,7 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   const platform::DeviceContext *dev_ctx_;
   // received variable from RPC, operators fetch variable from this queue.
   SimpleBlockQueue<MessageWithName> var_recv_queue_;
-  SimpleBlockQueue<char> var_get_queue_;
+  SimpleBlockQueue<MessageWithName> var_get_queue_;
 
   // condition of the sub program
   std::mutex barrier_mutex_;

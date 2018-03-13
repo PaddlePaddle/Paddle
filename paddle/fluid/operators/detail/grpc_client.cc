@@ -97,7 +97,7 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   return true;
 }
 
-bool RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
+void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
@@ -108,8 +108,18 @@ bool RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, (void*)s);
   req_count_++;
+}
 
-  return true;
+void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
+  const auto ch = GetChannel(ep);
+  FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
+  s->Prepare(time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(FETCH_BARRIER_MESSAGE);
+  auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, (void*)s);
+  req_count_++;
 }
 
 bool RPCClient::Wait() {
@@ -154,7 +164,7 @@ bool RPCClient::Proceed() {
   PADDLE_ENFORCE(tag);
 
   // TODO(gongwb): add more retries.
-  ClientBase* c = static_cast<ClientBase*>(tag);
+  BaseProcessor* c = static_cast<BaseProcessor*>(tag);
   if (!c->status_.ok()) {
     LOG(ERROR) << "proc param error:" << c->var_h_.String()
                << " grpc error:" << c->status_.error_message();
@@ -174,6 +184,8 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
   }
 
   grpc::ChannelArguments args;
+  args.SetInt("grpc.testing.fixed_reconnect_backoff_ms", 5000);
+  args.SetCompressionAlgorithm(GRPC_COMPRESS_NONE);
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
 

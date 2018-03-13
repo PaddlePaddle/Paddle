@@ -975,7 +975,9 @@ class Program(object):
         if for_test:
             p.desc = core.inference_optimize(self.desc)
         else:
+            print("####### before set desc")
             p.desc = core.ProgramDesc(self.desc)
+            print("####### end set desc")
         p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
         p.sync_with_cpp()
         p.copy_param_info_from(self)
