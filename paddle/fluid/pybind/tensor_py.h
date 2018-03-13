@@ -148,6 +148,22 @@ void PyCPUTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
 
+template <>
+void PyCPUTensorSetFromArray(
+    framework::Tensor &self,
+    py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
+    paddle::platform::CPUPlace &place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back((int)array.shape()[i]);
+  }
+
+  self.Resize(framework::make_ddim(dims));
+  auto *dst = self.mutable_data<platform::float16>(place);
+  std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
+}
+
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
 void PyCUDATensorSetFromArray(
@@ -167,6 +183,28 @@ void PyCUDATensorSetFromArray(
   auto dev_ctx =
       static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
   paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
+                                   cudaMemcpyHostToDevice, dev_ctx->stream());
+}
+
+template <>
+void PyCUDATensorSetFromArray(
+    framework::Tensor &self,
+    py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
+    paddle::platform::CUDAPlace &place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back((int)array.shape()[i]);
+  }
+
+  self.Resize(framework::make_ddim(dims));
+  auto *dst = self.mutable_data<platform::float16>(place);
+
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto dev_ctx =
+      static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+  paddle::platform::GpuMemcpyAsync(dst, array.data(),
+                                   sizeof(uint16_t) * array.size(),
                                    cudaMemcpyHostToDevice, dev_ctx->stream());
 }
 #endif
