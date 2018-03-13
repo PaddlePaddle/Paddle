@@ -1288,12 +1288,14 @@ class SelectCase(object):
             },
             attrs={
                 'sub_block': self.block,
-                'is_scalar_condition': self.is_scalar_condition,
-                'case_index': self.idx,
-                'case_type': self.action,
-                'case_channel': self.channel.name if self.channel else None,
-                'case_channel_var': self.value.name if self.value else None
+                'is_scalar_condition': self.is_scalar_condition
             })
+
+        return '%s,%s,%s,%s' % (
+            self.idx, self.action,
+            self.channel.name if self.channel else None,
+            self.value.name if self.value else None
+        )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.main_program.rollback()
@@ -1346,8 +1348,9 @@ class Select(BlockGuard):
         parent_block = self.helper.main_program.block(select_block.parent_idx)
 
         # Construct each case op, inside the newly created select block.
+        serialized_cases = []
         for case in self.cases:
-            case.construct_op()
+            serialized_cases.append(case.construct_op())
 
         intermediate = set()
         params = set()
@@ -1384,7 +1387,8 @@ class Select(BlockGuard):
                 'case_to_execute': self.case_to_execute
             },
             attrs={
-                'sub_block': select_block
+                'sub_block': select_block,
+                'cases': serialized_cases
             },
             outputs={}
         )

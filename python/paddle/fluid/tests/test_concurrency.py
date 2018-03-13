@@ -100,7 +100,7 @@ class TestRoutineOp(unittest.TestCase):
             name=unique_name.generate(name), type=type, dtype=dtype,
             persistable=True)
 
-    """def test_select(self):
+    def test_select(self):
         with framework.program_guard(framework.Program()):
             ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR,
                                      capacity=1)
@@ -128,7 +128,7 @@ class TestRoutineOp(unittest.TestCase):
             exe = Executor(cpu)
 
             result = exe.run(fetch_list=[result1])
-            #self.assertEqual(result[0][0], n + 1)"""
+            #self.assertEqual(result[0][0], n + 1)
 
     def test_fibonacci(self):
         """
