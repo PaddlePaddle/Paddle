@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 
 namespace paddle {
 namespace operators {
