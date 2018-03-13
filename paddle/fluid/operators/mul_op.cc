@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -77,6 +76,8 @@ class MulOp : public framework::OperatorWithKernel {
   OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     platform::Place place = ctx.GetPlace();
+    // Mul op will call the cublas gemm kernel on GPU, and the minimum
+    // compute capability of GPU to support cublas float16 gemm is 53
     if (ctx.Attr<bool>("use_float16") && platform::is_gpu_place(place) &&
         ctx.template device_context<platform::CUDADeviceContext>()
                 .GetComputeCapability() >= 53) {
@@ -191,8 +192,8 @@ class MulGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulGradOp);
-REGISTER_OP_CPU_KERNEL(mul, ops::MulKernel<plat::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(mul_grad,
-                       ops::MulGradKernel<plat::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    mul_grad, ops::MulGradKernel<paddle::platform::CPUDeviceContext, float>);
