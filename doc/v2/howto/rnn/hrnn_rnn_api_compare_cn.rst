@@ -4,7 +4,7 @@
 单双层RNN API对比介绍
 #####################
 
-本文以PaddlePaddle的双层RNN单元测试为示例，用多对效果完全相同的、分别使用单双层RNN作为网络配置的模型，来讲解如何使用双层RNN。本文中所有的例子，都只是介绍双层RNN的API接口，并不是使用双层RNN解决实际的问题。如果想要了解双层RNN在具体问题中的使用，请参考\ :ref:`algo_hrnn_demo`\ 。本文中示例所使用的单元测试文件是\ `test_RecurrentGradientMachine.cpp <https://github.com/reyoung/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
+本文以PaddlePaddle的双层RNN单元测试为示例，用多对效果完全相同的、分别使用单双层RNN作为网络配置的模型，来讲解如何使用双层RNN。本文中所有的例子，都只是介绍双层RNN的API接口，并不是使用双层RNN解决实际的问题。如果想要了解双层RNN在具体问题中的使用，请参考\ :ref:`algo_hrnn_demo`\ 。本文中示例所使用的单元测试文件是\ `test_RecurrentGradientMachine.cpp <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
 
 示例1：双层RNN，子序列间无Memory
 ================================
@@ -165,11 +165,6 @@
     :linenos:
 
 在上面代码中，单层和双层序列的使用和示例2中的示例类似，区别是同时处理了两个输入。而对于双层序列，两个输入的子序列长度也并不相同。但是，我们使用了\ :code:`targetInlink`\ 参数设置了外层\ :code:`recurrent_group`\ 的输出格式。所以外层输出的序列形状，和\ :code:`emb2`\ 的序列形状一致。
-
-示例4：beam_search的生成
-========================
-
-TBD
 
 
 词汇表

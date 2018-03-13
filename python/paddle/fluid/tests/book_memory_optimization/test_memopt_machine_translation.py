@@ -105,7 +105,8 @@ def main():
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
     optimizer.minimize(avg_cost)
 
-    fluid.memory_optimize(fluid.default_main_program())
+    # fluid.memory_optimize(fluid.default_main_program())
+    fluid.release_memory(fluid.default_main_program())
 
     # fix the order of training data
     train_data = paddle.batch(

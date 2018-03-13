@@ -59,6 +59,17 @@ After converting:
      queue. It will block until the queue has the required number of
      tensors.
 
+### Sparse Update
+
+For embedding layers, the gradient may have many rows containing only 0 when training,
+if the gradient uses a dense tensor to do parameter optimization,
+it could spend unnecessary memory, slow down the calculations and waste
+the bandwidth while doing distributed training.
+In Fluid, we introduce [SelectedRows](../selected_rows.md) to represent a list of rows containing
+non-zero gradient data. So when we do parameter optimization both locally and remotely,
+we only need to send those non-zero rows to the optimizer operators:
+
+<img src="src/sparse_update.png" width="700" />
 
 ### Benefits
 
@@ -91,6 +102,6 @@ After converting:
   `min_count` attribute), does our current design support it? (similar
   question for the *Add* OP)
 
+### References
 
-### References:
 [1] [TensorFlow: Large-Scale Machine Learning on Heterogeneous Distributed Systems](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45166.pdf)
