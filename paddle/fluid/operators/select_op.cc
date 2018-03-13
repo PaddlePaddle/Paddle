@@ -22,9 +22,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static constexpr char kCasesBlock[] = "sub_block";
-
+static constexpr char kX[] = "X";
 static constexpr char kCaseToExecute[] = "case_to_execute";
+
+static constexpr char kCasesBlock[] = "sub_block";
 
 static constexpr char kAttrCaseIndex[] = "case_index";
 static constexpr char kAttrCaseType[] = "case_type";
@@ -366,8 +367,15 @@ private:
 
 class SelectOpMaker : public framework::OpProtoAndCheckerMaker {
   public:
+    // TODO(varun): Update comment
     SelectOpMaker(OpProto *proto, OpAttrChecker *op_checker)
             : OpProtoAndCheckerMaker(proto, op_checker) {
+      AddInput(kX,
+               "The X input to select op")
+              .AsDuplicable();
+      AddInput(kCaseToExecute,
+               "The case index to execute as determined by select op.")
+              .AsDuplicable();
       AddAttr<framework::BlockDesc *>(kCasesBlock,
                                       "The cases block inside select_op");
       AddComment(R"DOC(

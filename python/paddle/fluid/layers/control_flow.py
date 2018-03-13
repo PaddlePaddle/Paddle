@@ -1309,7 +1309,8 @@ class Select(BlockGuard):
 
         super(Select, self).__init__(self.helper.main_program)
 
-        self.case_to_execute = self.helper.main_program.current_block().create_var(
+        self.case_to_execute = self.helper.main_program.block(
+            self.helper.main_program.current_block().parent_idx).create_var(
             type=core.VarDesc.VarType.LOD_TENSOR)
 
     def __enter__(self):
@@ -1376,13 +1377,13 @@ class Select(BlockGuard):
         X.append(self.case_to_execute)
 
         # Construct the select op.
-        select_block.append_op(
-            type="select",
+        parent_block.append_op(
+            type='select',
             inputs={
-                'X': X
+                'X': X,
+                'case_to_execute': self.case_to_execute
             },
             attrs={
-                'case_to_execute': self.case_to_execute.name,
                 'sub_block': select_block
             },
             outputs={}
