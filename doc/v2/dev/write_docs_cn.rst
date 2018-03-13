@@ -8,14 +8,14 @@ PaddlePaddle的文档包括英文文档 ``doc`` 和中文文档 ``doc_cn`` 两�
 如何构建文档
 ============
 
-PaddlePaddle的文档构建有三种方式。
+PaddlePaddle的文档构建有两种方式。
 
 
 使用PaddlePaddle.org工具
---------------
+----------------------
 这个是目前推荐的使用方法。除了可以自动编译文档，也可以直接在网页预览文档。
 
-文件工具是使用Docker，需要在系统里先安装好Docker工具包。Docker安装请参考Docker的官网。安装好Docker之后及可用以下命令启动工具
+PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好Docker工具包。Docker安装请参考Docker的官网。安装好Docker之后即可用以下命令启动工具
 
 ..  code-block:: bash
 
@@ -62,13 +62,18 @@ PaddlePaddle的文档构建有三种方式。
 
 想了解更多PaddlePaddle.org工具的详细信息，可以 `点击这里 <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.cn.md>`_ 。
 
-使用Docker构建
---------------
+不使用PaddlePaddle.org工具
+------------------------
 
 使用Docker构建PaddlePaddle的文档，需要在系统里先安装好Docker工具包。Docker安装请参考 `Docker的官网 <https://docs.docker.com/>`_ 。安装好Docker之后可以使用源码目录下的脚本构建文档，即
 
 ..  code-block:: bash
 
+    mkdir paddlepaddle # Create paddlepaddle working directory
+    cd paddlepaddle
+
+    # Clone the content repositories
+    git clone https://github.com/PaddlePaddle/Paddle.git
     cd TO_YOUR_PADDLE_CLONE_PATH
     cd paddle/scripts/tools/build_docs
     sh build_docs.sh
@@ -76,41 +81,40 @@ PaddlePaddle的文档构建有三种方式。
 编译完成之后，会在当前目录生成两个子目录\: doc(英文文档目录)和 doc_cn(中文文档目录)。
 打开浏览器访问对应目录下的index.html即可访问本地文档。
 
-直接构建
---------
-
-直接构建可以分为两种方式，分别是构建文档和构建API。
-
-- 构建文档
-
-如果只需要构建文档，可以执行以下命令编译生成文档，即：
+如果不想使用Docker，也可以使用以下命令直接构建PaddlePaddle文档，即
 
 .. code-block:: bash
 
+   mkdir paddlepaddle # Create paddlepaddle working directory
+   cd paddlepaddle
+
+   # Clone the content repositories
+   git clone https://github.com/PaddlePaddle/Paddle.git
+   cd TO_YOUR_PADDLE_CLONE_PATH
+   mkdir -p build
+   cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
+
+   # 如果只需要构建使用文档，则执行以下命令
    make -j $processors gen_proto_py
    make -j $processors paddle_docs paddle_docs_cn
 
-- 构建API
-
-如果只需要构建API，则可以执行以下命令编译生成文档，即：
-
-.. code-block:: bash
-
+   # 如果只需要构建API，则执行以下命令
    make -j $processors gen_proto_py framework_py_proto
    make -j $processors copy_paddle_pybind
    make -j $processors paddle_api_docs
 
-其中$processors代表启动多少个进程来进行编译，一般取值为1，4或8。
+其中$processors代表启动和CPU核一样多的进程来并行编译，一般取值为1，4或8，可以根据本机的CPU核数设置相应的值。
 
-编译完成后，从当前目录进入doc/v2目录，该目录下生成了三个子目录，可以分别进入目录cn/html/、en/html、api/en/html中，执行以下命令，即：
+编译完成后，进入doc/v2目录，如果选择构建文档则会在该目录下生成cn/html/、en/html两个子目录，选择构建API则会生成api/en/html目录，分别进入这些目录下，执行以下命令，即：
 
 .. code-block:: bash
 
    python -m SimpleHTTPServer 8088
 
-在浏览器中输入http://localhost:8088就可以看到编译生成的中/英文的文档页面和英文的API页面,下图为生成的英文文档页面示例。
+在浏览器中输入http://localhost:8088就可以看到编译生成的中/英文的文档页面和英文的API页面,下图为生成的英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
 
-..  image:: doc_en.png
+..  image:: src/doc_en.png
     :align: center
     :scale: 60 %
 
