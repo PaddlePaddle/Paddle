@@ -24,6 +24,7 @@ import paddle.fluid.profiler as profiler
 import argparse
 import functools
 import os
+from paddle.fluid import debuger
 
 
 def str2bool(v):
@@ -241,6 +242,8 @@ def main():
             "TRAINING_ROLE",
             "TRAINER")  # get the training role: trainer/pserver
 
+        print(debuger.pprint_program_codes(fluid.default_main_program().desc))
+
         t = fluid.DistributeTranspiler()
         t.transpile(
             optimize_ops,
@@ -255,6 +258,7 @@ def main():
             if not current_endpoint:
                 print("need env SERVER_ENDPOINT")
                 exit(1)
+            print("get_pserver_program")
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,
                                                     pserver_prog)

@@ -305,14 +305,17 @@ class DistributeTranspiler:
         # Iterate through the ops, and if an op and the optimize ops
         # which located on current pserver are in one set, then 
         # append it into the sub program.
+        #print("optimize_ops:", self.optimize_ops)
         for _, op in enumerate(self.optimize_ops):
             for _, opt_op in enumerate(opt_op_on_pserver):
+                print("opt_op")
                 if ufind.is_connected(op, opt_op):
                     if self._is_opt_op(op):
                         self._append_pserver_ops(optimize_block, op, endpoint)
                     else:
                         self._append_pserver_non_opt_ops(optimize_block, op)
                     break
+        print("add listen")
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
@@ -527,6 +530,7 @@ class DistributeTranspiler:
         # update param/grad shape first, then other inputs like
         # moment can use the updated shape
         for key in opt_op.input_names:
+            print("param")
             if key == "Grad":
                 grad_block = None
                 for g in self.param_grad_ep_mapping[endpoint]["grads"]:
@@ -559,6 +563,7 @@ class DistributeTranspiler:
                             attrs={"scale": 1.0 / float(self.trainers)})
                 new_inputs[key] = merged_var
             elif key == "Param":
+                print("param")
                 # param is already created on global program
                 param_block = None
                 for p in self.param_grad_ep_mapping[endpoint]["params"]:
@@ -576,6 +581,7 @@ class DistributeTranspiler:
             elif key == "LearningRate":
                 # leraning rate variable has already be created by non-optimize op,
                 # don't create it once again.
+                print("learning_rate")
                 new_inputs[key] = pserver_block.vars[opt_op.input(key)[0]]
 
         for key in opt_op.input_names:
