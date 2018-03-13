@@ -16,10 +16,42 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
+
+using float16 = paddle::platform::float16;
+
+template <>
+void gemm<platform::CUDADeviceContext, float16>(
+    const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const float16 alpha, const float16* A, const float16* B, const float16 beta,
+    float16* C) {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+
+  const half h_alpha = static_cast<const half>(alpha);
+  const half h_beta = static_cast<const half>(beta);
+  const half* h_A = reinterpret_cast<const half*>(A);
+  const half* h_B = reinterpret_cast<const half*>(B);
+  half* h_C = reinterpret_cast<half*>(C);
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
+                    "cublas Hgemm requires GPU compute capability >= 53");
+  PADDLE_ENFORCE(platform::dynload::cublasHgemm(
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
+      h_A, lda, &h_beta, h_C, N));
+}
 
 template <>
 void gemm<platform::CUDADeviceContext, float>(
@@ -61,6 +93,31 @@ void gemm<platform::CUDADeviceContext, double>(
 }
 
 template <>
+void gemm<platform::CUDADeviceContext, float16>(
+    const platform::CUDADeviceContext& context, const bool transA,
+    const bool transB, const int M, const int N, const int K,
+    const float16 alpha, const float16* A, const int lda, const float16* B,
+    const int ldb, const float16 beta, float16* C, const int ldc) {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
+
+  const half h_alpha = static_cast<const half>(alpha);
+  const half h_beta = static_cast<const half>(beta);
+  const half* h_A = reinterpret_cast<const half*>(A);
+  const half* h_B = reinterpret_cast<const half*>(B);
+  half* h_C = reinterpret_cast<half*>(C);
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
+                    "cublas Hgemm requires GPU compute capability >= 53");
+  PADDLE_ENFORCE(platform::dynload::cublasHgemm(
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
+      h_A, lda, &h_beta, h_C, ldc));
+}
+
+template <>
 void gemm<platform::CUDADeviceContext, float>(
     const platform::CUDADeviceContext& context, const bool transA,
     const bool transB, const int M, const int N, const int K, const float alpha,
@@ -88,6 +145,35 @@ void gemm<platform::CUDADeviceContext, double>(
   PADDLE_ENFORCE(platform::dynload::cublasDgemm(
       context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
       lda, &beta, C, ldc));
+}
+
+template <>
+void matmul<platform::CUDADeviceContext, float16>(
+    const platform::CUDADeviceContext& context,
+    const framework::Tensor& matrix_a, bool trans_a,
+    const framework::Tensor& matrix_b, bool trans_b, float16 alpha,
+    framework::Tensor* matrix_out, float16 beta) {
+  auto dim_a = matrix_a.dims();
+  auto dim_b = matrix_b.dims();
+  auto dim_out = matrix_out->dims();
+  PADDLE_ENFORCE(dim_a.size() == 2 && dim_b.size() == 2 && dim_out.size() == 2,
+                 "The input and output of matmul be matrix");
+
+  PADDLE_ENFORCE(platform::is_gpu_place(matrix_a.place()) &&
+                     platform::is_gpu_place(matrix_b.place()) &&
+                     platform::is_gpu_place(matrix_out->place()),
+                 "Matrix must all be in CUDAPlace");
+
+  int M = dim_out[0];
+  int N = dim_out[1];
+  int K = (trans_a == false) ? dim_a[1] : dim_a[0];
+
+  CBLAS_TRANSPOSE transA = (trans_a == false) ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = (trans_b == false) ? CblasNoTrans : CblasTrans;
+
+  gemm<platform::CUDADeviceContext, float16>(
+      context, transA, transB, M, N, K, alpha, matrix_a.data<float16>(),
+      matrix_b.data<float16>(), beta, matrix_out->data<float16>());
 }
 
 template <>
@@ -146,6 +232,37 @@ void matmul<platform::CUDADeviceContext, double>(
   gemm<platform::CUDADeviceContext, double>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<double>(),
       matrix_b.data<double>(), beta, matrix_out->data<double>());
+}
+
+template <>
+void batched_gemm<platform::CUDADeviceContext, float16>(
+    const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
+    const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
+    const float16 alpha, const float16* A, const float16* B, const float16 beta,
+    float16* C, const int batchCount, const int strideA, const int strideB) {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  const int strideC = M * N;
+
+  const half h_alpha = static_cast<const half>(alpha);
+  const half h_beta = static_cast<const half>(beta);
+  const half* h_A = reinterpret_cast<const half*>(A);
+  const half* h_B = reinterpret_cast<const half*>(B);
+  half* h_C = reinterpret_cast<half*>(C);
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
+                    "cublas Hgemm requires GPU compute capability >= 53");
+  PADDLE_ENFORCE(platform::dynload::cublasHgemmStridedBatched(
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
+      strideB, h_A, lda, strideA, &h_beta, h_C, ldc, strideC, batchCount));
 }
 
 template <>

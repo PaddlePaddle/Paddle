@@ -34,12 +34,8 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto ids_dims = ctx->GetInputDim("Ids");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
-
-    // The type of Ids(Input) is SelectedRows or LoDTensor, when Ids's type
-    // is LoDTensor, this tensor contains the ids to be looked up in W
-    // and it must be a column vector with rank = 2 while the 2nd dimension
-    // size must be 1, when Ids's type is SelectedRows, the rows of Ids
-    // contains the ids to be looked up in W;
+    // ids_var_types also can be LOD_TENSOR_ARRAY, it's used as concat_rows.
+    // Maybe near future we will add concat_rows op.
     if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
       PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
       PADDLE_ENFORCE_EQ(ids_dims[1], 1);
@@ -63,22 +59,17 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
   LookupTableOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("W",
-             "(Tensor) The input represents embedding tensors, "
+             "An input represents embedding tensors, "
              "which is a learnable parameter.");
-    AddInput(
-        "Ids",
-        "(Tensor or SelectedRows) Ids's type can be Tensor or "
-        "SelectedRows, when Ids's type is Tensor, this tensor contains "
-        "the ids to be looked up in W and it must be a column vector with "
-        "rank = 2 while the 2nd dimension size must be 1; when Ids's type is "
-        "SelectedRows, the rows of Ids contains the ids to be looked up "
-        "in W.");
-    AddOutput("Out",
-              "(Tensor or SelectedRows) The lookup results, which have the "
-              "same type as W.");
+    AddInput("Ids",
+             "An input with type int32 or int64 "
+             "contains the ids to be looked up in W. "
+             "Ids must be a column vector with rank = 2. "
+             "The 2nd dimension size must be 1.");
+    AddOutput("Out", "The lookup results, which have the same type as W.");
     AddAttr<bool>("is_sparse",
                   "(boolean, default false) "
-                  "Sparse update.")
+                  "Sparse update")
         .SetDefault(false);
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "
@@ -90,14 +81,10 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
 Lookup Table Operator.
 
 This operator is used to perform lookups on the parameter W,
-then concatenated into a dense or sparse tensor.
+then concatenated into a dense tensor.
 
-The type of Ids(Input) is SelectedRows, Tensor or LoDTensor, when Ids's
-type is SelectedRows, the rows of Ids contains the ids to be looked up in W;
-when Ids's type is Tensor, this tensor contains the ids to be looked up in W
-and it must be a column vector with rank = 2 while the 2nd dimension size must be 1,
-at this time, Ids can carry the LoD (Level of Details) information, or not, and
-the output only shares the LoD information with input Ids.
+The input Ids can carry the LoD (Level of Details) information,
+or not. And the output only shares the LoD information with input Ids.
 
 )DOC");
   }

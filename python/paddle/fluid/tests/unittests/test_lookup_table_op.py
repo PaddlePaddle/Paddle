@@ -14,9 +14,9 @@
 
 import unittest
 import numpy as np
+from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from op_test import OpTest
 
 
 class TestLookupTableOp(OpTest):
@@ -49,11 +49,11 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         pass
 
 
-# Testing look_up_table when Ids's type is SelectedRows.
 class TestLookupTableIdsIsSelectedRows(OpTest):
     def check_with_place(self, place):
         scope = core.Scope()
 
+        # create and initialize Grad Variable
         height = 10
         rows = [0, 4, 4, 7]
         row_numel = 12
@@ -65,6 +65,7 @@ class TestLookupTableIdsIsSelectedRows(OpTest):
         ids_tensor = ids_selected_rows.get_tensor()
         ids_tensor.set(np_array, place)
 
+        # create and initialize W Variable
         W = scope.var('W').get_tensor()
         W_array = np.full((height, row_numel), 1.0).astype("float32")
         for i in range(height):

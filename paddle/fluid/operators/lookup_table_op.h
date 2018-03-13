@@ -30,22 +30,23 @@ template <typename T>
 class LookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* table_t = context.Input<LoDTensor>("W");
-    auto* output_t = context.Output<Tensor>("Out");
-    auto* ids_var = context.InputVar("Ids");
+    auto* table_t = context.Input<LoDTensor>("W");  // float tensor
+    auto* ids_var = context.InputVar("Ids");        // int tensor
 
     int64_t* ids;
     int64_t ids_numel;
-    // The type of Ids(Input) is SelectedRows or LoDTensor, when Ids's type
-    // is LoDTensor, this tensor contains the ids to be looked up in W;
-    // when Ids's type is SelectedRows, the rows of Ids contains the
-    // ids to be looked up in W.
+    Tensor* output_t;
+
+    // ids_var_types also can be LOD_TENSOR_ARRAY, it's used as concat_rows.
+    // Maybe near future we will add concat_rows op.
     if (ids_var->IsType<LoDTensor>()) {
       auto* ids_t = context.Input<LoDTensor>("Ids");
+      output_t = context.Output<LoDTensor>("Out");
       ids = const_cast<int64_t*>(ids_t->data<int64_t>());
       ids_numel = ids_t->numel();
     } else if (ids_var->IsType<SelectedRows>()) {
       auto* ids_t = context.Input<SelectedRows>("Ids");
+      output_t = context.Output<SelectedRows>("Out")->mutable_value();
       ids = const_cast<int64_t*>(ids_t->rows().data());
       ids_numel = ids_t->rows().size();
       output_t->Resize({ids_numel, table_t->dims()[1]});
