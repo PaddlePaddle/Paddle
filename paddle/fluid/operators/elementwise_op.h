@@ -41,6 +41,16 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   }
 };
 
+class ElementwiseOpInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc& op_desc,
+                  framework::BlockDesc* block) const override {
+    auto x_var = op_desc.Input("X")[0];
+    auto out_var = op_desc.Output("Out")[0];
+    block->Var(out_var)->SetType(block->Var(x_var)->GetType());
+  }
+};
+
 class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ElementwiseOpMaker(OpProto* proto, OpAttrChecker* op_checker)

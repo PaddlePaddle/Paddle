@@ -161,6 +161,8 @@ void BindBlockDesc(py::module &m) {
            py::return_value_policy::reference)
       .def("prepend_op", &BlockDesc::PrependOp,
            py::return_value_policy::reference)
+      .def("insert_op", &BlockDesc::InsertOp,
+           py::return_value_policy::reference)
       .def("remove_op", &BlockDesc::RemoveOp)
       .def("var",
            [](BlockDesc &self, py::bytes byte_name) {
