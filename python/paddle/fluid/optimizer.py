@@ -15,6 +15,7 @@
 from collections import defaultdict
 
 import framework
+import core
 import layers
 from backward import append_backward
 from framework import program_guard
@@ -35,7 +36,11 @@ class Optimizer(object):
     but need to use one of it's implementation.
     """
 
-    def __init__(self, learning_rate, regularization=None):
+    def __init__(self,
+                 learning_rate,
+                 global_step=None,
+                 regularization=None,
+                 append_all_reduce=False):
         if not isinstance(learning_rate, float) and \
                 not isinstance(learning_rate, framework.Variable):
             raise TypeError("learning rate should be float or Variable")
@@ -53,6 +58,7 @@ class Optimizer(object):
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
+        self.append_all_reduce = append_all_reduce
 
     def _create_global_learning_rate(self):
         lr = self.global_learning_rate()
@@ -222,6 +228,30 @@ class Optimizer(object):
         """
         params_grads = append_backward(loss, parameter_list, no_grad_set,
                                        [error_clip_callback])
+        if self.append_all_reduce:
+            global_block = loss.block.program.global_block()
+            dummy_communicator = global_block.create_var(
+                type=core.VarDesc.VarType.RAW,
+                name=str(core.get_nccl_com_name()))
+            for (_, grad) in params_grads:
+                if grad is None:
+                    continue
+                all_reduced_var = global_block.create_var(
+                    name=grad.name + '__nccl_all_reduce__')
+                global_block.append_op(
+                    type='ncclAllReduce',
+                    inputs={'X': [grad],
+                            "Communicator": [dummy_communicator]},
+                    outputs={'Out': [all_reduced_var]},
+                    attrs={'reduction': 'ncclSum'})
+                global_block.append_op(
+                    type="assign",
+                    inputs={"X": [all_reduced_var]},
+                    outputs={"Out": [grad]})
+
+            # The real nccl_com will be created by the parallel executor.
+            # Change the nccl_com name in the blockDesc to dummy
+            dummy_communicator.name = "__nccl_com_dummy__"
 
         params_grads = append_gradient_clip_ops(params_grads)
 

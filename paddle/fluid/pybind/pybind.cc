@@ -414,9 +414,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
-      .def("run",
-           (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
-               Executor::Run);
+      .def("run", [](framework::Executor &self, const ProgramDesc &p, Scope *s,
+                     int i, bool b1, bool b2) -> void {
+        py::gil_scoped_release release_guard;
+        self.Run(p, s, i, b1, b2);
+      });
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
@@ -462,6 +464,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+
+  m.def("get_nccl_com_name", &platform::GlobalNCCLCommunicatorName);
+  m.def("init_nccl_com", &platform::InitNCCLCom);
 
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
