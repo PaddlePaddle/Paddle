@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <stddef.h>  // for size_t
 #include <typeindex>
+#include <condition_variable>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -43,9 +44,11 @@ class Channel {
   virtual ~Channel() {}
 
   virtual void AddToSendQ(const void *referrer, T* data,
-                 std::function<void (ChannelAction)> cb) = 0;
+                          std::condition_variable_any &rCond,
+                          std::function<void (ChannelAction)> cb) = 0;
   virtual void AddToReceiveQ(const void *referrer, T* data,
-                 std::function<void (ChannelAction)> cb) = 0;
+                             std::condition_variable_any &rCond,
+                             std::function<void (ChannelAction)> cb) = 0;
   virtual void RemoveFromSendQ(const void *referrer) = 0;
   virtual void RemoveFromReceiveQ(const void *referrer) = 0;
 };
@@ -136,22 +139,24 @@ class ChannelHolder {
 
   template <typename T>
   void AddToSendQ(const void *referrer, T* data,
-         std::function<void (ChannelAction)> cb) {
+                  std::condition_variable_any &rCond,
+                  std::function<void (ChannelAction)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
-        channel->AddToSendQ(referrer, data, cb);
+        channel->AddToSendQ(referrer, data, rCond, cb);
       }
     }
   }
 
   template <typename T>
   void AddToReceiveQ(const void *referrer, T* data,
-         std::function<void (ChannelAction)> cb) {
+                     std::condition_variable_any &rCond,
+                     std::function<void (ChannelAction)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
-        channel->AddToReceiveQ(referrer, data, cb);
+        channel->AddToReceiveQ(referrer, data, rCond, cb);
       }
     }
   }

@@ -42,9 +42,11 @@ class ChannelImpl : public paddle::framework::Channel<T> {
   virtual ~ChannelImpl();
 
   virtual void AddToSendQ(const void *referrer, T* data,
-                 std::function<void (ChannelAction)> cb);
+                          std::condition_variable_any &rCond,
+                          std::function<void (ChannelAction)> cb);
   virtual void AddToReceiveQ(const void *referrer, T* data,
-                 std::function<void (ChannelAction)> cb);
+                             std::condition_variable_any &rCond,
+                             std::function<void (ChannelAction)> cb);
 
   virtual void RemoveFromSendQ(const void *referrer);
   virtual void RemoveFromReceiveQ(const void *referrer);
@@ -271,21 +273,27 @@ void ChannelImpl<T>::Close() {
 
 template <typename T>
 void ChannelImpl<T>::AddToSendQ(const void *referrer, T* data,
-                       std::function<void (ChannelAction)> cb) {
+                                std::condition_variable_any &rCond,
+                                std::function<void (ChannelAction)> cb) {
   std::lock_guard<std::recursive_mutex> lock{mu_};
   auto m = std::make_shared<QueueMessage>(data);
   m->referrer = referrer;
   m->callback = cb;
+  // TODO(abhinav): Need to change this to shared pointer
+  //m->cond = rCond;
   sendq.push_back(m);
 }
 
 template <typename T>
 void ChannelImpl<T>::AddToReceiveQ(const void *referrer, T* data,
-                       std::function<void (ChannelAction)> cb) {
+                                   std::condition_variable_any &rCond,
+                                   std::function<void (ChannelAction)> cb) {
   std::lock_guard<std::recursive_mutex> lock{mu_};
   auto m = std::make_shared<QueueMessage>(data);
   m->referrer = referrer;
   m->callback = cb;
+  // TODO(abhinav): Need to change this to shared pointer
+  //m->cond = rCond;
   recvq.push_back(m);
 }
 

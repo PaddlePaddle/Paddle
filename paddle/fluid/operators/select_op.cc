@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <thread>
 #include <vector>
+#include <boost/tokenizer.hpp>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -25,12 +26,8 @@ namespace operators {
 static constexpr char kX[] = "X";
 static constexpr char kCaseToExecute[] = "case_to_execute";
 
+static constexpr char kCases[] = "cases";
 static constexpr char kCasesBlock[] = "sub_block";
-
-static constexpr char kAttrCaseIndex[] = "case_index";
-static constexpr char kAttrCaseType[] = "case_type";
-static constexpr char kAttrCaseChannel[] = "case_channel";
-static constexpr char kAttrCaseChannelVar[] = "case_channel_var";
 
 class SelectOp : public framework::OperatorBase {
 public:
@@ -62,6 +59,9 @@ private:
 
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+    std::vector<std::string> casesConfigs =
+            Attr<std::vector<std::string>>(kCases);
+
     framework::BlockDesc *casesBlock =
             Attr<framework::BlockDesc *>(kCasesBlock);
 
@@ -73,7 +73,7 @@ private:
 
     // Construct cases from "conditional_block_op"(s) in the casesBlock
     std::vector<std::shared_ptr<SelectOpCase>> cases =
-            ParseAndShuffleCases(casesBlock);
+            ParseAndShuffleCases(&casesConfigs);
 
     // Get all unique channels involved in select
     std::set<framework::ChannelHolder *> channelsSet;
@@ -112,7 +112,7 @@ private:
   }
 
   /**
-   * Goes through all operators in the "cases" block and processes
+   * Goes through all operators in the casesConfigs and processes
    * "conditional_block" operators.  These operators are mapped to our
    * SelectOpCase objects.  We randomize the case orders, and set the
    * default case (if any exists) as the last case)
@@ -120,32 +120,39 @@ private:
    * @return
    */
   std::vector<std::shared_ptr<SelectOpCase>> ParseAndShuffleCases(
-          framework::BlockDesc *casesBlock) const {
+          std::vector<std::string> *casesConfigs) const {
     std::vector<std::shared_ptr<SelectOpCase>> cases;
     std::shared_ptr<SelectOpCase> defaultCase;
 
-    if (casesBlock != nullptr) {
-      // TODO(thuan): Enforce cases block only has conditional_ops
-      for (auto* caseOp : casesBlock->AllOps()) {
-        if (caseOp->Type() != "conditional_block") {
-          // We only want to process conditional_block_ops
-          continue;
+    if (casesConfigs != nullptr) {
+      boost::char_delimiters_separator<char> sep(false, ",", "");
+      for (std::vector<std::string>::iterator itr = casesConfigs->begin();
+           itr < casesConfigs->end(); ++itr) {
+        std::string caseConfig = *itr;
+        std::cout << "CASE CONFIG: " << caseConfig << std::endl;
+        boost::tokenizer<> tokens(caseConfig, sep);
+
+        boost::tokenizer<>::iterator tok_iter = tokens.begin();
+        PADDLE_ENFORCE(tok_iter != tokens.end(), "Cannot get case index");
+        std::string caseIndexString = *tok_iter;
+        int caseIndex = std::stoi(caseIndexString);
+
+        ++tok_iter;
+        PADDLE_ENFORCE(tok_iter != tokens.end(), "Cannot get case type");
+        std::string caseTypeString = *tok_iter;
+        SelectOpCaseType caseType = (SelectOpCaseType)std::stoi(caseTypeString);
+
+        ++tok_iter;
+        PADDLE_ENFORCE(tok_iter != tokens.end(), "Cannot get case channel");
+        std::string caseChannel = *tok_iter;
+
+        std::string caseChannelVar;
+        if (caseType != SelectOpCaseType::DEFAULT) {
+          ++tok_iter;
+          PADDLE_ENFORCE(tok_iter != tokens.end(),
+                         "Cannot get case channel variable");
+          caseChannelVar = *tok_iter;
         }
-        framework::Attribute caseIndexAttr = caseOp->GetAttr(kAttrCaseIndex);
-        int caseIndex = boost::get<int>(caseIndexAttr);
-
-        framework::Attribute caseTypeAttr = caseOp->GetAttr(kAttrCaseType);
-        SelectOpCaseType caseType = static_cast<SelectOpCaseType>(
-                boost::get<int>(caseTypeAttr));
-
-        framework::Attribute caseChannelAttr =
-                caseOp->GetAttr(kAttrCaseChannel);
-        std::string caseChannel = boost::get<std::string>(caseChannelAttr);
-
-        framework::Attribute caseChannelVarAttr =
-                caseOp->GetAttr(kAttrCaseChannelVar);
-        std::string caseChannelVar = boost::get<std::string>(
-                caseChannelVarAttr);
 
         auto c = std::make_shared<SelectOpCase>(caseIndex, caseType,
                                                 caseChannel, caseChannelVar);
@@ -189,7 +196,7 @@ private:
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
-//      std::cout << "CASE: " << c->caseType << std::endl;
+      std::cout << "CASE: " << std::endl;
 
       auto chVar = scope->FindVar(c->channelName);
       framework::ChannelHolder *ch =
@@ -205,7 +212,7 @@ private:
             // TODO(thuan): Don't hardcode type
             ch->Send(chVar->GetMutable<framework::LoDTensor>());
             caseToExecute = c->caseIndex;
-//            std::cout << "SENDING DATA" << std::endl;
+            std::cout << "SENDING DATA" << std::endl;
           }
           break;
         case SelectOpCaseType::RECEIVE:
@@ -216,7 +223,7 @@ private:
             // TODO(thuan): Don't hardcode type
             ch->Receive(chVar->GetMutable<framework::LoDTensor>());
             caseToExecute = c->caseIndex;
-//            std::cout << "RECEIVING DATA" << std::endl;
+            std::cout << "RECEIVING DATA" << std::endl;
           }
           break;
         case SelectOpCaseType::DEFAULT:
@@ -240,11 +247,12 @@ private:
       std::unique_lock<std::recursive_mutex> lock{mutex};
       std::condition_variable_any selectCond;
 
-      pushThreadOnChannelQueues(scope, cases, &caseToExecute, &completed);
+      pushThreadOnChannelQueues(scope, cases, selectCond,
+                                &caseToExecute, &completed);
 
       // TODO(thuan): Atomically unlock all channels and sleep current thread
       unlockChannels(channels);
-//      std::cout << "WAITING..." << std::endl;
+      std::cout << "WAITING..." << std::endl;
       selectCond.wait(lock, [&completed]() { return completed.load(); });
 
       // Select has been woken up by case operation
@@ -260,7 +268,7 @@ private:
       }
     }
 
-//    std::cout << "***EXECUTING CASE: " << caseToExecute << std::endl;
+    std::cout << "***EXECUTING CASE: " << caseToExecute << std::endl;
 
     // At this point, caseToExecute != -1, and we can proceed with executing
     // the case block
@@ -289,6 +297,7 @@ private:
 
   void pushThreadOnChannelQueues(const framework::Scope *scope,
         std::vector<std::shared_ptr<SelectOpCase>> *cases,
+        std::condition_variable_any &rCond,
         std::atomic<int> *caseToExecute,
         std::atomic<bool> *completed) const {
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
@@ -316,7 +325,7 @@ private:
           auto chOutputVar = scope->FindVar(c->varName);
           // TODO(thuan): Don't hardcode type
           ch->AddToSendQ<framework::LoDTensor>(this,
-                chOutputVar->GetMutable<framework::LoDTensor>(), cb);
+                chOutputVar->GetMutable<framework::LoDTensor>(), rCond, cb);
 //          std::cout << "ADD TO SEND Q" << std::endl;
           break;
         }
@@ -324,7 +333,7 @@ private:
           // TODO(thuan): Don't hardcode type
           auto chOutputVar = scope->FindVar(c->varName);
           ch->AddToReceiveQ<framework::LoDTensor>(this,
-                chOutputVar->GetMutable<framework::LoDTensor>(), cb);
+                chOutputVar->GetMutable<framework::LoDTensor>(), rCond, cb);
 //          std::cout << "ADD TO RECEIVE Q" << std::endl;
           break;
         }
@@ -376,6 +385,8 @@ class SelectOpMaker : public framework::OpProtoAndCheckerMaker {
       AddInput(kCaseToExecute,
                "The case index to execute as determined by select op.")
               .AsDuplicable();
+      AddAttr<std::vector<std::string>>(kCases,
+                                      "The cases configuration");
       AddAttr<framework::BlockDesc *>(kCasesBlock,
                                       "The cases block inside select_op");
       AddComment(R"DOC(

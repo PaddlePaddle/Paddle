@@ -137,18 +137,15 @@ class TestRoutineOp(unittest.TestCase):
         with framework.program_guard(framework.Program()):
             quit_ch_input_var = self._create_persistable_tensor(
                 'quit_ch_input', core.VarDesc.VarType.LOD_TENSOR,
-                core.VarDesc.VarType.FP64)
+                core.VarDesc.VarType.INT64)
             quit_ch_input = fill_constant(
-                shape=[1], dtype=core.VarDesc.VarType.FP64,
+                shape=[1], dtype=core.VarDesc.VarType.INT64,
                 value=0, out=quit_ch_input_var)
 
-            result2 = fill_constant(
-                shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
+            result2 = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=0)
 
-            x = fill_constant(
-                shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
-            y = fill_constant(
-                shape=[1], dtype=core.VarDesc.VarType.FP64, value=1)
+            x = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=0)
+            y = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=1)
 
             while_cond = fill_constant(
                 shape=[1], dtype=core.VarDesc.VarType.BOOL, value=True)
@@ -156,13 +153,13 @@ class TestRoutineOp(unittest.TestCase):
             while_false = fill_constant(
                 shape=[1], dtype=core.VarDesc.VarType.BOOL, value=False)
 
-            x_tmp = fill_constant(
-                shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
+            x_tmp = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=0)
 
-            x_to_send_tmp = fill_constant(
-                shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
+            x_to_send_tmp = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=0)
 
-            assign(input=x_to_send_tmp, output=x)
+            # TODO(abhinav): Need to perform copy when doing a channel send.
+            #   Once this is complete, we can remove these lines
+            assign(input=x, output=x_to_send_tmp)
 
             def fibonacci(channel, quit_channel):
                 while_op = While(cond=while_cond)
@@ -182,10 +179,8 @@ class TestRoutineOp(unittest.TestCase):
             ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
             quit_ch = fluid.make_channel(
                 dtype=core.VarDesc.VarType.LOD_TENSOR)
-    
-            result = self._create_persistable_tensor(
-                'return_value', core.VarDesc.VarType.LOD_TENSOR,
-                core.VarDesc.VarType.INT64)
+
+            result = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=1)
 
             with fluid.Go():
                 for i in xrange(10):

@@ -92,11 +92,7 @@ void AddCase(ProgramDesc *program, Scope *scope, p::CPUPlace *place,
         {{"X", {caseCondName}}, {"Params", {}}},
         {{"Out", {}}, {"Scope", {"step_scope"}}},
         {{"sub_block", caseBlock},
-         {"is_scalar_condition", true},
-         {"case_index", caseId},
-         {"case_type", caseType},  /* Channel Send */
-         {"case_channel", std::string(caseChannel)},
-         {"case_channel_var", caseVarName}},
+         {"is_scalar_condition", true}},
         casesBlock);
 }
 
@@ -151,6 +147,7 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
             caseBlock);
     };
   AddCase(program, scope, place, casesBlock, 0, 1, dataChanName, "fibXToSend", case0Func);
+  std::string case0Config = std::string("0,1,") + dataChanName + std::string(",fibXToSend");
 
   // Case 1: Receive from quitChanName
   std::function<void (BlockDesc* caseBlock, Scope* scope)> case2Func =
@@ -166,12 +163,14 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
             caseBlock);
     };
   AddCase(program, scope, place, casesBlock, 1, 2, quitChanName, "quitVar", case2Func);
+  std::string case1Config = std::string("1,2,") + quitChanName + std::string(",quitVar");
 
   // Select block
   AddOp("select",
         {{"X", {dataChanName, quitChanName}}, {"case_to_execute", {"caseToExecute"}}},
         {},
-        {{"sub_block", casesBlock}},
+        {{"sub_block", casesBlock},
+         {"cases", std::vector<std::string>{case0Config, case1Config}}},
         whileBlock);
 
   scope->Var("stepScopes");

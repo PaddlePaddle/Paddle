@@ -1273,8 +1273,7 @@ class SelectCase(object):
         # First, create an op that will determine whether or not this is the
         # conditional variable to execute.
         should_execute_block = equal(
-            fill_constant(shape=[1], dtype=core.VarDesc.VarType.LOD_TENSOR,
-                          value=self.idx),
+            fill_constant(shape=[1], dtype='int64', value=self.idx),
             self.case_to_execute
         )
 
@@ -1315,10 +1314,8 @@ class Select(BlockGuard):
         self.cases = []
 
         super(Select, self).__init__(self.helper.main_program)
-
-        self.case_to_execute = self.helper.main_program.block(
-            self.helper.main_program.current_block().parent_idx).create_var(
-            type=core.VarDesc.VarType.LOD_TENSOR)
+        self.case_to_execute = fill_constant(
+            shape=[1], dtype='int64', value=-1, force_cpu=True)
 
     def __enter__(self):
         super(Select, self).__enter__()
