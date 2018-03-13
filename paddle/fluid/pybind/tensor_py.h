@@ -78,17 +78,28 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
       } else if (paddle::platform::is_cpu_place(tensor.place())) {
         dst_tensor = tensor;
       }
-      return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
-                             py::format_descriptor<CUR_TYPE>::format(),
-                             (size_t)framework::arity(dst_tensor.dims()),
-                             dims_outside, strides);
+
+      if (std::type_index(typeid(CUR_TYPE)) ==
+          std::type_index(typeid(platform::float16))) {
+        return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
+                               py::format_descriptor<uint16_t>::format(),
+                               (size_t)framework::arity(dst_tensor.dims()),
+                               dims_outside, strides);
+      } else {
+        return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
+                               py::format_descriptor<CUR_TYPE>::format(),
+                               (size_t)framework::arity(dst_tensor.dims()),
+                               dims_outside, strides);
+      }
     } else {
       constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
       return CastToPyBufferImpl<less, I + 1, ARGS...>()(tensor);
     }
   }
 };
+
 }  // namespace details
+
 inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
   auto buffer_info =
       details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool,
