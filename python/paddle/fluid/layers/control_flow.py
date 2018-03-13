@@ -1213,6 +1213,10 @@ class Switch(object):
 
 
 class SelectCase(object):
+    DEFAULT = 0
+    SEND = 1
+    RECEIVE = 2
+
     def __init__(self, case_idx, case_to_execute, channel_action_fn=None,
                  channel=None, value=None):
         self.helper = LayerHelper('conditional_block')
@@ -1224,8 +1228,9 @@ class SelectCase(object):
 
         # Since we aren't going to use the `channel_send` or `channel_recv`
         # functions directly, we just need to capture the name.
-        self.action = (1 if channel_action_fn.__name__ == 'channel_send' else (
-            2)) if channel_action_fn else 0
+        self.action = (self.SEND if channel_action_fn.__name__ == (
+            'channel_send') else self.RECEIVE) if channel_action_fn else (
+            self.DEFAULT)
         self.value = value
         self.channel = channel
 
