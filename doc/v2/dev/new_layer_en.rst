@@ -16,7 +16,7 @@ First we need to derive equations of the *forward* and *backward* part of the la
 
 The illustration of a fully connected layer is shown in the following figure. In a fully connected layer, all output nodes are connected to all the input nodes.
 
-..  image:: FullyConnected.jpg
+..  image:: src/FullyConnected.jpg
     :align: center
     :scale: 60 %
 
