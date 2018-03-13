@@ -22,7 +22,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -54,12 +54,13 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
       math::SoftmaxCUDNNFunctor<T>()(
-          ctx.template device_context<DeviceContext>(), &x_i, &out_i);
+          ctx.template device_context<platform::CUDADeviceContext>(), &x_i,
+          &out_i);
     }
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -86,8 +87,8 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);
       math::SoftmaxGradCUDNNFunctor<T>()(
-          ctx.template device_context<DeviceContext>(), &out_i, &out_grad_i,
-          &x_grad_i);
+          ctx.template device_context<platform::CUDADeviceContext>(), &out_i,
+          &out_grad_i, &x_grad_i);
     }
   }
 };
@@ -96,14 +97,9 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(
-    sequence_softmax, CUDNN, ::paddle::platform::CUDAPlace,
-    ops::SequenceSoftmaxCUDNNKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceSoftmaxCUDNNKernel<paddle::platform::CUDADeviceContext,
-                                    double>)
-REGISTER_OP_KERNEL(
-    sequence_softmax_grad, CUDNN, ::paddle::platform::CUDAPlace,
-    ops::SequenceSoftmaxGradCUDNNKernel<paddle::platform::CUDADeviceContext,
-                                        float>,
-    ops::SequenceSoftmaxGradCUDNNKernel<paddle::platform::CUDADeviceContext,
-                                        double>)
+REGISTER_OP_KERNEL(sequence_softmax, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::SequenceSoftmaxCUDNNKernel<float>,
+                   ops::SequenceSoftmaxCUDNNKernel<double>)
+REGISTER_OP_KERNEL(sequence_softmax_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::SequenceSoftmaxGradCUDNNKernel<float>,
+                   ops::SequenceSoftmaxGradCUDNNKernel<double>)

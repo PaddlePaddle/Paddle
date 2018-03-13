@@ -47,11 +47,9 @@ class SoftmaxOp : public framework::OperatorWithKernel {
       runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
     }
 #endif
-    framework::LibraryType library_;
+    framework::LibraryType library_ = framework::LibraryType::kPlain;
     if (use_cudnn && runtime_cudnn_support) {
       library_ = framework::LibraryType::kCUDNN;
-    } else {
-      library_ = framework::LibraryType::kPlain;
     }
     std::string data_format = ctx.Attr<std::string>("data_format");
     return framework::OpKernelType(
@@ -115,6 +113,29 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
                       "Input(Out) and its gradients should have a same shape.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+    bool runtime_cudnn_support = false;
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
+    }
+#endif
+    framework::LibraryType library_ = framework::LibraryType::kPlain;
+    if (use_cudnn && runtime_cudnn_support) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        framework::StringToDataLayout(data_format), library_);
   }
 };
 
