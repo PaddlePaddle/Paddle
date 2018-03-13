@@ -46,7 +46,7 @@ INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
 FILE(WRITE ${MKLML_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(MKLML)\n"
   "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${MKLML_VER}\n"
+  "install(DIRECTORY ${MKLML_VER}/include ${MKLML_VER}/lib \n"
   "        DESTINATION ${MKLML_DST_DIR})\n")
 
 ExternalProject_Add(
