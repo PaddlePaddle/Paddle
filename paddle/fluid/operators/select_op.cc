@@ -300,6 +300,8 @@ private:
         std::condition_variable_any &rCond,
         std::atomic<int> *caseToExecute,
         std::atomic<bool> *completed) const {
+    std::recursive_mutex callbackMutex;
+
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
@@ -308,16 +310,23 @@ private:
       framework::ChannelHolder *ch =
               chVar->GetMutable<framework::ChannelHolder>();
 
-      // TODO(thuan): Don't hardcode type
-      std::function<void(framework::ChannelAction channelAction)>
+      std::function<bool(framework::ChannelAction channelAction)>
         cb = [&](framework::ChannelAction channelAction) {
-          // If the channel wasn't closed, we set the caseToExecute index
-          // as this current case
-          if (channelAction != framework::ChannelAction::CLOSE) {
-            *caseToExecute = c->caseIndex;
+          std::lock_guard<std::recursive_mutex> lock{callbackMutex};
+
+          bool canProcess = false;
+          if (!completed) {
+            // If the channel wasn't closed, we set the caseToExecute index
+            // as this current case
+            if (channelAction != framework::ChannelAction::CLOSE) {
+              *caseToExecute = c->caseIndex;
+            }
+            // This will allow our conditional variable to break out of wait
+            *completed = true;
+            canProcess = true;
           }
-          // This will allow our conditional variable to break out of wait
-          *completed = true;
+
+          return canProcess;
         };
 
       switch (c->caseType) {

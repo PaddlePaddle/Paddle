@@ -43,10 +43,10 @@ class ChannelImpl : public paddle::framework::Channel<T> {
 
   virtual void AddToSendQ(const void *referrer, T* data,
                           std::condition_variable_any &rCond,
-                          std::function<void (ChannelAction)> cb);
+                          std::function<bool (ChannelAction)> cb);
   virtual void AddToReceiveQ(const void *referrer, T* data,
                              std::condition_variable_any &rCond,
-                             std::function<void (ChannelAction)> cb);
+                             std::function<bool (ChannelAction)> cb);
 
   virtual void RemoveFromSendQ(const void *referrer);
   virtual void RemoveFromReceiveQ(const void *referrer);
@@ -58,7 +58,7 @@ class ChannelImpl : public paddle::framework::Channel<T> {
       bool chan_closed = false;
       bool completed = false;
       const void *referrer;   // TODO(thuan): figure out better way to do this
-      std::function<void(ChannelAction)> callback;
+      std::function<bool(ChannelAction)> callback;
 
       QueueMessage(T *item) : data(item) {}
 
@@ -274,7 +274,7 @@ void ChannelImpl<T>::Close() {
 template <typename T>
 void ChannelImpl<T>::AddToSendQ(const void *referrer, T* data,
                                 std::condition_variable_any &rCond,
-                                std::function<void (ChannelAction)> cb) {
+                                std::function<bool (ChannelAction)> cb) {
   std::lock_guard<std::recursive_mutex> lock{mu_};
   auto m = std::make_shared<QueueMessage>(data);
   m->referrer = referrer;
@@ -287,7 +287,7 @@ void ChannelImpl<T>::AddToSendQ(const void *referrer, T* data,
 template <typename T>
 void ChannelImpl<T>::AddToReceiveQ(const void *referrer, T* data,
                                    std::condition_variable_any &rCond,
-                                   std::function<void (ChannelAction)> cb) {
+                                   std::function<bool (ChannelAction)> cb) {
   std::lock_guard<std::recursive_mutex> lock{mu_};
   auto m = std::make_shared<QueueMessage>(data);
   m->referrer = referrer;

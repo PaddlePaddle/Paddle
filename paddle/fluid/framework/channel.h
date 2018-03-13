@@ -45,10 +45,10 @@ class Channel {
 
   virtual void AddToSendQ(const void *referrer, T* data,
                           std::condition_variable_any &rCond,
-                          std::function<void (ChannelAction)> cb) = 0;
+                          std::function<bool (ChannelAction)> cb) = 0;
   virtual void AddToReceiveQ(const void *referrer, T* data,
                              std::condition_variable_any &rCond,
-                             std::function<void (ChannelAction)> cb) = 0;
+                             std::function<bool (ChannelAction)> cb) = 0;
   virtual void RemoveFromSendQ(const void *referrer) = 0;
   virtual void RemoveFromReceiveQ(const void *referrer) = 0;
 };
@@ -140,7 +140,7 @@ class ChannelHolder {
   template <typename T>
   void AddToSendQ(const void *referrer, T* data,
                   std::condition_variable_any &rCond,
-                  std::function<void (ChannelAction)> cb) {
+                  std::function<bool (ChannelAction)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
@@ -152,7 +152,7 @@ class ChannelHolder {
   template <typename T>
   void AddToReceiveQ(const void *referrer, T* data,
                      std::condition_variable_any &rCond,
-                     std::function<void (ChannelAction)> cb) {
+                     std::function<bool (ChannelAction)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
