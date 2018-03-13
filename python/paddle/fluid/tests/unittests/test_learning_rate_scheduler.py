@@ -19,6 +19,7 @@ import unittest
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework
+import paddle.fluid.core as core
 
 
 def exponential_decay(learning_rate,
@@ -81,12 +82,25 @@ def piecewise_decay(global_step, boundaries, values):
 
 class TestLearningRateDecay(unittest.TestCase):
     def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            self.check_decay_with_place(place, python_decay_fn, fluid_decay_fn,
+                                        kwargs)
+
+    def check_decay_with_place(self, place, python_decay_fn, fluid_decay_fn,
+                               kwargs):
+
         decayed_lr = fluid_decay_fn(**kwargs)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
 
         exe.run(fluid.default_startup_program())
+
+        fluid.memory_optimize(fluid.default_main_program())
+
         for step in range(10):
             lr_val, = exe.run(fluid.default_main_program(),
                               feed={},

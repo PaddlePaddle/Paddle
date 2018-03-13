@@ -115,11 +115,11 @@ void TestInference(const std::string& dirname,
 #endif
   }
 
-  // Enable the profiler
-  paddle::platform::EnableProfiler(state);
-
   // 2. Initialize the inference_program and load parameters
   std::unique_ptr<paddle::framework::ProgramDesc> inference_program;
+
+  // Enable the profiler
+  paddle::platform::EnableProfiler(state);
   {
     paddle::platform::RecordEvent record_event(
         "init_program",
@@ -143,6 +143,10 @@ void TestInference(const std::string& dirname,
       inference_program = paddle::inference::Load(executor, *scope, dirname);
     }
   }
+  // Disable the profiler and print the timing information
+  paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
+                                    "load_program_profiler.txt");
+  paddle::platform::ResetProfiler();
 
   // 3. Get the feed_target_names and fetch_target_names
   const std::vector<std::string>& feed_target_names =
@@ -165,6 +169,12 @@ void TestInference(const std::string& dirname,
 
   // 6. Run the inference program
   {
+    // Ignore the profiling results of the first run
+    executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+
+    // Enable the profiler
+    paddle::platform::EnableProfiler(state);
+
     // Run repeat times to profile the performance
     for (int i = 0; i < repeat; ++i) {
       paddle::platform::RecordEvent record_event(
@@ -173,12 +183,13 @@ void TestInference(const std::string& dirname,
 
       executor.Run(*inference_program, scope, feed_targets, fetch_targets);
     }
-  }
 
-  // Disable the profiler and print the timing information
-  paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
-                                    "profiler.txt");
-  paddle::platform::ResetProfiler();
+    // Disable the profiler and print the timing information
+    paddle::platform::DisableProfiler(
+        paddle::platform::EventSortingKey::kDefault,
+        "run_inference_profiler.txt");
+    paddle::platform::ResetProfiler();
+  }
 
   delete scope;
 }
