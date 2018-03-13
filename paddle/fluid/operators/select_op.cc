@@ -378,13 +378,22 @@ class SelectOpMaker : public framework::OpProtoAndCheckerMaker {
     SelectOpMaker(OpProto *proto, OpAttrChecker *op_checker)
             : OpProtoAndCheckerMaker(proto, op_checker) {
       AddInput(kX,
-               "The X input to select op")
+               "A set of variables, which are required by operators inside the "
+               "cases of Select Op")
               .AsDuplicable();
       AddInput(kCaseToExecute,
-               "The case index to execute as determined by select op.")
+               "(Int) The variable the sets the index of the case to execute, "
+               "after evaluating the channels being sent to and received from")
               .AsDuplicable();
       AddAttr<std::vector<std::string>>(kCases,
-                                      "The cases configuration");
+                                        "(String vector) Serialized list of"
+                                        "all cases in the select op. Each"
+                                        "case is serialized as: "
+                                        "'<index>,<type>,<channel>,<value>'"
+                                        "where type is 0 for default, 1 for"
+                                        "send, and 2 for receive"
+                                        "No channel and values are needed for"
+                                        "default cases.");
       AddAttr<framework::BlockDesc *>(kCasesBlock,
                                       "The cases block inside select_op");
       AddComment(R"DOC(
