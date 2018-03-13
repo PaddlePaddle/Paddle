@@ -58,6 +58,8 @@ class Executor {
   static ExecutorPrepareContext* Prepare(const ProgramDesc& program,
                                          int block_id);
 
+  static void DeletePreparedContext(ExecutorPrepareContext* ctx);
+
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
                           bool create_vars = true);

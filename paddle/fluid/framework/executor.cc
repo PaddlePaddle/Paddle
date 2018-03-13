@@ -259,6 +259,10 @@ ExecutorPrepareContext* Executor::Prepare(const ProgramDesc& program,
   return ctx;
 }
 
+void Executor::DeletePreparedContext(ExecutorPrepareContext* ctx) {
+  delete ctx;
+}
+
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars) {
   auto& block = ctx->prog_.Block(ctx->block_id_);

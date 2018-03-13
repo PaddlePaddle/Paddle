@@ -39,25 +39,51 @@ class TestExecutor(unittest.TestCase):
         self.assertEqual((100, 100), out.shape)
         self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
 
-    def test_prepare(self):
+    def test_prepare_then_run(self):
         a = data(name='a', shape=[784], dtype='float32')
         b = data(
             name='b',
             shape=[784, 100],
             dtype='float32',
             append_batch_size=False)
+        c = data(
+            name='c', shape=[100, 10], dtype='float32', append_batch_size=False)
         out = mul(x=a, y=b)
         place = core.CPUPlace()
         a_np = numpy.random.random((100, 784)).astype('float32')
         b_np = numpy.random.random((784, 100)).astype('float32')
+        c_np = numpy.random.random((100, 10)).astype('float32')
         exe = Executor(place)
-        feed = {'a': a_np, 'b': b_np}
-        prepare_ctx = exe.prepare(feed=feed, fetch_list=[out])
-        for _ in range(10):
-            outs = exe.run_prepared_ctx(ctx=prepare_ctx, feed=feed)
-            out = outs[0]
-            self.assertEqual((100, 100), out.shape)
-            self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
+        feed = {'a': a_np, 'b': b_np, 'c': c_np}
+
+        prepared_ctx = exe.prepare(feed=feed, fetch_list=[out])
+        for _ in range(2):
+            outs = exe.run_prepared_ctx(ctx=prepared_ctx, feed=feed)
+            out_np = outs[0]
+            self.assertEqual((100, 100), out_np.shape)
+            self.assertTrue(numpy.allclose(out_np, numpy.dot(a_np, b_np)))
+
+        new_out = mul(x=out, y=c)
+        new_prepared_ctx = exe.prepare(feed=feed, fetch_list=[new_out])
+
+        handle_equal = (prepared_ctx.handle == new_prepared_ctx.handle)
+        self.assertFalse(handle_equal, "handle should not be equal")
+
+        for _ in range(2):
+            outs = exe.run_prepared_ctx(ctx=new_prepared_ctx, feed=feed)
+            out_np = outs[0]
+            self.assertEqual((100, 10), out_np.shape)
+            self.assertTrue(
+                numpy.allclose(out_np, numpy.dot(numpy.dot(a_np, b_np), c_np)))
+
+        for _ in range(2):
+            outs = exe.run_prepared_ctx(ctx=prepared_ctx, feed=feed)
+            out_np = outs[0]
+            self.assertEqual((100, 100), out_np.shape)
+            self.assertTrue(numpy.allclose(out_np, numpy.dot(a_np, b_np)))
+
+        exe.delete_prepared_ctx(prepared_ctx)
+        exe.delete_prepared_ctx(new_prepared_ctx)
 
 
 if __name__ == '__main__':
