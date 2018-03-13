@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lrn_op.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -135,6 +138,24 @@ class LRNOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("MidOut", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+    }
+#endif
+
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        layout_, library_);
+  }
 };
 
 template <typename T>
@@ -176,6 +197,21 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
                "beta is the power number.")
         .SetDefault(0.75)
         .GreaterThan(0.0);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
+    AddAttr<std::string>("algorithm",
+                         "(string default ACROSS_CHANNELS"
+                         "An optional string: \"ACROSS_CHANNELS\", "
+                         "\"WITHIN_CHANNEL\". Used by MKLDNN library")
+        .SetDefault("ACROSS_CHANNELS");
 
     AddComment(R"DOC(
 Local Response Normalization Operator.
@@ -223,8 +259,25 @@ class LRNOpGrad : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
-};
 
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+    }
+#endif
+
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        layout_, library_);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
