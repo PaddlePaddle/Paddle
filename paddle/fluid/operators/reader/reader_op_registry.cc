@@ -35,7 +35,7 @@ FileReaderMakerBase::FileReaderMakerBase(
     framework::OpProtoAndCheckerMaker::OpProto* op_proto,
     framework::OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(op_proto, op_checker) {
-  AddOutput("Out", "(ReaderHolder) The created random reader.");
+  AddOutput("Out", "(ReaderHolder) The created random reader.").AsDuplicable();
   AddAttr<std::vector<int>>("shape_concat", "The concat of all data's shapes.");
   AddAttr<std::vector<int>>(
       "ranks",
