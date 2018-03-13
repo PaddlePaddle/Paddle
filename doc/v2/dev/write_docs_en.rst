@@ -63,6 +63,44 @@ The compiled documentations will be stored in <paddlepaddle working directory>/.
 
 If you want to learn more on the PaddlePaddle.org, please `click here <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.md>`_ 。
 
+build documentations directly
+----------------------------
+
+There's two ways to build documentations directly: build documents and build APIs
+
+- build documents
+
+If you only need to build documents, you can execute the following command to set up:
+
+.. code-block:: bash
+
+   make -j $processors gen_proto_py
+   make -j $processors paddle_docs paddle_docs_cn
+
+- build APIs
+
+If you only need to build APIs, you can execute the following command to set up:
+
+.. code-block:: bash
+
+   make -j $processors gen_proto_py framework_py_proto
+   make -j $processors copy_paddle_pybind
+   make -j $processors paddle_api_docs
+
+$processors represents how many processes are started for compilation. Generally, it can be set to 1, 4, or 8.
+
+After the compilation is complete, enter the doc/v2 directory. Three subdirectories are generated under this directory. You can enter the directories cn/html/, en/html, and api/en/html respectively and execute the following commands:
+
+.. code-block:: bash
+
+   python -m SimpleHTTPServer 8088
+
+Enter http://localhost:8088 in the browser to see the compiled Chinese/English documents page and the English APIs page. The following picture shows an example of a generated English document page.
+
+..  image:: doc_en.png
+    :align: center
+    :scale: 60 %
+
 How to write Documentations
 ============
 
