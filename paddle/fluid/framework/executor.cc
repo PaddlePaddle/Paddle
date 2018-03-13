@@ -14,17 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 
-#include <set>
-
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/platform/place.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
@@ -34,14 +29,9 @@ DEFINE_bool(check_nan_inf, false,
 namespace paddle {
 namespace framework {
 
-struct ExecutorPrepareContext {
-  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id)
-      : prog_(prog), block_id_(block_id) {}
-
-  framework::ProgramDesc prog_;
-  size_t block_id_;
-  std::vector<std::unique_ptr<OperatorBase>> ops_;
-};
+ExecutorPrepareContext::ExecutorPrepareContext(
+    const framework::ProgramDesc& prog, size_t block_id)
+    : prog_(prog), block_id_(block_id) {}
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 

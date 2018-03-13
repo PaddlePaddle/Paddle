@@ -22,7 +22,16 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-struct ExecutorPrepareContext;
+
+class ExecutorPrepareContext {
+ public:
+  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
+
+  framework::ProgramDesc prog_;
+  size_t block_id_;
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
+};
+
 class Executor {
  public:
   // TODO(dzhwinter) : Do not rely on this function, it will be removed
