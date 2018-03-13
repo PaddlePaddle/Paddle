@@ -24,6 +24,8 @@ class Factor(object):
         self.his_file = os.path.join('history', out_file)
         self.factors = []
         
+        Factor.__register__(self.__class__)
+        
     def add_record(self, r): # called when the model run, add execution details.
         self.factors.append(r)
         
@@ -32,13 +34,15 @@ class Factor(object):
         raise NotImplementedError
         
     @staticmethod
-    def register(factor): # factor should be a subclass
+    def __register__(factor): # factor should be a subclass
         assert isinstance(factor, Factor)
         key = factor.__name__
-        assert key not in Factor.dic
-        Factor.dic[key] = factor
+        if key in Factor.dic:
+            assert Factor.dic[key] is factor
+        else:
+            Factor.dic[key] = factor
     
-       def __del__(self):
+    def __del__(self):
         if self.factors:
             # write to file self.out_file
 ```
@@ -57,8 +61,6 @@ class TrainDurationFactor(Factor):
         diff = np.abs(cur_data - his_data) / his_data
         if (diff > self.threshold).any():
             raise TestError
-# register this factor tracker into the framework      
-Factor.register(TrainDurationFactor)
 ```
 
 A testable model should have a file called `continuous_evaluation.py` with some configurations about those factors to use like
