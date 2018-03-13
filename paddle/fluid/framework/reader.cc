@@ -17,5 +17,57 @@
 namespace paddle {
 namespace framework {
 ReaderBase::~ReaderBase() {}
+
+std::vector<std::unique_ptr<ReaderBase>> ReaderBase::SplitReader(
+    const platform::PlaceList &places) {
+  std::vector<std::unique_ptr<ReaderBase>> readers;
+
+  auto mutex = std::make_shared<std::mutex>();
+  for (size_t i = 0; i < places.size(); ++i) {
+    readers.emplace_back(new ThreadSafeReader(this, mutex));
+  }
+
+  return readers;
+}
+
+void ThreadSafeReader::ReadNext(std::vector<LoDTensor> *out) {
+  std::lock_guard<std::mutex> guard(*mutex_);
+  reader_->ReadNext(out);
+}
+
+void ThreadSafeReader::ReInit() {
+  std::lock_guard<std::mutex> guard(*mutex_);
+  reader_->ReInit();
+}
+
+bool ThreadSafeReader::HasNext() const {
+  std::lock_guard<std::mutex> guard(*mutex_);
+  return reader_->HasNext();
+}
+
+std::vector<std::unique_ptr<ReaderBase>> ThreadSafeReader::SplitReader(
+    const platform::PlaceList &places) {
+  std::vector<std::unique_ptr<ReaderBase>> readers;
+  for (size_t i = 0; i < places.size(); ++i) {
+    readers.emplace_back(new ThreadSafeReader(reader_, mutex_));
+  }
+  return readers;
+}
+
+FileReaderBase::FileReaderBase(const std::vector<DDim> &dims) : dims_(dims) {}
+
+void FileReaderBase::ReadNext(std::vector<LoDTensor> *out) {
+  ReadNextImpl(out);
+  PADDLE_ENFORCE_EQ(out->size(), dims_.size());
+  for (size_t i = 0; i < dims_.size(); ++i) {
+    auto &actual = out->at(i).dims();
+    auto &expect = dims_[i];
+
+    PADDLE_ENFORCE_EQ(actual.size(), expect.size());
+    for (int j = 0; j < actual.size(); ++j) {
+      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
+    }
+  }
+}
 }  // namespace framework
 }  // namespace paddle
