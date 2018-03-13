@@ -15,7 +15,7 @@
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import framework, unique_name
+from paddle.fluid import framework, unique_name, layer_helper
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers import fill_constant, assign, While, elementwise_add, Print
 
@@ -87,7 +87,7 @@ class TestRoutineOp(unittest.TestCase):
 
     def _create_one_dim_tensor(self, value):
         one_dim_tensor = fill_constant(
-            shape=[1], dtype=core.VarDesc.VarType.INT64, value=value)
+            shape=[1], dtype='int', value=value)
         one_dim_tensor.stop_gradient = True
         return one_dim_tensor
 
@@ -107,7 +107,7 @@ class TestRoutineOp(unittest.TestCase):
 
             result1 = self._create_tensor('return_value',
                                           core.VarDesc.VarType.LOD_TENSOR,
-                                          core.VarDesc.VarType.INT64)
+                                          'int')
 
             input_value = fill_constant(
                 shape=[1], dtype=core.VarDesc.VarType.FP64, value=10)
@@ -137,15 +137,17 @@ class TestRoutineOp(unittest.TestCase):
         with framework.program_guard(framework.Program()):
             quit_ch_input_var = self._create_persistable_tensor(
                 'quit_ch_input', core.VarDesc.VarType.LOD_TENSOR,
-                core.VarDesc.VarType.INT64)
-            quit_ch_input = fill_constant(
-                shape=[1], dtype=core.VarDesc.VarType.INT64,
-                value=0, out=quit_ch_input_var)
+                core.VarDesc.VarType.INT32)
+            quit_ch_input = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32,
+                                          value=0, out=quit_ch_input_var)
 
-            result2 = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=0)
+            result = self._create_persistable_tensor(
+                'result', core.VarDesc.VarType.LOD_TENSOR,
+                core.VarDesc.VarType.INT32)
+            fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32, value=0, out=result)
 
-            x = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=0)
-            y = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=1)
+            x = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32, value=0)
+            y = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32, value=1)
 
             while_cond = fill_constant(
                 shape=[1], dtype=core.VarDesc.VarType.BOOL, value=True)
@@ -153,50 +155,57 @@ class TestRoutineOp(unittest.TestCase):
             while_false = fill_constant(
                 shape=[1], dtype=core.VarDesc.VarType.BOOL, value=False)
 
-            x_tmp = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=0)
-
-            x_to_send_tmp = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=0)
-
-            # TODO(abhinav): Need to perform copy when doing a channel send.
-            #   Once this is complete, we can remove these lines
-            assign(input=x, output=x_to_send_tmp)
+            x_tmp = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32, value=0)
 
             def fibonacci(channel, quit_channel):
                 while_op = While(cond=while_cond)
                 with while_op.block():
+                    result2 = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32, value=0)
+                    x_to_send_tmp = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32, value=0)
+
+                    # TODO(abhinav): Need to perform copy when doing a channel send.
+                    #   Once this is complete, we can remove these lines
+                    assign(input=x, output=x_to_send_tmp)
+
                     with fluid.Select() as select:
                         with select.case(fluid.channel_send, channel, x_to_send_tmp):
-                            Print(x_tmp)
                             assign(input=x, output=x_tmp)
                             assign(input=y, output=x)
                             assign(elementwise_add(x=x_tmp, y=y), output=y)
-    
+
                         with select.case(fluid.channel_recv, quit_channel,
                                          result2):
                             # Quit
-                            assign(input=while_false, output=while_cond)
+                            helper = layer_helper.LayerHelper('assign')
+                            helper.append_op(
+                                type='assign',
+                                inputs={'X': [while_false]},
+                                outputs={'Out': [while_cond]})
     
             ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
             quit_ch = fluid.make_channel(
                 dtype=core.VarDesc.VarType.LOD_TENSOR)
 
-            result = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT64, value=1)
-
             with fluid.Go():
                 for i in xrange(10):
                     fluid.channel_recv(ch1, result)
-    
+                    Print(result)
+
                 fluid.channel_send(quit_ch, quit_ch_input)
     
             fibonacci(ch1, quit_ch)
 
-            # with open('/Users/aroravarun/Downloads/programdesc', 'wb') as pd:
+            fluid.channel_close(ch1)
+            fluid.channel_close(quit_ch)
+
+            # with open('/Users/thuan/Downloads/programdesc', 'wb') as pd:
             #     pd.write(str(framework.default_main_program()))
 
             cpu = core.CPUPlace()
             exe = Executor(cpu)
 
             exe_result = exe.run(fetch_list=[result])
+            print(exe_result)
 
 if __name__ == '__main__':
     unittest.main()

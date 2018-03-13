@@ -95,13 +95,13 @@ private:
     std::sort(channels.begin(), channels.end());
 
     // Poll all cases
-    int caseToExecute = pollCases(&scope, &cases, channels);
+    int32_t caseToExecute = pollCases(&scope, &cases, channels);
 
     // At this point, the case to execute has already been determined,
     // so we can proceed with executing the cases block
     framework::LoDTensor *caseToExecuteTensor =
             caseToExecuteVar->GetMutable<framework::LoDTensor>();
-    caseToExecuteTensor->data<int>()[0] = caseToExecute;
+    caseToExecuteTensor->data<int32_t>()[0] = caseToExecute;
 
     // Execute the cases block, only one case will be executed since we set the
     // case_to_execute value to the index of the case we want to execute
@@ -129,7 +129,6 @@ private:
       for (std::vector<std::string>::iterator itr = casesConfigs->begin();
            itr < casesConfigs->end(); ++itr) {
         std::string caseConfig = *itr;
-        std::cout << "CASE CONFIG: " << caseConfig << std::endl;
         boost::tokenizer<> tokens(caseConfig, sep);
 
         boost::tokenizer<>::iterator tok_iter = tokens.begin();
@@ -185,18 +184,17 @@ private:
    * @param channels
    * @return
    */
-  int pollCases(const framework::Scope *scope,
-                std::vector<std::shared_ptr<SelectOpCase>> *cases,
-                std::vector<framework::ChannelHolder *> channels) const {
+  int32_t pollCases(const framework::Scope *scope,
+                    std::vector<std::shared_ptr<SelectOpCase>> *cases,
+                    std::vector<framework::ChannelHolder *> channels) const {
     // Lock all involved channels
     lockChannels(channels);
 
-    std::atomic<int> caseToExecute(-1);
+    std::atomic<int32_t> caseToExecute(-1);
 
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
-      std::cout << "CASE: " << std::endl;
 
       auto chVar = scope->FindVar(c->channelName);
       framework::ChannelHolder *ch =
@@ -212,7 +210,6 @@ private:
             // TODO(thuan): Don't hardcode type
             ch->Send(chVar->GetMutable<framework::LoDTensor>());
             caseToExecute = c->caseIndex;
-            std::cout << "SENDING DATA" << std::endl;
           }
           break;
         case SelectOpCaseType::RECEIVE:
@@ -223,7 +220,6 @@ private:
             // TODO(thuan): Don't hardcode type
             ch->Receive(chVar->GetMutable<framework::LoDTensor>());
             caseToExecute = c->caseIndex;
-            std::cout << "RECEIVING DATA" << std::endl;
           }
           break;
         case SelectOpCaseType::DEFAULT:
@@ -252,7 +248,6 @@ private:
 
       // TODO(thuan): Atomically unlock all channels and sleep current thread
       unlockChannels(channels);
-      std::cout << "WAITING..." << std::endl;
       selectCond.wait(lock, [&completed]() { return completed.load(); });
 
       // Select has been woken up by case operation
@@ -267,8 +262,6 @@ private:
         return pollCases(scope, cases, channels);
       }
     }
-
-    std::cout << "***EXECUTING CASE: " << caseToExecute << std::endl;
 
     // At this point, caseToExecute != -1, and we can proceed with executing
     // the case block
@@ -335,7 +328,6 @@ private:
           // TODO(thuan): Don't hardcode type
           ch->AddToSendQ<framework::LoDTensor>(this,
                 chOutputVar->GetMutable<framework::LoDTensor>(), rCond, cb);
-//          std::cout << "ADD TO SEND Q" << std::endl;
           break;
         }
         case SelectOpCaseType::RECEIVE: {
@@ -343,7 +335,6 @@ private:
           auto chOutputVar = scope->FindVar(c->varName);
           ch->AddToReceiveQ<framework::LoDTensor>(this,
                 chOutputVar->GetMutable<framework::LoDTensor>(), rCond, cb);
-//          std::cout << "ADD TO RECEIVE Q" << std::endl;
           break;
         }
         default:
@@ -366,13 +357,11 @@ private:
         case SelectOpCaseType::SEND: {
           // TODO(thuan): Don't hardcode type
           ch->RemoveFromSendQ<framework::LoDTensor>(this);
-//          std::cout << "REMOVE FROM SEND Q" << std::endl;
           break;
         }
         case SelectOpCaseType::RECEIVE: {
           // TODO(thuan): Don't hardcode type
           ch->RemoveFromReceiveQ<framework::LoDTensor>(this);
-//          std::cout << "REMOVE FROM RECEIVE Q" << std::endl;
           break;
         }
         default:
