@@ -71,6 +71,7 @@ PYBIND11_PLUGIN(core) {
       .def_buffer([](Tensor &self) -> py::buffer_info {
         // TODO(kexinzhao): directly expose float16 to the python side,
         // prefer to bind paddle float16 with numpy float16
+        /*
         if (ToDataType(self.type()) == proto::VarType::FP16) {
           Tensor out;
           OpKernelType in_type(proto::VarType::FP16, self.place());
@@ -78,6 +79,7 @@ PYBIND11_PLUGIN(core) {
           DataTransform(out_type, in_type, self, &out);
           return CastToPyBuffer(out);
         }
+        */
         return CastToPyBuffer(self);
       })
       .def("get_dims",
@@ -129,6 +131,7 @@ PYBIND11_PLUGIN(core) {
       .def_buffer([](Tensor &self) -> py::buffer_info {
         // TODO(kexinzhao): directly expose float16 to the python side,
         // prefer to bind paddle float16 with numpy float16
+        /*
         if (ToDataType(self.type()) == proto::VarType::FP16) {
           Tensor out;
           OpKernelType in_type(proto::VarType::FP16, self.place());
@@ -136,6 +139,7 @@ PYBIND11_PLUGIN(core) {
           DataTransform(out_type, in_type, self, &out);
           return CastToPyBuffer(out);
         }
+        */
         return CastToPyBuffer(self);
       })
       .def(
