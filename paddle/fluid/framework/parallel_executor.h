@@ -14,22 +14,30 @@ limitations under the License. */
 
 #pragma once
 
+#include <unordered_set>
+
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
+
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
-struct ExecutorPrepareContext;
-class Executor {
- public:
-  // TODO(dzhwinter) : Do not rely on this function, it will be removed
-  explicit Executor(const platform::DeviceContext& device)
-      : Executor(device.GetPlace()) {}
 
-  explicit Executor(const platform::Place& place);
+struct AllReduceCallBack {
+  void operator()(framework::OperatorBase* op);
+
+  std::unordered_set<std::string> param_grad_names_;
+  platform::DeviceContext dev_ctx;
+};
+
+class ParallelExecutor {
+  explicit ParallelExecutor(const std::vector<platform::Place>& places,
+                            const std::unordered_set& params);
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
@@ -41,22 +49,12 @@ class Executor {
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
            bool create_local_scope = true, bool create_vars = true);
 
-  void Run(const ProgramDesc& program, Scope* scope,
-           std::map<std::string, const LoDTensor*>& feed_targets,
-           std::map<std::string, LoDTensor*>& fetch_targets,
-           const std::string& feed_holder_name = "feed",
-           const std::string& fetch_holder_name = "fetch");
-
  private:
-  static ExecutorPrepareContext* Prepare(const ProgramDesc& program,
-                                         int block_id);
-
-  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                          bool create_local_scope = true,
-                          bool create_vars = true);
-
- private:
-  const platform::Place place_;
+  std::vector<framework::Executor> exes_;
+  std::vector<framework::Scope*> scopes_;
+  AllReduceCallBack all_reduce_callbacks_;
+  std::unordered_set<std::string> params_;  // where to initilize it?
+  platform::Communicator nccl_com_;
 };
 
 }  // namespace framework

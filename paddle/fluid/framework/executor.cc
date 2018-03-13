@@ -305,9 +305,22 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }    // if (create_vars)
 
   for (auto& op : ctx->ops_) {
+    // TODO(ty):
+    // e.g. sgd should wait for allreduce to be finished
+    // if op's input is params' grad:
+    //     sync with allreduce stream
+    // SyncMultipleStreams(op);
+
     VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
+
+    // TODO(ty):
+    // e.g. allreduce shoudl wait for fc_grad to be finished.
+    // if op's output is params' grad:
+    //     sync with computation stream
+    //     apply allreduce on allreduce stream
+    // SyncMultipleStreams(op);
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
