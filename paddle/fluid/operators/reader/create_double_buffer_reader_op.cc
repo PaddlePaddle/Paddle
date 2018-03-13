@@ -39,7 +39,6 @@ class DoubleBufferReader : public framework::DecoratedReader {
 #ifdef PADDLE_WITH_CUDA
         ctxs_.emplace_back(new platform::CUDADeviceContext(
             boost::get<platform::CUDAPlace>(place_)));
-#else
 #endif
       }
     }

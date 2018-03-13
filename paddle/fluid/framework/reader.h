@@ -33,9 +33,6 @@ class ReaderBase {
 
   virtual bool HasNext() const = 0;
 
-  virtual std::vector<std::unique_ptr<ReaderBase>> SplitReader(
-      const platform::PlaceList& places);
-
   virtual ~ReaderBase();
 };
 
@@ -53,27 +50,9 @@ class DecoratedReader : public ReaderBase {
   ReaderBase* reader_;
 };
 
-class ThreadSafeReader : public DecoratedReader {
+class FileReader : public ReaderBase {
  public:
-  ThreadSafeReader(ReaderBase* reader, const std::shared_ptr<std::mutex>& mutex)
-      : DecoratedReader(reader), mutex_(mutex) {}
-
-  void ReadNext(std::vector<LoDTensor>* out) override;
-
-  void ReInit() override;
-
-  bool HasNext() const override;
-
-  std::vector<std::unique_ptr<ReaderBase>> SplitReader(
-      const platform::PlaceList& places) override;
-
- private:
-  std::shared_ptr<std::mutex> mutex_;
-};
-
-class FileReaderBase : public ReaderBase {
- public:
-  explicit FileReaderBase(const std::vector<DDim>& dims);
+  explicit FileReader(const std::vector<DDim>& dims);
 
   void ReadNext(std::vector<LoDTensor>* out) override;
 
