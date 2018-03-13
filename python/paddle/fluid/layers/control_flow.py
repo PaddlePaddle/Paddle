@@ -1297,8 +1297,8 @@ class SelectCase(object):
 
         return '%s,%s,%s,%s' % (
             self.idx, self.action,
-            self.channel.name if self.channel else None,
-            self.value.name if self.value else None
+            self.channel.name if self.channel else '',
+            self.value.name if self.value else ''
         )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
