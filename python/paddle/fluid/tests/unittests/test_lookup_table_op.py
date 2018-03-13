@@ -14,6 +14,8 @@
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
 from op_test import OpTest
 
 
@@ -45,6 +47,53 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         # Since paddings are not trainable and fixed in forward, the gradient of 
         # paddings makes no sense and we don't test the gradient here.
         pass
+
+
+# Testing look_up_table when Ids's type is SelectedRows.
+class TestLookupTableIdsIsSelectedRows(OpTest):
+    def check_with_place(self, place):
+        scope = core.Scope()
+
+        height = 10
+        rows = [0, 4, 4, 7]
+        row_numel = 12
+
+        ids_selected_rows = scope.var('Ids').get_selected_rows()
+        ids_selected_rows.set_height(height)
+        ids_selected_rows.set_rows(rows)
+        np_array = np.ones((len(rows), row_numel)).astype("float32")
+        ids_tensor = ids_selected_rows.get_tensor()
+        ids_tensor.set(np_array, place)
+
+        W = scope.var('W').get_tensor()
+        W_array = np.full((height, row_numel), 1.0).astype("float32")
+        for i in range(height):
+            W_array[i] *= i
+        W.set(W_array, place)
+
+        Out = scope.var('Out').get_selected_rows()
+        Out_array = np.full((len(rows), row_numel), -1.0).astype("float32")
+        Out.set_height(height)
+        Out.set_rows(rows)
+        Out_tensor = Out.get_tensor()
+        Out_tensor.set(Out_array, place)
+
+        # create and run concat_rows_op operator
+        concat_rows_op = Operator("lookup_table", W='W', Ids='Ids', Out='Out')
+        concat_rows_op.run(scope, place)
+
+        # get and compare result
+        result_array = np.array(Out_tensor)
+
+        for idx, row in enumerate(rows):
+            assert (row == result_array[idx]).all()
+
+    def test_concat_rows(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            self.check_with_place(place)
 
 
 if __name__ == "__main__":
