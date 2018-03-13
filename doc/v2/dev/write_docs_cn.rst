@@ -79,20 +79,40 @@ PaddlePaddle的文档构建有三种方式。
 直接构建
 --------
 
-如果提示正确，可以执行以下命令编译生成文档，即
+直接构建可以分为两种方式，分别是构建文档和构建API。
 
-..  code-block:: bash
+- 构建文档
 
-    cd TO_YOUR_PADDLE_CLONE_PATH
-    mkdir -p build
-    cd build
-    cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
-    make gen_proto_py
-    make paddle_docs paddle_docs_cn
+如果只需要构建文档，可以执行以下命令编译生成文档，即：
 
-编译完成之后，会在当前目录生成两个子目录\: doc(英文文档目录)和 doc_cn(中文文档目录)。
-打开浏览器访问对应目录下的index.html即可访问本地文档。
+.. code-block:: bash
 
+   make -j $processors gen_proto_py
+   make -j $processors paddle_docs paddle_docs_cn
+
+- 构建API
+
+如果只需要构建API，则可以执行以下命令编译生成文档，即：
+
+.. code-block:: bash
+
+   make -j $processors gen_proto_py framework_py_proto
+   make -j $processors copy_paddle_pybind
+   make -j $processors paddle_api_docs
+
+其中$processors代表启动多少个进程来进行编译，一般取值为1，4或8。
+
+编译完成后，从当前目录进入doc/v2目录，该目录下生成了三个子目录，可以分别进入目录cn/html/、en/html、api/en/html中，执行以下命令，即：
+
+.. code-block:: bash
+
+   python -m SimpleHTTPServer 8088
+
+在浏览器中输入http://localhost:8088就可以看到编译生成的中/英文的文档页面和英文的API页面,下图为生成的英文文档页面示例。
+
+..  image:: doc_en.png
+    :align: center
+    :scale: 60 %
 
 如何书写文档
 ============
