@@ -133,12 +133,8 @@ def pprint_block_codes(block_desc, show_backward=False):
     var_reprs = []
     op_reprs = []
     for var in block_desc.vars:
-        #print(var.type)
-        #print(var)
-        #sys.exit(0)
         if not show_backward and is_var_backward(var):
             continue
-        #print(1)
         var_reprs.append(repr_var(var))
 
     for op in block_desc.ops:
