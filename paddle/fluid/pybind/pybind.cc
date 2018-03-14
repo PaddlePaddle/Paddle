@@ -305,7 +305,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                   });
 // clang-format on
-
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
@@ -413,12 +412,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices", &framework::InitDevices);
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
-#ifndef PADDLE_WITH_CUDA
-  m.def("is_float16_supported",
-        [](const platform::CUDAPlace &gpu_place) -> bool {
-          // Only GPUs with Compute Capability >= 53 support float16
-          return platform::GetCUDAComputeCapability(gpu_place.device) >= 53;
-        });
+#ifdef PADDLE_WITH_CUDA
+  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 53 support float16
+    return platform::GetCUDAComputeCapability(place.device) >= 53;
+  });
 #endif
 
   m.def("set_feed_variable", framework::SetFeedVariable);
