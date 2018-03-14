@@ -37,7 +37,7 @@ from distribute_transpiler_simple import SimpleDistributeTranspiler
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close)
 import clip
-from memory_optimization_transpiler import memory_optimize, release_memory
+from memory_optimization_transpiler import memory_optimize, release_memory, recomputation
 import profiler
 import unique_name
 
@@ -64,6 +64,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'DistributeTranspiler',
     'memory_optimize',
     'release_memory',
+    'recomputation',
     'profiler',
     'unique_name',
 ]

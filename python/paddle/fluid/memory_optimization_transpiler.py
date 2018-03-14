@@ -147,6 +147,17 @@ class ControlFlowGraph(object):
             if op.type() == "fill_constant" and op.attr("force_cpu") == True:
                 self._skip_opt.update(op.output_arg_names())
 
+    def dataflow_analyze(self):
+        self._dataflow_analyze()
+
+    def find_variable_liveness_op(self, var_name):
+        for i in range(self.op_size):
+            op = self._ops[i]
+            in_diff, out_diff = self._get_diff(self._live_in[i],
+                                               self._live_out[i])
+            if var_name in in_diff:
+                return i
+
     def release_memory(self):
         self._dataflow_analyze()
         self._update_skip_opt_set()
@@ -341,3 +352,81 @@ def release_memory(input_program):
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
         cfg.release_memory()
+
+
+activation_ops = [
+    "sigmoid", "logsigmoid", "exp", "relu", "tanh", "tanh_shrink", "softshrink",
+    "sqrt", "abs", "ceil", "floor", "round", "reciprocal", "log", "square",
+    "softplus", "softsign", "brelu", "leaky_relu", "soft_relu", "elu", "relu6",
+    "pow", "stanh", "hard_shrink", "thresholded_relu", "hard_sigmoid", "swish"
+]
+
+
+def _check_match_pattern(ops, pattern):
+    match_flag = True
+    for j in range(len(ops)):
+        if pattern[j] == "activation":
+            if ops[j].type() not in activation_ops:
+                match_flag = False
+                break
+        else:
+            if ops[j].type() != pattern[j]:
+                match_flag = False
+                break
+    return match_flag
+
+
+def _find_forward_index(block_desc):
+    pattern = ["mean", "fill_constant", "mean_grad"]
+    op_size = block_desc.op_size()
+    for i in range(op_size - len(pattern) + 1):
+        ops = [block_desc.op(i + j) for j in range(len(pattern))]
+        match_flag = _check_match_pattern(ops, pattern)
+        if match_flag:
+            return i
+
+
+def recomputation(input_program, pattern="activation"):
+    pdesc = input_program.get_desc()
+    block_desc = pdesc.block(0)
+    op_size = block_desc.op_size()
+
+    match_ops = []
+    for i in range(op_size):
+        op = block_desc.op(i)
+        if pattern == "activation":
+            if op.type() in activation_ops:
+                match_ops.append(op)
+
+    forward_index = _find_forward_index(block_desc)
+    forward_ops = [block_desc.op(i) for i in range(forward_index)]
+    forward_cfg = ControlFlowGraph(input_program, forward_ops, forward_index,
+                                   set())
+    forward_cfg.dataflow_analyze()
+
+    match_indexs = []
+    for op in match_ops:
+        # print op.type()
+        # print op.output("Out")[0]
+        index = forward_cfg.find_variable_liveness_op(op.output("Out")[0])
+        # print index
+        match_indexs.append(index)
+
+    forward_hit = zip(match_ops, match_indexs)
+    forward_hit = sorted(forward_hit, key=lambda x: x[1])
+
+    for i, (fwd_op, fwd_index) in enumerate(forward_hit):
+        delete_op = block_desc.insert_op(fwd_index + i + 1)
+        delete_op.set_type("delete_var")
+        delete_op.set_input("X", fwd_op.output("Out"))
+
+    current_op_size = block_desc.op_size()
+    for i, (fwd_op, fwd_index) in enumerate(forward_hit):
+        bwd_index = 0
+        for j in range(forward_index + len(forward_hit), current_op_size):
+            bwd_op = block_desc.op(j)
+            if fwd_op.output("Out")[0] in bwd_op.input_arg_names():
+                new_op = block_desc.insert_op(j + bwd_index)
+                new_op.copy_from(fwd_op)
+                bwd_index += 1
+                break
