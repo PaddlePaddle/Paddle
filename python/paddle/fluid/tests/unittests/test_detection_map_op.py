@@ -166,8 +166,6 @@ class TestDetectionMAPOp(OpTest):
             elif not difficult:
                 label_count[label] += 1
 
-        true_pos = collections.defaultdict(list)
-        false_pos = collections.defaultdict(list)
         for (label, score, tp, fp) in tf_pos:
             true_pos[label].append([score, tp])
             false_pos[label].append([score, fp])

@@ -92,7 +92,10 @@ class Optimizer(object):
         # create learning rate variable for every parameter
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
-        return self.global_learning_rate() * param_lr
+        if param_lr == 1.0:
+            return self.global_learning_rate()
+        else:
+            return self.global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters

@@ -76,10 +76,16 @@ class SumOp : public framework::OperatorWithKernel {
           static_cast<framework::proto::VarType::Type>(dtype),
           ctx.device_context());
     } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
-      return framework::OpKernelType(
-          framework::ToDataType(
-              x_vars[0]->Get<framework::SelectedRows>().value().type()),
-          ctx.device_context());
+      for (auto& var : x_vars) {
+        auto& value = var->Get<framework::SelectedRows>().value();
+        if (value.IsInitialized()) {
+          return framework::OpKernelType(framework::ToDataType(value.type()),
+                                         ctx.device_context());
+        }
+      }
+      // if input sparse vars are not initialized, use an default kernel type.
+      return framework::OpKernelType(framework::proto::VarType::FP32,
+                                     ctx.device_context());
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();

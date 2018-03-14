@@ -29,7 +29,10 @@ dtype_to_size = {
     core.VarDesc.VarType.BOOL: 1
 }
 
-sub_block_ops = ["while", "while_grad", "parallel_do", "parallel_do_grad"]
+sub_block_ops = [
+    "while", "while_grad", "parallel_do", "parallel_do_grad",
+    "conditional_block", "conditional_block_grad"
+]
 
 PRINT_LOG = False
 
@@ -122,36 +125,80 @@ class ControlFlowGraph(object):
         else:
             return block_desc.find_var_recursive(str(var_name))
 
-    def memory_optimize(self):
-        def check_var_validity(block_desc, x, is_forward):
-            if str(x) == "@EMPTY@":
-                return False
-            if not self._has_var(block_desc, x, is_forward):
-                return False
-            if self._find_var(block_desc, x, is_forward).persistable():
-                return False
-            if self._find_var(
-                    block_desc, x,
-                    is_forward).type() != core.VarDesc.VarType.LOD_TENSOR:
-                return False
-            if x in self._skip_opt:
-                return False
-            if not self._find_var(block_desc, x, is_forward).shape():
-                return False
-            return True
+    def _check_var_validity(self, block_desc, x, is_forward):
+        if str(x) == "@EMPTY@":
+            return False
+        if not self._has_var(block_desc, x, is_forward):
+            return False
+        if self._find_var(block_desc, x, is_forward).persistable():
+            return False
+        if self._find_var(block_desc, x,
+                          is_forward).type() != core.VarDesc.VarType.LOD_TENSOR:
+            return False
+        if x in self._skip_opt:
+            return False
+        if not self._find_var(block_desc, x, is_forward).shape():
+            return False
+        return True
 
-        self._build_graph()
+    def _update_skip_opt_set(self):
+        for i in range(self.op_size):
+            op = self._ops[i]
+            if op.type() == "fill_constant" and op.attr("force_cpu") == True:
+                self._skip_opt.update(op.output_arg_names())
+
+    def release_memory(self):
         self._dataflow_analyze()
-        self.pool = []
+        self._update_skip_opt_set()
+        fwd_id = 0
+        bwd_id = 0
         for i in range(self.op_size):
             op = self._ops[i]
             if op.type() in sub_block_ops:
                 continue
             block_desc = op.block()
             is_forward = i < self._forward_num
+            in_diff, out_diff = self._get_diff(self._live_in[i],
+                                               self._live_out[i])
+            can_optimize = filter(
+                lambda x: self._check_var_validity(block_desc, x, is_forward),
+                in_diff)
+            if can_optimize:
+                index = i + fwd_id + 1 if is_forward else i - self._forward_num + bwd_id + 1
+                delete_op = block_desc.insert_op(index)
+                delete_op.set_type("delete_var")
+                delete_op.set_input("X", can_optimize)
+                if is_forward:
+                    fwd_id += 1
+                else:
+                    bwd_id += 1
+
+    def memory_optimize(self, level=0):
+        def compare_shape(x_shape, cache_shape, opt_level):
+            if opt_level == 0:
+                return x_shape == cache_shape
+            if opt_level == 1:
+                if (x_shape[0] == -1) ^ (cache_shape[0] == -1):
+                    return False
+                x_size = abs(reduce(lambda x, y: x * y, x_shape))
+                cache_size = abs(reduce(lambda x, y: x * y, cache_shape))
+                if x_size <= cache_size:
+                    return True
+            return False
+
+        self._dataflow_analyze()
+        self._update_skip_opt_set()
+        self.pool = []
+        for i in range(self.op_size):
+            op = self._ops[i]
+            if op.type() in sub_block_ops:
+                continue
+            block_desc = op.block()
+            self.current_block_desc = block_desc
+            is_forward = i < self._forward_num
             if self.pool:
                 defs_can_optimize = filter(
-                    lambda x: check_var_validity(block_desc, x, is_forward),
+                    lambda x: self._check_var_validity(block_desc, x, is_forward),
                     self._defs[i])
                 out_pair = [
                     (x, self._find_var(block_desc, x, is_forward).shape())
@@ -164,7 +211,7 @@ class ControlFlowGraph(object):
                     for index, cache_pair in enumerate(self.pool):
                         cache_var = cache_pair[0]
                         cache_shape = cache_pair[1]
-                        if x_shape == cache_shape:
+                        if compare_shape(x_shape, cache_shape, level):
                             if self._has_var(block_desc, cache_var, is_forward):
                                 x_dtype = self._find_var(block_desc, x,
                                                          is_forward).dtype()
@@ -196,7 +243,7 @@ class ControlFlowGraph(object):
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
             can_optimize = filter(
-                lambda x: check_var_validity(block_desc, x, is_forward),
+                lambda x: self._check_var_validity(block_desc, x, is_forward),
                 in_diff)
             if can_optimize:
                 for var_name in can_optimize:
@@ -270,7 +317,8 @@ def _get_cfgs(input_program):
         ([block_desc.op(i) for i in range(op_size)], op_size, set()))
 
     sub_block_pair = [("while", "while_grad"), ("parallel_do",
-                                                "parallel_do_grad")]
+                                                "parallel_do_grad"),
+                      ("conditional_block", "conditional_block_grad")]
 
     ops_list.extend(_process_sub_block_pair(pdesc, sub_block_pair))
 
@@ -281,9 +329,15 @@ def _get_cfgs(input_program):
     return cfgs
 
 
-def memory_optimize(input_program, print_log=False):
+def memory_optimize(input_program, print_log=False, level=0):
     global PRINT_LOG
     PRINT_LOG = print_log
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
-        cfg.memory_optimize()
+        cfg.memory_optimize(level)
+
+
+def release_memory(input_program):
+    cfgs = _get_cfgs(input_program)
+    for cfg in cfgs:
+        cfg.release_memory()

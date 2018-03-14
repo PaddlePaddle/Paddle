@@ -127,6 +127,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   SetDeviceId(place_.device);
+  compute_capability = GetCUDAComputeCapability(place_.device);
   multi_process = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
@@ -160,6 +161,10 @@ Place CUDADeviceContext::GetPlace() const { return place_; }
 void CUDADeviceContext::Wait() const {
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
   PADDLE_ENFORCE(cudaGetLastError());
+}
+
+int CUDADeviceContext::GetComputeCapability() const {
+  return compute_capability;
 }
 
 int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
