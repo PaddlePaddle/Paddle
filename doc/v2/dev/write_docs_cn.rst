@@ -110,9 +110,9 @@ PaddlePaddle文档使用 `sphinx`_ 自动生成，用户可以参考sphinx教程
 如何更新www.paddlepaddle.org
 ============================
 
-更新的文档以PR的形式提交到github中，提交方式参见 `如何贡献文档 <http://www.paddlepaddle.org/docs/develop/documentation/en/howto/dev/contribute_to_paddle_en.html>`_ 。
-目前PaddlePaddle的develop分支的文档是自动触发更新的，用户可以分别查看最新的 `中文文档 <http://www.paddlepaddle.org/docs/develop/documentation/zh/dev/contribute_to_paddle_cn.html>`_ 和
-`英文文档 <http://www.paddlepaddle.org/docs/develop/documentation/en/dev/contribute_to_paddle_en.html>`_ 。
+更新的文档以PR的形式提交到github中，提交方式参见 `如何贡献文档 <http://www.paddlepaddle.org/docs/develop/documentation/zh/dev/write_docs_cn.html>`_ 。
+目前PaddlePaddle的develop分支的文档是自动触发更新的，用户可以分别查看最新的 `中文文档 <http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html>`_ 和
+`英文文档 <http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html>`_ 。
 
 
 ..  _cmake: https://cmake.org/
