@@ -55,7 +55,8 @@ struct VarHandle {
 };
 
 void ProcGetResponse(const VarHandle& var_h,
-                     const sendrecv::VariableMessage& msg);
+                     // const sendrecv::VariableMessage& msg);
+                     const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
  public:
@@ -94,7 +95,7 @@ class BaseProcessor {
 };
 
 // typedef std::function<void(const VarHandle&, const sendrecv::VoidMessage&)>
-//    RequestSendCallBack;
+// RequestSendCallBack;
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestSendCallBack;
 
@@ -117,13 +118,15 @@ class SendProcessor : public BaseProcessor {
   RequestSendCallBack response_call_back_ = NULL;
 };
 
-typedef std::function<void(const VarHandle&, const sendrecv::VariableMessage&)>
+// typedef std::function<void(const VarHandle&, const
+// sendrecv::VariableMessage&)>
+typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestGetCallBack;
 
 class GetProcessor : public BaseProcessor {
  public:
   explicit GetProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {}
+      : BaseProcessor(ch), stub_g_(ch) {}
 
   virtual ~GetProcessor() {}
 
@@ -133,7 +136,9 @@ class GetProcessor : public BaseProcessor {
     }
   }
 
-  sendrecv::VariableMessage reply_;
+  // sendrecv::VariableMessage reply_;
+  ::grpc::ByteBuffer reply_;
+  ::grpc::GenericStub stub_g_;
   RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 

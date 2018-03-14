@@ -64,11 +64,21 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 }
 
 void ProcGetResponse(const VarHandle& var_h,
-                     const sendrecv::VariableMessage& ret_msg) {
-  // auto* outvar = var_h.scope->FindVar(var_h.name);
-  // DeserializeFromMessage(ret_msg, *var_h.ctx, outvar);
-  std::cout << var_h.String() << std::endl;
-  std::cout << ret_msg.varname() << std::endl;
+                     // const sendrecv::VariableMessage& ret_msg) {
+                     const ::grpc::ByteBuffer& ret_msg) {
+  auto* outvar = var_h.scope->FindVar(var_h.name);
+  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, outvar);
+  // std::cout << var_h.String() << std::endl;
+  // std::cout << ret_msg.varname() << std::endl;
+}
+
+template <typename T>
+void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
+  ::grpc::Slice slice(proto.ByteSizeLong());
+  proto.SerializeWithCachedSizesToArray(
+      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(slice.begin())));
+  ::grpc::ByteBuffer tmp(&slice, 1);
+  result->Swap(&tmp);
 }
 
 bool RPCClient::AsyncGetVariable(const std::string& ep,
@@ -98,8 +108,15 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
     s->Prepare(var_h, time_out);
     s->response_call_back_ = ProcGetResponse;
 
-    auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
-    rpc->Finish(&s->reply_, &s->status_, (void*)s);
+    ::grpc::ByteBuffer buf;
+    RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
+
+    // auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+    // rpc->Finish(&s->reply_, &s->status_, (void*)s);
+    auto call = std::move(s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_));
+    call->StartCall();
+    call->Finish(&s->reply_, &s->status_, (void*)s);
   });
 
   req_count_++;

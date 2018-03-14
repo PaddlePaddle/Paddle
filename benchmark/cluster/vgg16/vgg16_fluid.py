@@ -242,7 +242,7 @@ def main():
             "TRAINING_ROLE",
             "TRAINER")  # get the training role: trainer/pserver
 
-        print(debuger.pprint_program_codes(fluid.default_main_program().desc))
+        #print(debuger.pprint_program_codes(fluid.default_main_program().desc))
 
         t = fluid.DistributeTranspiler()
         t.transpile(

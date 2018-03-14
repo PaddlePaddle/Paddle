@@ -146,8 +146,10 @@ void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
 
   if (msg.type() == sendrecv::LOD_TENSOR) {
     DeserializeLodTendor(msg, ctx, var, dims);
+    return;
   } else if (msg.type() == sendrecv::SELECTED_ROWS) {
     DeserializeSelectedRows(msg, ctx, var, dims);
+    return;
   }
 
   PADDLE_ENFORCE(false, "must be LOD_TENSOR or SELECTED_ROWS");

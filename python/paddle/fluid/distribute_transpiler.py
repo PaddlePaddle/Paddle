@@ -294,8 +294,8 @@ class DistributeTranspiler:
                     shape=v.shape)
                 recv_inputs.append(var)
 
-        print("begin pserver:")
-        print(debuger.pprint_program_codes(pserver_program.desc))
+        #print("begin pserver:")
+        #print(debuger.pprint_program_codes(pserver_program.desc))
         # step3
         optimize_block = pserver_program.create_block(0)
         # step 4
@@ -317,7 +317,7 @@ class DistributeTranspiler:
         #print("optimize_ops:", self.optimize_ops)
         for _, op in enumerate(self.optimize_ops):
             for _, opt_op in enumerate(opt_op_on_pserver):
-                print("opt_op:", opt_op)
+                #print("opt_op:", opt_op)
                 if ufind.is_connected(op, opt_op):
                     if self._is_opt_op(op):
                         self._append_pserver_ops(optimize_block, op, endpoint,
