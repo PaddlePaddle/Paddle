@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/concurrency/channel_util.h"
 
 static constexpr char Channel[] = "Channel";
 static constexpr char Status[] = "Status";
@@ -34,25 +35,6 @@ void SetReceiveStatus(const platform::Place &dev_place,
       status_var.GetMutable<framework::LoDTensor>()->mutable_data<bool>({1},
                                                                         cpu);
   status_tensor[0] = status;
-}
-
-bool ChannelReceive(framework::ChannelHolder *ch, framework::Variable *var) {
-  // Get type of channel and use that to call mutable data for Variable
-  auto type = framework::ToVarType(ch->Type());
-  if (type == framework::proto::VarType_Type_LOD_TENSOR)
-    return ch->Receive(var->GetMutable<framework::LoDTensor>());
-  else if (type == framework::proto::VarType_Type_LOD_RANK_TABLE)
-    return ch->Receive(var->GetMutable<framework::LoDRankTable>());
-  else if (type == framework::proto::VarType_Type_LOD_TENSOR_ARRAY)
-    return ch->Receive(var->GetMutable<framework::LoDTensorArray>());
-  else if (type == framework::proto::VarType_Type_SELECTED_ROWS)
-    return ch->Receive(var->GetMutable<framework::SelectedRows>());
-  else if (type == framework::proto::VarType_Type_READER)
-    return ch->Receive(var->GetMutable<framework::ReaderHolder>());
-  else if (type == framework::proto::VarType_Type_CHANNEL)
-    return ch->Receive(var->GetMutable<framework::ChannelHolder>());
-  else
-    PADDLE_THROW("ChannelReceive:Unsupported type");
 }
 
 class ChannelRecvOp : public framework::OperatorBase {
@@ -81,7 +63,7 @@ class ChannelRecvOp : public framework::OperatorBase {
         scope.FindVar(Input(Channel))->GetMutable<framework::ChannelHolder>();
     auto output_var = scope.FindVar(Output(Out));
     // Receive the data from the channel.
-    bool ok = ChannelReceive(ch, output_var);
+    bool ok = concurrency::ChannelReceive(ch, output_var);
 
     // Set the status output of the `ChannelReceive` call.
     SetReceiveStatus(dev_place, *scope.FindVar(Output(Status)), ok);

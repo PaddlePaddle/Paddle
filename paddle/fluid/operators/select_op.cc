@@ -257,7 +257,7 @@ class SelectOp : public framework::OperatorBase {
 
       // TODO(thuan): Atomically unlock all channels and sleep current thread
       unlockChannels(channels);
-      selectCond.wait(lock, [&completed]() { return completed.load(); });
+      selectCond->wait(lock, [&completed]() { return completed.load(); });
 
       // Select has been woken up by case operation
       lockChannels(channels);
