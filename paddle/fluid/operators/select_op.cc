@@ -163,7 +163,8 @@ class SelectOp : public framework::OperatorBase {
                                                 caseChannel, caseChannelVar);
 
         if (caseType == SelectOpCaseType::DEFAULT) {
-          // TODO(thuan): Enforce default isn't already set
+          PADDLE_ENFORCE(defaultCase == nullptr,
+                         "Select can only contain one default case.");
           defaultCase = c;
         } else {
           cases.push_back(c);
@@ -199,7 +200,7 @@ class SelectOp : public framework::OperatorBase {
     // Lock all involved channels
     lockChannels(channels);
 
-    std::atomic<int32_t> caseToExecute(-1);
+    std::atomic<int> caseToExecute(-1);
 
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
@@ -251,8 +252,9 @@ class SelectOp : public framework::OperatorBase {
       // std::condition_variable_any selectCond;
       auto selectCond = std::make_shared<std::condition_variable_any>();
 
-      pushThreadOnChannelQueues(scope, cases, selectCond, &caseToExecute,
-                                &completed);
+      std::recursive_mutex callbackMutex;
+      pushThreadOnChannelQueues(scope, cases, selectCond, caseToExecute,
+                                completed, callbackMutex);
 
       // TODO(thuan): Atomically unlock all channels and sleep current thread
       unlockChannels(channels);
@@ -260,7 +262,6 @@ class SelectOp : public framework::OperatorBase {
 
       // Select has been woken up by case operation
       lockChannels(channels);
-      // TODO(thuan): Check to see if this will cause race condition
       removeThreadOnChannelQueues(scope, cases);
 
       if (caseToExecute == -1) {
@@ -300,9 +301,9 @@ class SelectOp : public framework::OperatorBase {
       const framework::Scope *scope,
       std::vector<std::shared_ptr<SelectOpCase>> *cases,
       std::shared_ptr<std::condition_variable_any> rCond,
-      std::atomic<int> *caseToExecute, std::atomic<bool> *completed) const {
-    std::recursive_mutex callbackMutex;
-
+      std::atomic<int> &caseToExecute,
+      std::atomic<bool> &completed,
+      std::recursive_mutex &callbackMutex) const {
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
       std::shared_ptr<SelectOpCase> c = *it;
@@ -312,7 +313,8 @@ class SelectOp : public framework::OperatorBase {
           chVar->GetMutable<framework::ChannelHolder>();
 
       std::function<bool(framework::ChannelAction channelAction)> cb =
-          [&](framework::ChannelAction channelAction) {
+          [&caseToExecute, &completed, &callbackMutex, c]
+                  (framework::ChannelAction channelAction) {
             std::lock_guard<std::recursive_mutex> lock{callbackMutex};
 
             bool canProcess = false;
@@ -320,10 +322,10 @@ class SelectOp : public framework::OperatorBase {
               // If the channel wasn't closed, we set the caseToExecute index
               // as this current case
               if (channelAction != framework::ChannelAction::CLOSE) {
-                *caseToExecute = c->caseIndex;
+                caseToExecute = c->caseIndex;
               }
               // This will allow our conditional variable to break out of wait
-              *completed = true;
+              completed = true;
               canProcess = true;
             }
 
@@ -377,7 +379,6 @@ class SelectOp : public framework::OperatorBase {
 
 class SelectOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  // TODO(varun): Update comment
   SelectOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput(kX,
