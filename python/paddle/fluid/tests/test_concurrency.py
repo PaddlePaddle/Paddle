@@ -107,7 +107,7 @@ class TestRoutineOp(unittest.TestCase):
 
             result1 = self._create_tensor('return_value',
                                           core.VarDesc.VarType.LOD_TENSOR,
-                                          'int')
+                                          core.VarDesc.VarType.FP64)
 
             input_value = fill_constant(
                 shape=[1], dtype=core.VarDesc.VarType.FP64, value=10)
@@ -128,7 +128,7 @@ class TestRoutineOp(unittest.TestCase):
             exe = Executor(cpu)
 
             result = exe.run(fetch_list=[result1])
-            #self.assertEqual(result[0][0], n + 1)
+            self.assertEqual(result[0][0], 10)
 
     def test_fibonacci(self):
         """
@@ -198,14 +198,11 @@ class TestRoutineOp(unittest.TestCase):
             fluid.channel_close(ch1)
             fluid.channel_close(quit_ch)
 
-            # with open('/Users/thuan/Downloads/programdesc', 'wb') as pd:
-            #     pd.write(str(framework.default_main_program()))
-
             cpu = core.CPUPlace()
             exe = Executor(cpu)
 
             exe_result = exe.run(fetch_list=[result])
-            print(exe_result)
+            self.assertEqual(exe_result[0][0], 34)
 
 if __name__ == '__main__':
     unittest.main()

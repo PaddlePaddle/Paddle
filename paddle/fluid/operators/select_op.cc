@@ -144,12 +144,14 @@ class SelectOp : public framework::OperatorBase {
         std::string caseTypeString = *tok_iter;
         SelectOpCaseType caseType = (SelectOpCaseType)std::stoi(caseTypeString);
 
-        ++tok_iter;
-        PADDLE_ENFORCE(tok_iter != tokens.end(), "Cannot get case channel");
-        std::string caseChannel = *tok_iter;
-
+        std::string caseChannel;
         std::string caseChannelVar;
+
+        ++tok_iter;
         if (caseType != SelectOpCaseType::DEFAULT) {
+          PADDLE_ENFORCE(tok_iter != tokens.end(), "Cannot get case channel");
+          caseChannel = *tok_iter;
+
           ++tok_iter;
           PADDLE_ENFORCE(tok_iter != tokens.end(),
                          "Cannot get case channel variable");
