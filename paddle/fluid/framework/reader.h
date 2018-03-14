@@ -43,13 +43,24 @@ class ReaderBase {
 
 class FileReader : public ReaderBase {
  public:
-  explicit FileReader(const std::vector<DDim>& shapes) : ReaderBase(shapes) {}
+  explicit FileReader(const std::vector<DDim>& shapes) : shapes_(shapes) {}
+
+  void ReadNext(std::vector<LoDTensor>* out) override final {
+    ReadNextImpl(out);
+    CheckShapes(out);
+  }
+
+  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+
+ protected:
+  CheckShape(const std::vector<LoDTensor>* out);
+
+  std::vector<DDim> shapes_;
 };
 
 class DecoratedReader : public ReaderBase {
  public:
-  explicit DecoratedReader(ReaderBase* reader)
-      : ReaderBase(reader->shapes()), reader_(reader) {
+  explicit DecoratedReader(ReaderBase* reader) : reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
