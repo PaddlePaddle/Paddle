@@ -52,8 +52,7 @@ class ParallelExecutor {
  private:
   std::vector<framework::Executor> exes_;
   std::vector<framework::Scope*> scopes_;
-  AllReduceCallBack all_reduce_callbacks_;
-  std::unordered_set<std::string> params_;  // where to initilize it?
+  std::vector<AllReduceCallBack> all_reduce_callbacks_;
   platform::Communicator nccl_com_;
 };
 
