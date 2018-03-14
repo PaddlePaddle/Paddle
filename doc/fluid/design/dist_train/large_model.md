@@ -11,6 +11,10 @@ the gradient to Parameter Server to execute the optimize program.
 
 ## Design
 
+**NOTE**: this approach is a feature of Fluid distributed trianing, maybe you want
+to know [Distributed Architecture](./distributed_architecture.md) and
+[Parameter Server](./parameter_server.md) before reading the following content.
+
 Fluid large model distributed training use 
 [Distributed Transpiler](./parameter_server.md#distributed-transpiler) to split
 a large parameter into multiple parameters which stored on Parameter Server, and
