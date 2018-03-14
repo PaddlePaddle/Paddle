@@ -6,7 +6,7 @@ In this document, we show the fundamental design of a C++ data feeding process, 
 
 ## Overview
 
-![](images/readers.pdf)
+![](images/readers.png)
 
 ## Reader
 
@@ -85,7 +85,7 @@ All `FileReader` binds with a single file and are single-threaded. However, some
 
 So `MultipleReader` is introduced. It is also derived from `ReaderBase`. A `MultipleReader` holds several prefetching `FileReaders` and these readers run concurrently. Another pivotal part of a `MultipleReader` is a buffer channel. The channel collects data yield by all prefetching readers and makes subsequent OPs or decorated readers be able to fetch data without concerning about multiple readers scheduling.
 
-![](images/multiple_reader.pdf)
+![](images/multiple_reader.png)
 
 This graph shows how a `MultipleReader` works with three prefetching file readers and two GPUs. There is a queue of files which are going to be read. Each time when a prefetching file reader is free(complete reading from one file), it fetches a new file from the queue. Each prefetching file reader runs in a separated prefetch thread and dumps their outputs to the same channel.
 
