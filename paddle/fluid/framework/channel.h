@@ -162,24 +162,12 @@ class ChannelHolder {
     }
   }
 
-  template <typename T>
   void RemoveFromSendQ(const void* referrer) {
-    if (IsInitialized()) {
-      Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-      if (channel != nullptr) {
-        channel->RemoveFromSendQ(referrer);
-      }
-    }
+    if (IsInitialized()) holder_->RemoveFromSendQ(referrer);
   }
 
-  template <typename T>
   void RemoveFromReceiveQ(const void* referrer) {
-    if (IsInitialized()) {
-      Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-      if (channel != nullptr) {
-        channel->RemoveFromReceiveQ(referrer);
-      }
-    }
+    if (IsInitialized()) holder_->RemoveFromReceiveQ(referrer);
   }
 
   inline bool IsInitialized() const { return holder_ != nullptr; }
@@ -201,6 +189,8 @@ class ChannelHolder {
     virtual bool IsClosed() = 0;
     virtual bool CanSend() = 0;
     virtual bool CanReceive() = 0;
+    virtual void RemoveFromSendQ(const void *referrer) = 0;
+    virtual void RemoveFromReceiveQ(const void *referrer) = 0;
     virtual void Close() = 0;
     virtual void Lock() = 0;
     virtual void Unlock() = 0;
@@ -236,6 +226,18 @@ class ChannelHolder {
         return channel_->CanReceive();
       }
       return false;
+    }
+
+    virtual void RemoveFromSendQ(const void *referrer) {
+      if (channel_) {
+        channel_->RemoveFromSendQ(referrer);
+      }
+    }
+
+    virtual void RemoveFromReceiveQ(const void *referrer) {
+      if (channel_) {
+        channel_->RemoveFromReceiveQ(referrer);
+      }
     }
 
     virtual void Close() {

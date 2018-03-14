@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/concurrency/channel_util.h"
 
 namespace paddle {
 namespace operators {
@@ -215,8 +216,7 @@ class SelectOp : public framework::OperatorBase {
             // We can send to channel directly, send the data to channel
             // and execute case
             auto chVar = scope->FindVar(c->varName);
-            // TODO(thuan): Don't hardcode type
-            ch->Send(chVar->GetMutable<framework::LoDTensor>());
+            concurrency::ChannelSend(ch, chVar);
             caseToExecute = c->caseIndex;
           }
           break;
@@ -225,8 +225,7 @@ class SelectOp : public framework::OperatorBase {
             // We can receive from channel directly, send the data to channel
             // and execute case
             auto chVar = scope->FindVar(c->varName);
-            // TODO(thuan): Don't hardcode type
-            ch->Receive(chVar->GetMutable<framework::LoDTensor>());
+            concurrency::ChannelReceive(ch, chVar);
             caseToExecute = c->caseIndex;
           }
           break;
@@ -334,16 +333,12 @@ class SelectOp : public framework::OperatorBase {
       switch (c->caseType) {
         case SelectOpCaseType::SEND: {
           auto chOutputVar = scope->FindVar(c->varName);
-          // TODO(thuan): Don't hardcode type
-          ch->AddToSendQ<framework::LoDTensor>(
-              this, chOutputVar->GetMutable<framework::LoDTensor>(), rCond, cb);
+          concurrency::ChannelAddToSendQ(ch, this, chOutputVar, rCond, cb);
           break;
         }
         case SelectOpCaseType::RECEIVE: {
-          // TODO(thuan): Don't hardcode type
           auto chOutputVar = scope->FindVar(c->varName);
-          ch->AddToReceiveQ<framework::LoDTensor>(
-              this, chOutputVar->GetMutable<framework::LoDTensor>(), rCond, cb);
+          concurrency::ChannelAddToReceiveQ(ch, this, chOutputVar, rCond, cb);
           break;
         }
         default:
@@ -365,13 +360,11 @@ class SelectOp : public framework::OperatorBase {
           chVar->GetMutable<framework::ChannelHolder>();
       switch (c->caseType) {
         case SelectOpCaseType::SEND: {
-          // TODO(thuan): Don't hardcode type
-          ch->RemoveFromSendQ<framework::LoDTensor>(this);
+          ch->RemoveFromSendQ(this);
           break;
         }
         case SelectOpCaseType::RECEIVE: {
-          // TODO(thuan): Don't hardcode type
-          ch->RemoveFromReceiveQ<framework::LoDTensor>(this);
+          ch->RemoveFromReceiveQ(this);
           break;
         }
         default:
