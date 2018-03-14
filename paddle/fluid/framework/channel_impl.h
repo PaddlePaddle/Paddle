@@ -331,7 +331,6 @@ void ChannelImpl<T>::RemoveFromSendQ(const void *referrer) {
 
     if (sendMsg->referrer == referrer) {
       it = sendq.erase(it);
-      send_ctr--;
     } else {
       ++it;
     }
@@ -347,7 +346,6 @@ void ChannelImpl<T>::RemoveFromReceiveQ(const void *referrer) {
 
     if (recvMsg->referrer == referrer) {
       it = recvq.erase(it);
-      recv_ctr--;
     } else {
       ++it;
     }
