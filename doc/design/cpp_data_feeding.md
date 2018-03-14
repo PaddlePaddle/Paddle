@@ -13,7 +13,7 @@ In this document, we show the fundamental design of a C++ data feeding process, 
 In order to handle the above-mentioned problem, a new concept called 'Reader' is introduced. `Reader` is a series of inherited classes which can be held by our `Variable` and they are used to read or process file data.
 
 
-### `ReaderBase`
+### ReaderBase
 
 `ReaderBase` is the abstract base class for all readers. It defines the interface for all readers.
 
@@ -121,7 +121,9 @@ However, direct usage of file readers' creation ops is not recommended because a
 
 ### OpenFilesOp
 
-The `OpenFilesOp` is the creation op of `MultipleReader`. It takes no input but requires a list of file names as one of its attributes. The newly created `MultipleReader` then creates corresponding prefetching readers according to file formats.
+The `OpenFilesOp` is the creation op of `MultipleReader`. It takes no input but requires a list of file names as one of its attributes. The newly created `MultipleReader` then creates its own prefetching readers according to given file names.
+
+To make sure that created prefetching readers match file formats, we need a name prefix rule to append file format tags to file names, as well as a file reader registry mechanism to map file format tags to their corresponding file readers' constructors.
 
 ### HasNextOp
 
