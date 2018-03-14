@@ -31,8 +31,10 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 
   framework::Async([var_name_val, p_ctx, ep_val, p_scope, time_out, ch, this] {
     auto* var = p_scope->FindVar(var_name_val);
-    sendrecv::VariableMessage req;
-    SerializeToMessage(var_name_val, var, *p_ctx, &req);
+    // sendrecv::VariableMessage req;
+    // SerializeToMessage(var_name_val, var, *p_ctx, &req);
+    ::grpc::ByteBuffer req;
+    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req);
 
     // varhandle
     VarHandle var_h;
@@ -46,8 +48,14 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     s->Prepare(var_h, time_out);
     s->response_call_back_ = NULL;
 
-    auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-    rpc->Finish(&s->reply_, &s->status_, (void*)s);
+    // auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
+    // rpc->Finish(&s->reply_, &s->status_, (void*)s);
+
+    auto call = std::move(s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req,
+        &cq_));
+    call->StartCall();
+    call->Finish(&s->reply_, &s->status_, (void*)s);
   });
 
   req_count_++;

@@ -88,12 +88,15 @@ class ClientBase {
   VarHandle var_h_;
 };
 
-typedef std::function<void(const VarHandle&, const sendrecv::VoidMessage&)>
+// typedef std::function<void(const VarHandle&, const sendrecv::VoidMessage&)>
+//    RequestSendCallBack;
+typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestSendCallBack;
 
 class SendProcessor : public ClientBase {
  public:
-  explicit SendProcessor(std::shared_ptr<grpc::Channel> ch) : ClientBase(ch) {}
+  explicit SendProcessor(std::shared_ptr<grpc::Channel> ch)
+      : ClientBase(ch), stub_g_(ch) {}
 
   virtual ~SendProcessor() {}
 
@@ -103,7 +106,9 @@ class SendProcessor : public ClientBase {
     }
   }
 
-  sendrecv::VoidMessage reply_;
+  // sendrecv::VoidMessage reply_;
+  ::grpc::GenericStub stub_g_;
+  ::grpc::ByteBuffer reply_;
   RequestSendCallBack response_call_back_ = NULL;
 };
 
