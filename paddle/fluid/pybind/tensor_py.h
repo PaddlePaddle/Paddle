@@ -82,7 +82,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
       if (std::type_index(typeid(CUR_TYPE)) ==
           std::type_index(typeid(platform::float16))) {
         return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
-                               py::format_descriptor<uint16_t>::format(),
+                               "e", /* np.dtype('e') == np.float16 */
                                (size_t)framework::arity(dst_tensor.dims()),
                                dims_outside, strides);
       } else {

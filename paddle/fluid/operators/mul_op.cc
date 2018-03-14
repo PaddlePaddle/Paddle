@@ -70,30 +70,6 @@ class MulOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
-
- protected:
-#ifdef PADDLE_WITH_CUDA
-  OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    platform::Place place = ctx.GetPlace();
-    // Mul op will call the cublas gemm kernel on GPU, and the minimum
-    // compute capability of GPU to support cublas float16 gemm is 53
-    if (ctx.Attr<bool>("use_float16") && platform::is_gpu_place(place) &&
-        ctx.template device_context<platform::CUDADeviceContext>()
-                .GetComputeCapability() >= 53) {
-      return OpKernelType(framework::proto::VarType::FP16, place);
-    } else {
-      // fall back to use float32 kernel if requirements are not met
-      return OpKernelType(framework::proto::VarType::FP32, place);
-    }
-  }
-#endif
-
-  OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const OpKernelType& expected_kernel_type) const override {
-    return OpKernelType(framework::ToDataType(tensor.type()), tensor.place());
-  }
 };
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -133,15 +109,6 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
-    AddAttr<bool>(
-        "use_float16",
-        R"DOC((bool, default false), If use_float16 is true, mul_op will convert
-              both input tensors to float16 data types if needed and use the float16 
-              compute kernel to generate the output tensor also in float16 data type. 
-              This attribute is by default false and normally would only be set to 
-              true in inference stage for performance optimization.
-        )DOC")
-        .SetDefault(false);
     AddComment(R"DOC(
 Mul Operator.
 

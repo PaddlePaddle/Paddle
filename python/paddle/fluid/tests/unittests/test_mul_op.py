@@ -70,72 +70,39 @@ class TestMulOp2(OpTest):
             ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
 
 
-class TestFP16MulOp(OpTest):
+class TestFP16MulOp1(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.inputs = {
-            'X': np.random.random((32, 84)).astype("float32"),
-            'Y': np.random.random((84, 100)).astype("float32")
-        }
-        self.attrs = {'use_float16': True}
-        self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
+        x = np.random.random((32, 84)).astype("float16")
+        y = np.random.random((84, 100)).astype("float16")
+        self.inputs = {'X': x.view(np.uint16), 'Y': y.view(np.uint16)}
+        self.outputs = {'Out': np.dot(x, y)}
 
     def test_check_output(self):
-        self.check_output(atol=1e-1)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-1)
 
 
 class TestFP16MulOp2(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        x = np.random.random((32, 84)).astype("float16")
-        x_view = x.view(np.uint16)
-        self.inputs = {
-            'X': x_view,
-            'Y': np.random.random((84, 100)).astype("float32")
-        }
-        self.attrs = {'use_float16': True}
-        self.outputs = {'Out': np.dot(x, self.inputs['Y'])}
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            self.check_output(atol=1e-1)
-
-
-class TestFP16MulOp3(OpTest):
-    def setUp(self):
-        self.op_type = "mul"
-        x = np.random.random((32, 84)).astype("float16")
-        y = np.random.random((84, 100)).astype("float16")
-        x_view = x.view(np.uint16)
-        y_view = y.view(np.uint16)
-        self.inputs = {'X': x_view, 'Y': y_view}
-        self.attrs = {'use_float16': True}
-        self.outputs = {'Out': np.dot(x, y)}
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            self.check_output(atol=1e-1)
-
-
-class TestFP16MulOp4(OpTest):
-    def setUp(self):
-        self.op_type = "mul"
-        self.inputs = {
-            'X': np.random.random((15, 4, 12, 10)).astype("float32"),
-            'Y': np.random.random((4, 30, 8, 2, 9)).astype("float32")
-        }
+        x = np.random.random((15, 4, 12, 10)).astype("float16")
+        y = np.random.random((4, 30, 8, 2, 9)).astype("float16")
+        self.inputs = {'X': x.view(np.uint16), 'Y': y.view(np.uint16)}
         self.attrs = {
             'x_num_col_dims': 2,
             'y_num_col_dims': 2,
-            'use_float16': True
         }
-        result = np.dot(self.inputs['X'].reshape(15 * 4, 12 * 10),
-                        self.inputs['Y'].reshape(4 * 30, 8 * 2 * 9))
+        result = np.dot(
+            x.reshape(15 * 4, 12 * 10), y.reshape(4 * 30, 8 * 2 * 9))
         result = result.reshape(15, 4, 8, 2, 9)
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output(atol=2e-1)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=2e-1)
 
 
 if __name__ == "__main__":
