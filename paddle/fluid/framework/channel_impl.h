@@ -151,7 +151,7 @@ bool ChannelImpl<T>::Send(T *item) {
       // We do not care about notifying other
       // because they would have been notified
       // by the executed select case.
-      return Send(item);
+      return send_return(Send(item));
 
     // Wake up the blocked process and unlock
     m->Notify();
@@ -214,7 +214,7 @@ bool ChannelImpl<T>::Receive(T *item) {
       // We do not care about notifying other
       // because they would have been notified
       // by the executed select case.
-      return Receive(item);
+      return recv_return(Receive(item));
 
     // Wake up the blocked process and unlock
     m->Notify();
