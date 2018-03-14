@@ -28,32 +28,33 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-struct AllReduceCallBack {
-  void operator()(framework::OperatorBase* op);
-
-  std::unordered_set<std::string> param_grad_names_;
-  platform::DeviceContext dev_ctx;
-};
-
+class ParallelExecutorPrivate;
+class VarHandle;
+class OpHandle;
 class ParallelExecutor {
+ public:
   explicit ParallelExecutor(const std::vector<platform::Place>& places,
-                            const std::unordered_set& params);
+                            const std::unordered_set<std::string>& params,
+                            const ProgramDesc& startup_program,
+                            const ProgramDesc& main_program,
+                            const std::string& loss_var_name, Scope* scope);
 
-  /* @Brief
-   * Runtime evaluation of the given ProgramDesc under certain Scope
-   *
-   * @param
-   *  ProgramDesc
-   *  Scope
-   */
-  void Run(const ProgramDesc& prog, Scope* scope, int block_id,
-           bool create_local_scope = true, bool create_vars = true);
+  std::vector<LoDTensor> Run(const std::vector<std::string>& fetch_tensors);
 
  private:
-  std::vector<framework::Executor> exes_;
-  std::vector<framework::Scope*> scopes_;
-  std::vector<AllReduceCallBack> all_reduce_callbacks_;
-  platform::Communicator nccl_com_;
+  ParallelExecutorPrivate* member_;
+
+  void BCastParamsToGPUs(const ProgramDesc& startup_program) const;
+
+  VarHandle* GetVarHandle(const std::string& each_var_name,
+                          const platform::Place& place) const;
+
+  void GenerateVar(OpHandle* op_handle, const std::string& each_var_name,
+                   const platform::Place& place) const;
+
+  void ConstructDependencyGraph(const std::unordered_set<std::string>& params,
+                                const ProgramDesc& main_program,
+                                const std::string& loss_var_name) const;
 };
 
 }  // namespace framework
