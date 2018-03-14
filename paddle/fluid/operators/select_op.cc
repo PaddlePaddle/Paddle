@@ -301,8 +301,7 @@ class SelectOp : public framework::OperatorBase {
       const framework::Scope *scope,
       std::vector<std::shared_ptr<SelectOpCase>> *cases,
       std::shared_ptr<std::condition_variable_any> rCond,
-      std::atomic<int> &caseToExecute,
-      std::atomic<bool> &completed,
+      std::atomic<int> &caseToExecute, std::atomic<bool> &completed,
       std::recursive_mutex &callbackMutex) const {
     std::vector<std::shared_ptr<SelectOpCase>>::iterator it = cases->begin();
     while (it != cases->end()) {
@@ -313,8 +312,8 @@ class SelectOp : public framework::OperatorBase {
           chVar->GetMutable<framework::ChannelHolder>();
 
       std::function<bool(framework::ChannelAction channelAction)> cb =
-          [&caseToExecute, &completed, &callbackMutex, c]
-                  (framework::ChannelAction channelAction) {
+          [&caseToExecute, &completed, &callbackMutex,
+           c](framework::ChannelAction channelAction) {
             std::lock_guard<std::recursive_mutex> lock{callbackMutex};
 
             bool canProcess = false;

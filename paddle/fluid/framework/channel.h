@@ -189,8 +189,8 @@ class ChannelHolder {
     virtual bool IsClosed() = 0;
     virtual bool CanSend() = 0;
     virtual bool CanReceive() = 0;
-    virtual void RemoveFromSendQ(const void *referrer) = 0;
-    virtual void RemoveFromReceiveQ(const void *referrer) = 0;
+    virtual void RemoveFromSendQ(const void* referrer) = 0;
+    virtual void RemoveFromReceiveQ(const void* referrer) = 0;
     virtual void Close() = 0;
     virtual void Lock() = 0;
     virtual void Unlock() = 0;
@@ -228,13 +228,13 @@ class ChannelHolder {
       return false;
     }
 
-    virtual void RemoveFromSendQ(const void *referrer) {
+    virtual void RemoveFromSendQ(const void* referrer) {
       if (channel_) {
         channel_->RemoveFromSendQ(referrer);
       }
     }
 
-    virtual void RemoveFromReceiveQ(const void *referrer) {
+    virtual void RemoveFromReceiveQ(const void* referrer) {
       if (channel_) {
         channel_->RemoveFromReceiveQ(referrer);
       }

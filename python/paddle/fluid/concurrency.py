@@ -18,11 +18,7 @@ from layers import fill_constant
 import core
 
 __all__ = [
-    'Go',
-    'make_channel',
-    'channel_send',
-    'channel_recv',
-    'channel_close',
+    'Go', 'make_channel', 'channel_send', 'channel_recv', 'channel_close',
     'Select'
 ]
 

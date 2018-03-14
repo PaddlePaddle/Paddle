@@ -1217,8 +1217,12 @@ class SelectCase(object):
     SEND = 1
     RECEIVE = 2
 
-    def __init__(self, case_idx, case_to_execute, channel_action_fn=None,
-                 channel=None, value=None):
+    def __init__(self,
+                 case_idx,
+                 case_to_execute,
+                 channel_action_fn=None,
+                 channel=None,
+                 value=None):
         self.helper = LayerHelper('conditional_block')
         self.main_program = self.helper.main_program
         self.is_scalar_condition = True
@@ -1228,9 +1232,9 @@ class SelectCase(object):
 
         # Since we aren't going to use the `channel_send` or `channel_recv`
         # functions directly, we just need to capture the name.
-        self.action = (self.SEND if channel_action_fn.__name__ == (
-            'channel_send') else self.RECEIVE) if channel_action_fn else (
-            self.DEFAULT)
+        self.action = (self.SEND
+                       if channel_action_fn.__name__ == ('channel_send') else
+                       self.RECEIVE) if channel_action_fn else (self.DEFAULT)
         self.value = value
         self.channel = channel
 
@@ -1273,33 +1277,27 @@ class SelectCase(object):
         # First, create an op that will determine whether or not this is the
         # conditional variable to execute.
         should_execute_block = equal(
-            fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32, value=self.idx),
-            self.case_to_execute
-        )
+            fill_constant(
+                shape=[1], dtype=core.VarDesc.VarType.INT32, value=self.idx),
+            self.case_to_execute)
 
         step_scope = cases_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
 
         cases_block.append_op(
             type='conditional_block',
-            inputs={
-                'X': [should_execute_block],
-                'Params': param_list
-            },
-            outputs={
-                'Out': out_vars,
-                'Scope': [step_scope]
-            },
+            inputs={'X': [should_execute_block],
+                    'Params': param_list},
+            outputs={'Out': out_vars,
+                     'Scope': [step_scope]},
             attrs={
                 'sub_block': self.block,
                 'is_scalar_condition': self.is_scalar_condition
             })
 
-        return '%s,%s,%s,%s' % (
-            self.idx, self.action,
-            self.channel.name if self.channel else '',
-            self.value.name if self.value else ''
-        )
+        return '%s,%s,%s,%s' % (self.idx, self.action, self.channel.name
+                                if self.channel else '', self.value.name
+                                if self.value else '')
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.main_program.rollback()
@@ -1325,7 +1323,8 @@ class Select(BlockGuard):
         """Create a new block for this condition.
         """
         select_case = SelectCase(
-            len(self.cases), self.case_to_execute, channel_action_fn, channel, value)
+            len(self.cases), self.case_to_execute, channel_action_fn, channel,
+            value)
 
         self.cases.append(select_case)
 
@@ -1384,16 +1383,11 @@ class Select(BlockGuard):
         # Construct the select op.
         parent_block.append_op(
             type='select',
-            inputs={
-                'X': X,
-                'case_to_execute': self.case_to_execute
-            },
-            attrs={
-                'sub_block': select_block,
-                'cases': serialized_cases
-            },
-            outputs={}
-        )
+            inputs={'X': X,
+                    'case_to_execute': self.case_to_execute},
+            attrs={'sub_block': select_block,
+                   'cases': serialized_cases},
+            outputs={})
 
         return super(Select, self).__exit__(exc_type, exc_val, exc_tb)
 

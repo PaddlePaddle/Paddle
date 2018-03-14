@@ -40,8 +40,8 @@ namespace paddle {
 namespace framework {
 
 template <typename T>
-LoDTensor* CreateVariable(Scope &scope, p::CPUPlace &place, std::string name,
-                       T value) {
+LoDTensor *CreateVariable(Scope &scope, p::CPUPlace &place, std::string name,
+                          T value) {
   // Create LoDTensor<int> of dim [1]
   auto var = scope.Var(name);
   auto tensor = var->GetMutable<LoDTensor>();
@@ -69,9 +69,10 @@ void AddOp(const std::string &type, const VariableNameMap &inputs,
 void AddCase(ProgramDesc *program, Scope *scope, p::CPUPlace *place,
              BlockDesc *casesBlock, int caseId, int caseType,
              std::string caseChannel, std::string caseVarName,
-             std::function<void (BlockDesc*, Scope*)> func) {
+             std::function<void(BlockDesc *, Scope *)> func) {
   std::string caseCondName = std::string("caseCond") + std::to_string(caseId);
-  std::string caseCondXVarName = std::string("caseCondX") + std::to_string(caseId);
+  std::string caseCondXVarName =
+      std::string("caseCondX") + std::to_string(caseId);
 
   BlockDesc *caseBlock = program->AppendBlock(*casesBlock);
   func(caseBlock, scope);
@@ -82,24 +83,17 @@ void AddCase(ProgramDesc *program, Scope *scope, p::CPUPlace *place,
 
   scope->Var("step_scope");
 
-  AddOp("equal",
-        {{"X", {caseCondXVarName}}, {"Y", {"caseToExecute"}}},
-        {{"Out", {caseCondName}}},
-        {},
-        casesBlock);
+  AddOp("equal", {{"X", {caseCondXVarName}}, {"Y", {"caseToExecute"}}},
+        {{"Out", {caseCondName}}}, {}, casesBlock);
 
-  AddOp("conditional_block",
-        {{"X", {caseCondName}}, {"Params", {}}},
+  AddOp("conditional_block", {{"X", {caseCondName}}, {"Params", {}}},
         {{"Out", {}}, {"Scope", {"step_scope"}}},
-        {{"sub_block", caseBlock},
-         {"is_scalar_condition", true}},
-        casesBlock);
+        {{"sub_block", caseBlock}, {"is_scalar_condition", true}}, casesBlock);
 }
 
-void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
-                        ProgramDesc *program, BlockDesc *parentBlock,
-                        std::string dataChanName, std::string quitChanName) {
-
+void AddFibonacciSelect(Scope *scope, p::CPUPlace *place, ProgramDesc *program,
+                        BlockDesc *parentBlock, std::string dataChanName,
+                        std::string quitChanName) {
   BlockDesc *whileBlock = program->AppendBlock(*parentBlock);
 
   CreateVariable(*scope, *place, "whileExitCond", true);
@@ -108,7 +102,8 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
 
   CreateVariable(*scope, *place, "xtemp", 0);
 
-  // TODO(thuan): Need to create fibXToSend, since channel send moves the actual data,
+  // TODO(thuan): Need to create fibXToSend, since channel send moves the actual
+  // data,
   // which causes the data to be no longer accessible to do the fib calculation
   // TODO(abhinav): Change channel send to do a copy instead of a move!
   CreateVariable(*scope, *place, "fibXToSend", 0);
@@ -118,67 +113,52 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place,
   CreateVariable(*scope, *place, "quitVar", 0);
 
   BlockDesc *casesBlock = program->AppendBlock(*whileBlock);
-  std::function<void (BlockDesc* caseBlock)> f = [](BlockDesc* caseBlock) { };
+  std::function<void(BlockDesc * caseBlock)> f = [](BlockDesc *caseBlock) {};
 
-  // TODO(thuan): Remove this once we change channel send to do a copy instead of move
-  AddOp("assign",
-        {{"X", {"fibX"}}},
-        {{"Out", {"fibXToSend"}}},
-        {},
-        whileBlock);
+  // TODO(thuan): Remove this once we change channel send to do a copy instead
+  // of move
+  AddOp("assign", {{"X", {"fibX"}}}, {{"Out", {"fibXToSend"}}}, {}, whileBlock);
 
   // Case 0: Send to dataChanName
-  std::function<void (BlockDesc* caseBlock, Scope* scope)> case0Func =
-    [&](BlockDesc* caseBlock, Scope* scope) {
-      AddOp("assign",
-            {{"X", {"fibX"}}},
-            {{"Out", {"xtemp"}}},
-            {},
-            caseBlock);
-      AddOp("assign",
-            {{"X", {"fibY"}}},
-            {{"Out", {"fibX"}}},
-            {},
-            caseBlock);
-      AddOp("elementwise_add",
-            {{"X", {"xtemp"}}, {"Y", {"fibY"}}},
-            {{"Out", {"fibY"}}},
-            {},
-            caseBlock);
-    };
-  AddCase(program, scope, place, casesBlock, 0, 1, dataChanName, "fibXToSend", case0Func);
-  std::string case0Config = std::string("0,1,") + dataChanName + std::string(",fibXToSend");
+  std::function<void(BlockDesc * caseBlock, Scope * scope)> case0Func = [&](
+      BlockDesc *caseBlock, Scope *scope) {
+    AddOp("assign", {{"X", {"fibX"}}}, {{"Out", {"xtemp"}}}, {}, caseBlock);
+    AddOp("assign", {{"X", {"fibY"}}}, {{"Out", {"fibX"}}}, {}, caseBlock);
+    AddOp("elementwise_add", {{"X", {"xtemp"}}, {"Y", {"fibY"}}},
+          {{"Out", {"fibY"}}}, {}, caseBlock);
+  };
+  AddCase(program, scope, place, casesBlock, 0, 1, dataChanName, "fibXToSend",
+          case0Func);
+  std::string case0Config =
+      std::string("0,1,") + dataChanName + std::string(",fibXToSend");
 
   // Case 1: Receive from quitChanName
-  std::function<void (BlockDesc* caseBlock, Scope* scope)> case2Func =
-    [&](BlockDesc* caseBlock, Scope* scope) {
-        // Exit the while loop after we receive from quit channel.
-        // We assign a false to "whileExitCond" variable, which will
-        // break out of while_op loop
-        CreateVariable(*scope, *place, "whileFalse", false);
-        AddOp("assign",
-            {{"X", {"whileFalse"}}},
-            {{"Out", {"whileExitCond"}}},
-            {},
-            caseBlock);
-    };
-  AddCase(program, scope, place, casesBlock, 1, 2, quitChanName, "quitVar", case2Func);
-  std::string case1Config = std::string("1,2,") + quitChanName + std::string(",quitVar");
+  std::function<void(BlockDesc * caseBlock, Scope * scope)> case2Func = [&](
+      BlockDesc *caseBlock, Scope *scope) {
+    // Exit the while loop after we receive from quit channel.
+    // We assign a false to "whileExitCond" variable, which will
+    // break out of while_op loop
+    CreateVariable(*scope, *place, "whileFalse", false);
+    AddOp("assign", {{"X", {"whileFalse"}}}, {{"Out", {"whileExitCond"}}}, {},
+          caseBlock);
+  };
+  AddCase(program, scope, place, casesBlock, 1, 2, quitChanName, "quitVar",
+          case2Func);
+  std::string case1Config =
+      std::string("1,2,") + quitChanName + std::string(",quitVar");
 
   // Select block
-  AddOp("select",
-        {{"X", {dataChanName, quitChanName}}, {"case_to_execute", {"caseToExecute"}}},
-        {},
-        {{"sub_block", casesBlock},
-         {"cases", std::vector<std::string>{case0Config, case1Config}}},
+  AddOp("select", {{"X", {dataChanName, quitChanName}},
+                   {"case_to_execute", {"caseToExecute"}}},
+        {}, {{"sub_block", casesBlock},
+             {"cases", std::vector<std::string>{case0Config, case1Config}}},
         whileBlock);
 
   scope->Var("stepScopes");
   AddOp("while",
         {{"X", {dataChanName, quitChanName}}, {"Condition", {"whileExitCond"}}},
         {{"Out", {}}, {"StepScopes", {"stepScopes"}}},
-        {{"sub_block", whileBlock}},
-        parentBlock);
+        {{"sub_block", whileBlock}}, parentBlock);
 }
 
 TEST(Concurrency, Go_Op) {
@@ -245,7 +225,7 @@ TEST(Concurrency, Select) {
 
   // Initialize scope variables
   p::CPUDeviceContext ctx(place);
-          
+
   CreateVariable(scope, place, "Status", false);
   CreateVariable(scope, place, "result", 0);
   CreateVariable(scope, place, "currentXFib", 0);
@@ -257,36 +237,22 @@ TEST(Concurrency, Select) {
   // Create channel OP
   std::string dataChanName = "Channel";
   scope.Var(dataChanName);
-  AddOp("channel_create",
-        {},
-        {{"Out", {dataChanName}}},
-        {{"capacity", 0},
-         {"data_type", f::proto::VarType::LOD_TENSOR}},
-        block);
+  AddOp("channel_create", {}, {{"Out", {dataChanName}}},
+        {{"capacity", 0}, {"data_type", f::proto::VarType::LOD_TENSOR}}, block);
 
   std::string quitChanName = "Quit";
   scope.Var(quitChanName);
-  AddOp("channel_create",
-        {},
-        {{"Out", {quitChanName}}},
-        {{"capacity", 0},
-         {"data_type", f::proto::VarType::LOD_TENSOR}},
-        block);
+  AddOp("channel_create", {}, {{"Out", {quitChanName}}},
+        {{"capacity", 0}, {"data_type", f::proto::VarType::LOD_TENSOR}}, block);
 
   // Create Go Op routine, which loops 10 times over fibonacci sequence
   CreateVariable(scope, place, "xReceiveVar", 0);
 
   BlockDesc *goOpBlock = program.AppendBlock(program.Block(0));
-  for (int i=0; i<10; ++i) {
-    AddOp("channel_recv",
-          {{"Channel", {dataChanName}}},
-          {{"Status", {"Status"}},
-           {"Out", {"currentXFib"}}},
-          {},
-          goOpBlock);
-    AddOp("print",
-          {{"In", {"currentXFib"}}},
-          {{"Out", {"currentXFib"}}},
+  for (int i = 0; i < 10; ++i) {
+    AddOp("channel_recv", {{"Channel", {dataChanName}}},
+          {{"Status", {"Status"}}, {"Out", {"currentXFib"}}}, {}, goOpBlock);
+    AddOp("print", {{"In", {"currentXFib"}}}, {{"Out", {"currentXFib"}}},
           {{"first_n", 100},
            {"summarize", -1},
            {"print_tensor_name", false},
@@ -299,21 +265,15 @@ TEST(Concurrency, Select) {
   }
 
   CreateVariable(scope, place, "quitSignal", 0);
-  AddOp("channel_send",
-        {{"Channel", {quitChanName}},
-         {"X", {"quitSignal"}}},
-        {{"Status", {"Status"}}},
-        {},
-        goOpBlock);
+  AddOp("channel_send", {{"Channel", {quitChanName}}, {"X", {"quitSignal"}}},
+        {{"Status", {"Status"}}}, {}, goOpBlock);
 
   // Create Go Op
-  AddOp("go",
-        {{"X", {dataChanName, quitChanName}}},
-        {},
-        {{"sub_block", goOpBlock}},
-        block);
+  AddOp("go", {{"X", {dataChanName, quitChanName}}}, {},
+        {{"sub_block", goOpBlock}}, block);
 
-  AddFibonacciSelect(&scope, &place, &program, block, dataChanName, quitChanName);
+  AddFibonacciSelect(&scope, &place, &program, block, dataChanName,
+                     quitChanName);
 
   // Create Channel Close Op
   AddOp("channel_close", {{"Channel", {dataChanName}}}, {}, {}, block);

@@ -18,8 +18,8 @@ limitations under the License. */
 #include <paddle/fluid/framework/reader.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/concurrency/channel_util.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 static constexpr char Channel[] = "Channel";
 static constexpr char Status[] = "Status";

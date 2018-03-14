@@ -55,68 +55,55 @@ bool poc::ChannelReceive(framework::ChannelHolder *ch,
     PADDLE_THROW("ChannelReceive:Unsupported type");
 }
 
-void poc::ChannelAddToSendQ(framework::ChannelHolder *ch,
-            const void* referrer, framework::Variable *var,
-            std::shared_ptr<std::condition_variable_any> cond,
-            std::function<bool(framework::ChannelAction)> cb) {
+void poc::ChannelAddToSendQ(framework::ChannelHolder *ch, const void *referrer,
+                            framework::Variable *var,
+                            std::shared_ptr<std::condition_variable_any> cond,
+                            std::function<bool(framework::ChannelAction)> cb) {
   auto type = framework::ToVarType(var->Type());
   if (type == framework::proto::VarType_Type_LOD_TENSOR) {
-    ch->AddToSendQ(referrer,
-                   var->GetMutable<framework::LoDTensor>(),
-                   cond, cb);
+    ch->AddToSendQ(referrer, var->GetMutable<framework::LoDTensor>(), cond, cb);
   } else if (type == framework::proto::VarType_Type_LOD_RANK_TABLE) {
-    ch->AddToSendQ(referrer,
-                   var->GetMutable<framework::LoDRankTable>(),
-                   cond, cb);
+    ch->AddToSendQ(referrer, var->GetMutable<framework::LoDRankTable>(), cond,
+                   cb);
   } else if (type == framework::proto::VarType_Type_LOD_TENSOR_ARRAY) {
-    ch->AddToSendQ(referrer,
-                   var->GetMutable<framework::LoDTensorArray>(),
-                   cond, cb);
+    ch->AddToSendQ(referrer, var->GetMutable<framework::LoDTensorArray>(), cond,
+                   cb);
   } else if (type == framework::proto::VarType_Type_SELECTED_ROWS) {
-    ch->AddToSendQ(referrer,
-                   var->GetMutable<framework::SelectedRows>(),
-                   cond, cb);
+    ch->AddToSendQ(referrer, var->GetMutable<framework::SelectedRows>(), cond,
+                   cb);
   } else if (type == framework::proto::VarType_Type_READER) {
-    ch->AddToSendQ(referrer,
-                   var->GetMutable<framework::ReaderHolder>(),
-                   cond, cb);
+    ch->AddToSendQ(referrer, var->GetMutable<framework::ReaderHolder>(), cond,
+                   cb);
   } else if (type == framework::proto::VarType_Type_CHANNEL) {
-    ch->AddToSendQ(referrer,
-                   var->GetMutable<framework::ChannelHolder>(),
-                   cond, cb);
+    ch->AddToSendQ(referrer, var->GetMutable<framework::ChannelHolder>(), cond,
+                   cb);
   } else {
     PADDLE_THROW("ChannelAddToSendQ:Unsupported type");
   }
 }
 
-void poc::ChannelAddToReceiveQ(framework::ChannelHolder *ch,
-            const void* referrer, framework::Variable *var,
-            std::shared_ptr<std::condition_variable_any> cond,
-            std::function<bool(framework::ChannelAction)> cb) {
+void poc::ChannelAddToReceiveQ(
+    framework::ChannelHolder *ch, const void *referrer,
+    framework::Variable *var, std::shared_ptr<std::condition_variable_any> cond,
+    std::function<bool(framework::ChannelAction)> cb) {
   auto type = framework::ToVarType(var->Type());
   if (type == framework::proto::VarType_Type_LOD_TENSOR) {
-    ch->AddToReceiveQ(referrer,
-                      var->GetMutable<framework::LoDTensor>(),
-                      cond, cb);
+    ch->AddToReceiveQ(referrer, var->GetMutable<framework::LoDTensor>(), cond,
+                      cb);
   } else if (type == framework::proto::VarType_Type_LOD_RANK_TABLE) {
-    ch->AddToReceiveQ(referrer,
-                      var->GetMutable<framework::LoDRankTable>(),
+    ch->AddToReceiveQ(referrer, var->GetMutable<framework::LoDRankTable>(),
                       cond, cb);
   } else if (type == framework::proto::VarType_Type_LOD_TENSOR_ARRAY) {
-    ch->AddToReceiveQ(referrer,
-                      var->GetMutable<framework::LoDTensorArray>(),
+    ch->AddToReceiveQ(referrer, var->GetMutable<framework::LoDTensorArray>(),
                       cond, cb);
   } else if (type == framework::proto::VarType_Type_SELECTED_ROWS) {
-    ch->AddToReceiveQ(referrer,
-                      var->GetMutable<framework::SelectedRows>(),
+    ch->AddToReceiveQ(referrer, var->GetMutable<framework::SelectedRows>(),
                       cond, cb);
   } else if (type == framework::proto::VarType_Type_READER) {
-    ch->AddToReceiveQ(referrer,
-                      var->GetMutable<framework::ReaderHolder>(),
+    ch->AddToReceiveQ(referrer, var->GetMutable<framework::ReaderHolder>(),
                       cond, cb);
   } else if (type == framework::proto::VarType_Type_CHANNEL) {
-    ch->AddToReceiveQ(referrer,
-                      var->GetMutable<framework::ChannelHolder>(),
+    ch->AddToReceiveQ(referrer, var->GetMutable<framework::ChannelHolder>(),
                       cond, cb);
   } else {
     PADDLE_THROW("ChannelAddToReceiveQ:Unsupported type");
