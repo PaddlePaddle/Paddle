@@ -22,7 +22,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
+struct ExecutorPrepareContext;
 class Executor {
  public:
   // TODO(dzhwinter) : Do not rely on this function, it will be removed
@@ -38,14 +38,21 @@ class Executor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDesc&, Scope*, int, bool create_local_scope = true,
-           bool create_vars = true);
+  void Run(const ProgramDesc& prog, Scope* scope, int block_id,
+           bool create_local_scope = true, bool create_vars = true);
 
   void Run(const ProgramDesc& program, Scope* scope,
            std::map<std::string, const LoDTensor*>& feed_targets,
            std::map<std::string, LoDTensor*>& fetch_targets,
            const std::string& feed_holder_name = "feed",
            const std::string& fetch_holder_name = "fetch");
+
+  static ExecutorPrepareContext* Prepare(const ProgramDesc& program,
+                                         int block_id);
+
+  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+                          bool create_local_scope = true,
+                          bool create_vars = true);
 
  private:
   const platform::Place place_;
