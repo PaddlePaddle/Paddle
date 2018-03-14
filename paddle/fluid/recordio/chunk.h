@@ -26,9 +26,9 @@ namespace recordio {
 class Chunk {
 public:
   Chunk() : num_bytes_(0) {}
-  void Add(std::string buf) {
-    records_.push_back(buf);
+  void Add(const std::string& buf) {
     num_bytes_ += buf.size();
+    records_.emplace_back(buf);
   }
   // dump the chunk into w, and clears the chunk and makes it ready for
   // the next add invocation.
@@ -37,9 +37,14 @@ public:
     records_.clear();
     num_bytes_ = 0;
   }
-  void Parse(std::istream& sin);
-  size_t NumBytes() { return num_bytes_; }
+
+  // returns true if ok, false if eof
+  bool Parse(std::istream& sin);
+  size_t NumBytes() const { return num_bytes_; }
+  size_t NumRecords() const { return records_.size(); }
   const std::string& Record(int i) const { return records_[i]; }
+
+  bool Empty() const { return records_.empty(); }
 
 private:
   std::vector<std::string> records_;

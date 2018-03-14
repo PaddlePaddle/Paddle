@@ -82,7 +82,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   DestroyCallback destroy_callback = [](void* backing) {};
 
   void* buf = malloc(1024);
-  void* payload;
+  void* payload = nullptr;
   size_t payload_size;
   ProtoEncodeHelper e((char*)buf, 1024);
   e.WriteString(VarMsg::kVarnameFieldNumber, name);

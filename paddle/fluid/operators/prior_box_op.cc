@@ -111,7 +111,8 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<std::vector<float>>(
         "max_sizes",
-        "(vector<float>) List of max sizes of generated prior boxes.");
+        "(vector<float>) List of max sizes of generated prior boxes.")
+        .SetDefault(std::vector<float>{});
     AddAttr<std::vector<float>>(
         "aspect_ratios",
         "(vector<float>) List of aspect ratios of generated prior boxes.");
