@@ -25,6 +25,7 @@ namespace framework {
 
 struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
+  ~ExecutorPrepareContext();
 
   framework::ProgramDesc prog_;
   size_t block_id_;
@@ -57,8 +58,6 @@ class Executor {
 
   static ExecutorPrepareContext* Prepare(const ProgramDesc& program,
                                          int block_id);
-
-  static void DeletePreparedContext(ExecutorPrepareContext* ctx);
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,

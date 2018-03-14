@@ -82,9 +82,6 @@ class TestExecutor(unittest.TestCase):
             self.assertEqual((100, 100), out_np.shape)
             self.assertTrue(numpy.allclose(out_np, numpy.dot(a_np, b_np)))
 
-        exe.delete_prepared_ctx(prepared_ctx)
-        exe.delete_prepared_ctx(new_prepared_ctx)
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -358,9 +358,6 @@ class Executor(object):
             outs = as_numpy(outs)
         return outs
 
-    def delete_prepared_ctx(self, ctx):
-        self.executor.delete_prepared_ctx(ctx.handle)
-
     def run(self,
             program=None,
             feed=None,

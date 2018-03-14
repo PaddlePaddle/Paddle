@@ -33,6 +33,10 @@ ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
     : prog_(prog), block_id_(block_id) {}
 
+ExecutorPrepareContext::~ExecutorPrepareContext() {
+  VLOG(5) << "destroy ExecutorPrepareContext";
+}
+
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
 static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
@@ -257,10 +261,6 @@ ExecutorPrepareContext* Executor::Prepare(const ProgramDesc& program,
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
   return ctx;
-}
-
-void Executor::DeletePreparedContext(ExecutorPrepareContext* ctx) {
-  delete ctx;
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
