@@ -48,8 +48,8 @@ def fc(input,
     * :math:`Out`: The output tensor.
 
     Args:
-        input (Tensor|list of Tensor): The input tensor(s) to this layer.
-        size(int): The number of output units in the fully connected layer.
+        input (Variable|list of Variable): This layer's input tensor(s) which is at least 2-dimensional.
+        size(int): The number of output units in this layer.
         num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
             into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
@@ -62,7 +62,7 @@ def fc(input,
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
             parameters/weights of this layer.
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
-            parameter of this layer. If set None, no bias will be added to the output units.
+            of this layer. If it is set to None, no bias will be added to the output units.
         act (str, default None): Activation to be applied to the output of this layer.
         name (str, default None): The name of this layer.
 

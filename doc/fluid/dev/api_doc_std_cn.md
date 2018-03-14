@@ -40,7 +40,7 @@ API文档须包含以下几个模块（排列顺序为文档撰写顺序）：
 
 ## 格式及示例
 
-API文档各模块格式及示例如下(以下以fc为例进行说明）：
+API文档须使用rst格式撰写，该格式详情请参考[链接](http://sphinx-doc-zh.readthedocs.io/en/latest/rest.html)。API文档各模块的内容格式及示例如下（以下以fc为例进行说明）：
 
 - Python API Definition
 
@@ -137,7 +137,7 @@ API文档各模块格式及示例如下(以下以fc为例进行说明）：
 
       ```
       Args:
-          input (Tensor): The input tensor(s) of the layer.
+          input (Variable|list of Variable): This layer's input tensor(s) which is at least 2-dimensional.
           param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
               parameters/weights of this layer.
           name (str, default None): The name of this layer.
@@ -186,7 +186,7 @@ API文档各模块格式及示例如下(以下以fc为例进行说明）：
 
   - 示例
 
-      fc没有注意事项，故该模块省略不写。其他情况应明确给出，若有多条注意事项，须分条列出，以scaled\_dot\_product\_attention为例：
+      fc没有注意事项，故该模块省略不写。如有注意事项应明确给出，当有多条注意事项，须分条列出，以scaled\_dot\_product\_attention为例：
 
       ```
       Note:
@@ -216,4 +216,4 @@ API文档各模块格式及示例如下(以下以fc为例进行说明）：
 
 ## 完整示例
 
-fc 的完整注释见[示例](https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/dev/src/fc.py)。
+fc 的完整注释见[示例](src/fc.py)。
