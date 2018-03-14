@@ -1,4 +1,4 @@
-# Design Doc: Prefecting Parameter From Parameter Server
+# Design Doc: Prefetching Parameter From Parameter Server
 
 ## Abstract
 
