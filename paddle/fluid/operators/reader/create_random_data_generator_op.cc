@@ -52,6 +52,8 @@ class RandomDataGenerator : public framework::FileReader {
 
   void ReInit() override { return; }
 
+  bool HasNext() const override { return true; }
+
  private:
   float min_;
   float max_;

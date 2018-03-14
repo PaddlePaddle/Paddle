@@ -148,7 +148,6 @@ class ControlFlowGraph(object):
                 self._skip_opt.update(op.output_arg_names())
 
     def release_memory(self):
-        self._build_graph()
         self._dataflow_analyze()
         self._update_skip_opt_set()
         fwd_id = 0
@@ -187,7 +186,6 @@ class ControlFlowGraph(object):
                     return True
             return False
 
-        self._build_graph()
         self._dataflow_analyze()
         self._update_skip_opt_set()
         self.pool = []

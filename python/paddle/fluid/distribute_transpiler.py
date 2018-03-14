@@ -253,6 +253,8 @@ class DistributeTranspiler:
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
         self.program.global_block().delete_ops(self.optimize_ops)
+        # FIXME(typhoonzero): serialize once will fix error occurs when clone.
+        self.program.__str__()
         return self.program
 
     def get_pserver_program(self, endpoint):
@@ -318,7 +320,8 @@ class DistributeTranspiler:
                 print("opt_op:", opt_op)
                 if ufind.is_connected(op, opt_op):
                     if self._is_opt_op(op):
-                        self._append_pserver_ops(optimize_block, op, endpoint)
+                        self._append_pserver_ops(optimize_block, op, endpoint,
+                                                 default_main_program())
                     else:
                         self._append_pserver_non_opt_ops(optimize_block, op)
                     break
@@ -531,7 +534,8 @@ class DistributeTranspiler:
             orig_var_name = varname[:suff_idx]
         return orig_var_name
 
-    def _append_pserver_ops(self, optimize_block, opt_op, endpoint):
+    def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
+                            origin_program):
         program = optimize_block.program
         pserver_block = program.global_block()
         new_inputs = dict()

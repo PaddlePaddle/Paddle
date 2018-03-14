@@ -33,6 +33,8 @@ class ReaderBase {
   std::vector<DDim> shapes() const { return shapes_; }
   void set_shapes(const std::vector<DDim>& shapes) { shapes_ = shapes; }
 
+  virtual bool HasNext() const = 0;
+
   virtual ~ReaderBase() {}
 
  protected:
@@ -52,6 +54,8 @@ class DecoratedReader : public ReaderBase {
   }
 
   void ReInit() override { reader_->ReInit(); }
+
+  bool HasNext() const override { return reader_->HasNext(); }
 
  protected:
   ReaderBase* reader_;
@@ -86,6 +90,8 @@ class ReaderHolder {
     PADDLE_ENFORCE_NOT_NULL(reader_);
     reader_->set_shapes(shapes);
   }
+
+  bool HasNext() const { return reader_->HasNext(); }
 
  private:
   std::unique_ptr<ReaderBase> reader_;

@@ -19,33 +19,10 @@ from paddle.fluid import debuger
 from paddle.fluid.framework import Program
 
 
-def vgg16_bn_drop(input):
-    def conv_block(input, num_filter, groups, dropouts):
-        return fluid.nets.img_conv_group(
-            input=input,
-            pool_size=2,
-            pool_stride=2,
-            conv_num_filter=[num_filter] * groups,
-            conv_filter_size=3,
-            conv_act='relu',
-            conv_with_batchnorm=True,
-            conv_batchnorm_drop_rate=dropouts,
-            pool_type='max')
-
-    conv1 = conv_block(input, 64, 2, [0.3, 0])
-
-
 class TestDebugger(unittest.TestCase):
     def test_debug_str(self):
-        #data_shape = [3, 32, 32]
-        #images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-        #vgg16_bn_drop(images)
         p = Program()
         b = p.current_block()
-
-        #tensor
-        #b.create_var(
-        #    dtype="float32", shape=[5, 10], lod_level=0, name="tensor")
 
         #selected_rows
         b.create_var(

@@ -16,6 +16,7 @@ import sys
 import re
 from graphviz import GraphPreviewGenerator
 import proto.framework_pb2 as framework_pb2
+import paddle.fluid.core as core
 
 _vartype2str_ = [
     "UNK",
