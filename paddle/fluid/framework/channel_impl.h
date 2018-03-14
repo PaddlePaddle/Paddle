@@ -139,8 +139,19 @@ bool ChannelImpl<T>::Send(T *item) {
     // cases are true
     // 1. callback == nullptr // This means it was a regular channel send
     // 2. callback returns true
-    if (m->callback == nullptr || m->callback(ChannelAction::RECEIVE))
+    bool do_send = true;
+    if (m->callback != nullptr) do_send = m->callback(ChannelAction::SEND);
+    if (do_send)
       *(m->data) = std::move(*item);
+    else
+      // We cannot do the data transfer because
+      // this QueueMessage was added by Select
+      // and some other case was executed.
+      // So call the Send function again.
+      // We do not care about notifying other
+      // because they would have been notified
+      // by the executed select case.
+      return Send(item);
 
     // Wake up the blocked process and unlock
     m->Notify();
@@ -190,8 +201,20 @@ bool ChannelImpl<T>::Receive(T *item) {
     // cases are true
     // 1. callback == nullptr // This means it was a regular channel send
     // 2. callback returns true
-    if (m->callback == nullptr || m->callback(ChannelAction::RECEIVE))
+    bool do_receive = true;
+    if (m->callback != nullptr)
+      do_receive = m->callback(ChannelAction::RECEIVE);
+    if (do_receive)
       *item = std::move(*(m->data));
+    else
+      // We cannot do the data transfer because
+      // this QueueMessage was added by Select
+      // and some other case was executed.
+      // So call the Receive function again.
+      // We do not care about notifying other
+      // because they would have been notified
+      // by the executed select case.
+      return Receive(item);
 
     // Wake up the blocked process and unlock
     m->Notify();
