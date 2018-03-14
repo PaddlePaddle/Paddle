@@ -107,7 +107,7 @@ class TestRoutineOp(unittest.TestCase):
 
             result1 = self._create_tensor('return_value',
                                           core.VarDesc.VarType.LOD_TENSOR,
-                                          'int')
+                                          core.VarDesc.VarType.FP64)
 
             input_value = fill_constant(
                 shape=[1], dtype=core.VarDesc.VarType.FP64, value=10)
@@ -128,7 +128,7 @@ class TestRoutineOp(unittest.TestCase):
             exe = Executor(cpu)
 
             result = exe.run(fetch_list=[result1])
-            #self.assertEqual(result[0][0], n + 1)
+            self.assertEqual(result[0][0], 10)
 
     def test_fibonacci(self):
         """
