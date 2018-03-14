@@ -2,7 +2,7 @@
 如何贡献文档
 #############
 
-PaddlePaddle的文档包括中英文两个部分。文档都是通过``cmake``驱动``sphinx``编译生成，也可以利用paddlepaddle.org工具来编译和预览文档。
+PaddlePaddle的文档包括中英文两个部分。文档都是通过 ``cmake`` 驱动 ``sphinx`` 编译生成，也可以利用paddlepaddle.org工具来编译和预览文档。
 
 如何构建文档
 ============
@@ -34,7 +34,7 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 之后再用网页连到http://localhost:8000就可以在网页上生成需要的文档
 编译后的文件将被存储在工作目录 <paddlepaddle working directory>/.ppo_workspace/content。
 
-如果不想使用 Docker，你还可以通过运行Django框架直接激活工具的服务器。使用下面的命令来运行它。
+如果不想使用Docker，你还可以通过运行Django框架直接激活工具的服务器。使用下面的命令来运行它。
 
 ..  code-block:: bash
 
@@ -66,7 +66,7 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 
 使用Docker构建PaddlePaddle的文档，需要在系统里先安装好Docker工具包。Docker安装请参考 `Docker的官网 <https://docs.docker.com/>`_ 。安装好Docker之后可以使用源码目录下的脚本构建文档，即
 
-TBD
+[TBD]
 
 如果不想使用Docker，也可以使用以下命令直接构建PaddlePaddle文档，即
 
@@ -90,7 +90,7 @@ TBD
 
 其中$processors代表启动和CPU核一样多的进程来并行编译，可以根据本机的CPU核数设置相应的值。
 
-编译完成后，进入``doc/v2``目录，如果选择构建文档则会在该目录下生成``cn/html/``、``en/html``两个子目录，选择构建API则会生成``api/en/html``目录，分别进入这些目录下，执行以下命令：
+编译完成后，进入 ``doc/v2`` 目录，如果选择构建文档则会在该目录下生成 ``cn/html/`` 、 ``en/html`` 两个子目录，选择构建API则会生成 ``api/en/html`` 目录，分别进入这些目录下，执行以下命令：
 
 .. code-block:: bash
 
