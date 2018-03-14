@@ -84,13 +84,12 @@ def fc(input,
     **Fully Connected Layer**
 
     The fully connected layer can take multiple tensors as its inputs. It
-    creates a variable (one for each input tensor) called weights for each
-    input tensor, which represents a fully connected weight matrix from
-    each input unit to each output unit. The fully connected layer
-    multiplies each input tensor with its coresponding weight to produce
-    an output Tensor. If multiple input tensors are given, the results of
-    multiple multiplications will be sumed up. If bias_attr is not None,
-    a biases variable will be created and added to the output. Finally,
+    creates a variable called weights for each input tensor, which represents
+    a fully connected weight matrix from each input unit to each output unit.
+    The fully connected layer multiplies each input tensor with its coresponding
+    weight to produce an output Tensor. If multiple input tensors are given,
+    the results of multiple multiplications will be sumed up. If bias_attr is
+    not None, a bias variable will be created and added to the output. Finally,
     if activation is not None, it will be applied to the output as well.
 
     This process can be formulated as follows:
@@ -109,44 +108,27 @@ def fc(input,
     * :math:`Out`: The output tensor.
 
     Args:
-       input(Variable|list): The input tensor(s) to the fully connected layer.
-       size(int): The number of output units in the fully connected layer.
-       num_flatten_dims(int): The fc layer can accept an input tensor with more
-                              than two dimensions. If this happens, the
-                              multidimensional tensor will first be flattened
-                              into a 2-dimensional matrix. The parameter
-                              `num_flatten_dims` determines how the input tensor
-                              is flattened: the first `num_flatten_dims`
-                              (inclusive, index starts from 1) dimensions will
-                              be flatten to form the first dimension of the
-                              final matrix (height of the matrix), and the rest
-                              `rank(X) - num_flatten_dims` dimensions are
-                              flattened to form the second dimension of the
-                              final matrix (width of the matrix). For example,
-                              suppose `X` is a 6-dimensional tensor with a shape
-                              [2, 3, 4, 5, 6], and `num_flatten_dims` = 3. Then,
-                              the flattened matrix will have a shape
-                              [2 x 3 x 4, 5 x 6] = [24, 30]. By default,
-                              `num_flatten_dims` is set to 1.
-       param_attr(ParamAttr|list): The parameter attribute for learnable
-                                   parameters/weights of the fully connected
-                                   layer.
-       param_initializer(ParamAttr|list): The initializer used for the
-                                          weight/parameter. If set None,
-                                          XavierInitializer() will be used.
-       bias_attr(ParamAttr|list): The parameter attribute for the bias parameter
-                                  for this layer. If set None, no bias will be
-                                  added to the output units.
-       bias_initializer(ParamAttr|list): The initializer used for the bias.
-                                        If set None, then ConstantInitializer()
-                                        will be used.
-       act(str): Activation to be applied to the output of the fully connected
-                 layer.
-       name(str): Name/alias of the fully connected layer.
-
+        input (Variable|list of Variable): The input tensor(s) of this layer, and the dimension of
+            the input tensor(s) is at least 2.
+        size(int): The number of output units in this layer.
+        num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
+            two dimensions. If this happens, the multidimensional tensor will first be flattened
+            into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
+            tensor is flattened: the first `num_flatten_dims` (inclusive, index starts from 1)
+            dimensions will be flatten to form the first dimension of the final matrix (height of
+            the matrix), and the rest `rank(X) - num_flatten_dims` dimensions are flattened to
+            form the second dimension of the final matrix (width of the matrix). For example, suppose
+            `X` is a 6-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
+            Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30].
+        param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
+            parameters/weights of this layer.
+        bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
+            of this layer. If it is set to None, no bias will be added to the output units.
+        act (str, default None): Activation to be applied to the output of this layer.
+        name (str, default None): The name of this layer.
 
     Returns:
-        Variable: The output tensor variable.
+        A tensor variable storing the transformation result.
 
     Raises:
         ValueError: If rank of the input tensor is less than 2.
