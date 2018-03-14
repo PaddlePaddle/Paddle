@@ -14,6 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_TESTING
+#include "gtest/gtest.h"
+#endif
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 
