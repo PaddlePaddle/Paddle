@@ -24,6 +24,15 @@ namespace concurrency {
 bool ChannelSend(framework::ChannelHolder *ch, framework::Variable *var);
 bool ChannelReceive(framework::ChannelHolder *ch, framework::Variable *var);
 
+void ChannelAddToSendQ(framework::ChannelHolder *ch,
+                       const void* referrer, framework::Variable *var,
+                       std::shared_ptr<std::condition_variable_any> cond,
+                       std::function<bool(framework::ChannelAction)> cb);
+void ChannelAddToReceiveQ(framework::ChannelHolder *ch,
+                          const void* referrer, framework::Variable *var,
+                          std::shared_ptr<std::condition_variable_any> cond,
+                          std::function<bool(framework::ChannelAction)> cb);
+
 }  // namespace concurrency
 }  // namespace operators
 }  // namespace paddle
