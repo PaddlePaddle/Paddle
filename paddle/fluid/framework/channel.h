@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <stddef.h>  // for size_t
-#include <typeindex>
 #include <condition_variable>
+#include <typeindex>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -38,19 +38,20 @@ class Channel {
   virtual bool Receive(T*) = 0;
   virtual size_t Cap() = 0;
   virtual void Lock() = 0;
+
   virtual void Unlock() = 0;
   virtual bool IsClosed() = 0;
   virtual void Close() = 0;
   virtual ~Channel() {}
 
-  virtual void AddToSendQ(const void *referrer, T* data,
-                          std::condition_variable_any &rCond,
-                          std::function<bool (ChannelAction)> cb) = 0;
-  virtual void AddToReceiveQ(const void *referrer, T* data,
-                             std::condition_variable_any &rCond,
-                             std::function<bool (ChannelAction)> cb) = 0;
-  virtual void RemoveFromSendQ(const void *referrer) = 0;
-  virtual void RemoveFromReceiveQ(const void *referrer) = 0;
+  virtual void AddToSendQ(const void* referrer, T* data,
+                          std::shared_ptr<std::condition_variable_any> cond,
+                          std::function<bool(ChannelAction)> cb) = 0;
+  virtual void AddToReceiveQ(const void* referrer, T* data,
+                             std::shared_ptr<std::condition_variable_any> cond,
+                             std::function<bool(ChannelAction)> cb) = 0;
+  virtual void RemoveFromSendQ(const void* referrer) = 0;
+  virtual void RemoveFromReceiveQ(const void* referrer) = 0;
 };
 
 // Forward declaration of channel implementations.
@@ -138,31 +139,31 @@ class ChannelHolder {
   }
 
   template <typename T>
-  void AddToSendQ(const void *referrer, T* data,
-                  std::condition_variable_any &rCond,
-                  std::function<bool (ChannelAction)> cb) {
+  void AddToSendQ(const void* referrer, T* data,
+                  std::shared_ptr<std::condition_variable_any> cond,
+                  std::function<bool(ChannelAction)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
-        channel->AddToSendQ(referrer, data, rCond, cb);
+        channel->AddToSendQ(referrer, data, cond, cb);
       }
     }
   }
 
   template <typename T>
-  void AddToReceiveQ(const void *referrer, T* data,
-                     std::condition_variable_any &rCond,
-                     std::function<bool (ChannelAction)> cb) {
+  void AddToReceiveQ(const void* referrer, T* data,
+                     std::shared_ptr<std::condition_variable_any> cond,
+                     std::function<bool(ChannelAction)> cb) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
-        channel->AddToReceiveQ(referrer, data, rCond, cb);
+        channel->AddToReceiveQ(referrer, data, cond, cb);
       }
     }
   }
 
   template <typename T>
-  void RemoveFromSendQ(const void *referrer) {
+  void RemoveFromSendQ(const void* referrer) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
@@ -172,7 +173,7 @@ class ChannelHolder {
   }
 
   template <typename T>
-  void RemoveFromReceiveQ(const void *referrer) {
+  void RemoveFromReceiveQ(const void* referrer) {
     if (IsInitialized()) {
       Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
       if (channel != nullptr) {
