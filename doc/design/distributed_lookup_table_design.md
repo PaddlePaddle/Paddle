@@ -2,7 +2,7 @@
 
 ## Background
 
-Embeddings is a popular technique used in neural network to support applications such as search engines, advertising systems, and recommendation systems. 
+Embedding is a popular technique used in neural network to support applications such as search engines, advertising systems, and recommendation systems.
 
 Embeddings are stored in a lookup table (or hash table), that given a word id, returns the embedding (which is an array of numbers). 
 
