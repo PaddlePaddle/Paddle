@@ -61,33 +61,42 @@ def conv2d_forward_naive(input, filter, group, conv_param):
     return out
 
 
+def create_view(input):
+    if input.dtype == np.float16:
+        input_view = input.view(np.uint16)
+    else:
+        input_view = input
+    return input_view
+
+
 class TestConv2dOp(OpTest):
     def setUp(self):
         self.use_cudnn = False
         self.use_mkldnn = False
+        self.use_float16 = False
         self.init_op_type()
         self.init_group()
         self.init_dilation()
         self.init_test_case()
+        input, filter, output = self.init_input_output()
+        input_view = create_view(input)
+        filter_view = create_view(filter)
 
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
             'dilation': self.dilations
         }
-        input = np.random.random(self.input_size).astype("float32")
-        filter = np.random.random(self.filter_size).astype("float32")
-        output = conv2d_forward_naive(input, filter, self.groups,
-                                      conv2d_param).astype('float32')
 
-        self.inputs = {'Input': input, 'Filter': filter}
+        self.inputs = {'Input': input_view, 'Filter': filter_view}
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
+            'use_float16': self.use_float16
         }
         self.outputs = {'Output': output}
 
@@ -99,6 +108,8 @@ class TestConv2dOp(OpTest):
             self.check_output()
 
     def test_check_grad(self):
+        if self.use_float16:
+            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -111,6 +122,8 @@ class TestConv2dOp(OpTest):
                 set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
+        if self.use_float16:
+            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -126,6 +139,8 @@ class TestConv2dOp(OpTest):
                 no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
+        if self.use_float16:
+            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -156,6 +171,13 @@ class TestConv2dOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "conv2d"
+
+    def init_input_output(self):
+        input = np.random.random(self.input_size).astype("float32")
+        filter = np.random.random(self.filter_size).astype("float32")
+        output = conv2d_forward_naive(input, filter, self.groups,
+                                      conv2d_param).astype('float32')
+        return input, filter, output
 
 
 class TestWithPad(TestConv2dOp):
@@ -230,6 +252,41 @@ class TestCUDNN(TestConv2dOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d"
+
+
+class TestFP16CUDNN1(TestConv2dOp):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.use_float16 = True
+        self.op_type = "conv2d"
+
+
+class TestFP16CUDNN2(TestConv2dOp):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.use_float16 = True
+        self.op_type = "conv2d"
+
+    def init_input_output(self):
+        input = np.random.random(self.input_size).astype("float16")
+        filter = np.random.random(self.filter_size).astype("float32")
+        output = conv2d_forward_naive(input, filter, self.groups,
+                                      conv2d_param).astype('float32')
+        return input, filter, output
+
+
+class TestFP16CUDNN3(TestConv2dOp):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.use_float16 = True
+        self.op_type = "conv2d"
+
+    def init_input_output(self):
+        input = np.random.random(self.input_size).astype("float16")
+        filter = np.random.random(self.filter_size).astype("float16")
+        output = conv2d_forward_naive(input, filter, self.groups,
+                                      conv2d_param).astype('float32')
+        return input, filter, output
 
 
 class TestCUDNNWithPad(TestWithPad):

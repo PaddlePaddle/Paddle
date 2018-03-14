@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -79,6 +80,21 @@ enum class PoolingMode {
 
 template <typename T>
 class CudnnDataType;
+
+template <>
+class CudnnDataType<float16> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_HALF;
+  typedef const float16 ScalingParamType;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = static_cast<float16>(1.0);
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = static_cast<float16>(0.0);
+    return &v;
+  }
+};
 
 template <>
 class CudnnDataType<float> {
@@ -294,6 +310,18 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   }
 #endif
   return use_cudnn;
+}
+
+inline bool CanFloat16BeUsed(const framework::ExecutionContext& ctx) {
+  bool use_float16 = ctx.Attr<bool>("use_float16");
+  use_float16 &= paddle::platform::is_gpu_place(ctx.GetPlace());
+#ifdef PADDLE_WITH_CUDA
+  if (use_float16) {
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    use_float16 &= dev_ctx.GetComputeCapability() >= 53;
+  }
+#endif
+  return use_float16;
 }
 
 }  // namespace platform
