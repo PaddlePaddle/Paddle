@@ -41,17 +41,16 @@ All the operators above access the `lookup_table` directly in memory. If we chan
 ## TODO
 
 1. Implement `distributed lookup table`, with service part and client part. The client should provide four interfaces:
-  - `Pull(ids) -> embedding_values` pull embedding_values according to ids.
-  - `Push(grad, update_method)` push `grad` to the distributed lookup table and update it to the parameter using `update_method `, this interface use is asynchronous.
-  - `Save()` save the model to a persistent file system, such as HDFS.
-  - `Load()` load the model from a persistent file system, such as HDFS.
+    - `Pull(ids) -> embedding_values` pull embedding_values according to ids.
+    - `Push(grad, update_method)` push `grad` to the distributed lookup table and update it to the parameter using `update_method `, this interface use is asynchronous.
+    - `Save()` save the model to a persistent file system, such as HDFS.
+    - `Load()` load the model from a persistent file system, such as HDFS.
 
-  The details will be proposed in another PR.
-
+    The details will be proposed in another PR.
 1. Design and implement `lookup_table_op` and `lookup_table_grad_op ` with distributed lookup table client.
 1. Implement the Python wrapper for above ops, users can choose and config to use these ops.
 1. The distributed Fluid should support this `distributed lookup table service` on kubernetes.
 1. Implement a `distributed transpiler` that can change the program into a distributed one which will use the `distributed lookup table service`.
 
 ## Things need to be discussed
-In the above design, the parameter update is done within `distributed lookup table service`, the interface is `Push(grad, update_method)`, this is different than the current design of PaddlePaddle Fluid, Currently, parameter update is done by Operators. So how should we impelement these update_method?
+In the above design, the parameter update is done within `distributed lookup table service`, the interface is `Push(grad, update_method)`, this is different than the current design of PaddlePaddle Fluid. Currently, parameter update is done by Operators. How should we impelement these update_method?
