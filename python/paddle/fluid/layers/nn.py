@@ -49,6 +49,7 @@ __all__ = [
     'reduce_mean',
     'reduce_max',
     'reduce_min',
+    'reduce_prod',
     'sequence_first_step',
     'sequence_last_step',
     'dropout',
@@ -2174,6 +2175,53 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_min',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim if dim != None else 0,
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        })
+    return out
+
+
+def reduce_prod(input, dim=None, keep_dim=False, name=None):
+    """
+    Computes the product of tensor elements over the given dimension.
+
+    Args:
+        input (Variable): The input variable which is a Tensor or LoDTensor.
+        dim (int|None): The dimension along which the product is performed. If
+            :attr:`None`, multipy all elements of :attr:`input` and return a
+            Tensor variable with a single element, otherwise must be in the
+            range :math:`[-rank(input), rank(input))`. If :math:`dim < 0`,
+            the dimension to reduce is :math:`rank + dim`.
+        keep_dim (bool|False): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the :attr:`input` unless :attr:`keep_dim` is true.
+        name(str|None): A name for this layer(optional). If set None, the 
+            layer will be named automatically.
+
+    Returns:
+        Variable: The reduced Tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a Tensor variable with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the correspending output tensor.
+            fluid.layers.reduce_prod(x)  # [0.0002268]
+            fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
+            fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
+            fluid.layers.reduce_prod(x, dim=1, 
+                                     keep_dim=True)  # [[0.027], [0.0084]]
+    """
+    helper = LayerHelper('reduce_prod', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='reduce_prod',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
