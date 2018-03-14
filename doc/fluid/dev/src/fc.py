@@ -48,7 +48,8 @@ def fc(input,
     * :math:`Out`: The output tensor.
 
     Args:
-        input (Variable|list of Variable): This layer's input tensor(s) which is at least 2-dimensional.
+        input (Variable|list of Variable): The input tensor(s) of this layer, and the dimension of
+            the input tensor(s) is at least 2.
         size(int): The number of output units in this layer.
         num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened

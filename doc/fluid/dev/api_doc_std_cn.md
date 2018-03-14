@@ -40,7 +40,7 @@ API文档须包含以下几个模块（排列顺序为文档撰写顺序）：
 
 ## 格式及示例
 
-API文档须使用rst格式撰写，该格式详情请参考[链接](http://sphinx-doc-zh.readthedocs.io/en/latest/rest.html)。API文档各模块的内容格式及示例如下（以下以fc为例进行说明）：
+API文档须使用reStructuredText格式撰写，该格式详情请参考[链接](http://sphinx-doc-zh.readthedocs.io/en/latest/rest.html)。API文档各模块的内容格式及示例如下（以下以fc为例进行说明）：
 
 - Python API Definition
 
@@ -137,7 +137,8 @@ API文档须使用rst格式撰写，该格式详情请参考[链接](http://sphi
 
       ```
       Args:
-          input (Variable|list of Variable): This layer's input tensor(s) which is at least 2-dimensional.
+          input (Variable|list of Variable): The input tensor(s) of this layer, and the dimension of
+              the input tensor(s) is at least 2.
           param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
               parameters/weights of this layer.
           name (str, default None): The name of this layer.
