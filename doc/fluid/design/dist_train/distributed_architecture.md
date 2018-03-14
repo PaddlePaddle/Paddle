@@ -1,4 +1,4 @@
-# Design Doc: Distributed Training Architecture
+# Design Doc: Fluid Distributed Training Architecture
 
 ## Abstract
 
