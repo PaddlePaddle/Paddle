@@ -588,8 +588,17 @@ class DistributeTranspiler:
             elif key == "LearningRate":
                 # leraning rate variable has already be created by non-optimize op,
                 # don't create it once again.
-                #print("learning_rate")
-                new_inputs[key] = pserver_block.vars[opt_op.input(key)[0]]
+                lr_varname = opt_op.input(key)[0]
+                if pserver_block.vars.has_key(lr_varname):
+                    new_inputs[key] = pserver_block.vars[opt_op.input(key)[0]]
+                else:
+                    origin_var = origin_program.global_block().vars[lr_varname]
+                    tmpvar = pserver_block.create_var(
+                        name=origin_var.name,
+                        persistable=origin_var.persistable,
+                        dtype=origin_var.dtype,
+                        shape=origin_var.shape)
+                    new_inputs[key] = tmpvar
 
         for key in opt_op.input_names:
             new_shape = None
