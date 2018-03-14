@@ -176,7 +176,6 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             dtype="float32", shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            # add concat_rows
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
