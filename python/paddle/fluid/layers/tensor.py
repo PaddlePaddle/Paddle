@@ -32,6 +32,7 @@ __all__ = [
     'fill_constant',
     'ones',
     'zeros',
+    'scatter',
 ]
 
 
@@ -362,6 +363,27 @@ def zeros(shape, dtype, force_cpu=False):
           data = fluid.layers.zeros(shape=[1], dtype='int64')
     """
     return fill_constant(value=0.0, **locals())
+
+
+def scatter(input, index, updates):
+    """
+    Scatter input through the index
+    Out[Index] = Ref[Index] + Updates
+
+    Args:
+        input(variable): The Tensor/LoDTensor to be scatterd.
+        index(variable): The index input of scatter op where Ref will be updated.
+        updates(variable): The updated value to be added to the output.
+    """
+    helper = LayerHelper("scatter", **locals())
+    out = helper.create_tmp_variable(dtype=dtype)
+    helper.append_op(
+        type='scatter',
+        inputs={'Ref': input,
+                'Index': index,
+                'Updates': updates},
+        outputs={'Out': [out]})
+    return out
 
 
 def save(x, file_path, overwrite=True):
