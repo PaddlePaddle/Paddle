@@ -23,6 +23,7 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
+/*
 void SerializeToMessage(const std::string& name, const framework::Variable* var,
                         const platform::DeviceContext& ctx,
                         sendrecv::VariableMessage* msg) {
@@ -66,6 +67,90 @@ void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
       break;
     }
   }
+}
+*/
+
+// TODO(gongwb): from bytebuffer directedly.
+void DeserializeLodTendor(const sendrecv::VariableMessage& msg,
+                          const platform::DeviceContext& ctx,
+                          framework::Variable* var, framework::DDim& dims) {
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  tensor->Resize(dims);
+  void* tensor_data = tensor->mutable_data(
+      ctx.GetPlace(), paddle::operators::detail::ToTypeIndex(msg.data_type()));
+
+  framework::LoD lod;
+  for (int i = 0; i < msg.lod_level(); ++i) {
+    framework::Vector<size_t> v;
+    for (int j = 0; j < msg.lod(i).lod_data_size(); ++j) {
+      v.push_back(msg.lod(i).lod_data(j));
+    }
+    lod.push_back(v);
+  }
+  tensor->set_lod(lod);
+  // How to avoid copying and use the message buffer directly?
+  // Maybe need to find a way to release all memory except tensor content.
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+    platform::CPUPlace cpu;
+    auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
+    memory::Copy(boost::get<platform::CUDAPlace>(tensor->place()), tensor_data,
+                 cpu, reinterpret_cast<const void*>(msg.serialized().data()),
+                 msg.serialized().size(), gpu_dev_ctx.stream());
+    ctx.Wait();
+#endif
+  } else {
+    memcpy(tensor_data, reinterpret_cast<const void*>(msg.serialized().data()),
+           msg.serialized().size());
+  }
+}
+
+// TODO(gongwb): from bytebuffer directedly.
+void DeserializeSelectedRows(const sendrecv::VariableMessage& msg,
+                             const platform::DeviceContext& ctx,
+                             framework::Variable* var, framework::DDim& dims) {
+  auto* slr = var->GetMutable<framework::SelectedRows>();
+  auto* tensor = slr->mutable_value();
+  int64_t* rows_data = slr->mutable_rows()->data();
+  tensor->Resize(dims);
+  void* tensor_data = tensor->mutable_data(
+      ctx.GetPlace(), paddle::operators::detail::ToTypeIndex(msg.data_type()));
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+    platform::CPUPlace cpu;
+    auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
+    memory::Copy(boost::get<platform::CUDAPlace>(tensor->place()), tensor_data,
+                 cpu, reinterpret_cast<const void*>(msg.serialized().data()),
+                 msg.serialized().size(), gpu_dev_ctx.stream());
+    ctx.Wait();
+#endif
+  } else {
+    memcpy(tensor_data, reinterpret_cast<const void*>(msg.serialized().data()),
+           msg.serialized().size());
+  }
+
+  // copy rows CPU data, GPU data will be copied lazly
+  memcpy(rows_data, reinterpret_cast<const void*>(msg.rows().data()),
+         msg.rows().size());
+}
+
+void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
+                            const platform::DeviceContext& ctx,
+                            framework::Variable* var) {
+  // dims is needed by both tensor and selectedrows
+  std::vector<int> vecdims;
+  for (auto& d : msg.dims()) {
+    vecdims.push_back(d);
+  }
+  framework::DDim dims = framework::make_ddim(vecdims);
+
+  if (msg.type() == sendrecv::LOD_TENSOR) {
+    DeserializeLodTendor(msg, ctx, var, dims);
+  } else if (msg.type() == sendrecv::SELECTED_ROWS) {
+    DeserializeSelectedRows(msg, ctx, var, dims);
+  }
+
+  PADDLE_ENFORCE(false, "must be LOD_TENSOR or SELECTED_ROWS");
 }
 
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
@@ -215,6 +300,16 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 
   ::grpc::ByteBuffer tmp(&slices[0], num_slices);
   msg->Swap(&tmp);
+}
+
+void GetOnlyMessageSkeleton(const ::grpc::ByteBuffer& buf,
+                            sendrecv::VariableMessage* msg) {
+  // sendrecv::VariableMessage meta;
+  GrpcByteBufferSource source;
+  source.Init(buf);
+  ::google::protobuf::io::CodedInputStream input(&source);
+  PADDLE_ENFORCE(msg->ParseFromCodedStream(&input));
+  PADDLE_ENFORCE(input.ConsumedEntireMessage());
 }
 
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,

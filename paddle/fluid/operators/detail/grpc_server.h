@@ -14,28 +14,33 @@ limitations under the License. */
 
 #pragma once
 
+#include <grpc++/grpc++.h>
+#include <thread>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/simple_block_queue.h"
 
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 
-#include <grpc++/grpc++.h>
-#include <grpc/support/log.h>
-#include <thread>
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/grpc_service.h"
+
+//#include <grpc/support/log.h>
 
 namespace paddle {
 namespace operators {
 namespace detail {
 
 typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
+// typedef std::pair<std::string, ::grpc::ByteBuffer> MessageWithName;
 class RequestBase;
 
-class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
+// class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
+class AsyncGRPCServer final {
  public:
   explicit AsyncGRPCServer(const std::string &address) : address_(address) {}
 
@@ -57,7 +62,7 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
   void ShutDown();
 
  protected:
-  void HandleRequest(grpc::ServerCompletionQueue *cq, std::string cq_name,
+  void HandleRequest(::grpc::ServerCompletionQueue *cq, std::string cq_name,
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
@@ -66,11 +71,12 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
  private:
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
-  std::unique_ptr<grpc::ServerCompletionQueue> cq_send_;
-  std::unique_ptr<grpc::ServerCompletionQueue> cq_get_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_send_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_get_;
 
-  sendrecv::SendRecvService::AsyncService service_;
-  std::unique_ptr<grpc::Server> server_;
+  // sendrecv::SendRecvService::AsyncService service_;
+  GrpcService::AsyncService service_;
+  std::unique_ptr<::grpc::Server> server_;
 
   std::string address_;
   framework::Scope *scope_;

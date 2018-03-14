@@ -122,6 +122,7 @@ class ListenAndServOp : public framework::OperatorBase {
             PADDLE_THROW("Can not find server side var");
           }
           detail::DeserializeFromMessage(v.second, dev_ctx, var);
+          // detail::DeserializeFromByteBuffer(v.second, dev_ctx, var);
           if (var->IsType<framework::SelectedRows>()) {
             sparse_vars.push_back(var);
           }

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/grpc_server.h"
 
-using grpc::ServerAsyncResponseWriter;
+using ::grpc::ServerAsyncResponseWriter;
 
 namespace paddle {
 namespace operators {
@@ -26,8 +26,9 @@ enum CallStatus { PROCESS = 0, FINISH };
 // https://stackoverflow.com/questions/41732884/grpc-multiple-services-in-cpp-async-server
 class RequestBase {
  public:
-  explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
-                       grpc::ServerCompletionQueue* cq)
+  // explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
+  explicit RequestBase(GrpcService::AsyncService* service,
+                       ::grpc::ServerCompletionQueue* cq)
       : service_(service), cq_(cq), status_(PROCESS) {
     PADDLE_ENFORCE(cq_);
   }
@@ -42,22 +43,28 @@ class RequestBase {
   }
 
  protected:
-  grpc::ServerContext ctx_;
-  sendrecv::SendRecvService::AsyncService* service_;
-  grpc::ServerCompletionQueue* cq_;
+  ::grpc::ServerContext ctx_;
+  // sendrecv::SendRecvService::AsyncService* service_;
+  GrpcService::AsyncService* service_;
+  ::grpc::ServerCompletionQueue* cq_;
   CallStatus status_;
 };
 
-typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
+// typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 
+/*
+class RequestSend final : public RequestBase {
+};
+*/
 class RequestSend final : public RequestBase {
  public:
-  explicit RequestSend(sendrecv::SendRecvService::AsyncService* service,
-                       grpc::ServerCompletionQueue* cq,
+  explicit RequestSend(GrpcService::AsyncService* service,
+                       ::grpc::ServerCompletionQueue* cq,
                        SimpleBlockQueue<MessageWithName>* queue)
       : RequestBase(service, cq), queue_(queue), responder_(&ctx_) {
-    service_->RequestSendVariable(&ctx_, &request_, &responder_, cq_, cq_,
-                                  this);
+    int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
+    service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
+                                cq_, this);
   }
 
   virtual ~RequestSend() {}
@@ -65,24 +72,34 @@ class RequestSend final : public RequestBase {
   virtual std::string GetReqName() { return request_.varname(); }
 
   virtual void Process() {
+    // sendrecv::VariableMessage msg;
+    // GetOnlyMessageSkeleton(request_, &msg);
+    // varname_ = msg.varname();
+    std::string varname = request_.varname();
+
     MessageWithName msg_with_name =
-        std::make_pair(request_.varname(), std::move(request_));
+        std::make_pair(varname, std::move(request_));
     queue_->Push(std::move(msg_with_name));
-    responder_.Finish(reply_, grpc::Status::OK, this);
+
+    sendrecv::VoidMessage reply;
+    responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
   }
 
  protected:
   sendrecv::VariableMessage request_;
-  sendrecv::VoidMessage reply_;
+  // ::grpc::ByteBuffer request_;
+  // std::string varname_;
+  // sendrecv::VoidMessage reply_;
   SimpleBlockQueue<MessageWithName>* queue_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };
 
 class RequestGet final : public RequestBase {
  public:
-  explicit RequestGet(sendrecv::SendRecvService::AsyncService* service,
-                      grpc::ServerCompletionQueue* cq, framework::Scope* scope,
+  explicit RequestGet(GrpcService::AsyncService* service,
+                      ::grpc::ServerCompletionQueue* cq,
+                      framework::Scope* scope,
                       const platform::DeviceContext* dev_ctx,
                       SimpleBlockQueue<MessageWithName>* queue)
       : RequestBase(service, cq),
@@ -90,7 +107,11 @@ class RequestGet final : public RequestBase {
         scope_(scope),
         dev_ctx_(dev_ctx),
         queue_(queue) {
-    service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_, this);
+    // service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_,
+    // this);
+    int method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
+    service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
+                                cq_, this);
   }
 
   virtual ~RequestGet() {}
@@ -101,22 +122,28 @@ class RequestGet final : public RequestBase {
     // proc request.
     std::string var_name = request_.varname();
     auto* var = scope_->FindVar(var_name);
+
+    ::grpc::ByteBuffer reply;
     if (var_name != FETCH_BARRIER_MESSAGE) {
-      SerializeToMessage(var_name, var, *dev_ctx_, &reply_);
+      SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
     }
+
     // TODO(gongwb): check var's info.
-    responder_.Finish(reply_, grpc::Status::OK, this);
+    responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
-    MessageWithName msg_with_name =
-        //          request name    reply
-        std::make_pair(var_name, std::move(reply_));
-    queue_->Push(msg_with_name);
+
+    //          request name    reply
+    if (var_name == FETCH_BARRIER_MESSAGE) {
+      sendrecv::VariableMessage msg;
+      MessageWithName msg_with_name = std::make_pair(var_name, msg);
+      queue_->Push(msg_with_name);
+    }
   }
 
  protected:
   sendrecv::VariableMessage request_;
-  sendrecv::VariableMessage reply_;
-  ServerAsyncResponseWriter<sendrecv::VariableMessage> responder_;
+  // ServerAsyncResponseWriter<sendrecv::VariableMessage> responder_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
   framework::Scope* scope_;
   const platform::DeviceContext* dev_ctx_;
   SimpleBlockQueue<MessageWithName>* queue_;
@@ -133,8 +160,8 @@ void AsyncGRPCServer::WaitClientGet(int count) {
 }
 
 void AsyncGRPCServer::RunSyncUpdate() {
-  grpc::ServerBuilder builder;
-  builder.AddListeningPort(address_, grpc::InsecureServerCredentials());
+  ::grpc::ServerBuilder builder;
+  builder.AddListeningPort(address_, ::grpc::InsecureServerCredentials());
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
   builder.RegisterService(&service_);
@@ -198,7 +225,7 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
 }
 
 // FIXME(typhoonzero): change cq_name to enum.
-void AsyncGRPCServer::HandleRequest(grpc::ServerCompletionQueue* cq,
+void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
                                     std::string cq_name,
                                     std::function<void()> TryToRegisterNewOne) {
   TryToRegisterNewOne();

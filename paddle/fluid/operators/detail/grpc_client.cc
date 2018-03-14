@@ -65,8 +65,10 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 
 void ProcGetResponse(const VarHandle& var_h,
                      const sendrecv::VariableMessage& ret_msg) {
-  auto* outvar = var_h.scope->FindVar(var_h.name);
-  DeserializeFromMessage(ret_msg, *var_h.ctx, outvar);
+  // auto* outvar = var_h.scope->FindVar(var_h.name);
+  // DeserializeFromMessage(ret_msg, *var_h.ctx, outvar);
+  std::cout << var_h.String() << std::endl;
+  std::cout << ret_msg.varname() << std::endl;
 }
 
 bool RPCClient::AsyncGetVariable(const std::string& ep,
