@@ -20,20 +20,21 @@ namespace operators {
 namespace reader {
 class RecordIOFileReader : public framework::FileReader {
  public:
-  RecordIOFileReader(const std::string& filename,
-                     const std::vector<framework::DDim>& shapes)
-      : FileReader(shapes),
+  explicit RecordIOFileReader(const std::string& filename,
+                              const std::vector<framework::DDim>& dims)
+      : FileReader(dims),
         scanner_(filename),
         dev_ctx_(*platform::DeviceContextPool::Instance().Get(
             platform::CPUPlace())) {}
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
-  }
-
   bool HasNext() const override { return scanner_.HasNext(); }
 
   void ReInit() override { scanner_.Reset(); }
+
+ protected:
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
+    *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+  }
 
  private:
   recordio::Scanner scanner_;
@@ -54,12 +55,12 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
                       int(shape_concat.size()),
                       "The accumulate of all ranks should be equal to the "
                       "shape concat's length.");
-    std::vector<framework::DDim> shapes = RestoreShapes(shape_concat, ranks);
     std::string filename = Attr<std::string>("filename");
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new RecordIOFileReader(filename, shapes));
+    out->Reset(
+        new RecordIOFileReader(filename, RestoreShapes(shape_concat, ranks)));
   }
 };
 
@@ -85,3 +86,5 @@ namespace reader = paddle::operators::reader;
 REGISTER_FILE_READER_OPERATOR(create_recordio_file_reader,
                               reader::CreateRecordIOReaderOp,
                               reader::CreateRecordIOReaderOpMaker);
+
+REGISTER_FILE_READER(recordio, reader::RecordIOFileReader);
