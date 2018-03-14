@@ -81,7 +81,8 @@ class TestFP16MulOp1(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-1)
+            if is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-1)
 
 
 class TestFP16MulOp2(OpTest):
@@ -102,7 +103,8 @@ class TestFP16MulOp2(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=2e-1)
+            if is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-1)
 
 
 if __name__ == "__main__":

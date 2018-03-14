@@ -62,17 +62,13 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(mul_op.output_names, ["Out"])
         self.assertEqual(mul_op.output("Out"), ["mul.out"])
         self.assertEqual(
-            set(mul_op.attr_names),
-            set(["x_num_col_dims", "y_num_col_dims", "use_float16"]))
+            set(mul_op.attr_names), set(["x_num_col_dims", "y_num_col_dims"]))
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("x_num_col_dims"), core.AttrType.INT)
         self.assertEqual(mul_op.attr("x_num_col_dims"), 1)
         self.assertEqual(mul_op.has_attr("y_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("y_num_col_dims"), core.AttrType.INT)
         self.assertEqual(mul_op.attr("y_num_col_dims"), 1)
-        self.assertEqual(mul_op.has_attr("use_float16"), True)
-        self.assertEqual(mul_op.attr_type("use_float16"), core.AttrType.BOOL)
-        self.assertEqual(mul_op.attr("use_float16"), False)
         self.assertEqual(mul_op.idx, 0)
         self.assertEqual(mul_out.op, mul_op)
 

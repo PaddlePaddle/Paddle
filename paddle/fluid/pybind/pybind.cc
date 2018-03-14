@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/cond_op.h"
 #include "paddle/fluid/operators/net_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -412,6 +413,13 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices", &framework::InitDevices);
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+#ifndef PADDLE_WITH_CUDA
+  m.def("is_float16_supported",
+        [](const platform::CUDAPlace &gpu_place) -> bool {
+          // Only GPUs with Compute Capability >= 53 support float16
+          return platform::GetCUDAComputeCapability(gpu_place.device) >= 53;
+        });
+#endif
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
