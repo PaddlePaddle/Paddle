@@ -20,6 +20,7 @@ from layer_helper import LayerHelper
 from distributed_spliter import *
 import math
 from . import core
+import debuger
 
 
 class VarBlock:
@@ -203,12 +204,14 @@ class DistributeTranspiler:
         send_outputs = []
         for b in grad_blocks:  # append by order
             varname, block_id, _ = b.split(":")
+            #print("grad:", b)
             send_inputs.append(grad_var_mapping[varname][int(block_id)])
 
         param_var_mapping = self._create_vars_from_blocklist(program,
                                                              param_blocks)
         for b in param_blocks:
             varname, block_id, _ = b.split(":")
+            #print("param:", b)
             send_outputs.append(param_var_mapping[varname][int(block_id)])
         # let send_op know which endpoint to send which var to, eplist has the same
         # order as send_inputs.
@@ -264,6 +267,7 @@ class DistributeTranspiler:
         # step2
         recv_inputs = []
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
+            #print(v)
             self._clone_var(pserver_program.global_block(), v)
         for v in self.param_grad_ep_mapping[endpoint]["grads"]:
             # create vars for each trainer in global scope, so
@@ -287,6 +291,9 @@ class DistributeTranspiler:
                     dtype=v.dtype,
                     shape=v.shape)
                 recv_inputs.append(var)
+
+        print("begin pserver:")
+        print(debuger.pprint_program_codes(pserver_program.desc))
         # step3
         optimize_block = pserver_program.create_block(0)
         # step 4
@@ -308,14 +315,13 @@ class DistributeTranspiler:
         #print("optimize_ops:", self.optimize_ops)
         for _, op in enumerate(self.optimize_ops):
             for _, opt_op in enumerate(opt_op_on_pserver):
-                print("opt_op")
+                print("opt_op:", opt_op)
                 if ufind.is_connected(op, opt_op):
                     if self._is_opt_op(op):
                         self._append_pserver_ops(optimize_block, op, endpoint)
                     else:
                         self._append_pserver_non_opt_ops(optimize_block, op)
                     break
-        print("add listen")
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
@@ -461,6 +467,8 @@ class DistributeTranspiler:
         var_mapping = self._create_vars_from_blocklist(
             program, gradblocks, add_trainer_suffix=True)
         for varname, splited_vars in var_mapping.iteritems():
+            #print("varname:", varname)
+            #print("splited_vars:", splited_vars)
             # variable that don't need to split have empty splited_vars
             if len(splited_vars) <= 1:
                 continue
@@ -530,7 +538,6 @@ class DistributeTranspiler:
         # update param/grad shape first, then other inputs like
         # moment can use the updated shape
         for key in opt_op.input_names:
-            print("param")
             if key == "Grad":
                 grad_block = None
                 for g in self.param_grad_ep_mapping[endpoint]["grads"]:
@@ -563,7 +570,7 @@ class DistributeTranspiler:
                             attrs={"scale": 1.0 / float(self.trainers)})
                 new_inputs[key] = merged_var
             elif key == "Param":
-                print("param")
+                #print("param")
                 # param is already created on global program
                 param_block = None
                 for p in self.param_grad_ep_mapping[endpoint]["params"]:
@@ -581,7 +588,7 @@ class DistributeTranspiler:
             elif key == "LearningRate":
                 # leraning rate variable has already be created by non-optimize op,
                 # don't create it once again.
-                print("learning_rate")
+                #print("learning_rate")
                 new_inputs[key] = pserver_block.vars[opt_op.input(key)[0]]
 
         for key in opt_op.input_names:
