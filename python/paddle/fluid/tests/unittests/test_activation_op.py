@@ -506,5 +506,72 @@ class TestSwish(OpTest):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
+#--------------------test MKLDNN--------------------
+class TestMKLDNNRelu(OpTest):
+    def setUp(self):
+        self.op_type = "relu"
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        self.inputs = {'X': x}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], 0)}
+        self.use_mkldnn = True
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestMKLDNNTanh(OpTest):
+    def setUp(self):
+        self.op_type = "tanh"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
+        }
+        self.outputs = {'Out': np.tanh(self.inputs['X'])}
+        self.use_mkldnn = True
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestMKLDNNSqrt(OpTest):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
+        }
+        self.outputs = {'Out': np.sqrt(self.inputs['X'])}
+        self.use_mkldnn = True
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestMKLDNNAbs(OpTest):
+    def setUp(self):
+        self.op_type = "abs"
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        self.inputs = {'X': x}
+        self.outputs = {'Out': np.abs(self.inputs['X'])}
+        self.use_mkldnn = True
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,35 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
+
+class ActivationHelper {
+ public:
+  framework::OpKernelType GetKernelType(
+      const framework::ExecutionContext& ctx,
+      const framework::OperatorWithKernel& oper) const {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_MKLDNN
+    if (library == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kMKLDNN;
+    }
+#endif
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    if (ctx.HasAttr("data_format")) {
+      std::string data_format = ctx.Attr<std::string>("data_format");
+      layout = framework::StringToDataLayout(data_format);
+    }
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        ctx.GetPlace(), layout, library);
+  }
+};
 
 template <typename DeviceContext, typename Functor>
 class ActivationKernel
@@ -49,6 +76,27 @@ class ActivationKernel
   }
 };
 
+template <typename Functor>
+class MKLDNNActivationKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    PADDLE_ENFORCE(!context.HasAttr("X"),
+                   "Cannot find input tensor X, variable name = %s",
+                   context.op().Input("X"));
+    PADDLE_ENFORCE(!context.HasAttr("Out"),
+                   "Cannot find output tensor Out, variable name = %s",
+                   context.op().Output("Out"));
+    Functor functor;
+
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = context.Attr<float>(attr.first);
+    }
+    functor(context);
+  }
+};
+
 template <typename DeviceContext, typename Functor>
 class ActivationGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -74,6 +122,21 @@ class ActivationGradKernel
       *attr.second = context.Attr<float>(attr.first);
     }
     functor(*place, x, out, dout, dx);
+  }
+};
+
+template <typename Functor>
+class MKLDNNActivationGradKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    Functor functor;
+
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = context.Attr<float>(attr.first);
+    }
+    functor(context);
   }
 };
 

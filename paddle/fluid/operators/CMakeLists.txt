@@ -153,7 +153,12 @@ function(op_library TARGET)
 
     # pybind USE_OP_DEVICE_KERNEL for MKLDNN
     if (WITH_MKLDNN AND ${mkldnn_cc_srcs_len} GREATER 0)
+      # Append first implemented MKLDNN activation operator
+      if (${MKLDNN_FILE} STREQUAL "activation_mkldnn_op")
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, MKLDNN);\n")
+      else()
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, MKLDNN);\n")
+      endif()
     endif()
 
     # pybind USE_OP

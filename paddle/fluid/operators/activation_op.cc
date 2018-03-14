@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +25,11 @@ class ActivationOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return ActivationHelper().GetKernelType(ctx, *this);
+  }
 };
 
 class ActivationOpGrad : public framework::OperatorWithKernel {
@@ -33,6 +38,11 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return ActivationHelper().GetKernelType(ctx, *this);
   }
 };
 
@@ -87,6 +97,16 @@ class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Relu operator");
     AddOutput("Out", "Output of Relu operator");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Relu Activation Operator.
 
@@ -140,6 +160,16 @@ class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Tanh operator");
     AddOutput("Out", "Output of Tanh operator");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Tanh Activation Operator.
 
@@ -193,6 +223,16 @@ class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Sqrt operator");
     AddOutput("Out", "Output of Sqrt operator");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Sqrt Activation Operator.
 
@@ -208,6 +248,16 @@ class AbsOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Abs operator");
     AddOutput("Out", "Output of Abs operator");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Abs Activation Operator.
 
