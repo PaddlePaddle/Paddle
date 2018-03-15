@@ -79,7 +79,7 @@ class TestConv2dOp(OpTest):
 
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
-        output = conv2d_forward_naive(self.input, self.filter, self.groups,
+        output = conv2d_forward_naive(input, filter, self.groups,
                                       conv2d_param).astype(self.dtype)
 
         # numpy float16 is binded to paddle::platform::float16 
@@ -88,9 +88,12 @@ class TestConv2dOp(OpTest):
         # uint16_t in paddle or np.uint16 in numpy, which are
         # themselves binded together.        
         self.inputs = {
-            'Input': input.view(np.uint16)
-            if self.dtype == np.float16 else input,
-            'Filter': create_view(filter)
+            #'Input': (input.view(np.uint16)
+            #          if self.dtype == np.float16 else input),
+            #'Filter': (filter.view(np.uint16)
+            #          if self.dtype == np.float16 else filter)
+            'Input': OpTest.create_view(input),
+            'Filter': OpTest.create_view(filter)
         }
         self.attrs = {
             'strides': self.stride,
@@ -254,7 +257,7 @@ class TestFP16CUDNN(TestCUDNN):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-1)
+                self.check_output_with_place(place, atol=2e-2)
 
     def test_check_grad(self):
         pass
