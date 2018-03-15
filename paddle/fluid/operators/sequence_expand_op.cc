@@ -33,9 +33,10 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
                    "Output(Out) of SequenceExpandOp should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
+    int ref_level = ctx->Attrs().Get<int>("ref_level");
+
     PADDLE_ENFORCE_EQ(x_dims.size(), 2U,
                       "Dimension number of Input(X) should be 2.");
-    int ref_level = ctx->Attrs().Get<int>("ref_level");
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
@@ -51,39 +52,37 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
                         "greater than 1.");
 
       PADDLE_ENFORCE(x_lod.size() == y_lod.size() || x_lod.size() == 0,
-                     "Number of lod level of Input(X) either equal to 0 "
-                     "or equal to that of Input(Y).");
+                     "Level number of Input(X)'s lod should be either equal "
+                     "to 0 or equal to that of Input(Y).");
+
+      PADDLE_ENFORCE_GT(y_lod.size(), 0,
+                        "Level number of Input(Y)'s lod should be "
+                        "greater than 0.");
+
+      PADDLE_ENFORCE(
+          ref_level == -1 ||
+              (ref_level >= 0 && ref_level < static_cast<int>(y_lod.size())),
+          "Invlid `ref_level`, which should be either equal to -1 "
+          "or in [0, %d)",
+          y_lod.size());
+
+      if (ref_level == -1) ref_level = y_lod.size() - 1;
 
       int64_t out_first_dim = 0;
-      if (y_lod[ref_level].size() < 1) {
+      if (y_lod[ref_level].size() <= 1) {
         out_first_dim = x_dims[0];
       } else {
-        if (x_lod.size() == 1) {  // X is LoDTensor
-          for (size_t i = 1; i < y_lod[ref_level].size(); ++i) {
-            int x_seq_len = x_lod[0][i] - x_lod[0][i - 1];
-            out_first_dim +=
-                (y_lod[ref_level][i] - y_lod[ref_level][i - 1]) * x_seq_len;
+        for (size_t i = 1; i < y_lod[ref_level].size(); ++i) {
+          int x_seq_len = 1;
+          if (x_lod.size() == 1) {
+            x_seq_len = x_lod[0][i] - x_lod[0][i - 1];
           }
-        } else {  // X is normal Tensor
-          for (size_t i = 1; i < y_lod[ref_level].size(); ++i) {
-            out_first_dim += y_lod[ref_level][i] - y_lod[ref_level][i - 1];
-          }
+          out_first_dim +=
+              (y_lod[ref_level][i] - y_lod[ref_level][i - 1]) * x_seq_len;
         }
       }
       ctx->SetOutputDim("Out", {out_first_dim, x_dims[1]});
     } else {
-      framework::VarDesc* in_reader =
-          boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Y")[0]);
-      int lod_level_num = in_reader->GetLoDLevels().size();
-
-      PADDLE_ENFORCE_GE(ref_level, 0,
-                        "Level of referred lod should be greater or "
-                        "equal to 0.");
-
-      PADDLE_ENFORCE_LT(ref_level, lod_level_num,
-                        "Level of referred lod should be smaller than "
-                        "level number of Input(Y).");
-
       ctx->SetOutputDim("Out", {-1, x_dims[1]});
     }
   }
@@ -102,7 +101,7 @@ class SequenceExpandOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(LodTensor, default LoDTensor<float>) Output LoDTensor which is "
               "generated from Input(X) by referring lod of Input(Y).");
-    AddAttr<int>("ref_level", "Specify lod level of Input(Y).");
+    AddAttr<int>("ref_level", "Specify lod level of Input(Y).").SetDefault(-1);
     AddComment(R"DOC(
 Sequence Expand Operator.
 
