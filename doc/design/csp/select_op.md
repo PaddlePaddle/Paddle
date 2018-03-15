@@ -9,8 +9,8 @@ are ready to run, then one case is choosen at random to be executed.
 
 With the introduction of CSP for Paddle, we mimic this behavior by 
 creating a ***select_op***.  The ***select_op*** works in conjunction
-with the ***channel_send_op**, ***channel_receive_op**, and 
-***channel_close_op**.
+with the **channel_send_op**, **channel_receive_op**, and 
+**channel_close_op**.
 
 ## How to use it
 
@@ -19,13 +19,7 @@ will prefer to use the much simplier Python API.
 
 - **fluid.Select()**: Creates a Select block and adds it to the main
 program block.  Within the select block, users can add cases by calling 
-**select.case** method.
-  - **Attributes**:
-    - **cases**: Serialized list of all cases in the select op. Each case 
-    is serialized as: **'\<index\>,\<type\>,\<channel\>,\<output_var\>'** where type is 0 
-    for default, 1 for send, and 2 for receive. No channel or output_var are 
-    needed for the default cases.
-    - **sub_block**: block that contains all cases.
+**select.case** or **select.default** method.
 
 - **fluid.Select.case(channel_action, channel, result_variable)**: Represents
 a fluid channel send/recv case.  This method creates a SelectCase block
@@ -83,8 +77,8 @@ unblock once there is a channel operation affecting one of the case statements, 
 Finally the select_op will call executor.run on the **sub_block**.
 
 Cases are represented by a **conditional_block_op** whose's condition is set as the output of 
-the equal operation on **case_to_execute** and the scalar value of the case index.  Since each
-case index is unique in this sub-block, only once case will be executed.
+equal(**case_to_execute**, **case_index**).  Since each case index is unique in this sub-block, 
+only once case will be executed.
 
 ### select_op flow
 
