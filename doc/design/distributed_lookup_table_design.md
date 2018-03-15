@@ -59,7 +59,9 @@ memcached, as the storage service, and we run the optimization
 algorithm on parameter servers of PaddlePaddle.  The following figure
 illustrates the training process.
 
-![Alt text](https://g.gravizo.com/svg?
+<!--
+Note: please update the following URL when update this digraph.
+<img src='https://g.gravizo.com/svg?
 digraph G {
   rankdir="LR";
   subgraph cluster1 {
@@ -85,6 +87,10 @@ digraph G {
   KV -> T3 [color=gray, weight=0.1];
 }
 )
+'/>
+-->
+
+<img src='https://g.gravizo.com/svg?%20digraph%20G%20{%20rankdir=%22LR%22;%20subgraph%20cluster1%20{%20P1%20[label=%22pserver%201%22];%20P2%20[label=%22pserver%202%22];%20T1%20[label=%22trainer%201%22];%20T2%20[label=%22trainer%202%22];%20T3%20[label=%22trainer%203%22];%20}%20KV%20[label=%22memcached%22];%20T1%20-%3E%20P1;%20T1%20-%3E%20P2;%20T2%20-%3E%20P1;%20T2%20-%3E%20P2;%20T3%20-%3E%20P1;%20T3%20-%3E%20P2;%20P1%20-%3E%20KV%20[color=gray,%20weight=0.1];%20KV%20-%3E%20P1%20[color=gray,%20weight=0.1];%20P2%20-%3E%20KV%20[color=gray,%20weight=0.1];%20KV%20-%3E%20P2%20[color=gray,%20weight=0.1];%20KV%20-%3E%20T1%20[color=gray,%20weight=0.1];%20KV%20-%3E%20T2%20[color=gray,%20weight=0.1];%20KV%20-%3E%20T3%20[color=gray,%20weight=0.1];%20}'/>
 
 Each trainer runs the forward and backward passes using their local
 data:
