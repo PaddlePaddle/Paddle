@@ -53,13 +53,13 @@ class FileReader : public ReaderBase {
 };
 ```
 
-A file reader binds with a single file and reads one instance of data from the file at a time. Each type of file reader shall implement its own `ReadNextImpl()`, `HasNext()` and `ReInit()`.
+A file reader binds with a single file and reads one data instance at a time. Each type of file reader shall implement its own `ReadNextImpl()`, `HasNext()` and `ReInit()`.
 
-The `ReadNextImpl()` is invoked by `ReadNext()`. Besides invoking `ReadNextImpl()`, `ReadNext()` is also in charge of checking the output, making sure that each shape of `LoDTensor` in `*out` is consistent with the one in `dims_`.  
+The `ReadNextImpl()` is invoked by `ReadNext()`. Besides invoking `ReadNextImpl()`, `ReadNext()` is also responsible for checking the output, making sure that each shape of `LoDTensor` in `*out` is consistent with the one in `dims_`.  
 
 ### DecoratedReader
 
-A decorated reader takes another reader(both file reader and decorated reader are OK) as its 'underlying reader'. It gets data from its underlying reader, does some process on them(shuffling,  batching or something else), then yields processed data. The output data of a decorated reader can be a single instance or a batch. `ShuffleReader` and `BatchReader` are both decorated readers.
+A decorated reader takes another reader(both file reader and decorated reader are OK) as its 'underlying reader'. It gets data from its underlying reader, does some processing on them(shuffling,  batching or something else), then yields processed data. The output data of a decorated reader can be a single instance or a batch. `ShuffleReader` and `BatchReader` are both decorated readers.
 
 ```cpp
 class DecoratedReader : public ReaderBase {
@@ -77,7 +77,7 @@ class DecoratedReader : public ReaderBase {
 };
 ```
 
-All the `FileReader` and `DecoratedReader` share exactly the same interfaces as defined in `ReaderBase`. So they can be decorated for more than one time: We can **shuffle** a reader's outputs and then **batch** the shuffle outputs. The interface consistency also allows related ops use readers without knowing what they are exactly.
+Both the `FileReader` and `DecoratedReader` share exactly the same interface as defined in `ReaderBase`. So they can be decorated for multiple times: We can **shuffle** a reader's outputs and then **batch** the shuffled outputs. The interface consistency also allows related ops use readers without knowing their underlying type.
 
 ### MultipleReader
 
@@ -139,7 +139,7 @@ A reader is only a Variable. It cannot trigger the reading process by itself. So
 
 ## Program with Readers
 
-A `Program` holds readers as its persistable variables. These variables are created by `CreateReaderOp` or `OpenFilesOp`. Obviously, these ops shall run only once. So they shall be settled in the `startup_program`. `HasNextOp`, `ResetOp` and `ReadOp` are required by training loop, so they shall be in the `main_program`.
+A `Program` holds readers as its persistable variables. These variables are created by `CreateReaderOp` or `OpenFilesOp`. These ops shall run only once. So they shall be settled in the `startup_program`. `HasNextOp`, `ResetOp` and `ReadOp` are required by training loop, so they shall be in the `main_program`.
 
 The ops of a `startup_program` with readers would be like this:
 
@@ -164,7 +164,7 @@ while_op {
 }
 ```
 
-Two things are worth mentioning when considering these two programs:
+Two important considerations for these programs are as follows:
 
 1. The multiple\_reader is the batch\_reader's underlying reader, and the batch\_reader is the double\_buffer\_reader's underlying reader. `read_op`, `has_next_op` and other reader related ops will only invoke the top-most reader. In this case, it's the double\_buffer\_reader.
 
