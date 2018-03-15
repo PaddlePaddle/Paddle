@@ -176,7 +176,7 @@ def channel_send(channel, value, copy=False):
             capacity=value.capacity)
 
         assign_op = channel_send_block.append_op(
-            type="assign_op", inputs={"X": value, }, outputs={"Out": copied_X})
+            type="assign_op", inputs={"X": value}, outputs={"Out": copied_X})
         X = copied_X
 
     channel_send_op = channel_send_block.append_op(
