@@ -45,13 +45,30 @@ __activations__ = [
 ]
 
 __all__ = [
-    'mean', 'mul', 'reshape', 'scale', 'sigmoid_cross_entropy_with_logits',
-    'elementwise_add', 'elementwise_div', 'elementwise_sub', 'elementwise_mul',
-    'elementwise_max', 'elementwise_min', 'elementwise_pow', 'clip',
-    'clip_by_norm', 'softmax', 'sequence_softmax', 'logical_and', 'logical_or',
-    'logical_xor', 'logical_not', 'uniform_random',
-    'uniform_random_batch_size_like', 'gaussian_random',
-    'gaussian_random_batch_size_like', 'cumsum', 'scatter'
+    'mean',
+    'mul',
+    'reshape',
+    'scale',
+    'sigmoid_cross_entropy_with_logits',
+    'elementwise_add',
+    'elementwise_div',
+    'elementwise_sub',
+    'elementwise_mul',
+    'elementwise_max',
+    'elementwise_min',
+    'elementwise_pow',
+    'clip',
+    'clip_by_norm',
+    'logical_and',
+    'logical_or',
+    'logical_xor',
+    'logical_not',
+    'uniform_random',
+    'uniform_random_batch_size_like',
+    'gaussian_random',
+    'gaussian_random_batch_size_like',
+    'cumsum',
+    'scatter',
 ] + __activations__
 
 for _OP in set(__all__):
