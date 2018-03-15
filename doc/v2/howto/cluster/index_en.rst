@@ -9,7 +9,7 @@ The effectiveness of the deep learning model is often directly related to the sc
 - Trainer: each trainer reads the data shard, and train the neural network. Then the trainer will upload calculated "gradients" to parameter servers, and wait for parameters to be optimized on the parameter server side. When that finishes, the trainer download optimized parameters and continues its training.
 - Parameter server: every parameter server stores part of the whole neural network model data. They will do optimization calculations when gradients are uploaded from trainers, and then send updated parameters to trainers.
 
-The training of synchronous random gradient descent for neural network can be archieved by cooperation of trainers and parameter servers.
+The training of synchronous random gradient descent for neural network can be achieved by cooperation of trainers and parameter servers.
 
 PaddlePaddle supports both synchronize stochastic gradient descent (SGD) and asynchronous SGD.
 
