@@ -246,10 +246,10 @@ class TestRoutineOp(unittest.TestCase):
                 assign(input=ping_result, output=pong_result)
                 fluid.channel_send(ch2, pong_result)
 
-            pings = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR,
-                                       capacity=1)
-            pongs = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR,
-                                       capacity=1)
+            pings = fluid.make_channel(
+                dtype=core.VarDesc.VarType.LOD_TENSOR, capacity=1)
+            pongs = fluid.make_channel(
+                dtype=core.VarDesc.VarType.LOD_TENSOR, capacity=1)
 
             msg = fill_constant(
                 shape=[1], dtype=core.VarDesc.VarType.FP64, value=9)
