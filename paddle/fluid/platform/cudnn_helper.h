@@ -85,13 +85,14 @@ template <>
 class CudnnDataType<float16> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_HALF;
-  typedef const float16 ScalingParamType;
+  // The scaling param type is float for HALF and FLOAT tensors
+  typedef const float ScalingParamType;
   static ScalingParamType* kOne() {
-    static ScalingParamType v = static_cast<float16>(1.0);
+    static ScalingParamType v = 1.0;
     return &v;
   }
   static ScalingParamType* kZero() {
-    static ScalingParamType v = static_cast<float16>(0.0);
+    static ScalingParamType v = 0.0;
     return &v;
   }
 };
