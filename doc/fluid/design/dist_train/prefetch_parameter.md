@@ -16,13 +16,13 @@ Prior to reading this design, it would be useful for the reader to make themselv
 
 The execution of `lookup local table` is as follows:
 
-<img src="src/lookup_local_table.png" width="400" />
+<img src="src/lookup_local_table.png" width="700" />
 
 For some cases, the parameter(`weight`) may be very large, such as 10 billion features, the entire
 data could not be stored in one trainer's memory, so we need to partition this parameter and
 pre-fetch it at the beginning of each mini-batch, and we call it `lookup remote table`:
 
-<img src="src/lookup_remote_table.png" width="400">
+<img src="src/lookup_remote_table.png" width="700" />
 
 The processing flow of `lookup remote table` is as follows:
 
