@@ -78,15 +78,16 @@ class TestConv2dOp(OpTest):
         self.init_group()
         self.init_dilation()
         self.init_test_case()
-        input, filter, output = self.init_input_output()
-        input_view = create_view(input)
-        filter_view = create_view(filter)
 
-        conv2d_param = {
+        self.conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
             'dilation': self.dilations
         }
+
+        input, filter, output = self.init_input_output()
+        input_view = create_view(input)
+        filter_view = create_view(filter)
 
         self.inputs = {'Input': input_view, 'Filter': filter_view}
         self.attrs = {
@@ -176,7 +177,7 @@ class TestConv2dOp(OpTest):
         input = np.random.random(self.input_size).astype("float32")
         filter = np.random.random(self.filter_size).astype("float32")
         output = conv2d_forward_naive(input, filter, self.groups,
-                                      conv2d_param).astype('float32')
+                                      self.conv2d_param).astype('float32')
         return input, filter, output
 
 

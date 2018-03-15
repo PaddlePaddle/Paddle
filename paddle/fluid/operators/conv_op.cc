@@ -71,7 +71,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
-  auto data_type_ = framework::ToDataType(ctx.Input<Tensor>("Input")->type()) p;
+  auto data_type_ = framework::ToDataType(ctx.Input<Tensor>("Input")->type());
 
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
@@ -91,12 +91,12 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   std::string data_format = ctx.Attr<std::string>("data_format");
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(data_type_, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType ConvOp::GetKernelTypeForVar(
     const std::string& var_name, const Tensor& tensor,
-    const OpKernelType& expected_kernel_type) const {
+    const framework::OpKernelType& expected_kernel_type) const {
   return framework::OpKernelType(framework::ToDataType(tensor.type()),
                                  tensor.place());
 }

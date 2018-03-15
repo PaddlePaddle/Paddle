@@ -77,7 +77,7 @@ class ConvOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
-      const OpKernelType& expected_kernel_type) const override;
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class ConvOpGrad : public framework::OperatorWithKernel {
