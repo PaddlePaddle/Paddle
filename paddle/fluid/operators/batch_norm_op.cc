@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include <string>
 #include "paddle/fluid/framework/data_layout.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -106,7 +109,26 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(bn_param_type, framework::ToDataType(
                                          ctx.Input<Tensor>("Variance")->type()),
                       "Variance input should be of float type");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+    }
+#endif
+
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 
@@ -151,6 +173,17 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "Variance of the current mini batch, "
               "will apply to output when training")
         .AsIntermediate();
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
+
     AddComment(R"DOC(
 Batch Normalization.
 

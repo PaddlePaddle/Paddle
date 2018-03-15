@@ -38,17 +38,17 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto mkldnn_engine = dev_ctx.GetEngine();
 
     auto *y = ctx.Output<Tensor>("Y");
-    //    auto *mean_out = ctx.Output<Tensor>("MeanOut");
-    //    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-    auto *batch_mean = ctx.Output<Tensor>("SavedMean");
-    auto *batch_variance = ctx.Output<Tensor>("SavedVariance");
+    auto *mean_out = ctx.Output<Tensor>("MeanOut");
+    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
+    //    auto *batch_mean = ctx.Output<Tensor>("SavedMean");
+    //    auto *batch_variance = ctx.Output<Tensor>("SavedVariance");
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *shift = ctx.Input<Tensor>("Bias");
 
     y->mutable_data<T>(ctx.GetPlace());
-    batch_mean->mutable_data<T>(ctx.GetPlace());
-    batch_variance->mutable_data<T>(ctx.GetPlace());
+    mean_out->mutable_data<T>(ctx.GetPlace());
+    variance_out->mutable_data<T>(ctx.GetPlace());
 
     auto propagation = is_test == true ? mkldnn::prop_kind::forward_scoring
                                        : mkldnn::prop_kind::forward_training;
@@ -59,6 +59,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const int ih = x_dims[2];
     const int iw = x_dims[3];
 
+    std::cout << in << " " << ic << " " << ih << " " << iw << std::endl;
     memory::dims tz = {in, ic, ih, iw};
 
     memory::desc src_md{{tz}, memory::data_type::f32, memory::format::nchw};
@@ -95,11 +96,17 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     //    mkldnn::memory scaleshift_memory
     //    {batch_norm_fwd_pd.weights_primitive_desc(), scaleshift_data.data()};
 
+    auto mean_desc = batch_norm_fwd_pd.mean_primitive_desc().desc();
+    std::cout << mean_desc.data.dims[0] << std::endl;
+
+    auto var_desc = batch_norm_fwd_pd.variance_primitive_desc().desc();
+    std::cout << var_desc.data.dims[0] << std::endl;
+
     mkldnn::memory mean_memory{batch_norm_fwd_pd.mean_primitive_desc(),
-                               batch_mean->data<T>()};
+                               mean_out->data<T>()};
 
     mkldnn::memory variance_memory{batch_norm_fwd_pd.variance_primitive_desc(),
-                                   batch_variance->data<T>()};
+                                   variance_out->data<T>()};
 
     bnfwd batch_norm_fwd_op{batch_norm_fwd_pd, src,
                             (const mkldnn::primitive::at)mean_memory,
