@@ -71,6 +71,13 @@ paddle.init(
 - trainer_id：**必选，默认0**，每个trainer的唯一ID，从0开始的整数
 - pservers：**必选，默认127.0.0.1**，当前训练任务启动的pserver的IP列表，多个IP使用“,”隔开
 
+```python
+trainer = paddle.trainer.SGD(..., is_local=False)
+```
+
+参数说明
+
+- is_local: **必选, 默认True**, 是否使用PServer更新参数
 
 ## 准备数据集
 

@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
@@ -28,6 +30,11 @@ DEFINE_bool(check_nan_inf, false,
 
 namespace paddle {
 namespace framework {
+namespace {
+// block id starts from 0. This id is used to represent the codeblock
+// wrapping the first block 0.
+int kProgramId = -1;
+}  // namespace
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
@@ -88,6 +95,7 @@ static void CheckTensorNANOrInf(const std::string& name,
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
+  platform::RecordBlock b(block_id);
   auto ctx = Prepare(pdesc, block_id);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
@@ -177,6 +185,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, LoDTensor*>& fetch_targets,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
+  platform::RecordBlock b(kProgramId);
   auto* copy_program = new ProgramDesc(program);
   auto* global_block = copy_program->MutableBlock(0);
 

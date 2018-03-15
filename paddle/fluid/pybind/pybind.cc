@@ -26,16 +26,20 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/prune.h"
+#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/cond_op.h"
 #include "paddle/fluid/operators/net_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/pybind.h"
+#include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -100,12 +104,14 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<double>)
       .def("set", PyCPUTensorSetFromArray<int64_t>)
       .def("set", PyCPUTensorSetFromArray<bool>)
+      .def("set", PyCPUTensorSetFromArray<uint16_t>)
 #ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
       .def("set", PyCUDATensorSetFromArray<double>)
       .def("set", PyCUDATensorSetFromArray<int64_t>)
       .def("set", PyCUDATensorSetFromArray<bool>)
+      .def("set", PyCUDATensorSetFromArray<uint16_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
       .def("set_float_element", TensorSetElement<float>)
@@ -217,7 +223,17 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) -> operators::NetOp * {
              return self.GetMutable<operators::NetOp>();
            },
+           py::return_value_policy::reference)
+      .def("get_reader",
+           [](Variable &self) -> framework::ReaderHolder * {
+             PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
+             return self.GetMutable<framework::ReaderHolder>();
+           },
            py::return_value_policy::reference);
+
+  py::class_<framework::ReaderHolder>(m, "Reader", "")
+      .def("has_next", &framework::ReaderHolder::HasNext)
+      .def("reset", &framework::ReaderHolder::ReInit);
 
   py::class_<Scope>(m, "Scope", "")
       .def("var",
@@ -302,7 +318,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                   });
 // clang-format on
-
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
@@ -428,6 +443,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices", &framework::InitDevices);
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+#ifdef PADDLE_WITH_CUDA
+  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 53 support float16
+    return platform::GetCUDAComputeCapability(place.device) >= 53;
+  });
+#endif
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
@@ -492,6 +513,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("reset_profiler", platform::ResetProfiler);
+
+  BindRecordIOWriter(m);
   return m.ptr();
 }
 }  // namespace pybind

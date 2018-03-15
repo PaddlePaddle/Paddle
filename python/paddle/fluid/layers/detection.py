@@ -132,7 +132,7 @@ def detection_output(loc,
 
     old_shape = scores.shape
     scores = ops.reshape(x=scores, shape=(-1, old_shape[-1]))
-    scores = ops.softmax(x=scores)
+    scores = nn.softmax(input=scores)
     scores = ops.reshape(x=scores, shape=old_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
 
