@@ -68,6 +68,7 @@ __all__ = [
     'gaussian_random',
     'gaussian_random_batch_size_like',
     'cumsum',
+    'scatter',
 ] + __activations__
 
 for _OP in set(__all__):

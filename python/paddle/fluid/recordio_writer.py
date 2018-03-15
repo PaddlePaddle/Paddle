@@ -36,6 +36,7 @@ def convert_reader_to_recordio_file(
         feed_order=None):
     if feed_order is None:
         feed_order = feeder.feed_names
+    counter = 0
     with create_recordio_writer(filename, compressor,
                                 max_num_records) as writer:
         for batch in reader_creator():
@@ -43,3 +44,5 @@ def convert_reader_to_recordio_file(
             for each in feed_order:
                 writer.append_tensor(res[each])
             writer.complete_append_tensor()
+            counter += 1
+    return counter
