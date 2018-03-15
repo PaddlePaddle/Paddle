@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/cond_op.h"
 #include "paddle/fluid/operators/net_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -103,12 +104,14 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<double>)
       .def("set", PyCPUTensorSetFromArray<int64_t>)
       .def("set", PyCPUTensorSetFromArray<bool>)
+      .def("set", PyCPUTensorSetFromArray<uint16_t>)
 #ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
       .def("set", PyCUDATensorSetFromArray<double>)
       .def("set", PyCUDATensorSetFromArray<int64_t>)
       .def("set", PyCUDATensorSetFromArray<bool>)
+      .def("set", PyCUDATensorSetFromArray<uint16_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
       .def("set_float_element", TensorSetElement<float>)
@@ -315,7 +318,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                   });
 // clang-format on
-
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
@@ -423,6 +425,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices", &framework::InitDevices);
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+#ifdef PADDLE_WITH_CUDA
+  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
+    // Only GPUs with Compute Capability >= 53 support float16
+    return platform::GetCUDAComputeCapability(place.device) >= 53;
+  });
+#endif
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
