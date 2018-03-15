@@ -183,7 +183,7 @@ def main():
             start_time = time.time()
             num_samples = 0
             train_pass_acc.reset()
-            #with profiler.profiler("CPU", 'total') as prof:
+            #@with profiler.profiler("CPU", 'total') as prof:
             for batch_id, data in enumerate(train_reader()):
                 ts = time.time()
                 img_data = np.array(
@@ -206,9 +206,9 @@ def main():
                        len(data) / (time.time() - ts))
                 )  # The accuracy is the accumulation of batches, but not the current batch.
 
-                #if batch_id >= 20:
-            #print("test complete after batch_id >=20")
-            #break
+                if batch_id >= 20:
+                    print("test complete after batch_id >=20")
+                    break
 
             pass_elapsed = time.time() - start_time
             pass_train_acc = train_pass_acc.eval()

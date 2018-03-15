@@ -123,9 +123,18 @@ class RequestGet final : public RequestBase {
     std::string var_name = request_.varname();
     auto* var = scope_->FindVar(var_name);
 
+    // std::cout <<  "Get var:" << request_.varname() << std::endl;
     ::grpc::ByteBuffer reply;
     if (var_name != FETCH_BARRIER_MESSAGE) {
       SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
+
+      /*
+      auto tensor = var->Get<framework::LoDTensor>();
+      std::stringstream ss;
+      ss << "request var_name:" << var_name << ", dims: "
+          << tensor.dims() << ", msg_len:" << reply.Length();
+      std::cout << ss.str() << std::endl;
+      */
     }
 
     // TODO(gongwb): check var's info.

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include <sys/time.h>
+#include <thread>
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -145,7 +147,21 @@ void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
   framework::DDim dims = framework::make_ddim(vecdims);
 
   if (msg.type() == sendrecv::LOD_TENSOR) {
+    struct timeval t0_wait, t1_wait;
+    gettimeofday(&t0_wait, 0);
+
     DeserializeLodTendor(msg, ctx, var, dims);
+
+    std::thread::id this_id = std::this_thread::get_id();
+    gettimeofday(&t1_wait, 0);
+    double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
+                           (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
+    std::stringstream ss;
+    ss << "from message var_name:" << msg.varname()
+       << ", data length:" << msg.serialized().size() << ", time:" << t_wait
+       << "ms, thread_id:" << this_id;
+    std::cout << ss.str() << '\n';
+
     return;
   } else if (msg.type() == sendrecv::SELECTED_ROWS) {
     DeserializeSelectedRows(msg, ctx, var, dims);
@@ -204,6 +220,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       }
       if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
+        struct timeval t0_wait, t1_wait;
+        gettimeofday(&t0_wait, 0);
+
         PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
         platform::CPUPlace cpu;
         auto& gpu_dev_ctx =
@@ -219,6 +238,15 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
           platform::CPUPlace cpu;
           memory::Free(cpu, backing);
         };
+        std::thread::id this_id = std::this_thread::get_id();
+        gettimeofday(&t1_wait, 0);
+        double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
+                               (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
+        std::stringstream ss;
+        ss << "memcpy gpu var_name:" << name << ", dims: " << tensor.dims()
+           << ", time:" << t_wait << "ms, thread_id:" << this_id;
+        std::cout << ss.str() << '\n';
+
 #endif
       } else {
         payload = tensor.data<void>();
@@ -304,6 +332,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   msg->Swap(&tmp);
 }
 
+/*
 void GetOnlyMessageSkeleton(const ::grpc::ByteBuffer& buf,
                             sendrecv::VariableMessage* msg) {
   // sendrecv::VariableMessage meta;
@@ -313,6 +342,7 @@ void GetOnlyMessageSkeleton(const ::grpc::ByteBuffer& buf,
   PADDLE_ENFORCE(msg->ParseFromCodedStream(&input));
   PADDLE_ENFORCE(input.ConsumedEntireMessage());
 }
+*/
 
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
@@ -320,10 +350,22 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
   sendrecv::VariableMessage meta;
   GrpcByteBufferSource source;
   source.Init(msg);
-  ::google::protobuf::io::CodedInputStream input(&source);
+  ::google::protobuf::io::ZeroCopyInputStream* input_stream = &source;
+
+  ::google::protobuf::io::CodedInputStream input(input_stream);
+  input.SetTotalBytesLimit(INT_MAX, INT_MAX);
+
+  struct timeval t0_wait, t1_wait;
+  gettimeofday(&t0_wait, 0);
   // do zerocopy parsing
   PADDLE_ENFORCE(meta.ParseFromCodedStream(&input));
   PADDLE_ENFORCE(input.ConsumedEntireMessage());
+
+  gettimeofday(&t1_wait, 0);
+  double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
+                         (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
+  std::cout << "parse time:" << t_wait << std::endl;
+
   // dims is needed by both tensor and selectedrows
   std::vector<int> vecdims;
   for (auto& d : meta.dims()) {
@@ -350,6 +392,9 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
     // Maybe need to find a way to release all memory except tensor content.
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
+      struct timeval t0_wait, t1_wait;
+      gettimeofday(&t0_wait, 0);
+
       platform::CPUPlace cpu;
       auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
       memory::Copy(boost::get<platform::CUDAPlace>(tensor->place()),
@@ -357,6 +402,18 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                    reinterpret_cast<const void*>(meta.serialized().data()),
                    meta.serialized().size(), gpu_dev_ctx.stream());
       ctx.Wait();
+
+      gettimeofday(&t1_wait, 0);
+      std::thread::id this_id = std::this_thread::get_id();
+      gettimeofday(&t1_wait, 0);
+      double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
+                             (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
+      std::stringstream ss;
+      ss << "de memcpy gpu var_name:"
+         << ", dims: " << tensor->dims() << ", time:" << t_wait
+         << "ms, thread_id:" << this_id;
+      std::cout << ss.str() << '\n';
+
 #endif
     } else {
       memcpy(tensor_data,
