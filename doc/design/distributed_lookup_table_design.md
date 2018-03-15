@@ -59,7 +59,7 @@ memcached, as the storage service, and we run the optimization
 algorithm on parameter servers of PaddlePaddle.  The following figure
 illustrates the training process.
 
-<img src='https://g.gravizo.com/svg?
+![Alt text](https://g.gravizo.com/svg?
 digraph G {
   rankdir="LR";
   subgraph cluster1 {
@@ -84,7 +84,7 @@ digraph G {
   KV -> T2 [color=gray, weight=0.1];
   KV -> T3 [color=gray, weight=0.1];
 }
-'/>
+)
 
 Each trainer runs the forward and backward passes using their local
 data:
