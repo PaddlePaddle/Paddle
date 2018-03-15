@@ -469,6 +469,31 @@ class OpTest(unittest.TestCase):
             tensor.set_lod(lod)
         return tensor
 
+    @staticmethod
+    def create_view(input):
+        """Create a view of the input numpy array
+
+        numpy float16 is binded to paddle::platform::float16 
+        in tensor_py.h via the help of numpy uint16 because
+        the internal memory representation of float16 is 
+        uint16_t in paddle or np.uint16 in numpy, which are
+        themselves binded together.
+
+        Args:
+            input: input numpy array
+
+        Returns:
+            input_view: if the dtype of input is np.float16, input_view 
+                will reinterpret input as with dtype np.uint16. 
+                Otherwise, input_view will be input itself.
+        """
+        if input.dtype == np.float16:
+            # view will only reinterpret memory without copying
+            input_view = input.view(np.uint16)
+        else:
+            input_view = input
+        return input_view
+
     def _get_gradient(self, input_to_check, place, output_names, no_grad_set):
         prog = Program()
         block = prog.global_block()
