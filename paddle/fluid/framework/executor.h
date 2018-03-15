@@ -59,5 +59,7 @@ class Executor {
   const platform::Place place_;
 };
 
+extern void InitializeVariable(Variable* var, proto::VarType::Type var_type);
+
 }  // namespace framework
 }  // namespace paddle
