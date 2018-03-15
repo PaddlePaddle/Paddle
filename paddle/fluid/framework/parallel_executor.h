@@ -55,6 +55,8 @@ class ParallelExecutor {
   void ConstructDependencyGraph(const std::unordered_set<std::string>& params,
                                 const ProgramDesc& main_program,
                                 const std::string& loss_var_name) const;
+
+  void BuildNCCLCommunicator() const;
 };
 
 }  // namespace framework
