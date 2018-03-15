@@ -399,20 +399,25 @@ All parameter, weight, gradient are variables in Paddle.
              self.set_falsenet(net.Clone());
            });
 
+  py::class_<ExecutorPrepareContext>(m, "ExecutorPrepareContext")
+      .def("__init__", [](ExecutorPrepareContext &instance, ProgramDesc &desc,
+                          size_t block_id) {
+        new (&instance) ExecutorPrepareContext(desc, block_id);
+      });
+
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
-      .def_static(
-          "prepare",
-          [](const ProgramDesc &pdesc, int block_id) -> void * {
-            return static_cast<void *>(Executor::Prepare(pdesc, block_id));
-          },
-          py::return_value_policy::copy)
+      .def_static("prepare",
+                  [](const ProgramDesc &pdesc,
+                     int block_id) -> std::unique_ptr<ExecutorPrepareContext> {
+                    return Executor::Prepare(pdesc, block_id);
+                  },
+                  py::return_value_policy::automatic)
       .def("run_prepared_ctx",
-           [](Executor &self, void *handle, Scope *scope,
+           [](Executor &self, ExecutorPrepareContext *handle, Scope *scope,
               bool create_local_scope, bool create_vars) {
-             self.RunPreparedContext(
-                 static_cast<ExecutorPrepareContext *>(handle), scope,
-                 create_local_scope, create_vars);
+             self.RunPreparedContext(handle, scope, create_local_scope,
+                                     create_vars);
            })
       .def("run",
            (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &

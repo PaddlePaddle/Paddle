@@ -88,9 +88,8 @@ static void CheckTensorNANOrInf(const std::string& name,
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
-  auto* ctx = Prepare(pdesc, block_id);
-  RunPreparedContext(ctx, scope, create_local_scope, create_vars);
-  delete ctx;
+  auto ctx = Prepare(pdesc, block_id);
+  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -252,15 +251,15 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   delete copy_program;
 }
 
-ExecutorPrepareContext* Executor::Prepare(const ProgramDesc& program,
-                                          int block_id) {
+std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
+    const ProgramDesc& program, int block_id) {
   auto* ctx = new ExecutorPrepareContext(program, block_id);
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  return ctx;
+  return std::unique_ptr<ExecutorPrepareContext>(ctx);
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
