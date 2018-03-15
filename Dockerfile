@@ -55,8 +55,8 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # version util jupyter fixes this issue.
 RUN pip install --upgrade pip && \
     pip install -U wheel && \
-    pip install -U docopt PyYAML sphinx && \
-    pip install -U sphinx-rtd-theme==0.1.9 recommonmark
+    pip install -U docopt PyYAML sphinx==1.5.6 && \
+    pip install sphinx-rtd-theme==0.1.9 recommonmark
 
 RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
