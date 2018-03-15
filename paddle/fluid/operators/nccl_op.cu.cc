@@ -106,6 +106,8 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     T* recvbuffer = nullptr;
     if (root == gpu_id) {
       recvbuffer = out->mutable_data<T>(ctx.GetPlace());
+    } else {
+      out->Resize(framework::make_ddim({0}));
     }
     VLOG(3) << "gpu : " << gpu_id << " invoke reduce. send " << x->numel()
             << " recv " << out->numel();
