@@ -25,7 +25,9 @@ class RecordIOFileReader : public framework::FileReader {
       : FileReader(shapes),
         scanner_(filename),
         dev_ctx_(*platform::DeviceContextPool::Instance().Get(
-            platform::CPUPlace())) {}
+            platform::CPUPlace())) {
+    LOG(INFO) << "Creating file reader" << filename;
+  }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);

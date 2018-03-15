@@ -84,14 +84,14 @@ struct ComputationOpHandle : public OpHandle {
   Scope *scope_;
   platform::Place place_;
 
-  explicit ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
-                               platform::Place place)
+  explicit ComputationOpHandle(const OpDesc &op_desc, platform::Place place)
       : op_(framework::OpRegistry::CreateOp(op_desc)),
-        scope_(scope),
+        scope_(nullptr),
         place_(place) {}
 
   void Run() override {
     // Wait other op if necessary
+    LOG(INFO) << DebugString();
     auto *cur_ctx = dev_ctx_[place_];
     for (auto *in : inputs_) {
       if (in->generated_op_ && in->generated_op_->dev_ctx_[place_] != cur_ctx) {
@@ -240,8 +240,7 @@ void ParallelExecutor::ConstructDependencyGraph(
     }
 
     for (auto &pair : member_->local_scopes_) {
-      member_->ops_.emplace_back(
-          new ComputationOpHandle(*op, pair.second, pair.first));
+      member_->ops_.emplace_back(new ComputationOpHandle(*op, pair.first));
       auto *op_handle = member_->ops_.back().get();
       op_handle->dev_ctx_[pair.first] = const_cast<platform::DeviceContext *>(
           platform::DeviceContextPool::Instance().Get(pair.first));

@@ -14,16 +14,33 @@
 
 import unittest
 import paddle.fluid as fluid
+import paddle.v2 as paddle
+import paddle.v2.dataset.mnist as mnist
 
 
 class ParallelExecutor(unittest.TestCase):
+    def setUp(self):
+        # Convert mnist to recordio file
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            reader = paddle.batch(mnist.train(), batch_size=32)
+            feeder = fluid.DataFeeder(
+                feed_list=[  # order is image and label
+                    fluid.layers.data(
+                        name='image', shape=[784]),
+                    fluid.layers.data(
+                        name='label', shape=[1], dtype='int64'),
+                ],
+                place=fluid.CPUPlace())
+            fluid.recordio_writer.convert_reader_to_recordio_file(
+                './mnist.recordio', reader, feeder)
+
     def test_main(self):
         main = fluid.Program()
         startup = fluid.Program()
 
         with fluid.program_guard(main, startup):
             reader = fluid.layers.open_recordio_file(
-                filename='tmp',
+                filename='./mnist.recordio',
                 shapes=[[-1, 784], [-1, 1]],
                 lod_levels=[0, 0],
                 dtypes=['float32', 'int64'])
