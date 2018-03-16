@@ -36,7 +36,7 @@ struct LRNFunctor<platform::CPUDeviceContext, T> {
     auto e_x = framework::EigenTensor<T, 4>::From(input);
     for (int m = 0; m < N; m++) {
       for (int i = 0; i < C; i++) {
-        for (int c = start; c <= end; c++) {
+        for (int c = start; c < end; c++) {
           int ch = i + c;
           if (ch >= 0 && ch < C) {
             auto s = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
@@ -92,7 +92,7 @@ struct LRNGradFunctor<platform::CPUDeviceContext, T> {
                                  Eigen::array<int, 4>({{1, 1, H, W}}));
 
         i_x_g = i_mid.pow(-beta) * i_out_g;
-        for (int c = start; c <= end; c++) {
+        for (int c = start; c < end; c++) {
           int ch = i + c;
           if (ch < 0 || ch >= C) {
             continue;

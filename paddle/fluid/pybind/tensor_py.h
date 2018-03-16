@@ -72,6 +72,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         paddle::platform::GpuMemcpyAsync(
             dst_ptr, src_ptr, sizeof(CUR_TYPE) * tensor.numel(),
             cudaMemcpyDeviceToHost, dev_ctx->stream());
+        dev_ctx->Wait();
 #else
         PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
