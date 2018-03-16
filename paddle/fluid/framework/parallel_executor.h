@@ -31,6 +31,7 @@ namespace framework {
 class ParallelExecutorPrivate;
 class VarHandle;
 class OpHandle;
+class VarHandleBase;
 class ParallelExecutor {
  public:
   explicit ParallelExecutor(const std::vector<platform::Place>& places,
@@ -57,6 +58,9 @@ class ParallelExecutor {
                                 const std::string& loss_var_name) const;
 
   void BuildNCCLCommunicator() const;
+
+  void RunOp(std::unordered_map<VarHandleBase*, bool>& pending_vars,
+             OpHandle* op) const;
 };
 
 }  // namespace framework
