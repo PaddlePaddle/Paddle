@@ -28,16 +28,42 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-struct AllReduceCallBack {
-  void operator()(framework::OperatorBase* op);
+struct NCCLContext {
+  std::vector<platform::CUDADeviceContext*> ctxs_;
+  std::vector<ncclComm_t> comms_;
 
-  std::unordered_set<std::string> param_grad_names_;
-  platform::DeviceContext dev_ctx;
+  explicit NCCLContext(const std::vector<platform::Place>& places) {
+    std::vector<int> devs;
+    devs.reserve(places.size());
+    for (auto& p : places) {
+      devs.push_back(boost::get<platform::CUDAPlace>(p).device);
+      ctxs_.push_back(
+          new platform::CUDADeviceContext(boost::get<platform::CUDAPlace>(p)));
+    }
+    comms_.reserve(places.size());
+    platform::dynload::ncclCommInitAll(
+        &comms_[0], static_cast<int>(places.size()), &devs[0]);
+  }
 };
 
-class ParallelExecutor {
-  explicit ParallelExecutor(const std::vector<platform::Place>& places,
-                            const std::unordered_set& params);
+class ExecutorWithAllReduce : public Executor {
+ public:
+  explicit ExecutorWithAllReduce(const platform::Place& p,
+                                 std::unordered_set<std::string>* param_grads,
+                                 NCCLContext* nccl_context);
+
+ private:
+  void RunOperators(const ExecutorPrepareContext* ctx,
+                    const Scope* local_scope) const override;
+  platform::CUDADeviceContext* io_ctx_;
+  ncclComm_t* comm_;
+  std::unordered_set<std::string>* param_grads_;
+};
+
+class MultiGPUExecutor {
+ public:
+  explicit MultiGPUExecutor(const std::vector<platform::Place>& places,
+                            const std::unordered_set<std::string>& params);
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
@@ -46,14 +72,14 @@ class ParallelExecutor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDesc& prog, Scope* scope, int block_id,
+  void Run(const ProgramDesc& prog, int block_id,
            bool create_local_scope = true, bool create_vars = true);
 
  private:
-  std::vector<framework::Executor> exes_;
+  std::vector<framework::ExecutorWithAllReduce> exes_;
   std::vector<framework::Scope*> scopes_;
-  std::vector<AllReduceCallBack> all_reduce_callbacks_;
-  platform::Communicator nccl_com_;
+  NCCLContext nccl_ctx_;
+  std::unordered_set<std::string> param_grads_;
 };
 
 }  // namespace framework

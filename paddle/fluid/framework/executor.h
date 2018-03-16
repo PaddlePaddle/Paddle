@@ -22,7 +22,16 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-struct ExecutorPrepareContext;
+
+struct ExecutorPrepareContext {
+  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id)
+      : prog_(prog), block_id_(block_id) {}
+
+  framework::ProgramDesc prog_;
+  size_t block_id_;
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
+};
+
 class Executor {
  public:
   // TODO(dzhwinter) : Do not rely on this function, it will be removed
@@ -30,6 +39,7 @@ class Executor {
       : Executor(device.GetPlace()) {}
 
   explicit Executor(const platform::Place& place);
+  virtual ~Executor() {}
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
@@ -47,7 +57,6 @@ class Executor {
            const std::string& feed_holder_name = "feed",
            const std::string& fetch_holder_name = "fetch");
 
- private:
   static ExecutorPrepareContext* Prepare(const ProgramDesc& program,
                                          int block_id);
 
@@ -55,7 +64,9 @@ class Executor {
                           bool create_local_scope = true,
                           bool create_vars = true);
 
- private:
+  virtual void RunOperators(const ExecutorPrepareContext* ctx,
+                            const Scope* local_scope) const;
+
   const platform::Place place_;
 };
 

@@ -34,15 +34,6 @@ DEFINE_bool(check_nan_inf, false,
 namespace paddle {
 namespace framework {
 
-struct ExecutorPrepareContext {
-  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id)
-      : prog_(prog), block_id_(block_id) {}
-
-  framework::ProgramDesc prog_;
-  size_t block_id_;
-  std::vector<std::unique_ptr<OperatorBase>> ops_;
-};
-
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
 static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
@@ -304,6 +295,21 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }  // if (create_local_scope)
   }    // if (create_vars)
 
+  RunOperators(ctx, local_scope);
+
+  if (create_vars && create_local_scope) {
+    scope->DeleteScope(local_scope);
+  }
+  if (FLAGS_benchmark) {
+    VLOG(2) << "-------------------------------------------------------";
+    VLOG(2) << "Memory used after deleting local scope: "
+            << memory::memory_usage(place_);
+    VLOG(2) << "-------------------------------------------------------";
+  }
+}
+
+void Executor::RunOperators(const ExecutorPrepareContext* ctx,
+                            const Scope* local_scope) const {
   for (auto& op : ctx->ops_) {
     // TODO(ty):
     // e.g. sgd should wait for allreduce to be finished
@@ -330,20 +336,11 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       for (auto& vname : op->OutputVars(true)) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
-        if (var->IsType<framework::LoDTensor>()) {
-          CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+        if (var->IsType<LoDTensor>()) {
+          CheckTensorNANOrInf(vname, var->Get<LoDTensor>());
         }
       }
     }
-  }
-  if (create_vars && create_local_scope) {
-    scope->DeleteScope(local_scope);
-  }
-  if (FLAGS_benchmark) {
-    VLOG(2) << "-------------------------------------------------------";
-    VLOG(2) << "Memory used after deleting local scope: "
-            << memory::memory_usage(place_);
-    VLOG(2) << "-------------------------------------------------------";
   }
 }
 
