@@ -16,10 +16,7 @@ import cStringIO
 import functools
 import warnings
 
-from .. import proto
-
-framework_pb2 = proto.framework_pb2
-
+from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable
 from ..layer_helper import LayerHelper
 
