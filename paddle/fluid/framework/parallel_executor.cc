@@ -379,17 +379,21 @@ void ParallelExecutor::ConstructDependencyGraph(
     }
   }
 
-  /**
-   * Dependency graph has been constructed. However, there are still data
-   * harzaeds need to be handled.
-   *
-   * We only handle write after read(WAR), since it should not have a write
-   * after write in program. If there are write after write operators, we need
-   * prune them.
-   *
-   * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
+  /*
+    Dependency graph has been constructed. However, there are still data
+    harzaeds need to be handled.
    */
+  PolishGraphToSupportDataHarzaeds();
+}
 
+/**
+ * We only handle write after read(WAR), since it should not have a write
+ * after write in program. If there are write after write operators, we need
+ * prune them.
+ *
+ * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
+ */
+void ParallelExecutor::PolishGraphToSupportDataHarzaeds() const {
   for (auto &place_pair : member_->vars_) {
     for (auto &name_pair : place_pair.second) {
       if (name_pair.second.size() <= 1) {
