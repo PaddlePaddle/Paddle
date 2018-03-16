@@ -32,7 +32,7 @@ The processing flow of `lookup remote table` is as follows:
 
     - **Distributed Transpiler** would split the large parameters
       (`weight`) into some partitioned parameters (`weight_0`, `weight_1`, `weight_2`) as shown in the figure above.
-    - We can use `round-robin` to distribute the partitioned parameter.
+    - We can use some algorithms to distribute the partitioned parameters, such as `round-robin` or `hash-name`.
 
 1. pre-fetching parameter at the beginning of each mini-batch
 
