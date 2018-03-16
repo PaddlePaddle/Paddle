@@ -220,7 +220,7 @@ class TestBook(unittest.TestCase):
             seq_data = layers.data(
                 name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
             seq = layers.fc(input=seq_data, size=20)
-            self.assertIsNotNone(layers.sequence_softmax(x=seq))
+            self.assertIsNotNone(layers.sequence_softmax(seq))
         print(str(program))
 
     def test_softmax(self):
@@ -228,7 +228,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
-            self.assertIsNotNone(layers.softmax(x=hid))
+            self.assertIsNotNone(layers.softmax(hid))
         print(str(program))
 
     def test_get_places(self):

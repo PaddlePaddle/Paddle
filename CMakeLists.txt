@@ -53,7 +53,7 @@ option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
 # TODO: Only compile PaddlePaddle fluid version by WITH_FLUID option. 
-option(WITH_FLUID       "Compile PaddlePaddle fluid only(TODO)"         ON)
+option(WITH_FLUID       "Compile PaddlePaddle fluid only(TODO)"         OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
