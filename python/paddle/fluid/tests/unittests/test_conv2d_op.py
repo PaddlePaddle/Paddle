@@ -65,10 +65,10 @@ class TestConv2dOp(OpTest):
     def setUp(self):
         self.use_cudnn = False
         self.use_mkldnn = False
+        self.dtype = np.float32
         self.init_op_type()
         self.init_group()
         self.init_dilation()
-        self.init_data_type()
         self.init_test_case()
 
         conv2d_param = {
@@ -159,9 +159,6 @@ class TestConv2dOp(OpTest):
         f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
 
-    def init_data_type(self):
-        self.dtype = np.float32
-
     def init_dilation(self):
         self.dilations = [1, 1]
 
@@ -246,8 +243,10 @@ class TestCUDNN(TestConv2dOp):
         self.op_type = "conv2d"
 
 
-class TestFP16CUDNN(TestCUDNN):
-    def init_data_type(self):
+class TestFP16CUDNN(TestConv2dOp):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -263,8 +262,10 @@ class TestCUDNNWithPad(TestWithPad):
         self.op_type = "conv2d"
 
 
-class TestFP16CUDNNWithPad(TestCUDNNWithPad):
-    def init_data_type(self):
+class TestFP16CUDNNWithPad(TestWithPad):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -280,8 +281,10 @@ class TestCUDNNWithStride(TestWithStride):
         self.op_type = "conv2d"
 
 
-class TestFP16CUDNNWithStride(TestCUDNNWithStride):
-    def init_data_type(self):
+class TestFP16CUDNNWithStride(TestWithStride):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -297,8 +300,10 @@ class TestCUDNNWithGroup(TestWithGroup):
         self.op_type = "conv2d"
 
 
-class TestFP16CUDNNWithGroup(TestCUDNNWithGroup):
-    def init_data_type(self):
+class TestFP16CUDNNWithGroup(TestWithGroup):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -314,8 +319,10 @@ class TestCUDNNWith1x1(TestWith1x1):
         self.op_type = "conv2d"
 
 
-class TestFP16CUDNNWith1x1(TestCUDNNWith1x1):
-    def init_data_type(self):
+class TestFP16CUDNNWith1x1(TestWith1x1):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -331,8 +338,10 @@ class TestCUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
         self.op_type = "conv2d"
 
 
-class TestFP16CUDNNWithInput1x1Filter1x1(TestCUDNNWithInput1x1Filter1x1):
-    def init_data_type(self):
+class TestFP16CUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
+    def init_op_type(self):
+        self.use_cudnn = True
+        self.op_type = "conv2d"
         self.dtype = np.float16
 
     def test_check_output(self):
