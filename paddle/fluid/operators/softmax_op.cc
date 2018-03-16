@@ -33,6 +33,29 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+    bool runtime_cudnn_support = false;
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
+    }
+#endif
+    framework::LibraryType library_ = framework::LibraryType::kPlain;
+    if (use_cudnn && runtime_cudnn_support) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        framework::StringToDataLayout(data_format), library_);
+  }
 };
 
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -43,6 +66,17 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor of softmax. "
              "2-D with shape [batch_size, input_feature_dimensions].");
     AddOutput("Out", "The normalized values with the same shape as X.");
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Softmax Operator.
 
@@ -79,6 +113,29 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
                       "Input(Out) and its gradients should have a same shape.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+    bool runtime_cudnn_support = false;
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+      auto& dev_ctx =
+          ctx.template device_context<platform::CUDADeviceContext>();
+      runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
+    }
+#endif
+    framework::LibraryType library_ = framework::LibraryType::kPlain;
+    if (use_cudnn && runtime_cudnn_support) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        framework::StringToDataLayout(data_format), library_);
   }
 };
 
