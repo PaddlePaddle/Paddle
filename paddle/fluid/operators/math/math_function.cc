@@ -278,6 +278,7 @@ void axpy<platform::CPUDeviceContext, double>(
   cblas_daxpy(n, alpha, x, 1, y, 1);
 }
 
+template struct SetConstant<platform::CPUDeviceContext, platform::float16>;
 template struct SetConstant<platform::CPUDeviceContext, float>;
 template struct SetConstant<platform::CPUDeviceContext, double>;
 template struct SetConstant<platform::CPUDeviceContext, int>;
