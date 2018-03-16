@@ -27,7 +27,7 @@ struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
   ~ExecutorPrepareContext();
 
-  framework::ProgramDesc prog_;
+  const framework::ProgramDesc& prog_;
   size_t block_id_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 };
