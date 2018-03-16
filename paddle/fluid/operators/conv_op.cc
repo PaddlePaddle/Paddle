@@ -83,12 +83,23 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 #endif
 
+  auto input_data_type =
+      framework::ToDataType(ctx.Input<Tensor>("Input")->type());
+  auto filter_data_type =
+      framework::ToDataType(ctx.Input<Tensor>("Filter")->type());
+  PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
+                    "input and filter data type should be consistent");
+
+  if (input_data_type == framework::proto::VarType::FP16) {
+    PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
+                      "float16 can only be used when CUDNN is used");
+  }
+
   std::string data_format = ctx.Attr<std::string>("data_format");
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                 library_);
 }
 
 Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)

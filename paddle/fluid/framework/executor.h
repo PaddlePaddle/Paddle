@@ -48,7 +48,7 @@ class Executor {
            const std::string& fetch_holder_name = "fetch");
 
   static ExecutorPrepareContext* Prepare(const ProgramDesc& program,
-                                         int block_id, bool own_program = true);
+                                         int block_id);
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,

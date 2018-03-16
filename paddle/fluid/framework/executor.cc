@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
@@ -33,28 +34,18 @@ DEFINE_bool(check_nan_inf, false,
 
 namespace paddle {
 namespace framework {
+namespace {
+// block id starts from 0. This id is used to represent the codeblock
+// wrapping the first block 0.
+int kProgramId = -1;
+}  // namespace
 
 struct ExecutorPrepareContext {
-  ExecutorPrepareContext(const framework::ProgramDesc* prog, size_t block_id,
-                         bool own_program = true)
-      : block_id_(block_id), own_program_(own_program) {
-    if (own_program_) {
-      prog_ = new ProgramDesc(*prog);
-    } else {
-      // If own_program_ is false, we can avoid a clone of the program.
-      prog_ = prog;
-    }
-  }
+  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id)
+      : prog_(prog), block_id_(block_id) {}
 
-  ~ExecutorPrepareContext() {
-    if (own_program_) {
-      delete prog_;
-    }
-  }
-
-  const framework::ProgramDesc* prog_;
+  const framework::ProgramDesc& prog_;
   size_t block_id_;
-  bool own_program_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 };
 
@@ -109,7 +100,8 @@ static void CheckTensorNANOrInf(const std::string& name,
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
-  auto* ctx = Prepare(pdesc, block_id, false);
+  platform::RecordBlock b(block_id);
+  auto* ctx = Prepare(pdesc, block_id);
   RunPreparedContext(ctx, scope, create_local_scope, create_vars);
   delete ctx;
 }
@@ -200,6 +192,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, LoDTensor*>& fetch_targets,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
+  platform::RecordBlock b(kProgramId);
   bool has_feed_ops =
       has_feed_operators(program.Block(0), feed_targets, feed_holder_name);
   bool has_fetch_ops =
@@ -282,8 +275,8 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
 }
 
 ExecutorPrepareContext* Executor::Prepare(const ProgramDesc& program,
-                                          int block_id, bool own_program) {
-  auto* ctx = new ExecutorPrepareContext(&program, block_id, own_program);
+                                          int block_id) {
+  auto* ctx = new ExecutorPrepareContext(program, block_id);
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
@@ -294,7 +287,7 @@ ExecutorPrepareContext* Executor::Prepare(const ProgramDesc& program,
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars) {
-  auto& block = ctx->prog_->Block(ctx->block_id_);
+  auto& block = ctx->prog_.Block(ctx->block_id_);
 
   Scope* local_scope = scope;
   if (create_vars) {

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/float16.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
@@ -71,27 +72,39 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
         paddle::platform::GpuMemcpyAsync(
             dst_ptr, src_ptr, sizeof(CUR_TYPE) * tensor.numel(),
             cudaMemcpyDeviceToHost, dev_ctx->stream());
+        dev_ctx->Wait();
 #else
         PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
 #endif
       } else if (paddle::platform::is_cpu_place(tensor.place())) {
         dst_tensor = tensor;
       }
-      return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
-                             py::format_descriptor<CUR_TYPE>::format(),
-                             (size_t)framework::arity(dst_tensor.dims()),
-                             dims_outside, strides);
+
+      if (std::type_index(typeid(CUR_TYPE)) ==
+          std::type_index(typeid(platform::float16))) {
+        return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
+                               "e", /* np.dtype('e') == np.float16 */
+                               (size_t)framework::arity(dst_tensor.dims()),
+                               dims_outside, strides);
+      } else {
+        return py::buffer_info(dst_tensor.data<CUR_TYPE>(), sizeof(CUR_TYPE),
+                               py::format_descriptor<CUR_TYPE>::format(),
+                               (size_t)framework::arity(dst_tensor.dims()),
+                               dims_outside, strides);
+      }
     } else {
       constexpr bool less = I + 1 < std::tuple_size<std::tuple<ARGS...>>::value;
       return CastToPyBufferImpl<less, I + 1, ARGS...>()(tensor);
     }
   }
 };
+
 }  // namespace details
+
 inline py::buffer_info CastToPyBuffer(framework::Tensor &tensor) {
   auto buffer_info =
-      details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool>()(
-          tensor);
+      details::CastToPyBufferImpl<true, 0, float, int, double, int64_t, bool,
+                                  platform::float16>()(tensor);
   return buffer_info;
 }
 
@@ -136,6 +149,22 @@ void PyCPUTensorSetFromArray(
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
 
+template <>
+void PyCPUTensorSetFromArray(
+    framework::Tensor &self,
+    py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
+    paddle::platform::CPUPlace &place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back((int)array.shape()[i]);
+  }
+
+  self.Resize(framework::make_ddim(dims));
+  auto *dst = self.mutable_data<platform::float16>(place);
+  std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
+}
+
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
 void PyCUDATensorSetFromArray(
@@ -155,6 +184,28 @@ void PyCUDATensorSetFromArray(
   auto dev_ctx =
       static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
   paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
+                                   cudaMemcpyHostToDevice, dev_ctx->stream());
+}
+
+template <>
+void PyCUDATensorSetFromArray(
+    framework::Tensor &self,
+    py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
+    paddle::platform::CUDAPlace &place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back((int)array.shape()[i]);
+  }
+
+  self.Resize(framework::make_ddim(dims));
+  auto *dst = self.mutable_data<platform::float16>(place);
+
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto dev_ctx =
+      static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+  paddle::platform::GpuMemcpyAsync(dst, array.data(),
+                                   sizeof(uint16_t) * array.size(),
                                    cudaMemcpyHostToDevice, dev_ctx->stream());
 }
 #endif
