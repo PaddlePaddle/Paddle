@@ -40,7 +40,7 @@ class TestCastOp2(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         # numpy float16 is binded to fluid float16 via uint16
-        self.inputs = {'X': ipt.astype('float16').view(uint16)}
+        self.inputs = {'X': ipt.astype('float16').view(np.uint16)}
         self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP16),
@@ -49,10 +49,10 @@ class TestCastOp2(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(atol=1e-3)
 
 
-class TestCastOp2(op_test.OpTest):
+class TestCastOp3(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
         self.inputs = {'X': ipt.astype('float32')}
@@ -64,7 +64,7 @@ class TestCastOp2(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(atol=1e-3)
 
 
 if __name__ == '__main__':
