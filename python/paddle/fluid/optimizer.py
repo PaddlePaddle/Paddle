@@ -223,6 +223,8 @@ class Optimizer(object):
         params_grads = append_backward(loss, parameter_list, no_grad_set,
                                        [error_clip_callback])
 
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
         params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
