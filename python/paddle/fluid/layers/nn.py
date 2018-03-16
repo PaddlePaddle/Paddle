@@ -73,6 +73,7 @@ __all__ = [
     'smooth_l1',
     'one_hot',
     'autoincreased_step_counter',
+    'lrn',
 ]
 
 
@@ -3292,3 +3293,28 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         counter.stop_gradient = True
 
     return counter
+
+
+def lrn(input, n=5, k=2.0, alpha=1e-4, beta=0.75, name=None):
+    """
+    This function helps create an operator to implement
+    the LRN layer using the configurations from the input parameters.
+    """
+    helper = LayerHelper('lrn', **locals())
+    dtype = helper.input_dtype()
+
+    mid_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    lrn_out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="lrn",
+        inputs={"X": input},
+        outputs={
+            "Out": lrn_out,
+            "MidOut": mid_out,
+        },
+        attrs={"n": n,
+               "k": k,
+               "alpha": alpha,
+               "beta": beta})
+
+    return lrn_out
