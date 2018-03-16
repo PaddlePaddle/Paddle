@@ -22,6 +22,9 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class SequenceExpandKernel : public framework::OpKernel<T> {
@@ -30,15 +33,12 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     auto* x = context.Input<LoDTensor>("X");
     auto* y = context.Input<LoDTensor>("Y");
     auto* out = context.Output<LoDTensor>("Out");
-    int ref_level = context.Attr<int>("ref_level");
 
-    out->mutable_data<T>(context.GetPlace());
+    int ref_level = context.Attr<int>("ref_level");
     auto& x_lod = x->lod();
     auto& y_lod = y->lod();
-
     PADDLE_ENFORCE_GT(y_lod.size(), 0,
                       "Level number of `Y`'s lod should be greater than 0.");
-
     PADDLE_ENFORCE(
         ref_level == -1 || (ref_level >= 0 && ref_level < y_lod.size()),
         "Invlid `ref_level`, which should be either equal to -1 "
@@ -46,6 +46,8 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
         y_lod.size());
 
     if (ref_level == -1) ref_level = y_lod.size() - 1;
+
+    out->mutable_data<T>(context.GetPlace());
 
     if (y_lod[ref_level].size() <= 1) {
       framework::TensorCopy(*x, context.GetPlace(), out);
@@ -59,6 +61,8 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     }
 
     int out_offset = 0;
+    auto& eigen_place =
+        *context.template device_context<DeviceContext>().eigen_device();
     for (size_t i = 1; i < y_lod[ref_level].size(); ++i) {
       int repeat_num = y_lod[ref_level][i] - y_lod[ref_level][i - 1];
       int x_start = i - 1;
@@ -68,16 +72,24 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
         x_end = x_lod[0][i];
       }
       int x_seq_len = x_end - x_start;
-      auto x_sub_tensor = x->Slice(x_start, x_end);
-      for (size_t j = 0; j < repeat_num; ++j) {
+      if (repeat_num > 0) {
+        auto x_sub_tensor = x->Slice(x_start, x_end);
+        x_sub_tensor.Resize({1, x_sub_tensor.numel()});
         int out_start = out_offset;
         if (x_lod.size() == 1) {
           out_start = out_lod[0][out_offset];
-          out_lod[0].push_back(x_seq_len);
         }
-        auto out_sub_tensor = out->Slice(out_start, out_start + x_seq_len);
-        framework::TensorCopy(x_sub_tensor, context.GetPlace(),
-                              &out_sub_tensor);
+        auto out_sub_tensor =
+            out->Slice(out_start, out_start + x_seq_len * repeat_num);
+        out_sub_tensor.Resize({repeat_num, x_sub_tensor.dims()[1]});
+        EigenMatrix<T>::From(out_sub_tensor).device(eigen_place) =
+            EigenMatrix<T>::From(x_sub_tensor)
+                .broadcast(Eigen::array<int, 2>({{repeat_num, 1}}));
+      }
+      for (int j = 0; j < repeat_num; ++j) {
+        if (x_lod.size() == 1) {
+          out_lod[0].push_back(out_lod[0].back() + x_seq_len);
+        }
         out_offset++;
       }
     }
@@ -122,6 +134,9 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
+    math::SetConstant<DeviceContext, T> set_zero;
+    set_zero(dev_ctx, g_x, static_cast<T>(0));
+
     int g_out_offset = 0;
     for (size_t i = 1; i < y_lod[ref_level].size(); ++i) {
       int repeat_num = y_lod[ref_level][i] - y_lod[ref_level][i - 1];
@@ -133,12 +148,11 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
           x_end = x_lod[0][i];
         }
         int x_seq_len = x_end - x_start;
-        auto column = x_seq_len * x->dims()[1];
         auto g_x_sub = g_x->Slice(x_start, x_end);
-        g_x_sub = framework::ReshapeToMatrix(g_x_sub, column);
+        g_x_sub.Resize(flatten_to_1d(g_x_sub.dims()));
         int g_out_end = g_out_offset + repeat_num * x_seq_len;
         auto g_out_sub = g_out->Slice(g_out_offset, g_out_end);
-        g_out_sub = framework::ReshapeToMatrix(g_out_sub, column);
+        g_out_sub.Resize({repeat_num, g_x_sub.dims()[0]});
         math::ColwiseSum<DeviceContext, T> col_sum;
         col_sum(dev_ctx, g_out_sub, &g_x_sub);
         g_out_offset += repeat_num * x_seq_len;

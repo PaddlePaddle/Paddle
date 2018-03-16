@@ -1781,52 +1781,52 @@ def conv2d_transpose(input,
     return out
 
 
-def sequence_expand(x, y, name=None):
+def sequence_expand(x, y, ref_level=-1, name=None):
     """Sequence Expand Layer. This layer will expand the input variable **x**
-    according to LoD information of **y**. And the following examples will
-    explain how sequence_expand works:
+    according to specified level lod of **y**. Please note that lod level of
+    **x** is at most 1 and rank of **x** is at least 2. When rank of **x**
+    is greater than 2, then it would be viewed as a 2-D tensor.
+    Following examples will explain how sequence_expand works:
 
     .. code-block:: text
 
         * Case 1
             x is a LoDTensor:
-                x.lod = [[0,       2, 3],
-                         [0, 1,    3, 4]]
-                x.data = [a, b, c, d]
+                x.lod  = [[0,   2,        4]]
+                x.data = [[a], [b], [c], [d]]
                 x.dims = [4, 1]
 
             y is a LoDTensor:
                 y.lod = [[0,    2,    4],
                          [0, 3, 6, 7, 8]]
 
-            with condition len(y.lod[-1]) - 1 == x.dims[0]
+            ref_level: 0
 
-            then output is a 2-level LoDTensor:
-                out.lod = [[0,                2,    4],
-                           [0,       3,       6, 7, 8]]
-                out.data = [a, a, a, b, b, b, c, d]
+            then output is a 1-level LoDTensor:
+                out.lod =  [[0,   2,        4,        6,        8]]
+                out.data = [[a], [b], [a], [b], [c], [d], [c], [d]]
                 out.dims = [8, 1]
 
         * Case 2
             x is a Tensor:
-                x.data = [a, b, c]
+                x.data = [[a], [b], [c]]
                 x.dims = [3, 1]
 
             y is a LoDTensor:
-                y.lod = [[0, 2, 3, 6]]
+                y.lod = [[0, 2, 2, 5]]
 
-            with condition len(y.lod[-1]) - 1 == x.dims[0]
+            ref_level: -1
 
-            then output is a 1-level LoDTensor:
-                out.lod = [[0,    2, 3,      6]]
-                out.data = [a, a, b, c, c, c]
-                out.dims = [6, 1]
-
+            then output is a Tensor:
+                out.data = [[a], [a], [c], [c], [c]]
+                out.dims = [5, 1]
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
         y (Variable): The input variable which is a LoDTensor.
+        ref_level (int): Lod level of `y` to be referred by `x`. If set to -1,
+                         refer the last level of lod.
         name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+                        will be named automatically.
 
     Returns:
         Variable: The expanded variable which is a LoDTensor.
@@ -1837,14 +1837,17 @@ def sequence_expand(x, y, name=None):
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
                              dtype='float32', lod_level=1)
-            out = layers.sequence_expand(x=x, y=y)
+            out = layers.sequence_expand(x=x, y=y, ref_level=0)
     """
     helper = LayerHelper('sequence_expand', input=x, **locals())
     dtype = helper.input_dtype()
     tmp = helper.create_tmp_variable(dtype)
     helper.append_op(
-        type='sequence_expand', inputs={'X': x,
-                                        'Y': y}, outputs={'Out': tmp})
+        type='sequence_expand',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': tmp},
+        attrs={'ref_level': ref_level})
     return tmp
 
 
