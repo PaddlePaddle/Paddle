@@ -71,9 +71,14 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
+  auto data_type_ = framework::ToDataType(ctx.Input<Tensor>("Input")->type());
+
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
+    if (platform::CanFloat16BeUsed(ctx)) {
+      data_type_ = framework::proto::VarType::FP16;
+    }
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
@@ -86,9 +91,14 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   std::string data_format = ctx.Attr<std::string>("data_format");
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(data_type_, ctx.GetPlace(), layout_, library_);
+}
+
+framework::OpKernelType ConvOp::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+  return framework::OpKernelType(framework::ToDataType(tensor.type()),
+                                 tensor.place());
 }
 
 Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
@@ -138,6 +148,15 @@ Conv2DOpMaker::Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>(
+      "use_float16",
+      "(bool, default false) If use_float16 is true, mul_op will convert both "
+      "input tensor and filter tensor to float16 if their data type is not "
+      "float16, and use cudnn float16 kernel to generate the output tensor "
+      "also in float16 data type. This attribute normally would only be set "
+      "to true in inference stage and will only be effective if use_cudnn is "
+      "also true.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
@@ -234,6 +253,15 @@ Conv3DOpMaker::Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
+      .SetDefault(false);
+  AddAttr<bool>(
+      "use_float16",
+      "(bool, default false) If use_float16 is true, mul_op will convert both "
+      "input tensor and filter tensor to float16 if their data type is not "
+      "float16, and use cudnn float16 kernel to generate the output tensor "
+      "also in float16 data type. This attribute normally would only be set "
+      "to true in inference stage and will only be effective if use_cudnn is "
+      "also true.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
