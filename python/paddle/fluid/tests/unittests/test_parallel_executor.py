@@ -52,7 +52,7 @@ class ParallelExecutor(unittest.TestCase):
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
         act_places = []
-        for each in [fluid.CUDAPlace(0)]:
+        for each in [fluid.CUDAPlace(0), fluid.CUDAPlace(1)]:
             p = fluid.core.Place()
             p.set_place(each)
             act_places.append(p)
