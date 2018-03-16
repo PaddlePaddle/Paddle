@@ -18,6 +18,7 @@
 namespace paddle {
 namespace operators {
 namespace reader {
+template <bool ThreadSafe>
 class RecordIOFileReader : public framework::FileReader {
  public:
   RecordIOFileReader(const std::string& filename,
@@ -25,10 +26,19 @@ class RecordIOFileReader : public framework::FileReader {
       : FileReader(shapes),
         scanner_(filename),
         dev_ctx_(*platform::DeviceContextPool::Instance().Get(
-            platform::CPUPlace())) {}
+            platform::CPUPlace())) {
+    if (ThreadSafe) {
+      mutex_.reset(new std::mutex());
+    }
+  }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+    if (ThreadSafe) {
+      std::lock_guard<std::mutex> guard(*mutex_);
+      *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+    } else {
+      *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+    }
   }
 
   bool HasNext() const override { return scanner_.HasNext(); }
@@ -36,6 +46,7 @@ class RecordIOFileReader : public framework::FileReader {
   void ReInit() override { scanner_.Reset(); }
 
  private:
+  std::unique_ptr<std::mutex> mutex_;
   recordio::Scanner scanner_;
   const platform::DeviceContext& dev_ctx_;
 };
@@ -59,7 +70,7 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new RecordIOFileReader(filename, shapes));
+    out->Reset(new RecordIOFileReader<true>(filename, shapes));
   }
 };
 
