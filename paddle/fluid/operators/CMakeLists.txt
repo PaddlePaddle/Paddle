@@ -76,6 +76,9 @@ function(op_library TARGET)
     if (WITH_GPU)
         nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${mkldnn_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
+    elseif (WITH_AMD_GPU)
+        hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cc_srcs} ${miopen_cu_cc_srcs} ${mkldnn_cc_srcs} ${hip_srcs} DEPS
+                ${op_library_DEPS} ${op_common_deps})
     else()
         cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
             ${op_common_deps})
