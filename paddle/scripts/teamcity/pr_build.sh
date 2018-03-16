@@ -38,19 +38,24 @@ export PADDLE_DEV_NAME=paddlepaddle/paddle:dev
 
 nvidia-docker run -i --rm -v $PWD:/paddle ${PADDLE_DEV_NAME} rm -rf /paddle/build
 
-MD5_EXT_CMAKE=$(cat ./cmake/external/*.cmake |md5sum | awk '{print $1}')
+# Use the cached thirdparty package if the MD5 is mathes.
+md5_content=$(cat \
+              ${PWD}/cmake/external/*.cmake \
+              ${PWD}/paddle/scripts/teamcity/pr_build.sh \
+              |md5sum | awk '{print $1}')
 
-flag_update_tp_cache=false
-if [ ! -d /root/.cache/third_party ];then
-    mkdir -p /root/.cache/third_party
+tp_cache_dir=/root/.cache/third_party
+tp_cache_file=$cache_dir/ci_pr_${md5_content}.tar.gz
+
+if [ ! -d ${tp_cache_dir} ];then
+    mkdir -p ${tp_cache_dir}
 fi
-if [ -f /root/.cache/third_party/${MD5_EXT_CMAKE}.tar.gz ];then
+if [ -f ${tp_cache_file} ];then
     mkdir -p ${PWD}/build
-    tar zxvf /root/.cache/third_party/${MD5_EXT_CMAKE}.tar.gz -C $PWD
+    tar zxvf ${tp_cache_file}.tar.gz -C $PWD
 else
-    # clear older tar files if MD5 has chanaged.
-    rm -rf /root/.cache/third_party/*.tar.gz
-    flag_update_tp_cache=true
+    # clear the older tar files if MD5 has chanaged.
+    rm -rf $tp_cache_dir/*.tar.gz
 fi
 
 # Do not build dev image for now
@@ -106,6 +111,6 @@ nvidia-docker run -i --rm -v $PWD:/paddle -v /root/.cache:/root/.cache\
     -e "RUN_TEST=ON" ${PADDLE_DEV_NAME}
 
 
-if $flag_update_tp_cache; then
-    tar czvf /root/.cache/third_party/${MD5_EXT_CMAKE}.tar.gz ./build/third_party
+if [ ! -f $tp_cache_file ]; then
+    tar czvf $tp_cache_file ./build/third_party
 fi
