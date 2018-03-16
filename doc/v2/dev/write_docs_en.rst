@@ -2,21 +2,22 @@
 Contribute Documentation
 ########################
 
-PaddlePaddle supports English documentation ``doc`` and Chinese documentation ``doc_cn``.
-Both are compiled by `cmake`_ and `sphinx`_ , the compiled documentations will be stored under ``doc`` and ``doc_cn`` directories.
-When using the PaddlePaddle.org to compile documentations, the compiled documentations will be stored under a consolidated directory: .ppo_workspace/content
+PaddlePaddle's documentation includes both Chinese and English versions. The documentation is generated using the ``cmake`` command to drive the ``sphinx`` compiler. The PaddlePaddle.org tool helps us to implement this compilation process and provides better preview results.
 
-How to Build Documentations
+How to Build Documentation
 ============
 
-We recommend using PaddlePaddle.org tool to build documentation
+PaddlePaddle's documentation is generated in two ways: using the PaddlePaddle.org tool and not using the PaddlePaddle.org tool. Both methods have their own advantages. The former facilitates previewing, while the latter facilitates debugging by the developer. And we could chose to generate the documentation with docker or without docker in each way.
 
+We recommend using PaddlePaddle.org tool to build documentation.
 
-Use PaddlePaddle.org tool
+With PaddlePaddle.org tool
 --------------
-This is the recommended method to build documentation. It can compile documentation and preview the documentation in a web browser.
+This is the recommended method to build documentation, because it can automatically compile the documentation and preview the documentation directly in the web page, it should be noted that, in other ways, although you can preview the document, but the style of the document and the official website document is inconsistent, while Compiling with the PaddlePaddle.org tool produces a preview that is consistent with the official website document style.
 
 The tool uses Docker, please install it on your system. Please check Docker official website on how to install Docker. You may use the following commands to activate the tool
+
+The PaddlePaddle.org tool can be used with Docker and the Docker needs to be installed first. Please refer to the `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. After installing Docker, you may use the following command to activate the tool
 
 ..  code-block:: bash
 
@@ -58,16 +59,59 @@ If you don't wish to use Docker, you can also activate the tool through Django. 
     pip install -r requirements.txt
     python manage.py runserver
 
+Specify the PaddlePaddle working directory for the environment variable CONTENT_DIR so that the tool could find where the working directory is.
+
 Use a web browser and navigate to http://localhost:8000, click the buttons to compile the documentation
 The compiled documentations will be stored in <paddlepaddle working directory>/.ppo_workspace/content
 
 If you want to learn more on the PaddlePaddle.org, please `click here <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.md>`_ 。
 
-How to write Documentations
+
+Without PaddlePaddle.org tool
+--------------------------
+
+Generate PaddlePaddle's documentation with Docker，you need install Docker first. Please refer to the `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. After Docker is installed, you could use the scripts in the source directory to build the documentation.
+
+[TBD]
+
+If you do not wish to use Docker, you can also use the following command to directly generate the PaddlePaddle documentation.
+
+.. code-block:: bash
+
+   mkdir paddle
+   cd paddle
+   git clone https://github.com/PaddlePaddle/Paddle.git
+   mkdir -p build
+   cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
+
+   # If you only need to generate documents, use the following command
+   make -j $processors gen_proto_py
+   make -j $processors paddle_docs paddle_docs_cn
+
+   # If you only need to generate APIs, use the following command
+   make -j $processors gen_proto_py framework_py_proto
+   make -j $processors copy_paddle_pybind
+   make -j $processors paddle_api_docs
+
+$processors indicates that as many processes as the CPU cores are started to compile in parallel. It should be set according to the number of CPU cores of your machine.
+
+After the compilation is complete, enter the ``doc/v2`` directory. If you chose to generate documents, it will generate ``cn/html/`` and ``en/html`` subdirectories under this directory. If you chose to generate APIs，it will generate``api/en/html`` subdirectory. Please enter these directories respectively and execute the following command:
+
+.. code-block:: bash
+
+   python -m SimpleHTTPServer 8088
+
+Use a web browser and navigate to http://localhost:8000, you could see the compiled Chinese/English documents page and the English APIs page. The following figure is an example of the generated English documents home page. Note that due to the sphinx's original theme used in the example, the style of the page is not consistent with the official website, but this does not affect the developer's debugging.
+
+..  image:: src/doc_en.png
+    :align: center
+    :scale: 60 %
+
+How to write Documentation
 ============
 
-PaddlePaddle uses `sphinx`_ to compile documentations，Please check sphinx official website for more detail.
-
+PaddlePaddle uses `sphinx`_ to compile documentation，Please check sphinx official website for more detail.
 
 How to update www.paddlepaddle.org
 ============================
