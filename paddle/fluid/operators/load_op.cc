@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -29,6 +30,9 @@ class LoadOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
+    auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    platform::RecordEvent record_event(Type(), dev_ctx);
+
     auto filename = Attr<std::string>("file_path");
     std::ifstream fin(filename);
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
@@ -41,9 +45,7 @@ class LoadOp : public framework::OperatorBase {
 
     auto *tensor = out_var->GetMutable<framework::LoDTensor>();
 
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
-    DeserializeFromStream(fin, tensor, dev_ctx);
+    DeserializeFromStream(fin, tensor, *dev_ctx);
 
     if (platform::is_gpu_place(place)) {
       // copy CPU to GPU
@@ -55,7 +57,7 @@ class LoadOp : public framework::OperatorBase {
       out_var->Clear();
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->set_lod(cpu_tensor.lod());
-      TensorCopy(cpu_tensor, place, dev_ctx, tensor);
+      TensorCopy(cpu_tensor, place, *dev_ctx, tensor);
     }
   }
 };
