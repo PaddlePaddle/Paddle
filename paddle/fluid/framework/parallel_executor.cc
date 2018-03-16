@@ -502,6 +502,7 @@ void ParallelExecutor::BCastParamsToGPUs(
     }
   }
 
+  // Debug code, bias should be 1.0f.
   for (auto &pair : member_->local_scopes_) {
     member_->GetNCCLCtx(pair.first).ctx_->Wait();
 
