@@ -49,7 +49,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
       auto& y_lod = y_var->Get<LoDTensor>().lod();
 
       PADDLE_ENFORCE_LE(x_lod.size(), 1,
-                        "Number of lod level of Input(X) should not be "
+                        "Level number of Input(X)'s lod should not be "
                         "greater than 1.");
       PADDLE_ENFORCE_GT(y_lod.size(), 0,
                         "Level number of Input(Y)'s lod should be "
@@ -64,11 +64,10 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
       if (ref_level == -1) ref_level = y_lod.size() - 1;
 
       if (x_lod.size() > 0) {
-        PADDLE_ENFORCE(
-            x_lod.size() == 0 || x_lod[0].size() == y_lod[ref_level].size(),
-            "Level number of Input(X)'s lod should be 0. Otherwise "
-            "size of Input(X)'s first level lod should be equal to "
-            "size of Input(Y)'s lod of referred level.");
+        PADDLE_ENFORCE(x_lod[0].size() == y_lod[ref_level].size(),
+                       "Level number of Input(X)'s lod could be 0. Otherwise "
+                       "size of Input(X)'s first level lod should be equal to "
+                       "size of Input(Y)'s referred level lod.");
       }
 
       int64_t out_first_dim = 0;
