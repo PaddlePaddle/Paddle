@@ -414,11 +414,7 @@ All parameter, weight, gradient are variables in Paddle.
              self.set_falsenet(net.Clone());
            });
 
-  py::class_<ExecutorPrepareContext>(m, "ExecutorPrepareContext")
-      .def("__init__", [](ExecutorPrepareContext &instance, ProgramDesc &desc,
-                          size_t block_id) {
-        new (&instance) ExecutorPrepareContext(desc, block_id);
-      });
+  py::class_<ExecutorPrepareContext>(m, "ExecutorPrepareContext");
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
