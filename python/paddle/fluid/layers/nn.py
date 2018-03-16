@@ -3299,6 +3299,13 @@ def lrn(input, n=5, k=2.0, alpha=1e-4, beta=0.75, name=None):
     """
     This function helps create an operator to implement
     the LRN layer using the configurations from the input parameters.
+
+    Args:
+        n(int): The number of channels to sum over
+        k(float): An offset (usually positive to avoid dividing by 0)
+        alpha(float): The scaling parameter
+        beta(float): The exponent
+        name(str): A name for this operation
     """
     helper = LayerHelper('lrn', **locals())
     dtype = helper.input_dtype()
