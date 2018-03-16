@@ -469,6 +469,28 @@ class OpTest(unittest.TestCase):
             tensor.set_lod(lod)
         return tensor
 
+    @staticmethod
+    def np_dtype_to_fluid_dtype(input):
+        """Change the dtype of float16 numpy array
+
+        numpy float16 is binded to paddle::platform::float16 
+        in tensor_py.h via the help of uint16 data type since
+        the internal memory representation of float16 is 
+        uint16_t in paddle and np.uint16 in numpy, which are
+        themselves binded together by pybind.
+
+        Args:
+            input: input numpy array
+
+        Returns:
+            input: if the dtype of input is np.float16, its dtype will be
+                changed to np.uint16 so that the internal memory will be 
+                reinterpreted input as of dtype np.uint16. 
+        """
+        if input.dtype == np.float16:
+            input.dtype = np.uint16
+        return input
+
     def _get_gradient(self, input_to_check, place, output_names, no_grad_set):
         prog = Program()
         block = prog.global_block()
