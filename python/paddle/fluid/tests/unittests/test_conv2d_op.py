@@ -68,6 +68,7 @@ class TestConv2dOp(OpTest):
         self.init_op_type()
         self.init_group()
         self.init_dilation()
+        self.init_data_type()
         self.init_test_case()
 
         conv2d_param = {
@@ -75,12 +76,16 @@ class TestConv2dOp(OpTest):
             'pad': self.pad,
             'dilation': self.dilations
         }
-        input = np.random.random(self.input_size).astype("float32")
-        filter = np.random.random(self.filter_size).astype("float32")
-        output = conv2d_forward_naive(input, filter, self.groups,
-                                      conv2d_param).astype('float32')
 
-        self.inputs = {'Input': input, 'Filter': filter}
+        input = np.random.random(self.input_size).astype(self.dtype)
+        filter = np.random.random(self.filter_size).astype(self.dtype)
+        output = conv2d_forward_naive(input, filter, self.groups,
+                                      conv2d_param).astype(self.dtype)
+
+        self.inputs = {
+            'Input': OpTest.np_dtype_to_fluid_dtype(input),
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+        }
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
@@ -99,6 +104,8 @@ class TestConv2dOp(OpTest):
             self.check_output()
 
     def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -111,6 +118,8 @@ class TestConv2dOp(OpTest):
                 set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
+        if self.dtype == np.float16:
+            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -126,6 +135,8 @@ class TestConv2dOp(OpTest):
                 no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
+        if self.dtype == np.float16:
+            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -147,6 +158,9 @@ class TestConv2dOp(OpTest):
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
+
+    def init_data_type(self):
+        self.dtype = np.float32
 
     def init_dilation(self):
         self.dilations = [1, 1]
@@ -232,10 +246,32 @@ class TestCUDNN(TestConv2dOp):
         self.op_type = "conv2d"
 
 
+class TestFP16CUDNN(TestCUDNN):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
+
+
 class TestCUDNNWithPad(TestWithPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d"
+
+
+class TestFP16CUDNNWithPad(TestCUDNNWithPad):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
 
 
 class TestCUDNNWithStride(TestWithStride):
@@ -244,10 +280,32 @@ class TestCUDNNWithStride(TestWithStride):
         self.op_type = "conv2d"
 
 
+class TestFP16CUDNNWithStride(TestCUDNNWithStride):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
+
+
 class TestCUDNNWithGroup(TestWithGroup):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d"
+
+
+class TestFP16CUDNNWithGroup(TestCUDNNWithGroup):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
 
 
 class TestCUDNNWith1x1(TestWith1x1):
@@ -256,10 +314,32 @@ class TestCUDNNWith1x1(TestWith1x1):
         self.op_type = "conv2d"
 
 
+class TestFP16CUDNNWith1x1(TestCUDNNWith1x1):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
+
+
 class TestCUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d"
+
+
+class TestFP16CUDNNWithInput1x1Filter1x1(TestCUDNNWithInput1x1Filter1x1):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
 
 
 class TestDepthwiseConv(TestConv2dOp):
