@@ -470,29 +470,26 @@ class OpTest(unittest.TestCase):
         return tensor
 
     @staticmethod
-    def create_view(input):
-        """Create a view of the input numpy array
+    def np_dtype_to_fluid_dtype(input):
+        """Change the dtype of float16 numpy array
 
         numpy float16 is binded to paddle::platform::float16 
-        in tensor_py.h via the help of numpy uint16 because
+        in tensor_py.h via the help of uint16 data type since
         the internal memory representation of float16 is 
-        uint16_t in paddle or np.uint16 in numpy, which are
-        themselves binded together.
+        uint16_t in paddle and np.uint16 in numpy, which are
+        themselves binded together by pybind.
 
         Args:
             input: input numpy array
 
         Returns:
-            input_view: if the dtype of input is np.float16, input_view 
-                will reinterpret input as with dtype np.uint16. 
-                Otherwise, input_view will be input itself.
+            input: if the dtype of input is np.float16, its dtype will be
+                changed to np.uint16 so that the internal memory will be 
+                reinterpreted input as of dtype np.uint16. 
         """
         if input.dtype == np.float16:
-            # view will only reinterpret memory without copying
-            input_view = input.view(np.uint16)
-        else:
-            input_view = input
-        return input_view
+            input.dtype = np.uint16
+        return input
 
     def _get_gradient(self, input_to_check, place, output_names, no_grad_set):
         prog = Program()
