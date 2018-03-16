@@ -99,6 +99,10 @@ void ExecutorWithAllReduce::RunOperators(const ExecutorPrepareContext* ctx,
 
   cudaStreamSynchronize(computation_stream);
   cudaStreamSynchronize(all_reduce_stream);
+  for (auto& argu : *param_grads_) {
+    PADDLE_ENFORCE(cudaEventDestroy(computation_event[argu]));
+    PADDLE_ENFORCE(cudaEventDestroy(all_reduce_event[argu]));
+  }
 }
 
 MultiGPUExecutor::MultiGPUExecutor(

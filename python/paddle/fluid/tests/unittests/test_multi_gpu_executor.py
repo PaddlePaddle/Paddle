@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +12,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import numpy as np
+import argparse
+import time
+
 import paddle.fluid as fluid
-import paddle.v2 as paddle
-import paddle.v2.dataset.mnist as mnist
+
+SEED = 1
+DTYPE = "float32"
+
+# random seed must set before configuring the network.
+# fluid.default_startup_program().random_seed = SEED
+
+
+def parse_args():
+    parser = argparse.ArgumentParser("mnist model benchmark.")
+    parser.add_argument(
+        '--label_size', type=int, default=10, help='The label size.')
+    parser.add_argument(
+        '--batch_size', type=int, default=10, help='The minibatch size.')
+    parser.add_argument(
+        '--iterations', type=int, default=5, help='The number of minibatches.')
+    parser.add_argument(
+        '--use_nccl',
+        default=False,
+        action='store_true',
+        help='If set, use nccl')
+    args = parser.parse_args()
+    return args
+
+
+def print_arguments(args):
+    print('-----------  Configuration Arguments -----------')
+    for arg, value in sorted(vars(args).iteritems()):
+        print('%s: %s' % (arg, value))
+    print('------------------------------------------------')
+
+
+def program_summary(program):
+    print("--------------------")
+    for block in program.blocks:
+        for op in block.ops:
+            outputs = [[x + ":"] + op.output(x) for x in op.output_names]
+            inputs = [[x + ":"] + op.input(x) for x in op.input_names]
+            print(block.idx, op.type, inputs, "|", outputs)
 
 
 def vgg16_bn_drop(input):
@@ -42,59 +86,47 @@ def vgg16_bn_drop(input):
     return fc2
 
 
-class ParallelExecutor(unittest.TestCase):
-    def setUp(self):
-        # Convert mnist to recordio file
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            reader = paddle.batch(mnist.train(), batch_size=32)
-            feeder = fluid.DataFeeder(
-                feed_list=[  # order is image and label
-                    fluid.layers.data(
-                        name='image', shape=[784]),
-                    fluid.layers.data(
-                        name='label', shape=[1], dtype='int64'),
-                ],
-                place=fluid.CPUPlace())
-            fluid.recordio_writer.convert_reader_to_recordio_file(
-                './mnist.recordio', reader, feeder)
+def run_benchmark(args):
+    # Train program
+    images = fluid.layers.fill_constant(
+        shape=(args.batch_size, 3, 200, 200), dtype='float32', value=0.01)
+    predict = vgg16_bn_drop(images)
+    label = fluid.layers.fill_constant(
+        shape=(args.batch_size, 1), dtype='int64', value=0)
+    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    avg_cost = fluid.layers.mean(x=cost)
 
-    def test_main(self):
-        main = fluid.Program()
-        startup = fluid.Program()
+    # Optimization
+    # Note the flag append_all_reduce=True
+    opt = fluid.optimizer.SGDOptimizer(learning_rate=0.001)
+    opt.minimize(avg_cost)
 
-        with fluid.program_guard(main, startup):
-            # reader = fluid.layers.open_recordio_file(
-            #     filename='./mnist.recordio',
-            #     shapes=[[-1, 784], [-1, 1]],
-            #     lod_levels=[0, 0],
-            #     dtypes=['float32', 'int64'])
-            # img, label = fluid.layers.read_file(reader)
-            img = fluid.layers.fill_constant(
-                shape=[32, 784], dtype='float32', value=1.0)
-            label = fluid.layers.fill_constant(
-                shape=[32, 1], dtype='int64', value=1)
-            hidden = fluid.layers.fc(img, size=2000, act='tanh')
-            hidden = fluid.layers.fc(hidden, size=2000, act='tanh')
-            hidden = fluid.layers.fc(hidden, size=2000, act='tanh')
-            prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-            loss = fluid.layers.mean(prediction)
-            # loss = fluid.layers.cross_entropy(input=prediction, label=label)
-            # loss = fluid.layers.mean(loss)
-            adam = fluid.optimizer.Adam()
-            adam.minimize(loss)
-        act_places = []
-        for each in [fluid.CUDAPlace(0), fluid.CUDAPlace(1)]:
-            p = fluid.core.Place()
-            p.set_place(each)
-            act_places.append(p)
+    # program_summary(fluid.default_main_program())
+    act_places = []
+    for each in [fluid.CUDAPlace(0), fluid.CUDAPlace(1)]:
+        p = fluid.core.Place()
+        p.set_place(each)
+        act_places.append(p)
 
-        exe = fluid.core.ParallelExecutor(
-            act_places,
-            set([p.name for p in main.global_block().iter_parameters()]))
+    exe = fluid.core.ParallelExecutor(act_places,
+                                      set([
+                                          p.name
+                                          for p in fluid.default_main_program()
+                                          .global_block().iter_parameters()
+                                      ]))
 
-        exe.run(startup.desc, 0, True, True)
-        exe.run(main.desc, 0, True, True)
+    # Parameter initialization
+    exe.run(fluid.default_startup_program().desc, 0, True, True)
+
+    for iter_id in range(0, args.iterations):
+        start = time.time()
+        exe.run(fluid.default_main_program().desc, 0, True, True)
+        end = time.time()
+        print("iter=%d, elapse=%f" % (iter_id, (end - start)))
+        time.sleep(1)
 
 
 if __name__ == '__main__':
-    unittest.main()
+    args = parse_args()
+    print_arguments(args)
+    run_benchmark(args)
