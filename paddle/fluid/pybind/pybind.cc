@@ -422,8 +422,7 @@ All parameter, weight, gradient are variables in Paddle.
                   [](const ProgramDesc &pdesc,
                      int block_id) -> std::unique_ptr<ExecutorPrepareContext> {
                     return Executor::Prepare(pdesc, block_id);
-                  },
-                  py::return_value_policy::automatic)
+                  })
       .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *handle, Scope *scope,
               bool create_local_scope, bool create_vars) {
