@@ -77,7 +77,7 @@ struct OpHandle {
   virtual ~OpHandle() {}
 
   virtual void Run() { PADDLE_THROW("Not implemented"); }
-  virtual void Wait() {}
+  virtual void Wait(platform::DeviceContext *waited_dev) {}
 };
 
 struct ComputationOpHandle : public OpHandle {
@@ -97,12 +97,16 @@ struct ComputationOpHandle : public OpHandle {
     auto *cur_ctx = dev_ctx_[place_];
     for (auto *in : inputs_) {
       if (in->generated_op_ && in->generated_op_->dev_ctx_[place_] != cur_ctx) {
-        in->generated_op_->Wait();
+        in->generated_op_->Wait(cur_ctx);
       }
     }
 
     op_->Run(*scope_, place_);
     LOG(INFO) << "Done " << this;
+  }
+
+  void Wait(platform::DeviceContext *waited_dev) override {
+    this->dev_ctx_.at(place_)->Wait();
   }
 };
 
@@ -135,6 +139,10 @@ struct ScaleLossGradOpHandle : public OpHandle {
           static_cast<platform::CUDADeviceContext *>(this->dev_ctx_[place_])
               ->stream());
     }
+  }
+
+  void Wait(platform::DeviceContext *waited_dev) override {
+    this->dev_ctx_.at(place_)->Wait();
   }
 };
 
@@ -275,6 +283,10 @@ struct NCCLAllReduceOpHandle : public OpHandle {
 
       platform::dynload::ncclGroupEnd();
     }
+  }
+
+  void Wait(platform::DeviceContext *waited_dev) override {
+    this->dev_ctx_.at(waited_dev->GetPlace())->Wait();
   }
 };
 
