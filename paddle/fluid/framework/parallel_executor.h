@@ -61,6 +61,8 @@ class ParallelExecutor {
 
   void RunOp(std::unordered_map<VarHandleBase*, bool>& pending_vars,
              OpHandle* op) const;
+
+  void PolishGraphToSupportDataHarzaeds() const;
 };
 
 }  // namespace framework
