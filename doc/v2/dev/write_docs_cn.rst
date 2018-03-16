@@ -2,13 +2,14 @@
 如何贡献文档
 #############
 
-PaddlePaddle的文档包括中英文两个部分。文档都是通过 ``cmake`` 驱动 ``sphinx`` 编译生成，也可以利用paddlepaddle.org工具来编译和预览文档。
+PaddlePaddle的文档包括中英文两个部分。文档都是通过 ``cmake`` 驱动 ``sphinx`` 编译生成的，PaddlePaddle.org工具可以帮助我们实现这一编译过程，并提供更好的预览效果。
 
 如何构建文档
 ============
 
 PaddlePaddle的文档构建有两种方式，分别为使用paddlepaddle.org工具和不使用paddlepaddle.org工具，两种方式都有各自的优点，前者方便预览，后者方便开发者进行调试。这两种方式中又分别有使用docker和不使用docker的两种构建方法。
 
+我们建议使用PaddlePaddle.org工具来构建文档。
 
 使用PaddlePaddle.org工具
 ------------------------
