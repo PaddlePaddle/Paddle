@@ -282,7 +282,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv backward data ---------------------
-    T alpha = 1.0f, beta = 0.0f;
+    typename platform::CudnnDataType<T>::ScalingParamType alpha = 1.0f,
+                                                          beta = 0.0f;
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.

@@ -82,18 +82,9 @@ class TestConv2dOp(OpTest):
         output = conv2d_forward_naive(input, filter, self.groups,
                                       conv2d_param).astype(self.dtype)
 
-        # numpy float16 is binded to paddle::platform::float16 
-        # in tensor_py.h via the help of numpy uint16 because
-        # the internal memory representation of float16 is 
-        # uint16_t in paddle or np.uint16 in numpy, which are
-        # themselves binded together.        
         self.inputs = {
-            #'Input': (input.view(np.uint16)
-            #          if self.dtype == np.float16 else input),
-            #'Filter': (filter.view(np.uint16)
-            #          if self.dtype == np.float16 else filter)
-            'Input': OpTest.create_view(input),
-            'Filter': OpTest.create_view(filter)
+            'Input': OpTest.np_dtype_to_fluid_dtype(input),
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
         }
         self.attrs = {
             'strides': self.stride,
@@ -113,6 +104,8 @@ class TestConv2dOp(OpTest):
             self.check_output()
 
     def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -125,6 +118,8 @@ class TestConv2dOp(OpTest):
                 set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
+        if self.dtype == np.float16:
+            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -140,6 +135,8 @@ class TestConv2dOp(OpTest):
                 no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
+        if self.dtype == np.float16:
+            return
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -259,20 +256,22 @@ class TestFP16CUDNN(TestCUDNN):
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=2e-2)
 
-    def test_check_grad(self):
-        pass
-
-    def test_check_grad_no_filter(self):
-        pass
-
-    def test_check_grad_no_input(self):
-        pass
-
 
 class TestCUDNNWithPad(TestWithPad):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d"
+
+
+class TestFP16CUDNNWithPad(TestCUDNNWithPad):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
 
 
 class TestCUDNNWithStride(TestWithStride):
@@ -281,10 +280,32 @@ class TestCUDNNWithStride(TestWithStride):
         self.op_type = "conv2d"
 
 
+class TestFP16CUDNNWithStride(TestCUDNNWithStride):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
+
+
 class TestCUDNNWithGroup(TestWithGroup):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d"
+
+
+class TestFP16CUDNNWithGroup(TestCUDNNWithGroup):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
 
 
 class TestCUDNNWith1x1(TestWith1x1):
@@ -293,10 +314,32 @@ class TestCUDNNWith1x1(TestWith1x1):
         self.op_type = "conv2d"
 
 
+class TestFP16CUDNNWith1x1(TestCUDNNWith1x1):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
+
+
 class TestCUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d"
+
+
+class TestFP16CUDNNWithInput1x1Filter1x1(TestCUDNNWithInput1x1Filter1x1):
+    def init_data_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=2e-2)
 
 
 class TestDepthwiseConv(TestConv2dOp):
