@@ -284,8 +284,32 @@ class ScopedPoolingDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedPoolingDescriptor);
 };
 
+class ScopedActivationDescriptor {
+ public:
+  ScopedActivationDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnCreateActivationDescriptor(&desc_));
+  }
+  ~ScopedActivationDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnDestroyActivationDescriptor(desc_));
+  }
+
+  inline cudnnActivationDescriptor_t descriptor(
+      const cudnnActivationMode_t& mode) {
+    PADDLE_ENFORCE(dynload::cudnnSetActivationDescriptor(
+        desc_, mode, CUDNN_PROPAGATE_NAN, 0.0));
+    return desc_;
+  }
+
+ private:
+  cudnnActivationDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
+};
+
 inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  bool use_cudnn = false;
+  if (ctx.op().Attrs().count("use_cudnn") != 0) {
+    use_cudnn = ctx.Attr<bool>("use_cudnn");
+  }
   use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
   if (use_cudnn) {

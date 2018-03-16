@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -22,8 +25,29 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of ActivationOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of ActivationOp should not be null.");
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kCUDNN;
+    }
+#endif
+
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+        ctx.GetPlace(), layout, library);
   }
 };
 
@@ -87,6 +111,10 @@ class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Relu operator");
     AddOutput("Out", "Output of Relu operator");
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false);
     AddComment(R"DOC(
 Relu Activation Operator.
 

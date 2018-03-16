@@ -40,9 +40,12 @@ class AttrReader {
 
   template <typename T>
   inline const T& Get(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
-                   name);
+    PADDLE_ENFORCE(HasAttr(name), "%s should be in AttributeMap", name);
     return boost::get<T>(attrs_.at(name));
+  }
+
+  inline bool HasAttr(const std::string& name) const {
+    return attrs_.count(name) != 0;
   }
 
  private:
