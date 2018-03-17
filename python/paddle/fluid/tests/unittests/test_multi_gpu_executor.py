@@ -103,7 +103,10 @@ def run_benchmark(args):
 
     # program_summary(fluid.default_main_program())
     act_places = []
-    for each in [fluid.CUDAPlace(0), fluid.CUDAPlace(1)]:
+    for each in [
+            fluid.CUDAPlace(i)
+            for i in range(fluid.core.get_cuda_device_count())
+    ]:
         p = fluid.core.Place()
         p.set_place(each)
         act_places.append(p)

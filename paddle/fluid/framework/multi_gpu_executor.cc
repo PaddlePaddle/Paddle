@@ -125,14 +125,12 @@ void MultiGPUExecutor::Run(const ProgramDesc& prog, int block_id,
   auto* context = exes_[0].Prepare(prog, block_id);
 
   std::vector<std::thread> threads;
-  threads.push_back(std::thread([&] {
-    exes_[0].RunPreparedContext(context, scopes_[0], create_local_scope,
-                                create_vars);
-  }));
-  threads.push_back(std::thread([&] {
-    exes_[1].RunPreparedContext(context, scopes_[1], create_local_scope,
-                                create_vars);
-  }));
+  for (size_t i = 0; i < exes_.size(); ++i) {
+    threads.push_back(std::thread([&, i] {
+      exes_[i].RunPreparedContext(context, scopes_[i], create_local_scope,
+                                  create_vars);
+    }));
+  }
 
   for (auto& t : threads) {
     t.join();
