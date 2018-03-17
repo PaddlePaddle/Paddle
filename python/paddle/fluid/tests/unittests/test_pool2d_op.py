@@ -78,12 +78,13 @@ def avg_pool2D_forward_naive(x,
 
 class TestPool2d_Op(OpTest):
     def setUp(self):
+        self.op_type = "pool2d"
         self.use_cudnn = False
         self.use_mkldnn = False
         self.dtype = np.float32
         self.init_test_case()
         self.init_global_pool()
-        self.init_op_type()
+        self.init_kernel_type()
         self.init_pool_type()
         self.init_ceil_mode()
         if self.global_pool:
@@ -131,8 +132,8 @@ class TestPool2d_Op(OpTest):
         self.strides = [1, 1]
         self.paddings = [0, 0]
 
-    def init_op_type(self):
-        self.op_type = "pool2d"
+    def init_kernel_type(self):
+        pass
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -152,9 +153,6 @@ class TestCase1(TestPool2d_Op):
         self.strides = [1, 1]
         self.paddings = [0, 0]
 
-    def init_op_type(self):
-        self.op_type = "pool2d"
-
     def init_pool_type(self):
         self.pool_type = "avg"
         self.pool2D_forward_naive = avg_pool2D_forward_naive
@@ -170,9 +168,6 @@ class TestCase2(TestPool2d_Op):
         self.strides = [1, 1]
         self.paddings = [1, 1]
 
-    def init_op_type(self):
-        self.op_type = "pool2d"
-
     def init_pool_type(self):
         self.pool_type = "avg"
         self.pool2D_forward_naive = avg_pool2D_forward_naive
@@ -182,27 +177,18 @@ class TestCase2(TestPool2d_Op):
 
 
 class TestCase3(TestPool2d_Op):
-    def init_op_type(self):
-        self.op_type = "pool2d"
-
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 class TestCase4(TestCase1):
-    def init_op_type(self):
-        self.op_type = "pool2d"
-
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 class TestCase5(TestCase2):
-    def init_op_type(self):
-        self.op_type = "pool2d"
-
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
@@ -210,15 +196,13 @@ class TestCase5(TestCase2):
 
 #--------------------test pool2d--------------------
 class TestCUDNNCase1(TestPool2d_Op):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
 
 
 class TestFP16CUDNNCase1(TestPool2d_Op):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -229,15 +213,13 @@ class TestFP16CUDNNCase1(TestPool2d_Op):
 
 
 class TestCUDNNCase2(TestCase1):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
 
 
 class TestFP16CUDNNCase2(TestCase1):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -248,15 +230,13 @@ class TestFP16CUDNNCase2(TestCase1):
 
 
 class TestCUDNNCase3(TestCase2):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
 
 
 class TestFP16CUDNNCase3(TestCase2):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -267,15 +247,13 @@ class TestFP16CUDNNCase3(TestCase2):
 
 
 class TestCUDNNCase4(TestCase3):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
 
 
 class TestFP16CUDNNCase4(TestCase3):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -286,15 +264,13 @@ class TestFP16CUDNNCase4(TestCase3):
 
 
 class TestCUDNNCase5(TestCase4):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
 
 
 class TestFP16CUDNNCase5(TestCase4):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -305,15 +281,13 @@ class TestFP16CUDNNCase5(TestCase4):
 
 
 class TestCUDNNCase6(TestCase5):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
 
 
 class TestFP16CUDNNCase6(TestCase5):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_cudnn = True
-        self.op_type = "pool2d"
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -345,39 +319,33 @@ class TestCeilModeCase4(TestCase2):
 
 #--------------------test pool2d MKLDNN--------------------
 class TestMKLDNNCase1(TestPool2d_Op):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_mkldnn = True
-        self.op_type = "pool2d"
 
 
 class TestMKLDNNCase2(TestCase1):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_mkldnn = True
-        self.op_type = "pool2d"
 
 
 class TestMKLDNNCase3(TestCase2):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_mkldnn = True
-        self.op_type = "pool2d"
 
 
 class TestMKLDNNCase4(TestCase3):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_mkldnn = True
-        self.op_type = "pool2d"
 
 
 class TestMKLDNNCase5(TestCase4):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_mkldnn = True
-        self.op_type = "pool2d"
 
 
 class TestMKLDNNCase6(TestCase5):
-    def init_op_type(self):
+    def init_kernel_type(self):
         self.use_mkldnn = True
-        self.op_type = "pool2d"
 
 
 if __name__ == '__main__':
