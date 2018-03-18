@@ -139,26 +139,38 @@ class ListenAndServOp : public framework::OperatorBase {
       // should be global ops.
       // NOTE: if is_gpu_place, CUDA kernels are laugched by multiple threads
       // and this will still work.
+      double ts = detail::GetTimestamp();
       std::vector<std::future<void>> fs;
       for (int blkid = 0; blkid < num_blocks - 1; ++blkid) {
         fs.push_back(framework::Async([&]() {
           try {
+            VLOG(2) << "begin run in thread" << blkid;
             executor.Run(*program, &recv_scope, blkid,
                          false /*create_local_scope*/, false /*create_vars*/);
+            VLOG(2) << "end run in thread";
           } catch (std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
           }
         }));
       }
+      VLOG(2) << "waiting opts...";
       for (int blkid = 0; blkid < num_blocks - 1; ++blkid) fs[blkid].wait();
+      VLOG(2) << "waiting opts...OK";
       // Run global block at final step
       if (num_blocks > 2) {
         try {
           executor.Run(*program, &recv_scope, num_blocks - 1,
                        false /*create_local_scope*/, false /*create_vars*/);
+          VLOG(2) << "run global OK , spent " << detail::GetTimestamp() - ts;
         } catch (std::exception &e) {
           LOG(ERROR) << "run sub program error " << e.what();
         }
+      }
+      for (auto &n : recv_scope.LocalVarNames()) {
+        VLOG(2) << "vars in scope: " << n;
+      }
+      for (auto &n : recv_scope.LocalVarNames()) {
+        VLOG(2) << "vars in parent scope: " << n;
       }
 
       // Reset the received sparse variables, the sum operator would not
