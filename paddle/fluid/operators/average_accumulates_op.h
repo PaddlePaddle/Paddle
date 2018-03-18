@@ -29,88 +29,80 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext>
 void getAccumulators(const framework::ExecutionContext& ctx,
-                     int64_t& num_updates_, int64_t& num_accumulates_,
-                     int64_t& old_num_accumulates_);
+                     int64_t& num_updates, int64_t& num_accumulates,
+                     int64_t& old_num_accumulates);
 
 template <typename DeviceContext>
 void setAccumulators(const framework::ExecutionContext& ctx,
-                     int64_t num_updates_, int64_t num_accumulates_,
-                     int64_t old_num_accumulates_);
+                     int64_t num_updates, int64_t num_accumulates,
+                     int64_t old_num_accumulates);
 
 template <typename DeviceContext, typename T>
 class AverageAccumulatesKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    // It is used to avoid loss of precision
     static const int64_t kMaxNumAccumulates = 16384;
-    // accumulators
-    int64_t num_updates_ = 0;
-    int64_t num_accumulates_ = 0;
-    int64_t old_num_accumulates_ = 0;
-    // attrs
-    int64_t min_average_window_;
-    int64_t max_average_window_;
-    float average_window_;
+    // Get accumulators from input
+    int64_t num_updates = 0;
+    int64_t num_accumulates = 0;
+    int64_t old_num_accumulates = 0;
+    getAccumulators<DeviceContext>(ctx, num_updates, num_accumulates,
+                                   old_num_accumulates);
 
-    auto* param = ctx.Input<Tensor>("Param");
-    auto* in_sum_1 = ctx.Input<Tensor>("sum_1");
-    auto* in_sum_2 = ctx.Input<Tensor>("sum_2");
-    auto* in_sum_3 = ctx.Input<Tensor>("sum_3");
+    // Get attrs
+    float average_window = ctx.Attr<float>("average_window");
+    int64_t max_average_window = ctx.Attr<int64_t>("max_average_window");
+    int64_t min_average_window = ctx.Attr<int64_t>("min_average_window");
+    min_average_window =
+        std::min<int64_t>(min_average_window, max_average_window);
 
-    auto* out_sum_1 = ctx.Output<Tensor>("sum_1");
-    auto* out_sum_2 = ctx.Output<Tensor>("sum_2");
-    auto* out_sum_3 = ctx.Output<Tensor>("sum_3");
-
-    getAccumulators<DeviceContext>(ctx, num_updates_, num_accumulates_,
-                                   old_num_accumulates_);
-    average_window_ = ctx.Attr<float>("average_window");
-    max_average_window_ =
-        ctx.Attr<int64_t>("max_average_window");  // default bach number
-    min_average_window_ =
-        ctx.Attr<int64_t>("min_average_window");  // default 10000L
-    min_average_window_ =
-        std::min<int64_t>(min_average_window_, max_average_window_);
-
+    // Get inputs
+    auto* param = ctx.Input<Tensor>("param");
+    auto* in_sum_1 = ctx.Input<Tensor>("in_sum_1");
+    auto* in_sum_2 = ctx.Input<Tensor>("in_sum_2");
+    auto* in_sum_3 = ctx.Input<Tensor>("in_sum_3");
     auto param_tensor = EigenVector<T>::Flatten(*param);
     auto in_sum_1_tensor = EigenVector<T>::Flatten(*in_sum_1);
     auto in_sum_2_tensor = EigenVector<T>::Flatten(*in_sum_2);
     auto in_sum_3_tensor = EigenVector<T>::Flatten(*in_sum_3);
+
+    // Get outputs
+    auto* out_sum_1 = ctx.Output<Tensor>("out_sum_1");
+    auto* out_sum_2 = ctx.Output<Tensor>("out_sum_2");
+    auto* out_sum_3 = ctx.Output<Tensor>("out_sum_3");
     auto out_sum_1_tensor = EigenVector<T>::Flatten(*out_sum_1);
     auto out_sum_2_tensor = EigenVector<T>::Flatten(*out_sum_2);
     auto out_sum_3_tensor = EigenVector<T>::Flatten(*out_sum_3);
 
+    // Compute
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     math::SetConstant<DeviceContext, T> constant_functor;
-    // start batch
-    ++num_updates_;
-    ++num_accumulates_;
-
-    // update
+    ++num_updates;
+    ++num_accumulates;
     out_sum_1_tensor.device(place) = in_sum_1_tensor + param_tensor;
-
     out_sum_2_tensor.device(place) = in_sum_2_tensor;
     out_sum_3_tensor.device(place) = in_sum_3_tensor;
-    // needSpecialTraversal
-    if (num_updates_ % kMaxNumAccumulates == 0) {
+    if (num_updates % kMaxNumAccumulates == 0) {
       out_sum_2_tensor.device(place) = in_sum_2_tensor + in_sum_1_tensor;
       constant_functor(ctx.template device_context<DeviceContext>(), out_sum_1,
                        0.0);
     }
-
-    if (num_accumulates_ >= min_average_window_ &&
-        num_accumulates_ >= std::min<int64_t>(max_average_window_,
-                                              num_updates_ * average_window_)) {
+    if (num_accumulates >= min_average_window &&
+        num_accumulates >= std::min<int64_t>(max_average_window,
+                                             num_updates * average_window)) {
       out_sum_3_tensor.device(place) = in_sum_1_tensor + in_sum_2_tensor;
       constant_functor(ctx.template device_context<DeviceContext>(), out_sum_1,
                        0.0);
       constant_functor(ctx.template device_context<DeviceContext>(), out_sum_2,
                        0.0);
-
-      // finishBatch
-      old_num_accumulates_ = num_accumulates_;
-      num_accumulates_ = 0;
+      old_num_accumulates = num_accumulates;
+      num_accumulates = 0;
     }
-    setAccumulators<DeviceContext>(ctx, num_updates_, num_accumulates_,
-                                   old_num_accumulates_);
+
+    // Set accumulators to output
+    setAccumulators<DeviceContext>(ctx, num_updates, num_accumulates,
+                                   old_num_accumulates);
   }
 };
 
