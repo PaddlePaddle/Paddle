@@ -918,6 +918,24 @@ class Block(object):
                 name=v.name)
             self.vars[new_p.name] = new_p
 
+    def clone_variable(self, var):
+        """
+        Clone a variable into current block.
+        Args:
+            var: the variable to be cloned.
+
+        Returns:
+            The new  variable cloned from 'var' in current block.
+        """
+        assert isinstance(var, Variable)
+        return self.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            lod_level=var.lod_level,
+            persistable=True)
+
 
 class Program(object):
     def __init__(self):
@@ -960,14 +978,14 @@ class Program(object):
         """Clone the Program object
 
         Set for_test to False when we want to clone the program for training.
-        Set for_test to True when we want to clone the program for testing.         
+        Set for_test to True when we want to clone the program for testing.
 
         Args:
             for_test(bool): Some operators, such as batch_norm and drop_out ops,
                 behave differently in training and testing. If for_test is True,
                 the is_test attributes in these operators will be set to True for
-                testing purposes, otherwise, they remain unchanged.  
-                
+                testing purposes, otherwise, they remain unchanged.
+
         Returns(Program):
             The cloned Program object.
         """
