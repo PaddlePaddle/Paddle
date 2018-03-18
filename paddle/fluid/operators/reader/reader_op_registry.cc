@@ -36,6 +36,22 @@ std::unordered_map<std::string, FileReaderCreator>& FileReaderRegistry() {
   return regs;
 }
 
+std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
+    const std::string& file_name, const std::vector<framework::DDim>& dims) {
+  size_t separator_pos = file_name.find(kFileFormatSeparator);
+  PADDLE_ENFORCE_NE(separator_pos, std::string::npos,
+                    "File name illegal! A legal file name should be like: "
+                    "[file_format]:[file_name] (e.g., 'recordio:data_file').");
+  std::string filetype = file_name.substr(0, separator_pos);
+  std::string f_name = file_name.substr(separator_pos + 1);
+
+  auto itor = FileReaderRegistry().find(filetype);
+  PADDLE_ENFORCE(itor != FileReaderRegistry().end(),
+                 "No file reader registered for '%s' format.", filetype);
+  framework::ReaderBase* reader = (itor->second)(f_name, dims);
+  return std::unique_ptr<framework::ReaderBase>(reader);
+}
+
 FileReaderMakerBase::FileReaderMakerBase(
     framework::OpProtoAndCheckerMaker::OpProto* op_proto,
     framework::OpAttrChecker* op_checker)
