@@ -161,31 +161,20 @@ class OpenFilesOp : public framework::OperatorBase {
   }
 };
 
-class OpenFilesOpMaker : public framework::OpProtoAndCheckerMaker {
+class OpenFilesOpMaker : public FileReaderMakerBase {
  public:
   OpenFilesOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(op_proto, op_checker) {
+      : FileReaderMakerBase(op_proto, op_checker) {
+    AddAttr<std::vector<std::string>>("file_names", "Files to be read.");
+    AddAttr<int>("thread_num", "The maximal concurrent prefetch thread number.")
+        .GreaterThan(0);
+
     AddComment(R"DOC(
       OpenFiles Operator
 
       An OpenFilesOp creates a MultipleReader, which is able to 
       read data multi-threaded from multiple files.
     )DOC");
-    AddOutput("Out", "(ReaderHolder) The created MultipleReader.");
-    AddAttr<std::vector<int>>("shape_concat",
-                              "The concat of all data's shapes.");
-    AddAttr<std::vector<int>>(
-        "ranks",
-        "The ranks of each data."
-        "e.g."
-        "shape_concat = [2,3,4,5,6]"
-        "ranks = [3,2]"
-        "It means the reader will generate two data each time,"
-        "whose shapes are [2,3,4] and [5,6] respectively.");
-    AddAttr<std::vector<int>>("lod_levels", "The LoD levels of each data.");
-    AddAttr<std::vector<std::string>>("file_names", "Files to be read.");
-    AddAttr<int>("thread_num", "The maximal concurrent prefetch thread number.")
-        .GreaterThan(0);
   }
 };
 
