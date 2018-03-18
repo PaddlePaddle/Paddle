@@ -187,74 +187,99 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
 
 
 class TestBatchNormOpInference(OpTest):
-    def setUp(self):
-        self.op_type = "conv2d"
-        self.is_test = True
-        self.dtype = np.float32
-        self.data_layout = "NCHW"
-        init_dtype()
-        init_data_layout()
-        init_test_case()
+    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
+        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
-        epsilon = 0.00001
-        shape = self.shape
-        if len(shape) == 2:
-            x_shape = shape
-            c = x_shape[1]
-        else:
-            n, h, w, c = shape[0], shape[1], shape[2], shape[3]
-            if self.data_layout == "NHWC":
-                x_shape = [n, h, w, c]
-            elif self.data_layout == "NCHW":
-                x_shape = [n, c, h, w]
+    def test_inference(self):
+        def test_with_place(place, data_layout, dtype, shape):
+            epsilon = 0.00001
+            if len(shape) == 2:
+                x_shape = shape
+                c = x_shape[1]
             else:
-                raise ValueError("Unknown data layout.")
-        scale_shape = [c]
+                n, h, w, c = shape[0], shape[1], shape[2], shape[3]
+                if data_layout == "NHWC":
+                    x_shape = [n, h, w, c]
+                elif data_layout == "NCHW":
+                    x_shape = [n, c, h, w]
+                else:
+                    raise ValueError("Unknown data layout.")
+            scale_shape = [c]
 
-        x_val = np.random.random_sample(x_shape).astype(self.dtype)
-        scale_val = np.random.random_sample(scale_shape).astype(self.dtype)
-        bias_val = np.random.random_sample(scale_shape).astype(self.dtype)
+            x_val = np.random.random_sample(x_shape).astype(dtype)
+            scale_val = np.random.random_sample(scale_shape).astype(dtype)
+            bias_val = np.random.random_sample(scale_shape).astype(dtype)
 
-        mean = np.zeros(scale_shape).astype(self.dtype)
-        variance = np.ones(scale_shape).astype(self.dtype)
+            mean = np.zeros(scale_shape).astype(dtype)
+            variance = np.ones(scale_shape).astype(dtype)
 
-        saved_mean = np.zeros(scale_shape).astype(self.dtype)
-        saved_variance = np.ones(scale_shape).astype(self.dtype)
+            y_out = _reference_testing(x_val, scale_val, bias_val, mean,
+                                       variance, epsilon,
+                                       data_layout).astype(dtype)
 
-        y_out = _reference_testing(x_val, scale_val, bias_val, mean, variance,
-                                   epsilon, self.data_layout).astype(self.dtype)
+            scope = core.Scope()
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x_val),
-            'Scale': OpTest.np_dtype_to_fluid_dtype(scale_val),
-            'Bias': OpTest.np_dtype_to_fluid_dtype(bias_val),
-            'Mean': OpTest.np_dtype_to_fluid_dtype(mean),
-            'Variance': OpTest.np_dtype_to_fluid_dtype(variance)
-        }
-        self.attrs = {
-            'is_test': self.is_test,
-            'epsilon': epsilon,
-            'data_layout': self.data_layout
-        }
-        self.outputs = {
-            'Y': y_out,
-            'MeanOut': mean,
-            'VarianceOut': variance,
-            'SavedMean': saved_mean,
-            'SavedVariance': saved_variance
-        }
+            # create input
+            x_tensor = create_or_get_tensor(
+                scope, "x_val", OpTest.np_dtype_to_fluid_dtype(x_val), place)
+            scale_tensor = create_or_get_tensor(
+                scope, "scale_val",
+                OpTest.np_dtype_to_fluid_dtype(scale_val), place)
+            bias_tensor = create_or_get_tensor(
+                scope, "bias_val",
+                OpTest.np_dtype_to_fluid_dtype(bias_val), place)
+            mean_tensor = create_or_get_tensor(
+                scope, "mean", OpTest.np_dtype_to_fluid_dtype(mean), place)
+            variance_tensor = create_or_get_tensor(
+                scope, "variance",
+                OpTest.np_dtype_to_fluid_dtype(variance), place)
 
-    def test_check_output(self):
-        self.check_output()
+            # create output
+            y_tensor = create_or_get_tensor(scope, "y_out", None, place)
+            saved_mean_tensor = create_or_get_tensor(scope, "saved_mean", None,
+                                                     place)
+            saved_variance_tensor = create_or_get_tensor(
+                scope, "saved_variance", None, place)
+            mean_out_tensor = mean_tensor
+            variance_out_tensor = variance_tensor
 
-    def init_dtype(self):
-        pass
+            batch_norm_op = Operator(
+                "batch_norm",
+                # inputs
+                X="x_val",
+                Scale="scale_val",
+                Bias="bias_val",
+                Mean="mean",
+                Variance="variance",
+                # outputs
+                Y="y_out",
+                MeanOut="mean",
+                VarianceOut="variance",
+                SavedMean="saved_mean",
+                SavedVariance="saved_variance",
+                # attrs
+                is_test=True,
+                data_layout=data_layout,
+                epsilon=epsilon)
 
-    def init_data_layout(self):
-        pass
+            batch_norm_op.run(scope, place)
 
-    def init_test_case(self):
-        self.shape = [2, 3, 4, 5]
+            # check inference result
+            self.__assert_close(
+                y_tensor, y_out, "inference output are different at " +
+                str(place) + ", " + data_layout + ", " + str(np.dtype(dtype)))
+
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
+            place = core.CUDAPlace(0)
+            if self.dtype != np.float16 or core.is_float16_supported(place):
+                places.append(place)
+
+        for place in places:
+            for data_format in ["NCHW", "NHWC"]:
+                for dtype in [np.float32, np.float16]:
+                    test_with_place(place, data_format, dtype, [2, 3, 4, 5])
+                    test_with_place(place, data_format, dtype, [2, 3])
 
 
 class TestBatchNormOpTraining(OpTest):
@@ -288,8 +313,7 @@ class TestBatchNormOpTraining(OpTest):
 
         # transfer (N, C, H, W) back to (N, H, W, C)
         y_out2_trans = np.transpose(y_out2, (0, 2, 3, 1))
-        self.__assert_close(y_out, y_out2_trans,
-                            "inference outputs of two formats have differences")
+        self.__assert_close(y_out, y_out2_trans, "inference output")
         print 'python: NHWC, NCHW, inference checking passed'
 
     def test_python_training(self):
