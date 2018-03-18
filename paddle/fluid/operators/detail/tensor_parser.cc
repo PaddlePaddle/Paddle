@@ -20,7 +20,19 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-bool ReadVarintSizeAsInt(protobuf::io::CodedInputStream* input, int* result) {
+enum WireType {
+  WIRETYPE_VARINT = 0,
+  WIRETYPE_LENGTH_DELIMITED = 2,
+};
+
+inline int GetTagFieldNumber(uint32_t tag) { return tag >> 3; }
+
+inline WireType GetTagWireType(uint32_t tag) {
+  return static_cast<WireType>(tag & 0x7);
+}
+
+bool ReadVarintSizeAsInt(::google::protobuf::io::CodedInputStream* input,
+                         int* result) {
   uint64_t v;
   if (input->ReadVarint64(&v) && v <= static_cast<uint64_t>(INT_MAX)) {
     *result = static_cast<int>(v);
@@ -107,8 +119,9 @@ bool TensorResponse::ParseTensorSubmessage(
 */
 
 bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
-             platform::Place place, void* buf, int size) {
-  void* data = NULL;
+             const platform::DeviceContext& dev_ctx, platform::Place place,
+             void* buf, int size) {
+  const void* data = NULL;
   int size_to_write = 0;
 
   if (platform::is_gpu_place(place)) {
@@ -117,14 +130,16 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
         static_cast<const platform::CUDADeviceContext&>(dev_ctx);
     platform::CPUPlace cpu;
 
-    char* p = buf;
+    char* p = reinterpret_cast<char*>(buf);
     while (size != 0) {
       if (input->GetDirectBufferPointer(&data, &size_to_write)) {
         return false;
       }
-      memory::Copy(cpu, data, boost::get<platform::CUDAPlace>(place()),
-                   reinterpret_cast<const void*>(p), size_to_write,
+
+      memory::Copy(boost::get<platform::CUDAPlace>(place),
+                   reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
+
       p += size_to_write;
       size -= size_to_write;
 
@@ -137,13 +152,13 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
     return true;
   }
 
-  char* p = buf;
+  char* p = reinterpret_cast<char*>(buf);
   while (size != 0) {
     if (input->GetDirectBufferPointer(&data, &size_to_write)) {
       return false;
     }
     // TODO(gongwb): don't copy if it's aligned?
-    memcpy(p, data, size_to_write);
+    memcpy(reinterpret_cast<void*>(p), data, size_to_write);
 
     p += size_to_write;
     size -= size_to_write;
@@ -173,16 +188,18 @@ bool CopySelectRowsData(::google::protobuf::io::CodedInputStream* input) {
   return true;
 }
 
-int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer) {
+int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
+                          const platform::DeviceContext& dev_ctx) {
   GrpcByteBufferSource source;
-  source.Init(msg);
+  source.Init(byte_buffer);
 
   ::google::protobuf::io::ZeroCopyInputStream* input_stream = &source;
   ::google::protobuf::io::CodedInputStream input(input_stream);
   input.SetTotalBytesLimit(INT_MAX, INT_MAX);
 
-  framework::Variable* var = NULL;
-  meta.set_type(-1);
+  // framework::Variable* var = NULL;
+  // meta_.set_type(-1);
+  int tensor_type = -1;
 
   while (true) {
     auto p = input.ReadTagWithCutoff(127);
@@ -197,109 +214,109 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer) {
     }
 
     switch (tag) {
-      case sendrecv::kVarnameFieldNumber: {
-        uint32 length;
+      case sendrecv::VariableMessage::kVarnameFieldNumber: {
+        uint32_t length;
         if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
-          return kVarnameFieldNumber;
+          return tag;
         }
 
-        string temp;
+        std::string temp;
         if (!input.ReadString(&temp, length)) {
-          return kVarnameFieldNumber;
+          return tag;
         }
 
-        meta_.set_var_name(temp);
-        var = scope_.FindVar(temp);
+        meta_.set_varname(temp);
+        // var = scope_->FindVar(temp);
         break;
       }
-      case sendrecv::kTypeFieldNumber: {
-        uint_64 v;
-        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
-          return kTypeFieldNumber;
-        }
-
-        // tensor_type = static_cast<int64_t>(v);
-        meta_.set_type(static_cast<int64_t>(v));
-        break;
-      }
-      case sendrecv::kDataTypeFieldNumber: {
+      case sendrecv::VariableMessage::kTypeFieldNumber: {
         uint64_t v;
         if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
-          return kDataTypeFieldNumber;
+          return tag;
         }
 
-        meta_.set_data_type(static_cast<int64>(v));
+        tensor_type = static_cast<int64_t>(v);
+        meta_.set_type(static_cast<::sendrecv::VarType>(v));
         break;
       }
-      case sendrecv::kDimsFieldNumber: {
+      case sendrecv::VariableMessage::kDataTypeFieldNumber: {
+        uint64_t v;
+        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
+          return tag;
+        }
+
+        meta_.set_data_type(static_cast<::sendrecv::VariableMessage_Type>(v));
+        break;
+      }
+      case sendrecv::VariableMessage::kDimsFieldNumber: {
         uint64_t v;
         if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint64(&v)) {
-          return kDimsFieldNumber;
+          return tag;
         }
 
-        meta_.add_dims(dim);
+        meta_.add_dims(v);
         break;
       }
-      case sendrecv::kLodLevelFieldNumber: {
-        protobuf_uint64 v;
+      case sendrecv::VariableMessage::kLodLevelFieldNumber: {
+        uint64_t v;
         if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
-          return kLodLevelFieldNumber;
+          return tag;
         }
-        meta_.set_lod_level(static_cast<int64>(v));
+        meta_.set_lod_level(static_cast<int64_t>(v));
         break;
       }
-      case RecvTensorResponse::kLodFieldNumber: {
+      case sendrecv::VariableMessage::kLodFieldNumber: {
         int length;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
             !ReadVarintSizeAsInt(&input, &length)) {
-          return kLodFieldNumber;
+          return tag;
         }
         break;
       }
-      case senrecv::kSerializedFieldNumber: {
-        PADDLE_ENFORCE((meta_.type() == sendrecv::LOD_TENSOR ||
-                        meta_.type() == sendrecv::SELECTED_ROWS) &&
-                       meta_.varname() !=
-                           ""
-                           "tensor_type and varname should be got first!");
+      case sendrecv::VariableMessage::kSerializedFieldNumber: {
+        PADDLE_ENFORCE(tensor_type > 0 &&
+                           (meta_.type() == sendrecv::LOD_TENSOR ||
+                            meta_.type() == sendrecv::SELECTED_ROWS) &&
+                           meta_.varname() != "",
+                       "tensor_type and varname should be got first!");
 
         int length;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
             !ReadVarintSizeAsInt(&input, &length)) {
-          return kSerializedFieldNumber;
+          return tag;
         }
 
         if (meta_.type() == sendrecv::LOD_TENSOR) {
-          if (!CopyLodTensorData(input)) {
-            return kSerializedFieldNumber;
+          if (!CopyLodTensorData(&input)) {
+            return tag;
           }
           break;
         }
 
         if (meta_.type() == sendrecv::LOD_TENSOR) {
-          if (!CopySelectRowsData(input)) {
-            return kSerializedFieldNumber;
+          if (!CopySelectRowsData(&input)) {
+            return tag;
           }
           break;
         }
 
         break;
       }
-      case senrecv::kRowsFieldNumber: {
-        PADDLE_ENFORCE(meta_.type() == sendrecv::SELECTED_ROWS)
-                && meta_.varname() != ""
-                "tensor_type and varname should be got first!");
+      case sendrecv::VariableMessage::kRowsFieldNumber: {
+        PADDLE_ENFORCE(
+            meta_.type() == sendrecv::SELECTED_ROWS && meta_.varname() != "",
+            "tensor_type and varname should be got first!");
 
-                int length = 0;
-                if (wt != WIRETYPE_LENGTH_DELIMITED ||
-                    !ReadVarintSizeAsInt(&input, &length)) {
-                  return kRowsFieldNumber;
-                }
+        int length = 0;
+        if (wt != WIRETYPE_LENGTH_DELIMITED ||
+            !ReadVarintSizeAsInt(&input, &length)) {
+          return tag;
+        }
 
-                if (CopySelectRowsTensorData(input)) {
-                  return kRowsFieldNumber;
-                }
-                break;
+        if (CopySelectRowsTensorData(&input)) {
+          return tag;
+        }
+        break;
       }
 
       default: {

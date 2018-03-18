@@ -14,6 +14,20 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/var_type.h"
+
+#include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/detail/send_recv.pb.h"
+
+#include "google/protobuf/io/coded_stream.h"
+#include "google/protobuf/io/zero_copy_stream.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/detail/bytebuffer_stream.h"
+
 namespace paddle {
 namespace operators {
 namespace detail {
@@ -28,10 +42,11 @@ class TensorResponse {
   // 0:ok.
   // -1: unkown error.
   // other: number of error field.
-  int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer);
+  int Parse(::grpc::ByteBuffer& byte_buffer,
+            const platform::DeviceContext& dev_ctx);
 
   // should call parse first.
-  framework::Variable* GetVar() { return scope_.FindVar(meta_.varname()); }
+  framework::Variable* GetVar() { return scope_->FindVar(meta_.varname()); }
 
  private:
   /*
@@ -40,10 +55,11 @@ class TensorResponse {
       TensorProto* tensor_meta);
       */
 
+ private:
   framework::Scope* scope_;
   // only Skeleton
   sendrecv::VariableMessage meta_;
-}
+};
 
 };  // namespace detail
 };  // namespace operators
