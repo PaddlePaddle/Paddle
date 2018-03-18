@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device_tracer.h"
 #include <google/protobuf/text_format.h>
+#include <sys/time.h>
+#include <time.h>
 #include <fstream>
 #include <map>
 #include <mutex>
@@ -417,6 +419,12 @@ void SetCurThread(int thread_id) { cur_thread_id = thread_id; }
 void ClearCurThread() { cur_thread_id = 0; }
 
 int CurThread() { return cur_thread_id; }
+
+uint64_t PosixInNsec() {
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
+}
 
 }  // namespace platform
 }  // namespace paddle

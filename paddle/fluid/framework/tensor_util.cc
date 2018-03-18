@@ -45,9 +45,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
     auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
     PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
-    memory::Copy(
-        dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                 reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+                     .memcpy_stream());
   } else if (platform::is_cpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
     auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
@@ -58,7 +58,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place);
     memory::Copy(
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+            .memcpy_stream());
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
@@ -67,9 +68,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
     auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
     PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
-    memory::Copy(
-        dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                 reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
+                     .memcpy_stream());
   }
 #endif
 }

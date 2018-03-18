@@ -54,7 +54,7 @@ class ThreadPool {
   template <typename Callback>
   std::future<void> Run(Callback fn) {
     auto f = this->RunAndGetException(fn);
-    return std::async(std::launch::deferred, ExceptionHandler(std::move(f)));
+    return std::async(std::launch::async, ExceptionHandler(std::move(f)));
   }
 
   template <typename Callback>
