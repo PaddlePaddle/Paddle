@@ -125,8 +125,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     math::SetConstant<platform::CUDADeviceContext, T> functor;
-    functor(dev_ctx, saved_mean, 0);
-    functor(dev_ctx, saved_variance, 0);
+    functor(dev_ctx, saved_mean, static_cast<T>(0));
+    functor(dev_ctx, saved_variance, static_cast<T>(0));
 
     auto handle = dev_ctx.cudnn_handle();
 
