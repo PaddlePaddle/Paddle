@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <thread>
 
+#include <google/protobuf/text_format.h>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -183,4 +184,17 @@ TEST(Tensor, CPU) {
 TEST(Tensor, GPU) {
   platform::CUDAPlace place;
   RunSerdeTestTensor(place);
+}
+
+TEST(Tensor, CPU2) {
+  sendrecv::TestMessage msg;
+  msg.set_test_1(-1);
+
+  std::string str;
+  // google::protobuf::TextFormat::PrintToString(msg, &str);
+  msg.SerializeToString(&str);
+  const unsigned char* s = (unsigned char*)str.c_str();
+  while (*s) {
+    printf("%02X ", (*s++));
+  }
 }

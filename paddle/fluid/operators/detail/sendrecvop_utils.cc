@@ -171,6 +171,8 @@ void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
   PADDLE_ENFORCE(false, "must be LOD_TENSOR or SELECTED_ROWS");
 }
 
+void DeserializeToVar() {}
+
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg) {
@@ -243,7 +245,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
                                (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
         std::stringstream ss;
-        ss << "memcpy gpu var_name:" << name << ", dims: " << tensor.dims()
+        ss << "se memcpy gpu var_name:" << name << ", dims: " << tensor.dims()
            << ", time:" << t_wait << "ms, thread_id:" << this_id;
         std::cout << ss.str() << '\n';
 
