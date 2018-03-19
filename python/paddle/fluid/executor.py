@@ -245,12 +245,10 @@ class Executor(object):
             tensor.set_lod(lod)
             return tensor
 
-    def _get_program_cache(self, feed, fetch_list):
-        program_cache_key = get_program_cache_key(feed, fetch_list)
+    def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
 
-    def _add_program_cache(self, feed, fetch_list, program):
-        program_cache_key = get_program_cache_key(feed, fetch_list)
+    def _add_program_cache(self, program_cache_key, program):
         self.program_caches[program_cache_key] = program
 
     def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
@@ -399,8 +397,9 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
+        cache_key = get_program_cache_key(feed, fetch_list)
         if use_program_cache:
-            cached_program = self._get_program_cache(feed, fetch_list)
+            cached_program = self._get_program_cache(cache_key)
             if cached_program is None:
                 cached_program = self._add_feed_fetch_ops(
                     program=program,
@@ -408,9 +407,10 @@ class Executor(object):
                     fetch_list=fetch_list,
                     feed_var_name=feed_var_name,
                     fetch_var_name=fetch_var_name)
-                self._add_program_cache(feed, fetch_list, cached_program)
+                self._add_program_cache(cache_key, cached_program)
             program = cached_program
         else:
+            self.program_caches.pop(cache_key, None)
             program = self._add_feed_fetch_ops(
                 program=program,
                 feed=feed,
