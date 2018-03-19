@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <future>
 #include <unordered_set>
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -81,8 +81,9 @@ class ParallelExecutor {
 
   void BuildNCCLCommunicator() const;
 
-  void RunOp(std::unordered_map<VarHandleBase*, GuardedBool>& pending_vars,
-             OpHandle* op) const;
+  std::future<void> RunOp(
+      std::unordered_map<VarHandleBase*, GuardedBool>& pending_vars,
+      OpHandle* op) const;
 
   void PolishGraphToSupportDataHarzaeds() const;
 };

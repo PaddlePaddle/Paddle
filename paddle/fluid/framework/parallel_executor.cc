@@ -699,8 +699,11 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
     pending_ops.insert({op, op->inputs_.size()});
   }
 
+  std::vector<std::future<void>> op_threads;
+  op_threads.reserve(pending_ops.size() + to_run.size());
+
   for (auto *op : to_run) {
-    RunOp(pending_vars, op);
+    op_threads.emplace_back(RunOp(pending_vars, op));
   }
 
   while (!pending_ops.empty()) {
@@ -731,15 +734,20 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
     }
     for (auto *op : to_run) {
       pending_ops.erase(op);
-      RunOp(pending_vars, op);
+      op_threads.emplace_back(RunOp(pending_vars, op));
     }
   }
+
+  for (auto &t : op_threads) {
+    t.get();  // Join all workers
+  }
+
   fetch_ops.clear();
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<LoDTensorArray>() =
       fetched_data->tensors_;
 }
 
-void ParallelExecutor::RunOp(
+std::future<void> ParallelExecutor::RunOp(
     std::unordered_map<VarHandleBase *, GuardedBool> &pending_vars,
     OpHandle *op) const {
   std::vector<GuardedBool *> *ready_buffer = new std::vector<GuardedBool *>();
@@ -760,7 +768,7 @@ void ParallelExecutor::RunOp(
       LOG(FATAL) << "Unknown exception catched";
     }
   };
-  member_->pool_.enqueue(op_run);
+  return member_->pool_.enqueue(op_run);
 }
 }  // namespace framework
 }  // namespace paddle
