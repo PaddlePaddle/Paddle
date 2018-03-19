@@ -641,7 +641,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
   auto fetched_data = std::make_shared<FetchedData>(fetch_tensors.size());
   // Version --> VarHandle
   member_->exception_.reset();
-  std::unordered_map<VarHandleBase *, volatile bool> pending_vars;
+  std::unordered_map<VarHandleBase *, GuardedBool> pending_vars;
   std::unordered_map<OpHandle *, size_t> pending_ops;
 
   for (auto &place_pair : member_->vars_) {
@@ -739,10 +739,9 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 }
 
 void ParallelExecutor::RunOp(
-    std::unordered_map<VarHandleBase *, volatile bool> &pending_vars,
+    std::unordered_map<VarHandleBase *, GuardedBool> &pending_vars,
     OpHandle *op) const {
-  std::vector<volatile bool *> *ready_buffer =
-      new std::vector<volatile bool *>();
+  std::vector<GuardedBool *> *ready_buffer = new std::vector<GuardedBool *>();
   for (auto *var : op->outputs_) {
     ready_buffer->emplace_back(&pending_vars[var]);
   }
