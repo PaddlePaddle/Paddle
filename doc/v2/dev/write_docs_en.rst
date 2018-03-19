@@ -13,7 +13,7 @@ We recommend using PaddlePaddle.org tool to build documentation.
 
 With PaddlePaddle.org tool
 ---------------------------
-This is the recommended method to build documentation, because it can automatically compile the documentation and preview the documentation directly in the web page, it should be noted that, in other ways, although you can preview the documentation, but the style of the documentation and the official website documentation is inconsistent, while Compiling with the PaddlePaddle.org tool produces a preview that is consistent with the official website documentation style.
+This is the recommended method to build documentation, because it can automatically compile the documentation and preview the documentation directly in the web page. Note that, in other ways, although you can preview the documentation, its style is inconsistent with the official website. While compiling with the PaddlePaddle.org tool produces a preview that is consistent with the official website documentation style.
 
 The PaddlePaddle.org tool can be used with Docker and Docker needs to be installed first. Please refer to the `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. After installing Docker, you may use the following command to activate the tool
 
