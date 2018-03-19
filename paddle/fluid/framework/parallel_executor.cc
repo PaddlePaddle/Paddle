@@ -748,9 +748,9 @@ void ParallelExecutor::RunOp(
 
   auto op_run = [ready_buffer, op, this] {
     try {
-      VLOG(10) << op->DebugString() << " " << this;
+      VLOG(10) << op->DebugString() << " " << op;
       op->Run();
-      VLOG(10) << "Done " << this;
+      VLOG(10) << "Done " << op;
       for (auto *ready : *ready_buffer) {
         *ready = true;
       }
@@ -761,9 +761,7 @@ void ParallelExecutor::RunOp(
       LOG(FATAL) << "Unknown exception catched";
     }
   };
-  VLOG(3) << "Enqueue";
   member_->pool_.enqueue(op_run);
-  VLOG(3) << "Done";
 }
 }  // namespace framework
 }  // namespace paddle
