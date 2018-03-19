@@ -4,7 +4,7 @@ A Table Variable is a generally a `map` used to support distributed lookup table
 
 The number of the divided tables is equal to the number of parameter server, which will be stored in Table as `shard_num`.
 
-Each Table also has a `shard_id`, a key with the same `shard_id` will be sent to this parameter server.
+Each Table also has a `shard_id`, keys with the same `shard_id` will be sent to the same parameter server.
 
 The way to get the `shard_id` can be:
 
@@ -22,37 +22,28 @@ Take `sgd` as an example:
 sgd(parameter<Table>, grad<SelectedRows>) -> parameter<Table>
 ```
 
-`Table` in protobuf:
+### `Table` in protobuf:
 
 ```proto
 message VarType {
   enum Type {
-    // Pod Types
-    BOOL = 0;
-    ...
-
-    // Other types that may need additional descriptions
-    LOD_TENSOR = 7;
     TABLE = 20;
   }
 
   required Type type = 1;
-
-  message LoDTensorDesc {
-    required TensorDesc tensor = 1;
-    optional int32 lod_level = 2 [ default = 0 ];
-  }
-  optional LoDTensorDesc lod_tensor = 3;
   
   message TableDesc {
-    required int32 shard_num = 1; // the total number of shard
-    required int32 shard_id = 2; // the id of this shard
+    required int32 shard_num = 1; // total number of shards
+    required int32 shard_id = 2; // id of this shard
+    required string key_type = 3; // type of key, default int64_t
+    required string value_type = 4; // type of value, default is vector of float
   }
   optional TableDesc table = 3;
 }
 ```
 
-`Table` in CPP:
+
+### `Table` in CPP:
 
 ```cpp
 template<class KEY, class VALUE>
@@ -75,4 +66,7 @@ class Table {
   std::unique_ptr<std::unordered_map<KEY, VALUE>> map_;
 };
 ```
-table should use buddy allocator to allocate memory.
+
+## Note
+- Table should use buddy allocator to allocate memory.
+- KEY and VALUE should be implemented and registered to the framework.
