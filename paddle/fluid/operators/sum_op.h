@@ -109,6 +109,12 @@ class SumKernel : public framework::OpKernel<T> {
       in_dim[0] = static_cast<int64_t>(first_dim);
 
       out_value->Resize(framework::make_ddim(in_dim));
+
+      // if all the input sparse vars are empty, no need to
+      // merge these vars.
+      if (first_dim == 0UL) {
+        return;
+      }
       out_value->mutable_data<T>(context.GetPlace());
 
       math::SelectedRowsAddTo<DeviceContext, T> functor;
@@ -116,7 +122,7 @@ class SumKernel : public framework::OpKernel<T> {
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {
         auto &sel_row = get_selected_row(i);
-        if (!sel_row.value().IsInitialized() || sel_row.rows().size() == 0) {
+        if (sel_row.rows().size() == 0) {
           continue;
         }
         PADDLE_ENFORCE_EQ(out->height(), sel_row.height());

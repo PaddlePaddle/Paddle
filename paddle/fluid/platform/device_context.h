@@ -79,6 +79,9 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return place in the device context. */
   Place GetPlace() const override;
 
+  /*! \brief  Return compute capability in the device context. */
+  int GetComputeCapability() const;
+
   /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
 
@@ -104,6 +107,7 @@ class CUDADeviceContext : public DeviceContext {
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
 
+  int compute_capability;
   int multi_process;
   int max_threads_per_mp;
 };

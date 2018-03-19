@@ -19,11 +19,11 @@ namespace operators {
 namespace reader {
 
 template <typename T>
-class RandomDataGenerator : public framework::FileReader {
+class RandomDataGenerator : public framework::ReaderBase {
  public:
   RandomDataGenerator(const std::vector<framework::DDim>& shapes, float min,
                       float max)
-      : FileReader(shapes), min_(min), max_(max) {
+      : framework::ReaderBase(), min_(min), max_(max), shapes_(shapes) {
     PADDLE_ENFORCE_LE(
         min, max, "'min' shouldn't be greater than 'max'.(%f vs %f)", min, max);
     unsigned int seed = std::random_device()();
@@ -50,15 +50,16 @@ class RandomDataGenerator : public framework::FileReader {
     }
   }
 
-  bool HasNext() const override { return true; }
-
   void ReInit() override { return; }
+
+  bool HasNext() const override { return true; }
 
  private:
   float min_;
   float max_;
   std::minstd_rand engine_;
   std::uniform_real_distribution<float> dist_;
+  std::vector<framework::DDim> shapes_;
 };
 
 template <typename T>

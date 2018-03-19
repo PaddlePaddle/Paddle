@@ -45,7 +45,8 @@ def simple_img_conv_pool(input,
         pool_size=pool_size,
         pool_type=pool_type,
         pool_stride=pool_stride,
-        use_cudnn=use_cudnn)
+        use_cudnn=use_cudnn,
+        use_mkldnn=use_mkldnn)
     return pool_out
 
 
@@ -107,7 +108,8 @@ def img_conv_group(input,
         pool_size=pool_size,
         pool_type=pool_type,
         pool_stride=pool_stride,
-        use_cudnn=use_cudnn)
+        use_cudnn=use_cudnn,
+        use_mkldnn=use_mkldnn)
     return pool_out
 
 

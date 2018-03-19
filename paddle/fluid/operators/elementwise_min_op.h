@@ -41,76 +41,16 @@ class ElementwiseMinKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-struct ElementwiseMinGradFunctor {
-  template <typename Device, typename X, typename Y, typename Z, typename dX,
-            typename dY, typename dZ>
-  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
-    auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenVector<T>::Flatten(*y);
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = (x_e < y_e).template cast<T>() * dz_e;
-    }
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = (x_e >= y_e).template cast<T>() * dz_e;
-    }
+struct MinGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * (x < y);
   }
 };
 
 template <typename T>
-struct ElementwiseMinBroadCastGradFunctor {
-  template <typename Device, typename X, typename Y, typename Z, typename dX,
-            typename dY, typename dZ, typename Pre, typename N>
-  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n) {
-    auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenVector<T>::Flatten(*y);
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-
-    auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 2>(1, n))
-                         .broadcast(Eigen::DSizes<int, 2>(pre, 1))
-                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
-
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = (x_e < y_e_bcast).template cast<T>() * dz_e;
-    }
-
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = ((x_e >= y_e_bcast).template cast<T>() * dz_e)
-                           .reshape(Eigen::DSizes<int, 2>(pre, n))
-                           .sum(Eigen::array<int, 1>{{0}});
-    }
-  }
-};
-
-template <typename T>
-struct ElementwiseMinBroadCast2GradFunctor {
-  template <typename Device, typename X, typename Y, typename Z, typename dX,
-            typename dY, typename dZ, typename Pre, typename N, typename Post>
-  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n,
-                  Post post) {
-    auto x_e = framework::EigenVector<T>::Flatten(*x);
-    auto y_e = framework::EigenVector<T>::Flatten(*y);
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-
-    auto y_e_bcast = y_e.reshape(Eigen::DSizes<int, 3>(1, n, 1))
-                         .broadcast(Eigen::DSizes<int, 3>(pre, 1, post))
-                         .reshape(Eigen::DSizes<int, 1>(x_e.size()));
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = (x_e < y_e_bcast).template cast<T>() * dz_e;
-    }
-
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = ((x_e >= y_e_bcast).template cast<T>() * dz_e)
-                           .reshape(Eigen::DSizes<int, 3>(pre, n, post))
-                           .sum(Eigen::array<int, 2>{{0, 2}});
-    }
+struct MinGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * (x >= y);
   }
 };
 
@@ -127,12 +67,9 @@ class ElementwiseMinGradKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
-    ElementwiseGradCompute<DeviceContext, T, ElementwiseMinGradFunctor<T>,
-                           ElementwiseMinBroadCastGradFunctor<T>,
-                           ElementwiseMinBroadCast2GradFunctor<T>>(
-        ctx, x, y, out, dout, axis, dx, dy);
+    ElemwiseGradCompute<DeviceContext, T, MinGradDx<T>, MinGradDy<T>>(
+        ctx, *x, *y, *out, *dout, axis, dx, dy, MinGradDx<T>(), MinGradDy<T>());
   }
 };
-
 }  // namespace operators
 }  // namespace paddle

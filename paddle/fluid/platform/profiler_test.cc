@@ -75,6 +75,7 @@ TEST(RecordEvent, RecordEvent) {
   *  ...
   * PopEvent(evt_name, dev_ctx);
   */
+  LOG(INFO) << "Usage 1: PushEvent & PopEvent";
   for (int loop = 0; loop < 3; ++loop) {
     for (int i = 1; i < 5; ++i) {
       std::string name = "op_" + std::to_string(i);
@@ -93,11 +94,40 @@ TEST(RecordEvent, RecordEvent) {
    *   ...
    * }
    */
+  LOG(INFO) << "Usage 2: RecordEvent";
   for (int i = 1; i < 5; ++i) {
     std::string name = "evs_op_" + std::to_string(i);
     RecordEvent record_event(name, dev_ctx);
     int counter = 1;
     while (counter != i * 1000) counter++;
+  }
+
+  /* Usage 3
+   * {
+   *   RecordEvent record_event(name1, dev_ctx);
+   *   ...
+   *   code to be analyzed
+   *   ...
+   *   {
+   *     RecordEvent nested_record_event(name2, dev_ctx);
+   *     ...
+   *     code to be analyzed
+   *     ...
+   *   }
+   * }
+   */
+  LOG(INFO) << "Usage 3: nested RecordEvent";
+  for (int i = 1; i < 5; ++i) {
+    std::string name = "ano_evs_op_" + std::to_string(i);
+    RecordEvent record_event(name, dev_ctx);
+    int counter = 1;
+    while (counter != i * 100) counter++;
+    {
+      std::string nested_name = "nested_ano_evs_op_" + std::to_string(i);
+      RecordEvent nested_record_event(nested_name, dev_ctx);
+      int nested_counter = 1;
+      while (nested_counter != i * 100) nested_counter++;
+    }
   }
 
   // Bad Usage:

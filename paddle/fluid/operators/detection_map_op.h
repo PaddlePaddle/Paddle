@@ -144,6 +144,15 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     }
   }
 
+  inline void ClipBBox(const Box& bbox, Box* clipped_bbox) const {
+    T one = static_cast<T>(1.0);
+    T zero = static_cast<T>(0.0);
+    clipped_bbox->xmin = std::max(std::min(bbox.xmin, one), zero);
+    clipped_bbox->ymin = std::max(std::min(bbox.ymin, one), zero);
+    clipped_bbox->xmax = std::max(std::min(bbox.xmax, one), zero);
+    clipped_bbox->ymax = std::max(std::min(bbox.ymax, one), zero);
+  }
+
   void GetBoxes(const framework::LoDTensor& input_label,
                 const framework::LoDTensor& input_detect,
                 std::vector<std::map<int, std::vector<Box>>>& gt_boxes,
@@ -264,7 +273,6 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
                    std::map<int, std::vector<std::pair<T, int>>>& true_pos,
                    std::map<int, std::vector<std::pair<T, int>>>& false_pos,
                    const int class_num) const {
-    constexpr T kEPS = static_cast<T>(1e-6);
     const int* pos_count_data = input_pos_count.data<int>();
     for (int i = 0; i < class_num; ++i) {
       label_pos_count[i] = pos_count_data[i];
@@ -273,12 +281,11 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     auto SetData = [](const framework::LoDTensor& pos_tensor,
                       std::map<int, std::vector<std::pair<T, int>>>& pos) {
       const T* pos_data = pos_tensor.data<T>();
-      auto pos_data_lod = pos_tensor.lod();
-      for (size_t i = 0; i < pos_data_lod.size(); ++i) {
-        for (size_t j = pos_data_lod[0][i]; j < pos_data_lod[0][i + 1]; ++j) {
+      auto pos_data_lod = pos_tensor.lod()[0];
+      for (size_t i = 0; i < pos_data_lod.size() - 1; ++i) {
+        for (size_t j = pos_data_lod[i]; j < pos_data_lod[i + 1]; ++j) {
           T score = pos_data[j * 2];
-          int flag = 1;
-          if (pos_data[j * 2 + 1] < kEPS) flag = 0;
+          int flag = pos_data[j * 2 + 1];
           pos[i].push_back(std::make_pair(score, flag));
         }
       }
@@ -360,7 +367,9 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
           size_t max_idx = 0;
           auto score = pred_boxes[i].first;
           for (size_t j = 0; j < matched_bboxes.size(); ++j) {
-            T overlap = JaccardOverlap(pred_boxes[i].second, matched_bboxes[j]);
+            Box& pred_box = pred_boxes[i].second;
+            ClipBBox(pred_box, &pred_box);
+            T overlap = JaccardOverlap(pred_box, matched_bboxes[j]);
             if (overlap > max_overlap) {
               max_overlap = overlap;
               max_idx = j;

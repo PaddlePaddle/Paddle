@@ -128,8 +128,8 @@ class ListenAndServOp : public framework::OperatorBase {
         }
       }
       if (exit_flag) {
-        rpc_service_->ShutDown();
         rpc_service_->SetCond(1);
+        rpc_service_->ShutDown();
         break;
       }
       try {
@@ -148,7 +148,7 @@ class ListenAndServOp : public framework::OperatorBase {
       }
       rpc_service_->SetCond(1);
       // FIXME(typhoonzero): use another condition to sync wait clients get.
-      rpc_service_->WaitClientGet(ins.size());
+      rpc_service_->WaitClientGet(fan_in);
       sparse_vars.clear();
     }  // while(true)
   }

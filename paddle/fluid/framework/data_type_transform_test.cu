@@ -49,15 +49,16 @@ TEST(DataTypeTransform, GPUTransform) {
     float arr[6] = {0, 1, 2, 3, 4, 5};
     int data_number = sizeof(arr) / sizeof(arr[0]);
     memcpy(in_ptr, arr, sizeof(arr));
-    TensorCopy(in, gpu_place, context, &in_gpu);
 
+    TensorCopy(in, gpu_place, context, &in_gpu);
+    context.Wait();
     TransDataType(kernel_fp32, kernel_fp64, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
     double* out_data_double = out.data<double>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_double[i], static_cast<double>(arr[i]));
+      EXPECT_EQ(out_data_double[i], static_cast<double>(arr[i]));
     }
 
     TransDataType(kernel_fp32, kernel_int32, in_gpu, &out_gpu);
@@ -66,7 +67,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     int* out_data_int = out.data<int>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_int[i], static_cast<int>(arr[i]));
+      EXPECT_EQ(out_data_int[i], static_cast<int>(arr[i]));
     }
   }
 
@@ -83,6 +84,7 @@ TEST(DataTypeTransform, GPUTransform) {
     int data_number = sizeof(arr) / sizeof(arr[0]);
     memcpy(ptr, arr, sizeof(arr));
     TensorCopy(in, gpu_place, context, &in_gpu);
+    context.Wait();
 
     // transform from float16 to other data types
     TransDataType(kernel_fp16, kernel_fp32, in_gpu, &out_gpu);
@@ -91,7 +93,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     float* out_data_float = out.data<float>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_float[i], static_cast<float>(ptr[i]));
+      EXPECT_EQ(out_data_float[i], static_cast<float>(ptr[i]));
     }
 
     TransDataType(kernel_fp16, kernel_fp64, in_gpu, &out_gpu);
@@ -100,7 +102,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     double* out_data_double = out.data<double>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_double[i], static_cast<double>(ptr[i]));
+      EXPECT_EQ(out_data_double[i], static_cast<double>(ptr[i]));
     }
 
     TransDataType(kernel_fp16, kernel_int32, in_gpu, &out_gpu);
@@ -109,7 +111,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     int* out_data_int = out.data<int>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_int[i], static_cast<int>(ptr[i]));
+      EXPECT_EQ(out_data_int[i], static_cast<int>(ptr[i]));
     }
 
     TransDataType(kernel_fp16, kernel_int64, in_gpu, &out_gpu);
@@ -118,7 +120,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     int64_t* out_data_int64 = out.data<int64_t>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_int64[i], static_cast<int64_t>(ptr[i]));
+      EXPECT_EQ(out_data_int64[i], static_cast<int64_t>(ptr[i]));
     }
 
     TransDataType(kernel_fp16, kernel_bool, in_gpu, &out_gpu);
@@ -127,7 +129,7 @@ TEST(DataTypeTransform, GPUTransform) {
 
     bool* out_data_bool = out.data<bool>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
+      EXPECT_EQ(out_data_bool[i], static_cast<bool>(ptr[i]));
     }
 
     // transform float to float16
@@ -137,13 +139,14 @@ TEST(DataTypeTransform, GPUTransform) {
     }
 
     TensorCopy(in, gpu_place, context, &in_gpu);
+    context.Wait();
     TransDataType(kernel_fp32, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_float[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_float[i]).x);
     }
 
     // transform double to float16
@@ -154,13 +157,14 @@ TEST(DataTypeTransform, GPUTransform) {
     }
 
     TensorCopy(in, gpu_place, context, &in_gpu);
+    context.Wait();
     TransDataType(kernel_fp64, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_double[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_double[i]).x);
     }
 
     // transform int to float16
@@ -170,13 +174,14 @@ TEST(DataTypeTransform, GPUTransform) {
     }
 
     TensorCopy(in, gpu_place, context, &in_gpu);
+    context.Wait();
     TransDataType(kernel_int32, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_int[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_int[i]).x);
     }
 
     // transform int64 to float16
@@ -187,13 +192,14 @@ TEST(DataTypeTransform, GPUTransform) {
     }
 
     TensorCopy(in, gpu_place, context, &in_gpu);
+    context.Wait();
     TransDataType(kernel_int64, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_int64[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_int64[i]).x);
     }
 
     // transform bool to float16
@@ -203,13 +209,14 @@ TEST(DataTypeTransform, GPUTransform) {
     }
 
     TensorCopy(in, gpu_place, context, &in_gpu);
+    context.Wait();
     TransDataType(kernel_bool, kernel_fp16, in_gpu, &out_gpu);
     TensorCopy(out_gpu, cpu_place, context, &out);
     context.Wait();
 
     ptr = out.data<float16>();
     for (int i = 0; i < data_number; ++i) {
-      ASSERT_EQ(ptr[i].x, static_cast<float16>(in_data_bool[i]).x);
+      EXPECT_EQ(ptr[i].x, static_cast<float16>(in_data_bool[i]).x);
     }
   }
 }
