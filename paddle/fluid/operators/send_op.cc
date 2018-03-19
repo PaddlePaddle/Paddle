@@ -88,6 +88,12 @@ class SendOp : public framework::OperatorBase {
         rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
       }
       PADDLE_ENFORCE(rpc_client->Wait());
+      // tell pservers that current trainer have called fetch
+      for (auto& ep : endpoints) {
+        VLOG(3) << "send fetch barrier, ep: " << ep;
+        rpc_client->AsyncSendFetchBarrier(ep);
+      }
+      PADDLE_ENFORCE(rpc_client->Wait());
     }
   }
 };

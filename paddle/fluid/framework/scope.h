@@ -51,6 +51,8 @@ class Scope {
   /// Create a variable with a scope-unique name.
   Variable* Var(std::string* name = nullptr);
 
+  void EraseVars(std::vector<std::string>& var_names);
+
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
   Variable* FindVar(const std::string& name) const;

@@ -13,11 +13,16 @@
 # limitations under the License.
 
 from .. import core
-from ..layer_helper import LayerHelper
+from ..framework import convert_np_dtype_to_dtype_, default_main_program, default_startup_program
+from ..unique_name import generate as unique_name
 from control_flow import BlockGuard
 from ..layer_helper import LayerHelper
+from ..executor import global_scope
 
-__all__ = ['data', 'BlockGuardServ', 'ListenAndServ', 'Send']
+__all__ = [
+    'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
+    'read_file', 'create_shuffle_reader', 'create_double_buffer_reader'
+]
 
 
 def data(name,
@@ -224,3 +229,101 @@ def Recv(endpoints, get_vars):
         outputs={"Out": get_vars},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
+
+
+def monkey_patch_reader_methods(reader):
+    def __get_reader__():
+        scope = global_scope()
+        var = scope.find_var(reader.name)
+        return var.get_reader()
+
+    def eof():
+        return not __get_reader__().has_next()
+
+    def reset():
+        return __get_reader__().reset()
+
+    reader.eof = eof
+    reader.reset = reset
+    reader.stop_gradient = True
+    reader.persistable = True
+    return reader
+
+
+def _copy_reader_var_(block, var):
+    new_var = block.create_var(name=var.name, type=core.VarDesc.VarType.READER)
+    new_var.desc.set_shapes(var.desc.shapes())
+    new_var.desc.set_dtypes(var.desc.dtypes())
+    new_var.persistable = True
+    return monkey_patch_reader_methods(new_var)
+
+
+def open_recordio_file(filename, shapes, lod_levels, dtypes):
+    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
+    shape_concat = []
+    ranks = []
+
+    for shape in shapes:
+        shape_concat.extend(shape)
+        ranks.append(len(shape))
+
+    var_name = unique_name('open_recordio_file')
+
+    startup_blk = default_startup_program().current_block()
+    startup_var = startup_blk.create_var(name=var_name)
+    startup_blk.append_op(
+        type='create_recordio_file_reader',
+        outputs={'Out': [startup_var]},
+        attrs={
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'filename': filename,
+            'ranks': ranks
+        })
+
+    startup_var.desc.set_dtypes(dtypes)
+    startup_var.persistable = True
+    return _copy_reader_var_(default_main_program().current_block(),
+                             startup_var)
+
+
+def __create_decorated_reader__(op_type, reader, attrs):
+    var_name = unique_name(op_type)
+    startup_blk = default_startup_program().current_block()
+    startup_var = startup_blk.create_var(name=var_name)
+    startup_blk.append_op(
+        type=op_type,
+        inputs={'UnderlyingReader': reader},
+        outputs={'Out': [startup_var]},
+        attrs=attrs)
+    startup_var.persistable = True
+    return _copy_reader_var_(default_main_program().current_block(),
+                             startup_var)
+
+
+def create_shuffle_reader(reader, buffer_size):
+    return __create_decorated_reader__('create_shuffle_reader', reader,
+                                       {'buffer_size': int(buffer_size)})
+
+
+def create_double_buffer_reader(reader, place=None):
+    attrs = dict()
+    if place is not None:
+        attrs['place'] = str(place).upper()
+    return __create_decorated_reader__('create_double_buffer_reader', reader,
+                                       attrs)
+
+
+def read_file(file_obj):
+    helper = LayerHelper('read_file')
+    out = [
+        helper.create_tmp_variable(
+            stop_gradient=True, dtype='float32')
+        for _ in range(len(file_obj.desc.shapes()))
+    ]
+    helper.append_op(
+        type='read', inputs={'Reader': [file_obj]}, outputs={'Out': out})
+    if len(out) == 1:
+        return out[0]
+    else:
+        return out
