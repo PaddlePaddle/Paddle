@@ -85,6 +85,9 @@ template <>
 class CudnnDataType<float16> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_HALF;
+  // cudnn batch norm requires that Scale, Bias, Mean, and Variance
+  // to be FLOAT tensors when the input x is HALF tensor
+  static const cudnnDataType_t bn_param_type = CUDNN_DATA_FLOAT;
   // The scaling param type is float for HALF and FLOAT tensors
   typedef const float ScalingParamType;
   static ScalingParamType* kOne() {
@@ -101,6 +104,7 @@ template <>
 class CudnnDataType<float> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_FLOAT;
+  static const cudnnDataType_t bn_param_type = CUDNN_DATA_FLOAT;
   typedef const float ScalingParamType;
   static ScalingParamType* kOne() {
     static ScalingParamType v = 1.0;
@@ -116,6 +120,7 @@ template <>
 class CudnnDataType<double> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_DOUBLE;
+  static const cudnnDataType_t bn_param_type = CUDNN_DATA_DOUBLE;
   typedef const double ScalingParamType;
   static ScalingParamType* kOne() {
     static ScalingParamType v = 1.0;
