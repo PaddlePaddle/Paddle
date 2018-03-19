@@ -795,6 +795,7 @@ void ParallelExecutor::RunOp(
 
   auto op_run = [ready_buffer, op, this] {
     try {
+      VLOG(10) << op->DebugString();
       op->Run();
       for (auto *ready : *ready_buffer) {
         ready->store(true, std::memory_order_release);
