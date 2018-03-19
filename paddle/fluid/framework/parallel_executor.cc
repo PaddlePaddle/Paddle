@@ -132,9 +132,13 @@ struct ScaleLossGradOpHandle : public OpHandle {
         scope_(scope),
         place_(place) {
     PADDLE_ENFORCE(cudaEventCreateWithFlags(&ev_, cudaEventDisableTiming));
+    VLOG(3) << "Create " << ev_;
   }
 
-  ~ScaleLossGradOpHandle() { PADDLE_ENFORCE(cudaEventDestroy(ev_)); }
+  ~ScaleLossGradOpHandle() {
+    VLOG(3) << "Destroy " << ev_;
+    PADDLE_ENFORCE(cudaEventDestroy(ev_));
+  }
 
   void Run() override {
     std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name_;
@@ -146,20 +150,13 @@ struct ScaleLossGradOpHandle : public OpHandle {
     if (platform::is_cpu_place(place_)) {
       *tmp = coeff_;
     } else {
-      VLOG(3) << "Scale loss on place" << place_;
       auto stream =
           static_cast<platform::CUDADeviceContext *>(this->dev_ctx_[place_])
               ->stream();
       cudaSetDevice(boost::get<platform::CUDAPlace>(place_).device);
-      VLOG(3) << "1";
-      PADDLE_ENFORCE(cudaGetLastError());
-      VLOG(3) << "2";
       memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
                    platform::CPUPlace(), &coeff_, sizeof(float), stream);
-      PADDLE_ENFORCE(cudaDeviceSynchronize());
-      VLOG(3) << "3";
       PADDLE_ENFORCE(cudaEventRecord(ev_, stream));
-      VLOG(3) << "4";
     }
   }
 
