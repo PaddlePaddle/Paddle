@@ -163,8 +163,6 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   EXPECT_EQ(rows_data[0], 3);
   EXPECT_EQ(rows_data[1], 10);
   // deserialize zero-copy
-  // framework::Variable var2;
-  // operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
   framework::Scope scope;
   scope.Var("myvar");
   operators::detail::TensorResponse resp(&scope);
