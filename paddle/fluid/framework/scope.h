@@ -82,7 +82,9 @@ class Scope {
 
  private:
   // Call Scope::NewScope for a sub-scope.
-  explicit Scope(Scope const* parent) : parent_(parent) {}
+  explicit Scope(Scope const* parent) : parent_(parent) {
+    std::cout << "scope created " << (void*)this << std::endl;
+  }
 
   mutable std::unordered_map<std::string, Variable*> vars_;
   mutable std::list<Scope*> kids_;

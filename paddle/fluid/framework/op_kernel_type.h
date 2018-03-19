@@ -86,14 +86,17 @@ inline std::string KernelTypeToString(const OpKernelType& kernel_key) {
   return stream.str();
 }
 
-inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
-  return l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r;
+inline bool NeedTransformLayout(const OpKernelType& l, const OpKernelType& r) {
+  return ((l.data_layout_ == DataLayout::kMKLDNN &&
+           r.library_type_ != LibraryType::kMKLDNN) ||
+          (l.data_layout_ != DataLayout::kAnyLayout &&
+           r.data_layout_ != DataLayout::kAnyLayout &&
+           l.data_layout_ != r.data_layout_));
 }
 
 inline bool TransFromNeeded(const OpKernelType& l, const OpKernelType& r) {
   return (!platform::places_are_same_class(l.place_, r.place_)) ||
-         (l.data_type_ != r.data_type_) ||
-         NeedTransformLayout(l.data_layout_, r.data_layout_);
+         (l.data_type_ != r.data_type_) || NeedTransformLayout(l, r);
 }
 
 }  // namespace framework

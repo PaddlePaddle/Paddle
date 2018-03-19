@@ -44,8 +44,17 @@ class Tensor {
   template <typename T, int MajorType, typename IndexType>
   friend struct EigenVector;
 
+  friend class MKLDNNTensor;
+  class ExtendedData {
+   public:
+    virtual ~ExtendedData() {}
+  };
+
  public:
-  Tensor() : offset_(0) {}
+  Tensor() : offset_(0) {
+    std::cout << "tensor created " << (void*)this << std::endl;
+  }
+  ~Tensor() { std::cout << "tensor deleted " << (void*)this << std::endl; };
 
   /*! Constructor with place should only be used in pybind. */
   explicit Tensor(const platform::Place& place) : offset_(0) {
@@ -129,6 +138,18 @@ class Tensor {
 
   inline void set_layout(const DataLayout layout) { layout_ = layout; }
 
+  inline std::shared_ptr<const ExtendedData> get_extended_data() const {
+    return extended_data_;
+  }
+
+  inline std::shared_ptr<ExtendedData> get_extended_data() {
+    return extended_data_;
+  }
+
+  inline void set_extended_data(std::shared_ptr<ExtendedData> extended_data) {
+    extended_data_ = extended_data;
+  }
+
  private:
   /**
    * @note    Placeholder hides type T, so it doesn't appear as a template
@@ -208,6 +229,8 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
+
+  std::shared_ptr<ExtendedData> extended_data_;
 };
 
 inline void Tensor::switch_place(platform::Place new_place) {

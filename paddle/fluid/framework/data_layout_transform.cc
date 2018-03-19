@@ -14,11 +14,22 @@
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include <vector>
+#include "paddle/fluid/framework/mkldnn_tensor.h"
 
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace framework {
+
+namespace {
+DataLayout GetDestinationLayout(DataLayout preffered, bool from_mkldnn_format) {
+  static const DataLayout defaultLayout = Tensor().layout();
+  if (from_mkldnn_format) {
+    return preffered == DataLayout::kAnyLayout ? defaultLayout : preffered;
+  }
+  return preffered;
+}
+}
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(from, to,
@@ -65,6 +76,15 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
       "TransDataLayout only support DataLayout transform on same place!");
 
   PADDLE_ENFORCE(arity(in.dims()) == 4, "Input Arity only support 4!");
+
+  if (in.layout() == DataLayout::kMKLDNN) {
+    PADDLE_ENFORCE(in.type().hash_code() == typeid(float).hash_code(),
+                   "MKLDNN tensor should work with float data type");
+
+    MKLDNNTensor(in).Reorder(*out, expected_kernel_type.data_layout_,
+                             expected_kernel_type.place_);
+    return;
+  }
 
   auto& pool = platform::DeviceContextPool::Instance();
 

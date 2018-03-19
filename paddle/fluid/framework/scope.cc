@@ -35,6 +35,7 @@ namespace paddle {
 namespace framework {
 
 Scope::~Scope() {
+  std::cout << "scope deleted " << (void*)this << std::endl;
   DropKids();
   for (auto& kv : vars_) {
     VLOG(3) << "Destroy variable " << kv.first;
