@@ -44,6 +44,7 @@ void InitGflags(std::vector<std::string> &argv) {
 }
 
 void InitP2P(int count) {
+#ifdef PADDLE_WITH_CUDA
   std::call_once(p2p_init_flag, [&]() {
     for (int i = 0; i < count; ++i) {
       for (int j = 0; j < count; ++j) {
@@ -60,6 +61,7 @@ void InitP2P(int count) {
       }
     }
   });
+#endif
 }
 
 void InitDevices() {
