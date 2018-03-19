@@ -25,53 +25,6 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-/*
-void SerializeToMessage(const std::string& name, const framework::Variable* var,
-                        const platform::DeviceContext& ctx,
-                        sendrecv::VariableMessage* msg) {
-  msg->set_varname(name);
-  std::ostringstream oss;
-  switch (framework::ToVarType(var->Type())) {
-    case framework::proto::VarType_Type_LOD_TENSOR:
-      msg->set_type(sendrecv::VarType::LOD_TENSOR);
-      framework::SerializeToStream(oss, var->Get<framework::LoDTensor>(), ctx);
-      break;
-    case framework::proto::VarType_Type_SELECTED_ROWS:
-      msg->set_type(sendrecv::VarType::SELECTED_ROWS);
-      framework::SerializeToStream(oss, var->Get<framework::SelectedRows>(),
-                                   ctx);
-      break;
-    default: {
-      PADDLE_THROW("Serialize does not support type: %s",
-                   typeid(var->Type()).name());
-      break;
-    }
-  }
-  msg->set_serialized(oss.str());
-}
-
-void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
-                            const platform::DeviceContext& ctx,
-                            framework::Variable* var) {
-  std::istringstream iss(msg.serialized());
-  switch (msg.type()) {
-    case sendrecv::VarType::LOD_TENSOR:
-      DeserializeFromStream(iss, var->GetMutable<framework::LoDTensor>(), ctx);
-      break;
-    case sendrecv::VarType::SELECTED_ROWS: {
-      DeserializeFromStream(iss, var->GetMutable<framework::SelectedRows>(),
-                            ctx);
-      break;
-    }
-    default: {
-      PADDLE_THROW("Deserialize does not support type: %s",
-                   typeid(var->Type()).name());
-      break;
-    }
-  }
-}
-*/
-
 // TODO(gongwb): from bytebuffer directedly.
 void DeserializeLodTendor(const sendrecv::VariableMessage& msg,
                           const platform::DeviceContext& ctx,
@@ -170,8 +123,6 @@ void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
 
   PADDLE_ENFORCE(false, "must be LOD_TENSOR or SELECTED_ROWS");
 }
-
-void DeserializeToVar() {}
 
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
@@ -332,111 +283,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 
   ::grpc::ByteBuffer tmp(&slices[0], num_slices);
   msg->Swap(&tmp);
-}
-
-void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
-                               const platform::DeviceContext& ctx,
-                               framework::Variable* var) {
-  sendrecv::VariableMessage meta;
-  GrpcByteBufferSource source;
-  source.Init(msg);
-  ::google::protobuf::io::ZeroCopyInputStream* input_stream = &source;
-
-  ::google::protobuf::io::CodedInputStream input(input_stream);
-  input.SetTotalBytesLimit(INT_MAX, INT_MAX);
-
-  struct timeval t0_wait, t1_wait;
-  gettimeofday(&t0_wait, 0);
-  // do zerocopy parsing
-  PADDLE_ENFORCE(meta.ParseFromCodedStream(&input));
-  PADDLE_ENFORCE(input.ConsumedEntireMessage());
-
-  gettimeofday(&t1_wait, 0);
-  double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
-                         (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
-  std::cout << "parse time:" << t_wait << std::endl;
-
-  // dims is needed by both tensor and selectedrows
-  std::vector<int> vecdims;
-  for (auto& d : meta.dims()) {
-    vecdims.push_back(d);
-  }
-  framework::DDim dims = framework::make_ddim(vecdims);
-
-  if (meta.type() == sendrecv::LOD_TENSOR) {
-    auto* tensor = var->GetMutable<framework::LoDTensor>();
-    tensor->Resize(dims);
-    void* tensor_data = tensor->mutable_data(
-        ctx.GetPlace(),
-        paddle::operators::detail::ToTypeIndex(meta.data_type()));
-    framework::LoD lod;
-    for (int i = 0; i < meta.lod_level(); ++i) {
-      framework::Vector<size_t> v;
-      for (int j = 0; j < meta.lod(i).lod_data_size(); ++j) {
-        v.push_back(meta.lod(i).lod_data(j));
-      }
-      lod.push_back(v);
-    }
-    tensor->set_lod(lod);
-    // How to avoid copying and use the message buffer directly?
-    // Maybe need to find a way to release all memory except tensor content.
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
-      struct timeval t0_wait, t1_wait;
-      gettimeofday(&t0_wait, 0);
-
-      platform::CPUPlace cpu;
-      auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
-      memory::Copy(boost::get<platform::CUDAPlace>(tensor->place()),
-                   tensor_data, cpu,
-                   reinterpret_cast<const void*>(meta.serialized().data()),
-                   meta.serialized().size(), gpu_dev_ctx.stream());
-      ctx.Wait();
-
-      gettimeofday(&t1_wait, 0);
-      std::thread::id this_id = std::this_thread::get_id();
-      gettimeofday(&t1_wait, 0);
-      double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
-                             (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
-      std::stringstream ss;
-      ss << "de memcpy gpu var_name:"
-         << ", dims: " << tensor->dims() << ", time:" << t_wait
-         << "ms, thread_id:" << this_id;
-      std::cout << ss.str() << '\n';
-
-#endif
-    } else {
-      memcpy(tensor_data,
-             reinterpret_cast<const void*>(meta.serialized().data()),
-             meta.serialized().size());
-    }
-  } else if (meta.type() == sendrecv::SELECTED_ROWS) {
-    auto* slr = var->GetMutable<framework::SelectedRows>();
-    auto* tensor = slr->mutable_value();
-    int64_t* rows_data = slr->mutable_rows()->data();
-    tensor->Resize(dims);
-    void* tensor_data = tensor->mutable_data(
-        ctx.GetPlace(),
-        paddle::operators::detail::ToTypeIndex(meta.data_type()));
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
-      platform::CPUPlace cpu;
-      auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
-      memory::Copy(boost::get<platform::CUDAPlace>(tensor->place()),
-                   tensor_data, cpu,
-                   reinterpret_cast<const void*>(meta.serialized().data()),
-                   meta.serialized().size(), gpu_dev_ctx.stream());
-      ctx.Wait();
-#endif
-    } else {
-      memcpy(tensor_data,
-             reinterpret_cast<const void*>(meta.serialized().data()),
-             meta.serialized().size());
-    }
-    // copy rows CPU data, GPU data will be copied lazly
-    memcpy(rows_data, reinterpret_cast<const void*>(meta.rows().data()),
-           meta.rows().size());
-  }
 }
 
 }  // namespace detail

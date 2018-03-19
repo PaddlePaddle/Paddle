@@ -87,7 +87,7 @@ void ProcGetResponse(const VarHandle& var_h,
   gettimeofday(&t0_wait, 0);
 
   auto* outvar = var_h.scope->FindVar(var_h.name);
-  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, outvar);
+  // DeserializeFromByteBuffer(ret_msg, *var_h.ctx, outvar);
 
   std::thread::id this_id = std::this_thread::get_id();
   gettimeofday(&t1_wait, 0);

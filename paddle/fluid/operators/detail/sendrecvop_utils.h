@@ -36,27 +36,13 @@ namespace detail {
 
 typedef void (*DestroyCallback)(void*);
 
-/*
-void SerializeToMessage(const std::string& name, const framework::Variable* var,
-                        const platform::DeviceContext& ctx,
-                        sendrecv::VariableMessage* msg);
-
-*/
-
 void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
                             const platform::DeviceContext& ctx,
                             framework::Variable* var);
 
-/*
-void GetOnlyMessageSkeleton(const ::grpc::ByteBuffer& buf,
-                            sendrecv::VariableMessage* msg);
-                               */
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg);
-void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
-                               const platform::DeviceContext& ctx,
-                               framework::Variable* var);
 
 inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
   switch (type) {

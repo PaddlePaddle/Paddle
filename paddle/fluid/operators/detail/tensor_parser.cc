@@ -51,7 +51,6 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
 
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
-    // printf("read raw gpu:%d\n", size);
     auto& gpu_dev_ctx =
         static_cast<const platform::CUDADeviceContext&>(dev_ctx);
     platform::CPUPlace cpu;
@@ -65,18 +64,12 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
       memory::Copy(boost::get<platform::CUDAPlace>(place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
-      /*
-      for (int i = 0; i < size_to_write; i++) {
-        printf("%02X ", ((unsigned char*)data)[i]);
-      }
-      printf("\n");
-      */
-      gpu_dev_ctx.Wait();
       p += size_to_write;
       size -= size_to_write;
 
       input->Skip(size_to_write);
     }
+    gpu_dev_ctx.Wait();
 #else
     PADDLE_THROW("Unexpected branch");
 #endif
@@ -188,7 +181,6 @@ bool ParseLodData(::google::protobuf::io::CodedInputStream* input,
           if (!input->ReadVarint64(&v)) {
             return false;
           }
-          printf("lod_data:%ld\n", v);
           lod->push_back(v);
           break;
         }
@@ -204,7 +196,6 @@ bool ParseLodData(::google::protobuf::io::CodedInputStream* input,
             if (!input->ReadVarint64(&v)) {
               return false;
             }
-            printf("lod_data:%ld\n", v);
             lod->push_back(v);
           }
           break;
@@ -228,26 +219,9 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
   ::google::protobuf::io::CodedInputStream input(input_stream);
   input.SetTotalBytesLimit(INT_MAX, INT_MAX);
 
-  // int tensor_type = -1;
-  int tensor_data_type = -1;
-
   while (true) {
-    {
-      const void* data = NULL;
-      int least = 0;
-      input.GetDirectBufferPointer(&data, &least);
-      printf("least:%d\n", least);
-    }
     auto p = input.ReadTagWithCutoff(127);
     int tag = GetTagFieldNumber(p.first);
-    {
-      const void* data = NULL;
-      int least = 0;
-      input.GetDirectBufferPointer(&data, &least);
-      printf("least2:%d\n", least);
-    }
-
-    printf("tag=%d\n", tag);
     WireType wt = GetTagWireType(p.first);
     if (!p.second) {
       if (tag != 0) {
@@ -269,7 +243,6 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
           return tag;
         }
 
-        printf("varname:%s\n", temp.c_str());
         meta_.set_varname(temp);
         break;
       }
@@ -279,8 +252,6 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
           return tag;
         }
 
-        // tensor_type = static_cast<int32_t>(v);
-        printf("type:%lu\n", v);
         meta_.set_type(static_cast<::sendrecv::VarType>(v));
         break;
       }
@@ -290,13 +261,10 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
           return tag;
         }
 
-        tensor_data_type = static_cast<int32_t>(v);
-        printf("data_type:%d\n", tensor_data_type);
         meta_.set_data_type(static_cast<::sendrecv::VariableMessage_Type>(v));
         break;
       }
       case sendrecv::VariableMessage::kDimsFieldNumber: {
-        printf("begin %d field\n", sendrecv::VariableMessage::kDimsFieldNumber);
         // not packed
         if (wt == WIRETYPE_VARINT) {
           uint64_t v;
@@ -304,7 +272,6 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
             return tag;
           }
           meta_.add_dims(v);
-          printf("dims:%ld\n", v);
           break;
         }
 
@@ -320,7 +287,6 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
               return tag;
             }
             meta_.add_dims(v);
-            printf("dims:%ld\n", v);
           }
           break;
         }
@@ -328,18 +294,14 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
         return tag;
       }
       case sendrecv::VariableMessage::kLodLevelFieldNumber: {
-        printf("begin %d field,",
-               sendrecv::VariableMessage::kLodLevelFieldNumber);
         uint64_t v = 0;
         if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
           return tag;
         }
-        printf("lod_level:%lu\n", v);
         meta_.set_lod_level(static_cast<int64_t>(v));
         break;
       }
       case sendrecv::VariableMessage::kLodFieldNumber: {
-        printf("begin %d field\n", sendrecv::VariableMessage::kLodFieldNumber);
         int length = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
             !ReadVarintSizeAsInt(&input, &length)) {
@@ -369,12 +331,6 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
         break;
       }
       case sendrecv::VariableMessage::kSerializedFieldNumber: {
-        printf("begin %d field, ",
-               sendrecv::VariableMessage::kSerializedFieldNumber);
-        // printf("tensor_type:%d, dims_size:%u, tensor_data_type:%d,
-        // varname:%s\n",
-        //        tensor_type, meta_.dims_size(), tensor_data_type,
-        //        meta_.varname().c_str());
         PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
                         meta_.type() == sendrecv::LOD_TENSOR) &&
                            meta_.varname() != "",
@@ -388,28 +344,23 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
 
         framework::DDim dims = GetDims(meta_.dims());
         if (meta_.type() == sendrecv::LOD_TENSOR) {
-          printf("lod_tensor length:%d\n", length);
           PADDLE_ENFORCE(meta_.lod_size() > 0, "lod info should be got first!");
           if (!CopyLodTensorData(&input, dev_ctx, dims, length)) {
             return tag;
           }
-          // input.Skip(length);
           break;
         }
 
         if (meta_.type() == sendrecv::SELECTED_ROWS) {
-          printf("select_rows length:%d\n", length);
           if (!CopySelectRowsTensorData(&input, dev_ctx, dims, length)) {
             return tag;
           }
-          // input.Skip(length);
           break;
         }
 
         return tag;
       }
       case sendrecv::VariableMessage::kRowsFieldNumber: {
-        printf("begin %d field,", sendrecv::VariableMessage::kRowsFieldNumber);
         PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
                         meta_.type() == sendrecv::LOD_TENSOR) &&
                            meta_.varname() != "",
@@ -421,11 +372,9 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
           return tag;
         }
 
-        printf("length:%d\n", length);
         if (!CopySelectRowsData(&input, dev_ctx, length)) {
           return tag;
         }
-        // input.Skip(length);
         break;
       }
 
