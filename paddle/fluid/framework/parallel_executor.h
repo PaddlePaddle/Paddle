@@ -32,6 +32,27 @@ class ParallelExecutorPrivate;
 class VarHandle;
 class OpHandle;
 class VarHandleBase;
+
+struct GuardedBool {
+ public:
+  GuardedBool() {}
+
+  operator bool() const {
+    std::lock_guard<std::mutex> g(mtx_);
+    return value_;
+  }
+
+  GuardedBool& operator=(bool o) {
+    std::lock_guard<std::mutex> g(mtx_);
+    value_ = o;
+    return *this;
+  }
+
+ private:
+  mutable std::mutex mtx_;
+  bool value_;
+};
+
 class ParallelExecutor {
  public:
   explicit ParallelExecutor(const std::vector<platform::Place>& places,
@@ -60,7 +81,7 @@ class ParallelExecutor {
 
   void BuildNCCLCommunicator() const;
 
-  void RunOp(std::unordered_map<VarHandleBase*, volatile bool>& pending_vars,
+  void RunOp(std::unordered_map<VarHandleBase*, GuardedBool>& pending_vars,
              OpHandle* op) const;
 
   void PolishGraphToSupportDataHarzaeds() const;
