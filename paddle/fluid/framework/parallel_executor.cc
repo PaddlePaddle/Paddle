@@ -702,7 +702,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
   while (!pending_ops.empty()) {
     VarHandleBase *ready_var = nullptr;
     for (auto &pair : pending_vars) {
-      if (pair.second) {
+      if (pair.second.load(std::memory_order_acquire)) {
         ready_var = pair.first;
       }
     }
@@ -714,7 +714,6 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
         throw * member_->exception_;
       }
 
-      std::this_thread::yield();
       continue;
     }
 
@@ -753,7 +752,7 @@ void ParallelExecutor::RunOp(
       VLOG(10) << op->DebugString();
       op->Run();
       for (auto *ready : ready_buffer) {
-        *ready = true;
+        ready->store(true, std::memory_order_release);
       }
     } catch (platform::EnforceNotMet ex) {
       member_->exception_.reset(new platform::EnforceNotMet(ex));
@@ -762,8 +761,7 @@ void ParallelExecutor::RunOp(
     }
   };
 
-  op_run();
-  //  member_->pool_.enqueue(op_run);
+  member_->pool_.enqueue(op_run);
 }
 }  // namespace framework
 }  // namespace paddle
