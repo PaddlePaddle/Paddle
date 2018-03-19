@@ -81,9 +81,8 @@ class ParallelExecutor {
 
   void BuildNCCLCommunicator() const;
 
-  std::future<void> RunOp(
-      std::unordered_map<VarHandleBase*, GuardedBool>& pending_vars,
-      OpHandle* op) const;
+  void RunOp(std::unordered_map<VarHandleBase*, GuardedBool>& pending_vars,
+             OpHandle* op) const;
 
   void PolishGraphToSupportDataHarzaeds() const;
 };
