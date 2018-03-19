@@ -213,7 +213,7 @@ function gen_fluid_inference_lib() {
     if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
     cat <<EOF
     ========================================
-    Building fluid inference library ...
+    Deploying fluid inference library ...
     ========================================
 EOF
         make inference_lib_dist

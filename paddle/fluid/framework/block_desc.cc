@@ -135,6 +135,14 @@ OpDesc *BlockDesc::PrependOp() {
   return ops_.front().get();
 }
 
+OpDesc *BlockDesc::InsertOp(size_t index) {
+  need_update_ = true;
+  auto it = ops_.begin() + index;
+  std::unique_ptr<OpDesc> new_op(new OpDesc(this));
+  it = ops_.insert(it, std::move(new_op));
+  return (*it).get();
+}
+
 void BlockDesc::RemoveOp(size_t s, size_t e) {
   if (ops_.begin() + s == ops_.end() || ops_.begin() + e == ops_.end()) {
     return;

@@ -77,7 +77,8 @@ IF(NOT ${CBLAS_FOUND})
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
         BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} ${COMMON_ARGS} ${OPTIONAL_ARGS}
-        INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR>
+        INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR> 
+                            && rm -r ${CBLAS_INSTALL_DIR}/lib/cmake ${CBLAS_INSTALL_DIR}/lib/pkgconfig
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
@@ -98,11 +99,6 @@ IF(NOT ${CBLAS_FOUND})
         )
         INSTALL(CODE "MESSAGE(STATUS \"Installing: \"
                 \"${CBLAS_INSTALL_DIR}/lib -> ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}\"
-            )"
-        )
-        INSTALL(CODE "execute_process(
-            COMMAND rm -r ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}/cmake
-                    ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}/pkgconfig
             )"
         )
     ENDIF()

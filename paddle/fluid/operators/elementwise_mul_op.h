@@ -40,14 +40,15 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-struct IdentityGrad_DX {
+struct MulGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y; }
 };
 
 template <typename T>
-struct IdentityGrad_DY {
+struct MulGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
 };
+
 template <typename DeviceContext, typename T>
 class ElementwiseMulGradKernel : public framework::OpKernel<T> {
  public:
@@ -61,10 +62,8 @@ class ElementwiseMulGradKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
-    ElemwiseGradCompute<DeviceContext, T, IdentityGrad_DX<T>,
-                        IdentityGrad_DY<T>>(ctx, *x, *y, *out, *dout, axis, dx,
-                                            dy, IdentityGrad_DX<T>(),
-                                            IdentityGrad_DY<T>());
+    ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
+        ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
   }
 };
 }  // namespace operators

@@ -22,14 +22,14 @@ namespace paddle {
 namespace inference {
 
 void ReadBinaryFile(const std::string& filename, std::string& contents) {
-  VLOG(3) << "loading model from " << filename;
-  std::ifstream inputfs(filename, std::ios::in | std::ios::binary);
-  inputfs.seekg(0, std::ios::end);
+  std::ifstream fin(filename, std::ios::in | std::ios::binary);
+  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+  fin.seekg(0, std::ios::end);
   contents.clear();
-  contents.resize(inputfs.tellg());
-  inputfs.seekg(0, std::ios::beg);
-  inputfs.read(&contents[0], contents.size());
-  inputfs.close();
+  contents.resize(fin.tellg());
+  fin.seekg(0, std::ios::beg);
+  fin.read(&contents[0], contents.size());
+  fin.close();
 }
 
 bool IsPersistable(const framework::VarDesc* var) {
@@ -97,6 +97,7 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
                                              const std::string& dirname) {
   std::string model_filename = dirname + "/__model__";
   std::string program_desc_str;
+  VLOG(3) << "loading model from " << model_filename;
   ReadBinaryFile(model_filename, program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(

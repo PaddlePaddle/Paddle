@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 
 namespace paddle {
 namespace operators {
@@ -105,16 +104,35 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
         " Input(Communicator) of AllReduce op input should not be NULL");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    " Output(Out) of AllReduce op output should not be NULL");
-
-    auto x_dims = ctx->GetInputsDim("X");
-
     std::string reduction = ctx->Attrs().Get<std::string>("reduction");
     PADDLE_ENFORCE((reduction == "ncclSum" || reduction == "ncclProd" ||
                     reduction == "ncclMin" || reduction == "ncclMax"),
                    "invalid reduction.");
 
+    auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
+
+// AllReduceOp
+class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  NCCLAllReduceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "The input of AllReduce op");
+    AddInput("Communicator", "Communicator for communicating between gpus");
+    AddOutput("Out", "The output of AllReduce op");
+    AddAttr<std::string>("reduction",
+                         "(string, default 'ncclSum') "
+                         "{'ncclMin', 'ncclMax', 'ncclProd', 'ncclSum'}.")
+        .SetDefault("ncclSum");
+    AddComment(R"DOC(
+NCCLAllReduce Operator.
+
+AllReduce the input tensors.
+
+)DOC");
   }
 };
 
@@ -144,50 +162,6 @@ class NCCLReduceOp : public framework::OperatorWithKernel {
   }
 };
 
-// BcastOp
-class NCCLBcastOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   " Input(X) of Bcast op input should not be NULL");
-    PADDLE_ENFORCE(ctx->HasInput("Communicator"),
-                   " Input(Communicator) of Bcast op input should not be NULL");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   " Output(Out) of Bcast op output should not be NULL");
-
-    int root = ctx->Attrs().Get<int>("root");
-    PADDLE_ENFORCE(root != platform::kInvalidGPUId, "Bcast root must be set.");
-
-    auto x_dims = ctx->GetInputsDim("X");
-    ctx->SetOutputsDim("Out", x_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-};
-
-// AllreduceOp
-class NCCLAllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  NCCLAllReduceOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "The input of AllReduce op");
-    AddInput("Communicator", "Communicator for communicating between gpus");
-    AddOutput("Out", "The output of AllReduce op");
-    AddAttr<std::string>("reduction",
-                         "(string, default 'ncclSum') "
-                         "{'ncclMin', 'ncclMax', 'ncclProd', 'ncclSum'}.")
-        .SetDefault("ncclSum");
-    AddComment(R"DOC(
-NCCLAllReduce Operator.
-
-AllReduce the input tensors.
-
-)DOC");
-  }
-};
-
 // ReduceOp
 class NCCLReduceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -211,6 +185,29 @@ NCCLReduce Operator.
 Reduce the tensors.
 
 )DOC");
+  }
+};
+
+// BcastOp
+class NCCLBcastOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   " Input(X) of Bcast op input should not be NULL");
+    PADDLE_ENFORCE(ctx->HasInput("Communicator"),
+                   " Input(Communicator) of Bcast op input should not be NULL");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   " Output(Out) of Bcast op output should not be NULL");
+
+    int root = ctx->Attrs().Get<int>("root");
+    PADDLE_ENFORCE(root != platform::kInvalidGPUId, "Bcast root must be set.");
+
+    auto x_dims = ctx->GetInputsDim("X");
+    ctx->SetOutputsDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

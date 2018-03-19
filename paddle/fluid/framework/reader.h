@@ -16,48 +16,51 @@
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/platform/place.h"
+
+#include <memory>
+#include <thread>
+#include <vector>
 
 namespace paddle {
 namespace framework {
 
 class ReaderBase {
  public:
-  explicit ReaderBase(const std::vector<DDim>& shapes) : shapes_(shapes) {
-    PADDLE_ENFORCE(!shapes_.empty());
-  }
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
-  virtual bool HasNext() const = 0;
 
   virtual void ReInit() = 0;
 
-  DDim shape(size_t idx) const;
-  std::vector<DDim> shapes() const { return shapes_; }
-  void set_shapes(const std::vector<DDim>& shapes) { shapes_ = shapes; }
+  virtual bool HasNext() const = 0;
 
-  virtual ~ReaderBase() {}
-
- protected:
-  std::vector<DDim> shapes_;
-};
-
-class FileReader : public ReaderBase {
- public:
-  explicit FileReader(const std::vector<DDim>& shapes) : ReaderBase(shapes) {}
+  virtual ~ReaderBase();
 };
 
 class DecoratedReader : public ReaderBase {
  public:
-  explicit DecoratedReader(ReaderBase* reader)
-      : ReaderBase(reader->shapes()), reader_(reader) {
+  explicit DecoratedReader(ReaderBase* reader) : ReaderBase(), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
-  bool HasNext() const override { return reader_->HasNext(); }
-
   void ReInit() override { reader_->ReInit(); }
+
+  bool HasNext() const override { return reader_->HasNext(); }
 
  protected:
   ReaderBase* reader_;
+};
+
+class FileReader : public ReaderBase {
+ public:
+  explicit FileReader(const std::vector<DDim>& dims);
+
+  void ReadNext(std::vector<LoDTensor>* out) override;
+
+ protected:
+  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+
+ private:
+  std::vector<DDim> dims_;
 };
 
 // The ReaderHolder is used as reader' unified wrapper,
@@ -68,15 +71,16 @@ class ReaderHolder {
 
   ReaderBase* Get() const { return reader_.get(); }
 
-  void ReadNext(std::vector<LoDTensor>* out) { reader_->ReadNext(out); }
-  bool HasNext() const { return reader_->HasNext(); }
-  void ReInit() { reader_->ReInit(); }
-
-  DDim shape(size_t idx) const { return reader_->shape(idx); }
-  std::vector<DDim> shapes() const { return reader_->shapes(); }
-  void set_shapes(const std::vector<DDim>& shapes) {
-    reader_->set_shapes(shapes);
+  void ReadNext(std::vector<LoDTensor>* out) {
+    PADDLE_ENFORCE_NOT_NULL(reader_);
+    reader_->ReadNext(out);
   }
+  void ReInit() {
+    PADDLE_ENFORCE_NOT_NULL(reader_);
+    reader_->ReInit();
+  }
+
+  bool HasNext() const { return reader_->HasNext(); }
 
  private:
   std::unique_ptr<ReaderBase> reader_;

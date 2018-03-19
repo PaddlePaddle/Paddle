@@ -40,61 +40,13 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-struct ElementwiseSubGradFunctor {
-  template <typename Device, typename X, typename Y, typename Z, typename dX,
-            typename dY, typename dZ>
-  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e;
-    }
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = (-1.0) * dz_e;
-    }
-  }
+struct SubGradDX {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout; }
 };
 
 template <typename T>
-struct ElementwiseSubBroadCastGradFunctor {
-  template <typename Device, typename X, typename Y, typename Z, typename dX,
-            typename dY, typename dZ, typename Pre, typename N>
-  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e;
-    }
-
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = (-1.0) *
-                       dz_e.reshape(Eigen::DSizes<int, 2>(pre, n))
-                           .sum(Eigen::array<int, 1>{{0}});
-    }
-  }
-};
-
-template <typename T>
-struct ElementwiseSubBroadCast2GradFunctor {
-  template <typename Device, typename X, typename Y, typename Z, typename dX,
-            typename dY, typename dZ, typename Pre, typename N, typename Post>
-  void operator()(Device d, X x, Y y, Z z, dX dx, dY dy, dZ dz, Pre pre, N n,
-                  Post post) {
-    auto dz_e = framework::EigenVector<T>::Flatten(*dz);
-    if (dx) {
-      auto dx_e = framework::EigenVector<T>::Flatten(*dx);
-      dx_e.device(d) = dz_e;
-    }
-
-    if (dy) {
-      auto dy_e = framework::EigenVector<T>::Flatten(*dy);
-      dy_e.device(d) = (-1.0) *
-                       dz_e.reshape(Eigen::DSizes<int, 3>(pre, n, post))
-                           .sum(Eigen::array<int, 2>{{0, 2}});
-    }
-  }
+struct SubGradDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return -dout; }
 };
 
 template <typename DeviceContext, typename T>
@@ -110,12 +62,9 @@ class ElementwiseSubGradKernel : public framework::OpKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
-    ElementwiseGradCompute<DeviceContext, T, ElementwiseSubGradFunctor<T>,
-                           ElementwiseSubBroadCastGradFunctor<T>,
-                           ElementwiseSubBroadCast2GradFunctor<T>>(
-        ctx, x, y, out, dout, axis, dx, dy);
+    ElemwiseGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+        ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
   }
 };
-
 }  // namespace operators
 }  // namespace paddle

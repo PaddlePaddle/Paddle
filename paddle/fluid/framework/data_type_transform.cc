@@ -53,6 +53,7 @@ struct CastDataType {
       auto* context = static_cast<const platform::CUDADeviceContext*>(ctx_);
       trans(*context, in_begin, in_end, out_begin,
             CastDataTypeFunctor<InType, OutType>());
+      context->Wait();
 #endif
     } else {
       PADDLE_THROW("Unsupported place!");
