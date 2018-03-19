@@ -24,11 +24,21 @@ template <typename DeviceContext, typename T>
 class ReshapeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* in = ctx.Input<framework::LoDTensor>("X");
 
     auto out_dims =
         ValidateShape(ctx.Attr<std::vector<int>>("shape"), in->dims());
+
+    if (!in->lod().empty()) {
+      PADDLE_ENFORCE_EQ(
+          out_dims[0], in->dims()[0],
+          "Reshape operator cannot reshape an input sequence batch "
+          "into an output sequence batch that has a different "
+          "number of time steps. Please consider using "
+          "sequence_reshape op.");
+    }
+
     bool inplace = ctx.Attr<bool>("inplace");
     if (!inplace) {
       out->mutable_data<T>(ctx.GetPlace());
