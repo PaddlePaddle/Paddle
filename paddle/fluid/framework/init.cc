@@ -26,6 +26,7 @@ namespace paddle {
 namespace framework {
 
 std::once_flag gflags_init_flag;
+std::once_flag p2p_init_flag;
 
 void InitGflags(std::vector<std::string> &argv) {
   std::call_once(gflags_init_flag, [&]() {
@@ -39,6 +40,25 @@ void InitGflags(std::vector<std::string> &argv) {
     }
     google::ParseCommandLineFlags(&argc, &arr, true);
     VLOG(1) << "Init commandline: " << line;
+  });
+}
+
+void InitP2P(int count) {
+  std::call_once(p2p_init_flag, [&]() {
+    for (int i = 0; i < count; ++i) {
+      for (int j = 0; j < count; ++j) {
+        if (i == j) continue;
+        int can_acess = -1;
+        PADDLE_ENFORCE(cudaDeviceCanAccessPeer(&can_acess, i, j),
+                       "Failed to test P2P access.");
+        if (can_acess != 1) {
+          LOG(WARNING) << "Cannot enable P2P access from " << i << " to " << j;
+        } else {
+          cudaSetDevice(i);
+          cudaDeviceEnablePeerAccess(j, 0);
+        }
+      }
+    }
   });
 }
 
@@ -63,7 +83,7 @@ void InitDevices() {
   for (int i = 0; i < count; ++i) {
     places.emplace_back(platform::CUDAPlace(i));
   }
-
+  InitP2P(count);
   platform::DeviceContextPool::Init(places);
 }
 
