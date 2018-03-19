@@ -46,12 +46,14 @@ class ParallelExecutor(unittest.TestCase):
                 lod_levels=[0, 0],
                 dtypes=['float32', 'int64'])
             img, label = fluid.layers.read_file(reader)
-            hidden = fluid.layers.fc(
-                img,
-                size=200,
-                act='tanh',
-                bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=1.0)))
+            hidden = img
+            for _ in xrange(10):
+                hidden = fluid.layers.fc(
+                    hidden,
+                    size=200,
+                    act='tanh',
+                    bias_attr=fluid.ParamAttr(
+                        initializer=fluid.initializer.Constant(value=1.0)))
             prediction = fluid.layers.fc(hidden, size=10, act='softmax')
             loss = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.mean(loss)
