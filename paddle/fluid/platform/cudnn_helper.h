@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -79,6 +80,22 @@ enum class PoolingMode {
 
 template <typename T>
 class CudnnDataType;
+
+template <>
+class CudnnDataType<float16> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_HALF;
+  // The scaling param type is float for HALF and FLOAT tensors
+  typedef const float ScalingParamType;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
 
 template <>
 class CudnnDataType<float> {
