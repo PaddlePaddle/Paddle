@@ -50,7 +50,6 @@ class ShuffleReader : public framework::DecoratedReader {
     buffer_.clear();
     buffer_.reserve(buffer_size_);
     iteration_pos_ = 0;
-    PADDLE_ENFORCE(reader_->HasNext());
     for (size_t i = 0; i < buffer_size_; ++i) {
       if (!reader_->HasNext()) {
         break;
