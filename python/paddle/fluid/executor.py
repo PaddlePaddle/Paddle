@@ -247,8 +247,7 @@ class Executor(object):
 
     def _get_program_cache(self, feed, fetch_list):
         program_cache_key = get_program_cache_key(feed, fetch_list)
-        program_cache = self.program_caches.get(program_cache_key, None)
-        return program_cache
+        return self.program_caches.get(program_cache_key, None)
 
     def _add_program_cache(self, feed, fetch_list, program):
         program_cache_key = get_program_cache_key(feed, fetch_list)
@@ -299,7 +298,7 @@ class Executor(object):
 
         return tmp_program
 
-    def feed_data(self, program, feed, feed_var_name, scope):
+    def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
         for op in program.global_block().ops:
             if op.desc.type() == 'feed':
@@ -312,7 +311,7 @@ class Executor(object):
             else:
                 break
 
-    def fetch_data(self, fetch_list, fetch_var_name, scope):
+    def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
             for i in xrange(len(fetch_list))
@@ -351,9 +350,9 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
-        self.feed_data(ctx.program, feed, ctx.feed_var_name, scope)
+        self._feed_data(ctx.program, feed, ctx.feed_var_name, scope)
         self.executor.run_prepared_ctx(ctx.handle, scope, True, True)
-        outs = self.fetch_data(ctx.fetch_list, ctx.fetch_var_name, scope)
+        outs = self._fetch_data(ctx.fetch_list, ctx.fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
         return outs
@@ -419,9 +418,9 @@ class Executor(object):
                 feed_var_name=feed_var_name,
                 fetch_var_name=fetch_var_name)
 
-        self.feed_data(program, feed, feed_var_name, scope)
+        self._feed_data(program, feed, feed_var_name, scope)
         self.executor.run(program.desc, scope, 0, True, True)
-        outs = self.fetch_data(fetch_list, fetch_var_name, scope)
+        outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
         return outs
