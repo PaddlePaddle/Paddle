@@ -18,6 +18,7 @@ limitations under the License. */
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #include "paddle/fluid/operators/dropout_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -51,7 +52,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Output<Tensor>("Out");
     y->mutable_data<T>(context.GetPlace());
-    AttrType dropout_prob = context.Attr<AttrType>("dropout_prob");
+    AttrType dropout_prob = context.Attr<AttrType>("dropout_prob"));
 
     auto X = EigenMatrix<T>::Reshape(*x, 1);
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
@@ -74,7 +75,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
                                      context.cuda_device_context().stream()>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data);
     } else {
-      Y.device(place) = X * (1.0f - dropout_prob);
+      Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
   }
 };
@@ -83,9 +84,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    dropout,
-    ops::GPUDropoutKernel<paddle::platform::CUDADeviceContext, float, float>);
-REGISTER_OP_CUDA_KERNEL(
-    dropout_grad,
-    ops::DropoutGradKernel<paddle::platform::CUDADeviceContext, float>);
+    dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float, float>,
+    ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16, float>);
+REGISTER_OP_CUDA_KERNEL(dropout_grad,
+                        ops::DropoutGradKernel<plat::CUDADeviceContext, float>);
