@@ -643,14 +643,16 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
   for (auto &place_pair : member_->vars_) {
     for (auto &name_pair : place_pair.second) {
       for (auto &version_pair : name_pair.second) {
-        pending_vars[&version_pair.second] =
-            version_pair.second.generated_op_ == nullptr;
+        pending_vars[&version_pair.second].store(
+            version_pair.second.generated_op_ == nullptr,
+            std::memory_order_relaxed);
       }
     }
   }
 
   for (auto &var : member_->dep_vars_) {
-    pending_vars[var.get()] = var->generated_op_ == nullptr;
+    pending_vars[var.get()].store(var->generated_op_ == nullptr,
+                                  std::memory_order_relaxed);
   }
 
   std::vector<OpHandle *> to_run;
@@ -700,14 +702,12 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
   }
 
   while (!pending_ops.empty()) {
-    VLOG(1) << "1";
     VarHandleBase *ready_var = nullptr;
     for (auto &pair : pending_vars) {
       if (pair.second.load(std::memory_order_acquire)) {
         ready_var = pair.first;
       }
     }
-    VLOG(1) << "1";
     if (ready_var == nullptr) {
       // FIXME use conditional var instead of busy wait.
 
@@ -717,11 +717,8 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 
       continue;
     }
-    VLOG(1) << "1";
     pending_vars.erase(ready_var);
-    VLOG(1) << "1";
     to_run.clear();
-    VLOG(1) << "1";
     for (auto *op : ready_var->pending_ops_) {
       auto &deps = pending_ops[op];
       --deps;
@@ -729,16 +726,12 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
         to_run.emplace_back(op);
       }
     }
-    VLOG(1) << "1";
     for (auto *op : to_run) {
       pending_ops.erase(op);
       RunOp(pending_vars, op);
     }
-    VLOG(1) << "1";
   }
-  VLOG(1) << "1";
   fetch_ops.clear();
-  VLOG(1) << "1";
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<LoDTensorArray>() =
       fetched_data->tensors_;
 }
