@@ -83,7 +83,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const ExecutionContext &ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::ToDataType(ctx.Input<Tensor>("X")->type());
     // For float or float16 input tensor, the type of the scale, bias, mean,
