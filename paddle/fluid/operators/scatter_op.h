@@ -30,14 +30,13 @@ class ScatterOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "This kernel only runs on CPU.");
     auto *X = ctx.Input<Tensor>("X");
-    auto *Ids = ctx.Input<Tensor>("Ids");
+    auto *Index = ctx.Input<Tensor>("Index");
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
 
-    // In place output: Out = X, Out[Ids] += Updates
+    // In place output: Out = X, Out[Index] = Updates
     Out->ShareDataWith(*X);
-    // Apply ScatterUpdate: Out[index] += Updates[:]
-    ScatterAssign<T>(ctx.device_context(), *Updates, *Ids, Out);
+    ScatterAssign<T>(ctx.device_context(), *Updates, *Index, Out);
   }
 };
 
@@ -49,14 +48,14 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
                    "This kernel only runs on CPU.");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
-    auto *Ids = ctx.Input<Tensor>("Ids");
+    auto *Index = ctx.Input<Tensor>("Index");
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     // In place gradient: dX = dO
     dX->ShareDataWith(*dOut);
     dUpdates->mutable_data<T>(ctx.GetPlace());
-    // Gradient by Gather: dUpdates += dO[Ids]
-    CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
+    // Gradient by Gather: dUpdates = dO[Index]
+    CPUGather<T>(ctx.device_context(), *dOut, *Index, dUpdates);
   }
 };
 

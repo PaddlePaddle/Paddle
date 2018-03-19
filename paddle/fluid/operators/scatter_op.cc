@@ -25,8 +25,8 @@ class ScatterOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of ScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input(Ids) of ScatterOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Index"),
+                   "Input(Index) of ScatterOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Updates"),
                    "Input(Updates) of ScatterOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -34,13 +34,13 @@ class ScatterOp : public framework::OperatorWithKernel {
 
     auto updates_dims = ctx->GetInputDim("Updates");
     auto ref_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Ids").size(), 1,
-                      "Update Ids should be 1-D.");
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Index").size(), 1,
+                      "Update Index should be 1-D.");
     PADDLE_ENFORCE_EQ(ref_dims.size(), updates_dims.size(),
-                      "Xerence and Updates should have the same shape size");
+                      "Reference and Updates should have the same shape size");
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
-                      ctx->GetInputDim("Ids")[0],
-                      "Updates and Ids should have same batch-size.");
+                      ctx->GetInputDim("Index")[0],
+                      "Updates and Index should have same batch-size.");
     framework::DDim data_dim(updates_dims);
     for (int i = 1; i < data_dim.size(); ++i) {
       PADDLE_ENFORCE_EQ(data_dim[i], updates_dims[i]);
@@ -81,7 +81,7 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
   ScatterOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "The source input of scatter op");
-    AddInput("Ids", "The index input of scatter op where X will be updated");
+    AddInput("Index", "The index input of scatter op where X will be updated");
     AddInput("Updates", "The updated value of updates op");
     AddOutput("Out", "The output of add op");
     AddComment(R"DOC(
@@ -91,7 +91,7 @@ This operator obtains output by updating the input on selected indices on the fi
 
 $$
 Out = X \\
-Out[Ids] = X[Ids] + Updates
+Out[Index] = Updates
 $$
 
 )DOC");

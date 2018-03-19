@@ -26,13 +26,13 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "This kernel only runs on GPU device.");
     auto *X = ctx.Input<Tensor>("X");
-    auto *Ids = ctx.Input<Tensor>("Ids");
+    auto *Index = ctx.Input<Tensor>("Index");
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
 
     Out->ShareDataWith(*X);
 
-    GPUScatterAssign<T>(ctx.device_context(), *Updates, *Ids, Out);
+    GPUScatterAssign<T>(ctx.device_context(), *Updates, *Index, Out);
   }
 };
 
@@ -44,14 +44,14 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
                    "This kernel only runs on GPU device.");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
-    auto *Ids = ctx.Input<Tensor>("Ids");
+    auto *Index = ctx.Input<Tensor>("Index");
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     // In place gradient: dX = dO
     dX->ShareDataWith(*dOut);
     dUpdates->mutable_data<T>(ctx.GetPlace());
-    // Gradient by Gather: dUpdates = dO[Ids]
-    GPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
+    // Gradient by Gather: dUpdates = dO[Index]
+    GPUGather<T>(ctx.device_context(), *dOut, *Index, dUpdates);
   }
 };
 
