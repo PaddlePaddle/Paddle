@@ -490,6 +490,7 @@ HOSTDEVICE inline float16 operator+(const float16& a, const float16& b) {
   return float16(__hadd(half(a), half(b)));
 #else
   return float16(float(a) + float(b));
+#endif
 }
 
 HOSTDEVICE inline float16 operator-(const float16& a, const float16& b) {
@@ -497,6 +498,7 @@ HOSTDEVICE inline float16 operator-(const float16& a, const float16& b) {
   return float16(__hsub(half(a), half(b)));
 #else
   return float16(float(a) - float(b));
+#endif
 }
 
 HOSTDEVICE inline float16 operator*(const float16& a, const float16& b) {
@@ -504,6 +506,7 @@ HOSTDEVICE inline float16 operator*(const float16& a, const float16& b) {
   return float16(__hmul(half(a), half(b)));
 #else
   return float16(float(a) * float(b));
+#endif
 }
 
 HOSTDEVICE inline float16 operator/(const float16& a, const float16& b) {
@@ -514,6 +517,7 @@ HOSTDEVICE inline float16 operator/(const float16& a, const float16& b) {
   return float16(num / denom);
 #else
   return float16(float(a) / float(b));
+#endif
 }
 
 HOSTDEVICE inline float16 operator-(const float16& a) {
@@ -523,6 +527,7 @@ HOSTDEVICE inline float16 operator-(const float16& a) {
   float16 res;
   res.x = a.x ^ 0x8000;
   return res;
+#endif
 }
 
 HOSTDEVICE inline float16& operator+=(float16& a, const float16& b) {
@@ -550,6 +555,7 @@ HOSTDEVICE inline bool operator==(const float16& a, const float16& b) {
   return __heq(half(a), half(b));
 #else
   return float(a) == float(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator!=(const float16& a, const float16& b) {
@@ -557,6 +563,7 @@ HOSTDEVICE inline bool operator!=(const float16& a, const float16& b) {
   return __hne(half(a), half(b));
 #else
   return float(a) != float(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator<(const float16& a, const float16& b) {
@@ -564,6 +571,7 @@ HOSTDEVICE inline bool operator<(const float16& a, const float16& b) {
   return __hlt(half(a), half(b));
 #else
   return float(a) < float(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator<=(const float16& a, const float16& b) {
@@ -571,6 +579,7 @@ HOSTDEVICE inline bool operator<=(const float16& a, const float16& b) {
   return __hle(half(a), half(b));
 #else
   return float(a) <= float(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator>(const float16& a, const float16& b) {
@@ -578,6 +587,7 @@ HOSTDEVICE inline bool operator>(const float16& a, const float16& b) {
   return __hgt(half(a), half(b));
 #else
   return float(a) > float(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
@@ -585,6 +595,7 @@ HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
   return __hge(half(a), half(b));
 #else
   return float(a) >= float(b);
+#endif
 }
 
 // Arithmetic operators for float16 on ARMv8.2-A CPU
