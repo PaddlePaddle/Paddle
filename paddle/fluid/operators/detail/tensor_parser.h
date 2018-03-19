@@ -49,16 +49,30 @@ class TensorResponse {
   framework::Variable* GetVar() { return scope_->FindVar(meta_.varname()); }
 
  private:
-  /*
-  int TensorResponse::ParseTensorSubmessage(
-      protobuf::io::CodedInputStream* input,
-      TensorProto* tensor_meta);
-      */
+  bool CopySelectRowsTensorData(::google::protobuf::io::CodedInputStream* input,
+                                const platform::DeviceContext& ctx,
+                                framework::DDim& dims, int length);
+
+  bool CopySelectRowsData(::google::protobuf::io::CodedInputStream* input,
+                          const platform::DeviceContext& ctx, int length);
+
+  bool CopyLodTensorData(::google::protobuf::io::CodedInputStream* input,
+                         const platform::DeviceContext& ctx,
+                         framework::DDim& dims, int length);
 
  private:
+ private:
+  framework::Variable* var_;
   framework::Scope* scope_;
   // only Skeleton
   sendrecv::VariableMessage meta_;
+
+  /*
+  struct WireMeta{
+      int64_t tensor_type;
+      int64_t tensor_data_type;
+  }wire_meta_;
+  */
 };
 
 };  // namespace detail

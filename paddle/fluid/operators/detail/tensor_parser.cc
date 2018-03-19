@@ -15,6 +15,7 @@
 #include "tensor_parser.h"
 #include <string.h>
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
+#include "sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -41,82 +42,6 @@ bool ReadVarintSizeAsInt(::google::protobuf::io::CodedInputStream* input,
     return false;
   }
 }
-
-/*
-bool TensorResponse::ParseTensorSubmessage(
-    protobuf::io::CodedInputStream* input, TensorProto* tensor_meta) {
-  bool seen_tensor_content = false;
-  while (true) {
-    auto p = input->ReadTagWithCutoff(127);
-    int tag     = GetTagFieldNumber(p.first);
-    WireType wt = GetTagWireType(p.first);
-
-    if (!p.second) {
-      bool ok = (tag == 0);
-      if (ok && !seen_tensor_content) {
-        // No tensor content: could be because it's a zero-length tensor
-        tensor_ = std::move(t);
-      }
-      return ok;
-    }
-
-    switch (tag) {
-      case TensorProto::kDtypeFieldNumber: {
-        uint32 v;
-        if ((wt != WIRETYPE_VARINT) || !input->ReadVarint32(&v))
-            return false;
-
-        if (seen_tensor_content) return false;
-        tensor_meta->set_dtype(static_cast<DataType>(static_cast<int>(v)));
-        if (!DataTypeCanUseMemcpy(tensor_meta->dtype())) return false;
-        break;
-      }
-      case TensorProto::kTensorShapeFieldNumber: {
-        if ((wt != WIRETYPE_LENGTH_DELIMITED) ||
-            !ReadNestedMessage(input, tensor_meta->mutable_tensor_shape()))
-          return false;
-        if (seen_tensor_content) return false;
-        break;
-      }
-      case TensorProto::kVersionNumberFieldNumber: {
-        uint32 v;
-        if ((wt != WIRETYPE_VARINT) || !input->ReadVarint32(&v)) return false;
-        if (seen_tensor_content) return false;
-        tensor_meta->set_version_number(static_cast<int32>(v));
-        break;
-      }
-      case TensorProto::kTensorContentFieldNumber: {
-        // If we haven't seen the dtype and tensor_shape data first, we can't
-        // deal with this in the fast path.
-        if (seen_tensor_content) return false;
-        if (wt != WIRETYPE_LENGTH_DELIMITED ||
-            !tensor_meta->has_tensor_shape()) {
-          return false;
-        }
-        int num_bytes;
-        if (!ReadVarintSizeAsInt(input, &num_bytes)) return false;
-        seen_tensor_content = true;
-        TensorShape shape(tensor_meta->tensor_shape());
-        Tensor t(allocator_, tensor_meta->dtype(), shape);
-        StringPiece buf = t.tensor_data();
-        if (static_cast<size_t>(num_bytes) != buf.size()) return false;
-        // TODO(jeff,sanjay): Figure out a way to avoid this copy if
-        // the underlying ZeroCopyInputStream data is properly aligned
-        // and compatible with what allocator_ wants.
-        if (!input->ReadRaw(const_cast<char*>(buf.data()), num_bytes))
-          return false;
-        tensor_ = std::move(t);
-        break;
-      }
-      default: {
-        // Some other tag our fast path code is not prepared to handle.
-        // return false.
-        return false;
-      }
-    }
-  }
-}
-*/
 
 bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
              const platform::DeviceContext& dev_ctx, platform::Place place,
@@ -169,22 +94,101 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
   return true;
 }
 
-bool CopyLodTensorData(::google::protobuf::io::CodedInputStream* input) {
-  /*
-  if (ReadRaw(&input, tensor->place(),
-              reinterpret_cast<const void*>tensor->data(), length)){
-      return false;
+bool TensorResponse::CopyLodTensorData(
+    ::google::protobuf::io::CodedInputStream* input,
+    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+  auto var = scope_->FindVar(meta_.varname());
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  tensor->Resize(dims);
+
+  framework::LoD lod;
+  for (int i = 0; i < meta_.lod_level(); ++i) {
+    framework::Vector<size_t> v;
+    for (int j = 0; j < meta_.lod(i).lod_data_size(); ++j) {
+      v.push_back(meta_.lod(i).lod_data(j));
+    }
+    lod.push_back(v);
   }
-  */
+  tensor->set_lod(lod);
+
+  void* tensor_data =
+      tensor->mutable_data(ctx.GetPlace(), ToTypeIndex(meta_.data_type()));
+
+  if (ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
+    return false;
+  }
 
   return true;
 }
 
-bool CopySelectRowsTensorData(::google::protobuf::io::CodedInputStream* input) {
+inline framework::DDim GetDims(
+    const ::google::protobuf::RepeatedField<::google::protobuf::int64>& dims) {
+  std::vector<int> vecdims;
+  for (auto& d : dims) {
+    vecdims.push_back(d);
+  }
+  return framework::make_ddim(vecdims);
+}
+
+bool TensorResponse::CopySelectRowsTensorData(
+    ::google::protobuf::io::CodedInputStream* input,
+    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+  auto var = scope_->FindVar(meta_.varname());
+  auto* slr = var->GetMutable<framework::SelectedRows>();
+  auto* tensor = slr->mutable_value();
+  tensor->Resize(dims);
+  void* tensor_data = tensor->mutable_data(
+      ctx.GetPlace(),
+      paddle::operators::detail::ToTypeIndex(meta_.data_type()));
+
+  if (ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
+    return false;
+  }
+
   return true;
 }
 
-bool CopySelectRowsData(::google::protobuf::io::CodedInputStream* input) {
+bool TensorResponse::CopySelectRowsData(
+    ::google::protobuf::io::CodedInputStream* input,
+    const platform::DeviceContext& ctx, int length) {
+  auto var = scope_->FindVar(meta_.varname());
+  auto* slr = var->GetMutable<framework::SelectedRows>();
+  int64_t* rows_data = slr->mutable_rows()->data();
+
+  // copy rows CPU data, GPU data will be copied lazly
+  platform::CPUPlace cpu;
+  if (ReadRaw(input, ctx, cpu, rows_data, length)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool ParseLodData(::google::protobuf::io::CodedInputStream* input,
+                  std::vector<int64_t>* lod) {
+  while (true) {
+    auto p = input->ReadTagWithCutoff(127);
+    int tag = GetTagFieldNumber(p.first);
+    WireType wt = GetTagWireType(p.first);
+
+    if (!p.second) {
+      return (tag == 0);
+    }
+
+    switch (tag) {
+      case sendrecv::VariableMessage_LodData::kLodDataFieldNumber: {
+        uint64_t v;
+        if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input->ReadVarint64(&v)) {
+          return false;
+        }
+
+        lod->push_back(v);
+        break;
+      }
+      default: { return false; }
+    }
+  }
+
   return true;
 }
 
@@ -197,9 +201,8 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
   ::google::protobuf::io::CodedInputStream input(input_stream);
   input.SetTotalBytesLimit(INT_MAX, INT_MAX);
 
-  // framework::Variable* var = NULL;
-  // meta_.set_type(-1);
   int tensor_type = -1;
+  int tensor_data_type = -1;
 
   while (true) {
     auto p = input.ReadTagWithCutoff(127);
@@ -226,7 +229,6 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
         }
 
         meta_.set_varname(temp);
-        // var = scope_->FindVar(temp);
         break;
       }
       case sendrecv::VariableMessage::kTypeFieldNumber: {
@@ -240,16 +242,17 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
         break;
       }
       case sendrecv::VariableMessage::kDataTypeFieldNumber: {
-        uint64_t v;
+        uint64_t v = 0;
         if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
           return tag;
         }
 
+        tensor_data_type = static_cast<int64_t>(v);
         meta_.set_data_type(static_cast<::sendrecv::VariableMessage_Type>(v));
         break;
       }
       case sendrecv::VariableMessage::kDimsFieldNumber: {
-        uint64_t v;
+        uint64_t v = 0;
         if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint64(&v)) {
           return tag;
         }
@@ -258,7 +261,7 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
         break;
       }
       case sendrecv::VariableMessage::kLodLevelFieldNumber: {
-        uint64_t v;
+        uint64_t v = 0;
         if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
           return tag;
         }
@@ -266,46 +269,33 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
         break;
       }
       case sendrecv::VariableMessage::kLodFieldNumber: {
-        int length;
+        int length = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
             !ReadVarintSizeAsInt(&input, &length)) {
           return tag;
+        }
+
+        std::vector<int64_t> lod_data;
+        bool ret = ParseLodData(&input, &lod_data);
+        if (!ret) {
+          return tag;
+        }
+
+        if (lod_data.size() == 0) {
+          break;
+        }
+
+        auto lod = meta_.add_lod();
+        for (uint32_t i = 0; i < lod_data.size(); i++) {
+          lod->add_lod_data(lod_data[i]);
         }
         break;
       }
       case sendrecv::VariableMessage::kSerializedFieldNumber: {
-        PADDLE_ENFORCE(tensor_type > 0 &&
-                           (meta_.type() == sendrecv::LOD_TENSOR ||
-                            meta_.type() == sendrecv::SELECTED_ROWS) &&
-                           meta_.varname() != "",
-                       "tensor_type and varname should be got first!");
-
-        int length;
-        if (wt != WIRETYPE_LENGTH_DELIMITED ||
-            !ReadVarintSizeAsInt(&input, &length)) {
-          return tag;
-        }
-
-        if (meta_.type() == sendrecv::LOD_TENSOR) {
-          if (!CopyLodTensorData(&input)) {
-            return tag;
-          }
-          break;
-        }
-
-        if (meta_.type() == sendrecv::LOD_TENSOR) {
-          if (!CopySelectRowsData(&input)) {
-            return tag;
-          }
-          break;
-        }
-
-        break;
-      }
-      case sendrecv::VariableMessage::kRowsFieldNumber: {
         PADDLE_ENFORCE(
-            meta_.type() == sendrecv::SELECTED_ROWS && meta_.varname() != "",
-            "tensor_type and varname should be got first!");
+            (tensor_type > 0 && meta_.lod_size() > 0 && meta_.dims_size() > 0 &&
+             tensor_data_type > 0 && meta_.varname() != ""),
+            "meta info should be got first!");
 
         int length = 0;
         if (wt != WIRETYPE_LENGTH_DELIMITED ||
@@ -313,14 +303,42 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
           return tag;
         }
 
-        if (CopySelectRowsTensorData(&input)) {
+        framework::DDim dims = GetDims(meta_.dims());
+        if (meta_.type() == sendrecv::LOD_TENSOR) {
+          if (!CopyLodTensorData(&input, dev_ctx, dims, length)) {
+            return tag;
+          }
+          break;
+        }
+
+        if (meta_.type() == sendrecv::SELECTED_ROWS) {
+          if (!CopySelectRowsTensorData(&input, dev_ctx, dims, length)) {
+            return tag;
+          }
+          break;
+        }
+
+        return tag;
+      }
+      case sendrecv::VariableMessage::kRowsFieldNumber: {
+        PADDLE_ENFORCE((tensor_type > 0 && meta_.dims_size() > 0 &&
+                        tensor_data_type > 0 && meta_.varname() != ""),
+                       "meta info should be got first!");
+
+        int length = 0;
+        if (wt != WIRETYPE_LENGTH_DELIMITED ||
+            !ReadVarintSizeAsInt(&input, &length)) {
+          return tag;
+        }
+
+        if (CopySelectRowsData(&input, dev_ctx, length)) {
           return tag;
         }
         break;
       }
 
       default: {
-        // Unknown tag, so don't handle we can't handle on the fast path
+        // Unknown tag, return unknown error.
         return -1;
       }
     }
