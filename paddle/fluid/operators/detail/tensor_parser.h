@@ -66,13 +66,6 @@ class TensorResponse {
   framework::Scope* scope_;
   // only Skeleton
   sendrecv::VariableMessage meta_;
-
-  /*
-  struct WireMeta{
-      int64_t tensor_type;
-      int64_t tensor_data_type;
-  }wire_meta_;
-  */
 };
 
 };  // namespace detail

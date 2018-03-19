@@ -201,6 +201,92 @@ TEST(Tensor, CPU2) {
 }
 */
 
+/*
+void GetData(::grpc::ByteBuffer& msg,
+        std::string& byte_buffer,
+        std::string& serialized){
+  // serialize var to ByteBuffer
+  framework::Variable var;
+  auto* tensor = var.GetMutable<framework::LoDTensor>();
+  tensor->Resize(framework::make_ddim({4, 8, 4, 2}));
+  framework::LoD lod;
+  lod.push_back(framework::Vector<size_t>({1, 3, 8}));
+  tensor->set_lod(lod);
+  int tensor_numel = 4 * 8 * 4 * 2;
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& ctx = *pool.Get(place);
+  tensor->mutable_data<float>(place);
+  math::set_constant(ctx, tensor, 31.9);
+
+  //::grpc::ByteBuffer msg;
+  operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
+  EXPECT_GT(msg.Length(), 0);
+
+  std::vector<::grpc::Slice> slices;
+  (void)msg.Dump(&slices);
+  //std::string tmp;
+  for (const auto& s : slices) {
+    byte_buffer.append(reinterpret_cast<const char*>(s.begin()), s.size());
+  }
+
+  sendrecv::VariableMessage varmsg;
+  EXPECT_TRUE(varmsg.ParseFromString(tmp));
+  EXPECT_EQ(varmsg.varname(), "myvar");
+  EXPECT_EQ(varmsg.type(), 0);
+  EXPECT_EQ(varmsg.dims()[0], 4);
+  EXPECT_EQ(varmsg.dims()[1], 8);
+  EXPECT_EQ(varmsg.dims()[2], 4);
+  EXPECT_EQ(varmsg.dims()[3], 2);
+  EXPECT_EQ(varmsg.lod_level(), 1);
+  EXPECT_EQ(varmsg.lod(0).lod_data(0), 1);
+  EXPECT_EQ(varmsg.lod(0).lod_data(1), 3);
+  EXPECT_EQ(varmsg.lod(0).lod_data(2), 8);
+
+  varmsg.SerializeToString(&serialized);
+}
+
+
+void ParseFrom(const std::string& src,
+        const platform::DeviceContext& ctx ){
+  // deserialize zero-copy
+  framework::Scope scope;
+  scope.Var("myvar");
+  operators::detail::TensorResponse resp(&scope);
+  EXPECT_EQ(resp.Parse(src, ctx), 0);
+  framework::Variable* var2 = resp.GetVar();
+
+  auto tensor2 = var2->Get<framework::LoDTensor>();
+  float* tensor_data2 = nullptr;
+  framework::Tensor tmp_tensor;
+
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    platform::CPUPlace cpu;
+    framework::TensorCopy(tensor2, cpu, &tmp_tensor);
+    tensor_data2 = tmp_tensor.data<float>();
+  } else {
+    tensor_data2 = const_cast<float*>(tensor2.data<float>());
+  }
+
+  EXPECT_EQ(varmsg.lod_level(), 1);
+  EXPECT_EQ(varmsg.lod(0).lod_data(0), 1);
+  EXPECT_EQ(varmsg.lod(0).lod_data(1), 3);
+  EXPECT_EQ(varmsg.lod(0).lod_data(2), 8);
+  for (int i = 0; i < tensor_numel; ++i) EXPECT_FLOAT_EQ(tensor_data2[i], 31.9);
+}
+
+void RunTestLodTensor(platform::Place place) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& ctx = *pool.Get(place);
+
+  ::grpc::ByteBuffer msg;
+  std::string byte_buffer;
+  std::string serialized;
+
+  ParseFrom(byte_buffer, ctx);
+  ParseFrom(serialized, ctx);
+}
+*/
+
 void RunTestLodTensor(platform::Place place) {
   // serialize var to ByteBuffer
   framework::Variable var;
@@ -245,6 +331,23 @@ void RunTestLodTensor(platform::Place place) {
     EXPECT_FLOAT_EQ(tensor_data[i], 31.9);
   }
 
+  // bytebuffer binary
+  for (const auto& slice : slices) {
+    const unsigned char* s = slice.begin();
+    for (int i = 0; i < slice.size(); i++) {
+      printf("%02X ", s[i]);
+    }
+  }
+  printf("\n");
+
+  // message binary
+  std::string str;
+  varmsg.SerializeToString(&str);
+  const unsigned char* s = (unsigned char*)str.c_str();
+  while (*s) {
+    printf("%02X ", (*s++));
+  }
+
   // deserialize zero-copy
   framework::Scope scope;
   scope.Var("myvar");
@@ -257,6 +360,7 @@ void RunTestLodTensor(platform::Place place) {
   framework::Tensor tmp_tensor;
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
+    printf("gpu\n");
     platform::CPUPlace cpu;
     framework::TensorCopy(tensor2, cpu, &tmp_tensor);
     tensor_data2 = tmp_tensor.data<float>();
@@ -273,5 +377,10 @@ void RunTestLodTensor(platform::Place place) {
 
 TEST(LodTensor, GPU) {
   platform::CUDAPlace place;
+  RunTestLodTensor(place);
+}
+
+TEST(LodTensor, CPU) {
+  platform::CPUPlace place;
   RunTestLodTensor(place);
 }

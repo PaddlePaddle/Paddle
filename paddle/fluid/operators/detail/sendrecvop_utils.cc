@@ -334,18 +334,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   msg->Swap(&tmp);
 }
 
-/*
-void GetOnlyMessageSkeleton(const ::grpc::ByteBuffer& buf,
-                            sendrecv::VariableMessage* msg) {
-  // sendrecv::VariableMessage meta;
-  GrpcByteBufferSource source;
-  source.Init(buf);
-  ::google::protobuf::io::CodedInputStream input(&source);
-  PADDLE_ENFORCE(msg->ParseFromCodedStream(&input));
-  PADDLE_ENFORCE(input.ConsumedEntireMessage());
-}
-*/
-
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                framework::Variable* var) {
