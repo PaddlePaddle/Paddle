@@ -703,7 +703,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
     RunOp(pending_vars, op);
   }
 
-  while (!pending_ops.empty()) {
+  while (!pending_vars.empty()) {
     VarHandleBase *ready_var = nullptr;
     for (auto &pair : pending_vars) {
       if (pair.second) {
@@ -716,6 +716,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
       if (member_->exception_) {
         throw * member_->exception_;
       }
+      VLOG(3) << pending_vars.size();
 
       continue;
     }
@@ -748,9 +749,7 @@ void ParallelExecutor::RunOp(
 
   auto op_run = [ready_buffer, op, this] {
     try {
-      VLOG(10) << op->DebugString() << " " << op;
       op->Run();
-      VLOG(10) << "Done " << op;
       for (auto *ready : *ready_buffer) {
         *ready = true;
       }
