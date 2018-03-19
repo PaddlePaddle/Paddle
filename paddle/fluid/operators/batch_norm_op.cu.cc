@@ -28,7 +28,7 @@ using DataLayout = framework::DataLayout;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
-using ScalingParamType = typename CudnnDataType<T>::ScalingParamType;
+using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 void ExtractNCWHD(const framework::DDim &dims, const DataLayout &data_layout,
                   int *N, int *C, int *H, int *W, int *D) {
@@ -122,15 +122,16 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 
     // alloc memory
     y->mutable_data<T>(ctx.GetPlace());
-    mean_out->mutable_data<ScalingParamType<T>>(ctx.GetPlace());
-    variance_out->mutable_data<ScalingParamType<T>>(ctx.GetPlace());
-    saved_mean->mutable_data<ScalingParamType<T>>(ctx.GetPlace());
-    saved_variance->mutable_data<ScalingParamType<T>>(ctx.GetPlace());
+    mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    math::SetConstant<platform::CUDADeviceContext, ScalingParamType<T>> functor;
-    functor(dev_ctx, saved_mean, static_cast<ScalingParamType<T>>(0));
-    functor(dev_ctx, saved_variance, static_cast<ScalingParamType<T>>(0));
+    math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+        functor;
+    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
+    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
     auto handle = dev_ctx.cudnn_handle();
 
@@ -151,10 +152,10 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
           CudnnDataType<T>::kZero(), data_desc_, x->template data<T>(),
           data_desc_, y->template mutable_data<T>(ctx.GetPlace()),
-          bn_param_desc_, scale->template data<ScalingParamType<T>>(),
-          bias->template data<ScalingParamType<T>>(),
-          est_mean->template data<ScalingParamType<T>>(),
-          est_var->template data<ScalingParamType<T>>(), epsilon));
+          bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
+          bias->template data<BatchNormParamType<T>>(),
+          est_mean->template data<BatchNormParamType<T>>(),
+          est_var->template data<BatchNormParamType<T>>(), epsilon));
     } else {
       // Run training mode.
       // obtain running mean and running inv var, and see if we need to
@@ -165,14 +166,15 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           handle, mode_, CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
           data_desc_, x->template data<T>(), data_desc_,
           y->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
-          scale->template data<ScalingParamType<T>>(),
-          bias->template data<ScalingParamType<T>>(), this_factor,
-          mean_out->template mutable_data<ScalingParamType<T>>(ctx.GetPlace()),
-          variance_out->template mutable_data<ScalingParamType<T>>(
+          scale->template data<BatchNormParamType<T>>(),
+          bias->template data<BatchNormParamType<T>>(), this_factor,
+          mean_out->template mutable_data<BatchNormParamType<T>>(
               ctx.GetPlace()),
-          epsilon, saved_mean->template mutable_data<ScalingParamType<T>>(
+          variance_out->template mutable_data<BatchNormParamType<T>>(
+              ctx.GetPlace()),
+          epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
                        ctx.GetPlace()),
-          saved_variance->template mutable_data<ScalingParamType<T>>(
+          saved_variance->template mutable_data<BatchNormParamType<T>>(
               ctx.GetPlace())));
     }
 
