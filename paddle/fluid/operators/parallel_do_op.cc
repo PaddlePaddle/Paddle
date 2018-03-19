@@ -144,11 +144,17 @@ class ParallelDoOp : public framework::OperatorBase {
       PADDLE_ENFORCE(scope.FindVar(param)->IsType<LoDTensor>(),
                      "Only support parameter type as LoDTensor");
       auto &src = scope.FindVar(param)->Get<LoDTensor>();
-      for (size_t i = 0; i < sub_scopes.size(); ++i) {
+
+      // make a copy of each GPU place, starting from the second
+      // place
+      for (size_t i = 1; i < sub_scopes.size(); ++i) {
         auto &place = places[i];
         auto *sub_scope = sub_scopes[i];
-        auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
-        framework::TensorCopy(src, place, dst);
+        auto exists = sub_scope->FindVarLocally(param) != nullptr;
+        if (!exists && platform::is_gpu_place(place)) {
+          auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
+          framework::TensorCopy(src, place, dst);
+        }
       }
     }
     WaitOnPlaces(places);
@@ -281,7 +287,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
         continue;
       }
       VLOG(3) << "Accumulating " << s;
-      if (s == framework::kEmptyVarName) continue;
+
       std::string tmp_name;
       auto *tmp = sub_scopes[0]->Var(&tmp_name);
 

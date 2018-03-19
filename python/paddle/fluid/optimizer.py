@@ -23,6 +23,7 @@ from initializer import Constant
 from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
 from clip import append_gradient_clip_ops, error_clip_callback
+import py_paddle.swig_paddle as api
 
 __all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
 
@@ -164,7 +165,8 @@ class Optimizer(object):
     def create_optimization_pass(self,
                                  parameters_and_grads,
                                  loss,
-                                 startup_program=None):
+                                 startup_program=None,
+                                 block=None):
         """Add optimization operators to update gradients to variables.
 
         Args:
@@ -186,12 +188,13 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Create any accumulators
-        program = loss.block.program
+        if block is None:
+            block = loss.block
+        program = block.program
         with program_guard(program, startup_program):
-            global_block = framework.default_main_program().global_block()
-            start = len(global_block.ops)
+            start = len(block.ops)
             self.helper = LayerHelper(self.__class__.__name__)
-            self._create_accumulators(loss.block,
+            self._create_accumulators(block,
                                       [p[0] for p in parameters_and_grads])
             self._create_global_learning_rate()
 
@@ -199,16 +202,16 @@ class Optimizer(object):
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[0].trainable is True and param_and_grad[
                         1] is not None:
-                    optimize_op = self._append_optimize_op(loss.block,
+                    optimize_op = self._append_optimize_op(block,
                                                            param_and_grad)
                     optimize_ops.append(optimize_op)
 
             # Get custom finish ops for subclasses
             # FIXME: Need to fix this once we figure out how to handle dependencies
-            self._finish_update(loss.block)
+            self._finish_update(block)
 
-            end = len(global_block.ops)
-            return global_block.slice_ops(start, end)
+            end = len(block.ops)
+            return block.slice_ops(start, end)
 
     def minimize(self,
                  loss,
@@ -231,8 +234,65 @@ class Optimizer(object):
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)
 
-        optimize_ops = self.create_optimization_pass(params_grads, loss,
-                                                     startup_program)
+        parallel_scopes = None
+        places = None
+        parallel_place = None
+        for op in loss.block.ops:
+            if op.type == "parallel_do":
+                places = [loss.block.var(arg) for arg in op.input("places")]
+                parallel_scopes = [
+                    loss.block.var(arg) for arg in op.output("parallel_scopes")
+                ]
+            if op.type == "get_places":
+                parallel_place = op.attrs.get('device_type', None)
+
+        if parallel_place is None:
+            parallel_place = "AUTO"
+
+        cpu_place = True
+        if parallel_place is "CUDA":
+            cpu_place = False
+
+        if parallel_place is "AUTO" and api.isUsingGpu():
+            # It's still possible that the program will run on a CPU place executor,
+            # however it can't be detected at compile-time now.
+            # TODO(helin): improve this situation.
+            cpu_place = False
+
+        need_parallel_optimize = not cpu_place and parallel_scopes is not None and places is not None
+
+        if need_parallel_optimize:
+            program = loss.block.program
+            optimize_block = program.create_block()
+            optimize_ops = self.create_optimization_pass(
+                params_grads,
+                loss,
+                startup_program=startup_program,
+                block=optimize_block)
+
+            optimize_internal_params = []
+            for op in optimize_ops:
+                for x in op.input_names:
+                    inputs = op.input(x)
+                    for input in inputs:
+                        v = loss.block.var(input)
+                        optimize_internal_params.append(v)
+
+            loss.block.append_op(
+                type='parallel_do',
+                inputs={
+                    'inputs': [],
+                    'parameters': optimize_internal_params,
+                    'places': places,
+                },
+                outputs={'outputs': [],
+                         'parallel_scopes': parallel_scopes},
+                attrs={'sub_block': optimize_block,
+                       'use_nccl': False})
+        else:
+            optimize_ops = self.create_optimization_pass(
+                params_grads, loss, startup_program=startup_program)
+
         return optimize_ops, params_grads
 
 
