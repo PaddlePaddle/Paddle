@@ -483,8 +483,77 @@ DEVICE inline bool operator>=(const half& a, const half& b) {
 
 #endif  // PADDLE_CUDA_FP16
 
-// Arithmetic operators on ARMv8.2-A CPU
-#if defined(PADDLE_WITH_NATIVE_FP16)
+// Arithmetic operators for float16 on GPU
+#if defined(PADDLE_CUDA_FP16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+DEVICE inline float16 operator+(const float16& a, const float16& b) {
+  return float16(__hadd(half(a), half(b)));
+}
+
+DEVICE inline float16 operator-(const float16& a, const float16& b) {
+  return float16(__hsub(half(a), half(b)));
+}
+
+DEVICE inline float16 operator*(const float16& a, const float16& b) {
+  return float16(__hmul(half(a), half(b)));
+}
+
+DEVICE inline float16 operator/(const float16& a, const float16& b) {
+  // TODO(kexinzhao): check the cuda version that starts to support __hdiv
+  float num = __half2float(half(a));
+  float denom = __half2float(half(b));
+  return float16(num / denom);
+}
+
+DEVICE inline float16 operator-(const float16& a) {
+  return float16(__hneg(half(a)));
+}
+
+DEVICE inline float16& operator+=(float16& a, const float16& b) {
+  a = a + b;
+  return a;
+}
+
+DEVICE inline float16& operator-=(float16& a, const float16& b) {
+  a = a - b;
+  return a;
+}
+
+DEVICE inline float16& operator*=(float16& a, const float16& b) {
+  a = a * b;
+  return a;
+}
+
+DEVICE inline float16& operator/=(float16& a, const float16& b) {
+  a = a / b;
+  return a;
+}
+
+DEVICE inline bool operator==(const float16& a, const float16& b) {
+  return __heq(half(a), half(b));
+}
+
+DEVICE inline bool operator!=(const float16& a, const float16& b) {
+  return __hne(half(a), half(b));
+}
+
+DEVICE inline bool operator<(const float16& a, const float16& b) {
+  return __hlt(half(a), half(b));
+}
+
+DEVICE inline bool operator<=(const float16& a, const float16& b) {
+  return __hle(half(a), half(b));
+}
+
+DEVICE inline bool operator>(const float16& a, const float16& b) {
+  return __hgt(half(a), half(b));
+}
+
+DEVICE inline bool operator>=(const float16& a, const float16& b) {
+  return __hge(half(a), half(b));
+}
+
+// Arithmetic operators for float16 on ARMv8.2-A CPU
+#elif defined(PADDLE_WITH_NATIVE_FP16)
 HOST inline float16 operator+(const float16& a, const float16& b) {
   float16 res;
   asm volatile(
@@ -668,7 +737,7 @@ HOST inline bool operator>=(const float16& a, const float16& b) {
   return (res & 0xffff) != 0;
 }
 
-// Arithmetic operators, software emulated on other CPU
+// Arithmetic operators for float16, software emulated on other CPU/GPU
 #else
 HOSTDEVICE inline float16 operator+(const float16& a, const float16& b) {
   return float16(float(a) + float(b));
