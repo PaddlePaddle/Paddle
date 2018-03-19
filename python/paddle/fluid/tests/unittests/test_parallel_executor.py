@@ -16,6 +16,7 @@ import unittest
 import paddle.fluid as fluid
 import paddle.v2 as paddle
 import paddle.v2.dataset.mnist as mnist
+import numpy
 
 
 class ParallelExecutor(unittest.TestCase):
@@ -66,4 +67,16 @@ class ParallelExecutor(unittest.TestCase):
             act_places,
             set([p.name for p in main.global_block().iter_parameters()]),
             startup.desc, main.desc, loss.name, fluid.global_scope())
-        exe.run()
+        exe.run([loss.name], 'fetched_var')
+
+        first_loss = numpy.array(fluid.global_scope().find_var('fetched_var')
+                                 .get_lod_tensor_array()[0])
+
+        for i in xrange(10):
+            exe.run([], 'fetched_var')
+        exe.run([loss.name], 'fetched_var')
+        last_loss = numpy.array(fluid.global_scope().find_var('fetched_var')
+                                .get_lod_tensor_array()[0])
+
+        print first_loss, last_loss
+        self.assertGreater(first_loss[0], last_loss[0])

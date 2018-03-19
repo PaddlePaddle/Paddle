@@ -40,7 +40,8 @@ class ParallelExecutor {
                             const ProgramDesc& main_program,
                             const std::string& loss_var_name, Scope* scope);
 
-  std::vector<LoDTensor> Run(const std::vector<std::string>& fetch_tensors);
+  void Run(const std::vector<std::string>& fetch_tensors,
+           const std::string& fetched_var_name = "fetched_var");
 
  private:
   ParallelExecutorPrivate* member_;
