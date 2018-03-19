@@ -131,6 +131,7 @@ struct ScaleLossGradOpHandle : public OpHandle {
       : coeff_(static_cast<float>(1.0 / num_dev)),
         scope_(scope),
         place_(place) {
+    cudaSetDevice(boost::get<platform::CUDAPlace>(place_).device);
     PADDLE_ENFORCE(cudaEventCreateWithFlags(&ev_, cudaEventDisableTiming));
     VLOG(3) << "Create " << ev_;
   }
