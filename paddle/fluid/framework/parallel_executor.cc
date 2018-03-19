@@ -46,6 +46,8 @@ struct VarHandle : public VarHandleBase {
     return ss.str();
   }
 
+  // version field currently is not used, however, just store the version to
+  // debug easily.
   size_t version_;
   std::string name_;
   platform::Place place_;
@@ -742,7 +744,7 @@ void ParallelExecutor::RunOp(
 
   auto op_run = [ready_buffer, op, this] {
     try {
-      // TODO(yy) Check Previous Op has same dev ctx.
+      VLOG(10) << op->DebugString();
       op->Run();
       for (auto *ready : ready_buffer) {
         *ready = true;
