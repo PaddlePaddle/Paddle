@@ -120,24 +120,24 @@ template struct LRNGradFunctor<platform::CPUDeviceContext, float>;
 template struct LRNGradFunctor<platform::CPUDeviceContext, double>;
 
 namespace {
-   framework::OpKernelType GetExpectedLRNKernel(
-      const framework::ExecutionContext& ctx) {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
+framework::OpKernelType GetExpectedLRNKernel(
+    const framework::ExecutionContext& ctx) {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kMKLDNN;
-    }
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+  }
 #endif
 
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout_, library_);
-  }
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+      layout_, library_);
 }
+}  // namespace
 
 class LRNOp : public framework::OperatorWithKernel {
  public:
@@ -214,11 +214,6 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddAttr<std::string>("algorithm",
-                         "(string default ACROSS_CHANNELS"
-                         "An optional string: \"ACROSS_CHANNELS\", "
-                         "\"WITHIN_CHANNEL\". Used by MKLDNN library")
-        .SetDefault("ACROSS_CHANNELS");
 
     AddComment(R"DOC(
 Local Response Normalization Operator.
