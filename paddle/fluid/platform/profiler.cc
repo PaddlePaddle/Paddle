@@ -147,17 +147,46 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
   name_ = name;
   PushEvent(name_, dev_ctx_);
   // Maybe need the same push/pop behavior.
-  SetCurAnnotation(name_.c_str());
+  SetCurAnnotation(name_);
 }
 
 RecordEvent::~RecordEvent() {
   if (g_state == ProfilerState::kDisabled) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
-    tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec());
+    tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
+                          BlockDepth(), CurThread());
   }
   ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
+}
+
+RecordBlock::RecordBlock(int block_id) : start_ns_(PosixInNsec()) {
+  if (g_state == ProfilerState::kDisabled) return;
+  SetCurBlock(block_id);
+  name_ = string::Sprintf("block_%d", block_id);
+}
+
+RecordBlock::~RecordBlock() {
+  if (g_state == ProfilerState::kDisabled) return;
+  DeviceTracer* tracer = GetDeviceTracer();
+  if (tracer) {
+    // We try to put all blocks at the same nested depth in the
+    // same timeline lane. and distinguish the using thread_id.
+    tracer->AddCPURecords(name_, start_ns_, PosixInNsec(), BlockDepth(),
+                          CurThread());
+  }
+  ClearCurBlock();
+}
+
+RecordThread::RecordThread(int thread_id) {
+  if (g_state == ProfilerState::kDisabled) return;
+  SetCurThread(thread_id);
+}
+
+RecordThread::~RecordThread() {
+  if (g_state == ProfilerState::kDisabled) return;
+  ClearCurThread();
 }
 
 void EnableProfiler(ProfilerState state) {

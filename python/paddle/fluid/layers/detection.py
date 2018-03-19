@@ -129,8 +129,13 @@ def detection_output(loc,
         target_box=loc,
         code_type='decode_center_size')
 
-    nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
+    old_shape = scores.shape
+    scores = ops.reshape(x=scores, shape=(-1, old_shape[-1]))
+    scores = nn.softmax(input=scores)
+    scores = ops.reshape(x=scores, shape=old_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
+
+    nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
     helper.append_op(
         type="multiclass_nms",
         inputs={'Scores': scores,
@@ -561,16 +566,16 @@ def multi_box_head(inputs,
                    base_size,
                    num_classes,
                    aspect_ratios,
-                   min_ratio,
-                   max_ratio,
+                   min_ratio=None,
+                   max_ratio=None,
                    min_sizes=None,
                    max_sizes=None,
                    steps=None,
                    step_w=None,
                    step_h=None,
                    offset=0.5,
-                   variance=[0.1, 0.1, 0.1, 0.1],
-                   flip=False,
+                   variance=[0.1, 0.1, 0.2, 0.2],
+                   flip=True,
                    clip=False,
                    kernel_size=1,
                    pad=0,
@@ -613,7 +618,7 @@ def multi_box_head(inputs,
             the inputs[i] will be automatically calculated. Default: None.
        offset(float): Prior boxes center offset. Default: 0.5
        variance(list|tuple): the variances to be encoded in prior boxes.
-            Default:[0.1, 0.1, 0.1, 0.1].
+            Default:[0.1, 0.1, 0.2, 0.2].
        flip(bool): Whether to flip aspect ratios. Default:False.
        clip(bool): Whether to clip out-of-boundary boxes. Default: False.
        kernel_size(int): The kernel size of conv2d. Default: 1.
@@ -667,6 +672,19 @@ def multi_box_head(inputs,
         helper = LayerHelper("prior_box", **locals())
         dtype = helper.input_dtype()
 
+        attrs = {
+            'min_sizes': min_sizes,
+            'aspect_ratios': aspect_ratios,
+            'variances': variance,
+            'flip': flip,
+            'clip': clip,
+            'step_w': step_w,
+            'step_h': step_h,
+            'offset': offset
+        }
+        if len(max_sizes) > 0 and max_sizes[0] > 0:
+            attrs['max_sizes'] = max_sizes
+
         box = helper.create_tmp_variable(dtype)
         var = helper.create_tmp_variable(dtype)
         helper.append_op(
@@ -675,17 +693,7 @@ def multi_box_head(inputs,
                     "Image": image},
             outputs={"Boxes": box,
                      "Variances": var},
-            attrs={
-                'min_sizes': min_sizes,
-                'max_sizes': max_sizes,
-                'aspect_ratios': aspect_ratios,
-                'variances': variance,
-                'flip': flip,
-                'clip': clip,
-                'step_w': step_w,
-                'step_h': step_h,
-                'offset': offset
-            })
+            attrs=attrs, )
         return box, var
 
     def _reshape_with_axis_(input, axis=1):
@@ -713,7 +721,7 @@ def multi_box_head(inputs,
     if num_layer <= 2:
         assert min_sizes is not None and max_sizes is not None
         assert len(min_sizes) == num_layer and len(max_sizes) == num_layer
-    else:
+    elif min_sizes is None and max_sizes is None:
         min_sizes = []
         max_sizes = []
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
@@ -758,9 +766,6 @@ def multi_box_head(inputs,
             min_size = [min_size]
         if not _is_list_or_tuple_(max_size):
             max_size = [max_size]
-        if not (len(max_size) == len(min_size)):
-            raise ValueError(
-                'the length of max_size and min_size should be equal.')
 
         aspect_ratio = []
         if aspect_ratios is not None:
@@ -778,7 +783,7 @@ def multi_box_head(inputs,
 
         num_boxes = box.shape[2]
 
-        # get box_loc
+        # get loc
         num_loc_output = num_boxes * 4
         mbox_loc = nn.conv2d(
             input=input,
@@ -795,7 +800,7 @@ def multi_box_head(inputs,
         mbox_loc_flatten = nn.reshape(mbox_loc, shape=new_shape)
         mbox_locs.append(mbox_loc_flatten)
 
-        # get conf_loc
+        # get conf
         num_conf_output = num_boxes * num_classes
         conf_loc = nn.conv2d(
             input=input,

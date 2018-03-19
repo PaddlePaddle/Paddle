@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>  // for unique_ptr
 #include <mutex>   // for call_once
+#include <set>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
@@ -99,6 +100,18 @@ void Scope::DeleteScope(Scope* scope) {
     delete scope;
   } else {
     Async([scope] { delete scope; });
+  }
+}
+
+void Scope::EraseVars(std::vector<std::string>& var_names) {
+  std::set<std::string> var_set(var_names.begin(), var_names.end());
+  for (auto it = vars_.begin(); it != vars_.end();) {
+    if (var_set.find(it->first) != var_set.end()) {
+      delete it->second;
+      it = vars_.erase(it);
+    } else {
+      ++it;
+    }
   }
 }
 

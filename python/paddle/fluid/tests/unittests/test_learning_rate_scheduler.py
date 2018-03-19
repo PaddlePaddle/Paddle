@@ -98,6 +98,9 @@ class TestLearningRateDecay(unittest.TestCase):
         exe = fluid.Executor(place)
 
         exe.run(fluid.default_startup_program())
+
+        fluid.memory_optimize(fluid.default_main_program())
+
         for step in range(10):
             lr_val, = exe.run(fluid.default_main_program(),
                               feed={},

@@ -33,6 +33,15 @@ int GetCUDADeviceCount() {
   return count;
 }
 
+int GetCUDAComputeCapability(int id) {
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+  cudaDeviceProp device_prop;
+  PADDLE_ENFORCE(cudaGetDeviceProperties(&device_prop, id),
+                 "cudaGetDeviceProperties failed in "
+                 "paddle::platform::GetCUDAComputeCapability");
+  return device_prop.major * 10 + device_prop.minor;
+}
+
 int GetCUDAMultiProcessors(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int count;
