@@ -34,6 +34,9 @@ class ShuffleReader : public framework::DecoratedReader {
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
+    if (!HasNext()) {
+      PADDLE_THROW("There is no next data!");
+    }
     if (iteration_pos_ >= buffer_.size()) {
       VLOG(10) << "Resetting shuffle buffer";
       ReadIntoBuffers();
