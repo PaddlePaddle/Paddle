@@ -146,6 +146,7 @@ struct ScaleLossGradOpHandle : public OpHandle {
     if (platform::is_cpu_place(place_)) {
       *tmp = coeff_;
     } else {
+      VLOG(3) << "Scale loss on place" << place_;
       auto stream =
           static_cast<platform::CUDADeviceContext *>(this->dev_ctx_[place_])
               ->stream();
