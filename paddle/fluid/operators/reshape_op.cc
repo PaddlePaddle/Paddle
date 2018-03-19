@@ -44,22 +44,22 @@ class ReshapeOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Out", x_dims);
     } else {
       ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
-
-      // FIXME(caoying): When shape of the output tensor is determined during
-      // runtime, LoD information of X will not passed to the output.
-      if (shape[0] == x_dims[0]) {
-        // Only pass LoD when the first dimension of output and Input(X)
-        // are the same.
-        ctx->ShareLoD("X", /*->*/ "Out");
-      }
     }
+
+    // NOTE: Reshape op cannot reshape an input sequence batch into an output
+    // sequence batch that has a different number of time steps.
+    // Here output always shares the LoD information with input. But if
+    // Attr(shape) contains 0 or -1, the actual output shape can only be
+    // determined during runtime. The check for wheather it is a valid output
+    // sequence batch is performed in runtime.
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  private:
   bool ValidateShape(const std::vector<int> &shape,
                      const framework::DDim &input_dim,
                      std::vector<int64_t> &output_shape) const {
-    // only one dimension canbe set to -1, whose size will be automatically
+    // only one dimension can be set to -1, whose size will be automatically
     // infered.
     const int64_t unknown_index = -1;
     const auto in_size = framework::product(input_dim);
@@ -82,7 +82,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     }
     PADDLE_ENFORCE_LE(
         neg_dims_idx.size(), 1,
-        "Only one input dimension of Attr(shape) may be unknown.");
+        "Only one input dimension of Attr(shape) can be unknown.");
 
     output_shape.resize(shape.size(), 0);
     std::transform(shape.begin(), shape.end(), output_shape.begin(),
@@ -113,22 +113,46 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>(
         "shape", "(std::vector<int>) Target shape of reshape operator.");
     AddAttr<bool>("inplace",
-                  "Change the source tensor's shape without copy memory.")
-        .SetDefault(true);
+                  "(default: false) Change the source tensor's shape without "
+                  "memory copy. When Attr(inplace) is set true, the output "
+                  "tensor shares memory with Input(X), otherwise, a new output "
+                  "tensor is created, and its data are copied from Input(x).")
+        .SetDefault(false);
     AddComment(R"DOC(
 Reshape Operator.
 
-Reshape Input(X) into the shape specified by Attr(shape).
+Reshape Input(X) into the shape specified by Attr(shape). The data in Input(X)
+are unchanged.
 
-An example:
-Given a 2-D tensor X with 2 rows and 2 columns : [[1, 2], [3, 4]]
+Examples:
 
-and target shape = [1, 4], the reshape operator will transform
-the tensor X into a 2-D tensor: [[1, 2, 3, 4]]
+1. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
+specified by Attr(shape) is [6, 8], the reshape operator will transform Input(X)
+into a 2-D tensor with shape [6, 8] and leaving Input(X)'s data unchanged.
 
-One dimension in the target shape can be set -1, representing that its
-size is unknown. In this case, the real dimension will be infered from
-the original shape of Input(X) and other dimensions in the target shape.
+1. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
+specified by Attr(shape) is [2, 3, -1, 2], the reshape operator will transform
+Input(X) into a 4-D tensor with shape [2, 3, 4, 2] and leaving Input(X)'s data
+unchanged. In this case, one and only dimension of Attr(shape) can be set to -1,
+the value of this dimension is inferred from the total element number of
+Input(X) and remaining dimensions.
+
+1. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
+specified by Attr(shape) is [-1, 0, 3, 2], the reshape operator will transform
+Input(X) into a 4-D tensor with shape [2, 4, 3, 2] and leaving Input(X)'s data
+unchanged. In this case, besides -1, 0 means the actual dimension value is going
+to be copied from the corresponding dimension of Input(X).
+
+Note:
+
+1. One and only one dimension in Attr(shape) can be set -1. In this case,
+the actual dimension value will be infered from the total element number of
+Input(X) and remaining dimensions.
+1. More than one dimensions in Attr(shape) can be set to 0, which means the real
+dimension value will be copied from Input(X) at runtime. Note that the index of
+0 can not access Rank(X). For example, Input(X) is a 3-D tensor with shape
+[2, 3, 4], Attr(shape) = [2, 3, 2, 0] is an invalid input.
+
 )DOC");
   }
 };

@@ -3299,13 +3299,35 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
 
 def reshape(x, shape, act=None, inplace=True, name=None):
     """
-    Gives a new shape to Tensor without changing its data.
-    This layer takes a tensor as input and the attribute shape specifying the
-    new shape. The shape attribute must be specified. At most one dimension of
-    the new shape can be -1. In this case, the value is inferred from the size
-    of the tensor and the remaining dimensions. A dimension could also be 0,
-    in which case the actual dimension value is going to be copied from the
-    input tensor.
+    Gives a new shape to the input Tensor without changing its data.
+
+    This layer takes a tensor and the attribute shape which specifies the
+    new shape as its inputs. The shape attribute must be given. It cannot be
+    empty. One and only one dimension of shape can be -1. More than one
+    dimension of shape can be 0.
+
+    -1 means the value of this dimension is inferred from the total element
+    number of x and remaining dimensions.
+
+    0 means the actual dimension value is going to be copied from the
+    corresponding dimension of x.
+
+    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    specified by Attr(shape) is [6, 8], the reshape operator will transform x
+    into a 2-D tensor with shape [6, 8] and leaving x's data unchanged.
+
+    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    specified by Attr(shape) is [2, 3, -1, 2], the reshape operator will
+    transform x into a 4-D tensor with shape [2, 3, 4, 2] and leaving x's data
+    unchanged. In this case, one and only dimension of Attr(shape) can be set
+    to -1, the value of this dimension is inferred from the total element number
+    of x and remaining dimensions.
+
+    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    specified by Attr(shape) is [-1, 0, 3, 2], the reshape operator will
+    transform x into a 4-D tensor with shape [2, 4, 3, 2] and leaving x's data
+    unchanged. In this case, besides -1, 0 means the actual dimension value is
+    going to be copied from the corresponding dimension of x during runtime.
 
     Args:
         input(variable): The input tensor.
@@ -3320,18 +3342,10 @@ def reshape(x, shape, act=None, inplace=True, name=None):
 
     Examples:
         .. code-block:: python
-
-        Given a 2-D tensor X with shape [2 x 2], and the new shape: [1, 4].
-        The reshape layer will change tensor X into a 2-D tensor with
-        shape [1 x 4] with its data unchanged.
-
-        Given a 3-D tensor x with shape [2, 3, 4] and the new shape: [3, -1].
-        The reshape layer will change tensor X into a 2-D tensor with shape:
-        [3 x 8] with its data unchanged.
-
-        Given a 3-D tensor x with shape [2, 3, 8] and the new shape:
-        [-1, 0, 2, 2]. The reshape layer will change tensor X into a 4-D tensor
-        with shape [4, 3, 2, 2] with its data unchanged.
+            data = fluid.layers.data(name='data', shape=[2, 4, 6], dtype='float32')
+            reshaped = fluid.layers.reshape(
+                x=data, shape=[-1, 0, 3, 2], act='tanh', inplace=True
+            )
 
     """
 
