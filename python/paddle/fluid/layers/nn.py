@@ -3295,7 +3295,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     return counter
 
 
-def lod_reset(x, y, target_lod=None):
+def lod_reset(x, y=None, target_lod=None):
     """
     LoD Reset Operator. Set LoD of **x** to a new one specified by **y** or
     **target_lod**. When **y** provided, **y.lod** would be considered as target
