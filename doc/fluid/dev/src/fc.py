@@ -79,3 +79,45 @@ def fc(input,
           data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
           fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
+
+
+def lrn(input, n=5, k=2.0, alpha=1e-4, beta=0.75, name=None):
+    """
+    **Local Response Normalization Operator**
+
+    This operator comes from the paper:
+    <<ImageNet Classification with Deep Convolutional Neural Networks>>.
+
+    .. math::
+
+        Output(i, x, y) = Input(i, x, y) / \left(
+        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
+        (Input(j, x, y))^2 \right)^{\beta}
+
+    In the above equation:
+
+    * :math:`n`: The number of channels to sum over.
+    * :math:`k`: The offset (usually positive to avoid dividing by 0).
+    * :math:`alpha`: The scaling parameter.
+    * :math:`beta`: The exponent.
+
+    Args:
+        input(Variable): The input tensor of this layer. The dims of the input tensor must be 4 and it's order should be 'NCHW'.
+        n(int, default 5): The number of channels to sum over.
+        k(float, default 2.0): An offset (usually positive to avoid dividing by 0).
+        alpha(float, default 1e-4): The scaling parameter.
+        beta(float, default 0.75): The exponent.
+        name(str, default None): A name for this operation.
+
+    Raises:
+        ValueError: If rank of the input tensor is not 4.
+
+    Returns:
+        A tensor variable storing the transformation result.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name="data", shape=[3, 112, 112], dtype="float32")
+          lrn = fluid.layers.lrn(input=data)
+    """
