@@ -147,6 +147,14 @@ def generate_layer_fn(op_type):
                     raise ValueError("input of {0} must be variable".format(
                         op_type))
 
+                if dtype is None:
+                    dtype = each.dtype
+                elif dtype != each.dtype:
+                    if op_type not in ["gather", "scatter"]:
+                        raise ValueError(
+                            "operator {0} must input same dtype. {1} vs {2}".
+                            format(op_type, dtype, each.dtype))
+
         return dtype
 
     def func(*args, **kwargs):
