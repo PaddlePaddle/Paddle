@@ -155,7 +155,7 @@ struct ScaleLossGradOpHandle : public OpHandle {
       VLOG(3) << "2";
       memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
                    platform::CPUPlace(), &coeff_, sizeof(float), stream);
-      PADDLE_ENFORCE(cudaGetLastError());
+      PADDLE_ENFORCE(cudaDeviceSynchronize());
       VLOG(3) << "3";
       PADDLE_ENFORCE(cudaEventRecord(ev_, stream));
       VLOG(3) << "4";
