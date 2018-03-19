@@ -159,11 +159,12 @@ void DoubleBufferReader::PrefetchThreadFunc() {
 
     if (!buffer_->Send(&batch)) {
       VLOG(5) << "WARNING: The double buffer channel has been closed. The "
-                 "prefetch thread terminates.";
-      break;
+                 "prefetch thread terminate.";
+      return;
     }
   }
   buffer_->Close();
+  VLOG(5) << "Prefetch thread terminates.";
 }
 
 bool DoubleBufferReader::HasNext() const {
