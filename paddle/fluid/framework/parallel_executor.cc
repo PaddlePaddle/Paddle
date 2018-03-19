@@ -714,12 +714,6 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
         throw * member_->exception_;
       }
 
-      {
-        for (auto &pair : pending_vars) {
-          VLOG(3) << pair.first->DebugString();
-        }
-      }
-
       std::this_thread::yield();
       continue;
     }
@@ -768,7 +762,8 @@ void ParallelExecutor::RunOp(
     }
   };
 
-  member_->pool_.enqueue(op_run);
+  op_run();
+  //  member_->pool_.enqueue(op_run);
 }
 }  // namespace framework
 }  // namespace paddle
