@@ -81,12 +81,13 @@ def fc(input,
     """
 
 
-def lrn(input, n=5, k=2.0, alpha=1e-4, beta=0.75, name=None):
+def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
     """
     **Local Response Normalization Operator**
 
-    This operator comes from the paper:
-    <<ImageNet Classification with Deep Convolutional Neural Networks>>.
+    Refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_.
+
+    The formula is as follows:
 
     .. math::
 
@@ -102,12 +103,12 @@ def lrn(input, n=5, k=2.0, alpha=1e-4, beta=0.75, name=None):
     * :math:`beta`: The exponent.
 
     Args:
-        input(Variable): The input tensor of this layer. The dims of the input tensor must be 4 and it's order should be 'NCHW'.
-        n(int, default 5): The number of channels to sum over.
-        k(float, default 2.0): An offset (usually positive to avoid dividing by 0).
-        alpha(float, default 1e-4): The scaling parameter.
-        beta(float, default 0.75): The exponent.
-        name(str, default None): A name for this operation.
+        input (Variable): The input tensor of this layer. The dimension of input tensor must be 4 and it's order should be 'NCHW'.
+        n (int, default 5): The number of channels to sum over.
+        k (float, default 1.0): An offset (usually positive to avoid dividing by 0).
+        alpha (float, default 1e-4): The scaling parameter.
+        beta (float, default 0.75): The exponent.
+        name (str, default None): A name for this operation.
 
     Raises:
         ValueError: If rank of the input tensor is not 4.
