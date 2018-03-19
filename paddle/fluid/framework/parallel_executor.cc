@@ -700,13 +700,14 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
   }
 
   while (!pending_ops.empty()) {
+    VLOG(1) << "1";
     VarHandleBase *ready_var = nullptr;
     for (auto &pair : pending_vars) {
       if (pair.second.load(std::memory_order_acquire)) {
         ready_var = pair.first;
       }
     }
-
+    VLOG(1) << "1";
     if (ready_var == nullptr) {
       // FIXME use conditional var instead of busy wait.
 
@@ -716,11 +717,11 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 
       continue;
     }
-
+    VLOG(1) << "1";
     pending_vars.erase(ready_var);
-
+    VLOG(1) << "1";
     to_run.clear();
-
+    VLOG(1) << "1";
     for (auto *op : ready_var->pending_ops_) {
       auto &deps = pending_ops[op];
       --deps;
@@ -728,13 +729,16 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
         to_run.emplace_back(op);
       }
     }
-
+    VLOG(1) << "1";
     for (auto *op : to_run) {
       pending_ops.erase(op);
       RunOp(pending_vars, op);
     }
+    VLOG(1) << "1";
   }
+  VLOG(1) << "1";
   fetch_ops.clear();
+  VLOG(1) << "1";
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<LoDTensorArray>() =
       fetched_data->tensors_;
 }
