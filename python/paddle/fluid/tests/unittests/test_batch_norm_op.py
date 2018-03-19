@@ -193,7 +193,7 @@ class TestBatchNormOpInference(OpTest):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
-    def check_with_place(place, data_layout, dtype, shape):
+    def check_with_place(self, place, data_layout, dtype, shape):
         epsilon = 0.00001
         if len(shape) == 2:
             x_shape = shape
@@ -209,11 +209,11 @@ class TestBatchNormOpInference(OpTest):
         scale_shape = [c]
 
         x_val = np.random.random_sample(x_shape).astype(dtype)
-        scale_val = np.random.random_sample(scale_shape).astype(dtype)
-        bias_val = np.random.random_sample(scale_shape).astype(dtype)
+        scale_val = np.random.random_sample(scale_shape).astype(np.float32)
+        bias_val = np.random.random_sample(scale_shape).astype(np.float32)
 
-        mean = np.zeros(scale_shape).astype(dtype)
-        variance = np.ones(scale_shape).astype(dtype)
+        mean = np.zeros(scale_shape).astype(np.float32)
+        variance = np.ones(scale_shape).astype(np.float32)
 
         y_out = _reference_testing(x_val, scale_val, bias_val, mean, variance,
                                    epsilon, data_layout).astype(dtype)
@@ -266,9 +266,13 @@ class TestBatchNormOpInference(OpTest):
         batch_norm_op.run(scope, place)
 
         # check inference result
-        self.__assert_close(y_tensor, y_out,
-                            "inference output are different at " + str(place) +
-                            ", " + data_layout + ", " + str(np.dtype(dtype)))
+        self.__assert_close(
+            y_tensor,
+            y_out,
+            "inference output are different at " + str(place) + ", " +
+            data_layout + ", " + str(np.dtype(dtype)) +
+            str(np.array(y_tensor)) + str(y_out),
+            atol=2e-2)
 
     def test_check_output(self):
         places = [core.CPUPlace()]
@@ -277,8 +281,9 @@ class TestBatchNormOpInference(OpTest):
 
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
-                check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(place, data_format, self.dtype,
+                                      [2, 3, 4, 5])
+                self.check_with_place(place, data_format, self.dtype, [2, 3])
 
 
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
@@ -294,9 +299,9 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                check_output_with_place(place, data_format, self.dtype,
-                                        [2, 3, 4, 5])
-                check_output_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(place, data_format, self.dtype,
+                                      [2, 3, 4, 5])
+                self.check_with_place(place, data_format, self.dtype, [2, 3])
 
 
 class TestBatchNormOpTraining(OpTest):
