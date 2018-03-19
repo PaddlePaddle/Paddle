@@ -65,6 +65,10 @@ class MultiGPUExecutor {
   explicit MultiGPUExecutor(const std::vector<platform::Place>& places,
                             const std::unordered_set<std::string>& params);
 
+  // Init parameters on one device and broadcast them to other devices
+  void Init(const ProgramDesc& prog, int block_id,
+            bool create_local_scope = true, bool create_vars = true);
+
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
    *
@@ -76,10 +80,13 @@ class MultiGPUExecutor {
            bool create_local_scope = true, bool create_vars = true);
 
  private:
+  NCCLContext nccl_ctx_;
+
+  std::unordered_set<std::string> params_;
+  std::unordered_set<std::string> param_grads_;
+
   std::vector<framework::ExecutorWithAllReduce> exes_;
   std::vector<framework::Scope*> scopes_;
-  NCCLContext nccl_ctx_;
-  std::unordered_set<std::string> param_grads_;
 };
 
 }  // namespace framework

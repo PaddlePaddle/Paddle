@@ -108,7 +108,7 @@ void ExecutorWithAllReduce::RunOperators(const ExecutorPrepareContext* ctx,
 MultiGPUExecutor::MultiGPUExecutor(
     const std::vector<platform::Place>& places,
     const std::unordered_set<std::string>& params)
-    : nccl_ctx_(places) {
+    : nccl_ctx_(places), params_(params) {
   for (auto& param : params) {
     param_grads_.insert(GradVarName(param));
   }
@@ -116,6 +116,40 @@ MultiGPUExecutor::MultiGPUExecutor(
     exes_.push_back(
         framework::ExecutorWithAllReduce(place, &param_grads_, &nccl_ctx_));
     scopes_.push_back(new framework::Scope());
+  }
+}
+
+void MultiGPUExecutor::Init(const ProgramDesc& prog, int block_id,
+                            bool create_local_scope, bool create_vars) {
+  // init parameters on one device
+  exes_[0].Run(prog, scopes_[0], block_id, create_local_scope, create_vars);
+
+  for (auto* var_desc : prog.Block(0).AllVars()) {
+    if (var_desc->GetType() == proto::VarType::LOD_TENSOR) {
+      auto& main_tensor =
+          scopes_[0]->FindVar(var_desc->Name())->Get<LoDTensor>();
+      ncclDataType_t data_type = ToNCCLDataType(main_tensor.type());
+      auto& dims = main_tensor.dims();
+      size_t numel = main_tensor.numel();
+
+      platform::dynload::ncclGroupStart();
+      for (size_t i = 0; i < exes_.size(); ++i) {
+        void* buffer;
+        if (i == 0) {
+          buffer = const_cast<void*>(main_tensor.data<void>());
+        } else {
+          auto local_scope = scopes_[i];
+          auto* t = local_scope->Var(var_desc->Name())->GetMutable<LoDTensor>();
+          t->Resize(dims);
+          buffer = t->mutable_data(exes_[i].place_, main_tensor.type());
+        }
+
+        platform::dynload::ncclBcast(buffer, numel, data_type, 0,
+                                     nccl_ctx_.comms_[i],
+                                     nccl_ctx_.ctxs_[i]->stream());
+      }
+      platform::dynload::ncclGroupEnd();
+    }
   }
 }
 

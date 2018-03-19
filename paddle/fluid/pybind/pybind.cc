@@ -475,6 +475,7 @@ All parameter, weight, gradient are variables in Paddle.
              const std::unordered_set<std::string> &params) {
             new (&self) MultiGPUExecutor(places, params);
           })
+      .def("init", &MultiGPUExecutor::Init)
       .def("run", &MultiGPUExecutor::Run);
 #endif
 

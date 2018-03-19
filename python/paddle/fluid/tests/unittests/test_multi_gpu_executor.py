@@ -89,12 +89,12 @@ def vgg16_bn_drop(input):
 def run_benchmark(args):
     # Train program
     images = fluid.layers.fill_constant(
-        shape=(args.batch_size, 3, 200, 200), dtype='float32', value=0.01)
+        shape=(args.batch_size, 3, 200, 200), dtype='float32', value=0.1)
     predict = vgg16_bn_drop(images)
 
     avg_cost = fluid.layers.mean(x=predict)
 
-    fluid.layers.Print(predict, summarize=3)
+    # fluid.layers.Print(predict, summarize=3)
     fluid.layers.Print(avg_cost)
 
     # Optimization
@@ -120,14 +120,12 @@ def run_benchmark(args):
                                       ]))
 
     # Parameter initialization
-    exe.run(fluid.default_startup_program().desc, 0, True, True)
-
+    exe.init(fluid.default_startup_program().desc, 0, True, True)
     for iter_id in range(0, args.iterations):
         start = time.time()
         exe.run(fluid.default_main_program().desc, 0, True, True)
         end = time.time()
         print("iter=%d, elapse=%f" % (iter_id, (end - start)))
-        time.sleep(1)
 
 
 if __name__ == '__main__':
