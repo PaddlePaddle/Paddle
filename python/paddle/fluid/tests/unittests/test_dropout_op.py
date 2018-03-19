@@ -86,10 +86,13 @@ class TestDropoutOp5(OpTest):
 class TestFP16DropoutOp1(OpTest):
     def setUp(self):
         x = np.random.random((32, 64)).astype("float16")
+        prob = 0.35
+        out = x * (1.0 - prob)
+
         self.op_type = "dropout"
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {'dropout_prob': 0.35, 'fix_seed': True, 'is_test': True}
-        self.outputs = {'Out': x * (1.0 - self.attrs['dropout_prob'])}
+        self.attrs = {'dropout_prob': prob, 'fix_seed': True, 'is_test': True}
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         if core.is_compiled_with_cuda() and core.op_support_gpu("dropout"):
@@ -99,10 +102,13 @@ class TestFP16DropoutOp1(OpTest):
 class TestFP16DropoutOp2(OpTest):
     def setUp(self):
         x = np.random.random((32, 64, 3)).astype("float16")
+        prob = 0.75
+        out = x * (1.0 - prob)
+
         self.op_type = "dropout"
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {'dropout_prob': 0.75, 'is_test': True}
-        self.outputs = {'Out': x * (1.0 - self.attrs['dropout_prob'])}
+        self.attrs = {'dropout_prob': prob, 'is_test': True}
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         if core.is_compiled_with_cuda() and core.op_support_gpu("dropout"):
