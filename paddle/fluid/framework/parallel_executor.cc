@@ -193,7 +193,8 @@ struct FetchOpHandle : public OpHandle {
 
   void Run() override {
     for (auto *input : inputs_) {
-      input->generated_op_->Wait(nullptr);
+      auto *var = static_cast<VarHandle *>(input);
+      var->generated_op_->Wait(this->dev_ctx_[var->place_]);
     }
 
     tensors_.resize(inputs_.size());
