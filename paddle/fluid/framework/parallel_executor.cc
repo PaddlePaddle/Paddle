@@ -742,26 +742,29 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 void ParallelExecutor::RunOp(
     std::unordered_map<VarHandleBase *, std::atomic<bool>> &pending_vars,
     OpHandle *op) const {
-  std::vector<std::atomic<bool> *> ready_buffer;
+  std::vector<std::atomic<bool> *> *ready_buffer =
+      new std::vector<std::atomic<bool> *>();
   for (auto *var : op->outputs_) {
-    ready_buffer.emplace_back(&pending_vars[var]);
+    ready_buffer->emplace_back(&pending_vars[var]);
   }
 
   auto op_run = [ready_buffer, op, this] {
     try {
       VLOG(10) << op->DebugString();
       op->Run();
-      for (auto *ready : ready_buffer) {
+      for (auto *ready : *ready_buffer) {
         ready->store(true, std::memory_order_release);
       }
+      delete ready_buffer;
     } catch (platform::EnforceNotMet ex) {
       member_->exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";
     }
   };
-
+  VLOG(3) << "Enqueue";
   member_->pool_.enqueue(op_run);
+  VLOG(3) << "Done";
 }
 }  // namespace framework
 }  // namespace paddle
