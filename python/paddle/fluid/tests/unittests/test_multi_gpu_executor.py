@@ -91,10 +91,11 @@ def run_benchmark(args):
     images = fluid.layers.fill_constant(
         shape=(args.batch_size, 3, 200, 200), dtype='float32', value=0.01)
     predict = vgg16_bn_drop(images)
-    label = fluid.layers.fill_constant(
-        shape=(args.batch_size, 1), dtype='int64', value=0)
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+
+    avg_cost = fluid.layers.mean(x=predict)
+
+    fluid.layers.Print(predict, summarize=3)
+    fluid.layers.Print(avg_cost)
 
     # Optimization
     # Note the flag append_all_reduce=True
