@@ -56,28 +56,28 @@ class TestExecutor(unittest.TestCase):
         exe = Executor(place)
         feed = {'a': a_np, 'b': b_np, 'c': c_np}
 
-        prepared_ctx = exe.prepare(feed=feed, fetch_list=[out])
+        prepared_ctx = exe._prepare(feed=feed, fetch_list=[out])
         for _ in range(2):
-            outs = exe.run_prepared_ctx(ctx=prepared_ctx, feed=feed)
+            outs = exe._run_prepared_ctx(ctx=prepared_ctx, feed=feed)
             out_np = outs[0]
             self.assertEqual((100, 100), out_np.shape)
             self.assertTrue(numpy.allclose(out_np, numpy.dot(a_np, b_np)))
 
         new_out = mul(x=out, y=c)
-        new_prepared_ctx = exe.prepare(feed=feed, fetch_list=[new_out])
+        new_prepared_ctx = exe._prepare(feed=feed, fetch_list=[new_out])
 
         handle_equal = (prepared_ctx.handle == new_prepared_ctx.handle)
         self.assertFalse(handle_equal, "handle should not be equal")
 
         for _ in range(2):
-            outs = exe.run_prepared_ctx(ctx=new_prepared_ctx, feed=feed)
+            outs = exe._run_prepared_ctx(ctx=new_prepared_ctx, feed=feed)
             out_np = outs[0]
             self.assertEqual((100, 10), out_np.shape)
             self.assertTrue(
                 numpy.allclose(out_np, numpy.dot(numpy.dot(a_np, b_np), c_np)))
 
         for _ in range(2):
-            outs = exe.run_prepared_ctx(ctx=prepared_ctx, feed=feed)
+            outs = exe._run_prepared_ctx(ctx=prepared_ctx, feed=feed)
             out_np = outs[0]
             self.assertEqual((100, 100), out_np.shape)
             self.assertTrue(numpy.allclose(out_np, numpy.dot(a_np, b_np)))

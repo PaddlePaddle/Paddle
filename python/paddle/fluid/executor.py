@@ -318,12 +318,12 @@ class Executor(object):
         ]
         return outs
 
-    def prepare(self,
-                program=None,
-                feed=None,
-                fetch_list=None,
-                feed_var_name='feed',
-                fetch_var_name='fetch'):
+    def _prepare(self,
+                 program=None,
+                 feed=None,
+                 fetch_list=None,
+                 feed_var_name='feed',
+                 fetch_var_name='fetch'):
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):
@@ -346,7 +346,7 @@ class Executor(object):
         return PreparedContext(handle, program, fetch_list, feed_var_name,
                                fetch_var_name)
 
-    def run_prepared_ctx(self, ctx, feed=None, scope=None, return_numpy=True):
+    def _run_prepared_ctx(self, ctx, feed=None, scope=None, return_numpy=True):
         if scope is None:
             scope = global_scope()
 
