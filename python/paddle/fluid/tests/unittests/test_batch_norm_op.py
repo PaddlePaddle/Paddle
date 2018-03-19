@@ -272,7 +272,7 @@ class TestBatchNormOpInference(OpTest):
             "inference output are different at " + str(place) + ", " +
             data_layout + ", " + str(np.dtype(dtype)) +
             str(np.array(y_tensor)) + str(y_out),
-            atol=2e-2)
+            atol=1e-3)
 
     def test_check_output(self):
         places = [core.CPUPlace()]
