@@ -149,9 +149,15 @@ struct ScaleLossGradOpHandle : public OpHandle {
       auto stream =
           static_cast<platform::CUDADeviceContext *>(this->dev_ctx_[place_])
               ->stream();
+      VLOG(3) << "1";
+      PADDLE_ENFORCE(cudaGetLastError());
+      VLOG(3) << "2";
       memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
                    platform::CPUPlace(), &coeff_, sizeof(float), stream);
+      PADDLE_ENFORCE(cudaGetLastError());
+      VLOG(3) << "3";
       PADDLE_ENFORCE(cudaEventRecord(ev_, stream));
+      VLOG(3) << "4";
     }
   }
 
