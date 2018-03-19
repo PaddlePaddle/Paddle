@@ -508,7 +508,7 @@ All parameter, weight, gradient are variables in Paddle.
             new (&self) ParallelExecutor(places, params, startup_program,
                                          main_program, loss_var_name, scope);
           })
-      .def("run", [](ParallelExecutor &self) { self.Run({}); });
+      .def("run", &ParallelExecutor::Run);
 
   BindRecordIOWriter(m);
   return m.ptr();
