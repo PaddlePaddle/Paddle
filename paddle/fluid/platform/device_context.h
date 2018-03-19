@@ -110,6 +110,7 @@ class CUDADeviceContext : public DeviceContext {
   int compute_capability;
   int multi_process;
   int max_threads_per_mp;
+  mutable std::mutex mutex_;
 };
 
 template <>
