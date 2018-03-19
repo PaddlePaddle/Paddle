@@ -327,6 +327,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(loss)
         print(str(program))
 
+    def test_lod_reset(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10], dtype='float32')
+            y = layers.data(
+                name='y', shape=[10, 20], dtype='float32', lod_level=2)
+            print(layers.lod_reset(x=x, y=y))
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
