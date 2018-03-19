@@ -47,7 +47,7 @@ class ParallelExecutor(unittest.TestCase):
                 dtypes=['float32', 'int64'])
             img, label = fluid.layers.read_file(reader)
             hidden = img
-            for _ in xrange(10):
+            for _ in xrange(2):
                 hidden = fluid.layers.fc(
                     hidden,
                     size=200,
