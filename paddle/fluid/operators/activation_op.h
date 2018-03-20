@@ -37,10 +37,6 @@ class ActivationHelper {
     }
 #endif
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    if (ctx.HasAttr("data_format")) {
-      std::string data_format = ctx.Attr<std::string>("data_format");
-      layout = framework::StringToDataLayout(data_format);
-    }
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
         ctx.GetPlace(), layout, library);
@@ -76,27 +72,6 @@ class ActivationKernel
   }
 };
 
-template <typename Functor>
-class MKLDNNActivationKernel
-    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(!context.HasAttr("X"),
-                   "Cannot find input tensor X, variable name = %s",
-                   context.op().Input("X"));
-    PADDLE_ENFORCE(!context.HasAttr("Out"),
-                   "Cannot find output tensor Out, variable name = %s",
-                   context.op().Output("Out"));
-    Functor functor;
-
-    auto attrs = functor.GetAttrs();
-    for (auto& attr : attrs) {
-      *attr.second = context.Attr<float>(attr.first);
-    }
-    functor(context);
-  }
-};
-
 template <typename DeviceContext, typename Functor>
 class ActivationGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -122,21 +97,6 @@ class ActivationGradKernel
       *attr.second = context.Attr<float>(attr.first);
     }
     functor(*place, x, out, dout, dx);
-  }
-};
-
-template <typename Functor>
-class MKLDNNActivationGradKernel
-    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    Functor functor;
-
-    auto attrs = functor.GetAttrs();
-    for (auto& attr : attrs) {
-      *attr.second = context.Attr<float>(attr.first);
-    }
-    functor(context);
   }
 };
 

@@ -215,8 +215,7 @@ class OpTest(unittest.TestCase):
         '''Fix random seeds to remove randomness from tests'''
         cls._np_rand_state = np.random.get_state()
         cls._py_rand_state = random.getstate()
-        cls.use_mkldnn = False
-        cls.data_format = 'AnyLayout'
+
         np.random.seed(123)
         random.seed(124)
 
@@ -341,14 +340,7 @@ class OpTest(unittest.TestCase):
                                          "Output (" + out_name +
                                          ") has different lod at " + str(place))
 
-    def fill_attrs(self):
-        attrs = self.attrs if hasattr(self, "attrs") else dict()
-        attrs["use_mkldnn"] = self.use_mkldnn
-        attrs["data_format"] = self.data_format
-        return attrs
-
     def check_output(self, atol=1e-5):
-        self.attrs = self.fill_attrs()
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
             places.append(core.CUDAPlace(0))
@@ -356,7 +348,6 @@ class OpTest(unittest.TestCase):
             self.check_output_with_place(place, atol)
 
     def check_output_customized(self, checker):
-        self.attrs = self.fill_attrs()
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
             places.append(core.CUDAPlace(0))
@@ -392,7 +383,6 @@ class OpTest(unittest.TestCase):
                    in_place=False,
                    max_relative_error=0.005,
                    user_defined_grads=None):
-        self.attrs = self.fill_attrs()
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
             places.append(core.CUDAPlace(0))
