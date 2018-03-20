@@ -103,8 +103,10 @@ class ListenAndServOp : public framework::OperatorBase {
       size_t recv_var_cnt = 0;
       int batch_barrier = 0;
       while (batch_barrier != fan_in) {
-        const detail::MessageWithName &v = rpc_service_->Get();
-        auto recv_var_name = v.first;
+        // const detail::MessageWithName &v = rpc_service_->Get();
+        const detail::typeRecvQueue &v = rpc_service_->Get();
+        // auto recv_var_name = v.first;
+        auto recv_var_name = v.Varname();
         if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
           LOG(INFO) << "received terminate message and exit";
           exit_flag = true;
@@ -116,12 +118,12 @@ class ListenAndServOp : public framework::OperatorBase {
         } else {
           VLOG(3) << "received grad: " << recv_var_name;
           recv_var_cnt++;
-          auto *var = recv_scope.FindVar(recv_var_name);
-          if (var == nullptr) {
+          // auto *var = recv_scope.FindVar(recv_var_name);
+          var = if (var == nullptr) {
             LOG(ERROR) << "Can not find server side var: " << recv_var_name;
             PADDLE_THROW("Can not find server side var");
           }
-          detail::DeserializeFromMessage(v.second, dev_ctx, var);
+          // detail::DeserializeFromMessage(v.second, dev_ctx, var);
           // detail::DeserializeFromByteBuffer(v.second, dev_ctx, var);
           if (var->IsType<framework::SelectedRows>()) {
             sparse_vars.push_back(var);

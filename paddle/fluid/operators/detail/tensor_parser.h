@@ -34,7 +34,9 @@ namespace detail {
 
 class TensorResponse {
  public:
-  TensorResponse(framework::Scope* scope) : scope_(scope){};
+  TensorResponse(framework::Scope* scope,
+                 const platform::DeviceContext* dev_ctx)
+      : scope_(scope), dev_ctx_(dev_ctx){};
 
   virtual ~TensorResponse(){};
 
@@ -42,8 +44,15 @@ class TensorResponse {
   // 0:ok.
   // -1: unkown error.
   // other: number of error field.
-  int Parse(::grpc::ByteBuffer& byte_buffer,
-            const platform::DeviceContext& dev_ctx);
+  int Parse(Source* source);
+
+  // return:
+  // 0:ok.
+  // -1: unkown error.
+  // other: number of error field.
+  int Parse(const ::grpc::ByteBuffer& byte_buffer);
+
+  inline std::string Varname() { return meta_.varname(); }
 
   // should call parse first.
   framework::Variable* GetVar() { return scope_->FindVar(meta_.varname()); }
@@ -61,9 +70,8 @@ class TensorResponse {
                          framework::DDim& dims, int length);
 
  private:
- private:
-  framework::Variable* var_;
   framework::Scope* scope_;
+  const platform::DeviceContext* dev_ctx_;
   // only Skeleton
   sendrecv::VariableMessage meta_;
 };

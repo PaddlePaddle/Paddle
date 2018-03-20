@@ -28,8 +28,9 @@ class RequestBase {
  public:
   // explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
   explicit RequestBase(GrpcService::AsyncService* service,
-                       ::grpc::ServerCompletionQueue* cq)
-      : service_(service), cq_(cq), status_(PROCESS) {
+                       ::grpc::ServerCompletionQueue* cq,
+                       const platform::DeviceContext* dev_ctx)
+      : service_(service), cq_(cq), status_(PROCESS), dev_ctx_(dev_ctx) {
     PADDLE_ENFORCE(cq_);
   }
   virtual ~RequestBase() {}
@@ -48,38 +49,28 @@ class RequestBase {
   GrpcService::AsyncService* service_;
   ::grpc::ServerCompletionQueue* cq_;
   CallStatus status_;
+  const platform::DeviceContext* dev_ctx_;
 };
 
-// typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
-
-/*
-class RequestSend final : public RequestBase {
-};
-*/
 class RequestSend final : public RequestBase {
  public:
   explicit RequestSend(GrpcService::AsyncService* service,
                        ::grpc::ServerCompletionQueue* cq,
-                       SimpleBlockQueue<MessageWithName>* queue)
-      : RequestBase(service, cq), queue_(queue), responder_(&ctx_) {
+                       framework::Scope* scope, ReceivedQueue* queue,
+                       const platform::DeviceContext* dev_ctx)
+      : RequestBase(service, cq, dev_ctx), queue_(queue), responder_(&ctx_) {
+    request_ = new TensorResponse(scope, &dev_ctx_);
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
-    service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
-                                cq_, this);
+    service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
+                                cq_, cq_, this);
   }
 
   virtual ~RequestSend() {}
 
-  virtual std::string GetReqName() { return request_.varname(); }
+  virtual std::string GetReqName() { return request_->Varname(); }
 
   virtual void Process() {
-    // sendrecv::VariableMessage msg;
-    // GetOnlyMessageSkeleton(request_, &msg);
-    // varname_ = msg.varname();
-    std::string varname = request_.varname();
-
-    MessageWithName msg_with_name =
-        std::make_pair(varname, std::move(request_));
-    queue_->Push(std::move(msg_with_name));
+    queue_->Push(std::make_pair(request_.Varname(), request_));
 
     sendrecv::VoidMessage reply;
     responder_.Finish(reply, ::grpc::Status::OK, this);
@@ -87,11 +78,8 @@ class RequestSend final : public RequestBase {
   }
 
  protected:
-  sendrecv::VariableMessage request_;
-  // ::grpc::ByteBuffer request_;
-  // std::string varname_;
-  // sendrecv::VoidMessage reply_;
-  SimpleBlockQueue<MessageWithName>* queue_;
+  std::shared_ptr<TensorResponse> request_;
+  ReceivedQueue* queue_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };
 
@@ -102,13 +90,10 @@ class RequestGet final : public RequestBase {
                       framework::Scope* scope,
                       const platform::DeviceContext* dev_ctx,
                       SimpleBlockQueue<MessageWithName>* queue)
-      : RequestBase(service, cq),
+      : RequestBase(service, cq, dev_ctx),
         responder_(&ctx_),
         scope_(scope),
-        dev_ctx_(dev_ctx),
         queue_(queue) {
-    // service_->RequestGetVariable(&ctx_, &request_, &responder_, cq_, cq_,
-    // this);
     int method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
                                 cq_, this);
@@ -151,10 +136,8 @@ class RequestGet final : public RequestBase {
 
  protected:
   sendrecv::VariableMessage request_;
-  // ServerAsyncResponseWriter<sendrecv::VariableMessage> responder_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
   framework::Scope* scope_;
-  const platform::DeviceContext* dev_ctx_;
   SimpleBlockQueue<MessageWithName>* queue_;
 };
 
@@ -219,7 +202,7 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
     return;
   }
   RequestSend* send =
-      new RequestSend(&service_, cq_send_.get(), &var_recv_queue_);
+      new RequestSend(&service_, cq_send_.get(), scope_, &var_recv_queue_);
   VLOG(4) << "Create RequestSend status:" << send->Status();
 }
 

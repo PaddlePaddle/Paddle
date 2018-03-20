@@ -210,12 +210,17 @@ bool ParseLodData(::google::protobuf::io::CodedInputStream* input,
   return true;
 }
 
-int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
-                          const platform::DeviceContext& dev_ctx) {
+int TensorResponse::Parse(const ::grpc::ByteBuffer& byte_buffer) {
   GrpcByteBufferSource source;
   source.Init(byte_buffer);
+  GrpcByteBufferSourceWrapper r(&source);
 
-  ::google::protobuf::io::ZeroCopyInputStream* input_stream = &source;
+  return Parse(&r);
+}
+
+int TensorResponse::Parse(Source* source) {
+  ::google::protobuf::io::ZeroCopyInputStream* input_stream =
+      source->contents();
   ::google::protobuf::io::CodedInputStream input(input_stream);
   input.SetTotalBytesLimit(INT_MAX, INT_MAX);
 
@@ -281,7 +286,7 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
           if (!input.ReadVarintSizeAsInt(&length)) {
             return tag;
           }
-          for (uint32_t i = 0; i < length; i++) {
+          for (int i = 0; i < length; i++) {
             uint64_t v;
             if (!input.ReadVarint64(&v)) {
               return tag;
@@ -345,14 +350,14 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
         framework::DDim dims = GetDims(meta_.dims());
         if (meta_.type() == sendrecv::LOD_TENSOR) {
           PADDLE_ENFORCE(meta_.lod_size() > 0, "lod info should be got first!");
-          if (!CopyLodTensorData(&input, dev_ctx, dims, length)) {
+          if (!CopyLodTensorData(&input, *dev_ctx_, dims, length)) {
             return tag;
           }
           break;
         }
 
         if (meta_.type() == sendrecv::SELECTED_ROWS) {
-          if (!CopySelectRowsTensorData(&input, dev_ctx, dims, length)) {
+          if (!CopySelectRowsTensorData(&input, *dev_ctx_, dims, length)) {
             return tag;
           }
           break;
@@ -372,7 +377,7 @@ int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
           return tag;
         }
 
-        if (!CopySelectRowsData(&input, dev_ctx, length)) {
+        if (!CopySelectRowsData(&input, *dev_ctx_, length)) {
           return tag;
         }
         break;

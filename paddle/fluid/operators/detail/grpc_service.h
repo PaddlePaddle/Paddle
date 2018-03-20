@@ -23,6 +23,50 @@
 #include <grpc++/impl/codegen/stub_options.h>
 #include <grpc++/impl/codegen/sync_stream.h>
 #include <grpc++/support/byte_buffer.h>
+#include "paddle/fluid/operators/detail/tensor_parser.h"
+
+// NOTE: This method was originally created by tensorflow
+//       (https://github.com/tensorflow/tensorflow/) we borrow this
+//       method and did some modifications so that we can parse gRPC
+//       requests without too much copying of the tensor data.
+
+namespace grpc {
+class CompletionQueue;
+class Channel;
+class RpcService;
+class ServerCompletionQueue;
+class ServerContext;
+
+// Support parsing/unparsing of tensorflow::TensorResponse.
+// Wire-format is identical to RecvTensorResponse.
+template <>
+class SerializationTraits<paddle::operators::detail::TensorResponse> {
+ public:
+  static Status Serialize(const paddle::operators::detail::TensorResponse& msg,
+                          grpc_byte_buffer** bp, bool* own_buffer) {
+    PADDLE_ENFORCE(false, "SerializationTraits::Serialize not implemented!");
+    return Status();
+  }
+  static Status Deserialize(grpc_byte_buffer* buffer,
+                            paddle::operators::detail::TensorResponse* msg,
+                            int max_message_size = INT_MAX) {
+    if (buffer == nullptr) {
+      return Status(StatusCode::INTERNAL, "No payload");
+    }
+
+    Status result = g_core_codegen_interface->ok();
+    if (result.ok()) {
+      paddle::operators::detail::GrpcByteSource source(buffer);
+      int ret = msg->Parse(&source);
+      if (ret != 0) {
+        result = Status(StatusCode::INTERNAL, "TensorResponse parse error");
+      }
+    }
+    g_core_codegen_interface->grpc_byte_buffer_destroy(buffer);
+    return result;
+  }
+};
+}  // namespace grpc
 
 namespace paddle {
 namespace operators {
