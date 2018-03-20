@@ -13,7 +13,7 @@
 #
 
 set -xe
-
+env
 PR_ID=$(echo %teamcity.build.vcs.branch.Paddle_PaddlePaddle% | sed 's/[^0-9]*//g')
 echo ${PR_ID}
 
