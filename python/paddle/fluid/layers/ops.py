@@ -59,8 +59,6 @@ __all__ = [
     'elementwise_pow',
     'clip',
     'clip_by_norm',
-    'softmax',
-    'sequence_softmax',
     'logical_and',
     'logical_or',
     'logical_xor',
@@ -70,6 +68,7 @@ __all__ = [
     'gaussian_random',
     'gaussian_random_batch_size_like',
     'cumsum',
+    'scatter',
 ] + __activations__
 
 for _OP in set(__all__):

@@ -44,7 +44,7 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
       out_cols += t_cols;
       input_cols[i] = t_cols;
     }
-    auto& cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+    auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
 
     // computation
     for (int k = 0; k < out_rows; ++k) {
@@ -87,7 +87,7 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
       input_cols += t_cols;
       output_cols[i] = t_cols;
     }
-    auto& cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+    auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
 
     // computation
     for (int k = 0; k < input_rows; ++k) {
