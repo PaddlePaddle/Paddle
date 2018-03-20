@@ -245,7 +245,7 @@ struct FetchOpHandle : public OpHandle {
 
 class ParallelExecutorPrivate {
  public:
-  explicit ParallelExecutorPrivate(size_t num_threads = 12)
+  explicit ParallelExecutorPrivate(size_t num_threads = 0)
       : pool_(num_threads == 0 ? nullptr : new ThreadPool(num_threads)) {}
 
   std::vector<platform::Place> places_;
@@ -669,7 +669,7 @@ void ParallelExecutor::BuildNCCLCommunicator() const {
 
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
-  bool use_event = false;
+  bool use_event = true;
   auto fetched_data = std::make_shared<FetchedData>(fetch_tensors.size());
   // Version --> VarHandle
   member_->exception_.reset();
