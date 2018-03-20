@@ -109,6 +109,7 @@ struct OpHandle {
 
   virtual void Wait(platform::DeviceContext *waited_dev) {
     if (platform::is_cpu_place(waited_dev->GetPlace()) || events_.empty()) {
+      VLOG(4) << "I am here";
       for (auto &dev_ctx : dev_ctx_) {
         dev_ctx.second->Wait();
       }
