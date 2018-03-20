@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 template <>
-void getAccumulators<paddle::platform::CUDADeviceContext>(
+void GetAccumulators<paddle::platform::CUDADeviceContext>(
     const framework::ExecutionContext& ctx, int64_t& num_updates_,
     int64_t& num_accumulates_, int64_t& old_num_accumulates_) {
   auto* in_old_num_accumulates = ctx.Input<Tensor>("in_old_num_accumulates");
@@ -35,7 +35,7 @@ void getAccumulators<paddle::platform::CUDADeviceContext>(
 }
 
 template <>
-void setAccumulators<paddle::platform::CUDADeviceContext>(
+void SetAccumulators<paddle::platform::CUDADeviceContext>(
     const framework::ExecutionContext& ctx, int64_t num_updates_,
     int64_t num_accumulates_, int64_t old_num_accumulates_) {
   auto stream = ctx.cuda_device_context().stream();

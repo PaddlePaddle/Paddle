@@ -28,12 +28,12 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext>
-void getAccumulators(const framework::ExecutionContext& ctx,
+void GetAccumulators(const framework::ExecutionContext& ctx,
                      int64_t& num_updates, int64_t& num_accumulates,
                      int64_t& old_num_accumulates);
 
 template <typename DeviceContext>
-void setAccumulators(const framework::ExecutionContext& ctx,
+void SetAccumulators(const framework::ExecutionContext& ctx,
                      int64_t num_updates, int64_t num_accumulates,
                      int64_t old_num_accumulates);
 
@@ -47,7 +47,7 @@ class AverageAccumulatesKernel : public framework::OpKernel<T> {
     int64_t num_updates = 0;
     int64_t num_accumulates = 0;
     int64_t old_num_accumulates = 0;
-    getAccumulators<DeviceContext>(ctx, num_updates, num_accumulates,
+    GetAccumulators<DeviceContext>(ctx, num_updates, num_accumulates,
                                    old_num_accumulates);
 
     // Get attrs
@@ -84,6 +84,8 @@ class AverageAccumulatesKernel : public framework::OpKernel<T> {
     out_sum_2_tensor.device(place) = in_sum_2_tensor;
     out_sum_3_tensor.device(place) = in_sum_3_tensor;
     if (num_updates % kMaxNumAccumulates == 0) {
+      // Move the sum to a different buffer to avoid loss of precision due to
+      // too many sums.
       out_sum_2_tensor.device(place) = in_sum_2_tensor + in_sum_1_tensor;
       constant_functor(ctx.template device_context<DeviceContext>(), out_sum_1,
                        0.0);
@@ -91,6 +93,7 @@ class AverageAccumulatesKernel : public framework::OpKernel<T> {
     if (num_accumulates >= min_average_window &&
         num_accumulates >= std::min<int64_t>(max_average_window,
                                              num_updates * average_window)) {
+      //  Now the average window is too long, discard the old sum.
       out_sum_3_tensor.device(place) = in_sum_1_tensor + in_sum_2_tensor;
       constant_functor(ctx.template device_context<DeviceContext>(), out_sum_1,
                        0.0);
@@ -101,7 +104,7 @@ class AverageAccumulatesKernel : public framework::OpKernel<T> {
     }
 
     // Set accumulators to output
-    setAccumulators<DeviceContext>(ctx, num_updates, num_accumulates,
+    SetAccumulators<DeviceContext>(ctx, num_updates, num_accumulates,
                                    old_num_accumulates);
   }
 };
