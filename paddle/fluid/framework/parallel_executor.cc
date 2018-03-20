@@ -810,19 +810,13 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
     }
   }
 
-  fetch_ops.clear();
-  *member_->global_scope_->Var(fetched_var_name)->GetMutable<LoDTensorArray>() =
-      fetched_data->tensors_;
-  // FIXME:
-  // It could be optimized by using multiple events in an operator.
-  // Manually sync computation during iter.
-  for (auto &s : member_->communication_streams_) {
-    s.second.ctx_->Wait();
-  }
-
   for (auto &p : member_->places_) {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
+
+  fetch_ops.clear();
+  *member_->global_scope_->Var(fetched_var_name)->GetMutable<LoDTensorArray>() =
+      fetched_data->tensors_;
 }
 
 void ParallelExecutor::RunOp(
