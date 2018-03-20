@@ -91,6 +91,9 @@ class ListenAndServOp : public framework::OperatorBase {
     auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
     auto *program = block->Program();
     int num_blocks = program->Size();
+    PADDLE_ENFORCE_GE(num_blocks, 2,
+                      "server program should have at least 2 blocks");
+
     framework::Executor executor(dev_place);
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
@@ -139,38 +142,29 @@ class ListenAndServOp : public framework::OperatorBase {
       // should be global ops.
       // NOTE: if is_gpu_place, CUDA kernels are laugched by multiple threads
       // and this will still work.
-      double ts = detail::GetTimestamp();
       std::vector<std::future<void>> fs;
-      for (int blkid = 0; blkid < num_blocks - 1; ++blkid) {
-        fs.push_back(framework::Async([&]() {
+      // block0 contains only listen_and_serv op, start run from block1.
+      for (int blkid = 1; blkid < num_blocks - 1; ++blkid) {
+        fs.push_back(framework::Async([&executor, &program, &recv_scope,
+                                       blkid]() {
+          int run_block = blkid;  // thread local
           try {
-            VLOG(2) << "begin run in thread" << blkid;
-            executor.Run(*program, &recv_scope, blkid,
+            executor.Run(*program, &recv_scope, run_block,
                          false /*create_local_scope*/, false /*create_vars*/);
-            VLOG(2) << "end run in thread";
           } catch (std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
           }
         }));
       }
-      VLOG(2) << "waiting opts...";
-      for (int blkid = 0; blkid < num_blocks - 1; ++blkid) fs[blkid].wait();
-      VLOG(2) << "waiting opts...OK";
+      for (int i = 0; i < num_blocks - 2; ++i) fs[i].wait();
       // Run global block at final step
       if (num_blocks > 2) {
         try {
           executor.Run(*program, &recv_scope, num_blocks - 1,
                        false /*create_local_scope*/, false /*create_vars*/);
-          VLOG(2) << "run global OK , spent " << detail::GetTimestamp() - ts;
         } catch (std::exception &e) {
           LOG(ERROR) << "run sub program error " << e.what();
         }
-      }
-      for (auto &n : recv_scope.LocalVarNames()) {
-        VLOG(2) << "vars in scope: " << n;
-      }
-      for (auto &n : recv_scope.LocalVarNames()) {
-        VLOG(2) << "vars in parent scope: " << n;
       }
 
       // Reset the received sparse variables, the sum operator would not
