@@ -33,6 +33,7 @@ __all__ = [
     'linear_chain_crf',
     'crf_decoding',
     'cos_sim',
+    'rank_cost',
     'cross_entropy',
     'square_error_cost',
     'chunk_eval',
@@ -835,6 +836,20 @@ def cos_sim(X, Y):
         outputs={'Out': [out],
                  'XNorm': [xnorm],
                  'YNorm': [ynorm]})
+    return out
+
+
+def rank_cost(left, right, label):
+    """
+    """
+    helper = LayerHelper('rank_loss', **locals())
+    out = helper.create_tmp_variable(dtype=left.dtype)
+    helper.append_op(
+        type='rank_loss',
+        inputs={'Left': [left],
+                'Right': [right],
+                'Label': [label]},
+        outputs={'Out': [out]})
     return out
 
 
