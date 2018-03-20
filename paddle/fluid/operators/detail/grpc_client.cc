@@ -83,12 +83,16 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 void ProcGetResponse(const VarHandle& var_h,
                      // const sendrecv::VariableMessage& ret_msg) {
                      const ::grpc::ByteBuffer& ret_msg) {
-  struct timeval t0_wait, t1_wait;
-  gettimeofday(&t0_wait, 0);
+  /*
+struct timeval t0_wait, t1_wait;
+gettimeofday(&t0_wait, 0);
+*/
 
-  auto* outvar = var_h.scope->FindVar(var_h.name);
-  // DeserializeFromByteBuffer(ret_msg, *var_h.ctx, outvar);
+  // auto* outvar = var_h.scope->FindVar(var_h.name);
+  framework::Variable* outvar = NULL;
+  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, outvar);
 
+  /*
   std::thread::id this_id = std::this_thread::get_id();
   gettimeofday(&t1_wait, 0);
   double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
@@ -102,6 +106,7 @@ void ProcGetResponse(const VarHandle& var_h,
      << ", msg_len:" << ret_msg.Length() << ", time:" << t_wait
      << "ms, thread_id:" << this_id;
   std::cout << ss.str() << '\n';
+  */
 }
 
 template <typename T>

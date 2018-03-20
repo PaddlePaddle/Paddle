@@ -349,7 +349,8 @@ int TensorResponse::Parse(Source* source) {
 
         framework::DDim dims = GetDims(meta_.dims());
         if (meta_.type() == sendrecv::LOD_TENSOR) {
-          PADDLE_ENFORCE(meta_.lod_size() > 0, "lod info should be got first!");
+          PADDLE_ENFORCE(meta_.lod_size() >= 0,
+                         "lod info should be got first!");
           if (!CopyLodTensorData(&input, *dev_ctx_, dims, length)) {
             return tag;
           }

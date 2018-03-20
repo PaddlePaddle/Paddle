@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/detail/bytebuffer_stream.h"
 #include "paddle/fluid/operators/detail/proto_encoder_helper.h"
+#include "paddle/fluid/operators/detail/tensor_parser.h"
 
 namespace paddle {
 namespace operators {
@@ -175,6 +176,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 #ifdef PADDLE_WITH_CUDA
         struct timeval t0_wait, t1_wait;
         gettimeofday(&t0_wait, 0);
+        std::thread::id this_id = std::this_thread::get_id();
 
         PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
         platform::CPUPlace cpu;
@@ -182,6 +184,16 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
             static_cast<const platform::CUDADeviceContext&>(ctx);
         auto copy_size = tensor.memory_size();
         payload = memory::Alloc(cpu, copy_size);
+
+        gettimeofday(&t1_wait, 0);
+        double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
+                               (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
+
+        std::stringstream ss;
+        ss << "se malloc var_name:" << name << ", dims: " << tensor.dims()
+           << ", time:" << t_wait << "ms, thread_id:" << this_id;
+        std::cout << ss.str() << '\n';
+
         memory::Copy(cpu, payload,
                      boost::get<platform::CUDAPlace>(tensor.place()),
                      reinterpret_cast<const void*>(tensor.data<void>()),
@@ -191,14 +203,13 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
           platform::CPUPlace cpu;
           memory::Free(cpu, backing);
         };
-        std::thread::id this_id = std::this_thread::get_id();
         gettimeofday(&t1_wait, 0);
-        double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
-                               (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
-        std::stringstream ss;
-        ss << "se memcpy gpu var_name:" << name << ", dims: " << tensor.dims()
-           << ", time:" << t_wait << "ms, thread_id:" << this_id;
-        std::cout << ss.str() << '\n';
+        t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
+                        (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
+        std::stringstream ss2;
+        ss2 << "se memcpy gpu var_name:" << name << ", dims: " << tensor.dims()
+            << ", time:" << t_wait << "ms, thread_id:" << this_id;
+        std::cout << ss2.str() << '\n';
 
 #endif
       } else {
@@ -283,6 +294,15 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 
   ::grpc::ByteBuffer tmp(&slices[0], num_slices);
   msg->Swap(&tmp);
+}
+
+void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
+                               const platform::DeviceContext& ctx,
+                               const framework::Scope* scope,
+                               framework::Variable*& var) {
+  operators::detail::TensorResponse resp(scope, &ctx);
+  PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
+  var = resp.GetVar();
 }
 
 }  // namespace detail
