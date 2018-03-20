@@ -328,7 +328,6 @@ class DistributeTranspiler:
                     if in_name.startswith("beta1_pow_acc") or\
                         in_name.startswith("beta2_pow_acc"):
                         global_ops.append(op)
-        print("##### global ops ", global_ops)
 
         def __append_optimize_op__(op, block):
             if self._is_opt_op(op):
