@@ -65,7 +65,7 @@ class ParallelExecutor {
       std::unordered_map<VarHandleBase*, std::atomic<bool>>& pending_vars,
       OpHandle* op) const;
 
-  void PolishGraphToSupportDataHarzaeds() const;
+  void PolishGraphToSupportDataHazards() const;
 };
 
 }  // namespace framework
