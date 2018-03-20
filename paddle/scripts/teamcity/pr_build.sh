@@ -81,7 +81,7 @@ nvidia-docker run -i --rm -v $PWD:/paddle -v /root/.cache:/root/.cache\
     -e "WITH_C_API=%WITH_C_API%" \
     -e "CMAKE_BUILD_TYPE=Debug" \
     -e "WITH_MKL=OFF" \
-    -e "JSON_REPO_TOKEN=JSUOs6TF6fD2i30OJ5o2S55V8XWv6euen" \
+    -e "JSON_REPO_TOKEN=%JSON_REPO_TOKEN%" \
     -e "WITH_DEB=OFF"\
     -e "PADDLE_VERSION=%PADDLE_VERSION%"\
     -e "PADDLE_FRACTION_GPU_MEMORY_TO_USE=0.15" \
@@ -103,7 +103,7 @@ nvidia-docker run -i --rm -v $PWD:/paddle -v /root/.cache:/root/.cache\
     -e "WITH_COVERAGE=ON" \
     -e "COVERALLS_UPLOAD=ON" \
     -e "GIT_PR_ID=${PR_ID}" \
-    -e "JSON_REPO_TOKEN=JSUOs6TF6fD2i30OJ5o2S55V8XWv6euen" \
+    -e "JSON_REPO_TOKEN=%JSON_REPO_TOKEN%" \
     -e "WITH_DEB=OFF"\
     -e "PADDLE_VERSION=%PADDLE_VERSION%"\
     -e "PADDLE_FRACTION_GPU_MEMORY_TO_USE=0.15" \
