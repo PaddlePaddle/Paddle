@@ -109,7 +109,7 @@ namespace detail {
 // received data to ParseFrom.
 class Source {
  public:
-  virtual ~Source();
+  virtual ~Source() {}
 
   // Return the stream that contains the data to be parsed.
   // Note that this method might be invoked more than once if

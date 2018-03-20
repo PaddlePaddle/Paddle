@@ -59,7 +59,7 @@ class RequestSend final : public RequestBase {
                        framework::Scope* scope, ReceivedQueue* queue,
                        const platform::DeviceContext* dev_ctx)
       : RequestBase(service, cq, dev_ctx), queue_(queue), responder_(&ctx_) {
-    request_ = new TensorResponse(scope, &dev_ctx_);
+    request_.reset(new TensorResponse(scope, dev_ctx_));
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
                                 cq_, cq_, this);
@@ -70,7 +70,7 @@ class RequestSend final : public RequestBase {
   virtual std::string GetReqName() { return request_->Varname(); }
 
   virtual void Process() {
-    queue_->Push(std::make_pair(request_.Varname(), request_));
+    queue_->Push(std::make_pair(request_->Varname(), request_));
 
     sendrecv::VoidMessage reply;
     responder_.Finish(reply, ::grpc::Status::OK, this);
@@ -201,8 +201,8 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
   if (is_shut_down_) {
     return;
   }
-  RequestSend* send =
-      new RequestSend(&service_, cq_send_.get(), scope_, &var_recv_queue_);
+  RequestSend* send = new RequestSend(&service_, cq_send_.get(), scope_,
+                                      &var_recv_queue_, dev_ctx_);
   VLOG(4) << "Create RequestSend status:" << send->Status();
 }
 

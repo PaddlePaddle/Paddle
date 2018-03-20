@@ -81,8 +81,8 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   // operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::TensorResponse resp(&scope, ctx);
-  EXPECT_EQ(resp.Parse(msg, ctx), 0);
+  operators::detail::TensorResponse resp(&scope, &ctx);
+  EXPECT_EQ(resp.Parse(msg), 0);
 
   framework::Variable* var2 = resp.GetVar();
 
@@ -166,11 +166,11 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // deserialize zero-copy
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::TensorResponse resp(&scope, ctx);
+  operators::detail::TensorResponse resp(&scope, &ctx);
   if (from_type == 0) {
-    EXPECT_EQ(resp.Parse(msg, ctx), 0);
+    EXPECT_EQ(resp.Parse(msg), 0);
   } else {
-    EXPECT_EQ(resp.Parse(bytebuffer2, ctx), 0);
+    EXPECT_EQ(resp.Parse(bytebuffer2), 0);
   }
 
   framework::Variable* var2 = resp.GetVar();
