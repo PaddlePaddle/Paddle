@@ -119,6 +119,47 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
 
 bool GPUAllocator::UseGpu() const { return true; }
 
+void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
+  if (size <= 0) return nullptr;
+  void* p;
+  // NOTE: here, we use GpuMaxAllocSize() as the maximum memory size
+  // of host fallback allocation. Allocates too much would reduce
+  // the amount of memory available to the underlying system for paging.
+
+  size_t usable = paddle::platform::GpuMaxAllocSize() - fallback_alloc_size_;
+
+  if (size > usable) return nullptr;
+
+  cudaError_t result = cudaMallocHost(&p, size);
+  if (result == cudaSuccess) {
+    index = 1;
+    fallback_alloc_size_ += size;
+    return p;
+  }
+
+  return nullptr;
+}
+
+void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
+  cudaError_t err;
+  PADDLE_ASSERT(index == 1);
+
+  PADDLE_ASSERT(fallback_alloc_size_ >= size);
+  fallback_alloc_size_ -= size;
+  err = cudaFreeHost(p);
+
+  // Purposefully allow cudaErrorCudartUnloading, because
+  // that is returned if you ever call cudaFree after the
+  // driver has already shutdown. This happens only if the
+  // process is terminating, in which case we don't care if
+  // cudaFree succeeds.
+  if (err != cudaErrorCudartUnloading) {
+    PADDLE_ENFORCE(err, "cudaFreeHost failed in GPUPinnedAllocator::Free.");
+  }
+}
+
+bool CUDAPinnedAllocator::UseGpu() const { return true; }
+
 #endif
 
 }  // namespace detail
