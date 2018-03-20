@@ -35,7 +35,8 @@ class VarHandleBase;
 
 class ParallelExecutor {
  public:
-  explicit ParallelExecutor(const std::vector<platform::Place>& places,
+  explicit ParallelExecutor(size_t num_threads,
+                            const std::vector<platform::Place>& places,
                             const std::unordered_set<std::string>& params,
                             const ProgramDesc& startup_program,
                             const ProgramDesc& main_program,
