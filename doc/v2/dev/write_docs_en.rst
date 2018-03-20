@@ -32,7 +32,7 @@ The PaddlePaddle.org tool can be used with Docker and Docker needs to be install
     docker run -it -p 8000:8000 -v `pwd`:/var/content paddlepaddle/paddlepaddle.org:latest
 
 Note: PaddlePaddle.org will read the content repos specified in the -v (volume) flag of the docker run commands
-Use a web browser and navigate to http://localhost:8000. click the buttons to compile the documentation.
+Use a web browser and navigate to http://localhost:8000. Click the buttons to compile the documentation.
 The compiled documentations will be stored in <paddlepaddle working directory>/.ppo_workspace/content
 
 
@@ -59,7 +59,7 @@ If you don't wish to use Docker, you can also activate the tool through Django. 
 
 Specify the PaddlePaddle working directory for the environment variable CONTENT_DIR so that the tool could find where the working directory is.
 
-Use a web browser and navigate to http://localhost:8000. click the buttons to compile the documentation
+Use a web browser and navigate to http://localhost:8000. Click the buttons to compile the documentation
 The compiled documentations will be stored in <paddlepaddle working directory>/.ppo_workspace/content
 
 Please `click here <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.md>`_ for more information about the PaddlePaddle.org tool.
