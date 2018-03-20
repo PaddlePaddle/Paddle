@@ -732,7 +732,6 @@ class ModelAverage(Optimizer):
         """Apply average values to parameters of current model.
         """
         executor.run(self.apply_program)
-        print "finish apply"
         try:
             yield
         finally:
@@ -743,4 +742,3 @@ class ModelAverage(Optimizer):
         """Restore parameter values of current model.
         """
         executor.run(self.restore_program)
-        print "finish restore"
