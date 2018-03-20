@@ -314,6 +314,11 @@ def create_double_buffer_reader(reader, place=None):
                                        attrs)
 
 
+def create_multi_pass_reader(reader, pass_num):
+    return __create_decorated_reader__('create_multi_pass_reader', reader,
+                                       {'pass_num': int(pass_num)})
+
+
 def read_file(file_obj):
     helper = LayerHelper('read_file')
     out = [
