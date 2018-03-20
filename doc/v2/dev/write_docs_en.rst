@@ -7,15 +7,15 @@ PaddlePaddle's documentation includes both Chinese and English versions. The doc
 How to build Documentation
 ===========================
 
-PaddlePaddle's documentation is built in two ways: using the PaddlePaddle.org tool and not using the PaddlePaddle.org tool. Both methods have their own advantages. The former facilitates previewing, while the latter facilitates debugging by the developer. And we could chose to build the documentation with docker or without docker in each way.
+PaddlePaddle's documentation is built in two ways: using the PaddlePaddle.org tool and without using it. Both methods have their own advantages. The former facilitates previewing, while the latter facilitates debugging by the developer. We could choose to build the documentation with Docker or without it in each of the above ways.
 
 We recommend using PaddlePaddle.org tool to build documentation.
 
-With PaddlePaddle.org tool
----------------------------
-This is the recommended method to build documentation, because it can automatically compile the documentation and preview the documentation directly in the web page. Note that, in other ways, although you can preview the documentation, its style is inconsistent with the official website. While compiling with the PaddlePaddle.org tool produces a preview that is consistent with the official website documentation style.
+Using PaddlePaddle.org tool
+-----------------------------
+This is the recommended method to build documentation, because it can automatically compile the documentation and preview the documentation directly in a web page. Note that, although you can preview the documentation in other ways, its style may not be consistent with the official website. Compiling with the PaddlePaddle.org tool produces a preview that will be consistent with the official website documentation style.
 
-The PaddlePaddle.org tool can be used with Docker and Docker needs to be installed first. Please refer to the `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. After installing Docker, you may use the following command to activate the tool
+The PaddlePaddle.org tool can be used with Docker and Docker needs to be installed first. Please refer to `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. After installing Docker, you may use the following commands to activate the tool
 
 ..  code-block:: bash
 
@@ -31,8 +31,8 @@ The PaddlePaddle.org tool can be used with Docker and Docker needs to be install
     # Please specify the working directory through -v
     docker run -it -p 8000:8000 -v `pwd`:/var/content paddlepaddle/paddlepaddle.org:latest
 
-Note: PaddlePaddle.org will read the content repos specified in the -v (volume) flag of the docker run command
-Use a web browser and navigate to http://localhost:8000, click the buttons to compile the documentation.
+Note: PaddlePaddle.org will read the content repos specified in the -v (volume) flag of the docker run commands
+Use a web browser and navigate to http://localhost:8000. click the buttons to compile the documentation.
 The compiled documentations will be stored in <paddlepaddle working directory>/.ppo_workspace/content
 
 
@@ -59,20 +59,20 @@ If you don't wish to use Docker, you can also activate the tool through Django. 
 
 Specify the PaddlePaddle working directory for the environment variable CONTENT_DIR so that the tool could find where the working directory is.
 
-Use a web browser and navigate to http://localhost:8000, click the buttons to compile the documentation
+Use a web browser and navigate to http://localhost:8000. click the buttons to compile the documentation
 The compiled documentations will be stored in <paddlepaddle working directory>/.ppo_workspace/content
 
-Please `click here <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.md>`_ to get more informations about PaddlePaddle.org tool。
+Please `click here <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.md>`_ for more information about the PaddlePaddle.org tool.
 
 
-Without PaddlePaddle.org tool
--------------------------------
+Manually Building the Documentation
+-------------------------------------
 
-Build PaddlePaddle's documentation with Docker，you need to install Docker first. Please refer to the `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. After Docker is installed, you could use the scripts in the source directory to build the documentation.
+Build PaddlePaddle's documentation with Docker，you need to install Docker first. Please refer to `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. After Docker is installed, you could use the scripts in the source directory to build the documentation.
 
 [TBD]
 
-If you do not wish to use Docker, you can also use the following command to directly build the PaddlePaddle documentation.
+If you do not wish to use Docker, you can also use the following commands to directly build the PaddlePaddle documentation.
 
 .. code-block:: bash
 
@@ -83,18 +83,18 @@ If you do not wish to use Docker, you can also use the following command to dire
    cd build
    cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
 
-   # If you only need to build documents, use the following command
+   # If you only need to build documents, use the following commands
    make -j $processors gen_proto_py
    make -j $processors paddle_docs paddle_docs_cn
 
-   # If you only need to build APIs, use the following command
+   # If you only need to build APIs, use the following commands
    make -j $processors gen_proto_py framework_py_proto
    make -j $processors copy_paddle_pybind
    make -j $processors paddle_api_docs
 
 $processors indicates that as many processes as the CPU cores are started to compile in parallel. It should be set according to the number of CPU cores of your machine.
 
-After the compilation is complete, enter the ``doc/v2`` directory. If you chose to build documents, it will generate ``cn/html/`` and ``en/html`` subdirectories under this directory. If you chose to build APIs，it will generate``api/en/html`` subdirectory. Please enter these directories respectively and execute the following command:
+After the compilation is complete, enter the ``doc/v2`` directory. If you chose to build documents, it will generate ``cn/html/`` and ``en/html`` subdirectories under this directory. If you chose to build APIs，it will generate``api/en/html`` subdirectory. Please enter these directories respectively and execute the following commands:
 
 .. code-block:: bash
 
