@@ -99,8 +99,6 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
                                                  var2);
   }
 
-  // resp.GetVar();
-
   auto tensor2 = var2->Get<framework::LoDTensor>();
   float* tensor_data2 = nullptr;
   framework::Tensor tmp_tensor;
