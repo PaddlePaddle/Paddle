@@ -125,15 +125,11 @@ struct RecordBlock {
  private:
   std::string name_;
   uint64_t start_ns_;
-  int block_id_;
 };
 
 struct RecordThread {
   explicit RecordThread(int thread_id);
   ~RecordThread();
-
- private:
-  uint64_t start_ns_;
 };
 
 // Return the event list of all threads. Assumed the returned value calls

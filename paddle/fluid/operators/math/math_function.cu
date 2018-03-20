@@ -422,6 +422,8 @@ struct RowwiseAdd<platform::CUDADeviceContext, T> {
 template struct RowwiseAdd<platform::CUDADeviceContext, float>;
 template struct RowwiseAdd<platform::CUDADeviceContext, double>;
 template struct ColwiseSum<platform::CUDADeviceContext, float>;
+template struct ColwiseSum<platform::CUDADeviceContext, int>;
+template struct ColwiseSum<platform::CUDADeviceContext, int64_t>;
 // template struct ColwiseSum<platform::CUDADeviceContext, double>;
 // The ColwiseSum<platform::CUDADeviceContext, double> failed in debug mode,
 // and only failed for this case. So reimplemented it.
