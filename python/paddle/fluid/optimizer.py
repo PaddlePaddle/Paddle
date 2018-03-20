@@ -580,6 +580,114 @@ class DecayedAdagradOptimizer(Optimizer):
         return decayed_adagrad_op
 
 
+class RMSPropOptimizer(Optimizer):
+    """
+    Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
+    rate method. The original slides that proposed Rmsprop: Slide 29 of
+    http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf .
+
+    The original equation is as follows:
+
+    ..  math::
+
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+        w & = w - \\frac{\\eta} {\\sqrt{r(w,t) + \\epsilon}} \\nabla Q_{i}(w)
+
+    The first equation calculates moving average of the squared gradient for
+    each weight. Then dividing the gradient by :math: `sqrt{v(w,t)}`.
+
+    In some cases, adding a momentum term :math: `\\beta` is beneficial.
+    In our implementation, Nesterov momentum is used:
+
+    ..  math::
+
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{v(w,t) + \\epsilon}} \\nabla Q_{i}(w)
+        w & = w - v(w, t)
+
+    where, :math: `\\rho` is a hyperparameter and typical values are 0.9, 0.95
+    and so on. :math: `beta` is the momentum term. :math: `\\epsilon` is a
+    smoothing term to avoids division by zero, usually set somewhere in range
+    from 1e-4 to 1e-8.
+
+
+    Args:
+        learning_rate(float): global leraning rate.
+        rho(float): rho is :math: `\\rho` in equation, set 0.95 by default.
+        epsilon(float): :math: `\\epsilon` in equation is smoothing term to
+            avoids division by zero, set 1e-6 by default.
+        momentum(float): :math: `\\beta` in equation is the momentum term,
+            set 0.0 by default.
+    
+
+    Examples:
+          .. code-block:: python
+
+              optimizer = fluid.optimizer.RMSProp(0.0001)
+              _, params_grads = optimizer.minimize(cost)
+    """
+
+    _momentum_acc_str = "momentum"
+    _mean_square_acc_str = "mean_square"
+
+    def __init__(self,
+                 learning_rate,
+                 rho=0.95,
+                 epsilon=1.0e-6,
+                 momentum=0.0,
+                 **kwargs):
+        super(RMSPropOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
+        if learning_rate is None:
+            raise ValueError("learning_rate is not set.")
+        if rho is None:
+            raise ValueError("rho is not set.")
+        if epsilon is None:
+            raise ValueError("epsilon is not set.")
+
+        self.type = "rmsprop"
+        self._rho = rho
+        self._epsilon = epsilon
+        self._momentum = momentum
+
+    def _create_accumulators(self, block, parameters):
+        assert isinstance(block, framework.Block)
+
+        for p in parameters:
+            self._add_accumulator(self._momentum_acc_str, p)
+            self._add_accumulator(self._mean_square_acc_str, p)
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        momentum_acc = self._get_accumulator(self._momentum_acc_str,
+                                             param_and_grad[0])
+        mean_square_acc = self._get_accumulator(self._mean_square_acc_str,
+                                                param_and_grad[0])
+
+        rmsprop_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": momentum_acc,
+                "MeanSquare": mean_square_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "MomentOut": momentum_acc,
+                "MeanSquareOut": mean_square_acc
+            },
+            attrs={
+                "epsilon": self._epsilon,
+                "decay": self._rho,
+                "momentum": self._momentum
+            })
+
+        return rmsprop_op
+
+
 # We short the class name, since users will use the optimizer with the package
 # name. The sample code:
 #
@@ -594,3 +702,4 @@ Adagrad = AdagradOptimizer
 Adam = AdamOptimizer
 Adamax = AdamaxOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
+RMSProp = RMSPropOptimizer
