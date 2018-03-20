@@ -483,9 +483,124 @@ DEVICE inline bool operator>=(const half& a, const half& b) {
 
 #endif  // PADDLE_CUDA_FP16
 
-// Arithmetic operators on ARMv8.2-A CPU
-#if defined(PADDLE_WITH_NATIVE_FP16)
-HOST inline float16 operator+(const float16& a, const float16& b) {
+// Arithmetic operators for float16 on GPU
+#if defined(PADDLE_CUDA_FP16)
+HOSTDEVICE inline float16 operator+(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return float16(__hadd(half(a), half(b)));
+#else
+  return float16(float(a) + float(b));
+#endif
+}
+
+HOSTDEVICE inline float16 operator-(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return float16(__hsub(half(a), half(b)));
+#else
+  return float16(float(a) - float(b));
+#endif
+}
+
+HOSTDEVICE inline float16 operator*(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return float16(__hmul(half(a), half(b)));
+#else
+  return float16(float(a) * float(b));
+#endif
+}
+
+HOSTDEVICE inline float16 operator/(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300
+  // TODO(kexinzhao): check which cuda version starts to support __hdiv
+  float num = __half2float(half(a));
+  float denom = __half2float(half(b));
+  return float16(num / denom);
+#else
+  return float16(float(a) / float(b));
+#endif
+}
+
+HOSTDEVICE inline float16 operator-(const float16& a) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return float16(__hneg(half(a)));
+#else
+  float16 res;
+  res.x = a.x ^ 0x8000;
+  return res;
+#endif
+}
+
+HOSTDEVICE inline float16& operator+=(float16& a, const float16& b) {
+  a = a + b;
+  return a;
+}
+
+HOSTDEVICE inline float16& operator-=(float16& a, const float16& b) {
+  a = a - b;
+  return a;
+}
+
+HOSTDEVICE inline float16& operator*=(float16& a, const float16& b) {
+  a = a * b;
+  return a;
+}
+
+HOSTDEVICE inline float16& operator/=(float16& a, const float16& b) {
+  a = a / b;
+  return a;
+}
+
+HOSTDEVICE inline bool operator==(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __heq(half(a), half(b));
+#else
+  return float(a) == float(b);
+#endif
+}
+
+HOSTDEVICE inline bool operator!=(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hne(half(a), half(b));
+#else
+  return float(a) != float(b);
+#endif
+}
+
+HOSTDEVICE inline bool operator<(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hlt(half(a), half(b));
+#else
+  return float(a) < float(b);
+#endif
+}
+
+HOSTDEVICE inline bool operator<=(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hle(half(a), half(b));
+#else
+  return float(a) <= float(b);
+#endif
+}
+
+HOSTDEVICE inline bool operator>(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hgt(half(a), half(b));
+#else
+  return float(a) > float(b);
+#endif
+}
+
+HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
+  return __hge(half(a), half(b));
+#else
+  return float(a) >= float(b);
+#endif
+}
+
+// Arithmetic operators for float16 on ARMv8.2-A CPU
+#elif defined(PADDLE_WITH_NATIVE_FP16)
+inline float16 operator+(const float16& a, const float16& b) {
   float16 res;
   asm volatile(
       "ld1 {v0.h}[0], [%[a_ptr]]\n"
@@ -501,7 +616,7 @@ HOST inline float16 operator+(const float16& a, const float16& b) {
   return res;
 }
 
-HOST inline float16 operator-(const float16& a, const float16& b) {
+inline float16 operator-(const float16& a, const float16& b) {
   float16 res;
   asm volatile(
       "ld1 {v0.h}[0], [%[a_ptr]]\n"
@@ -517,7 +632,7 @@ HOST inline float16 operator-(const float16& a, const float16& b) {
   return res;
 }
 
-HOST inline float16 operator*(const float16& a, const float16& b) {
+inline float16 operator*(const float16& a, const float16& b) {
   float16 res;
   asm volatile(
       "ld1 {v0.h}[0], [%[a_ptr]]\n"
@@ -533,7 +648,7 @@ HOST inline float16 operator*(const float16& a, const float16& b) {
   return res;
 }
 
-HOST inline float16 operator/(const float16& a, const float16& b) {
+inline float16 operator/(const float16& a, const float16& b) {
   float16 res;
   asm volatile(
       "ld1 {v0.h}[0], [%[a_ptr]]\n"
@@ -549,7 +664,7 @@ HOST inline float16 operator/(const float16& a, const float16& b) {
   return res;
 }
 
-HOST inline float16 operator-(const float16& a) {
+inline float16 operator-(const float16& a) {
   float16 res;
   asm volatile(
       "ld1 {v0.h}[0], [%[a_ptr]]\n"
@@ -564,27 +679,27 @@ HOST inline float16 operator-(const float16& a) {
   return res;
 }
 
-HOST inline float16& operator+=(float16& a, const float16& b) {
+inline float16& operator+=(float16& a, const float16& b) {
   a = a + b;
   return a;
 }
 
-HOST inline float16& operator-=(float16& a, const float16& b) {
+inline float16& operator-=(float16& a, const float16& b) {
   a = a - b;
   return a;
 }
 
-HOST inline float16& operator*=(float16& a, const float16& b) {
+inline float16& operator*=(float16& a, const float16& b) {
   a = a * b;
   return a;
 }
 
-HOST inline float16& operator/=(float16& a, const float16& b) {
+inline float16& operator/=(float16& a, const float16& b) {
   a = a / b;
   return a;
 }
 
-HOST inline bool operator==(const float16& a, const float16& b) {
+inline bool operator==(const float16& a, const float16& b) {
   uint16_t res;
   asm volatile(
       "ld1 {v0.h}[0], [%[a_ptr]]\n"
@@ -600,11 +715,9 @@ HOST inline bool operator==(const float16& a, const float16& b) {
   return (res & 0xffff) != 0;
 }
 
-HOST inline bool operator!=(const float16& a, const float16& b) {
-  return !(a == b);
-}
+inline bool operator!=(const float16& a, const float16& b) { return !(a == b); }
 
-HOST inline bool operator<(const float16& a, const float16& b) {
+inline bool operator<(const float16& a, const float16& b) {
   uint16_t res;
   asm volatile(
       "ld1 {v1.h}[0], [%[a_ptr]]\n"
@@ -620,7 +733,7 @@ HOST inline bool operator<(const float16& a, const float16& b) {
   return (res & 0xffff) != 0;
 }
 
-HOST inline bool operator<=(const float16& a, const float16& b) {
+inline bool operator<=(const float16& a, const float16& b) {
   uint16_t res;
   asm volatile(
       "ld1 {v1.h}[0], [%[a_ptr]]\n"
@@ -636,7 +749,7 @@ HOST inline bool operator<=(const float16& a, const float16& b) {
   return (res & 0xffff) != 0;
 }
 
-HOST inline bool operator>(const float16& a, const float16& b) {
+inline bool operator>(const float16& a, const float16& b) {
   uint16_t res;
   asm volatile(
       "ld1 {v0.h}[0], [%[a_ptr]]\n"
@@ -652,7 +765,7 @@ HOST inline bool operator>(const float16& a, const float16& b) {
   return (res & 0xffff) != 0;
 }
 
-HOST inline bool operator>=(const float16& a, const float16& b) {
+inline bool operator>=(const float16& a, const float16& b) {
   uint16_t res;
   asm volatile(
       "ld1 {v0.h}[0], [%[a_ptr]]\n"
@@ -668,71 +781,71 @@ HOST inline bool operator>=(const float16& a, const float16& b) {
   return (res & 0xffff) != 0;
 }
 
-// Arithmetic operators, software emulated on other CPU
+// Arithmetic operators for float16, software emulated on other CPU
 #else
-HOSTDEVICE inline float16 operator+(const float16& a, const float16& b) {
+inline float16 operator+(const float16& a, const float16& b) {
   return float16(float(a) + float(b));
 }
 
-HOSTDEVICE inline float16 operator-(const float16& a, const float16& b) {
+inline float16 operator-(const float16& a, const float16& b) {
   return float16(float(a) - float(b));
 }
 
-HOSTDEVICE inline float16 operator*(const float16& a, const float16& b) {
+inline float16 operator*(const float16& a, const float16& b) {
   return float16(float(a) * float(b));
 }
 
-HOSTDEVICE inline float16 operator/(const float16& a, const float16& b) {
+inline float16 operator/(const float16& a, const float16& b) {
   return float16(float(a) / float(b));
 }
 
-HOSTDEVICE inline float16 operator-(const float16& a) {
+inline float16 operator-(const float16& a) {
   float16 res;
   res.x = a.x ^ 0x8000;
   return res;
 }
 
-HOSTDEVICE inline float16& operator+=(float16& a, const float16& b) {
+inline float16& operator+=(float16& a, const float16& b) {
   a = float16(float(a) + float(b));
   return a;
 }
 
-HOSTDEVICE inline float16& operator-=(float16& a, const float16& b) {
+inline float16& operator-=(float16& a, const float16& b) {
   a = float16(float(a) - float(b));
   return a;
 }
 
-HOSTDEVICE inline float16& operator*=(float16& a, const float16& b) {
+inline float16& operator*=(float16& a, const float16& b) {
   a = float16(float(a) * float(b));
   return a;
 }
 
-HOSTDEVICE inline float16& operator/=(float16& a, const float16& b) {
+inline float16& operator/=(float16& a, const float16& b) {
   a = float16(float(a) / float(b));
   return a;
 }
 
-HOSTDEVICE inline bool operator==(const float16& a, const float16& b) {
+inline bool operator==(const float16& a, const float16& b) {
   return float(a) == float(b);
 }
 
-HOSTDEVICE inline bool operator!=(const float16& a, const float16& b) {
+inline bool operator!=(const float16& a, const float16& b) {
   return float(a) != float(b);
 }
 
-HOSTDEVICE inline bool operator<(const float16& a, const float16& b) {
+inline bool operator<(const float16& a, const float16& b) {
   return float(a) < float(b);
 }
 
-HOSTDEVICE inline bool operator<=(const float16& a, const float16& b) {
+inline bool operator<=(const float16& a, const float16& b) {
   return float(a) <= float(b);
 }
 
-HOSTDEVICE inline bool operator>(const float16& a, const float16& b) {
+inline bool operator>(const float16& a, const float16& b) {
   return float(a) > float(b);
 }
 
-HOSTDEVICE inline bool operator>=(const float16& a, const float16& b) {
+inline bool operator>=(const float16& a, const float16& b) {
   return float(a) >= float(b);
 }
 #endif
