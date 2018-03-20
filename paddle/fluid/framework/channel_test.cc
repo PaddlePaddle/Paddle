@@ -924,3 +924,67 @@ TEST(ChannelHolder, ChannelHolderDestroyUnblocksSendersTest) {
   ch->Reset<int>(0);
   ChannelHolderDestroyUnblockSenders(ch, false);
 }
+
+// This tests that closing a channelholder many times.
+void ChannelHolderManyTimesClose(ChannelHolder *ch) {
+  const int num_threads = 15;
+  std::thread t[num_threads];
+  bool thread_ended[num_threads];
+
+  // Launches threads that try to send data to channel.
+  for (size_t i = 0; i < num_threads / 3; i++) {
+    thread_ended[i] = false;
+    t[i] = std::thread(
+        [&](bool *ended) {
+          int data = 10;
+          ch->Send(&data);
+          *ended = true;
+        },
+        &thread_ended[i]);
+  }
+
+  // Launches threads that try to receive data to channel.
+  for (size_t i = num_threads / 3; i < 2 * num_threads / 3; i++) {
+    thread_ended[i] = false;
+    t[i] = std::thread(
+        [&](bool *p) {
+          int data;
+          if (ch->Receive(&data)) {
+            EXPECT_EQ(data, 10);
+          }
+          *p = true;
+        },
+        &thread_ended[i]);
+  }
+
+  // Launches threads that try to close the channel.
+  for (size_t i = 2 * num_threads / 3; i < num_threads; i++) {
+    thread_ended[i] = false;
+    t[i] = std::thread(
+        [&](bool *p) {
+          if (!ch->IsClosed()) {
+            ch->close();
+          }
+          *p = true;
+        },
+        &thread_ended[i]);
+  }
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // wait
+
+  // Verify that all threads are unblocked
+  for (size_t i = 0; i < num_threads; i++) {
+    EXPECT_EQ(thread_ended[i], true);
+  }
+  EXPECT_TRUE(ch->IsClosed());
+  // delete the channel
+  delete ch;
+  for (size_t i = 0; i < num_threads; i++) t[i].join();
+}
+
+TEST(ChannelHolder, ChannelHolderManyTimesCloseTest) {
+  // Check for Buffered Channel
+  ChannelHolder *ch = new ChannelHolder();
+  ch->Reset<int>(10);
+  ChannelHolderManyTimesClose(ch);
+}
