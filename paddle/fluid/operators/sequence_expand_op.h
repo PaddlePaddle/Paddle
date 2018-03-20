@@ -16,12 +16,43 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "unsupported/Eigen/CXX11/Tensor"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
+
+template <typename DeviceContext, typename T>
+struct SequenceExpandFunctor {
+  void operator()(const DeviceContext& ctx, const LoDTensor& x, LoDTensor* out);
+};
+
+// template <typename DeviceContext, typename T>
+// struct SequenceExpandGradFunctor {};
+
+template <typename T>
+void SequenceExpandFunctor<platform::CPUDeviceContext, T>::operator()(
+    const platform::CPUDeviceContext& context, const LoDTensor& x,
+    LoDTensor* out) {
+  x_dims = x.dims();
+  size_t element_len = framework::product(x_dims) / x_dims[0];
+  T* out_data = out->mutable_data<T>(context.GetPlace());
+  auto out_starts = out->lod().back();
+
+  for (size_t i = 0; i < out_starts.size() - 1; i++) {
+    int scale = out_starts[i + 1] - out_starts[i];
+    Eigen::TensorMap<
+        Eigen::Tensor<const T, 2, Eigen::RowMajor, Eigen::DenseIndex>>
+        x_t(x_data, 1, element_len);
+    Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, Eigen::DenseIndex>>
+        out_t(out_data, scale, element_len);
+    Eigen::array<int, 2> cast({{scale, 1}});
+    out_t.device(*context.eigen_device()) = x_t.broadcast(cast);
+    x_data += element_len;
+    out_data += element_len * scale;
+  }
+}
 
 template <typename DeviceContext, typename T>
 class SequenceExpandKernel : public framework::OpKernel<T> {
@@ -38,24 +69,8 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
                       "The size of last lod level in Input(Y)"
                       "must be equal to dims[0] of Input(X).");
     out->set_lod(y->lod());
-    auto* place =
-        context.template device_context<DeviceContext>().eigen_device();
-    size_t element_len = framework::product(x_dims) / x_dims[0];
-    T* out_data = out->mutable_data<T>(context.GetPlace());
-    auto out_starts = out->lod().back();
-
-    for (size_t i = 0; i < out_starts.size() - 1; i++) {
-      int scale = out_starts[i + 1] - out_starts[i];
-      Eigen::TensorMap<
-          Eigen::Tensor<const T, 2, Eigen::RowMajor, Eigen::DenseIndex>>
-          x_t(x_data, 1, element_len);
-      Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor, Eigen::DenseIndex>>
-          out_t(out_data, scale, element_len);
-      Eigen::array<int, 2> cast({{scale, 1}});
-      out_t.device(*place) = x_t.broadcast(cast);
-      x_data += element_len;
-      out_data += element_len * scale;
-    }
+    SequenceExpandFunctor<DeviceContext, T> functor;
+    functor(context.template device_context<DeviceContext>(), *x, out);
   }
 };
 
