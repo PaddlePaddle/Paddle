@@ -752,7 +752,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
   while (!pending_vars.empty()) {
     VarHandleBase *ready_var = nullptr;
     for (auto &pair : pending_vars) {
-      if (pair.second.load(std::memory_order_consume)) {
+      if (pair.second.load(std::memory_order_acquire)) {
         ready_var = pair.first;
       }
     }
