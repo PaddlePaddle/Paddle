@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <random>
+#include "glog/logging.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
@@ -20,43 +23,53 @@ namespace reader {
 
 class ShuffleReader : public framework::DecoratedReader {
  public:
-  ShuffleReader(ReaderBase* reader, int buffer_size)
-      : DecoratedReader(reader), buffer_size_(buffer_size), iteration_pos_(0) {
-    buffer_.reserve(buffer_size);
+  ShuffleReader(ReaderBase* reader, size_t buffer_size, size_t seed = 0)
+      : DecoratedReader(reader), buffer_size_(buffer_size), seed_(seed) {
+    VLOG(10) << "Create shuffle reader of " << reader_;
+    if (seed_ == 0) {
+      std::random_device device;
+      seed_ = device();
+    }
+    ReadIntoBuffers();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
+  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+    if (iteration_pos_ >= buffer_.size()) {
+      VLOG(10) << "Resetting shuffle buffer";
+      ReadIntoBuffers();
+    }
+    *out = buffer_[iteration_pos_++];
+  }
+
+  bool HasNext() const override {
+    return iteration_pos_ < buffer_.size() || reader_->HasNext();
+  }
 
  private:
-  int buffer_size_;
-  std::vector<std::vector<framework::LoDTensor>> buffer_;
-  size_t iteration_pos_;
-};
-
-void ShuffleReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  if (iteration_pos_ >= buffer_.size()) {
-    // Reload buffer with new data
+  void ReadIntoBuffers() {
     buffer_.clear();
     buffer_.reserve(buffer_size_);
-    for (int i = 0; i < buffer_size_; ++i) {
-      buffer_.push_back(std::vector<framework::LoDTensor>());
-      reader_->ReadNext(&buffer_.back());
-      if (buffer_.back().empty()) {
-        buffer_.pop_back();
+    iteration_pos_ = 0;
+    PADDLE_ENFORCE(reader_->HasNext());
+    for (size_t i = 0; i < buffer_size_; ++i) {
+      if (!reader_->HasNext()) {
         break;
       }
+      buffer_.emplace_back();
+      reader_->ReadNext(&buffer_.back());
     }
-    // TODO(fengjiayi): 'std::random_shuffle' can be very slow. It needs to be
-    // optimize.
-    std::random_shuffle(buffer_.begin(), buffer_.end());
-    iteration_pos_ = 0;
+    std::mt19937 g(seed_);
+    std::shuffle(buffer_.begin(), buffer_.end(), g);
+    seed_ = g();  // update seed_;
+    VLOG(10) << "random buffer size = " << buffer_.size();
   }
-  out->clear();
-  if (!buffer_.empty()) {
-    std::swap(*out, buffer_[iteration_pos_++]);
-  }
-  // if buffer_ is empty, the 'out' will return as an empty vector.
-}
+
+  size_t buffer_size_;
+  std::vector<std::vector<framework::LoDTensor>> buffer_;
+
+  size_t iteration_pos_;
+  size_t seed_;
+};
 
 class CreateShuffleReaderOp : public framework::OperatorBase {
  public:
@@ -67,10 +80,10 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    auto* out = scope.FindVar(Output("Out"))
-                    ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(
-        new ShuffleReader(underlying_reader.Get(), Attr<int>("buffer_size")));
+    auto& var = detail::Ref(scope.FindVar(Output("Out")));
+    var.GetMutable<framework::ReaderHolder>()->Reset(
+        new ShuffleReader(underlying_reader.Get(),
+                          static_cast<size_t>(Attr<int>("buffer_size"))));
   }
 };
 
