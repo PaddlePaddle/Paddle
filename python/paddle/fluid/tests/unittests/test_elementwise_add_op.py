@@ -13,34 +13,60 @@
 # limitations under the License.
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 from op_test import OpTest
 
 
-class TestElementwiseOp(OpTest):
+class TestElementwiseAddOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_add"
+        self.dtype = np.float32
+        init_dtype()
+
+        x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y)
         }
-        self.outputs = {'Out': np.add(self.inputs['X'], self.inputs['Y'])}
+        self.outputs = {'Out': np.add(x, y)}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
 
     def test_check_grad_ingore_x(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad(
             ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
 
+    def init_dtype():
+        pass
 
-class TestElementwiseAddOp_scalar(TestElementwiseOp):
+
+class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
+    def init_dtype():
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
+
+
+class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -50,7 +76,7 @@ class TestElementwiseAddOp_scalar(TestElementwiseOp):
         self.outputs = {'Out': self.inputs['X'] + self.inputs['Y']}
 
 
-class TestElementwiseAddOp_scalar2(TestElementwiseOp):
+class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -60,7 +86,7 @@ class TestElementwiseAddOp_scalar2(TestElementwiseOp):
         self.outputs = {'Out': self.inputs['X'] + self.inputs['Y']}
 
 
-class TestElementwiseAddOp_Vector(TestElementwiseOp):
+class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -70,7 +96,7 @@ class TestElementwiseAddOp_Vector(TestElementwiseOp):
         self.outputs = {'Out': np.add(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestElementwiseAddOp_broadcast_0(TestElementwiseOp):
+class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -84,7 +110,7 @@ class TestElementwiseAddOp_broadcast_0(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_broadcast_1(TestElementwiseOp):
+class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -98,7 +124,7 @@ class TestElementwiseAddOp_broadcast_1(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_broadcast_2(TestElementwiseOp):
+class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -111,7 +137,7 @@ class TestElementwiseAddOp_broadcast_2(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_broadcast_3(TestElementwiseOp):
+class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -125,7 +151,7 @@ class TestElementwiseAddOp_broadcast_3(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_broadcast_4(TestElementwiseOp):
+class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -139,7 +165,7 @@ class TestElementwiseAddOp_broadcast_4(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_rowwise_add_0(TestElementwiseOp):
+class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
@@ -153,7 +179,7 @@ class TestElementwiseAddOp_rowwise_add_0(TestElementwiseOp):
         }
 
 
-class TestElementwiseAddOp_rowwise_add_1(TestElementwiseOp):
+class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
     def setUp(self):
         self.op_type = "elementwise_add"
         self.inputs = {
