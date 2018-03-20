@@ -707,6 +707,7 @@ void ParallelExecutor::BuildNCCLCommunicator() const {
 
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
+  VLOG(3) << "Run iter";
   auto fetched_data = std::make_shared<FetchedData>(fetch_tensors.size());
   // Version --> VarHandle
   member_->exception_.reset();
