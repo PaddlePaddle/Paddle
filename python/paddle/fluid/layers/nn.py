@@ -3393,10 +3393,8 @@ def lod_reset(x, y=None, target_lod=None):
 
 def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
     """
-    **Local Response Normalization Operator**
-
-    Refer to `ImageNet Classification with Deep Convolutional Neural Networks 
-    <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+    Local Response Normalization Layer. This layer performs a kind of
+    "lateral inhibition" by normalizing over local input regions.
 
     The formula is as follows:
 
@@ -3412,6 +3410,9 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
     * :math:`k`: The offset (usually positive to avoid dividing by 0).
     * :math:`alpha`: The scaling parameter.
     * :math:`beta`: The exponent parameter.
+
+    Refer to `ImageNet Classification with Deep Convolutional Neural Networks
+    <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 
     Args:
         input (Variable): The input tensor of this layer, and the dimension of input tensor must be 4.
