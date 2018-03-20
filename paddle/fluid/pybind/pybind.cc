@@ -414,6 +414,12 @@ All parameter, weight, gradient are variables in Paddle.
              self.set_falsenet(net.Clone());
            });
 
+  py::class_<framework::Executor>(m, "Executor")
+      .def(py::init<const platform::Place &>())
+      .def("run",
+           (void (Executor::*)(const ProgramDesc &, Scope *, int, bool, bool)) &
+               Executor::Run);
+
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("init_devices", &framework::InitDevices);
