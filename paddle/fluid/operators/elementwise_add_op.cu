@@ -17,14 +17,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = padddle::platform;
+namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_add, ops::ElementwiseAddKernel<plat::CUDADeviceContext, float>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>
-        ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_add_grad,
     ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, float>,
