@@ -90,6 +90,7 @@ size_t Used<platform::CUDAPlace>(platform::CUDAPlace place) {
 template <>
 void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
   auto* buddy_allocator = GetGPUBuddyAllocator(place.device);
+  VLOG(30) << "Allocating " << size << " bytes on " << place;
   auto* ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
     int cur_dev = platform::GetCurrentDeviceId();
