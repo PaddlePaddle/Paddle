@@ -340,6 +340,8 @@ ncclDataType_t ToNCCLDataType(std::type_index type) {
   }
 }
 
+static std::mutex g_nccl_mtx_;
+
 struct NCCLAllReduceOpHandle : public OpHandle {
   ParallelExecutorPrivate *member_;
 
@@ -360,6 +362,8 @@ struct NCCLAllReduceOpHandle : public OpHandle {
       auto &var_name = static_cast<VarHandle *>(this->inputs_[0])->name_;
       int dtype = -1;
       size_t numel = 0;
+
+      std::lock_guard<std::mutex> g(g_nccl_mtx_);
 
       platform::dynload::ncclGroupStart();
 
