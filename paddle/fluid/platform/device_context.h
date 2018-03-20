@@ -103,6 +103,7 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
+  mutable std::mutex mutex_;
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;

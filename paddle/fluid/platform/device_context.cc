@@ -159,6 +159,7 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
+  std::lock_guard<std::mutex> guard(mutex_);
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
   PADDLE_ENFORCE(cudaGetLastError());
 }
