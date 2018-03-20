@@ -84,10 +84,6 @@ class OperatorBase {
     return boost::get<T>(attrs_.at(name));
   }
 
-  inline bool HasAttr(const std::string& name) const {
-    return attrs_.count(name) != 0;
-  }
-
   /// if scope is not null, also show dimensions of arguments
   virtual std::string DebugStringEx(const Scope* scope) const;
 
@@ -197,10 +193,6 @@ class ExecutionContext {
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     return op_.Attr<T>(name);
-  }
-
-  inline bool HasAttr(const std::string& name) const {
-    return op_.HasAttr(name);
   }
 
   size_t InputSize(const std::string& name) const {

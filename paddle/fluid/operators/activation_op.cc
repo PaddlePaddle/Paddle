@@ -100,13 +100,6 @@ class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Relu Activation Operator.
 
@@ -163,13 +156,6 @@ class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Tanh Activation Operator.
 
@@ -226,13 +212,6 @@ class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Sqrt Activation Operator.
 
@@ -251,13 +230,6 @@ class AbsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout");
     AddComment(R"DOC(
 Abs Activation Operator.
 

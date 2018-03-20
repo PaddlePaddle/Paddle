@@ -515,7 +515,7 @@ class TestMKLDNNRelu(OpTest):
         x[np.abs(x) < 0.005] = 0.02
         self.inputs = {'X': x}
         self.outputs = {'Out': np.maximum(self.inputs['X'], 0)}
-        self.use_mkldnn = True
+        self.attrs = {"use_mkldnn": True}
 
     def test_check_output(self):
         self.check_output()
@@ -531,7 +531,7 @@ class TestMKLDNNTanh(OpTest):
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
         }
         self.outputs = {'Out': np.tanh(self.inputs['X'])}
-        self.use_mkldnn = True
+        self.attrs = {"use_mkldnn": True}
 
     def test_check_output(self):
         self.check_output()
@@ -547,7 +547,7 @@ class TestMKLDNNSqrt(OpTest):
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
         }
         self.outputs = {'Out': np.sqrt(self.inputs['X'])}
-        self.use_mkldnn = True
+        self.attrs = {"use_mkldnn": True}
 
     def test_check_output(self):
         self.check_output()
@@ -564,7 +564,7 @@ class TestMKLDNNAbs(OpTest):
         x[np.abs(x) < 0.005] = 0.02
         self.inputs = {'X': x}
         self.outputs = {'Out': np.abs(self.inputs['X'])}
-        self.use_mkldnn = True
+        self.attrs = {"use_mkldnn": True}
 
     def test_check_output(self):
         self.check_output()

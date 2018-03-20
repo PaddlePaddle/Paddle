@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "mkldnn.hpp"
+#include "mkldnn_activation_op.h"
 #include "paddle/fluid/operators/activation_op.h"
 
 namespace paddle {
@@ -183,10 +184,10 @@ namespace ops = paddle::operators;
       act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,               \
       ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>);
 
-#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                   \
-  __macro(relu, ReluMkldnnFunctor, ReluMkldnnGradFunctor)         \
-      __macro(tanh, TanhMkldnnFunctor, TanhMkldnnGradFunctor)     \
-          __macro(sqrt, SqrtMkldnnFunctor, SqrtMkldnnGradFunctor) \
-              __macro(abs, AbsMkldnnFunctor, AbsMkldnnGradFunctor);
+#define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)            \
+  __macro(relu, ReluMkldnnFunctor, ReluMkldnnGradFunctor); \
+  __macro(tanh, TanhMkldnnFunctor, TanhMkldnnGradFunctor); \
+  __macro(sqrt, SqrtMkldnnFunctor, SqrtMkldnnGradFunctor); \
+  __macro(abs, AbsMkldnnFunctor, AbsMkldnnGradFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
