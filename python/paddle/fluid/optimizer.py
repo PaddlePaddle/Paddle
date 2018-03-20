@@ -667,7 +667,7 @@ class AdadeltaOptimizer(Optimizer):
 class RMSPropOptimizer(Optimizer):
     """
     Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
-    rate method. The original slides that proposed Rmsprop: Slide 29 of
+    rate method. The original slides proposed RMSProp: Slide 29 of
     http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf .
 
     The original equation is as follows:
@@ -675,6 +675,7 @@ class RMSPropOptimizer(Optimizer):
     ..  math::
 
         r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
+
         w & = w - \\frac{\\eta} {\\sqrt{r(w,t) + \\epsilon}} \\nabla Q_{i}(w)
 
     The first equation calculates moving average of the squared gradient for
@@ -686,12 +687,15 @@ class RMSPropOptimizer(Optimizer):
     ..  math::
 
         r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2 \\\\
-        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{v(w,t) + \\epsilon}} \\nabla Q_{i}(w)
+
+        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{v(w,t) +
+            \\epsilon}} \\nabla Q_{i}(w)
+
         w & = w - v(w, t)
 
     where, :math: `\\rho` is a hyperparameter and typical values are 0.9, 0.95
     and so on. :math: `beta` is the momentum term. :math: `\\epsilon` is a
-    smoothing term to avoids division by zero, usually set somewhere in range
+    smoothing term to avoid division by zero, usually set somewhere in range
     from 1e-4 to 1e-8.
 
 
@@ -699,10 +703,12 @@ class RMSPropOptimizer(Optimizer):
         learning_rate(float): global leraning rate.
         rho(float): rho is :math: `\\rho` in equation, set 0.95 by default.
         epsilon(float): :math: `\\epsilon` in equation is smoothing term to
-            avoids division by zero, set 1e-6 by default.
+            avoid division by zero, set 1e-6 by default.
         momentum(float): :math: `\\beta` in equation is the momentum term,
             set 0.0 by default.
-    
+
+    Raises:
+        ValueError: If learning_rate, rho, epsilon, momentum are None.
 
     Examples:
           .. code-block:: python
@@ -728,6 +734,8 @@ class RMSPropOptimizer(Optimizer):
             raise ValueError("rho is not set.")
         if epsilon is None:
             raise ValueError("epsilon is not set.")
+        if momentum is None:
+            raise ValueError("momentum is not set.")
 
         self.type = "rmsprop"
         self._rho = rho
@@ -735,14 +743,16 @@ class RMSPropOptimizer(Optimizer):
         self._momentum = momentum
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
 
         for p in parameters:
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
 
         momentum_acc = self._get_accumulator(self._momentum_acc_str,
                                              param_and_grad[0])
