@@ -434,12 +434,44 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
+class BatchNormGradOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  BatchNormGradOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
+    AddInput("X", "The input tensor");
+    AddInput(framework::GradVarName("Y"), "ouput tensor's grad");
+    AddInput("Scale",
+             "Scale is a 1-dimensional tensor of size C "
+             "that is applied to the output");
+    AddOutput("SavedMean",
+              "Mean of the current mini batch, "
+              "will apply to output when training")
+        .AsIntermediate();
+    AddOutput("SavedVariance",
+              "Variance of the current mini batch, "
+              "will apply to output when training")
+        .AsIntermediate();
+    AddComment(R"DOC(
+Batch Normalization Grad.
+
+Batch Norm has been implemented as discussed in the paper:
+https://arxiv.org/pdf/1502.03167.pdf
+Can be used as a normalizer function for conv2d and fully_connected operations.
+The required data format for this layer is one of the following:
+1. NHWC `[batch, in_height, in_width, in_channels]`
+2. NCHW `[batch, in_channels, in_height, in_width]`
+
+)DOC");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-            batch_norm_grad, ops::BatchNormGradOp);
+            batch_norm_grad, ops::BatchNormGradOp, ops::BatchNormGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
     batch_norm,
     ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>);
