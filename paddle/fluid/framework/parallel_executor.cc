@@ -376,7 +376,7 @@ struct NCCLAllReduceOpHandle : public OpHandle {
       return;  // No need to all reduce when GPU count = 1;
     } else {
       auto &var_name = static_cast<VarHandle *>(this->inputs_[0])->name_;
-
+      VLOG(3) << "Invoke NCCL AllReduce";
       int dtype = -1;
       size_t numel = 0;
 
