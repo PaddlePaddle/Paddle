@@ -179,16 +179,6 @@ def get_program_cache_key(feed, fetch_list):
     return str(feed_var_names + fetch_var_names)
 
 
-class PreparedContext(object):
-    def __init__(self, handle, program, fetch_list, feed_var_name,
-                 fetch_var_name):
-        self.handle = handle
-        self.program = program
-        self.fetch_list = fetch_list
-        self.feed_var_name = feed_var_name
-        self.fetch_var_name = fetch_var_name
-
-
 class Executor(object):
     def __init__(self, places):
         if not isinstance(places, list) and not isinstance(places, tuple):
