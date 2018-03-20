@@ -420,11 +420,11 @@ struct NCCLAllReduceOpHandle : public OpHandle {
       }
     } else {
       if (events_.size() > 1) {
-        int dev_id =
-            boost::get<platform::CUDAPlace>(waited_dev->GetPlace()).device;
         auto stream =
             static_cast<platform::CUDADeviceContext *>(waited_dev)->stream();
-        PADDLE_ENFORCE(cudaStreamWaitEvent(stream, events_[dev_id], 0));
+        for (auto &ev : events_) {
+          PADDLE_ENFORCE(cudaStreamWaitEvent(stream, ev.second, 0));
+        }
       }
     }
   }
