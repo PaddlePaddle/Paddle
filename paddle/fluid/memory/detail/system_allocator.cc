@@ -79,7 +79,18 @@ void* GPUAllocator::Alloc(size_t& index, size_t size) {
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
   void* p;
+  int prev_id;
+  cudaGetDevice(&prev_id);
+  if (prev_id != gpu_id_) {
+    cudaSetDevice(gpu_id_);
+  }
+
   cudaError_t result = cudaMalloc(&p, size);
+
+  if (prev_id != gpu_id_) {
+    cudaSetDevice(prev_id);
+  }
+
   if (result == cudaSuccess) {
     index = 0;
     gpu_alloc_size_ += size;
