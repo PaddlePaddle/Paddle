@@ -43,7 +43,7 @@ math_library(sequence2batch)
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function)
 math_library(sequence_scale)
-math_library(softmax)
+math_library(softmax DEPS math_function)
 math_library(unpooling)
 math_library(vol2col)
 
