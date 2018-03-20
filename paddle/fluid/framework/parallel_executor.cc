@@ -690,6 +690,10 @@ void ParallelExecutor::BCastParamsToGPUs(
       }
       platform::dynload::ncclGroupEnd();
     }
+
+    for (auto &stream : member_->communication_streams_) {
+      stream.second.ctx_->Wait();
+    }
   }
 #else
   PADDLE_THROW("Not compiled with CUDA");
