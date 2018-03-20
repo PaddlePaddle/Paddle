@@ -45,7 +45,7 @@ md5_content=$(cat \
               |md5sum | awk '{print $1}')
 
 tp_cache_dir=/root/.cache/third_party
-tp_cache_file=$cache_dir/ci_pr_${md5_content}.tar.gz
+tp_cache_file=$cache_dir/%system.teamcity.projectName%_${md5_content}.tar.gz
 
 if [ ! -d ${tp_cache_dir} ];then
     mkdir -p ${tp_cache_dir}
@@ -94,7 +94,7 @@ nvidia-docker run -i --rm -v $PWD:/paddle -v /root/.cache:/root/.cache\
     -e "CTEST_OUTPUT_ON_FAILURE=%CTEST_OUTPUT_ON_FAILURE%"\
     -e "CTEST_PARALLEL_LEVEL=%CTEST_PARALLEL_LEVEL%"\
     -e "APT_MIRROR=${apt_mirror}"\
-    -e "WITH_GPU=%WITH_GPU%"\
+    -e "WITH_GPU=ON"\
     -e "CUDA_ARCH_NAME=Auto"\
     -e "WITH_AVX=%WITH_AVX%"\
     -e "WITH_GOLANG=%WITH_GOLANG%"\
@@ -109,7 +109,6 @@ nvidia-docker run -i --rm -v $PWD:/paddle -v /root/.cache:/root/.cache\
     -e "PADDLE_FRACTION_GPU_MEMORY_TO_USE=0.15" \
     -e "CUDA_VISIBLE_DEVICES=0,1" \
     -e "RUN_TEST=ON" ${PADDLE_DEV_NAME}
-
 
 if [ ! -f $tp_cache_file ]; then
     tar czvf $tp_cache_file ./build/third_party
