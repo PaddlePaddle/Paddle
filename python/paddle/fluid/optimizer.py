@@ -24,7 +24,9 @@ from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
 from clip import append_gradient_clip_ops, error_clip_callback
 
-__all__ = ['SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad']
+__all__ = [
+    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Adadelta'
+]
 
 
 class Optimizer(object):
@@ -580,6 +582,88 @@ class DecayedAdagradOptimizer(Optimizer):
         return decayed_adagrad_op
 
 
+class AdadeltaOptimizer(Optimizer):
+    """
+    **Adadelta Optimizer**
+    Simple Adadelta optimizer with average squared grad state and
+    average squared update state.
+    The details of adadelta please refer to this
+    `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD
+    <http://www.matthewzeiler.com/pubs/googleTR2012/googleTR2012.pdf>`_.
+
+    ..  math::
+
+        E(g_t^2) &= \\rho * E(g_{t-1}^2) + (1-\\rho) * g^2 \\\\
+        learning\\_rate &= sqrt( ( E(dx_{t-1}^2) + \\epsilon ) / ( \\
+                          E(g_t^2) + \\epsilon ) ) \\\\
+        E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\\_rate)^2
+
+    Args:
+        learning_rate(float): global leraning rate
+        rho(float): rho in equation
+        epsilon(float): epsilon in equation
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Adadelta(
+                learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
+            _, params_grads = optimizer.minimize(cost)
+    """
+
+    _avg_squared_grad_acc_str = "_avg_squared_grad"
+    _avg_squared_update_acc_str = "_avg_squared_update"
+
+    def __init__(self, learning_rate, epsilon=1.0e-6, rho=0.95, **kwargs):
+        if learning_rate is None:
+            raise ValueError("learning_rate is not set.")
+        if epsilon is None:
+            raise ValueError("epsilon is not set.")
+        if rho is None:
+            raise ValueError("rho is not set.")
+        super(AdadeltaOptimizer, self).__init__(
+            learning_rate=learning_rate, **kwargs)
+        self.type = "adadelta"
+        self._epsilon = epsilon
+        self._rho = rho
+
+    def _create_accumulators(self, block, parameters):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        for p in parameters:
+            self._add_accumulator(self._avg_squared_grad_acc_str, p)
+            self._add_accumulator(self._avg_squared_update_acc_str, p)
+
+    def _append_optimize_op(self, block, param_and_grad):
+        if not isinstance(block, framework.Block):
+            raise TypeError("block is not instance of framework.Block.")
+
+        avg_squared_grad_acc = self._get_accumulator(
+            self._avg_squared_grad_acc_str, param_and_grad[0])
+        avg_squared_update_acc = self._get_accumulator(
+            self._avg_squared_update_acc_str, param_and_grad[0])
+
+        # Create the adadelta optimizer op
+        adadelta_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "AvgSquaredGrad": avg_squared_grad_acc,
+                "AvgSquaredUpdate": avg_squared_update_acc
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "AvgSquaredGradOut": avg_squared_grad_acc,
+                "AvgSquaredUpdateOut": avg_squared_update_acc
+            },
+            attrs={"epsilon": self._epsilon,
+                   "rho": self._rho})
+
+        return adadelta_op
+
+
 # We short the class name, since users will use the optimizer with the package
 # name. The sample code:
 #
@@ -594,3 +678,4 @@ Adagrad = AdagradOptimizer
 Adam = AdamOptimizer
 Adamax = AdamaxOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
+Adadelta = AdadeltaOptimizer

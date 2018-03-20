@@ -47,3 +47,10 @@ DecayedAdagrad
     :members:
     :noindex:
 
+Adadelta
+--------------
+
+..  autoclass:: paddle.fluid.optimizer.AdadeltaOptimizer
+    :members:
+    :noindex:
+
