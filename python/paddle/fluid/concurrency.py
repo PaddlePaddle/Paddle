@@ -143,9 +143,6 @@ def channel_send(channel, value, copy=False):
         value (Variable): Value to send to channel
         copy (bool): Copy data while channel send. If False, then data
         is moved. The input cannot be used after move.
-    Returns:
-        Variable: The boolean status on whether or not the channel
-                  successfully sent the passed value.
 
     Examples:
         .. code-block:: python
@@ -158,11 +155,6 @@ def channel_send(channel, value, copy=False):
     helper = LayerHelper('channel_send', **locals())
     main_program = helper.main_program
     channel_send_block = main_program.current_block()
-
-    status = helper.create_variable(
-        name=unique_name.generate('status'),
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        dtype=core.VarDesc.VarType.BOOL)
 
     X = value
 
@@ -179,15 +171,11 @@ def channel_send(channel, value, copy=False):
             type="assign_op", inputs={"X": value}, outputs={"Out": copied_X})
         X = copied_X
 
-    channel_send_op = channel_send_block.append_op(
-        type="channel_send",
-        inputs={
+    channel_send_block.append_op(
+        type="channel_send", inputs={
             "Channel": channel,
             "X": X,
-        },
-        outputs={"Status": status})
-
-    return status
+        })
 
 
 def channel_recv(channel, return_value):
