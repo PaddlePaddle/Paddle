@@ -37,13 +37,6 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     int ref_level = context.Attr<int>("ref_level");
     auto& x_lod = x->lod();
     auto& y_lod = y->lod();
-    PADDLE_ENFORCE_GT(y_lod.size(), 0,
-                      "Level number of `Y`'s lod should be greater than 0.");
-    PADDLE_ENFORCE(
-        ref_level == -1 || (ref_level >= 0 && ref_level < y_lod.size()),
-        "Invlid `ref_level`, which should be either equal to -1 "
-        "or in [0, %d)",
-        y_lod.size());
 
     if (ref_level == -1) ref_level = y_lod.size() - 1;
 

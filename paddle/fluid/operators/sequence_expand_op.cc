@@ -145,7 +145,7 @@ and input(Y)
              [0, 3, 6, 6, 8]]
 ref_level: 0
 then we get 1-level LoDTensor
-    Out.lod =  [[0,   2,             5,             8]]
+    Out.lod =  [[0,   1,   2,        5,             8]]
     Out.data = [[a], [a], [b], [c], [d], [b], [c], [d]]
     Out.dims = [8, 1]
 
@@ -157,7 +157,7 @@ Given a common Tensor input(X)
 and input(Y)
     Y.lod = [[0, 2, 3, 6]]
 ref_level: -1
-then we a common Tensor
+then we get a common Tensor
     Out.data = [[a], [a], [b], [c], [c], [c]]
     Out.dims = [6, 1]
 
