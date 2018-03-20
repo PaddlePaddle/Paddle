@@ -211,9 +211,6 @@ struct FetchOpHandle : public OpHandle {
     for (auto *input_var : inputs_) {
       input_var->pending_ops_.erase(this);
     }
-    for (auto &pair : dev_ctx_) {
-      pair.second->Wait();
-    }
 
     // Lazily merge tensors. Will faster code.
     MergeTensors();
