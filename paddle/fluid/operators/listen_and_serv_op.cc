@@ -157,8 +157,8 @@ class ListenAndServOp : public framework::OperatorBase {
         }));
       }
       for (int i = 0; i < num_blocks - 2; ++i) fs[i].wait();
-      // Run global block at final step
-      if (num_blocks > 2) {
+      // Run global block at final step, or block1 if there are only 2 blocks
+      if (num_blocks >= 2) {
         try {
           executor.Run(*program, &recv_scope, num_blocks - 1,
                        false /*create_local_scope*/, false /*create_vars*/);
