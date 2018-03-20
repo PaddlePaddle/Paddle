@@ -61,6 +61,5 @@ class TestMultipleReader(unittest.TestCase):
                 img_val, = exe.run(fetch_list=[img])
                 batch_count += 1
                 self.assertLessEqual(img_val.shape[0], self.batch_size)
-                print(batch_count)
             data_file.reset()
             self.assertEqual(batch_count, self.num_batch * self.pass_num)
