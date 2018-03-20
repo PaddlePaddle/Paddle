@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-static constexpr char kFileFormatSeparator[] = ":";
+static constexpr char kFileFormatSeparator[] = ".";
 
 using FileReaderCreator = std::function<framework::ReaderBase*(
     const std::string&, const std::vector<framework::DDim>&)>;
