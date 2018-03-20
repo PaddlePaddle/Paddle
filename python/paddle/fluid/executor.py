@@ -316,45 +316,6 @@ class Executor(object):
         ]
         return outs
 
-    def _prepare(self,
-                 program=None,
-                 feed=None,
-                 fetch_list=None,
-                 feed_var_name='feed',
-                 fetch_var_name='fetch'):
-        if feed is None:
-            feed = {}
-        if not isinstance(feed, dict):
-            raise TypeError("feed should be a map")
-        if fetch_list is None:
-            fetch_list = []
-        if program is None:
-            program = default_main_program()
-
-        if not isinstance(program, Program):
-            raise TypeError()
-
-        program = self._add_feed_fetch_ops(
-            program=program,
-            feed=feed,
-            fetch_list=fetch_list,
-            feed_var_name=feed_var_name,
-            fetch_var_name=fetch_var_name)
-        handle = self.executor.prepare(program.desc, 0)
-        return PreparedContext(handle, program, fetch_list, feed_var_name,
-                               fetch_var_name)
-
-    def _run_prepared_ctx(self, ctx, feed=None, scope=None, return_numpy=True):
-        if scope is None:
-            scope = global_scope()
-
-        self._feed_data(ctx.program, feed, ctx.feed_var_name, scope)
-        self.executor.run_prepared_ctx(ctx.handle, scope, True, True)
-        outs = self._fetch_data(ctx.fetch_list, ctx.fetch_var_name, scope)
-        if return_numpy:
-            outs = as_numpy(outs)
-        return outs
-
     def run(self,
             program=None,
             feed=None,
