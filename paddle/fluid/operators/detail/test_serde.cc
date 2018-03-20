@@ -91,14 +91,15 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // deserialize zero-copy
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::TensorResponse resp(&scope);
+  framework::Variable* var2 = NULL;
   if (from_type == 0) {
-    EXPECT_EQ(resp.Parse(msg, ctx), 0);
+    operators::detail::DeserializeFromByteBuffer(msg, ctx, &scope, var2);
   } else {
-    EXPECT_EQ(resp.Parse(bytebuffer2, ctx), 0);
+    operators::detail::DeserializeFromByteBuffer(bytebuffer2, ctx, &scope,
+                                                 var2);
   }
 
-  framework::Variable* var2 = resp.GetVar();
+  // resp.GetVar();
 
   auto tensor2 = var2->Get<framework::LoDTensor>();
   float* tensor_data2 = nullptr;
@@ -165,10 +166,8 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   // deserialize zero-copy
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::TensorResponse resp(&scope);
-  EXPECT_EQ(resp.Parse(msg, ctx), 0);
-
-  framework::Variable* var2 = resp.GetVar();
+  framework::Variable* var2 = NULL;
+  operators::detail::DeserializeFromByteBuffer(msg, ctx, &scope, var2);
 
   auto* slr2 = var2->GetMutable<framework::SelectedRows>();
   auto* tensor2 = slr2->mutable_value();

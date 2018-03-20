@@ -82,7 +82,8 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
       return false;
     }
     // TODO(gongwb): don't copy if it's aligned?
-    memcpy(reinterpret_cast<void*>(p), data, size_to_write);
+    platform::CPUPlace cpu;
+    memory::Copy(cpu, reinterpret_cast<void*>(p), cpu, data, size_to_write);
 
     p += size_to_write;
     size -= size_to_write;
@@ -154,7 +155,7 @@ bool TensorResponse::CopySelectRowsData(
   auto* slr = var->GetMutable<framework::SelectedRows>();
   int64_t* rows_data = slr->mutable_rows()->data();
 
-  // copy rows CPU data, GPU data will be copied lazly
+  // copy rows CPU data, GPU data will be copied lazliy.
   platform::CPUPlace cpu;
   if (!ReadRaw(input, ctx, cpu, rows_data, length)) {
     return false;
@@ -210,7 +211,7 @@ bool ParseLodData(::google::protobuf::io::CodedInputStream* input,
   return true;
 }
 
-int TensorResponse::Parse(::grpc::ByteBuffer& byte_buffer,
+int TensorResponse::Parse(const ::grpc::ByteBuffer& byte_buffer,
                           const platform::DeviceContext& dev_ctx) {
   GrpcByteBufferSource source;
   source.Init(byte_buffer);

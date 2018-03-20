@@ -42,7 +42,7 @@ class TensorResponse {
   // 0:ok.
   // -1: unkown error.
   // other: number of error field.
-  int Parse(::grpc::ByteBuffer& byte_buffer,
+  int Parse(const ::grpc::ByteBuffer& byte_buffer,
             const platform::DeviceContext& dev_ctx);
 
   // should call parse first.
@@ -61,8 +61,6 @@ class TensorResponse {
                          framework::DDim& dims, int length);
 
  private:
- private:
-  framework::Variable* var_;
   framework::Scope* scope_;
   // only Skeleton
   sendrecv::VariableMessage meta_;
