@@ -253,7 +253,7 @@ struct FetchOpHandle : public OpHandle {
 
 class ParallelExecutorPrivate {
  public:
-  explicit ParallelExecutorPrivate(size_t num_threads = 0)
+  explicit ParallelExecutorPrivate(size_t num_threads = 12)
       : pool_(num_threads == 0 ? nullptr : new ThreadPool(num_threads)) {}
 
   std::vector<platform::Place> places_;
