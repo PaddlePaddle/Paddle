@@ -389,10 +389,6 @@ struct ComputationOpHandle : public OpHandle {
     for (auto *in : inputs_) {
       bool need_wait =
           in->generated_op_ && in->generated_op_->dev_ctx_[place_] != cur_ctx;
-      if (dynamic_cast<NCCLAllReduceOpHandle *>(in->generated_op_)) {
-        VLOG(3) << "Input is nccl all reduce, need to wait" << need_wait;
-      }
-
       if (need_wait) {
         in->generated_op_->Wait(cur_ctx);
       }
@@ -545,13 +541,6 @@ void ParallelExecutor::ConstructDependencyGraph(
     harzaeds need to be handled.
    */
   PolishGraphToSupportDataHazards();
-
-  for (auto &g : grads) {
-    LOG(INFO) << member_->vars_.begin()
-                     ->second[g]
-                     .rbegin()
-                     ->second.pending_ops_.size();
-  }
 }
 
 /**
