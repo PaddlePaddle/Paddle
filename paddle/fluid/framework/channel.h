@@ -15,23 +15,43 @@ limitations under the License. */
 #pragma once
 
 #include <stddef.h>  // for size_t
+#include <condition_variable>
 #include <typeindex>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
+enum class ChannelAction {
+  SEND = 0,
+  RECEIVE = 1,
+  CLOSE = 2,
+};
+
 // Channel is the abstract class of buffered and un-buffered channels.
 template <typename T>
 class Channel {
  public:
+  virtual bool CanSend() = 0;
+  virtual bool CanReceive() = 0;
   virtual bool Send(T*) = 0;
   virtual bool Receive(T*) = 0;
   virtual size_t Cap() = 0;
   virtual void Lock() = 0;
+
   virtual void Unlock() = 0;
+  virtual bool IsClosed() = 0;
   virtual void Close() = 0;
   virtual ~Channel() {}
+
+  virtual void AddToSendQ(const void* referrer, T* data,
+                          std::shared_ptr<std::condition_variable_any> cond,
+                          std::function<bool(ChannelAction)> cb) = 0;
+  virtual void AddToReceiveQ(const void* referrer, T* data,
+                             std::shared_ptr<std::condition_variable_any> cond,
+                             std::function<bool(ChannelAction)> cb) = 0;
+  virtual void RemoveFromSendQ(const void* referrer) = 0;
+  virtual void RemoveFromReceiveQ(const void* referrer) = 0;
 };
 
 // Forward declaration of channel implementations.
@@ -80,6 +100,27 @@ class ChannelHolder {
     return channel != nullptr ? channel->Receive(data) : false;
   }
 
+  bool IsClosed() {
+    if (IsInitialized()) {
+      return holder_->IsClosed();
+    }
+    return false;
+  }
+
+  bool CanSend() {
+    if (IsInitialized()) {
+      return holder_->CanSend();
+    }
+    return false;
+  }
+
+  bool CanReceive() {
+    if (IsInitialized()) {
+      return holder_->CanReceive();
+    }
+    return false;
+  }
+
   void close() {
     if (IsInitialized()) holder_->Close();
   }
@@ -95,6 +136,38 @@ class ChannelHolder {
 
   void Unlock() {
     if (IsInitialized()) holder_->Unlock();
+  }
+
+  template <typename T>
+  void AddToSendQ(const void* referrer, T* data,
+                  std::shared_ptr<std::condition_variable_any> cond,
+                  std::function<bool(ChannelAction)> cb) {
+    if (IsInitialized()) {
+      Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
+      if (channel != nullptr) {
+        channel->AddToSendQ(referrer, data, cond, cb);
+      }
+    }
+  }
+
+  template <typename T>
+  void AddToReceiveQ(const void* referrer, T* data,
+                     std::shared_ptr<std::condition_variable_any> cond,
+                     std::function<bool(ChannelAction)> cb) {
+    if (IsInitialized()) {
+      Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
+      if (channel != nullptr) {
+        channel->AddToReceiveQ(referrer, data, cond, cb);
+      }
+    }
+  }
+
+  void RemoveFromSendQ(const void* referrer) {
+    if (IsInitialized()) holder_->RemoveFromSendQ(referrer);
+  }
+
+  void RemoveFromReceiveQ(const void* referrer) {
+    if (IsInitialized()) holder_->RemoveFromReceiveQ(referrer);
   }
 
   inline bool IsInitialized() const { return holder_ != nullptr; }
@@ -113,6 +186,11 @@ class ChannelHolder {
     virtual ~Placeholder() {}
     virtual const std::type_index Type() const = 0;
     virtual void* Ptr() const = 0;
+    virtual bool IsClosed() = 0;
+    virtual bool CanSend() = 0;
+    virtual bool CanReceive() = 0;
+    virtual void RemoveFromSendQ(const void* referrer) = 0;
+    virtual void RemoveFromReceiveQ(const void* referrer) = 0;
     virtual void Close() = 0;
     virtual void Lock() = 0;
     virtual void Unlock() = 0;
@@ -128,6 +206,39 @@ class ChannelHolder {
     virtual const std::type_index Type() const { return type_; }
 
     virtual void* Ptr() const { return static_cast<void*>(channel_.get()); }
+
+    virtual bool IsClosed() {
+      if (channel_) {
+        return channel_->IsClosed();
+      }
+      return false;
+    }
+
+    virtual bool CanSend() {
+      if (channel_) {
+        return channel_->CanSend();
+      }
+      return false;
+    }
+
+    virtual bool CanReceive() {
+      if (channel_) {
+        return channel_->CanReceive();
+      }
+      return false;
+    }
+
+    virtual void RemoveFromSendQ(const void* referrer) {
+      if (channel_) {
+        channel_->RemoveFromSendQ(referrer);
+      }
+    }
+
+    virtual void RemoveFromReceiveQ(const void* referrer) {
+      if (channel_) {
+        channel_->RemoveFromReceiveQ(referrer);
+      }
+    }
 
     virtual void Close() {
       if (channel_) channel_->Close();

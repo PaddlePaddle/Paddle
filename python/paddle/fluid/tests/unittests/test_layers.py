@@ -181,8 +181,8 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[10], dtype='float32')
             y = layers.data(
-                name='y', shape=[10, 20], dtype='float32', lod_level=1)
-            self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
+                name='y', shape=[10, 20], dtype='float32', lod_level=2)
+            self.assertIsNotNone(layers.sequence_expand(x=x, y=y, ref_level=1))
         print(str(program))
 
     def test_lstm_unit(self):
@@ -220,7 +220,7 @@ class TestBook(unittest.TestCase):
             seq_data = layers.data(
                 name='seq_data', shape=[10, 10], dtype='float32', lod_level=1)
             seq = layers.fc(input=seq_data, size=20)
-            self.assertIsNotNone(layers.sequence_softmax(x=seq))
+            self.assertIsNotNone(layers.sequence_softmax(seq))
         print(str(program))
 
     def test_softmax(self):
@@ -228,7 +228,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
-            self.assertIsNotNone(layers.softmax(x=hid))
+            self.assertIsNotNone(layers.softmax(hid))
         print(str(program))
 
     def test_get_places(self):
@@ -325,6 +325,15 @@ class TestBook(unittest.TestCase):
             y = layers.data(name='label', shape=[4], dtype='float32')
             loss = layers.smooth_l1(x, y)
             self.assertIsNotNone(loss)
+        print(str(program))
+
+    def test_lod_reset(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[10], dtype='float32')
+            y = layers.data(
+                name='y', shape=[10, 20], dtype='float32', lod_level=2)
+            print(layers.lod_reset(x=x, y=y))
         print(str(program))
 
 
