@@ -28,6 +28,7 @@ Scanner::Scanner(const std::string &filename) {
 }
 
 void Scanner::Reset() {
+  stream_->clear();
   stream_->seekg(0, std::ios::beg);
   ParseNextChunk();
 }
