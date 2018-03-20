@@ -1,7 +1,7 @@
 FAQ
 ====
 
-This document provides frequently asked questions of PaddlePaddle. If your questions are not here, please go to `PaddlePaddle Community<https://github.com/PaddlePaddle/Paddle/issues>`_, to find answers or open an `issue<https://github.com/PaddlePaddle/Paddle/issues/new>`_ , we will reply in time.
+This document provides frequently asked questions of PaddlePaddle. If your questions are not here, please go to `PaddlePaddle Community <https://github.com/PaddlePaddle/Paddle/issues>`_ , to find answers or open an `issue <https://github.com/PaddlePaddle/Paddle/issues/new>`_  , we will reply in time.
 
 ..  toctree::
   :maxdepth: 1
