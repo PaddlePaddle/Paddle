@@ -54,15 +54,15 @@ __global__ void sequence_expand_grad_kernel(const T* dout_data, T* dx_data,
       int tid_z = blockIdx.z * blockDim.z + threadIdx.z;
       int item_start = tid_x / element_len;
       for (; tid_z < element_len; tid_z += blockDim.z * gridDim.z) {
-        shm[item_start + tid_z] += doutx_data[item_start * scale + tid_z];
+        shm[item_start + tid_z] += dout_data[item_start * scale + tid_z];
       }
     }
   }
   // synchronize before write to dx
   __syncthreads();
-  for (int idx = blockDimx * blockIdx.x + threadIdx.x;
+  for (int idx = blockDim.x * blockIdx.x + threadIdx.x;
        idx < static_cast<int>(dout_size); idx += blockDim.x * gridDim.x) {
-    dx_data[idx] = shm[idx;]
+    dx_data[idx] = shm[idx];
   }
 }
 
@@ -86,19 +86,18 @@ struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
 
 template <typename T>
 struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx, const LoDTensor& x,
-                  const LoDTensor& out, const LoDTensor& dout, LoDTensor* dx) {
+  void operator()(const platform::CUDADeviceContext& context,
+                  const LoDTensor& x, const LoDTensor& out,
+                  const LoDTensor& dout, LoDTensor* dx) {
     auto x_dims = x.dims();
     size_t element_len = framework::product(x_dims) / x_dims[0];
-    const T* x_data = x->data<T>();
-    T* out_data = out->mutable_data<T>(context.GetPlace());
-    auto out_starts = out->lod().back();
+    auto out_starts = out.lod().back();
 
     dim3 block_size(16, 32, element_len);
     dim3 grid_size(10, 10);
     size_t out_size = framework::product(dx->dims());
-    sequence_expand_kernel<<<grid_size, block_size, out_size * sizeof(T),
-                             context.stream()>>>(
+    sequence_expand_grad_kernel<<<grid_size, block_size, out_size * sizeof(T),
+                                  context.stream()>>>(
         dout.data<T>(), dx->mutable_data<T>(context.GetPlace()),
         out_starts.CUDAData(context.GetPlace()), out_starts.size(), element_len,
         out_size);
