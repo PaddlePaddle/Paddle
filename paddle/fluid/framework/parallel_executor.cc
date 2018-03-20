@@ -138,15 +138,9 @@ struct ComputationOpHandle : public OpHandle {
 
  protected:
   void RunImpl() override {
-    // Wait other op if necessary
-    if (platform::is_gpu_place(place_)) {
-      int dev_id = boost::get<platform::CUDAPlace>(place_).device;
-      cudaSetDevice(dev_id);
-    }
     auto *cur_ctx = dev_ctx_[place_];
     for (auto *in : inputs_) {
       if (in->generated_op_ && in->generated_op_->dev_ctx_[place_] != cur_ctx) {
-        VLOG(3) << "Wait " << in->generated_op_->DebugString();
         in->generated_op_->Wait(cur_ctx);
       }
     }
