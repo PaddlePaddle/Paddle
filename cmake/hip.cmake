@@ -27,9 +27,6 @@ endif(WITH_TESTING)
 
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
     list(APPEND HIP_HCC_FLAGS  ${CMAKE_CXX_FLAGS_DEBUG})
-elseif(CMAKE_BUILD_TYPE  STREQUAL "Release")
-# Disable optimization since one eigen symbol will be removed in math_function.cu
-    #list(APPEND HIP_HCC_FLAGS  ${CMAKE_CXX_FLAGS_RELEASE})
 elseif(CMAKE_BUILD_TYPE  STREQUAL "RelWithDebInfo")
     list(APPEND HIP_HCC_FLAGS  ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 elseif(CMAKE_BUILD_TYPE  STREQUAL "MinSizeRel")

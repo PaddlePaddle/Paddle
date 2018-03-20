@@ -70,9 +70,6 @@ if(NOT CMAKE_BUILD_TYPE)
       FORCE)
 endif()
 
-if(WITH_AMD_GPU)
-endif()
-
 if(ANDROID OR IOS)
     if(ANDROID)
         if(${CMAKE_SYSTEM_VERSION} VERSION_LESS "16")
