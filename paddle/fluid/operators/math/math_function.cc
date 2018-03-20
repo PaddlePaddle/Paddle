@@ -371,6 +371,8 @@ template struct RowwiseAdd<platform::CPUDeviceContext, double>;
 
 template struct ColwiseSum<platform::CPUDeviceContext, float>;
 template struct ColwiseSum<platform::CPUDeviceContext, double>;
+template struct ColwiseSum<platform::CPUDeviceContext, int>;
+template struct ColwiseSum<platform::CPUDeviceContext, int64_t>;
 
 template struct RowwiseSum<platform::CPUDeviceContext, float>;
 template struct RowwiseSum<platform::CPUDeviceContext, double>;
