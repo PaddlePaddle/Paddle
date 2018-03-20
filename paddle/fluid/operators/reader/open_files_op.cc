@@ -122,6 +122,7 @@ void MultipleReader::ScheduleThreadFunc() {
       // No more file to read.
       ++completed_thread_num;
       if (completed_thread_num == prefetchers_.size()) {
+        buffer_->Close();
         break;
       }
     }
