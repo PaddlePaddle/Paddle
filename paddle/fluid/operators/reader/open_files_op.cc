@@ -94,7 +94,9 @@ void MultipleReader::EndScheduler() {
   available_thread_idx_->Close();
   buffer_->Close();
   waiting_file_idx_->Close();
-  scheduler_.join();
+  if (scheduler_.joinable()) {
+    scheduler_.join();
+  }
   delete buffer_;
   delete available_thread_idx_;
   delete waiting_file_idx_;

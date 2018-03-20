@@ -21,7 +21,8 @@ from ..executor import global_scope
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
-    'read_file', 'create_shuffle_reader', 'create_double_buffer_reader'
+    'open_files', 'read_file', 'create_shuffle_reader',
+    'create_double_buffer_reader'
 ]
 
 
@@ -307,7 +308,7 @@ def open_files(filenames, thread_num, shapes, lod_levels, dtypes):
             'shape_concat': shape_concat,
             'lod_levels': lod_levels,
             'ranks': ranks,
-            'filename': filenames,
+            'file_names': filenames,
             'thread_num': thread_num
         })
 
