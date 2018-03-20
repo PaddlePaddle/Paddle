@@ -73,6 +73,7 @@ __all__ = [
     'smooth_l1',
     'one_hot',
     'autoincreased_step_counter',
+    'lod_reset',
     'lrn',
 ]
 
@@ -2226,7 +2227,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         keep_dim (bool|False): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the 
+        name(str|None): A name for this layer(optional). If set None, the
             layer will be named automatically.
 
     Returns:
@@ -2242,7 +2243,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(x)  # [0.0002268]
             fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
             fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
-            fluid.layers.reduce_prod(x, dim=1, 
+            fluid.layers.reduce_prod(x, dim=1,
                                      keep_dim=True)  # [[0.027], [0.0084]]
     """
     helper = LayerHelper('reduce_prod', **locals())
@@ -3293,6 +3294,101 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         counter.stop_gradient = True
 
     return counter
+
+
+def lod_reset(x, y=None, target_lod=None):
+    """
+    LoD Reset Operator. Set LoD of **x** to a new one specified by **y** or
+    **target_lod**. When **y** provided, **y.lod** would be considered as target
+    LoD first, otherwise **y.data** would be considered as target LoD. If **y**
+    is not provided, target LoD should be specified by **target_lod**.
+    If target LoD is specified by **Y.data** or **target_lod**, only one level
+    LoD is supported.
+
+    .. code-block:: text
+
+        * Example 1:
+
+            Given a 1-level LoDTensor x:
+                x.lod =  [[ 0,     2,                   5      6 ]]
+                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                x.dims = [6, 1]
+
+            target_lod: [0, 4, 6]
+
+            then we get a 1-level LoDTensor:
+                out.lod =  [[ 0,                   4,            6 ]]
+                out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                out.dims = [6, 1]
+
+        * Example 2:
+
+            Given a 1-level LoDTensor x:
+                x.lod =  [[ 0,     2,                   5      6 ]]
+                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                x.dims = [6, 1]
+
+            y is a Tensor:
+                y.data = [[0, 2, 6]]
+                y.dims = [1, 3]
+
+            then we get a 1-level LoDTensor:
+                out.lod =  [[ 0,     2,                          6 ]]
+                out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                out.dims = [6, 1]
+
+        * Example 3:
+
+            Given a 1-level LoDTensor x:
+                x.lod =  [[ 0,      2,                   5     6 ]]
+                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                x.dims = [6, 1]
+
+            y is a 2-level LoDTensor:
+                y.lod =  [[0, 2, 4], [0, 2, 5, 6]]
+                y.data = [[1.1], [2.1], [3.1], [4.1], [5.1], [6.1]]
+                y.dims = [6, 1]
+
+            then we get a 2-level LoDTensor:
+                out.lod =  [[0, 2, 4], [0, 2, 5, 6]]
+                out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
+                out.dims = [6, 1]
+
+    Args:
+        x (Variable): Input variable which could be a Tensor or LodTensor.
+        y (Variable|None): If provided, output's LoD would be derived from y.
+        target_lod (list|tuple|None): One level LoD which should be considered
+                                      as target LoD when y not provided.
+
+    Returns:
+        Variable: Output variable with LoD specified by this operator.
+
+    Raises:
+        ValueError: If y and target_lod are both None.
+
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(name='x', shape=[10])
+            y = layers.data(name='y', shape=[10, 20], lod_level=2)
+            out = layers.lod_reset(x=x, y=y)
+    """
+    helper = LayerHelper("lod_reset", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    if y is not None:
+        helper.append_op(
+            type="lod_reset", inputs={'X': x,
+                                      'Y': y}, outputs={'Out': out})
+    elif target_lod is not None:
+        helper.append_op(
+            type="lod_reset",
+            inputs={'X': x},
+            attrs={'target_lod': target_lod},
+            outputs={'Out': out})
+    else:
+        raise ValueError("y and target_lod should not be both None.")
+
+    return out
 
 
 def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
