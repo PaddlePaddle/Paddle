@@ -545,6 +545,13 @@ void ParallelExecutor::ConstructDependencyGraph(
     harzaeds need to be handled.
    */
   PolishGraphToSupportDataHazards();
+
+  for (auto &g : grads) {
+    LOG(INFO) << member_->vars_.begin()
+                     ->second[g]
+                     .rbegin()
+                     ->second.pending_ops_.size();
+  }
 }
 
 /**
