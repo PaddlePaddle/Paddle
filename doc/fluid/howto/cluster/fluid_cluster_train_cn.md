@@ -1,5 +1,5 @@
 # Fluid 分布式版本使用指南
-本篇文章将说明在PaddlePaddle Fluid版本下进行分布式训练的配置和执行
+本篇文章将说明如何在PaddlePaddle Fluid版本下进行分布式训练的配置和执行，以及将单机训练脚本改造成支持集群训练的版本
 
 ## 准备工作
 * 可用的集群
@@ -8,6 +8,7 @@
 * 安装PaddlePaddle Fluid with Distribution版本
 
     所有的计算节点上均需要按照分布式版本的PaddlePaddle, 在用于GPU等设备的机器上还需要额外安装好相应的驱动程序和CUDA的库。
+
     **注意：**当前对外提供的PaddlePaddle版本并不支持分布式，需要通过源码重新编译。编译和安装方法参见[编译和安装指南](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/index_en.html)。
     cmake编译命令中需要将WITH_DISTRIBUTE设置为ON，下面是一个cmake编译指令示例：
 ``` bash
@@ -108,7 +109,6 @@ for pass_id in range(100):
 
 **注意：** ```training_role```是用来区分当前所起服务的角色的，用于训练程序中，用户可根据需要自行定义，其他参数为fluid.DistributeTranspiler的transpile函数所需要，需要在调用函数前进行定义，样例如下： 
 
-参数赋值及使用的相关代码片段：
 ```python
 t = fluid.DistributeTranspiler()
 t.transpile(
@@ -130,13 +130,13 @@ if training_role == "PSERVER":
 cd /paddle/python/paddle/fluid/tests/book
 ```
 
-第二步，参考如下命令启动Parameter Server：
+第二步，启动Parameter Server：
 ```bash
 PADDLE_INIT_PORT=6174 PADDLE_INIT_PSERVERS=192.168.1.2 TRAINERS=2 POD_IP=192.168.1.2 PADDLE_INIT_TRAINER_ID=1 TRAINING_ROLE=PSERVER python test_fit_a_line.py
 ```
 执行命令后请等待出现提示： ```Server listening on 192.168.1.2:6174 ```, 表示Paramter Server已经正常启动。
 
-第三步，启动Trainer, 启动Trainer的命令：
+第三步，启动Trainer：
 ```bash
 PADDLE_INIT_PORT=6174 PADDLE_INIT_PSERVERS=192.168.1.3 TRAINERS=2 POD_IP=192.168.1.3 PADDLE_INIT_TRAINER_ID=1 TRAINING_ROLE=TRAINER python test_fit_a_line.py
 ```
