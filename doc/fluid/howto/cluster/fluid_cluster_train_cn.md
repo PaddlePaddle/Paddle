@@ -3,8 +3,10 @@
 
 ## 准备工作
 * 可用的集群
+
     包含一个或多个计算节点的集群，每一个节点都能够执行PaddlePaddle的训练任务且拥有唯一的IP地址，集群内的所有计算节点可以通过网络相互通信。
 * 安装PaddlePaddle Fluid with Distribute 版本
+
     所有的计算节点上均需要按照分布式版本的PaddlePaddle, 在用于GPU等设备的机器上还需要额外安装好相应的驱动程序和CUDA的库。
     **注意：**当前对外提供的PaddlePaddle版本并不支持分布式，需要通过源码重新编译。编译和安装方法参见[编译和安装指南](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/index_en.html)。
     cmake编译命令中需要将WITH_DISTRIBUTE设置为ON，下面是一个cmake编译指令示例：
@@ -56,7 +58,7 @@ for pass_id in range(PASS_NUM):
 exit(1)
 ```
 
-我们创建了一个简单的全连接神经网络程序，并且通过fluid的Executor执行了100次迭代,现在我们需要将该单机版本的程序更新为分布式版本的程序。
+我们创建了一个简单的全连接神经网络程序，并且通过Fluid的Executor执行了100次迭代,现在我们需要将该单机版本的程序更新为分布式版本的程序。
 ### 介绍Parameter Server
 在非分布式版本的训练脚本中，只存在Trainer一种角色，它不仅处理常规的计算任务，也处理参数相关的计算和保存任务。在分布式版本的训练过程中，由于存在多个Trainer节点进行同样的数据计算任务，因此需要有一个中心化的节点来统一处理参数相关的保存和分配。在PaddlePaddle中，我们称这样的节点为Parameter Server, [Parameter Server 设计文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/dist_train/parameter_server.md)
 
@@ -94,7 +96,7 @@ for pass_id in range(100):
         exe.run(t.get_trainer_program())
 ```
 ### 分布式训练脚本运行说明
-分布式任务的运行需要将表格中说明的多个参数进行赋值，：
+分布式任务的运行需要将表格中说明的多个参数进行赋值:
 
 | 参数名 | 值类型 | 说明 | 示例 |
 |:-------------|:---|:---------------------------------------|:-------------|
@@ -105,6 +107,7 @@ for pass_id in range(100):
 | training_role | str | 节点角色， TRAINER/PSERVER | PSERVER |
 
 **其中：training_role 是用来区分当前所起服务的角色的，用于训练程序中，用户可根据需要自行定义，其他参数为fluid.DistributeTranspiler的transpile函数所需要，需要在调用函数前进行定义，至于如何从外部环境传入，用户可自定义。**
+
 参数赋值及使用的相关代码片段：
 ```python
 t = fluid.DistributeTranspiler()
