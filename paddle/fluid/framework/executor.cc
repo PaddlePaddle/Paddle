@@ -14,17 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 
-#include <set>
-
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
@@ -33,6 +30,19 @@ DEFINE_bool(check_nan_inf, false,
 
 namespace paddle {
 namespace framework {
+namespace {
+// block id starts from 0. This id is used to represent the codeblock
+// wrapping the first block 0.
+int kProgramId = -1;
+}  // namespace
+
+ExecutorPrepareContext::ExecutorPrepareContext(
+    const framework::ProgramDesc& prog, size_t block_id)
+    : prog_(prog), block_id_(block_id) {}
+
+ExecutorPrepareContext::~ExecutorPrepareContext() {
+  VLOG(5) << "destroy ExecutorPrepareContext";
+}
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
@@ -85,9 +95,9 @@ static void CheckTensorNANOrInf(const std::string& name,
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
-  auto* ctx = Prepare(pdesc, block_id);
-  RunPreparedContext(ctx, scope, create_local_scope, create_vars);
-  delete ctx;
+  platform::RecordBlock b(block_id);
+  auto ctx = Prepare(pdesc, block_id);
+  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -97,10 +107,11 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 // and feed_holder_name. Raise exception when any mismatch is found.
 // Return true if the block has feed operators and holder of matching info.
 static bool has_feed_operators(
-    BlockDesc* block, std::map<std::string, const LoDTensor*>& feed_targets,
+    const BlockDesc& block,
+    std::map<std::string, const LoDTensor*>& feed_targets,
     const std::string& feed_holder_name) {
   size_t feed_count = 0;
-  for (auto* op : block->AllOps()) {
+  for (auto* op : block.AllOps()) {
     if (op->Type() == kFeedOpType) {
       feed_count++;
       PADDLE_ENFORCE_EQ(op->Input("X")[0], feed_holder_name,
@@ -119,7 +130,7 @@ static bool has_feed_operators(
         "The number of feed operators should match 'feed_targets'");
 
     // When feed operator are present, so should be feed_holder
-    auto var = block->FindVar(feed_holder_name);
+    auto var = block.FindVar(feed_holder_name);
     PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
                             feed_holder_name);
     PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FEED_MINIBATCH,
@@ -137,10 +148,10 @@ static bool has_feed_operators(
 // and fetch_holder_name. Raise exception when any mismatch is found.
 // Return true if the block has fetch operators and holder of matching info.
 static bool has_fetch_operators(
-    BlockDesc* block, std::map<std::string, LoDTensor*>& fetch_targets,
+    const BlockDesc& block, std::map<std::string, LoDTensor*>& fetch_targets,
     const std::string& fetch_holder_name) {
   size_t fetch_count = 0;
-  for (auto* op : block->AllOps()) {
+  for (auto* op : block.AllOps()) {
     if (op->Type() == kFetchOpType) {
       fetch_count++;
       PADDLE_ENFORCE_EQ(op->Output("Out")[0], fetch_holder_name,
@@ -159,7 +170,7 @@ static bool has_fetch_operators(
         "The number of fetch operators should match 'fetch_targets'");
 
     // When fetch operator are present, so should be fetch_holder
-    auto var = block->FindVar(fetch_holder_name);
+    auto var = block.FindVar(fetch_holder_name);
     PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
                             fetch_holder_name);
     PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FETCH_LIST,
@@ -174,11 +185,21 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>& feed_targets,
                    std::map<std::string, LoDTensor*>& fetch_targets,
                    const std::string& feed_holder_name,
-                   const std::string& fetch_holder_name) {
-  auto* copy_program = new ProgramDesc(program);
+                   const std::string& fetch_holder_name, bool create_vars) {
+  platform::RecordBlock b(kProgramId);
+  bool has_feed_ops =
+      has_feed_operators(program.Block(0), feed_targets, feed_holder_name);
+  bool has_fetch_ops =
+      has_fetch_operators(program.Block(0), fetch_targets, fetch_holder_name);
+
+  ProgramDesc* copy_program = const_cast<ProgramDesc*>(&program);
+  if (!has_feed_ops || !has_fetch_ops) {
+    copy_program = std::unique_ptr<ProgramDesc>(new ProgramDesc(program)).get();
+  }
+
   auto* global_block = copy_program->MutableBlock(0);
 
-  if (!has_feed_operators(global_block, feed_targets, feed_holder_name)) {
+  if (!has_feed_ops) {
     // create feed_holder variable
     auto* feed_holder = global_block->Var(feed_holder_name);
     feed_holder->SetType(proto::VarType::FEED_MINIBATCH);
@@ -211,7 +232,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     }
   }
 
-  if (!has_fetch_operators(global_block, fetch_targets, fetch_holder_name)) {
+  if (!has_fetch_ops) {
     // create fetch_holder variable
     auto* fetch_holder = global_block->Var(fetch_holder_name);
     fetch_holder->SetType(proto::VarType::FETCH_LIST);
@@ -234,7 +255,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     }
   }
 
-  Run(*copy_program, scope, 0, true, true);
+  Run(*copy_program, scope, 0, create_vars, create_vars);
 
   // obtain the data of fetch_targets from fetch_holder
   for (auto* op : global_block->AllOps()) {
@@ -245,19 +266,17 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
           GetFetchVariable(*scope, fetch_holder_name, idx);
     }
   }
-
-  delete copy_program;
 }
 
-ExecutorPrepareContext* Executor::Prepare(const ProgramDesc& program,
-                                          int block_id) {
+std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
+    const ProgramDesc& program, int block_id) {
   auto* ctx = new ExecutorPrepareContext(program, block_id);
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  return ctx;
+  return std::unique_ptr<ExecutorPrepareContext>(ctx);
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
@@ -311,22 +330,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 void Executor::RunOperators(const ExecutorPrepareContext* ctx,
                             const Scope* local_scope) const {
   for (auto& op : ctx->ops_) {
-    // TODO(ty):
-    // e.g. sgd should wait for allreduce to be finished
-    // if op's input is params' grad:
-    //     sync with allreduce stream
-    // SyncMultipleStreams(op);
-
-    VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
-    op->Run(*local_scope, place_);
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
-
-    // TODO(ty):
-    // e.g. allreduce shoudl wait for fc_grad to be finished.
-    // if op's output is params' grad:
-    //     sync with computation stream
-    //     apply allreduce on allreduce stream
-    // SyncMultipleStreams(op);
+    op->Run(*local_scope, place_);
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "

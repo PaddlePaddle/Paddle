@@ -25,10 +25,10 @@ namespace paddle {
 namespace framework {
 
 struct ExecutorPrepareContext {
-  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id)
-      : prog_(prog), block_id_(block_id) {}
+  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
+  ~ExecutorPrepareContext();
 
-  framework::ProgramDesc prog_;
+  const framework::ProgramDesc& prog_;
   size_t block_id_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 };
@@ -56,10 +56,11 @@ class Executor {
            std::map<std::string, const LoDTensor*>& feed_targets,
            std::map<std::string, LoDTensor*>& fetch_targets,
            const std::string& feed_holder_name = "feed",
-           const std::string& fetch_holder_name = "fetch");
+           const std::string& fetch_holder_name = "fetch",
+           bool create_vars = true);
 
-  static ExecutorPrepareContext* Prepare(const ProgramDesc& program,
-                                         int block_id);
+  static std::unique_ptr<ExecutorPrepareContext> Prepare(
+      const ProgramDesc& program, int block_id);
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,

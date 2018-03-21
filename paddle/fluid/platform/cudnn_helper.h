@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -81,10 +82,28 @@ template <typename T>
 class CudnnDataType;
 
 template <>
+class CudnnDataType<float16> {
+ public:
+  static const cudnnDataType_t type = CUDNN_DATA_HALF;
+  // The scaling param type is float for HALF and FLOAT tensors
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
+  static ScalingParamType* kOne() {
+    static ScalingParamType v = 1.0;
+    return &v;
+  }
+  static ScalingParamType* kZero() {
+    static ScalingParamType v = 0.0;
+    return &v;
+  }
+};
+
+template <>
 class CudnnDataType<float> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_FLOAT;
-  typedef const float ScalingParamType;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
   static ScalingParamType* kOne() {
     static ScalingParamType v = 1.0;
     return &v;
@@ -99,7 +118,8 @@ template <>
 class CudnnDataType<double> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_DOUBLE;
-  typedef const double ScalingParamType;
+  using ScalingParamType = const double;
+  using BatchNormParamType = double;
   static ScalingParamType* kOne() {
     static ScalingParamType v = 1.0;
     return &v;
@@ -289,7 +309,7 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
   if (use_cudnn) {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif
