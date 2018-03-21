@@ -14,19 +14,20 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/elementwise_add_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    elementwise_add,
-    ops::ElementwiseAddKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ElementwiseAddKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ElementwiseAddKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseAddKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    elementwise_add, ops::ElementwiseAddKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, double>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_add_grad,
-    ops::ElementwiseAddGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CUDADeviceContext,
-                                  int64_t>);
+    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, double>,
+    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int>,
+    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int64_t>);
