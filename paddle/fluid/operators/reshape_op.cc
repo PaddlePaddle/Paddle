@@ -17,6 +17,82 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+class ReshapeOp : public framework::OperatorWithKernel {
+ public:
+  ReshapeOp(const std::string &type, const framework::VariableNameMap &inputs,
+            const framework::VariableNameMap &outputs,
+            const framework::AttributeMap &attrs)
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of ReshapeOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of ReshapeOp should not be null.");
+
+    const std::vector<int> &shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    PADDLE_ENFORCE(!shape.empty(),
+                   "The shape information must be set by Attr(shape).");
+
+    std::vector<int64_t> output_shape;
+    auto x_dims = ctx->GetInputDim("X");
+    auto out_dims = ValidateShape(shape, x_dims);
+    ctx->SetOutputDim("Out", out_dims);
+    // NOTE: Reshape op cannot reshape an input sequence batch into an
+    // output sequence batch that has a different number of time steps. Here
+    // output always shares the LoD information with input. But if
+    // Attr(shape) contains 0 or -1, the actual output shape can only be
+    // determined during runtime. The check for wheather it is a valid
+    // output sequence batch is performed in runtime.
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ private:
+  framework::DDim ValidateShape(const std::vector<int> shape,
+                                const framework::DDim &in_dims) const {
+    const int64_t in_size = framework::product(in_dims);
+    // only one dimension canbe set to -1, whose size will be automatically
+    // infered.
+    const int64_t unk_dim_val = -1;
+    const int64_t copy_dim_val = 0;
+
+    std::vector<int64_t> output_shape(shape.size(), 0);
+    int64_t capacity = 1;
+    int unk_dim_idx = -1;
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (shape[i] == unk_dim_val) {
+        PADDLE_ENFORCE(
+            unk_dim_idx == -1,
+            "Only one input dimension of Attr(shape) can be unknown.");
+        unk_dim_idx = i;
+      } else if (shape[i] == copy_dim_val) {
+        PADDLE_ENFORCE(
+            static_cast<int>(i) < in_dims.size(),
+            "The index of dimension to copy from input shape must be less "
+            "than the size of input shape.");
+      } else {
+        PADDLE_ENFORCE(
+            shape[i] > 0,
+            "Each input dimension of Attr(shape) must not be negtive except "
+            "one unknown dimension.");
+      }
+
+      capacity *= (shape[i] ? shape[i] : in_dims[i]);
+      output_shape[i] =
+          (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
+    }
+
+    if (unk_dim_idx != -1) {
+      output_shape[unk_dim_idx] = -in_size / capacity;
+      PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
+                        "Invalid shape is given.");
+    } else {
+      PADDLE_ENFORCE_EQ(capacity, in_size, "Invalid shape is given.");
+    }
+    return framework::make_ddim(output_shape);
+  }
+};
+
 class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   ReshapeOpMaker(OpProto *proto, OpAttrChecker *op_checker)
