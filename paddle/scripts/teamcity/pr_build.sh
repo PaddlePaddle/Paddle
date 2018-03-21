@@ -10,10 +10,10 @@
 # WITH_GOLANG               OFF       // don't build the Golang code
 # WITH_GPU                  ON        // running on GPU
 # WITH_UBUNTU_MIRROR        ON        // use unbuntu mirro to speed up dev Docker image building
-#
+# WITH_CACHE                ON        // whether using the cached third-party pacakge on host
+
 
 set -xe
-echo $(env)
 PR_ID=$(echo %teamcity.build.vcs.branch.Paddle_PaddlePaddle% | sed 's/[^0-9]*//g')
 echo ${PR_ID}
 
@@ -38,35 +38,43 @@ export PADDLE_DEV_NAME=paddlepaddle/paddle:dev
 
 nvidia-docker run -i --rm -v $PWD:/paddle ${PADDLE_DEV_NAME} rm -rf /paddle/build
 
-# Use the cached thirdparty package if the MD5 is mathes.
-md5_content=$(cat \
-              ${PWD}/cmake/external/*.cmake \
-              ${PWD}/paddle/scripts/teamcity/pr_build.sh \
-              |md5sum | awk '{print $1}')
+if [[ "%WITH_CACHE%" == "ON" ]]; then
+  # Use the cached thirdparty package if the MD5 is mathes.
+  md5_content=$(cat \
+                ${PWD}/cmake/external/*.cmake \
+                |md5sum | awk '{print $1}')
 
-tp_cache_dir=/root/.cache/third_party
-tp_cache_file=$cache_dir/%system.teamcity.projectName%_${md5_content}.tar.gz
+  tp_cache_dir=/root/.cache/third_party
+  tp_cache_file=$cache_dir/%system.teamcity.projectName%_${md5_content}.tar.gz
 
-if [ ! -d ${tp_cache_dir} ];then
-    mkdir -p ${tp_cache_dir}
-fi
-if [ -f ${tp_cache_file} ];then
-    mkdir -p ${PWD}/build
-    tar zxvf ${tp_cache_file}.tar.gz -C $PWD
-else
-    # clear the older tar files if MD5 has chanaged.
-    rm -rf $tp_cache_dir/*.tar.gz
-fi
-
-# Do not build dev image for now
-
-if [[ "%WITH_UBUNTU_MIRROR%" == "ON" ]]; then
-   docker build -t ${PADDLE_DEV_NAME} --build-arg UBUNTU_MIRROR=mirror://mirrors.ubuntu.com/mirrors.txt .
-else
-   docker build -t ${PADDLE_DEV_NAME} .
+  if [ ! -d ${tp_cache_dir} ];then
+      mkdir -p ${tp_cache_dir}
+  fi
+  if [ -f ${tp_cache_file} ];then
+      mkdir -p ${PWD}/build
+      tar zxvf ${tp_cache_file}.tar.gz -C $PWD
+  else
+      # clear the older tar files if MD5 has chanaged.
+      rm -rf $tp_cache_dir/*.tar.gz
+  fi
 fi
 
-nvidia-docker run -i --rm -v $PWD:/paddle ${PADDLE_DEV_NAME} rm -rf /paddle/third_party /paddle/build
+# Check the MD5 of the Dockerfile of dev Docker image,
+# if there is no current Docker iamges, delete all the older 
+# dev Docker images to free up disk space.
+
+md5_dev_dockerfile=$(cat ${PWD}/Dockerfile | md5sum | awk '{print $1}')
+export PADDLE_DEV_NAME=paddlepaddle/paddle-dev:${md5_dev_dockerfile}
+
+dev_image_id=$(docker images paddlepaddle/paddle-dev:${md5_dev_dockerfile} -q)
+if [[ ${dev_image_id} == "" ]]; then
+    docker rmi $(docker images paddlepaddle/paddle-dev -q) || true
+    if [[ "%WITH_UBUNTU_MIRROR%" == "ON" ]]; then
+        docker build -t ${PADDLE_DEV_NAME} --build-arg UBUNTU_MIRROR=mirror://mirrors.ubuntu.com/mirrors.txt .
+    else
+        docker build -t ${PADDLE_DEV_NAME} .
+    fi
+fi
 
 # make sure CPU only build with openblas passes.
 nvidia-docker run -i --rm -v $PWD:/paddle -v /root/.cache:/root/.cache\
@@ -85,6 +93,7 @@ nvidia-docker run -i --rm -v $PWD:/paddle -v /root/.cache:/root/.cache\
     -e "WITH_DEB=OFF" \
     -e "PADDLE_VERSION=%PADDLE_VERSION%" \
     -e "PADDLE_FRACTION_GPU_MEMORY_TO_USE=0.15" \
+    -e "WITH_DISTRIBUTE=ON" \
     -e "RUN_TEST=OFF" ${PADDLE_DEV_NAME}
 
 # run build with GPU and intel MKL and test.
@@ -108,8 +117,9 @@ nvidia-docker run -i --rm -v $PWD:/paddle -v /root/.cache:/root/.cache\
     -e "PADDLE_VERSION=%PADDLE_VERSION%" \
     -e "PADDLE_FRACTION_GPU_MEMORY_TO_USE=0.15" \
     -e "CUDA_VISIBLE_DEVICES=0,1" \
+    -e "WITH_DISTRIBUTE=ON" \
     -e "RUN_TEST=ON" ${PADDLE_DEV_NAME}
 
-if [ ! -f $tp_cache_file ]; then
+if [[ "%WITH_CACHE" == "ON" && ! -f $tp_cache_file ]]; then
     tar czvf $tp_cache_file ./build/third_party
 fi

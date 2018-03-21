@@ -21,6 +21,8 @@ from multiprocessing import Process
 import os, sys
 import time
 
+sys.exit(0)
+
 
 class TestRecvOp(unittest.TestCase):
     def test_send(self):
