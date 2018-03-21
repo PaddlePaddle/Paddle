@@ -87,5 +87,51 @@ struct NCCLContext {
   }
 };
 
+struct NCCLContextMap {
+  std::unordered_map<int, NCCLContext> contexts_;
+  std::vector<int> order_;
+
+  NCCLContextMap(const std::vector<platform::Place> &places) {
+    order_.reserve(places.size());
+    for (auto &p : places) {
+      int dev_id = boost::get<CUDAPlace>(p).device;
+      order_.emplace_back(dev_id);
+      contexts_.emplace(dev_id, NCCLContext(dev_id));
+    }
+    PADDLE_ENFORCE_EQ(
+        order_.size(), contexts_.size(),
+        "NCCL Context Map does not support contain two or more same device");
+
+    std::vector<ncclComm_t> comms;
+    comms.resize(order_.size());
+
+    PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
+        &comms[0], static_cast<int>(order_.size()), &order_[0]));
+
+    int i = 0;
+    for (auto &dev_id : order_) {
+      contexts_.at(dev_id).comm_ = comms[i++];
+    }
+  }
+
+  CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+
+  CUDADeviceContext *DevCtx(platform::Place p) const {
+    return DevCtx(boost::get<CUDAPlace>(p).device);
+  }
+
+  const NCCLContext &at(platform::Place p) const {
+    return this->at(boost::get<CUDAPlace>(p).device);
+  }
+
+  const NCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
+
+  void WaitAll() {
+    for (auto &p : contexts_) {
+      p.second.ctx_->Wait();
+    }
+  }
+};
+
 }  // namespace platform
 }  // namespace paddle
