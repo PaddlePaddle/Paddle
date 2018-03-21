@@ -1117,12 +1117,14 @@ def conv2d(input,
            filter_size,
            stride=1,
            padding=0,
+           dilation=1,
            groups=None,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
            use_mkldnn=False,
-           act=None):
+           act=None,
+           name=None):
     """
     **Convlution2D Layer**
 
@@ -1183,6 +1185,9 @@ def conv2d(input,
        padding(int|tuple): The padding size. If padding is a tuple, it must
            contain two integers, (padding_H, padding_W). Otherwise, the
            padding_H = padding_W = padding. Default: padding = 0.
+       dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+           contain two integers, (dilation_H, dilation_W). Otherwise, the
+           dilation_H = dilation_W = dilation. Default: dilation = 1.
        groups(int): The groups number of the Conv2d Layer. According to grouped
            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
            the first half of the filters is only connected to the first half
@@ -1193,6 +1198,8 @@ def conv2d(input,
        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
            library is installed. Default: True
        act(str): Activation type. Default: None
+       name(str|None): A name for this layer(optional). If set None, the layer
+           will be named automatically.
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -1233,6 +1240,7 @@ def conv2d(input,
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
     stride = utils.convert_to_list(stride, 2, 'stride')
     padding = utils.convert_to_list(padding, 2, 'padding')
+    dilation = utils.convert_to_list(dilation, 2, 'dilation')
 
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
@@ -1262,6 +1270,7 @@ def conv2d(input,
         attrs={
             'strides': stride,
             'paddings': padding,
+            'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
             'use_mkldnn': use_mkldnn
@@ -1670,7 +1679,9 @@ def conv2d_transpose(input,
                      stride=1,
                      dilation=1,
                      param_attr=None,
+                     bias_attr=None,
                      use_cudnn=True,
+                     act=None,
                      name=None):
     """
     **Convlution2D transpose layer**
@@ -1739,8 +1750,10 @@ def conv2d_transpose(input,
            dilation_H = dilation_W = dilation. Default: dilation = 1.
        param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
                               Default: None
+       bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
            library is installed. Default: True
+       act(str): Activation type. Default: None
        name(str|None): A name for this layer(optional). If set None, the layer
            will be named automatically.
 
@@ -1793,12 +1806,12 @@ def conv2d_transpose(input,
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
-    out = helper.create_tmp_variable(dtype=input.dtype)
+    pre_bias = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='conv2d_transpose',
         inputs={'Input': [input],
                 'Filter': [img_filter]},
-        outputs={'Output': out},
+        outputs={'Output': pre_bias},
         attrs={
             'strides': stride,
             'paddings': padding,
@@ -1806,6 +1819,8 @@ def conv2d_transpose(input,
             'use_cudnn': use_cudnn
         })
 
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    out = helper.append_activation(pre_act)
     return out
 
 
