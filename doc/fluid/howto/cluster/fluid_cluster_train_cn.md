@@ -56,18 +56,18 @@ for pass_id in range(PASS_NUM):
 exit(1)
 ```
 
-我们创建了一个简单的全连接神经网络程序，并且通过fluid的Executor执行了100次迭代,现在我们需要将该非分布式版本的程序更新为分布式版本的程序。
+我们创建了一个简单的全连接神经网络程序，并且通过fluid的Executor执行了100次迭代,现在我们需要将该单机版本的程序更新为分布式版本的程序。
 ### 介绍Parameter Server
 在非分布式版本的训练脚本中，只存在Trainer一种角色，它不仅处理常规的计算任务，也处理参数相关的计算和保存任务。在分布式版本的训练过程中，由于存在多个Trainer节点进行同样的数据计算任务，因此需要有一个中心化的节点来统一处理参数相关的保存和分配。在PaddlePaddle中，我们称这样的节点为Parameter Server, [Parameter Server 设计文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/dist_train/parameter_server.md)
 
-**因此，在分布式的Fluid环境中，我们有两个角色需要创建，分别是 Parameter Server 和 Trainer。**
+**因此，在分布式的Fluid环境中，我们有两个角色需要创建，分别是Parameter Server和Trainer。**
 
 ### 分布式训练 
 Fliud专门提供了工具"**Distributed Transpiler**"用于将单机版的训练程序转换为分布式版本的训练程序。工具背后的理念是找出程序的优化算子和梯度参数，将他们分隔为两部分，通过send/recive 操作算子进行连接,优化算子和梯度参数可以在优化器的minimize函数的返回值中获取到。
 ```python
 optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost) 
 ```
-将Distributed Transpiler、优化算子 和梯度函数放在一个代码中如下：
+将Distributed Transpiler、优化算子和梯度函数放在一个代码中如下：
 ```python
 ... #define the program, cost, and create sgd optimizer
 
@@ -94,7 +94,7 @@ for pass_id in range(100):
         exe.run(t.get_trainer_program())
 ```
 ### 分布式训练脚本运行说明
-分布式任务的运行需要外部指定多个参数：
+分布式任务的运行需要将表格中说明的多个参数进行赋值，：
 
 | 参数名 | 值类型 | 说明 | 示例 |
 |:-------------|:---|:---------------------------------------|:-------------|
@@ -104,11 +104,26 @@ for pass_id in range(100):
 | server_endpoint | str | 当前所起的服务节点的IP:PORT | 127.0.0.1:8789 |
 | training_role | str | 节点角色， TRAINER/PSERVER | PSERVER |
 
-启动顺序，先启动全部的PSERVER (Parameter Server)后，再启动TRAINER(Trainer)。
 **其中：training_role 是用来区分当前所起服务的角色的，用于训练程序中，用户可根据需要自行定义，其他参数为fluid.DistributeTranspiler的transpile函数所需要，需要在调用函数前进行定义，至于如何从外部环境传入，用户可自定义。**
+参数赋值及使用的相关代码片段：
+```python
+t = fluid.DistributeTranspiler()
+t.transpile(
+    optimize_ops,
+    params_grads,
+    trainer_id,
+    pservers=pserver,
+    trainers=trainers)
+if training_role == "PSERVER":
+    pserver_prog = t.get_pserver_program(server_endpoint)
+    pserver_startup = t.get_startup_program(server_endpoint, pserver_prog)
+```
 
-### DEMO
-完整的demo代码位于fluid的test目录下的[book](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_fit_a_line.py)中。
+### 启动顺序
+先启动全部的PSERVER (Parameter Server)后，再启动TRAINER(Trainer)。
+
+### Demo
+完整的demo代码位于Fluid的test目录下的[book](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_fit_a_line.py)中。
 ```
 cd /paddle/python/paddle/fluid/tests/book
 ```
