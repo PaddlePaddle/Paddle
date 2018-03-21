@@ -20,6 +20,7 @@ limitations under the License. */
 #include "op_registry.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -299,19 +300,6 @@ class ParallelExecutorPrivate {
   std::unique_ptr<platform::EnforceNotMet> exception_;
 };
 
-// TODO(yy): Move this function somewhere
-ncclDataType_t ToNCCLDataType(std::type_index type) {
-  if (type == typeid(float)) {  // NOLINT
-    return ncclFloat;
-  } else if (type == typeid(double)) {  // NOLINT
-    return ncclDouble;
-  } else if (type == typeid(int)) {  // NOLINT
-    return ncclInt;
-  } else {
-    PADDLE_THROW("Not supported");
-  }
-}
-
 static std::mutex g_nccl_mtx_;
 
 struct NCCLAllReduceOpHandle : public OpHandle {
@@ -356,7 +344,7 @@ struct NCCLAllReduceOpHandle : public OpHandle {
         }
 
         if (dtype == -1) {
-          dtype = ToNCCLDataType(lod_tensor.type());
+          dtype = platform::ToNCCLDataType(lod_tensor.type());
         }
 
         if (numel == 0) {
@@ -629,7 +617,7 @@ void ParallelExecutor::BCastParamsToGPUs(
     if (var_desc->GetType() == proto::VarType::LOD_TENSOR) {
       auto &main_tensor =
           main_scope->FindVar(var_desc->Name())->Get<LoDTensor>();
-      ncclDataType_t data_type = ToNCCLDataType(main_tensor.type());
+      ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
       auto &dims = main_tensor.dims();
       size_t numel = main_tensor.numel();
 
