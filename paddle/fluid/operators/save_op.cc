@@ -102,19 +102,19 @@ class SaveOp : public framework::OperatorBase {
     auto out_dtype =
         static_cast<framework::proto::VarType::Type>(Attr<int>("out_dtype"));
 
-    PADDLE_ENFORCE(framework::ToDataType(tensor.type()), in_dtype,
-                   "the tensor dtype does not match the attr of the save op");
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(framework::ToDataType(tensor.type())),
+        static_cast<int>(in_dtype),
+        "the tensor dtype does not match the attr of the save op");
 
     std::cout << std::endl
-              << "filename is " << filename << std::endl
-              << "var name is " << iname << std::endl
-              << "in_dtype is " << static_cast<int>(in_dtype) << std::endl
-              << "out_dtype is " << static_cast<int>(out_dtype) << std::endl
-              << std::endl;
+              << "filename is " << filename << ", var name is " << iname
+              << std::endl
+              << ", in_dtype is " << static_cast<int>(in_dtype)
+              << ", out_dtype is " << static_cast<int>(out_dtype) << std::endl;
 
     std::cout << "before the conversion or not, the dtype is "
               << static_cast<int>(framework::ToDataType(tensor.type()))
-              << std::endl
               << std::endl;
 
     if (in_dtype != out_dtype) {
@@ -122,18 +122,17 @@ class SaveOp : public framework::OperatorBase {
                 << std::endl;
       auto in_kernel_type = framework::OpKernelType(in_dtype, place);
       auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-      Tensor temp;
-      TransDataType(in_kernel_type, out_kernel_type, tensor, &temp);
-      tensor.SharedDataWith(temp);
-      temp = Tensor();
+      framework::LoDTensor out;
+      framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
+      std::cout << "after the conversion, the dtype is "
+                << static_cast<int>(framework::ToDataType(out.type()))
+                << std::endl framework::SerializeToStream(fout, out, dev_ctx);
+    } else {
+      std::cout << "no conversion performed, the dtype is "
+                << static_cast<int>(framework::ToDataType(tensor.type()))
+                << std::endl framework::SerializeToStream(fout, tensor,
+                                                          dev_ctx);
     }
-
-    std::cout << "after the conversion or not, the dtype is "
-              << static_cast<int>(framework::ToDataType(tensor.type()))
-              << std::endl
-              << std::endl;
-
-    framework::SerializeToStream(fout, tensor, dev_ctx);
   }
 };
 
