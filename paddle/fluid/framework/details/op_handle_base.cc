@@ -79,6 +79,17 @@ void OpHandleBase::Wait(platform::DeviceContext *waited_dev) {
   }
 #endif
 }
+
+void OpHandleBase::AddInput(VarHandleBase *in) {
+  this->inputs_.emplace_back(in);
+  in->pending_ops_.insert(this);
+}
+
+void OpHandleBase::AddOutput(VarHandleBase *out) {
+  outputs_.emplace_back(out);
+  out->generated_op_ = this;
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
