@@ -149,5 +149,5 @@ If the `output_all_steps` is set to False, it will only output the final time st
 
 
 <p align="center">
-<img src="rnn_2level_data.png"/>
+<img src="/rnn_2level_data.png"/>
 </p>
