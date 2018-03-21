@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/tensor_parser.h"
+#include "paddle/fluid/operators/detail/variable_response.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"

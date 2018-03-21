@@ -35,7 +35,8 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-typedef std::pair<std::string, std::shared_ptr<TensorResponse>> ReceivedMessage;
+typedef std::pair<std::string, std::shared_ptr<VariableResponse>>
+    ReceivedMessage;
 typedef SimpleBlockQueue<ReceivedMessage> ReceivedQueue;
 
 typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;

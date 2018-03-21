@@ -57,7 +57,7 @@ class RequestSend final : public RequestBase {
                        framework::Scope* scope, ReceivedQueue* queue,
                        const platform::DeviceContext* dev_ctx)
       : RequestBase(service, cq, dev_ctx), queue_(queue), responder_(&ctx_) {
-    request_.reset(new TensorResponse(scope, dev_ctx_));
+    request_.reset(new VariableResponse(scope, dev_ctx_));
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
                                 cq_, cq_, this);
@@ -76,7 +76,7 @@ class RequestSend final : public RequestBase {
   }
 
  protected:
-  std::shared_ptr<TensorResponse> request_;
+  std::shared_ptr<VariableResponse> request_;
   ReceivedQueue* queue_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };

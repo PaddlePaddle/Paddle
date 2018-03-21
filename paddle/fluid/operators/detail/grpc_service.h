@@ -23,7 +23,7 @@
 #include <grpc++/impl/codegen/stub_options.h>
 #include <grpc++/impl/codegen/sync_stream.h>
 #include <grpc++/support/byte_buffer.h>
-#include "paddle/fluid/operators/detail/tensor_parser.h"
+#include "paddle/fluid/operators/detail/variable_response.h"
 
 // NOTE: This method was originally created by tensorflow
 //       (https://github.com/tensorflow/tensorflow/) we borrow this
@@ -37,18 +37,19 @@ class RpcService;
 class ServerCompletionQueue;
 class ServerContext;
 
-// Support parsing/unparsing of tensorflow::TensorResponse.
-// Wire-format is identical to RecvTensorResponse.
+// Support parsing/unparsing of tensorflow::VariableResponse.
+// Wire-format is identical to RecvVariableResponse.
 template <>
-class SerializationTraits<paddle::operators::detail::TensorResponse> {
+class SerializationTraits<paddle::operators::detail::VariableResponse> {
  public:
-  static Status Serialize(const paddle::operators::detail::TensorResponse& msg,
-                          grpc_byte_buffer** bp, bool* own_buffer) {
+  static Status Serialize(
+      const paddle::operators::detail::VariableResponse& msg,
+      grpc_byte_buffer** bp, bool* own_buffer) {
     PADDLE_ENFORCE(false, "SerializationTraits::Serialize not implemented!");
     return Status();
   }
   static Status Deserialize(grpc_byte_buffer* buffer,
-                            paddle::operators::detail::TensorResponse* msg,
+                            paddle::operators::detail::VariableResponse* msg,
                             int max_message_size = INT_MAX) {
     if (buffer == nullptr) {
       return Status(StatusCode::INTERNAL, "No payload");
@@ -59,7 +60,7 @@ class SerializationTraits<paddle::operators::detail::TensorResponse> {
       paddle::operators::detail::GrpcByteSource source(buffer);
       int ret = msg->Parse(&source);
       if (ret != 0) {
-        result = Status(StatusCode::INTERNAL, "TensorResponse parse error");
+        result = Status(StatusCode::INTERNAL, "VariableResponse parse error");
       }
     }
     g_core_codegen_interface->grpc_byte_buffer_destroy(buffer);

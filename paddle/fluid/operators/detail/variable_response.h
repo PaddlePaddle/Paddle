@@ -32,13 +32,13 @@ namespace paddle {
 namespace operators {
 namespace detail {
 
-class TensorResponse {
+class VariableResponse {
  public:
-  TensorResponse(const framework::Scope* scope,
-                 const platform::DeviceContext* dev_ctx)
+  VariableResponse(const framework::Scope* scope,
+                   const platform::DeviceContext* dev_ctx)
       : scope_(scope), dev_ctx_(dev_ctx){};
 
-  virtual ~TensorResponse(){};
+  virtual ~VariableResponse(){};
 
   // return:
   // 0:ok.

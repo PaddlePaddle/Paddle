@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tensor_parser.h"
+#include "paddle/fluid/operators/detail/variable_response.h"
 #include <string.h>
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
-#include "sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -94,7 +94,7 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
   return true;
 }
 
-bool TensorResponse::CopyLodTensorData(
+bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
   auto var = scope_->FindVar(meta_.varname());
@@ -130,7 +130,7 @@ inline framework::DDim GetDims(
   return framework::make_ddim(vecdims);
 }
 
-bool TensorResponse::CopySelectRowsTensorData(
+bool VariableResponse::CopySelectRowsTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
   auto var = scope_->FindVar(meta_.varname());
@@ -148,7 +148,7 @@ bool TensorResponse::CopySelectRowsTensorData(
   return true;
 }
 
-bool TensorResponse::CopySelectRowsData(
+bool VariableResponse::CopySelectRowsData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, int length) {
   auto var = scope_->FindVar(meta_.varname());
@@ -211,7 +211,7 @@ bool ParseLodData(::google::protobuf::io::CodedInputStream* input,
   return true;
 }
 
-int TensorResponse::Parse(const ::grpc::ByteBuffer& byte_buffer) {
+int VariableResponse::Parse(const ::grpc::ByteBuffer& byte_buffer) {
   GrpcByteBufferSource source;
   source.Init(byte_buffer);
   GrpcByteBufferSourceWrapper r(&source);
@@ -219,7 +219,7 @@ int TensorResponse::Parse(const ::grpc::ByteBuffer& byte_buffer) {
   return Parse(&r);
 }
 
-int TensorResponse::Parse(Source* source) {
+int VariableResponse::Parse(Source* source) {
   ::google::protobuf::io::ZeroCopyInputStream* input_stream =
       source->contents();
   ::google::protobuf::io::CodedInputStream input(input_stream);
