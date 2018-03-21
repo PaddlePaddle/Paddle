@@ -18,6 +18,7 @@ limitations under the License. */
 #include "lod_tensor_array.h"
 #include "op_registry.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
+#include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/var_handle.h"
@@ -28,6 +29,7 @@ namespace framework {
 
 using details::DummyVarHandle;
 using details::FetchOpHandle;
+using details::NCCLAllReduceOpHandle;
 using details::OpHandleBase;
 using details::ScaleLossGradOpHandle;
 using details::VarHandle;
@@ -122,69 +124,6 @@ class ParallelExecutorPrivate {
     var.name_ = each_var_name;
     var.place_ = place;
     op_handle->AddOutput(&var);
-  }
-};  // namespace framework
-
-struct NCCLAllReduceOpHandle : public OpHandleBase {
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
-  const platform::NCCLContextMap &nccl_ctxs_;
-
-  explicit NCCLAllReduceOpHandle(const std::vector<Scope *> &local_scopes,
-                                 const std::vector<platform::Place> &places,
-                                 const platform::NCCLContextMap &ctxs)
-      : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
-    for (auto &p : places_) {
-      this->dev_ctx_[p] = nccl_ctxs_.DevCtx(p);
-    }
-  }
-
-  void Wait(platform::DeviceContext *waited_dev) override {
-    OpHandleBase::Wait(waited_dev);
-  }
-
- protected:
-  void RunImpl() override {
-    if (inputs_.size() == 1) {
-      return;  // No need to all reduce when GPU count = 1;
-    } else {
-      // Wait input done
-      for (auto *in : inputs_) {
-        auto &p = static_cast<VarHandle *>(in)->place_;
-        in->generated_op_->Wait(dev_ctx_[p]);
-      }
-
-      auto &var_name = static_cast<VarHandle *>(this->inputs_[0])->name_;
-      int dtype = -1;
-      size_t numel = 0;
-
-      platform::NCCLGroupGuard guard;
-
-      for (size_t i = 0; i < local_scopes_.size(); ++i) {
-        auto &p = places_[i];
-        auto *s = local_scopes_[i];
-        int dev_id = boost::get<platform::CUDAPlace>(p).device;
-
-        auto &lod_tensor = s->FindVar(var_name)->Get<framework::LoDTensor>();
-        void *buffer = const_cast<void *>(lod_tensor.data<void>());
-        uintptr_t buf = reinterpret_cast<uintptr_t>(buffer);
-        if (buf % sizeof(float) != 0) {
-          VLOG(3) << "Buffer is not aligned " << buf;
-        }
-
-        if (dtype == -1) {
-          dtype = platform::ToNCCLDataType(lod_tensor.type());
-        }
-
-        if (numel == 0) {
-          numel = static_cast<size_t>(lod_tensor.numel());
-        }
-        auto &nccl_ctx = nccl_ctxs_.at(dev_id);
-        PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-            buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-            nccl_ctx.comm_, nccl_ctx.stream()));
-      }
-    }
   }
 };
 
