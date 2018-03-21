@@ -64,9 +64,31 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 不使用PaddlePaddle.org工具
 --------------------------
 
-使用Docker构建PaddlePaddle的文档，需要在系统里先安装好Docker工具包。Docker安装请参考 `Docker的官网 <https://docs.docker.com/>`_ 。安装好Docker之后可以使用源码目录下的脚本构建文档，即
+使用Docker构建PaddlePaddle的文档，需要在系统里先安装好Docker工具包。Docker安装请参考 `Docker的官网 <https://docs.docker.com/>`_ 。该方法与 `从源码编译PaddlePaddle <http://paddlepaddle.org/docs/develop/documentation/zh/build_and_install/build_from_source_cn.html>`_ 相似，通过从源码中构建可用于编译PaddlePaddle文档的Docker镜像并运行，在进入Docker容器后使用源码中的脚本构建PaddlePaddle文档，具体步骤如下：
 
-[TBD]
+.. code-block:: bash
+
+   mkdir paddle
+   cd paddle
+   git clone https://github.com/PaddlePaddle/Paddle.git
+   cd Paddle
+
+   # 从源码中构建可用于编译PaddlePaddle文档的Docker镜像
+   docker build -t paddle:dev .
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev /bin/bash
+
+   # 进入Docker容器后使用build.sh脚本构建PaddlePaddle文档
+   bash -x /paddle/paddle/scripts/docker/build.sh
+
+注：上述命令把当前目录（源码根目录）映射为 container 里的 :code:`/paddle` 目录。
+
+编译完成后，进入 ``paddle/build/doc/v2`` 目录，该目录下生成了 ``cn/html/`` 、 ``en/html`` 以及 ``api/en/html`` 共三个子目录，分别进入这些目录下，执行以下命令：
+
+.. code-block:: bash
+
+   python -m SimpleHTTPServer 8088
+
+在浏览器中输入http://localhost:8088就可以看到编译生成的中/英文的文档页面和英文的API页面。
 
 如果不想使用Docker，也可以使用以下命令直接构建PaddlePaddle文档，即
 
@@ -75,6 +97,7 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
    mkdir paddle
    cd paddle
    git clone https://github.com/PaddlePaddle/Paddle.git
+   cd Paddle
    mkdir -p build
    cd build
    cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
@@ -96,7 +119,9 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 
    python -m SimpleHTTPServer 8088
 
-在浏览器中输入http://localhost:8088就可以看到编译生成的中/英文的文档页面和英文的API页面,下图为生成的英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
+在浏览器中输入http://localhost:8088就可以看到编译生成的中/英文的文档页面和英文的API页面。
+
+下图为生成的英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
 
 ..  image:: src/doc_en.png
     :align: center
