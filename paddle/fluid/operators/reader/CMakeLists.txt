@@ -15,6 +15,7 @@ function(reader_library TARGET_NAME)
         PARENT_SCOPE)
 endfunction()
 
+reader_library(open_files_op SRCS open_files_op.cc)
 reader_library(create_random_data_generator_op SRCS create_random_data_generator_op.cc)
 reader_library(create_shuffle_reader_op SRCS create_shuffle_reader_op.cc)
 reader_library(create_batch_reader_op SRCS create_batch_reader_op.cc)
