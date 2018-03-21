@@ -95,7 +95,6 @@ for pass_id in range(100):
 ```
 ### 分布式训练脚本运行说明
 分布式任务的运行需要外部指定多个参数：
-```table
 | 参数名 | 值类型 | 说明 | 示例 |
 | :------------- | :---| :--------------------------------------- | :------------- |
 | trainer_id | int | 当前训练节点的ID，训练节点ID编号为0 - n-1， n为trainers的值 | 0/1/2/3 |
@@ -103,8 +102,8 @@ for pass_id in range(100):
 | trainers | int | 训练节点的总个数，>0的数字 | |
 | server_endpoint | str | 当前所起的服务节点的IP:PORT | 127.0.0.1:8789 |
 | training_role | str | 节点角色， TRAINER/PSERVER | PSERVER |
-```
-启动顺序，先启动全部的Pserver后，再启动TRAINER。
+
+启动顺序，先启动全部的PSERVER (Parameter Server)后，再启动TRAINER(Trainer)。
 **其中：training_role 是用来区分当前所起服务的角色的，用于训练程序中，用户可根据需要自行定义，其他参数为fluid.DistributeTranspiler的transpile函数所需要，需要在调用函数前进行定义，至于如何从外部环境传入，用户可自定义。**
 
 ### DEMO
@@ -117,9 +116,9 @@ cd /paddle/python/paddle/fluid/tests/book
 PADDLE_INIT_PORT=6174 PADDLE_INIT_PSERVERS=192.168.1.2 TRAINERS=2 POD_IP=192.168.1.2 PADDLE_INIT_TRAINER_ID=1 TRAINING_ROLE=PSERVER python test_fit_a_line.py
 ```
 执行命令后请等待出现提示： ```Server listening on 192.168.1.2:6174 ```
-第二步：启动trainer, 启动trainer的命令：
+第二步：启动Trainer, 启动Trainer的命令：
 ```
 PADDLE_INIT_PORT=6174 PADDLE_INIT_PSERVERS=192.168.1.3 TRAINERS=2 POD_IP=192.168.1.3 PADDLE_INIT_TRAINER_ID=1 TRAINING_ROLE=TRAINER python test_fit_a_line.py
 ```
 由于我们定义的Trainer的数量是2个，因此需要在另外一个计算节点上再启动一个Trainer。
-现在我们就启动了一个包含一个Parameter Server 和两个Trainer的分布式训练任务。
+现在我们就启动了一个包含一个Parameter Server和两个Trainer的分布式训练任务。
