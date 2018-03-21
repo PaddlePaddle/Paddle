@@ -25,7 +25,7 @@ class TestScatterOp(OpTest):
         updates_np = np.random.random((2, 3)).astype("float32")
         output_np = np.copy(ref_np)
         output_np[index_np] = updates_np
-        self.inputs = {'Ref': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):

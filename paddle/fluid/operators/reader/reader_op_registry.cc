@@ -31,11 +31,16 @@ std::vector<framework::DDim> RestoreShapes(const std::vector<int>& shape_concat,
   return res;
 }
 
+std::unordered_map<std::string, FileReaderCreator>& FileReaderRegistry() {
+  static std::unordered_map<std::string, FileReaderCreator> regs;
+  return regs;
+}
+
 FileReaderMakerBase::FileReaderMakerBase(
     framework::OpProtoAndCheckerMaker::OpProto* op_proto,
     framework::OpAttrChecker* op_checker)
     : OpProtoAndCheckerMaker(op_proto, op_checker) {
-  AddOutput("Out", "(ReaderHolder) The created random reader.");
+  AddOutput("Out", "(ReaderHolder) The created random reader.").AsDuplicable();
   AddAttr<std::vector<int>>("shape_concat", "The concat of all data's shapes.");
   AddAttr<std::vector<int>>(
       "ranks",

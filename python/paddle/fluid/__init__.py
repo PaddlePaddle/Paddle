@@ -35,11 +35,12 @@ from core import LoDTensor, CPUPlace, CUDAPlace
 from distribute_transpiler import DistributeTranspiler
 from distribute_transpiler_simple import SimpleDistributeTranspiler
 from concurrency import (Go, make_channel, channel_send, channel_recv,
-                         channel_close)
+                         channel_close, Select)
 import clip
 from memory_optimization_transpiler import memory_optimize, release_memory, recomputation
 import profiler
 import unique_name
+import recordio_writer
 
 Tensor = LoDTensor
 
@@ -67,6 +68,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'recomputation',
     'profiler',
     'unique_name',
+    'recordio_writer',
 ]
 
 

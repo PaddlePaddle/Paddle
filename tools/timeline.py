@@ -121,27 +121,34 @@ class Timeline(object):
 
     def _allocate_pids(self):
         for event in self._profile_pb.events:
-            if event.device_id not in self._devices:
-                pid = self._allocate_pid()
-                self._devices[event.device_id] = pid
-                if event.device_id >= 0:
-                    self._chrome_trace.emit_pid("gpu:%s:stream:%d" %
-                                                (pid, event.stream_id), pid)
-                elif event.device_id == -1:
-                    self._chrome_trace.emit_pid("cpu:thread_hash:%d" %
-                                                event.stream_id, pid)
+            if event.type == profiler_pb2.Event.CPU:
+                if (event.device_id, "CPU") not in self._devices:
+                    pid = self._allocate_pid()
+                    self._devices[(event.device_id, "CPU")] = pid
+                    self._chrome_trace.emit_pid("cpu:block:%d" %
+                                                (event.device_id), pid)
+            elif event.type == profiler_pb2.Event.GPUKernel:
+                if (event.device_id, "GPUKernel") not in self._devices:
+                    pid = self._allocate_pid()
+                    self._devices[(event.device_id, "GPUKernel")] = pid
+                    self._chrome_trace.emit_pid("gpu:%d" % (event.device_id),
+                                                pid)
 
     def _allocate_events(self):
         for event in self._profile_pb.events:
-            pid = self._devices[event.device_id]
+            if event.type == profiler_pb2.Event.CPU:
+                type = "CPU"
+            elif event.type == profiler_pb2.Event.GPUKernel:
+                type = "GPUKernel"
+            pid = self._devices[(event.device_id, type)]
             args = {'name': event.name}
             if event.memcopy.bytes > 0:
                 args = {'mem_bytes': event.memcopy.bytes}
             # TODO(panyx0718): Chrome tracing only handles ms. However, some
             # ops takes micro-seconds. Hence, we keep the ns here.
-            self._chrome_trace.emit_region(event.start_ns,
-                                           (event.end_ns - event.start_ns) /
-                                           1.0, pid, 0, 'Op', event.name, args)
+            self._chrome_trace.emit_region(
+                event.start_ns, (event.end_ns - event.start_ns) / 1.0, pid,
+                event.sub_device_id, 'Op', event.name, args)
 
     def generate_chrome_trace(self):
         self._allocate_pids()

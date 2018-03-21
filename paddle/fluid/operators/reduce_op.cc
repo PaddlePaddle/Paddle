@@ -173,6 +173,15 @@ class ReduceMinOpMaker : public ReduceOpMaker {
   }
 };
 
+class ReduceProdOpMaker : public ReduceOpMaker {
+ public:
+  ReduceProdOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : ReduceOpMaker(proto, op_checker) {
+    SetComment("ReduceProd", "production");
+    AddComment(comment_);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -189,6 +198,9 @@ REGISTER_OP(reduce_max, ops::ReduceOp, ops::ReduceMaxOpMaker, reduce_max_grad,
 
 REGISTER_OP(reduce_min, ops::ReduceOp, ops::ReduceMinOpMaker, reduce_min_grad,
             ops::ReduceGradOp);
+
+REGISTER_OP(reduce_prod, ops::ReduceOp, ops::ReduceProdOpMaker,
+            reduce_prod_grad, ops::ReduceGradOp);
 
 #define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)         \
   REGISTER_OP_CPU_KERNEL(reduce_type,                                          \
