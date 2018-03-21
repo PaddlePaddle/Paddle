@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -39,6 +40,7 @@ class Executor {
       : Executor(device.GetPlace()) {}
 
   explicit Executor(const platform::Place& place);
+  virtual ~Executor() {}
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
@@ -64,7 +66,9 @@ class Executor {
                           bool create_local_scope = true,
                           bool create_vars = true);
 
- private:
+  virtual void RunOperators(const ExecutorPrepareContext* ctx,
+                            const Scope* local_scope) const;
+
   const platform::Place place_;
 };
 

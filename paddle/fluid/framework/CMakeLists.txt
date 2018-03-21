@@ -86,6 +86,8 @@ cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glo
 
 cc_library(executor SRCS executor.cc DEPS op_registry device_context scope
 framework_proto backward glog lod_rank_table feed_fetch_method)
+cc_library(multi_gpu_executor SRCS multi_gpu_executor.cc DEPS op_registry device_context scope
+        framework_proto backward glog lod_rank_table feed_fetch_method executor)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)

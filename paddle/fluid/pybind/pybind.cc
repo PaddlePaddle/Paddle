@@ -43,6 +43,7 @@ limitations under the License. */
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/multi_gpu_executor.h"
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/cuda_profiler.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -474,6 +475,16 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
+
+  py::class_<MultiGPUExecutor>(m, "ParallelExecutor")
+      .def(
+          "__init__",
+          [](MultiGPUExecutor &self, const std::vector<platform::Place> &places,
+             const std::unordered_set<std::string> &params) {
+            new (&self) MultiGPUExecutor(places, params);
+          })
+      .def("init", &MultiGPUExecutor::Init)
+      .def("run", &MultiGPUExecutor::Run);
 #endif
 
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
