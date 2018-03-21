@@ -131,7 +131,7 @@ def make_channel(dtype, capacity=0):
     return channel
 
 
-def channel_send(channel, value, copy=False):
+def channel_send(channel, value, is_copy=False):
     """
     Sends a value through a channel variable. Used by an unbuffered or buffered
     channel to pass data from within or to a concurrent Go block, where
@@ -141,8 +141,11 @@ def channel_send(channel, value, copy=False):
         channel (Variable|Channel): Channel variable created using
         `make_channel`.
         value (Variable): Value to send to channel
-        copy (bool): Copy data while channel send. If False, then data
-        is moved. The input cannot be used after move.
+        is_copy (bool): Copy data while channel send. If False, then data
+        is moved. The input cannot be used after move. (default False)
+    Returns:
+        Variable: The boolean status on whether or not the channel
+                  successfully sent the passed value.
 
     Examples:
         .. code-block:: python
@@ -158,7 +161,7 @@ def channel_send(channel, value, copy=False):
 
     X = value
 
-    if copy is True:
+    if is_copy is True:
         copied_X = helper.create_variable(
             name=unique_name.generate(value.name + '_copy'),
             type=value.type,
