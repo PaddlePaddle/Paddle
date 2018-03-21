@@ -58,9 +58,9 @@ exit(1)
 
 我们创建了一个简单的全连接神经网络程序，并且通过fluid的Executor执行了100次迭代,现在我们需要将该非分布式版本的程序更新为分布式版本的程序。
 ### 介绍Parameter Server
-在非分布式版本的训练脚本中，只存在Trainer一种角色，它不仅处理常规的计算任务，也处理参数相关的计算和保存任务。在分布式版本的训练过程中，由于存在多个trainer节点进行同样的数据计算任务，因此需要有一个中心化的节点来统一处理参数相关的保存和分配。在PaddlePaddle中，我们称这样的节点为Parameter Server。
-![](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/cluster/src/trainer.png)
-**因此，在分布式的Fluid环境中，我们有两个角色需要创建，分别是 Parameter Server 和 Trainer**
+在非分布式版本的训练脚本中，只存在Trainer一种角色，它不仅处理常规的计算任务，也处理参数相关的计算和保存任务。在分布式版本的训练过程中，由于存在多个Trainer节点进行同样的数据计算任务，因此需要有一个中心化的节点来统一处理参数相关的保存和分配。在PaddlePaddle中，我们称这样的节点为Parameter Server, ![Parameter Server 设计文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/dist_train/parameter_server.md)
+
+**因此，在分布式的Fluid环境中，我们有两个角色需要创建，分别是 Parameter Server 和 Trainer。**
 
 ### 分布式训练 
 Fliud专门提供了工具"**Distributed Transpiler**"用于将单机版的训练程序转换为分布式版本的训练程序。工具背后的理念是找出程序的优化算子和梯度参数，将他们分隔为两部分，通过send/recive 操作算子进行连接,优化算子和梯度参数可以在优化器的minimize函数的返回值中获取到。
@@ -97,6 +97,7 @@ for pass_id in range(100):
 分布式任务的运行需要外部指定多个参数：
 ```table
 | 参数名 | 值类型 | 说明 | 示例 |
+| :------------- | :---| :--------------------------------------- | :------------- |
 | trainer_id | int | 当前训练节点的ID，训练节点ID编号为0 - n-1， n为trainers的值 | 0/1/2/3 |
 | pservers | str | parameter server 列表 | 127.0.0.1:6710,127.0.0.1:6711 |
 | trainers | int | 训练节点的总个数，>0的数字 | |
