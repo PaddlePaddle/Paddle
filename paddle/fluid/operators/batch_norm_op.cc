@@ -80,6 +80,29 @@ class BatchNormOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SavedVariance", {C});
     ctx->ShareLoD("X", "Y");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    // For float or float16 input tensor, the type of the scale, bias, mean,
+    // and var tensors should both be float.
+    auto bn_param_type = framework::proto::VarType::FP32;
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::ToDataType(ctx.Input<Tensor>("Scale")->type()),
+                      "Scale input should be of float type");
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::ToDataType(ctx.Input<Tensor>("Bias")->type()),
+                      "Bias input should be of float type");
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::ToDataType(ctx.Input<Tensor>("Mean")->type()),
+                      "Mean input should be of float type");
+    PADDLE_ENFORCE_EQ(bn_param_type, framework::ToDataType(
+                                         ctx.Input<Tensor>("Variance")->type()),
+                      "Variance input should be of float type");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {

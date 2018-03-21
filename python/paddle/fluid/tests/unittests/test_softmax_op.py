@@ -29,6 +29,7 @@ class TestSoftmaxOp(OpTest):
     def setUp(self):
         self.op_type = "softmax"
         self.use_cudnn = False
+        self.use_mkldnn = False
         self.dtype = np.float32
         self.init_kernel_type()
 
@@ -36,7 +37,10 @@ class TestSoftmaxOp(OpTest):
         out = np.apply_along_axis(stable_softmax, 1, x)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {'use_cudnn': self.use_cudnn, }
+        self.attrs = {
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn
+        }
 
     def init_kernel_type(self):
         pass
@@ -74,6 +78,11 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=1e-3)
+
+
+class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
 
 
 if __name__ == "__main__":
