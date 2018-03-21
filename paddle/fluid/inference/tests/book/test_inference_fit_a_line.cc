@@ -12,6 +12,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/inference/tests/test_multi_thread_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
@@ -40,6 +41,7 @@ TEST(inference, fit_a_line) {
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
+  LOG(INFO) << "--- CPU Runs: ---";
   TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
   LOG(INFO) << output1.dims();
 
@@ -49,9 +51,73 @@ TEST(inference, fit_a_line) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
+  LOG(INFO) << "--- CPU Runs: ---";
   TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
   CheckError<float>(output1, output2);
 #endif
+}
+
+TEST(multi_thread_inference, fit_a_line) {
+  if (FLAGS_dirname.empty()) {
+    LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model";
+  }
+
+  LOG(INFO) << "FLAGS_dirname: " << FLAGS_dirname << std::endl;
+  std::string dirname = FLAGS_dirname;
+
+  // 0. Call `paddle::framework::InitDevices()` initialize all the devices
+  // In unittests, this is done in paddle/testing/paddle_gtest_main.cc
+
+  int num_threads = 2;
+
+  std::vector<std::vector<paddle::framework::LoDTensor*>> cpu_feeds;
+  cpu_feeds.resize(num_threads);
+  for (int i = 0; i < num_threads; ++i) {
+    auto* input = new paddle::framework::LoDTensor();
+    // The second dim of the input tensor should be 13
+    // The input data should be >= 0
+    int64_t batch_size = 10;
+    SetupTensor<float>(*input,
+                       {batch_size, 13},
+                       static_cast<float>(0),
+                       static_cast<float>(10));
+    cpu_feeds[i].push_back(input);
+  }
+
+  std::vector<std::vector<paddle::framework::LoDTensor*>> cpu_fetchs1;
+  cpu_fetchs1.resize(num_threads);
+  for (int i = 0; i < num_threads; ++i) {
+    auto* output = new paddle::framework::LoDTensor();
+    cpu_fetchs1[i].push_back(output);
+  }
+
+  // Run inference on CPU
+  LOG(INFO) << "--- CPU Runs (Multi Thread): ---";
+  TestMultiThreadInference<paddle::platform::CPUPlace>(
+      dirname, cpu_feeds, cpu_fetchs1, num_threads);
+
+#ifdef PADDLE_WITH_CUDA
+  std::vector<std::vector<paddle::framework::LoDTensor*>> cpu_fetchs2;
+  cpu_fetchs2.resize(num_threads);
+  for (int i = 0; i < num_threads; ++i) {
+    auto* output = new paddle::framework::LoDTensor();
+    cpu_fetchs2[i].push_back(output);
+  }
+
+  // Run inference on CUDA GPU
+  LOG(INFO) << "--- GPU Runs (Multi Thread): ---";
+  TestMultiThreadInference<paddle::platform::CUDAPlace>(
+      dirname, cpu_feeds, cpu_fetchs2, num_threads);
+
+  for (int i = 0; i < num_threads; ++i) {
+    delete cpu_fetchs2[i][0];
+  }
+#endif
+
+  for (int i = 0; i < num_threads; ++i) {
+    delete cpu_feeds[i][0];
+    delete cpu_fetchs1[i][0];
+  }
 }
