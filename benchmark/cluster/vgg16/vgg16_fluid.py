@@ -251,7 +251,6 @@ def main():
             if not current_endpoint:
                 print("need env SERVER_ENDPOINT")
                 exit(1)
-            print("get_pserver_program")
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,
                                                     pserver_prog)
