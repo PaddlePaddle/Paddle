@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/mkldnn_activation_op.h"
 
 namespace paddle {
 namespace operators {
@@ -25,11 +26,6 @@ class ActivationOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return ActivationHelper().GetKernelType(ctx, *this);
-  }
 };
 
 class ActivationOpGrad : public framework::OperatorWithKernel {
@@ -38,11 +34,6 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
-  }
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return ActivationHelper().GetKernelType(ctx, *this);
   }
 };
 
@@ -546,11 +537,11 @@ REGISTER_OP(logsigmoid, ops::ActivationOp, ops::LogSigmoidOpMaker,
 REGISTER_OP(exp, ops::ActivationOp, ops::ExpOpMaker, exp_grad,
             ops::ActivationOpGrad);
 
-REGISTER_OP(relu, ops::ActivationOp, ops::ReluOpMaker, relu_grad,
-            ops::ActivationOpGrad);
+REGISTER_OP(relu, ops::ActivationWithMKLDNNOp, ops::ReluOpMaker, relu_grad,
+            ops::ActivationWithMKLDNNOpGrad);
 
-REGISTER_OP(tanh, ops::ActivationOp, ops::TanhOpMaker, tanh_grad,
-            ops::ActivationOpGrad);
+REGISTER_OP(tanh, ops::ActivationWithMKLDNNOp, ops::TanhOpMaker, tanh_grad,
+            ops::ActivationWithMKLDNNOpGrad);
 
 REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
             tanh_shrink_grad, ops::ActivationOpGrad);
@@ -558,11 +549,11 @@ REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
 REGISTER_OP(softshrink, ops::ActivationOp, ops::SoftShrinkOpMaker,
             softshrink_grad, ops::ActivationOpGrad);
 
-REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
-            ops::ActivationOpGrad);
+REGISTER_OP(sqrt, ops::ActivationWithMKLDNNOp, ops::SqrtOpMaker, sqrt_grad,
+            ops::ActivationWithMKLDNNOpGrad);
 
-REGISTER_OP(abs, ops::ActivationOp, ops::AbsOpMaker, abs_grad,
-            ops::ActivationOpGrad);
+REGISTER_OP(abs, ops::ActivationWithMKLDNNOp, ops::AbsOpMaker, abs_grad,
+            ops::ActivationWithMKLDNNOpGrad);
 
 REGISTER_OP(ceil, ops::ActivationOp, ops::CeilOpMaker, ceil_grad,
             ops::ActivationOpGrad);

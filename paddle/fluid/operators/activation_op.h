@@ -24,25 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class ActivationHelper {
- public:
-  framework::OpKernelType GetKernelType(
-      const framework::ExecutionContext& ctx,
-      const framework::OperatorWithKernel& oper) const {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kMKLDNN;
-    }
-#endif
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-        ctx.GetPlace(), layout, library);
-  }
-};
-
 template <typename DeviceContext, typename Functor>
 class ActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
