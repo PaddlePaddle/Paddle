@@ -5,7 +5,7 @@
 * 可用的集群
 
     包含一个或多个计算节点的集群，每一个节点都能够执行PaddlePaddle的训练任务且拥有唯一的IP地址，集群内的所有计算节点可以通过网络相互通信。
-* 安装PaddlePaddle Fluid with Distributed版本
+* 安装PaddlePaddle Fluid with Distribution版本
 
     所有的计算节点上均需要按照分布式版本的PaddlePaddle, 在用于GPU等设备的机器上还需要额外安装好相应的驱动程序和CUDA的库。
     **注意：**当前对外提供的PaddlePaddle版本并不支持分布式，需要通过源码重新编译。编译和安装方法参见[编译和安装指南](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/index_en.html)。
