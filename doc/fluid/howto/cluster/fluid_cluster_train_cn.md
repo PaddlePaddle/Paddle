@@ -58,7 +58,7 @@ exit(1)
 
 我们创建了一个简单的全连接神经网络程序，并且通过fluid的Executor执行了100次迭代,现在我们需要将该非分布式版本的程序更新为分布式版本的程序。
 ### 介绍Parameter Server
-在非分布式版本的训练脚本中，只存在Trainer一种角色，它不仅处理常规的计算任务，也处理参数相关的计算和保存任务。在分布式版本的训练过程中，由于存在多个Trainer节点进行同样的数据计算任务，因此需要有一个中心化的节点来统一处理参数相关的保存和分配。在PaddlePaddle中，我们称这样的节点为Parameter Server, ![Parameter Server 设计文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/dist_train/parameter_server.md)
+在非分布式版本的训练脚本中，只存在Trainer一种角色，它不仅处理常规的计算任务，也处理参数相关的计算和保存任务。在分布式版本的训练过程中，由于存在多个Trainer节点进行同样的数据计算任务，因此需要有一个中心化的节点来统一处理参数相关的保存和分配。在PaddlePaddle中，我们称这样的节点为Parameter Server, [Parameter Server 设计文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/dist_train/parameter_server.md)
 
 **因此，在分布式的Fluid环境中，我们有两个角色需要创建，分别是 Parameter Server 和 Trainer。**
 
