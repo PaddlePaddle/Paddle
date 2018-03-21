@@ -150,6 +150,7 @@ void ChannelImpl<T>::Send(T *item) {
       // We do not care about notifying other
       // because they would have been notified
       // by the executed select case.
+      lock.unlock();
       Send(item);
       send_return();
       return;
@@ -180,6 +181,7 @@ void ChannelImpl<T>::Send(T *item) {
   sendq.push_back(m);
   m->Wait(lock);
   if (m->chan_closed) {
+    lock.unlock();
     send_return();
     PADDLE_THROW("Cannot send on closed channel");
   }
