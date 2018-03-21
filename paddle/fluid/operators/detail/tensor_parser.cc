@@ -81,8 +81,9 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
     if (!input->GetDirectBufferPointer(&data, &size_to_write)) {
       return false;
     }
-    // TODO(gongwb): don't copy if it's aligned?
-    memcpy(reinterpret_cast<void*>(p), data, size_to_write);
+    // TODO(gongwb): can we avoid copy?
+    platform::CPUPlace cpu;
+    memory::Copy(cpu, reinterpret_cast<void*>(p), cpu, data, size_to_write);
 
     p += size_to_write;
     size -= size_to_write;
@@ -154,7 +155,7 @@ bool TensorResponse::CopySelectRowsData(
   auto* slr = var->GetMutable<framework::SelectedRows>();
   int64_t* rows_data = slr->mutable_rows()->data();
 
-  // copy rows CPU data, GPU data will be copied lazly
+  // copy rows CPU data, GPU data will be copied lazily.
   platform::CPUPlace cpu;
   if (!ReadRaw(input, ctx, cpu, rows_data, length)) {
     return false;
