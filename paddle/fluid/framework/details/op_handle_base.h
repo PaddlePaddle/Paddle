@@ -39,6 +39,10 @@ struct OpHandleBase {
 
   virtual void Wait(platform::DeviceContext *waited_dev);
 
+  void AddInput(VarHandleBase *in);
+
+  void AddOutput(VarHandleBase *out);
+
  protected:
   virtual void RunImpl() = 0;
 };

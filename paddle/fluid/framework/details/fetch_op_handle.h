@@ -15,22 +15,28 @@
 #pragma once
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-struct ScaleLossGradOpHandle : public OpHandleBase {
-  float coeff_;
-  Scope *scope_;
-  platform::Place place_;
+struct FetchOpHandle : public OpHandleBase {
+  FeedFetchList *data_;
+  size_t offset_;
+  std::vector<Scope *> *local_scopes_;
+  std::vector<LoDTensor> tensors_;
 
-  ScaleLossGradOpHandle(size_t num_dev, Scope *scope, platform::Place place,
-                        platform::DeviceContext *context);
+  FetchOpHandle(FeedFetchList *data, size_t offset,
+                std::vector<Scope *> *local_scopes);
 
-  ~ScaleLossGradOpHandle() final;
+  ~FetchOpHandle();
+
+  void Wait(platform::DeviceContext *waited_dev) override;
+
+  void WaitAndMergeCPUTensors() const;
 
  protected:
   void RunImpl() override;
