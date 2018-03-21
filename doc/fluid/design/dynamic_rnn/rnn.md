@@ -49,7 +49,7 @@ or copy the memory value of the previous step to the current ex-memory variable.
 
 ### Usage in Python
 
-For more information on Block, please refer to the [design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.md).
+For more information on Block, please refer to the [design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/block.md).
 
 We can define an RNN's step-net using a Block:
 
