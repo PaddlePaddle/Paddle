@@ -25,12 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-#ifdef PADDLE_WITH_CUDA
-
-// FIXME: CHECK the return value of x;
-#define NCCL_INVOKE(x) x
-#endif
-
 struct OpHandle;
 
 struct VarHandleBase {
@@ -57,10 +51,6 @@ struct VarHandle : public VarHandleBase {
 
 struct DummyVarHandle : public VarHandleBase {
   std::string DebugString() const override { return "dummy"; }
-};
-
-struct DependencyVarHandle : public VarHandleBase {
-  std::string DebugString() const override { return "Dependency Variable"; }
 };
 
 struct OpHandle {
@@ -252,7 +242,7 @@ class ParallelExecutorPrivate {
         devs.push_back(boost::get<platform::CUDAPlace>(p).device);
       }
 
-      NCCL_INVOKE(platform::dynload::ncclCommInitAll(
+      PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
           &comms[0], static_cast<int>(contexts.size()), &devs[0]));
 
       int i = 0;
@@ -558,7 +548,7 @@ void ParallelExecutor::PolishGraphToSupportDataHazards() const {
             continue;
           }
 
-          auto *dep_var = new DependencyVarHandle();
+          auto *dep_var = new DummyVarHandle();
 
           dep_var->generated_op_ = read_op;
           read_op->outputs_.emplace_back(dep_var);
