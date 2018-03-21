@@ -606,7 +606,7 @@ void ParallelExecutor::BCastParamsToGPUs(
       auto &dims = main_tensor.dims();
       size_t numel = main_tensor.numel();
 
-      platform::dynload::ncclGroupStart();
+      platform::NCCLGroupGuard guard;
 
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
@@ -624,7 +624,6 @@ void ParallelExecutor::BCastParamsToGPUs(
         platform::dynload::ncclBcast(buffer, numel, data_type, 0, nccl_ctx.comm,
                                      nccl_ctx.stream());
       }
-      platform::dynload::ncclGroupEnd();
     }
 
     for (auto &stream : member_->communication_streams_) {
