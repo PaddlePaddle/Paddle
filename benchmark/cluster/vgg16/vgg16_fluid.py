@@ -183,7 +183,6 @@ def main():
             start_time = time.time()
             num_samples = 0
             train_pass_acc.reset()
-            #@with profiler.profiler("CPU", 'total') as prof:
             for batch_id, data in enumerate(train_reader()):
                 ts = time.time()
                 img_data = np.array(
@@ -242,8 +241,6 @@ def main():
             "TRAINING_ROLE",
             "TRAINER")  # get the training role: trainer/pserver
 
-        #print(debuger.pprint_program_codes(fluid.default_main_program().desc))
-
         t = fluid.DistributeTranspiler()
         t.transpile(
             optimize_ops,
@@ -262,9 +259,7 @@ def main():
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,
                                                     pserver_prog)
-            print("starting server side startup")
             exe.run(pserver_startup)
-            print("starting parameter server...")
             exe.run(pserver_prog)
         elif training_role == "TRAINER":
             # Parameter initialization

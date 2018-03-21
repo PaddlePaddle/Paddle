@@ -41,7 +41,6 @@ typedef SimpleBlockQueue<ReceivedMessage> ReceivedQueue;
 typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 class RequestBase;
 
-// class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 class AsyncGRPCServer final {
  public:
   explicit AsyncGRPCServer(const std::string &address) : address_(address) {}
@@ -57,10 +56,8 @@ class AsyncGRPCServer final {
 
   void SetDevCtx(const platform::DeviceContext *dev_ctx) { dev_ctx_ = dev_ctx; }
 
-  // const MessageWithName Get() { return this->var_recv_queue_.Pop(); }
   const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
 
-  // void Push(const MessageWithName &msg) { this->var_recv_queue_.Push(msg); }
   void Push(const std::string &msg_name) {
     this->var_recv_queue_.Push(std::make_pair(msg_name, nullptr));
   }
@@ -80,20 +77,16 @@ class AsyncGRPCServer final {
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_send_;
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_get_;
 
-  // sendrecv::SendRecvService::AsyncService service_;
   GrpcService::AsyncService service_;
   std::unique_ptr<::grpc::Server> server_;
 
   std::string address_;
   framework::Scope *scope_;
   const platform::DeviceContext *dev_ctx_;
+
   // received variable from RPC, operators fetch variable from this queue.
-  // SimpleBlockQueue<MessageWithName> var_recv_queue_;
   SimpleBlockQueue<MessageWithName> var_get_queue_;
-  // SimpleBlockQueue<std::shared_ptr<TensorResponse>> var_recv_queue_;
-  // SimpleBlockQueue<std::shared_prt<TensorResponse>> var_get_queue_;
   ReceivedQueue var_recv_queue_;
-  // typeRecvQueue var_get_queue_;
 
   // condition of the sub program
   std::mutex barrier_mutex_;

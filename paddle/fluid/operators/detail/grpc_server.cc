@@ -26,7 +26,6 @@ enum CallStatus { PROCESS = 0, FINISH };
 // https://stackoverflow.com/questions/41732884/grpc-multiple-services-in-cpp-async-server
 class RequestBase {
  public:
-  // explicit RequestBase(sendrecv::SendRecvService::AsyncService* service,
   explicit RequestBase(GrpcService::AsyncService* service,
                        ::grpc::ServerCompletionQueue* cq,
                        const platform::DeviceContext* dev_ctx)
@@ -45,7 +44,6 @@ class RequestBase {
 
  protected:
   ::grpc::ServerContext ctx_;
-  // sendrecv::SendRecvService::AsyncService* service_;
   GrpcService::AsyncService* service_;
   ::grpc::ServerCompletionQueue* cq_;
   CallStatus status_;
@@ -108,25 +106,14 @@ class RequestGet final : public RequestBase {
     std::string var_name = request_.varname();
     auto* var = scope_->FindVar(var_name);
 
-    // std::cout <<  "Get var:" << request_.varname() << std::endl;
     ::grpc::ByteBuffer reply;
     if (var_name != FETCH_BARRIER_MESSAGE) {
       SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
-
-      /*
-      auto tensor = var->Get<framework::LoDTensor>();
-      std::stringstream ss;
-      ss << "request var_name:" << var_name << ", dims: "
-          << tensor.dims() << ", msg_len:" << reply.Length();
-      std::cout << ss.str() << std::endl;
-      */
     }
 
-    // TODO(gongwb): check var's info.
     responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
 
-    //          request name    reply
     if (var_name == FETCH_BARRIER_MESSAGE) {
       sendrecv::VariableMessage msg;
       MessageWithName msg_with_name = std::make_pair(var_name, msg);

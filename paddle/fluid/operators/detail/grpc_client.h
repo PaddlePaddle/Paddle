@@ -54,9 +54,7 @@ struct VarHandle {
   }
 };
 
-void ProcGetResponse(const VarHandle& var_h,
-                     // const sendrecv::VariableMessage& msg);
-                     const grpc::ByteBuffer& msg);
+void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
  public:
@@ -94,8 +92,6 @@ class BaseProcessor {
   VarHandle var_h_;
 };
 
-// typedef std::function<void(const VarHandle&, const sendrecv::VoidMessage&)>
-// RequestSendCallBack;
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestSendCallBack;
 
@@ -112,14 +108,11 @@ class SendProcessor : public BaseProcessor {
     }
   }
 
-  // sendrecv::VoidMessage reply_;
   ::grpc::GenericStub stub_g_;
   ::grpc::ByteBuffer reply_;
   RequestSendCallBack response_call_back_ = NULL;
 };
 
-// typedef std::function<void(const VarHandle&, const
-// sendrecv::VariableMessage&)>
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestGetCallBack;
 
@@ -136,7 +129,6 @@ class GetProcessor : public BaseProcessor {
     }
   }
 
-  // sendrecv::VariableMessage reply_;
   ::grpc::ByteBuffer reply_;
   ::grpc::GenericStub stub_g_;
   RequestGetCallBack response_call_back_ = ProcGetResponse;

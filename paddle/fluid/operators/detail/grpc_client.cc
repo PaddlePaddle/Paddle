@@ -33,30 +33,9 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 
   framework::Async([var_name_val, p_ctx, ep_val, p_scope, time_out, ch, this] {
     auto* var = p_scope->FindVar(var_name_val);
-    // sendrecv::VariableMessage req;
-    // SerializeToMessage(var_name_val, var, *p_ctx, &req);
-
-    /*
-    struct timeval t0_wait, t1_wait;
-    gettimeofday(&t0_wait, 0);
-    std::thread::id this_id = std::this_thread::get_id();
-    */
 
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(var_name_val, var, *p_ctx, &req);
-
-    PrintDetail(var_name_val, var->Get<framework::LoDTensor>(), *p_ctx);
-    /*
-    gettimeofday(&t1_wait, 0);
-    double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
-                           (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
-    auto tensor = var->Get<framework::LoDTensor>();
-    std::stringstream ss;
-    ss << "send var_name:" << var_name_val << ", dims: " << tensor.dims()
-       << ", msg_len:" << req.Length() << ", time:" << t_wait
-       << "ms, thread_id:" << this_id;
-    std::cout << ss.str() << std::endl;
-    */
 
     // varhandle
     VarHandle var_h;
@@ -69,9 +48,6 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     SendProcessor* s = new SendProcessor(ch);
     s->Prepare(var_h, time_out);
     s->response_call_back_ = NULL;
-
-    // auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-    // rpc->Finish(&s->reply_, &s->status_, (void*)s);
 
     auto call = std::move(s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req,
@@ -88,30 +64,8 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 void ProcGetResponse(const VarHandle& var_h,
                      // const sendrecv::VariableMessage& ret_msg) {
                      const ::grpc::ByteBuffer& ret_msg) {
-  /*
-struct timeval t0_wait, t1_wait;
-gettimeofday(&t0_wait, 0);
-*/
-
-  // auto* outvar = var_h.scope->FindVar(var_h.name);
   framework::Variable* outvar = NULL;
   DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, outvar);
-
-  /*
-  std::thread::id this_id = std::this_thread::get_id();
-  gettimeofday(&t1_wait, 0);
-  double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
-                         (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
-
-  // std::cout << "received:" << var_h.String() <<  ret_msg.Length() <<
-  // std::endl;
-  auto tensor = outvar->Get<framework::LoDTensor>();
-  std::stringstream ss;
-  ss << "received var_name:" << var_h.name << ", dims: " << tensor.dims()
-     << ", msg_len:" << ret_msg.Length() << ", time:" << t_wait
-     << "ms, thread_id:" << this_id;
-  std::cout << ss.str() << '\n';
-  */
 }
 
 template <typename T>
@@ -153,8 +107,6 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
     ::grpc::ByteBuffer buf;
     RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 
-    // auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
-    // rpc->Finish(&s->reply_, &s->status_, (void*)s);
     auto call = std::move(s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_));
     call->StartCall();
