@@ -782,10 +782,6 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
     }
   }
 
-  for (auto &p : member_->places_) {
-    platform::DeviceContextPool::Instance().Get(p)->Wait();
-  }
-
   for (auto &fetch_op : fetch_ops) {
     fetch_op.WaitAndMergeCPUTensors();
   }
