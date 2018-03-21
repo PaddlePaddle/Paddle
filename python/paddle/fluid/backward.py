@@ -307,16 +307,28 @@ def _append_backward_ops_(block,
             sub_block = program.block(op.block_attr("sub_block"))
             grad_sub_block = program.create_block()
             grad_sub_block.set_forward_block_idx(sub_block.idx)
+
+            all_vars = op.block.vars
+            target_vars = [all_vars[name] for name in op.output_arg_names]
+            no_grad_set = copy.copy(no_grad_dict[sub_block.idx])
+            new_no_grad_dict = _get_stop_gradients_(sub_block.program)
+            new_no_grad_dict[0].update(map(_append_grad_suffix_, no_grad_set))
+            block_no_grad_set = set(
+                map(_strip_grad_suffix_, new_no_grad_dict[0]))
+            op_path = _find_op_path_(sub_block, target_vars, [],
+                                     block_no_grad_set)
+            no_grad_dict[0].update(map(_append_grad_suffix_, block_no_grad_set))
+
             cb = _callback_lookup_(op)
             if cb is not None:
                 if callbacks is None:
                     new_callbacks = [cb]
                 else:
                     new_callbacks = callbacks + [_callback_lookup_(op)]
-                _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+                _append_backward_ops_(sub_block, op_path, grad_sub_block,
                                       no_grad_dict, grad_to_var, new_callbacks)
             else:
-                _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+                _append_backward_ops_(sub_block, op_path, grad_sub_block,
                                       no_grad_dict, grad_to_var, callbacks)
 
             program.rollback()
