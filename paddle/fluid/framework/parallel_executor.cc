@@ -17,6 +17,7 @@ limitations under the License. */
 #include "lod_tensor.h"
 #include "lod_tensor_array.h"
 #include "op_registry.h"
+#include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
@@ -34,6 +35,7 @@ using details::OpHandleBase;
 using details::ScaleLossGradOpHandle;
 using details::VarHandle;
 using details::VarHandleBase;
+using details::ComputationOpHandle;
 
 class ParallelExecutorPrivate {
  public:
@@ -124,32 +126,6 @@ class ParallelExecutorPrivate {
     var.name_ = each_var_name;
     var.place_ = place;
     op_handle->AddOutput(&var);
-  }
-};
-
-struct ComputationOpHandle : public OpHandleBase {
-  std::unique_ptr<OperatorBase> op_;
-  Scope *scope_;
-  platform::Place place_;
-
-  explicit ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
-                               platform::Place place)
-      : op_(framework::OpRegistry::CreateOp(op_desc)),
-        scope_(scope),
-        place_(place) {}
-
- protected:
-  void RunImpl() override {
-    auto *cur_ctx = dev_ctx_[place_];
-    for (auto *in : inputs_) {
-      bool need_wait =
-          in->generated_op_ && in->generated_op_->dev_ctx_[place_] != cur_ctx;
-      if (need_wait) {
-        in->generated_op_->Wait(cur_ctx);
-      }
-    }
-
-    op_->Run(*scope_, place_);
   }
 };
 
