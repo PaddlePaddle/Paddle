@@ -32,8 +32,8 @@ cc_test(variable_test SRCS variable_test.cc)
 cc_library(threadpool SRCS threadpool.cc DEPS enforce)
 cc_test(threadpool_test SRCS threadpool_test.cc DEPS threadpool)
 
-cc_library(scope SRCS scope.cc DEPS glog threadpool)
-cc_test(scope_test SRCS scope_test.cc DEPS scope lod_tensor)
+cc_library(scope SRCS scope.cc DEPS glog threadpool lod_tensor)
+cc_test(scope_test SRCS scope_test.cc DEPS scope)
 
 cc_library(data_device_transform SRCS data_device_transform.cc DEPS tensor)
 nv_test(data_device_transform_test SRCS data_device_transform_test.cu
