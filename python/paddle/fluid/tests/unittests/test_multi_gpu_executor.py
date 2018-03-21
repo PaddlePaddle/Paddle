@@ -71,6 +71,33 @@ def vgg16_bn_drop(input):
             conv_num_filter=[num_filter] * groups,
             conv_filter_size=3,
             conv_act='relu',
+            conv_with_batchnorm=True,
+            conv_batchnorm_drop_rate=dropouts,
+            pool_type='max')
+
+    conv1 = conv_block(input, 64, 2, [0.3, 0])
+    conv2 = conv_block(conv1, 128, 2, [0.4, 0])
+    conv3 = conv_block(conv2, 256, 3, [0.4, 0.4, 0])
+    conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
+    conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
+
+    drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
+    fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
+    bn = fluid.layers.batch_norm(input=fc1, act='relu')
+    drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
+    fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
+    return fc2
+
+
+def vgg16_bn(input):
+    def conv_block(input, num_filter, groups, dropouts):
+        return fluid.nets.img_conv_group(
+            input=input,
+            pool_size=2,
+            pool_stride=2,
+            conv_num_filter=[num_filter] * groups,
+            conv_filter_size=3,
+            conv_act='relu',
             conv_with_batchnorm=False,
             conv_batchnorm_drop_rate=dropouts,
             pool_type='max')
@@ -160,8 +187,8 @@ def run_benchmark(args):
     # Train program
     images = fluid.layers.fill_constant(
         shape=(args.batch_size, 3, 200, 200), dtype='float32', value=0.1)
-    # predict = vgg16_bn_drop(images)
-    predict = resnet_imagenet(images, class_dim=1000)
+    predict = vgg16_bn_drop(images)
+    # predict = resnet_imagenet(images, class_dim=1000)
 
     avg_cost = fluid.layers.mean(x=predict)
 

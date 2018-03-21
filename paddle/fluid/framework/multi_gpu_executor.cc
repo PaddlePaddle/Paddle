@@ -66,7 +66,8 @@ void ExecutorWithAllReduce::RunOperators(const ExecutorPrepareContext* ctx,
     for (auto& param2argu : op->Inputs()) {
       for (auto& argu : param2argu.second) {
         if (param_grads_->count(argu) != 0) {
-          LOG(INFO) << place_ << " " << op->Type() << " " << argu;
+          LOG(INFO) << place_ << " " << op->Type() << param2argu.first << " "
+                    << argu;
           PADDLE_ENFORCE(cudaStreamWaitEvent(computation_stream,
                                              all_reduce_event[argu], 0));
         }
@@ -80,7 +81,8 @@ void ExecutorWithAllReduce::RunOperators(const ExecutorPrepareContext* ctx,
     for (auto& param2argu : op->Outputs()) {
       for (auto& argu : param2argu.second) {
         if (param_grads_->count(argu) != 0) {
-          //          LOG(INFO) << place_ << " Launch allreduce on " << argu;
+          LOG(INFO) << place_ << " " << op->Type() << " Launch allreduce on "
+                    << argu;
 
           PADDLE_ENFORCE(
               cudaEventRecord(computation_event[argu], computation_stream));
