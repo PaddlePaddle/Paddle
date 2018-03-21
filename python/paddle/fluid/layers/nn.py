@@ -82,6 +82,7 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
+       use_mkldnn=False,
        act=None,
        name=None):
     """
@@ -163,8 +164,11 @@ def fc(input,
             inputs={"X": input_var,
                     "Y": w},
             outputs={"Out": tmp},
-            attrs={"x_num_col_dims": num_flatten_dims,
-                   "y_num_col_dims": 1})
+            attrs={
+                "x_num_col_dims": num_flatten_dims,
+                "y_num_col_dims": 1,
+                'use_mkldnn': use_mkldnn
+            })
         mul_results.append(tmp)
 
     # sum

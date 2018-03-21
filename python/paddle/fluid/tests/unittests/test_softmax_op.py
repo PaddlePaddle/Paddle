@@ -27,15 +27,20 @@ def stable_softmax(x):
 
 class TestSoftmaxOp(OpTest):
     def setUp(self):
+        self.use_mkldnn = False
         self.op_type = "softmax"
         self.use_cudnn = False
+        self.init_op_type()
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [10, 10]).astype("float32")
         }
         self.outputs = {
             'Out': np.apply_along_axis(stable_softmax, 1, self.inputs['X'])
         }
-        self.attrs = {'use_cudnn': self.use_cudnn, }
+        self.attrs = {
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn
+        }
 
     def init_op_type(self):
         pass
@@ -59,6 +64,11 @@ class TestSoftmaxOp(OpTest):
 class TestSoftmaxCUDNNOp(TestSoftmaxOp):
     def init_op_type(self):
         self.use_cudnn = True
+
+
+class TestMKLDNN(TestSoftmaxOp):
+    def init_op_type(self):
+        self.use_mkldnn = True
 
 
 if __name__ == "__main__":

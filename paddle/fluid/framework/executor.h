@@ -54,7 +54,8 @@ class Executor {
            std::map<std::string, const LoDTensor*>& feed_targets,
            std::map<std::string, LoDTensor*>& fetch_targets,
            const std::string& feed_holder_name = "feed",
-           const std::string& fetch_holder_name = "fetch");
+           const std::string& fetch_holder_name = "fetch",
+           bool create_vars = true);
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id);

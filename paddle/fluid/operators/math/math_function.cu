@@ -348,6 +348,7 @@ void axpy<platform::CUDADeviceContext, double>(
                                                 &alpha, x, 1, y, 1));
 }
 
+template struct SetConstant<platform::CUDADeviceContext, platform::float16>;
 template struct SetConstant<platform::CUDADeviceContext, float>;
 template struct SetConstant<platform::CUDADeviceContext, double>;
 template struct SetConstant<platform::CUDADeviceContext, int>;
