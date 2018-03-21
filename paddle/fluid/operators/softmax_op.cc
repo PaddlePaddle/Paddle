@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/softmax_op.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -38,19 +41,12 @@ class SoftmaxOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
-    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-    bool runtime_cudnn_support = false;
+    framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      auto& dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
-      runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kCUDNN;
     }
 #endif
-    framework::LibraryType library_ = framework::LibraryType::kPlain;
-    if (use_cudnn && runtime_cudnn_support) {
-      library_ = framework::LibraryType::kCUDNN;
-    }
     std::string data_format = ctx.Attr<std::string>("data_format");
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
@@ -119,19 +115,12 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
-    bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-    bool runtime_cudnn_support = false;
+    framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      auto& dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
-      runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kCUDNN;
     }
 #endif
-    framework::LibraryType library_ = framework::LibraryType::kPlain;
-    if (use_cudnn && runtime_cudnn_support) {
-      library_ = framework::LibraryType::kCUDNN;
-    }
     std::string data_format = ctx.Attr<std::string>("data_format");
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
