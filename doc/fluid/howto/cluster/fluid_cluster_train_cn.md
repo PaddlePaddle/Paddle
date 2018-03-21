@@ -95,15 +95,15 @@ for pass_id in range(100):
 ```
 ### 分布式训练脚本运行说明
 分布式任务的运行需要外部指定多个参数：
-```
+
 | 参数名 | 值类型 | 说明 | 示例 |
-| :------------- | :---| :--------------------------------------- | :------------- |
+|:-------------|:---|:---------------------------------------|:-------------|
 | trainer_id | int | 当前训练节点的ID，训练节点ID编号为0 - n-1， n为trainers的值 | 0/1/2/3 |
 | pservers | str | parameter server 列表 | 127.0.0.1:6710,127.0.0.1:6711 |
 | trainers | int | 训练节点的总个数，>0的数字 | |
 | server_endpoint | str | 当前所起的服务节点的IP:PORT | 127.0.0.1:8789 |
 | training_role | str | 节点角色， TRAINER/PSERVER | PSERVER |
-```
+
 启动顺序，先启动全部的PSERVER (Parameter Server)后，再启动TRAINER(Trainer)。
 **其中：training_role 是用来区分当前所起服务的角色的，用于训练程序中，用户可根据需要自行定义，其他参数为fluid.DistributeTranspiler的transpile函数所需要，需要在调用函数前进行定义，至于如何从外部环境传入，用户可自定义。**
 
