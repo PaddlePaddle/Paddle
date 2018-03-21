@@ -36,13 +36,16 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     // sendrecv::VariableMessage req;
     // SerializeToMessage(var_name_val, var, *p_ctx, &req);
 
+    /*
     struct timeval t0_wait, t1_wait;
     gettimeofday(&t0_wait, 0);
     std::thread::id this_id = std::this_thread::get_id();
+    */
 
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(var_name_val, var, *p_ctx, &req);
 
+    /*
     gettimeofday(&t1_wait, 0);
     double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
                            (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
@@ -52,6 +55,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
        << ", msg_len:" << req.Length() << ", time:" << t_wait
        << "ms, thread_id:" << this_id;
     std::cout << ss.str() << std::endl;
+    */
 
     // varhandle
     VarHandle var_h;
