@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/detail/bytebuffer_stream.h"
 #include "paddle/fluid/operators/detail/proto_encoder_helper.h"
+#include "paddle/fluid/operators/detail/tensor_parser.h"
 
 namespace paddle {
 namespace operators {
@@ -293,6 +294,16 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
     memcpy(rows_data, reinterpret_cast<const void*>(meta.rows().data()),
            meta.rows().size());
   }
+}
+
+void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
+                               const platform::DeviceContext& ctx,
+                               framework::Scope* scope,
+                               framework::Variable*& var) {
+  operators::detail::TensorResponse resp(scope);
+  PADDLE_ENFORCE(resp.Parse(msg, ctx) == 0,
+                 "parse bytebuffer to tensor error!");
+  var = resp.GetVar();
 }
 
 }  // namespace detail

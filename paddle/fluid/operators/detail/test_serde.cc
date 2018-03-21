@@ -16,11 +16,13 @@ limitations under the License. */
 #include <string>
 #include <thread>
 
+#include <google/protobuf/text_format.h>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/tensor_parser.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
@@ -31,7 +33,7 @@ namespace operators = paddle::operators;
 namespace math = paddle::operators::math;
 namespace memory = paddle::memory;
 
-void RunSerdeTestTensor(platform::Place place) {
+void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // serialize var to ByteBuffer
   framework::Variable var;
   auto* tensor = var.GetMutable<framework::LoDTensor>();
@@ -75,10 +77,29 @@ void RunSerdeTestTensor(platform::Place place) {
     EXPECT_FLOAT_EQ(tensor_data[i], 31.9);
   }
 
+  // message binary
+  std::string str;
+  varmsg.SerializeToString(&str);
+
+  // message bytebuffer
+  ::grpc::Slice slices_2[1];
+  int num_slices = 1;
+  slices_2[0] = ::grpc::Slice(str.length());
+  memcpy(const_cast<uint8_t*>(slices_2[0].begin()), str.c_str(), str.length());
+  ::grpc::ByteBuffer bytebuffer2(&slices_2[0], num_slices);
+
   // deserialize zero-copy
-  framework::Variable var2;
-  operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
-  auto tensor2 = var2.Get<framework::LoDTensor>();
+  framework::Scope scope;
+  scope.Var("myvar");
+  framework::Variable* var2 = NULL;
+  if (from_type == 0) {
+    operators::detail::DeserializeFromByteBuffer(msg, ctx, &scope, var2);
+  } else {
+    operators::detail::DeserializeFromByteBuffer(bytebuffer2, ctx, &scope,
+                                                 var2);
+  }
+
+  auto tensor2 = var2->Get<framework::LoDTensor>();
   float* tensor_data2 = nullptr;
   framework::Tensor tmp_tensor;
 
@@ -124,6 +145,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   for (const auto& s : slices) {
     tmp.append(reinterpret_cast<const char*>(s.begin()), s.size());
   }
+
   sendrecv::VariableMessage varmsg;
   EXPECT_TRUE(varmsg.ParseFromString(tmp));
 
@@ -140,10 +162,12 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   EXPECT_EQ(rows_data[0], 3);
   EXPECT_EQ(rows_data[1], 10);
   // deserialize zero-copy
-  framework::Variable var2;
-  operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
+  framework::Scope scope;
+  scope.Var("myvar");
+  framework::Variable* var2 = NULL;
+  operators::detail::DeserializeFromByteBuffer(msg, ctx, &scope, var2);
 
-  auto* slr2 = var2.GetMutable<framework::SelectedRows>();
+  auto* slr2 = var2->GetMutable<framework::SelectedRows>();
   auto* tensor2 = slr2->mutable_value();
   auto* rows2 = slr2->mutable_rows();
   float* tensor_data2 = nullptr;
@@ -165,6 +189,18 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   EXPECT_EQ(rows_data2[1], 10);
 }
 
+TEST(LodTensor, GPU) {
+  platform::CUDAPlace place;
+  RunTestLodTensor(place);
+  RunTestLodTensor(place, 1);
+}
+
+TEST(LodTensor, CPU) {
+  platform::CPUPlace place;
+  RunTestLodTensor(place);
+  RunTestLodTensor(place, 1);
+}
+
 TEST(SelectedRows, CPU) {
   platform::CPUPlace place;
   RunSerdeTestSelectedRows(place);
@@ -173,14 +209,4 @@ TEST(SelectedRows, CPU) {
 TEST(SelectedRows, GPU) {
   platform::CUDAPlace place;
   RunSerdeTestSelectedRows(place);
-}
-
-TEST(Tensor, CPU) {
-  platform::CPUPlace place;
-  RunSerdeTestTensor(place);
-}
-
-TEST(Tensor, GPU) {
-  platform::CUDAPlace place;
-  RunSerdeTestTensor(place);
 }

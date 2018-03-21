@@ -52,6 +52,11 @@ void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                framework::Variable* var);
 
+void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
+                               const platform::DeviceContext& ctx,
+                               framework::Scope* scope,
+                               framework::Variable*& var);
+
 inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
   switch (type) {
     case sendrecv::VariableMessage::FP32:
