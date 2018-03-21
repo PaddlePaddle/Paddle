@@ -100,7 +100,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    if net_type == "vgg":
+    if net_type == "vgg_fp16":
         print("train vgg net")
         net = vgg16_bn_drop(images)
     elif net_type == "resnet":
