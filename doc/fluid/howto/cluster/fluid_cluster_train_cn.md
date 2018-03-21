@@ -5,7 +5,7 @@
 * 可用的集群
 
     包含一个或多个计算节点的集群，每一个节点都能够执行PaddlePaddle的训练任务且拥有唯一的IP地址，集群内的所有计算节点可以通过网络相互通信。
-* 安装PaddlePaddle Fluid with Distribute 版本
+* 安装PaddlePaddle Fluid with Distributed版本
 
     所有的计算节点上均需要按照分布式版本的PaddlePaddle, 在用于GPU等设备的机器上还需要额外安装好相应的驱动程序和CUDA的库。
     **注意：**当前对外提供的PaddlePaddle版本并不支持分布式，需要通过源码重新编译。编译和安装方法参见[编译和安装指南](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/index_en.html)。
@@ -65,7 +65,7 @@ exit(1)
 **因此，在分布式的Fluid环境中，我们有两个角色需要创建，分别是Parameter Server和Trainer。**
 
 ### 分布式训练 
-Fliud专门提供了工具"**Distributed Transpiler**"用于将单机版的训练程序转换为分布式版本的训练程序。工具背后的理念是找出程序的优化算子和梯度参数，将他们分隔为两部分，通过send/recive 操作算子进行连接,优化算子和梯度参数可以在优化器的minimize函数的返回值中获取到。
+Fliud专门提供了工具[Distributed Transpiler](https://github.com/PaddlePaddle/Paddle/blob/ba65d54d9d3b41cd3c5171b00f476d4e60133ddb/doc/fluid/design/dist_train/distributed_architecture.md#distributed-transpiler)用于将单机版的训练程序转换为分布式版本的训练程序。工具背后的理念是找出程序的优化算子和梯度参数，将他们分隔为两部分，通过send/recive 操作算子进行连接,优化算子和梯度参数可以在优化器的minimize函数的返回值中获取到。
 ```python
 optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost) 
 ```
