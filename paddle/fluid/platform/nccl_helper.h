@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <thread>
 #include <typeindex>
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -32,6 +33,25 @@ inline ncclDataType_t ToNCCLDataType(std::type_index type) {
     PADDLE_THROW("Not supported");
   }
 }
+
+class NCCLGroupGuard {
+ public:
+  inline NCCLGroupGuard() {
+    mutex().lock();
+    PADDLE_ENFORCE(dynload::ncclGroupStart());
+  }
+
+  inline ~NCCLGroupGuard() {
+    PADDLE_ENFORCE(dynload::ncclGroupEnd());
+    mutex().unlock();
+  }
+
+ private:
+  static std::mutex& mutex() {
+    static std::mutex mtx;
+    return mtx;
+  }
+};
 
 }  // namespace platform
 }  // namespace paddle
