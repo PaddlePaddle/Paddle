@@ -45,6 +45,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     ::grpc::ByteBuffer req;
     SerializeToByteBuffer(var_name_val, var, *p_ctx, &req);
 
+    PrintDetail(var_name_val, var->Get<framework::LoDTensor>(), *p_ctx);
     /*
     gettimeofday(&t1_wait, 0);
     double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +

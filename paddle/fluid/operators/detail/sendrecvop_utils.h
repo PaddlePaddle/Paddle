@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
 
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
@@ -60,6 +61,23 @@ inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
     default:
       PADDLE_THROW("Not support type %d", type);
   }
+}
+
+inline void PrintDetail(std::string name, const framework::Tensor& src,
+                        const platform::DeviceContext& ctx,
+                        std::string post_fix = "") {
+  if (name != "batch_norm_11.w_1@GRAD.trainer_0") {
+    return;
+  }
+
+  std::vector<float> vec;
+  framework::TensorToVector<float>(src, ctx, &vec);
+
+  printf("%s name:%s, data:", post_fix.c_str(), name.c_str());
+  for (uint32_t i = 0; i < vec.size(); i++) {
+    printf("%.f ", vec[i]);
+  }
+  printf("\n");
 }
 
 }  // namespace detail

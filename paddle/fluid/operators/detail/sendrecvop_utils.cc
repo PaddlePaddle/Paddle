@@ -109,6 +109,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         };
 
         {
+          PrintDetail(name, tensor, ctx, "memcopy gpu");
+          /*
           std::stringstream ss;
           ss << "se memcpy gpu var_name:" << name
              << ", dims: " << tensor.dims();
@@ -119,6 +121,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
             printf("%.f ", data[i]);
           }
           printf("\n");
+          */
         }
 /*
 gettimeofday(&t1_wait, 0);
