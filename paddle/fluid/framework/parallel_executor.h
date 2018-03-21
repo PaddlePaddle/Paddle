@@ -47,10 +47,6 @@ class ParallelExecutor {
 
   void BCastParamsToGPUs(const ProgramDesc& startup_program) const;
 
-  void ConstructDependencyGraph(const std::unordered_set<std::string>& params,
-                                const ProgramDesc& main_program,
-                                const std::string& loss_var_name) const;
-
   void BuildNCCLCommunicator() const;
 };
 
