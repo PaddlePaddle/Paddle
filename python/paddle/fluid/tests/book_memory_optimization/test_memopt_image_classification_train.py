@@ -125,14 +125,10 @@ opts = optimizer.minimize(avg_cost)
 batch_size = fluid.layers.create_tensor(dtype='int64')
 batch_acc = fluid.layers.accuracy(input=predict, label=label, total=batch_size)
 
-# print(str(fluid.default_main_program()))
-
 fluid.recomputation(fluid.default_main_program())
+fluid.release_memory(fluid.default_main_program())
 
-# print(str(fluid.default_main_program()))
-
-# # fluid.memory_optimize(fluid.default_main_program(), level=0)
-# # fluid.release_memory(fluid.default_main_program())
+# fluid.memory_optimize(fluid.default_main_program(), level=0)
 
 BATCH_SIZE = 16
 PASS_NUM = 1

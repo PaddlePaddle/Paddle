@@ -28,7 +28,7 @@ class DeleteVarOp : public framework::OperatorBase {
     dev_ctx.Wait();
 
     auto delete_var_names = Inputs("X");
-    const_cast<framework::Scope &>(scope).EraseVars(delete_var_names);
+    const_cast<framework::Scope &>(scope).ReleaseVarsMemory(delete_var_names);
   }
 };
 

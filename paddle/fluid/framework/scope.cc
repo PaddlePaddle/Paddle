@@ -18,6 +18,7 @@ limitations under the License. */
 #include <mutex>   // for call_once
 #include <set>
 #include "glog/logging.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -103,15 +104,23 @@ void Scope::DeleteScope(Scope* scope) {
   }
 }
 
-void Scope::EraseVars(std::vector<std::string>& var_names) {
+void Scope::ReleaseVarsMemory(std::vector<std::string>& var_names) {
   std::set<std::string> var_set(var_names.begin(), var_names.end());
+  std::vector<std::string> delete_vars;
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
+      delete_vars.push_back(it->first);
       delete it->second;
       it = vars_.erase(it);
     } else {
       ++it;
     }
+  }
+
+  for (auto& var_name : delete_vars) {
+    Variable* p = this->Var(var_name);
+    // It only works for LoDTensor.
+    p->GetMutable<LoDTensor>();
   }
 }
 
