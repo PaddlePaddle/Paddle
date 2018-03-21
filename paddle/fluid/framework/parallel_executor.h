@@ -29,9 +29,6 @@ namespace paddle {
 namespace framework {
 
 class ParallelExecutorPrivate;
-class VarHandle;
-class OpHandle;
-class VarHandleBase;
 
 class ParallelExecutor {
  public:
@@ -50,22 +47,11 @@ class ParallelExecutor {
 
   void BCastParamsToGPUs(const ProgramDesc& startup_program) const;
 
-  VarHandle* GetVarHandle(const std::string& each_var_name,
-                          const platform::Place& place) const;
-
-  void GenerateVar(OpHandle* op_handle, const std::string& each_var_name,
-                   const platform::Place& place) const;
-
   void ConstructDependencyGraph(const std::unordered_set<std::string>& params,
                                 const ProgramDesc& main_program,
                                 const std::string& loss_var_name) const;
 
   void BuildNCCLCommunicator() const;
-
-  void RunOp(
-      bool use_event,
-      std::unordered_map<VarHandleBase*, std::atomic<bool>>& pending_vars,
-      OpHandle* op) const;
 
   void PolishGraphToSupportDataHazards() const;
 };
