@@ -63,23 +63,6 @@ inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
   }
 }
 
-inline void PrintDetail(std::string name, const framework::Tensor& src,
-                        const platform::DeviceContext& ctx,
-                        std::string post_fix = "") {
-  if (name != "batch_norm_11.w_1@GRAD.trainer_0") {
-    return;
-  }
-
-  std::vector<float> vec;
-  framework::TensorToVector<float>(src, ctx, &vec);
-
-  printf("%s name:%s, data:", post_fix.c_str(), name.c_str());
-  for (uint32_t i = 0; i < vec.size(); i++) {
-    printf("%.f ", vec[i]);
-  }
-  printf("\n");
-}
-
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle

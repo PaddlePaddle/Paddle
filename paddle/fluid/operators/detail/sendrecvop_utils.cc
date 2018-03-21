@@ -75,28 +75,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       }
       if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
-        /*
-      struct timeval t0_wait, t1_wait;
-      gettimeofday(&t0_wait, 0);
-      std::thread::id this_id = std::this_thread::get_id();
-      */
-
         PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
         platform::CPUPlace cpu;
         auto& gpu_dev_ctx =
             static_cast<const platform::CUDADeviceContext&>(ctx);
         auto copy_size = tensor.memory_size();
         payload = memory::Alloc(cpu, copy_size);
-
-        /*
-        gettimeofday(&t1_wait, 0);
-        double t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
-                               (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
-        std::stringstream ss;
-        ss << "se malloc var_name:" << name << ", dims: " << tensor.dims()
-           << ", time:" << t_wait << "ms, thread_id:" << this_id;
-        std::cout << ss.str() << '\n';
-        */
 
         memory::Copy(cpu, payload,
                      boost::get<platform::CUDAPlace>(tensor.place()),
@@ -108,30 +92,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
           memory::Free(cpu, backing);
         };
 
-        {
-          PrintDetail(name, tensor, ctx, "memcopy gpu");
-          /*
-          std::stringstream ss;
-          ss << "se memcpy gpu var_name:" << name
-             << ", dims: " << tensor.dims();
-          std::cout << ss.str() << ", data:";
-
-          float* data = reinterpret_cast<float*>(payload);
-          for (int i = 0; i < 10; i++) {
-            printf("%.f ", data[i]);
-          }
-          printf("\n");
-          */
-        }
-/*
-gettimeofday(&t1_wait, 0);
-t_wait = double((t1_wait.tv_sec - t0_wait.tv_sec) * 1000.0 +
-                (t1_wait.tv_usec - t0_wait.tv_usec) / 1000.0);
-std::stringstream ss2;
-ss2 << "se memcpy gpu var_name:" << name << ", dims: " << tensor.dims()
-    << ", time:" << t_wait << "ms, thread_id:" << this_id;
-std::cout << ss2.str() << '\n';
-*/
 #endif
       } else {
         payload = tensor.data<void>();

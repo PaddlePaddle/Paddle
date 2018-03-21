@@ -58,10 +58,7 @@ void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
  public:
-  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
-    stub_ = sendrecv::SendRecvService::NewStub(ch);
-    context_ = NULL;
-  }
+  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) { context_ = NULL; }
 
   virtual ~BaseProcessor() {}
 
@@ -86,7 +83,6 @@ class BaseProcessor {
 
   virtual void Process() = 0;
 
-  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
   std::unique_ptr<grpc::ClientContext> context_;
   grpc::Status status_;
   VarHandle var_h_;
@@ -137,23 +133,29 @@ class GetProcessor : public BaseProcessor {
 class BatchBarrierProcessor : public BaseProcessor {
  public:
   explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {}
+      : BaseProcessor(ch) {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
 
   virtual ~BatchBarrierProcessor() {}
 
   virtual void Process() {}
   sendrecv::VoidMessage reply_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
 class FetchBarrierProcessor : public BaseProcessor {
  public:
   explicit FetchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {}
+      : BaseProcessor(ch) {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
 
   virtual ~FetchBarrierProcessor() {}
 
   virtual void Process() {}
   sendrecv::VariableMessage reply_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
 class RPCClient {

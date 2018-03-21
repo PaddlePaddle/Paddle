@@ -205,10 +205,6 @@ def main():
                        len(data) / (time.time() - ts))
                 )  # The accuracy is the accumulation of batches, but not the current batch.
 
-                if batch_id >= 20:
-                    print("test complete after batch_id >=20")
-                    break
-
             pass_elapsed = time.time() - start_time
             pass_train_acc = train_pass_acc.eval()
             pass_test_acc = test(exe)
