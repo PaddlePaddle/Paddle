@@ -3393,7 +3393,7 @@ def lod_reset(x, y=None, target_lod=None):
 
 def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
     """
-    Local Response Normalization Layer. This layer performs a kind of
+    Local Response Normalization Layer. This layer performs a type of
     "lateral inhibition" by normalizing over local input regions.
 
     The formula is as follows:
@@ -3407,7 +3407,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
     In the above equation:
 
     * :math:`n`: The number of channels to sum over.
-    * :math:`k`: The offset (usually positive to avoid dividing by 0).
+    * :math:`k`: The offset (avoid being divided by 0).
     * :math:`alpha`: The scaling parameter.
     * :math:`beta`: The exponent parameter.
 
