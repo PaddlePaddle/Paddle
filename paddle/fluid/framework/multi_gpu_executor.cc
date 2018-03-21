@@ -52,8 +52,8 @@ void ExecutorWithAllReduce::RunOperators(const ExecutorPrepareContext* ctx,
       reinterpret_cast<const platform::CUDADeviceContext*>(dev_ctx)->stream();
   cudaStream_t all_reduce_stream = io_ctx_->stream();
 
-  std::map<std::string, cudaEvent_t> computation_event;
-  std::map<std::string, cudaEvent_t> all_reduce_event;
+  std::unordered_map<std::string, cudaEvent_t> computation_event;
+  std::unordered_map<std::string, cudaEvent_t> all_reduce_event;
   for (auto& argu : *param_grads_) {
     PADDLE_ENFORCE(cudaEventCreateWithFlags(&computation_event[argu],
                                             cudaEventDisableTiming));
@@ -62,10 +62,13 @@ void ExecutorWithAllReduce::RunOperators(const ExecutorPrepareContext* ctx,
   }
 
   for (auto& op : ctx->ops_) {
+    // sgd should wait for allreduce finished
     for (auto& param2argu : op->Inputs()) {
       for (auto& argu : param2argu.second) {
         if (param_grads_->count(argu) != 0) {
-          cudaStreamWaitEvent(computation_stream, all_reduce_event[argu], 0);
+          LOG(INFO) << place_ << " " << op->Type() << " " << argu;
+          PADDLE_ENFORCE(cudaStreamWaitEvent(computation_stream,
+                                             all_reduce_event[argu], 0));
         }
       }
     }
@@ -77,7 +80,7 @@ void ExecutorWithAllReduce::RunOperators(const ExecutorPrepareContext* ctx,
     for (auto& param2argu : op->Outputs()) {
       for (auto& argu : param2argu.second) {
         if (param_grads_->count(argu) != 0) {
-          LOG(INFO) << place_ << "Launch allreduce on " << argu;
+          //          LOG(INFO) << place_ << " Launch allreduce on " << argu;
 
           PADDLE_ENFORCE(
               cudaEventRecord(computation_event[argu], computation_stream));
