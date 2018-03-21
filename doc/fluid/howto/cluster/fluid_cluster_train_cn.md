@@ -65,7 +65,7 @@ exit(1)
 **因此，在分布式的Fluid环境中，我们有两个角色需要创建，分别是Parameter Server和Trainer。**
 
 ### 分布式训练 
-Fliud专门提供了工具[Distributed Transpiler](https://github.com/PaddlePaddle/Paddle/blob/ba65d54d9d3b41cd3c5171b00f476d4e60133ddb/doc/fluid/design/dist_train/distributed_architecture.md#distributed-transpiler)用于将单机版的训练程序转换为分布式版本的训练程序。工具背后的理念是找出程序的优化算子和梯度参数，将他们分隔为两部分，通过send/recive 操作算子进行连接,优化算子和梯度参数可以在优化器的minimize函数的返回值中获取到。
+Fliud专门提供了工具[Distributed Transpiler](https://github.com/PaddlePaddle/Paddle/blob/ba65d54d9d3b41cd3c5171b00f476d4e60133ddb/doc/fluid/design/dist_train/distributed_architecture.md#distributed-transpiler)用于将单机版的训练程序转换为分布式版本的训练程序。工具背后的理念是找出程序的优化算子和梯度参数，将他们分隔为两部分，通过send/recv 操作算子进行连接,优化算子和梯度参数可以在优化器的minimize函数的返回值中获取到。
 ```python
 optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost) 
 ```
@@ -124,17 +124,21 @@ if training_role == "PSERVER":
 
 ### Demo
 完整的demo代码位于Fluid的test目录下的[book](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_fit_a_line.py)中。
+第一步，进入demo代码所在目录：
 ```bash
 cd /paddle/python/paddle/fluid/tests/book
 ```
-第一步：参考如下命令启动Parameter Server：
+
+第二步，参考如下命令启动Parameter Server：
 ```bash
 PADDLE_INIT_PORT=6174 PADDLE_INIT_PSERVERS=192.168.1.2 TRAINERS=2 POD_IP=192.168.1.2 PADDLE_INIT_TRAINER_ID=1 TRAINING_ROLE=PSERVER python test_fit_a_line.py
 ```
 执行命令后请等待出现提示： ```Server listening on 192.168.1.2:6174 ```, 表示Paramter Server已经正常启动。
-第二步：启动Trainer, 启动Trainer的命令：
+
+第三步，启动Trainer, 启动Trainer的命令：
 ```bash
 PADDLE_INIT_PORT=6174 PADDLE_INIT_PSERVERS=192.168.1.3 TRAINERS=2 POD_IP=192.168.1.3 PADDLE_INIT_TRAINER_ID=1 TRAINING_ROLE=TRAINER python test_fit_a_line.py
 ```
 由于我们定义的Trainer的数量是2个，因此需要在另外一个计算节点上再启动一个Trainer。
+
 现在我们就启动了一个包含一个Parameter Server和两个Trainer的分布式训练任务。
