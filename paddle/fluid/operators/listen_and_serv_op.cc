@@ -99,7 +99,6 @@ class ListenAndServOp : public framework::OperatorBase {
     blk_ctx_list.push_back(nullptr);  // block0 is not used.
     for (int blkid = 1; blkid < num_blocks; ++blkid) {
       auto *exe_ctx = executor.Prepare(*program, blkid);
-      VLOG(2) << "prepare ctx: " << exe_ctx;
       blk_ctx_list.push_back(exe_ctx);
     }
 
@@ -149,6 +148,7 @@ class ListenAndServOp : public framework::OperatorBase {
       // should be global ops.
       // NOTE: if is_gpu_place, CUDA kernels are laugched by multiple threads
       // and this will still work.
+
       std::vector<std::future<void>> fs;
       // block0 contains only listen_and_serv op, start run from block1.
       for (int blkid = 1; blkid < num_blocks - 1; ++blkid) {
@@ -156,13 +156,8 @@ class ListenAndServOp : public framework::OperatorBase {
             [&executor, &program, &recv_scope, &blk_ctx_list, blkid]() {
               int run_block = blkid;  // thread local
               try {
-                VLOG(2) << "run ctx: " << blk_ctx_list[run_block]
-                        << " block: " << run_block;
                 executor.RunPreparedContext(blk_ctx_list[run_block],
                                             &recv_scope, false, false);
-                // executor.Run(*program, &recv_scope, run_block,
-                //              false /*create_local_scope*/,
-                //              false /*create_vars*/);
               } catch (std::exception &e) {
                 LOG(ERROR) << "run sub program error " << e.what();
               }
@@ -174,8 +169,6 @@ class ListenAndServOp : public framework::OperatorBase {
         try {
           executor.RunPreparedContext(blk_ctx_list[num_blocks - 1], &recv_scope,
                                       false, false);
-          // executor.Run(*program, &recv_scope, num_blocks - 1,
-          //              false /*create_local_scope*/, false /*create_vars*/);
         } catch (std::exception &e) {
           LOG(ERROR) << "run sub program error " << e.what();
         }

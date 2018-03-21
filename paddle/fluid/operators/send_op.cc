@@ -66,6 +66,7 @@ class SendOp : public framework::OperatorBase {
     auto* client_var = scope.FindVar(client_var_name);
     detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
 
+    ctx.Wait();  // wait before sending
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
