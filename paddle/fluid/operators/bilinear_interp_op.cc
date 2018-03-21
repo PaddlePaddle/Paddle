@@ -27,13 +27,13 @@ class BilinearInterpOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of BilinearInterOp should not be null.");
 
-    auto dim_x = ctx->GetInputDim("Input");  // NCHW format
+    auto dim_x = ctx->GetInputDim("X");  // NCHW format
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4, "X's dimension must be 4");
 
     std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
-    ctx->SetOutputDim("Output", framework::make_ddim(dim_out));
+    ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
   }
 };
 
@@ -83,4 +83,5 @@ namespace ops = paddle::operators;
 REGISTER_OP(bilinear_interp, ops::BilinearInterpOp, ops::BilinearInterpOpMaker,
             bilinear_interp_grad, ops::BilinearInterpOpGrad);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::BilinearInterpKernel<float>);
-REGISTER_OP_CPU_KERNEL(bilinear_interp_grad, ops::BilinearInterpKernel<float>);
+REGISTER_OP_CPU_KERNEL(bilinear_interp_grad,
+                       ops::BilinearInterpGradKernel<float>);

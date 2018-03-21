@@ -46,7 +46,7 @@ class BilinearInterpKernel : public framework::OpKernel<T> {
     T ratio_w = (out_w > 1) ? static_cast<T>(in_w - 1) / (out_w - 1) : 0.f;
 
     if (in_h == out_h && in_w == out_w) {
-      memcpy(output, input, product(input_t->dims()) * sizeof(T));
+      memcpy(output, input, input_t->numel() * sizeof(T));
     } else {
       for (int k = 0; k < batch_size; ++k) {  // loop for batches
         for (int i = 0; i < out_h; ++i) {     // loop for images
@@ -123,10 +123,10 @@ class BilinearInterpGradKernel : public framework::OpKernel<T> {
             const T* out_pos = &d_output[k * out_chw + i * out_w + j];
 
             for (int c = 0; c < channels; ++c) {  // loop for channels
-              in_pos[0] = h2lambda * w2lambda * out_pos[0];
-              in_pos[wid] = h2lambda * w1lambda * out_pos[0];
-              in_pos[hid * in_w] = h1lambda * w2lambda * out_pos[0];
-              in_pos[hid * in_w + wid] = h1lambda * w1lambda * out_pos[0];
+              in_pos[0] += h2lambda * w2lambda * out_pos[0];
+              in_pos[wid] += h2lambda * w1lambda * out_pos[0];
+              in_pos[hid * in_w] += h1lambda * w2lambda * out_pos[0];
+              in_pos[hid * in_w + wid] += h1lambda * w1lambda * out_pos[0];
               in_pos += in_hw;
               out_pos += out_hw;
             }
