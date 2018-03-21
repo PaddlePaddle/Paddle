@@ -47,9 +47,43 @@ class NCCLGroupGuard {
   }
 
  private:
-  static std::mutex& mutex() {
+  static std::mutex &mutex() {
     static std::mutex mtx;
     return mtx;
+  }
+};
+
+struct NCCLContext {
+  std::unique_ptr<CUDADeviceContext> ctx_;
+  ncclComm_t comm_;
+
+  explicit NCCLContext(int dev_id)
+      : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))) {}
+
+  cudaStream_t stream() const { return ctx_->stream(); }
+
+  int device_id() const {
+    return boost::get<platform::CUDAPlace>(ctx_->GetPlace()).device;
+  }
+
+  static void InitNCCLContext(std::unordered_map<int, NCCLContext> &contexts,
+                              const std::vector<platform::Place> &places) {
+    std::vector<ncclComm_t> comms;
+    std::vector<int> devs;
+    comms.resize(contexts.size());
+    devs.reserve(contexts.size());
+
+    for (auto &p : places) {
+      devs.push_back(boost::get<platform::CUDAPlace>(p).device);
+    }
+
+    PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
+        &comms[0], static_cast<int>(contexts.size()), &devs[0]));
+
+    int i = 0;
+    for (auto &dev_id : devs) {
+      contexts.at(dev_id).comm_ = comms[i++];
+    }
   }
 };
 
