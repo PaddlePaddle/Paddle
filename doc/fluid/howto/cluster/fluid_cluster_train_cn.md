@@ -124,6 +124,7 @@ if training_role == "PSERVER":
 
 ### Demo
 完整的demo代码位于Fluid的test目录下的[book](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_fit_a_line.py)中。
+
 第一步，进入demo代码所在目录：
 ```bash
 cd /paddle/python/paddle/fluid/tests/book
