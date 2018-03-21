@@ -67,12 +67,13 @@ bool is_same_place(const Place &, const Place &);
 
 struct PlaceHash {
   std::size_t operator()(const Place &p) const {
+    constexpr size_t num_dev_bits = 4;
     std::hash<int> ihash;
     size_t dev_id = 0;
     if (is_gpu_place(p)) {
       dev_id = boost::get<CUDAPlace>(p).device;
     }
-    return ihash(dev_id << 2 | p.which());
+    return ihash(dev_id << num_dev_bits | p.which());
   }
 };
 
