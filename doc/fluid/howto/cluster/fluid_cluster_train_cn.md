@@ -10,12 +10,12 @@
     所有的计算节点上均需要按照分布式版本的PaddlePaddle, 在用于GPU等设备的机器上还需要额外安装好相应的驱动程序和CUDA的库。
     **注意：**当前对外提供的PaddlePaddle版本并不支持分布式，需要通过源码重新编译。编译和安装方法参见[编译和安装指南](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/build_and_install/index_en.html)。
     cmake编译命令中需要将WITH_DISTRIBUTE设置为ON，下面是一个cmake编译指令示例：
-``` 
+``` bash
 cmake .. -DWITH_DOC=OFF -DWITH_GPU=OFF -DWITH_DISTRIBUTE=ON -DWITH_SWIG_PY=ON -DWITH_PYTHON=ON
 ```
 
 ## 更新训练脚本
-这里，我们以[Deep Learing 101](http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.html)课程中的第一章 fit a line 为例。
+这里，我们以[Deep Learing 101](http://www.paddlepaddle.org/docs/develop/book/01.fit_a_line/index.html)课程中的第一章 fit a line 为例，描述如何将单机训练脚本改造成支持集群训练的版本。
 ### 单机训练脚本示例
 ```python
 import paddle.v2 as paddle
@@ -60,7 +60,7 @@ exit(1)
 
 我们创建了一个简单的全连接神经网络程序，并且通过Fluid的Executor执行了100次迭代,现在我们需要将该单机版本的程序更新为分布式版本的程序。
 ### 介绍Parameter Server
-在非分布式版本的训练脚本中，只存在Trainer一种角色，它不仅处理常规的计算任务，也处理参数相关的计算和保存任务。在分布式版本的训练过程中，由于存在多个Trainer节点进行同样的数据计算任务，因此需要有一个中心化的节点来统一处理参数相关的保存和分配。在PaddlePaddle中，我们称这样的节点为Parameter Server, [Parameter Server 设计文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/dist_train/parameter_server.md)
+在非分布式版本的训练脚本中，只存在Trainer一种角色，它不仅处理常规的计算任务，也处理参数相关的计算、保存和优化任务。在分布式版本的训练过程中，由于存在多个Trainer节点进行同样的数据计算任务，因此需要有一个中心化的节点来统一处理参数相关的保存和分配。在PaddlePaddle中，我们称这样的节点为[Parameter Server](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/dist_train/parameter_server.md)
 
 **因此，在分布式的Fluid环境中，我们有两个角色需要创建，分别是Parameter Server和Trainer。**
 
@@ -99,14 +99,14 @@ for pass_id in range(100):
 分布式任务的运行需要将表格中说明的多个参数进行赋值:
 
 | 参数名 | 值类型 | 说明 | 示例 |
-|:-------------|:---|:---------------------------------------|:-------------|
+|:-------------|:------|:---------------------------------------|:-------------|
 | trainer_id | int | 当前训练节点的ID，训练节点ID编号为0 - n-1， n为trainers的值 | 0/1/2/3 |
 | pservers | str | parameter server 列表 | 127.0.0.1:6710,127.0.0.1:6711 |
 | trainers | int | 训练节点的总个数，>0的数字 | 4 |
 | server_endpoint | str | 当前所起的服务节点的IP:PORT | 127.0.0.1:8789 |
 | training_role | str | 节点角色， TRAINER/PSERVER | PSERVER |
 
-**其中：training_role 是用来区分当前所起服务的角色的，用于训练程序中，用户可根据需要自行定义，其他参数为fluid.DistributeTranspiler的transpile函数所需要，需要在调用函数前进行定义，至于如何从外部环境传入，用户可自定义。**
+**注意：** ```training_role```是用来区分当前所起服务的角色的，用于训练程序中，用户可根据需要自行定义，其他参数为fluid.DistributeTranspiler的transpile函数所需要，需要在调用函数前进行定义，样例如下： 
 
 参数赋值及使用的相关代码片段：
 ```python
@@ -122,21 +122,18 @@ if training_role == "PSERVER":
     pserver_startup = t.get_startup_program(server_endpoint, pserver_prog)
 ```
 
-### 启动顺序
-先启动全部的PSERVER (Parameter Server)后，再启动TRAINER(Trainer)。
-
 ### Demo
 完整的demo代码位于Fluid的test目录下的[book](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/tests/book/test_fit_a_line.py)中。
-```
+```bash
 cd /paddle/python/paddle/fluid/tests/book
 ```
-第一步：启动Parameter Server, 启动Parameter Server的命令：
-```
+第一步：参考如下命令启动Parameter Server：
+```bash
 PADDLE_INIT_PORT=6174 PADDLE_INIT_PSERVERS=192.168.1.2 TRAINERS=2 POD_IP=192.168.1.2 PADDLE_INIT_TRAINER_ID=1 TRAINING_ROLE=PSERVER python test_fit_a_line.py
 ```
-执行命令后请等待出现提示： ```Server listening on 192.168.1.2:6174 ```
+执行命令后请等待出现提示： ```Server listening on 192.168.1.2:6174 ```, 表示Paramter Server已经正常启动。
 第二步：启动Trainer, 启动Trainer的命令：
-```
+```bash
 PADDLE_INIT_PORT=6174 PADDLE_INIT_PSERVERS=192.168.1.3 TRAINERS=2 POD_IP=192.168.1.3 PADDLE_INIT_TRAINER_ID=1 TRAINING_ROLE=TRAINER python test_fit_a_line.py
 ```
 由于我们定义的Trainer的数量是2个，因此需要在另外一个计算节点上再启动一个Trainer。
