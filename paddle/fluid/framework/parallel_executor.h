@@ -52,8 +52,6 @@ class ParallelExecutor {
                                 const std::string& loss_var_name) const;
 
   void BuildNCCLCommunicator() const;
-
-  void PolishGraphToSupportDataHazards() const;
 };
 
 }  // namespace framework
