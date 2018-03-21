@@ -14,85 +14,21 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "ThreadPool.h"
-#include "executor.h"
 #include "lod_tensor.h"
 #include "lod_tensor_array.h"
 #include "op_registry.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/operators/math/concat.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace framework {
 
 using details::DummyVarHandle;
+using details::OpHandleBase;
 using details::VarHandle;
 using details::VarHandleBase;
-
-struct OpHandleBase {
-  std::vector<VarHandleBase *> inputs_;
-  std::vector<VarHandleBase *> outputs_;
-  std::unordered_map<platform::Place, platform::DeviceContext *,
-                     platform::PlaceHash>
-      dev_ctx_;
-
-  std::unordered_map<int, cudaEvent_t> events_;
-
-  std::string DebugString() {
-    std::stringstream ss;
-    ss << "(";
-    for (auto *var : inputs_) {
-      ss << var->DebugString() << ", ";
-    }
-    ss << ") --> (";
-    for (auto *var : outputs_) {
-      ss << var->DebugString() << ", ";
-    }
-    ss << ")\n";
-    return ss.str();
-  }
-
-  virtual ~OpHandleBase() {}
-
-  void Run(bool use_event) {
-    if (events_.empty() && use_event) {
-      for (auto &p : dev_ctx_) {
-        int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
-        cudaSetDevice(dev_id);
-        cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming);
-      }
-    }
-
-    RunImpl();
-
-    if (use_event) {
-      for (auto &p : dev_ctx_) {
-        int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
-        auto stream =
-            static_cast<platform::CUDADeviceContext *>(p.second)->stream();
-        cudaEventRecord(events_.at(dev_id), stream);
-      }
-    }
-  }
-
-  virtual void Wait(platform::DeviceContext *waited_dev) {
-    if (platform::is_cpu_place(waited_dev->GetPlace()) || events_.empty()) {
-      for (auto &dev_ctx : dev_ctx_) {
-        dev_ctx.second->Wait();
-      }
-    } else {
-      auto stream =
-          static_cast<platform::CUDADeviceContext *>(waited_dev)->stream();
-      for (auto &ev : events_) {
-        PADDLE_ENFORCE(cudaStreamWaitEvent(stream, ev.second, 0));
-      }
-    }
-  }
-
- protected:
-  virtual void RunImpl() = 0;
-};
 
 struct ScaleLossGradOpHandle : public OpHandleBase {
   float coeff_;
@@ -193,12 +129,7 @@ class ParallelExecutorPrivate {
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;
 
-  std::unordered_map<int, platform::NCCLContext> communication_streams_;
-
-  platform::NCCLContext &GetNCCLCtx(platform::Place p) {
-    int dev_id = boost::get<platform::CUDAPlace>(p).device;
-    return communication_streams_.at(dev_id);
-  }
+  std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 
   platform::DeviceContext *CommunicationDevCtx(const platform::Place &place) {
     if (platform::is_cpu_place(place) || local_scopes_.size() == 1) {
@@ -206,7 +137,7 @@ class ParallelExecutorPrivate {
           platform::DeviceContextPool::Instance().Get(place));
     } else {
 #ifdef PADDLE_WITH_CUDA
-      return GetNCCLCtx(place).ctx_.get();
+      return nccl_ctxs_->DevCtx(place);
 #else
       PADDLE_THROW("Not compiled with CUDA")
 #endif
@@ -293,15 +224,12 @@ class ParallelExecutorPrivate {
 struct NCCLAllReduceOpHandle : public OpHandleBase {
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
-  const std::unordered_map<int, platform::NCCLContext> &communication_ctxs_;
+  const platform::NCCLContextMap &nccl_ctxs_;
 
-  explicit NCCLAllReduceOpHandle(
-      const std::vector<Scope *> &local_scopes,
-      const std::vector<platform::Place> &places,
-      const std::unordered_map<int, platform::NCCLContext> &ctxs)
-      : local_scopes_(local_scopes),
-        places_(places),
-        communication_ctxs_(ctxs) {}
+  explicit NCCLAllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+                                 const std::vector<platform::Place> &places,
+                                 const platform::NCCLContextMap &ctxs)
+      : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {}
 
   void Wait(platform::DeviceContext *waited_dev) override {
     OpHandleBase::Wait(waited_dev);
@@ -343,7 +271,7 @@ struct NCCLAllReduceOpHandle : public OpHandleBase {
         if (numel == 0) {
           numel = static_cast<size_t>(lod_tensor.numel());
         }
-        auto &nccl_ctx = communication_ctxs_.at(dev_id);
+        auto &nccl_ctx = nccl_ctxs_.at(dev_id);
         PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
             buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
             nccl_ctx.comm_, nccl_ctx.stream()));
@@ -491,8 +419,7 @@ void ParallelExecutor::ConstructDependencyGraph(
         if (grads.count(og) != 0) {  // is param grad
           // Insert NCCL AllReduce Op
           member_->ops_.emplace_back(new NCCLAllReduceOpHandle(
-              member_->local_scopes_, member_->places_,
-              member_->communication_streams_));
+              member_->local_scopes_, member_->places_, *member_->nccl_ctxs_));
           auto *op_handle = member_->ops_.back().get();
 
           for (size_t i = 0; i < member_->places_.size(); ++i) {
@@ -598,15 +525,12 @@ void ParallelExecutor::BCastParamsToGPUs(
           buffer = t->mutable_data(place, main_tensor.type());
         }
 
-        auto &nccl_ctx = member_->GetNCCLCtx(place);
+        auto &nccl_ctx = member_->nccl_ctxs_->at(place);
         platform::dynload::ncclBcast(buffer, numel, data_type, 0,
                                      nccl_ctx.comm_, nccl_ctx.stream());
       }
     }
-
-    for (auto &stream : member_->communication_streams_) {
-      stream.second.ctx_->Wait();
-    }
+    member_->nccl_ctxs_->WaitAll();
   }
 #else
   PADDLE_THROW("Not compiled with CUDA");
@@ -615,15 +539,7 @@ void ParallelExecutor::BCastParamsToGPUs(
 
 void ParallelExecutor::BuildNCCLCommunicator() const {
 #ifdef PADDLE_WITH_CUDA
-  for (auto &place : member_->places_) {
-    int dev_id = boost::get<platform::CUDAPlace>(place).device;
-
-    member_->communication_streams_.emplace(dev_id,
-                                            platform::NCCLContext(dev_id));
-  }
-
-  platform::NCCLContext::InitNCCLContext(member_->communication_streams_,
-                                         member_->places_);
+  member_->nccl_ctxs_.reset(new platform::NCCLContextMap(member_->places_));
 #endif
 }
 
@@ -682,7 +598,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
     op->offset_ = i;
     op->local_scopes_ = &member_->local_scopes_;
     for (auto &p : member_->places_) {
-      op->dev_ctx_[p] = member_->GetNCCLCtx(p).ctx_.get();
+      op->dev_ctx_[p] = member_->nccl_ctxs_->DevCtx(p);
     }
 
     for (auto *var : vars) {
