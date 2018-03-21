@@ -185,7 +185,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>& feed_targets,
                    std::map<std::string, LoDTensor*>& fetch_targets,
                    const std::string& feed_holder_name,
-                   const std::string& fetch_holder_name) {
+                   const std::string& fetch_holder_name, bool create_vars) {
   platform::RecordBlock b(kProgramId);
   bool has_feed_ops =
       has_feed_operators(program.Block(0), feed_targets, feed_holder_name);
@@ -255,7 +255,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     }
   }
 
-  Run(*copy_program, scope, 0, true, true);
+  Run(*copy_program, scope, 0, create_vars, create_vars);
 
   // obtain the data of fetch_targets from fetch_holder
   for (auto* op : global_block->AllOps()) {
