@@ -22,7 +22,7 @@ from ..executor import global_scope
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
     'open_files', 'read_file', 'create_shuffle_reader',
-    'create_double_buffer_reader'
+    'create_double_buffer_reader', 'create_multi_pass_reader'
 ]
 
 
@@ -343,6 +343,11 @@ def create_double_buffer_reader(reader, place=None):
         attrs['place'] = str(place).upper()
     return __create_decorated_reader__('create_double_buffer_reader', reader,
                                        attrs)
+
+
+def create_multi_pass_reader(reader, pass_num):
+    return __create_decorated_reader__('create_multi_pass_reader', reader,
+                                       {'pass_num': int(pass_num)})
 
 
 def read_file(file_obj):
