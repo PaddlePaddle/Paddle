@@ -18,6 +18,7 @@ limitations under the License. */
 #include "lod_tensor_array.h"
 #include "op_registry.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -27,41 +28,9 @@ namespace framework {
 
 using details::DummyVarHandle;
 using details::OpHandleBase;
+using details::ScaleLossGradOpHandle;
 using details::VarHandle;
 using details::VarHandleBase;
-
-struct ScaleLossGradOpHandle : public OpHandleBase {
-  float coeff_;
-  Scope *scope_;
-  platform::Place place_;
-
-  explicit ScaleLossGradOpHandle(size_t num_dev, Scope *scope,
-                                 platform::Place place)
-      : coeff_(static_cast<float>(1.0 / num_dev)),
-        scope_(scope),
-        place_(place) {}
-
-  ~ScaleLossGradOpHandle() {}
-
- protected:
-  void RunImpl() override {
-    std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name_;
-
-    float *tmp = scope_->FindVar(var_name)
-                     ->GetMutable<framework::LoDTensor>()
-                     ->mutable_data<float>(make_ddim({1}), place_);
-
-    if (platform::is_cpu_place(place_)) {
-      *tmp = coeff_;
-    } else {
-      auto stream =
-          static_cast<platform::CUDADeviceContext *>(this->dev_ctx_[place_])
-              ->stream();
-      memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
-                   platform::CPUPlace(), &coeff_, sizeof(float), stream);
-    }
-  }
-};
 
 struct FetchOpHandle : public OpHandleBase {
   FeedFetchList *data_;
