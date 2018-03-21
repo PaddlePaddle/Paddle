@@ -45,7 +45,7 @@ if [[ "%WITH_CACHE%" == "ON" ]]; then
                 |md5sum | awk '{print $1}')
 
   tp_cache_dir=/root/.cache/third_party
-  tp_cache_file=$cache_dir/%system.teamcity.projectName%_${md5_content}.tar.gz
+  tp_cache_file=$tp_cache_dir/%system.teamcity.projectName%_${md5_content}.tar.gz
 
   if [ ! -d ${tp_cache_dir} ];then
       mkdir -p ${tp_cache_dir}
