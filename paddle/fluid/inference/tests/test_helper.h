@@ -169,8 +169,14 @@ void TestInference(const std::string& dirname,
 
   // 6. Run the inference program
   {
+    const bool create_vars = false;
+    if (!create_vars) {
+      executor.CreateVariables(*inference_program, scope);
+    }
+
     // Ignore the profiling results of the first run
-    executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+    executor.Run(
+        *inference_program, scope, feed_targets, fetch_targets, create_vars);
 
     // Enable the profiler
     paddle::platform::EnableProfiler(state);
@@ -181,7 +187,8 @@ void TestInference(const std::string& dirname,
           "run_inference",
           paddle::platform::DeviceContextPool::Instance().Get(place));
 
-      executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+      executor.Run(
+          *inference_program, scope, feed_targets, fetch_targets, create_vars);
     }
 
     // Disable the profiler and print the timing information
