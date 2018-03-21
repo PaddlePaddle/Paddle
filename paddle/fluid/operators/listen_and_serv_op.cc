@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/proto_desc.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/simple_block_queue.h"
@@ -89,6 +90,10 @@ class ListenAndServOp : public framework::OperatorBase {
 
     auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
     auto *program = block->Program();
+    int num_blocks = program->Size();
+    PADDLE_ENFORCE_GE(num_blocks, 2,
+                      "server program should have at least 2 blocks");
+
     framework::Executor executor(dev_place);
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
@@ -135,12 +140,36 @@ class ListenAndServOp : public framework::OperatorBase {
         rpc_service_->ShutDown();
         break;
       }
-      try {
-        executor.Run(*program, &recv_scope, block->ID(), /*global_block*/
-                     false /*create_local_scope*/, false /*create_vars*/);
-      } catch (std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
+
+      // put optimize blocks in the thread pool to start run, the last block
+      // should be global ops.
+      // NOTE: if is_gpu_place, CUDA kernels are laugched by multiple threads
+      // and this will still work.
+      std::vector<std::future<void>> fs;
+      // block0 contains only listen_and_serv op, start run from block1.
+      for (int blkid = 1; blkid < num_blocks - 1; ++blkid) {
+        fs.push_back(framework::Async([&executor, &program, &recv_scope,
+                                       blkid]() {
+          int run_block = blkid;  // thread local
+          try {
+            executor.Run(*program, &recv_scope, run_block,
+                         false /*create_local_scope*/, false /*create_vars*/);
+          } catch (std::exception &e) {
+            LOG(ERROR) << "run sub program error " << e.what();
+          }
+        }));
       }
+      for (int i = 0; i < num_blocks - 2; ++i) fs[i].wait();
+      // Run global block at final step, or block1 if there are only 2 blocks
+      if (num_blocks >= 2) {
+        try {
+          executor.Run(*program, &recv_scope, num_blocks - 1,
+                       false /*create_local_scope*/, false /*create_vars*/);
+        } catch (std::exception &e) {
+          LOG(ERROR) << "run sub program error " << e.what();
+        }
+      }
+
       // Reset the received sparse variables, the sum operator would not
       // sum the input sparse variables which rows is empty at the next
       // mini-batch.

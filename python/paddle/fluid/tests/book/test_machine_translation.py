@@ -118,12 +118,12 @@ def decoder_decode(context, is_sparse):
             is_sparse=is_sparse)
 
         # use rnn unit to update rnn
-        current_state = pd.fc(input=[pre_ids_emb, pre_state_expanded],
+        current_state = pd.fc(input=[pre_state_expanded, pre_ids_emb],
                               size=decoder_size,
                               act='tanh')
-
+        current_state_with_lod = pd.lod_reset(x=current_state, y=pre_score)
         # use score to do beam search
-        current_score = pd.fc(input=current_state,
+        current_score = pd.fc(input=current_state_with_lod,
                               size=target_dict_dim,
                               act='softmax')
         topk_scores, topk_indices = pd.topk(current_score, k=50)
@@ -181,7 +181,10 @@ def train_main(use_cuda, is_sparse, is_local=True):
     cost = pd.cross_entropy(input=rnn_out, label=label)
     avg_cost = pd.mean(cost)
 
-    optimizer = fluid.optimizer.Adagrad(learning_rate=1e-4)
+    optimizer = fluid.optimizer.Adagrad(
+        learning_rate=1e-4,
+        regularization=fluid.regularizer.L2DecayRegularizer(
+            regularization_coeff=0.1))
     optimize_ops, params_grads = optimizer.minimize(avg_cost)
 
     train_data = paddle.batch(

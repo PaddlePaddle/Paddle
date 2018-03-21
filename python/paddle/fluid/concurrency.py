@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from layers.control_flow import BlockGuard
+from layers.control_flow import BlockGuard, Select
 from layer_helper import LayerHelper, unique_name
 from layers import fill_constant
 import core
 
 __all__ = [
-    'Go',
-    'make_channel',
-    'channel_send',
-    'channel_recv',
-    'channel_close',
+    'Go', 'make_channel', 'channel_send', 'channel_recv', 'channel_close',
+    'Select'
 ]
 
 
@@ -134,7 +131,7 @@ def make_channel(dtype, capacity=0):
     return channel
 
 
-def channel_send(channel, value):
+def channel_send(channel, value, copy=False):
     """
     Sends a value through a channel variable. Used by an unbuffered or buffered
     channel to pass data from within or to a concurrent Go block, where
@@ -144,6 +141,8 @@ def channel_send(channel, value):
         channel (Variable|Channel): Channel variable created using
         `make_channel`.
         value (Variable): Value to send to channel
+        copy (bool): Copy data while channel send. If False, then data
+        is moved. The input cannot be used after move.
     Returns:
         Variable: The boolean status on whether or not the channel
                   successfully sent the passed value.
@@ -165,11 +164,26 @@ def channel_send(channel, value):
         type=core.VarDesc.VarType.LOD_TENSOR,
         dtype=core.VarDesc.VarType.BOOL)
 
+    X = value
+
+    if copy is True:
+        copied_X = helper.create_variable(
+            name=unique_name.generate(value.name + '_copy'),
+            type=value.type,
+            dtype=value.dtype,
+            shape=value.shape,
+            lod_level=value.lod_level,
+            capacity=value.capacity)
+
+        assign_op = channel_send_block.append_op(
+            type="assign_op", inputs={"X": value}, outputs={"Out": copied_X})
+        X = copied_X
+
     channel_send_op = channel_send_block.append_op(
         type="channel_send",
         inputs={
             "Channel": channel,
-            "X": value,
+            "X": X,
         },
         outputs={"Status": status})
 
@@ -198,7 +212,7 @@ def channel_recv(channel, return_value):
 
           ch = fluid.make_channel(dtype='int32', capacity=10)
           with fluid.Go():
-            returned_value = fluid.channel_recv(ch, 'int32')
+            returned_value, return_status = fluid.channel_recv(ch, 'int32')
 
           # Code to send data through the channel.
     """
