@@ -9,22 +9,18 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#pragma once
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "hl_cnn.h"
+#include "paddle/fluid/operators/bilinear_interp_op.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename T>
-class BilinearInterpKernel : public framework::OpKernel<T> {
+class BilinearInterpOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                   "This kernel only runs on GPU device.");
     auto* input_t = ctx.Input<Tensor>("X");      // float tensor
     auto* output_t = ctx.Output<Tensor>("Out");  // float tensor
     auto* input = input_t->data<T>();
@@ -48,40 +44,15 @@ class BilinearInterpKernel : public framework::OpKernel<T> {
     if (in_h == out_h && in_w == out_w) {
       memcpy(output, input, input_t->numel() * sizeof(T));
     } else {
-      for (int k = 0; k < batch_size; ++k) {  // loop for batches
-        for (int i = 0; i < out_h; ++i) {     // loop for images
-          int h = ratio_h * i;
-          int hid = (h < in_h - 1) ? 1 : 0;
-          T h1lambda = ratio_h * i - h;
-          T h2lambda = 1 - h1lambda;
-
-          for (int j = 0; j < out_w; ++j) {
-            int w = ratio_w * j;
-            int wid = (w < in_w - 1) ? 1 : 0;
-            T w1lambda = ratio_w * j - w;
-            T w2lambda = 1 - w1lambda;
-            // calculate four position for bilinear interpolation
-            const T* in_pos = &input[k * in_chw + h * in_w + w];
-            T* out_pos = &output[k * out_chw + i * out_w + j];
-
-            for (int c = 0; c < channels; ++c) {  // loop for channels
-              // bilinear interpolation
-              out_pos[0] =
-                  h2lambda * (w2lambda * in_pos[0] + w1lambda * in_pos[wid]) +
-                  h1lambda * (w2lambda * in_pos[hid * in_w] +
-                              w1lambda * in_pos[hid * in_w + wid]);
-              in_pos += in_hw;
-              out_pos += out_hw;
-            }
-          }
-        }
-      }
+      hl_bilinear_forward(input, in_h, in_w, batch_size, in_chw, output, out_h,
+                          out_w, batch_size, out_chw, channels, ratio_h,
+                          ratio_w);
     }
   }
 };
 
 template <typename T>
-class BilinearInterpGradKernel : public framework::OpKernel<T> {
+class BilinearInterpGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* d_input_t = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -107,35 +78,18 @@ class BilinearInterpGradKernel : public framework::OpKernel<T> {
     if (in_h == out_h && in_w == out_w) {
       memcpy(d_input, d_output, d_input_t->numel() * sizeof(T));
     } else {
-      for (int k = 0; k < batch_size; ++k) {  // loop for batches
-        for (int i = 0; i < out_h; ++i) {     // loop for images
-          int h = ratio_h * i;
-          int hid = (h < in_h - 1) ? 1 : 0;
-          T h1lambda = ratio_h * i - h;
-          T h2lambda = 1 - h1lambda;
-
-          for (int j = 0; j < out_w; ++j) {
-            int w = ratio_w * j;
-            int wid = (w < in_w - 1) ? 1 : 0;
-            T w1lambda = ratio_w * j - w;
-            T w2lambda = 1 - w1lambda;
-            T* in_pos = &d_input[k * in_chw + h * in_w + w];
-            const T* out_pos = &d_output[k * out_chw + i * out_w + j];
-
-            for (int c = 0; c < channels; ++c) {  // loop for channels
-              in_pos[0] += h2lambda * w2lambda * out_pos[0];
-              in_pos[wid] += h2lambda * w1lambda * out_pos[0];
-              in_pos[hid * in_w] += h1lambda * w2lambda * out_pos[0];
-              in_pos[hid * in_w + wid] += h1lambda * w1lambda * out_pos[0];
-              in_pos += in_hw;
-              out_pos += out_hw;
-            }
-          }
-        }
-      }
+      hl_bilinear_backward(d_input, in_h, in_w, batch_size, in_chw, d_output,
+                           out_h, out_w, batch_size, out_chw, channels, ratio_h,
+                           ratio_w);
     }
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(bilinear_interp,
+                        ops::BilinearInterpOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(bilinear_interp_grad,
+                        ops::BilinearInterpGradOpCUDAKernel<float>);
