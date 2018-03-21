@@ -83,6 +83,17 @@ class TestDropoutOp5(OpTest):
         self.check_output()
 
 
+class TestDropoutOp6(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.5, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob']),
+            'Mask': np.zeros((32, 64)).astype('float32')
+        }
+
+
 class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
