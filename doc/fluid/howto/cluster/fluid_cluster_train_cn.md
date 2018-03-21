@@ -100,7 +100,7 @@ for pass_id in range(100):
 |:-------------|:---|:---------------------------------------|:-------------|
 | trainer_id | int | 当前训练节点的ID，训练节点ID编号为0 - n-1， n为trainers的值 | 0/1/2/3 |
 | pservers | str | parameter server 列表 | 127.0.0.1:6710,127.0.0.1:6711 |
-| trainers | int | 训练节点的总个数，>0的数字 | |
+| trainers | int | 训练节点的总个数，>0的数字 | 4 |
 | server_endpoint | str | 当前所起的服务节点的IP:PORT | 127.0.0.1:8789 |
 | training_role | str | 节点角色， TRAINER/PSERVER | PSERVER |
 
