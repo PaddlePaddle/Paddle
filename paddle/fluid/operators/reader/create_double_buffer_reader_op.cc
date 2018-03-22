@@ -124,10 +124,13 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
 };
 
 void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+  if (!HasNext()) {
+    PADDLE_THROW("There is no next data!");
+  }
+
   if (local_buffer_.payloads_.empty()) {
     buffer_->Receive(&local_buffer_);
   }
-
   *out = local_buffer_.payloads_;
   local_buffer_.payloads_.clear();
   if (local_buffer_.ctx_) {

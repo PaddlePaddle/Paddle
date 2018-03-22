@@ -25,6 +25,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include <grpc++/generic/generic_stub.h>
+#include <grpc++/grpc++.h>
+#include <grpc++/support/byte_buffer.h>
+#include <grpc++/support/slice.h>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -49,15 +54,11 @@ struct VarHandle {
   }
 };
 
-void ProcGetResponse(const VarHandle& var_h,
-                     const sendrecv::VariableMessage& msg);
+void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
  public:
-  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
-    stub_ = sendrecv::SendRecvService::NewStub(ch);
-    context_ = NULL;
-  }
+  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) { context_ = NULL; }
 
   virtual ~BaseProcessor() {}
 
@@ -82,19 +83,18 @@ class BaseProcessor {
 
   virtual void Process() = 0;
 
-  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
   std::unique_ptr<grpc::ClientContext> context_;
   grpc::Status status_;
   VarHandle var_h_;
 };
 
-typedef std::function<void(const VarHandle&, const sendrecv::VoidMessage&)>
+typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestSendCallBack;
 
 class SendProcessor : public BaseProcessor {
  public:
   explicit SendProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {}
+      : BaseProcessor(ch), stub_g_(ch) {}
 
   virtual ~SendProcessor() {}
 
@@ -104,17 +104,18 @@ class SendProcessor : public BaseProcessor {
     }
   }
 
-  sendrecv::VoidMessage reply_;
+  ::grpc::GenericStub stub_g_;
+  ::grpc::ByteBuffer reply_;
   RequestSendCallBack response_call_back_ = NULL;
 };
 
-typedef std::function<void(const VarHandle&, const sendrecv::VariableMessage&)>
+typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
     RequestGetCallBack;
 
 class GetProcessor : public BaseProcessor {
  public:
   explicit GetProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {}
+      : BaseProcessor(ch), stub_g_(ch) {}
 
   virtual ~GetProcessor() {}
 
@@ -124,30 +125,37 @@ class GetProcessor : public BaseProcessor {
     }
   }
 
-  sendrecv::VariableMessage reply_;
+  ::grpc::ByteBuffer reply_;
+  ::grpc::GenericStub stub_g_;
   RequestGetCallBack response_call_back_ = ProcGetResponse;
 };
 
 class BatchBarrierProcessor : public BaseProcessor {
  public:
   explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {}
+      : BaseProcessor(ch) {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
 
   virtual ~BatchBarrierProcessor() {}
 
   virtual void Process() {}
   sendrecv::VoidMessage reply_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
 class FetchBarrierProcessor : public BaseProcessor {
  public:
   explicit FetchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {}
+      : BaseProcessor(ch) {
+    stub_ = sendrecv::SendRecvService::NewStub(ch);
+  }
 
   virtual ~FetchBarrierProcessor() {}
 
   virtual void Process() {}
   sendrecv::VariableMessage reply_;
+  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
 class RPCClient {

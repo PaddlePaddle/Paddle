@@ -32,6 +32,9 @@ enum VarType {
   SELECTED_ROWS = 1;
 }
 
+// NOTICE(gongwb):don't modify this proto if you are not
+//   not familar with how we serialize in sendrecvop_utils.h
+//   and deserilize it in  variable_response.h.
 message VariableMessage {
   enum Type {
     // Pod Types
@@ -45,7 +48,6 @@ message VariableMessage {
   }
 
   message LodData { repeated int64 lod_data = 1; }
-
   string varname = 1;
   // TODO(Yancey1989): reference framework::proto::VarDesc::VarType
   VarType type = 2;
@@ -64,3 +66,5 @@ message VariableMessage {
 }
 
 message VoidMessage {}
+
+message TestMessage { int64 test_1 = 1; }

@@ -21,7 +21,8 @@ from ..executor import global_scope
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
-    'read_file', 'create_shuffle_reader', 'create_double_buffer_reader'
+    'open_files', 'read_file', 'create_shuffle_reader',
+    'create_double_buffer_reader', 'create_multi_pass_reader'
 ]
 
 
@@ -287,6 +288,36 @@ def open_recordio_file(filename, shapes, lod_levels, dtypes):
                              startup_var)
 
 
+def open_files(filenames, thread_num, shapes, lod_levels, dtypes):
+    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
+    shape_concat = []
+    ranks = []
+
+    for shape in shapes:
+        shape_concat.extend(shape)
+        ranks.append(len(shape))
+
+    var_name = unique_name('multiple_reader')
+
+    startup_blk = default_startup_program().current_block()
+    startup_var = startup_blk.create_var(name=var_name)
+    startup_blk.append_op(
+        type='open_files',
+        outputs={'Out': [startup_var]},
+        attrs={
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'ranks': ranks,
+            'file_names': filenames,
+            'thread_num': thread_num
+        })
+
+    startup_var.desc.set_dtypes(dtypes)
+    startup_var.persistable = True
+    return _copy_reader_var_(default_main_program().current_block(),
+                             startup_var)
+
+
 def __create_decorated_reader__(op_type, reader, attrs):
     var_name = unique_name(op_type)
     startup_blk = default_startup_program().current_block()
@@ -312,6 +343,11 @@ def create_double_buffer_reader(reader, place=None):
         attrs['place'] = str(place).upper()
     return __create_decorated_reader__('create_double_buffer_reader', reader,
                                        attrs)
+
+
+def create_multi_pass_reader(reader, pass_num):
+    return __create_decorated_reader__('create_multi_pass_reader', reader,
+                                       {'pass_num': int(pass_num)})
 
 
 def read_file(file_obj):

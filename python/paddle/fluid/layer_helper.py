@@ -399,6 +399,9 @@ class LayerHelper(object):
         if isinstance(act, basestring):
             act = {'type': act}
         tmp = self.create_tmp_variable(dtype=input_var.dtype)
+
+        if 'use_mkldnn' in self.kwargs:
+            act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
         act_type = act.pop('type')
         self.append_op(
             type=act_type,
