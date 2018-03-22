@@ -9,7 +9,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "hl_cnn.h"
+#include "paddle/fluid/operators/bilinear_interp_op.cu.h"
 #include "paddle/fluid/operators/bilinear_interp_op.h"
 
 namespace paddle {
@@ -44,9 +44,13 @@ class BilinearInterpOpCUDAKernel : public framework::OpKernel<T> {
     if (in_h == out_h && in_w == out_w) {
       memcpy(output, input, input_t->numel() * sizeof(T));
     } else {
-      hl_bilinear_forward(input, in_h, in_w, batch_size, in_chw, output, out_h,
-                          out_w, batch_size, out_chw, channels, ratio_h,
-                          ratio_w);
+      int threadNum = batch_size * out_chw;
+      int blocks = (threadNum + 1024 - 1) / 1024;
+
+      KeBilinearInterpFw<
+          T><<<blocks, 1024, 0, ctx.cuda_device_context().stream()>>>(
+          input, in_h, in_w, batch_size, in_chw, output, out_h, out_w,
+          batch_size, out_chw, channels, ratio_h, ratio_w);
     }
   }
 };
@@ -78,9 +82,13 @@ class BilinearInterpGradOpCUDAKernel : public framework::OpKernel<T> {
     if (in_h == out_h && in_w == out_w) {
       memcpy(d_input, d_output, d_input_t->numel() * sizeof(T));
     } else {
-      hl_bilinear_backward(d_input, in_h, in_w, batch_size, in_chw, d_output,
-                           out_h, out_w, batch_size, out_chw, channels, ratio_h,
-                           ratio_w);
+      int threadNum = batch_size * out_chw;
+      int blocks = (threadNum + 1024 - 1) / 1024;
+
+      KeBilinearInterpBw<
+          T><<<blocks, 1024, 0, ctx.cuda_device_context().stream()>>>(
+          d_input, in_h, in_w, batch_size, in_chw, d_output, out_h, out_w,
+          batch_size, out_chw, channels, ratio_h, ratio_w);
     }
   }
 };
