@@ -124,7 +124,7 @@ def train(net_type, use_cuda, is_local):
     optimize_ops, params_grads = optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 128
-    PASS_NUM = 100
+    PASS_NUM = 200
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -156,7 +156,7 @@ def train(net_type, use_cuda, is_local):
                             sys.exit("got NaN loss, training failed.")
                         acc_list.append(float(acc_t))
                         avg_loss_list.append(float(loss_t))
-                        break  # Use 1 segment for speeding up CI
+                        # break  # Use 1 segment for speeding up CI
 
                     acc_value = numpy.array(acc_list).mean()
                     avg_loss_value = numpy.array(avg_loss_list).mean()
@@ -166,7 +166,7 @@ def train(net_type, use_cuda, is_local):
                         format(pass_id, batch_id + 1,
                                float(avg_loss_value), float(acc_value)))
 
-                    if acc_value > 0.1:  # Low threshold for speeding up CI
+                    if acc_value > 0.75:  # Low threshold for speeding up CI
                         save_dirname_fp32 = "image_classification_fp32.inference.model"
                         save_dirname_fp16 = "image_classification_fp16.inference.model"
                         fluid.io.save_inference_model(
@@ -251,7 +251,7 @@ def main(net_type, use_cuda, is_local=True):
 
     train(net_type, use_cuda, is_local)
 
-    batch_size = 2
+    batch_size = 1
     tensor = numpy.random.rand(batch_size, 3, 32, 32)
     infer(use_cuda, tensor.astype(numpy.float32), save_dirname_fp32)
     infer(use_cuda,
@@ -260,9 +260,13 @@ def main(net_type, use_cuda, is_local=True):
 
 class TestImageClassificationFP16(unittest.TestCase):
     def test_vgg_cuda(self):
+        return
         with self.scope_prog_guard():
             main('vgg', use_cuda=True)
-        # pass
+
+    def test_resnet_cuda(self):
+        with self.scope_prog_guard():
+            main('resnet', use_cuda=True)
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
