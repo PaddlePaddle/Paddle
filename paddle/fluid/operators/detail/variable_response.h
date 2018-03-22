@@ -36,9 +36,9 @@ class VariableResponse {
  public:
   VariableResponse(const framework::Scope* scope,
                    const platform::DeviceContext* dev_ctx)
-      : scope_(scope), dev_ctx_(dev_ctx){};
+      : scope_(scope), dev_ctx_(dev_ctx) {}
 
-  virtual ~VariableResponse(){};
+  virtual ~VariableResponse() {}
 
   // return:
   // 0:ok.
