@@ -160,13 +160,13 @@ class DeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  platform::DeviceContext* Get(const platform::Place& place);
+  platform::DeviceContext* Get(const platform::Place& place) const;
 
   template <typename Place>
-  const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
-      const Place& place) {
-    return reinterpret_cast<
-        const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
+  typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
+      const Place& place) const {
+    return reinterpret_cast<typename DefaultDeviceContextType<Place>::TYPE*>(
+        Get(place));
   }
 
   size_t size() const { return device_contexts_.size(); }
