@@ -93,6 +93,12 @@ class ListenAndServOp : public framework::OperatorBase {
                       "server program should have at least 2 blocks");
 
     framework::Executor executor(dev_place);
+    std::vector<framework::ExecutorPrepareContext *> blk_ctx_list;
+    blk_ctx_list.push_back(nullptr);  // block0 is not used.
+    for (int blkid = 1; blkid < num_blocks; ++blkid) {
+      auto *exe_ctx = executor.Prepare(*program, blkid);
+      blk_ctx_list.push_back(exe_ctx);
+    }
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
@@ -139,26 +145,27 @@ class ListenAndServOp : public framework::OperatorBase {
       // should be global ops.
       // NOTE: if is_gpu_place, CUDA kernels are laugched by multiple threads
       // and this will still work.
+
       std::vector<std::future<void>> fs;
       // block0 contains only listen_and_serv op, start run from block1.
       for (int blkid = 1; blkid < num_blocks - 1; ++blkid) {
-        fs.push_back(framework::Async([&executor, &program, &recv_scope,
-                                       blkid]() {
-          int run_block = blkid;  // thread local
-          try {
-            executor.Run(*program, &recv_scope, run_block,
-                         false /*create_local_scope*/, false /*create_vars*/);
-          } catch (std::exception &e) {
-            LOG(ERROR) << "run sub program error " << e.what();
-          }
-        }));
+        fs.push_back(framework::Async(
+            [&executor, &program, &recv_scope, &blk_ctx_list, blkid]() {
+              int run_block = blkid;  // thread local
+              try {
+                executor.RunPreparedContext(blk_ctx_list[run_block],
+                                            &recv_scope, false, false);
+              } catch (std::exception &e) {
+                LOG(ERROR) << "run sub program error " << e.what();
+              }
+            }));
       }
       for (int i = 0; i < num_blocks - 2; ++i) fs[i].wait();
       // Run global block at final step, or block1 if there are only 2 blocks
       if (num_blocks >= 2) {
         try {
-          executor.Run(*program, &recv_scope, num_blocks - 1,
-                       false /*create_local_scope*/, false /*create_vars*/);
+          executor.RunPreparedContext(blk_ctx_list[num_blocks - 1], &recv_scope,
+                                      false, false);
         } catch (std::exception &e) {
           LOG(ERROR) << "run sub program error " << e.what();
         }
@@ -177,6 +184,10 @@ class ListenAndServOp : public framework::OperatorBase {
       rpc_service_->WaitClientGet(fan_in);
       sparse_vars.clear();
     }  // while(true)
+
+    for (int i = 0; i < num_blocks; ++i) {
+      delete blk_ctx_list[i];
+    }
   }
 
  protected:
