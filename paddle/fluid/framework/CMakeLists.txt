@@ -95,7 +95,7 @@ else()
 endif()
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS op_registry device_context scope
          backward glog lod_rank_table simple_threadpool scale_loss_grad_op_handle
-        fetch_op_handle computation_op_handle ${parallel_executor_cuda_deps})
+        fetch_op_handle computation_op_handle ssa_graph ${parallel_executor_cuda_deps})
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)

@@ -15,15 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "ThreadPool.h"
 #include "lod_tensor.h"
-#include "lod_tensor_array.h"
 #include "op_registry.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
-#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
-#include "paddle/fluid/framework/details/var_handle.h"
-#include "paddle/fluid/platform/nccl_helper.h"
+#include "paddle/fluid/framework/details/ssa_graph.h"
 
 namespace paddle {
 namespace framework {
@@ -34,14 +31,9 @@ using details::FetchOpHandle;
 using details::NCCLAllReduceOpHandle;
 using details::OpHandleBase;
 using details::ScaleLossGradOpHandle;
+using details::SSAGraph;
 using details::VarHandle;
 using details::VarHandleBase;
-
-struct SSAGraph {
-  std::vector<std::unordered_map<std::string, std::map<int, VarHandle>>> vars_;
-  std::unordered_set<std::unique_ptr<VarHandleBase>> dep_vars_;
-  std::vector<std::unique_ptr<OpHandleBase>> ops_;
-};
 
 class SSAGraphBuilder {
  public:
