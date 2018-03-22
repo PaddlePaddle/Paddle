@@ -402,6 +402,11 @@ class LayerHelper(object):
 
         if 'use_mkldnn' in self.kwargs:
             act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
+        if 'use_cudnn' in self.kwargs:
+            act['use_cudnn'] = self.kwargs.get('use_cudnn')
+
+        print "use_cudnn for softmax is", use_cudnn
+
         act_type = act.pop('type')
         self.append_op(
             type=act_type,
