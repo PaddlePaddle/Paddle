@@ -9,13 +9,14 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/bilinear_interp_op.cu.h"
-#include "paddle/fluid/operators/bilinear_interp_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {
+
+using framework::Tensor;
 
 template <typename T>
 class BilinearInterpOpCUDAKernel : public framework::OpKernel<T> {

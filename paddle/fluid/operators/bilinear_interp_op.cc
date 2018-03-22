@@ -10,6 +10,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/bilinear_interp_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -48,11 +49,11 @@ class BilinearInterpOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("out_w", "output weight of bilinear interpolation op.");
     AddComment(R"DOC(
           Bilinear interpolation is an extension of linear interpolation for 
-          interpolating functions of two variables (e.g. H-direction and W-direction
-          in this op) on a rectilinear 2D grid. 
+          interpolating functions of two variables (e.g. H-direction and 
+          W-direction in this op) on a rectilinear 2D grid. 
           
-          The key idea is to perform linear interpolation first in one direction, 
-          and then again in the other direction.
+          The key idea is to perform linear interpolation first in one 
+          direction, and then again in the other direction.
             
           For details, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Bilinear_interpolation
