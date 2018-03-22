@@ -21,12 +21,27 @@ import argparse
 import time
 
 import paddle.fluid as fluid
+import paddle.v2 as paddle
 
 SEED = 1
 DTYPE = "float32"
 
 # random seed must set before configuring the network.
 # fluid.default_startup_program().random_seed = SEED
+
+
+def convert_reader_to_record_io():
+    reader = paddle.batch(paddle.dataset.flowers.train(), batch_size=32)
+    feeder = fluid.DataFeeder(
+        feed_list=[  # order is image and label
+            fluid.layers.data(
+                name='image', shape=[3, 32, 32]),
+            fluid.layers.data(
+                name='label', shape=[1], dtype='int64'),
+        ],
+        place=fluid.CPUPlace())
+    fluid.recordio_writer.convert_reader_to_recordio_file('./flowers.recordio',
+                                                          reader, feeder)
 
 
 def parse_args():
@@ -185,9 +200,13 @@ def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
 
 def run_benchmark(args):
     # Train program
-    images = fluid.layers.fill_constant(
-        shape=(args.batch_size, 3, 200, 200), dtype='float32', value=0.1)
-    predict = vgg16_bn_drop(images)
+    reader = fluid.layers.open_recordio_file(
+        filename='./flowers.recordio',
+        shapes=[[-1, 3, 32, 32], [-1, 1]],
+        lod_levels=[0, 0],
+        dtypes=['float32', 'int64'])
+    img, label = fluid.layers.read_file(reader)
+    predict = vgg16_bn_drop(img)
     # predict = resnet_imagenet(images, class_dim=1000)
 
     avg_cost = fluid.layers.mean(x=predict)
@@ -218,6 +237,7 @@ def run_benchmark(args):
                                       ]))
 
     # Parameter initialization
+    exe.run(fluid.default_startup_program().desc, 0, True, True)
     exe.init(fluid.default_startup_program().desc, 0, True, True)
     for iter_id in range(0, args.iterations):
         start = time.time()
@@ -230,3 +250,4 @@ if __name__ == '__main__':
     args = parse_args()
     print_arguments(args)
     run_benchmark(args)
+    # convert_reader_to_record_io()
