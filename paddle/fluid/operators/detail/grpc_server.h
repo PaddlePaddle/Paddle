@@ -29,8 +29,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/grpc_service.h"
 
-//#include <grpc/support/log.h>
-
 namespace paddle {
 namespace operators {
 namespace detail {
