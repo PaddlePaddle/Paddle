@@ -168,7 +168,9 @@ https://arxiv.org/abs/1512.02325.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker);
+REGISTER_OPERATOR(prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+
 REGISTER_OP_CPU_KERNEL(
     prior_box, ops::PriorBoxOpKernel<paddle::platform::CPUPlace, float>,
     ops::PriorBoxOpKernel<paddle::platform::CPUPlace, double>);
