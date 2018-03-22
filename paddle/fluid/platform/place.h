@@ -67,7 +67,7 @@ bool is_same_place(const Place &, const Place &);
 
 struct PlaceHash {
   std::size_t operator()(const Place &p) const {
-    // one node cards less than 256
+    // one node has less than 256 gpu cards.
     constexpr size_t num_dev_bits = 8;
     std::hash<int> ihash;
     size_t dev_id = 0;
