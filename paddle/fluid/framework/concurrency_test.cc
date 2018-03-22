@@ -211,9 +211,7 @@ TEST(Concurrency, Go_Op) {
   executor.Run(program, &scope, 0, true, true);
 
   // After we call executor.run, the Go operator should do a channel_send to
-  // set
-  // the
-  // "result" variable to 99
+  // set the "result" variable to 99.
   auto *finalData = tensor.data<int>();
   EXPECT_EQ(finalData[0], 99);
 }
