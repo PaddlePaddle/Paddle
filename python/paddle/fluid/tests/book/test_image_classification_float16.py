@@ -100,7 +100,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    if net_type == "vgg_fp16":
+    if net_type == "vgg_fp16" or net_type == "vgg_fp32":
         print("train vgg net")
         net = vgg16_bn_drop(images)
     elif net_type == "resnet":
@@ -242,18 +242,20 @@ def main(net_type, use_cuda, is_local=True):
 
     train(net_type, use_cuda, save_dirname, is_local)
 
+    batch_size = 1
     tensor = numpy.random.rand(batch_size, 3, 32, 32)
-    infer(use_cuda, tensor.astype(np.float32), save_dirname)
-    #infer(use_cuda, tensor.astype(np.float16).view(np.uint16), save_dirname)
+    #infer(use_cuda, tensor.astype(numpy.float32), save_dirname)
+    infer(use_cuda,
+          tensor.astype(numpy.float16).view(numpy.uint16), save_dirname)
 
 
 class TestImageClassificationFP16(unittest.TestCase):
     def setUp(self):
-        self.tensor_img = numpy.random.rand(batch_size, 3, 32, 32)
+        self.tensor_img = numpy.random.rand(1, 3, 32, 32)
 
     def test_vgg_fp32_cuda(self):
         with self.scope_prog_guard():
-            main('vgg_32', use_cuda=True)
+            main('vgg_fp16', use_cuda=True)
         # pass
 
     def test_vgg_fp16_cuda(self):

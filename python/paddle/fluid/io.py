@@ -105,12 +105,18 @@ def save_vars(executor,
         save_var_map = {}
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
-            print("print to be the info of saved weights")
-            print each_var.name, each_var.op
+            # print("print to be the info of saved weights")
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
+            print new_var.name, new_var.op
+            print "batch_norm" in new_var.name
             if filename is None:
+                if "batch_norm" in new_var.name:
+                    out_dtype = int(core.VarDesc.VarType.FP32)
+                else:
+                    out_dtype = int(core.VarDesc.VarType.FP16)
+                print
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
@@ -118,7 +124,7 @@ def save_vars(executor,
                     attrs={
                         'file_path': os.path.join(dirname, new_var.name),
                         'in_dtype': int(core.VarDesc.VarType.FP32),
-                        'out_dtype': int(core.VarDesc.VarType.FP32)
+                        'out_dtype': out_dtype
                     })
             else:
                 save_var_map[new_var.name] = new_var

@@ -126,12 +126,13 @@ class SaveOp : public framework::OperatorBase {
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       std::cout << "after the conversion, the dtype is "
                 << static_cast<int>(framework::ToDataType(out.type()))
-                << std::endl framework::SerializeToStream(fout, out, dev_ctx);
+                << std::endl;
+      framework::SerializeToStream(fout, out, dev_ctx);
     } else {
       std::cout << "no conversion performed, the dtype is "
                 << static_cast<int>(framework::ToDataType(tensor.type()))
-                << std::endl framework::SerializeToStream(fout, tensor,
-                                                          dev_ctx);
+                << std::endl;
+      framework::SerializeToStream(fout, tensor, dev_ctx);
     }
   }
 };
