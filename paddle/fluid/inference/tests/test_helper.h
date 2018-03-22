@@ -171,7 +171,7 @@ void TestInference(const std::string& dirname,
   {
     const bool create_vars = false;
     if (!create_vars) {
-      executor.CreateVariables(*inference_program, scope);
+      executor.CreateVariables(*inference_program, scope, 0);
     }
 
     // Ignore the profiling results of the first run
