@@ -65,6 +65,18 @@ bool is_cpu_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
 
+struct PlaceHash {
+  std::size_t operator()(const Place &p) const {
+    constexpr size_t num_dev_bits = 4;
+    std::hash<int> ihash;
+    size_t dev_id = 0;
+    if (is_gpu_place(p)) {
+      dev_id = boost::get<CUDAPlace>(p).device;
+    }
+    return ihash(dev_id << num_dev_bits | p.which());
+  }
+};
+
 std::ostream &operator<<(std::ostream &, const Place &);
 
 template <typename Visitor>
