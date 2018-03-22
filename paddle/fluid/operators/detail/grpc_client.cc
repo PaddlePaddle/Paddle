@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "grpc_client.h"
+#include <sys/time.h>
 #include "paddle/fluid/framework/threadpool.h"
+
 namespace paddle {
 namespace operators {
 namespace detail {
@@ -31,8 +33,9 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 
   framework::Async([var_name_val, p_ctx, ep_val, p_scope, time_out, ch, this] {
     auto* var = p_scope->FindVar(var_name_val);
-    sendrecv::VariableMessage req;
-    SerializeToMessage(var_name_val, var, *p_ctx, &req);
+
+    ::grpc::ByteBuffer req;
+    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req);
 
     // varhandle
     VarHandle var_h;
@@ -46,8 +49,11 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     s->Prepare(var_h, time_out);
     s->response_call_back_ = NULL;
 
-    auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-    rpc->Finish(&s->reply_, &s->status_, (void*)s);
+    auto call = std::move(s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req,
+        &cq_));
+    call->StartCall();
+    call->Finish(&s->reply_, &s->status_, (void*)s);
   });
 
   req_count_++;
@@ -56,9 +62,19 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 }
 
 void ProcGetResponse(const VarHandle& var_h,
-                     const sendrecv::VariableMessage& ret_msg) {
-  auto* outvar = var_h.scope->FindVar(var_h.name);
-  DeserializeFromMessage(ret_msg, *var_h.ctx, outvar);
+                     // const sendrecv::VariableMessage& ret_msg) {
+                     const ::grpc::ByteBuffer& ret_msg) {
+  framework::Variable* outvar = NULL;
+  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, outvar);
+}
+
+template <typename T>
+void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
+  ::grpc::Slice slice(proto.ByteSizeLong());
+  proto.SerializeWithCachedSizesToArray(
+      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(slice.begin())));
+  ::grpc::ByteBuffer tmp(&slice, 1);
+  result->Swap(&tmp);
 }
 
 bool RPCClient::AsyncGetVariable(const std::string& ep,
@@ -88,8 +104,13 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
     s->Prepare(var_h, time_out);
     s->response_call_back_ = ProcGetResponse;
 
-    auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
-    rpc->Finish(&s->reply_, &s->status_, (void*)s);
+    ::grpc::ByteBuffer buf;
+    RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
+
+    auto call = std::move(s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_));
+    call->StartCall();
+    call->Finish(&s->reply_, &s->status_, (void*)s);
   });
 
   req_count_++;

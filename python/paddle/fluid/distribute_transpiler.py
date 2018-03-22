@@ -20,6 +20,7 @@ from layer_helper import LayerHelper
 from distributed_spliter import *
 import math
 from . import core
+import debuger
 
 
 class VarBlock:
@@ -289,6 +290,7 @@ class DistributeTranspiler:
                     dtype=v.dtype,
                     shape=v.shape)
                 recv_inputs.append(var)
+
         # step3
         optimize_block = pserver_program.create_block(0)
         # step 4
