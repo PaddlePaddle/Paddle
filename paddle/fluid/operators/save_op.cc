@@ -110,7 +110,7 @@ class SaveOp : public framework::OperatorBase {
     std::cout << std::endl
               << "filename is " << filename << ", var name is " << iname
               << std::endl
-              << ", in_dtype is " << static_cast<int>(in_dtype)
+              << "in_dtype is " << static_cast<int>(in_dtype)
               << ", out_dtype is " << static_cast<int>(out_dtype) << std::endl;
 
     std::cout << "before the conversion or not, the dtype is "

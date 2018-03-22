@@ -68,7 +68,8 @@ def save_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              filename=None):
+              filename=None,
+              use_float16=False):
     """
     Save variables to directory by executor.
 
@@ -95,7 +96,8 @@ def save_vars(executor,
             executor,
             dirname=dirname,
             vars=filter(predicate, main_program.list_vars()),
-            filename=filename)
+            filename=filename,
+            use_float16=use_float16)
     else:
         save_program = Program()
         save_block = save_program.global_block()
@@ -103,6 +105,8 @@ def save_vars(executor,
         save_var_map = {}
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
+            print("print to be the info of saved weights")
+            print each_var.name, each_var.op
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
@@ -111,7 +115,11 @@ def save_vars(executor,
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+                    attrs={
+                        'file_path': os.path.join(dirname, new_var.name),
+                        'in_dtype': int(core.VarDesc.VarType.FP32),
+                        'out_dtype': int(core.VarDesc.VarType.FP32)
+                    })
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -142,7 +150,11 @@ def save_params(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
-def save_persistables(executor, dirname, main_program=None, filename=None):
+def save_persistables(executor,
+                      dirname,
+                      main_program=None,
+                      filename=None,
+                      use_float16=False):
     """
     Save all persistables to directory with executor.
     """
@@ -152,7 +164,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         main_program=main_program,
         vars=None,
         predicate=is_persistable,
-        filename=filename)
+        filename=filename,
+        use_float16=use_float16)
 
 
 def load_vars(executor,
@@ -301,7 +314,8 @@ def save_inference_model(dirname,
                          executor,
                          main_program=None,
                          model_filename=None,
-                         params_filename=None):
+                         params_filename=None,
+                         use_float16=False):
     """
     Build a model especially for inference,
     and save it to directory by the executor.
@@ -359,7 +373,12 @@ def save_inference_model(dirname,
     with open(model_filename, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())
 
-    save_persistables(executor, dirname, inference_program, params_filename)
+    save_persistables(
+        executor,
+        dirname,
+        inference_program,
+        params_filename,
+        use_float16=use_float16)
 
 
 def get_feed_targets_names(program):
