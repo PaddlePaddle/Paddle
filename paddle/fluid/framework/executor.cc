@@ -93,8 +93,9 @@ static void CheckTensorNANOrInf(const std::string& name,
                  "Tensor %s contains NAN", name);
 }
 
-void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope) {
-  auto& global_block = pdesc.Block(0);
+void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
+                               int block_id) {
+  auto& global_block = pdesc.Block(block_id);
 
   const Scope* ancestor_scope = scope;
   while (ancestor_scope->parent()) {
@@ -318,14 +319,11 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars) {
   Scope* local_scope = scope;
-  if (create_vars) {
-    if (create_local_scope) {
-      local_scope = &scope->NewScope();
-    } else {
-    }  // if (create_local_scope)
-  }    // if (create_vars)
+  if (create_vars && create_local_scope) {
+    local_scope = &scope->NewScope();
+  }
 
-  CreateVariables(ctx->prog_, local_scope);
+  CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
 
   for (auto& op : ctx->ops_) {
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);

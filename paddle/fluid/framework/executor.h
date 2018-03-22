@@ -60,7 +60,7 @@ class Executor {
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id);
 
-  void CreateVariables(const ProgramDesc& pdesc, Scope* scope);
+  void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
