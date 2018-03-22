@@ -153,8 +153,8 @@ template struct NegTargetAssignFunctor<platform::CPUDeviceContext, float,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(target_assign, ops::TargetAssignOp,
-                             ops::TargetAssignOpMaker);
+REGISTER_OPERATOR(target_assign, ops::TargetAssignOp, ops::TargetAssignOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
     target_assign,
     ops::TargetAssignKernel<paddle::platform::CPUDeviceContext, int, float>,
