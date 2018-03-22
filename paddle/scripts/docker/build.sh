@@ -35,7 +35,7 @@ function cmake_gen() {
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_DSO=ON
-        -DWITH_DOC=OFF
+        -DWITH_DOC=${WITH_DOC:-OFF}
         -DWITH_GPU=${WITH_GPU:-OFF}
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
         -DWITH_MKL=${WITH_MKL:-ON}
@@ -60,7 +60,7 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_DSO=ON \
-        -DWITH_DOC=OFF \
+        -DWITH_DOC=${WITH_DOC:-OFF} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
         -DWITH_MKL=${WITH_MKL:-ON} \
@@ -231,7 +231,7 @@ gen_capi_package
 gen_fluid_inference_lib
 
 if [[ ${WITH_C_API:-OFF} == "ON" ]]; then
-  printf "PaddlePaddle C-API libraries was generated on build/paddle.tgz\n" 
+  printf "PaddlePaddle C-API libraries was generated on build/paddle.tgz\n"
 else
   printf "If you need to install PaddlePaddle in develop docker image,"
   printf "please make install or pip install build/python/dist/*.whl.\n"
