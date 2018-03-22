@@ -180,18 +180,8 @@ def get_program_cache_key(feed, fetch_list):
 
 
 class Executor(object):
-    def __init__(self, places):
-        if not isinstance(places, list) and not isinstance(places, tuple):
-            places = [places]
-
-        act_places = []
-        for each in places:
-            p = core.Place()
-            p.set_place(each)
-            act_places.append(p)
-
-        # TODO(dzhwinter) : only use the first place
-        self.executor = core.Executor(act_places[0])
+    def __init__(self, place):
+        self.executor = core.Executor(place)
         self.places = places
         self.program_caches = dict()
 
