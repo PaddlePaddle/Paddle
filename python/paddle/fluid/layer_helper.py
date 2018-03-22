@@ -406,8 +406,6 @@ class LayerHelper(object):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
             print "use_cudnn for", act['type'], "is", act['use_cudnn']
 
-        print "use_cudnn for softmax is", use_cudnn
-
         act_type = act.pop('type')
         self.append_op(
             type=act_type,
