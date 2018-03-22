@@ -11,6 +11,8 @@
 
 #include "paddle/fluid/operators/bilinear_interp_op.cu.h"
 #include "paddle/fluid/operators/bilinear_interp_op.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -63,6 +65,11 @@ class BilinearInterpGradOpCUDAKernel : public framework::OpKernel<T> {
     auto* d_output_t = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* d_input = d_input_t->mutable_data<T>(ctx.GetPlace());
     auto* d_output = d_output_t->data<T>();
+
+    auto& device_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+    math::SetConstant<platform::CUDADeviceContext, T> zero;
+    zero(device_ctx, d_input_t, static_cast<T>(0.0));
 
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
