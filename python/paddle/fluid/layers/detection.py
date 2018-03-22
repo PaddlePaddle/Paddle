@@ -128,13 +128,11 @@ def detection_output(loc,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size')
-
     old_shape = scores.shape
     scores = nn.reshape(x=scores, shape=(-1, old_shape[-1]))
     scores = nn.softmax(input=scores)
     scores = nn.reshape(x=scores, shape=old_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
-
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
     helper.append_op(
         type="multiclass_nms",
@@ -474,6 +472,7 @@ def ssd_loss(location,
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
     gt_label = nn.reshape(x=gt_label, shape=gt_label.shape + (1, ))
+    gt_label.stop_gradient = True
     target_label, _ = target_assign(
         gt_label, matched_indices, mismatch_value=background_label)
     # 2.2. Compute confidence loss.
@@ -481,10 +480,12 @@ def ssd_loss(location,
     confidence = __reshape_to_2d(confidence)
     target_label = tensor.cast(x=target_label, dtype='int64')
     target_label = __reshape_to_2d(target_label)
+    target_label.stop_gradient = True
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
 
     # 3. Mining hard examples
     conf_loss = nn.reshape(x=conf_loss, shape=(num, num_prior))
+    conf_loss.stop_gradient = True
     neg_indices = helper.create_tmp_variable(dtype='int32')
     dtype = matched_indices.dtype
     updated_matched_indices = helper.create_tmp_variable(dtype=dtype)
@@ -694,6 +695,8 @@ def multi_box_head(inputs,
             outputs={"Boxes": box,
                      "Variances": var},
             attrs=attrs, )
+        box.stop_gradient = True
+        var.stop_gradient = True
         return box, var
 
     def _reshape_with_axis_(input, axis=1):
