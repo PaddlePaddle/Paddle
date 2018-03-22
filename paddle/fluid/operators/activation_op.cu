@@ -14,6 +14,7 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
 
@@ -31,3 +32,16 @@ namespace ops = paddle::operators;
                                 ops::grad_functor<double>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CUDA_KERNEL);
+
+REGISTER_OP_CUDA_KERNEL(
+    relu, ops::ActivationKernel<paddle::platform::CUDADeviceContext,
+                                ops::ReluFunctor<float>>,
+    ops::ActivationKernel<paddle::platform::CUDADeviceContext,
+                          ops::ReluFunctor<double>>,
+    ops::ActivationKernel<paddle::platform::CUDADeviceContext,
+                          ops::ReluFunctor<paddle::platform::float16>>);
+REGISTER_OP_CUDA_KERNEL(
+    relu_grad, ops::ActivationGradKernel<paddle::platform::CUDADeviceContext,
+                                         ops::ReluGradFunctor<float>>,
+    ops::ActivationGradKernel<paddle::platform::CUDADeviceContext,
+                              ops::ReluGradFunctor<double>>);
