@@ -109,13 +109,13 @@ def save_vars(executor,
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
-            print new_var.name, new_var.op
-            print "batch_norm" in new_var.name
+            # print new_var.name, new_var.op
+            # print "batch_norm" in new_var.name
             if filename is None:
-                if "batch_norm" in new_var.name:
-                    out_dtype = int(core.VarDesc.VarType.FP32)
-                else:
+                if use_float16 and "batch_norm" not in new_var.name:
                     out_dtype = int(core.VarDesc.VarType.FP16)
+                else:
+                    out_dtype = int(core.VarDesc.VarType.FP32)
                 print
                 save_block.append_op(
                     type='save',

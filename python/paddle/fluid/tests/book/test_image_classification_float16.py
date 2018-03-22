@@ -93,14 +93,14 @@ def vgg16_bn_drop(input):
     return fc2
 
 
-def train(net_type, use_cuda, save_dirname, is_local):
+def train(net_type, use_cuda, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
     images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    if net_type == "vgg_fp16" or net_type == "vgg_fp32":
+    if net_type == "vgg":
         print("train vgg net")
         net = vgg16_bn_drop(images)
     elif net_type == "resnet":
@@ -166,11 +166,17 @@ def train(net_type, use_cuda, save_dirname, is_local):
                         format(pass_id, batch_id + 1,
                                float(avg_loss_value), float(acc_value)))
 
-                    if acc_value > 0.01:  # Low threshold for speeding up CI
+                    if acc_value > 0.1:  # Low threshold for speeding up CI
+                        save_dirname_fp32 = "image_classification_fp32.inference.model"
+                        save_dirname_fp16 = "image_classification_fp16.inference.model"
                         fluid.io.save_inference_model(
-                            save_dirname, ["pixel"], [predict],
+                            save_dirname_fp32, ["pixel"], [predict],
                             exe,
                             use_float16=False)
+                        fluid.io.save_inference_model(
+                            save_dirname_fp16, ["pixel"], [predict],
+                            exe,
+                            use_float16=True)
                         return
 
     if is_local:
@@ -240,31 +246,23 @@ def main(net_type, use_cuda, is_local=True):
         return
 
     # Directory for saving the trained model
-    dtype = "fp32"
-    save_dirname = "image_classification_" + net_type + ".inference.model"
+    save_dirname_fp32 = "image_classification_fp32.inference.model"
+    save_dirname_fp16 = "image_classification_fp16.inference.model"
 
-    train(net_type, use_cuda, save_dirname, is_local)
+    train(net_type, use_cuda, is_local)
 
-    batch_size = 1
+    batch_size = 2
     tensor = numpy.random.rand(batch_size, 3, 32, 32)
-    #infer(use_cuda, tensor.astype(numpy.float32), save_dirname)
+    infer(use_cuda, tensor.astype(numpy.float32), save_dirname_fp32)
     infer(use_cuda,
-          tensor.astype(numpy.float16).view(numpy.uint16), save_dirname)
+          tensor.astype(numpy.float16).view(numpy.uint16), save_dirname_fp16)
 
 
 class TestImageClassificationFP16(unittest.TestCase):
-    def setUp(self):
-        self.tensor_img = numpy.random.rand(1, 3, 32, 32)
-
-    def test_vgg_fp32_cuda(self):
+    def test_vgg_cuda(self):
         with self.scope_prog_guard():
-            main('vgg_fp16', use_cuda=True)
+            main('vgg', use_cuda=True)
         # pass
-
-    def test_vgg_fp16_cuda(self):
-        #with self.scope_prog_guard():
-        #    main('vgg_fp16', use_cuda=True)
-        pass
 
     @contextlib.contextmanager
     def scope_prog_guard(self):

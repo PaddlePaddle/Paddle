@@ -402,8 +402,9 @@ class LayerHelper(object):
 
         if 'use_mkldnn' in self.kwargs:
             act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
-        if 'use_cudnn' in self.kwargs:
+        if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
+            print "use_cudnn for", act['type'], "is", act['use_cudnn']
 
         print "use_cudnn for softmax is", use_cudnn
 
