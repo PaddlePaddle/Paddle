@@ -187,12 +187,16 @@ def run_benchmark(args):
     # Train program
     images = fluid.layers.fill_constant(
         shape=(args.batch_size, 3, 200, 200), dtype='float32', value=0.1)
-    predict = vgg16_bn_drop(images)
+    idx = fluid.layers.fill_constant(shape=[4, 1], dtype='int64', value=1)
+    emb = fluid.layers.embedding(input=idx, size=[2, 3])
+    avg_cost = fluid.layers.mean(emb)
+    # predict = vgg16_bn_drop(images)
     # predict = resnet_imagenet(images, class_dim=1000)
 
-    avg_cost = fluid.layers.mean(x=predict)
+    # avg_cost = fluid.layers.mean(x=predict)
 
-    # fluid.layers.Print(predict, summarize=3)
+    # fluid.layers.Print(idx, summarize=7)
+    # fluid.layers.Print(emb, summarize=7)
     # fluid.layers.Print(avg_cost)
 
     # Optimization

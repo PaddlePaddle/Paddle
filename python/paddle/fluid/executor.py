@@ -333,17 +333,19 @@ class Executor(object):
         :param use_program_cache: set use_program_cache to true if program not changed compare to the last step.
         :return: result according to fetch_list.
         """
+        if program is None:
+            program = default_main_program()
+        if not isinstance(program, Program):
+            raise TypeError()
+
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):
             raise TypeError("feed should be a map")
         if fetch_list is None:
             fetch_list = []
-        if program is None:
-            program = default_main_program()
-
-        if not isinstance(program, Program):
-            raise TypeError()
+        if not isinstance(fetch_list, dict):
+            raise TypeError("fetch should be a list")
 
         if scope is None:
             scope = global_scope()
@@ -369,9 +371,15 @@ class Executor(object):
                 feed_var_name=feed_var_name,
                 fetch_var_name=fetch_var_name)
 
+        outs = self._run(feed, feed_var_name, fetch_list, fetch_var_name,
+                         program, scope)
+        if return_numpy:
+            outs = as_numpy(outs)
+        return outs
+
+    def _run(self, feed, feed_var_name, fetch_list, fetch_var_name, program,
+             scope):
         self._feed_data(program, feed, feed_var_name, scope)
         self.executor.run(program.desc, scope, 0, True, True)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
-        if return_numpy:
-            outs = as_numpy(outs)
         return outs
