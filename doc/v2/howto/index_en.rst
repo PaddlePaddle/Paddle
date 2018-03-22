@@ -1,21 +1,21 @@
 HOW TO
 ========
 
-PaddlePaddle allows users to flexibly set various command line parameters to control the model training or forecasting process. How to use please refer to:
+PaddlePaddle provides the users the ability to flexibly set various command line parameters to control the model training and inference process. Please refer to the following instructions on using PaddlePaddle:
 
 ..  toctree::
   :maxdepth: 1
 
   cmd_parameter/index_cn.rst
 
-PaddlePaddle supports distributed training tasks on fabric clusters, MPI clusters, and kubernetes clusters. For detailed configuration and usage instructions, refer to:
+PaddlePaddle supports distributed training tasks on fabric clusters, MPI clusters, and Kubernetes clusters. For detailed configuration and usage instructions, refer to:
 
 ..  toctree::
   :maxdepth: 1
 
   cluster/index_cn.rst
 
-PaddlePaddle provides the C-API for prediction. We provide the following guidelines about the use of C-API:
+PaddlePaddle provides a C-API for inference. We provide the following guidelines  for using the C-API:
 
 ..  toctree::
   :maxdepth: 1
