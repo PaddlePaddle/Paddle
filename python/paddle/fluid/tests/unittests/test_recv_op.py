@@ -32,7 +32,7 @@ class TestRecvOp(unittest.TestCase):
         time.sleep(1)
         self.init_client(place)
         # FIXME(typhoonzero): find a way to gracefully shutdown the server.
-        # os.system("kill -9 %d" % p.pid)
+        os.system("kill -9 %d" % p.pid)
         p.join()
 
     def init_serv(self, place):
