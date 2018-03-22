@@ -14,6 +14,7 @@
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 from op_test import OpTest
 from scipy.special import expit
 
@@ -212,17 +213,38 @@ class TestRound(OpTest):
 class TestRelu(OpTest):
     def setUp(self):
         self.op_type = "relu"
-        x = np.random.uniform(-1, 1, [11, 17]).astype("float32")
+        self.dtype = np.float32
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.02
-        self.inputs = {'X': x}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], 0)}
+        out = np.maximum(x, 0)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+    def init_dtype(self):
+        pass
+
+
+class TestFP16Relu(TestRelu):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
 
 class TestBRelu(OpTest):
