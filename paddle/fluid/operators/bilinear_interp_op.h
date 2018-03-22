@@ -10,16 +10,13 @@
    limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 class BilinearInterpKernel : public framework::OpKernel<T> {
@@ -88,6 +85,11 @@ class BilinearInterpGradKernel : public framework::OpKernel<T> {
     auto* d_output_t = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* d_input = d_input_t->mutable_data<T>(ctx.GetPlace());
     auto* d_output = d_output_t->data<T>();
+
+    auto& device_ctx =
+        ctx.template device_context<platform::CPUDeviceContext>();
+    math::SetConstant<platform::CPUDeviceContext, T> zero;
+    zero(device_ctx, d_input_t, static_cast<T>(0.0));
 
     int out_h = ctx.Attr<int>("out_h");
     int out_w = ctx.Attr<int>("out_w");
