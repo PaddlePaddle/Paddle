@@ -150,146 +150,144 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place, ProgramDesc *program,
   // Select block
   AddOp("select", {{"X", {dataChanName, quitChanName}},
                    {"case_to_execute", {"caseToExecute"}}},
-        {{{"Out", {}}},
+        {{"Out", {}}},
         {{"sub_block", casesBlock},
-             {"cases", std::vector<std::string>{case0Config, case1Config}}},
+         {"cases", std::vector<std::string>{case0Config, case1Config}}},
         whileBlock);
 
-    scope->Var("stepScopes");
-    AddOp("while", {{"X", {dataChanName, quitChanName}},
-                    {"Condition", {"whileExitCond"}}},
-          {{"Out", {}}, {"StepScopes", {"stepScopes"}}},
-          {{"sub_block", whileBlock}}, parentBlock);
+  scope->Var("stepScopes");
+  AddOp("while",
+        {{"X", {dataChanName, quitChanName}}, {"Condition", {"whileExitCond"}}},
+        {{"Out", {}}, {"StepScopes", {"stepScopes"}}},
+        {{"sub_block", whileBlock}}, parentBlock);
 }
 
 TEST(Concurrency, Go_Op) {
-    Scope scope;
-    p::CPUPlace place;
+  Scope scope;
+  p::CPUPlace place;
 
-    // Initialize scope variables
-    p::CPUDeviceContext ctx(place);
+  // Initialize scope variables
+  p::CPUDeviceContext ctx(place);
 
-    // Create channel variable
-    scope.Var("Channel");
+  // Create channel variable
+  scope.Var("Channel");
 
-    // Create Variables, x0 will be put into channel,
-    // result will be pulled from channel
-    CreateVariable(scope, place, "Status", false);
-    CreateVariable(scope, place, "x0", 99);
-    CreateVariable(scope, place, "result", 0);
+  // Create Variables, x0 will be put into channel,
+  // result will be pulled from channel
+  CreateVariable(scope, place, "Status", false);
+  CreateVariable(scope, place, "x0", 99);
+  CreateVariable(scope, place, "result", 0);
 
-    framework::Executor executor(place);
-    ProgramDesc program;
-    BlockDesc *block = program.MutableBlock(0);
+  framework::Executor executor(place);
+  ProgramDesc program;
+  BlockDesc *block = program.MutableBlock(0);
 
-    // Create channel OP
-    AddOp("channel_create", {}, {{"Out", {"Channel"}}},
-          {{"capacity", 10}, {"data_type", f::proto::VarType::LOD_TENSOR}},
-          block);
+  // Create channel OP
+  AddOp("channel_create", {}, {{"Out", {"Channel"}}},
+        {{"capacity", 10}, {"data_type", f::proto::VarType::LOD_TENSOR}},
+        block);
 
-    // Create Go Op routine
-    BlockDesc *goOpBlock = program.AppendBlock(program.Block(0));
-    AddOp("channel_send", {{"Channel", {"Channel"}}, {"X", {"x0"}}},
-          {{"Status", {"Status"}}}, {}, goOpBlock);
+  // Create Go Op routine
+  BlockDesc *goOpBlock = program.AppendBlock(program.Block(0));
+  AddOp("channel_send", {{"Channel", {"Channel"}}, {"X", {"x0"}}},
+        {{"Status", {"Status"}}}, {}, goOpBlock);
 
-    // Create Go Op
-    AddOp("go", {{"X", {"Channel", "x0"}}}, {}, {{"sub_block", goOpBlock}},
-          block);
+  // Create Go Op
+  AddOp("go", {{"X", {"Channel", "x0"}}}, {}, {{"sub_block", goOpBlock}},
+        block);
 
-    // Create Channel Receive Op
-    AddOp("channel_recv", {{"Channel", {"Channel"}}},
-          {{"Status", {"Status"}}, {"Out", {"result"}}}, {}, block);
+  // Create Channel Receive Op
+  AddOp("channel_recv", {{"Channel", {"Channel"}}},
+        {{"Status", {"Status"}}, {"Out", {"result"}}}, {}, block);
 
-    // Create Channel Close Op
-    AddOp("channel_close", {{"Channel", {"Channel"}}}, {}, {}, block);
+  // Create Channel Close Op
+  AddOp("channel_close", {{"Channel", {"Channel"}}}, {}, {}, block);
 
-    // Check the result tensor to make sure it is set to 0
-    const LoDTensor &tensor = (scope.FindVar("result"))->Get<LoDTensor>();
-    auto *initialData = tensor.data<int>();
-    EXPECT_EQ(initialData[0], 0);
+  // Check the result tensor to make sure it is set to 0
+  const LoDTensor &tensor = (scope.FindVar("result"))->Get<LoDTensor>();
+  auto *initialData = tensor.data<int>();
+  EXPECT_EQ(initialData[0], 0);
 
-    executor.Run(program, &scope, 0, true, true);
+  executor.Run(program, &scope, 0, true, true);
 
-    // After we call executor.run, the Go operator should do a channel_send to
-    // set
-    // the
-    // "result" variable to 99
-    auto *finalData = tensor.data<int>();
-    EXPECT_EQ(finalData[0], 99);
+  // After we call executor.run, the Go operator should do a channel_send to
+  // set
+  // the
+  // "result" variable to 99
+  auto *finalData = tensor.data<int>();
+  EXPECT_EQ(finalData[0], 99);
 }
 
 /**
  * This test implements the fibonacci function using go_op and select_op
  */
 TEST(Concurrency, Select) {
-    Scope scope;
-    p::CPUPlace place;
+  Scope scope;
+  p::CPUPlace place;
 
-    // Initialize scope variables
-    p::CPUDeviceContext ctx(place);
+  // Initialize scope variables
+  p::CPUDeviceContext ctx(place);
 
-    CreateVariable(scope, place, "Status", false);
-    CreateVariable(scope, place, "result", 0);
-    CreateVariable(scope, place, "currentXFib", 0);
+  CreateVariable(scope, place, "Status", false);
+  CreateVariable(scope, place, "result", 0);
+  CreateVariable(scope, place, "currentXFib", 0);
 
-    framework::Executor executor(place);
-    ProgramDesc program;
-    BlockDesc *block = program.MutableBlock(0);
+  framework::Executor executor(place);
+  ProgramDesc program;
+  BlockDesc *block = program.MutableBlock(0);
 
-    // Create channel OP
-    std::string dataChanName = "Channel";
-    scope.Var(dataChanName);
-    AddOp("channel_create", {}, {{"Out", {dataChanName}}},
-          {{"capacity", 0}, {"data_type", f::proto::VarType::LOD_TENSOR}},
-          block);
+  // Create channel OP
+  std::string dataChanName = "Channel";
+  scope.Var(dataChanName);
+  AddOp("channel_create", {}, {{"Out", {dataChanName}}},
+        {{"capacity", 0}, {"data_type", f::proto::VarType::LOD_TENSOR}}, block);
 
-    std::string quitChanName = "Quit";
-    scope.Var(quitChanName);
-    AddOp("channel_create", {}, {{"Out", {quitChanName}}},
-          {{"capacity", 0}, {"data_type", f::proto::VarType::LOD_TENSOR}},
-          block);
+  std::string quitChanName = "Quit";
+  scope.Var(quitChanName);
+  AddOp("channel_create", {}, {{"Out", {quitChanName}}},
+        {{"capacity", 0}, {"data_type", f::proto::VarType::LOD_TENSOR}}, block);
 
-    // Create Go Op routine, which loops 10 times over fibonacci sequence
-    CreateVariable(scope, place, "xReceiveVar", 0);
+  // Create Go Op routine, which loops 10 times over fibonacci sequence
+  CreateVariable(scope, place, "xReceiveVar", 0);
 
-    BlockDesc *goOpBlock = program.AppendBlock(program.Block(0));
-    for (int i = 0; i < 10; ++i) {
-      AddOp("channel_recv", {{"Channel", {dataChanName}}},
-            {{"Status", {"Status"}}, {"Out", {"currentXFib"}}}, {}, goOpBlock);
-      AddOp("print", {{"In", {"currentXFib"}}}, {{"Out", {"currentXFib"}}},
-            {{"first_n", 100},
-             {"summarize", -1},
-             {"print_tensor_name", false},
-             {"print_tensor_type", true},
-             {"print_tensor_shape", false},
-             {"print_tensor_lod", false},
-             {"print_phase", std::string("FORWARD")},
-             {"message", std::string("X: ")}},
-            goOpBlock);
-    }
+  BlockDesc *goOpBlock = program.AppendBlock(program.Block(0));
+  for (int i = 0; i < 10; ++i) {
+    AddOp("channel_recv", {{"Channel", {dataChanName}}},
+          {{"Status", {"Status"}}, {"Out", {"currentXFib"}}}, {}, goOpBlock);
+    AddOp("print", {{"In", {"currentXFib"}}}, {{"Out", {"currentXFib"}}},
+          {{"first_n", 100},
+           {"summarize", -1},
+           {"print_tensor_name", false},
+           {"print_tensor_type", true},
+           {"print_tensor_shape", false},
+           {"print_tensor_lod", false},
+           {"print_phase", std::string("FORWARD")},
+           {"message", std::string("X: ")}},
+          goOpBlock);
+  }
 
-    CreateVariable(scope, place, "quitSignal", 0);
-    AddOp("channel_send", {{"Channel", {quitChanName}}, {"X", {"quitSignal"}}},
-          {{"Status", {"Status"}}}, {}, goOpBlock);
+  CreateVariable(scope, place, "quitSignal", 0);
+  AddOp("channel_send", {{"Channel", {quitChanName}}, {"X", {"quitSignal"}}},
+        {{"Status", {"Status"}}}, {}, goOpBlock);
 
-    // Create Go Op
-    AddOp("go", {{"X", {dataChanName, quitChanName}}}, {},
-          {{"sub_block", goOpBlock}}, block);
+  // Create Go Op
+  AddOp("go", {{"X", {dataChanName, quitChanName}}}, {},
+        {{"sub_block", goOpBlock}}, block);
 
-    AddFibonacciSelect(&scope, &place, &program, block, dataChanName,
-                       quitChanName);
+  AddFibonacciSelect(&scope, &place, &program, block, dataChanName,
+                     quitChanName);
 
-    // Create Channel Close Op
-    AddOp("channel_close", {{"Channel", {dataChanName}}}, {}, {}, block);
-    AddOp("channel_close", {{"Channel", {quitChanName}}}, {}, {}, block);
+  // Create Channel Close Op
+  AddOp("channel_close", {{"Channel", {dataChanName}}}, {}, {}, block);
+  AddOp("channel_close", {{"Channel", {quitChanName}}}, {}, {}, block);
 
-    executor.Run(program, &scope, 0, true, true);
+  executor.Run(program, &scope, 0, true, true);
 
-    // After we call executor.run, "result" variable should be equal to 34
-    // (which is 10 loops through fibonacci sequence)
-    const LoDTensor &tensor = (scope.FindVar("currentXFib"))->Get<LoDTensor>();
-    auto *finalData = tensor.data<int>();
-    EXPECT_EQ(finalData[0], 34);
+  // After we call executor.run, "result" variable should be equal to 34
+  // (which is 10 loops through fibonacci sequence)
+  const LoDTensor &tensor = (scope.FindVar("currentXFib"))->Get<LoDTensor>();
+  auto *finalData = tensor.data<int>();
+  EXPECT_EQ(finalData[0], 34);
 }
 
 }  // namespace framework
