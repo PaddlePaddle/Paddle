@@ -13,14 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/cuda_helper.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename T>
 __global__ void KeBilinearInterpFw(const T* in, const size_t inImgH,
