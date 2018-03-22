@@ -146,8 +146,9 @@ class GrpcByteBufferSource
 
 class GrpcByteBufferSourceWrapper : public Source {
  public:
-  GrpcByteBufferSourceWrapper(GrpcByteBufferSource* source) : source_(source) {}
-  virtual ::google::protobuf::io::ZeroCopyInputStream* contents() override {
+  explicit GrpcByteBufferSourceWrapper(GrpcByteBufferSource* source)
+      : source_(source) {}
+  ::google::protobuf::io::ZeroCopyInputStream* contents() override {
     return source_;
   }
 
