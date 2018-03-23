@@ -88,6 +88,8 @@ class ReaderHolder {
   bool HasNext() const { return reader_->HasNext(); }
 
  private:
+  // TODO(tonyyang): if we want to share this
+  // make sure it is thread-safe
   std::shared_ptr<ReaderBase> reader_;
 };
 
