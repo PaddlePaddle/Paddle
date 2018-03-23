@@ -21,6 +21,25 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
+static constexpr char kFileFormatSeparator[] = ".";
+
+using FileReaderCreator = std::function<framework::ReaderBase*(
+    const std::string&, const std::vector<framework::DDim>&)>;
+
+std::unordered_map<std::string, FileReaderCreator>& FileReaderRegistry();
+
+template <typename Reader>
+int RegisterFileReader(const std::string& filetype) {
+  FileReaderRegistry()[filetype] = [](
+      const std::string& fn, const std::vector<framework::DDim>& dims) {
+    return new Reader(fn, dims);
+  };
+  return 0;
+}
+
+std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
+    const std::string& file_name, const std::vector<framework::DDim>& dims);
+
 extern std::vector<framework::DDim> RestoreShapes(
     const std::vector<int>& shape_concat, const std::vector<int>& ranks);
 
@@ -73,3 +92,15 @@ class DecoratedReaderMakerBase : public framework::OpProtoAndCheckerMaker {
                     paddle::operators::reader::DecoratedReaderInferShape, \
                     paddle::framework::EmptyGradOpMaker,                  \
                     paddle::operators::reader::DecoratedReaderInferVarType)
+
+#define REGISTER_FILE_READER(_filetype, _reader)            \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                           \
+      _reg_file_reader_##_filetype,                         \
+      "Must use REGISTER_FILE_READER in global namespace"); \
+  int TouchFileReader##_filetype() { return 0; }            \
+  int _reg_file_reader_entry_##filetype =                   \
+      paddle::operators::reader::RegisterFileReader<_reader>(#_filetype)
+
+#define USE_FILE_READER(filetype)         \
+  extern int TouchFileReader##filetype(); \
+  static int _use_##filetype = TouchFileReader##filetype()

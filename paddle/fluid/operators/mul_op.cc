@@ -17,11 +17,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::OpKernelType;
 using framework::Tensor;
 
-class MulOpShapeInference : public framework::InferShapeBase {
+class MulOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext* ctx) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of MulOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -122,7 +125,7 @@ or not. But the output only shares the LoD information with input $X$.
   }
 };
 
-class MulOpGrad : public framework::OperatorWithKernel {
+class MulGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -156,10 +159,7 @@ class MulOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mul, paddle::framework::OperatorWithKernel, ops::MulOpMaker,
-                  ops::MulOpShapeInference,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(mul_grad, ops::MulOpGrad);
+REGISTER_OP(mul, ops::MulOp, ops::MulOpMaker, mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

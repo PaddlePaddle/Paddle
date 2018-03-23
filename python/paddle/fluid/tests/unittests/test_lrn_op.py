@@ -41,7 +41,7 @@ class TestLRNOp(OpTest):
         mid.fill(self.k)
         for m in range(0, self.N):
             for i in range(0, self.C):
-                for c in range(start, end + 1):
+                for c in range(start, end):
                     ch = i + c
                     if ch < 0 or ch >= self.C:
                         continue
@@ -85,6 +85,16 @@ class TestLRNOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
+
+
+class TestLRNMKLDNNOp(TestLRNOp):
+    def get_attrs(self):
+        attrs = TestLRNOp.get_attrs(self)
+        attrs['use_mkldnn'] = True
+        return attrs
+
+    def test_check_output(self):
+        self.check_output(atol=0.002)
 
 
 if __name__ == "__main__":

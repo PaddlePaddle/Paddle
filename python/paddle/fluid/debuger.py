@@ -52,9 +52,11 @@ reprtpl = "{ttype} {name} ({reprs})"
 
 
 def repr_lodtensor(proto):
-    if not proto.lod_tensor: return
-    level = proto.lod_tensor.lod_level
-    reprs = repr_tensor(proto.lod_tensor.tensor)
+    if proto.type.type != framework_pb2.VarType.LOD_TENSOR:
+        return
+
+    level = proto.type.lod_tensor.lod_level
+    reprs = repr_tensor(proto.type.lod_tensor.tensor)
     return reprtpl.format(
         ttype="LoDTensor" if level > 0 else "Tensor",
         name=proto.name,
@@ -62,20 +64,24 @@ def repr_lodtensor(proto):
 
 
 def repr_selected_rows(proto):
-    if not proto.selected_rows: return
+    if proto.type.type != framework_pb2.VarType.SELECTED_ROWS:
+        return
+
     return reprtpl.format(
         ttype="SelectedRows",
         name=proto.name,
-        reprs=repr_tensor(proto.selected_rows))
+        reprs=repr_tensor(proto.type.selected_rows))
 
 
 def repr_tensor_array(proto):
-    if not proto.tensor_array: return
+    if proto.type.type != framework_pb2.VarType.LOD_TENSOR_ARRAY:
+        return
+
     return reprtpl.format(
         ttype="TensorArray",
         name=proto.name,
-        reprs="level=%d, %s" % (proto.tensor_array.lod_level,
-                                repr_tensor(proto.lod_tensor)))
+        reprs="level=%d, %s" % (proto.type.tensor_array.lod_level,
+                                repr_tensor(proto.type.lod_tensor.tensor)))
 
 
 type_handlers = [
