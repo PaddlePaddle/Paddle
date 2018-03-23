@@ -234,35 +234,34 @@ def infer(use_cuda, tensor_img, save_dirname=None):
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
         test_reader = paddle.dataset.cifar.test10()
-        num = 0
+        test_num = 0
         batch_size = 128
-        test_nums = 200
         correct_num = 0
 
-        for item in test_reader:
-            if num >= test_nums:
-                break
-
+        imgs = []
+        labels = []
+        for item in test_reader():
             label = item[1]
-            if tensor_img.dtype == float32:
-                img = item[0].astype(np.float32)
+            if tensor_img.dtype == numpy.float32:
+                img = item[0].astype(numpy.float32)
             else:
-                img = item[0].astype(np.float16).view(np.uint16)
+                img = item[0].astype(numpy.float16).view(numpy.uint16)
 
-            img = img.reshape([1, 3, 32, 32])
-            results = exe.run(inference_program,
-                              feed={feed_target_names[0]: img},
-                              fetch_list=fetch_targets)
-            prediction = np.argmax(results)
-            if prediction == label:
-                print "test", num, "corret"
-                correct_num += 1
-            else:
-                print "test", num, "wrong"
-            num += 1
+            imgs.append(img.reshape(3, 32, 32))
+            labels.append(label)
+            if len(imgs) == batch_size:
+                batch_imgs = numpy.stack(imgs, axis=0)
+                results = exe.run(inference_program,
+                                  feed={feed_target_names[0]: batch_imgs},
+                                  fetch_list=fetch_targets)
+                prediction = numpy.argmax(results[0], axis=1)
+                correct_num += numpy.sum(prediction == labels)
+                test_num += batch_size
+                imgs = []
+                labels = []
 
-        print "In", test_nums, "tests,", correct_num, "of them are correct"
-
+        print("In", test_num, "tests,", correct_num, "of them are correct")
+        print("Test accuray is", float(correct_num) / float(test_num))
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
