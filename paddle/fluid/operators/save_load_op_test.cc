@@ -33,9 +33,9 @@ TEST(SaveLoadOp, CPU) {
   expect_lod[0].push_back(3);
 
   tensor->set_lod(expect_lod);
-  int* expect = tensor->mutable_data<int>(place);
+  float* expect = tensor->mutable_data<float>(place);
   for (int64_t i = 0; i < tensor->numel(); ++i) {
-    expect[i] = static_cast<int>(i);
+    expect[i] = static_cast<float>(i);
   }
   paddle::framework::AttributeMap attrs;
   attrs.insert({"file_path", std::string("tensor.save")});
@@ -49,7 +49,7 @@ TEST(SaveLoadOp, CPU) {
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
   load_op->Run(scope, place);
-  int* actual = target->data<int>();
+  float* actual = target->data<float>();
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     EXPECT_EQ(expect[i], actual[i]);
   }
