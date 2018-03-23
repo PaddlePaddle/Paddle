@@ -112,6 +112,25 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     int group_offset_out =
         output_channels / groups * output_height * output_width * output_depth;
     int group_offset_filter = filter->numel() / groups;
+
+#if defined(__CUDACC__) && CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    void* cudnn_workspace = nullptr;
+    size_t workspace_size_in_bytes;  // final workspace to allocate.
+    // cudnnConvolutionFwdAlgo_t algo;
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
+
+    algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+    PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+        handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
+        cudnn_output_desc, algo, &workspace_size_in_bytes));
+
+    if (workspace_size_in_bytes > 0) {
+      // Allocate on GPU memory
+      platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+      cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
+    }
+#else
     // ------------------- cudnn conv workspace ---------------------
     void* cudnn_workspace = nullptr;
     size_t workspace_size_in_bytes;  // final workspace to allocate.
@@ -135,6 +154,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     // Allocate on GPU memory
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
+#endif
+
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     for (int i = 0; i < groups; i++) {
