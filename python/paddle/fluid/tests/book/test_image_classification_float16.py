@@ -216,10 +216,10 @@ def infer(use_cuda, save_dirname=None):
         # the feed_target_names (the names of variables that will be feeded
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
-        """ Test code that validate the correctness of float16 inference
+
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
-
+        """ Test code that validate the correctness of float16 inference
         test_reader = paddle.dataset.cifar.test10()
         test_num = 0
         batch_size = 128
