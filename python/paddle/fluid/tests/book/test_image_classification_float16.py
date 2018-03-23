@@ -93,7 +93,7 @@ def vgg16_bn_drop(input):
     return fc2
 
 
-def train(net_type, use_cuda, is_local):
+def train(net_type, use_cuda, save_dirname, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
@@ -124,7 +124,7 @@ def train(net_type, use_cuda, is_local):
     optimize_ops, params_grads = optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 128
-    PASS_NUM = 200
+    PASS_NUM = 1
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -156,7 +156,7 @@ def train(net_type, use_cuda, is_local):
                             sys.exit("got NaN loss, training failed.")
                         acc_list.append(float(acc_t))
                         avg_loss_list.append(float(loss_t))
-                        # break  # Use 1 segment for speeding up CI
+                        break  # Use 1 segment for speeding up CI
 
                     acc_value = numpy.array(acc_list).mean()
                     avg_loss_value = numpy.array(avg_loss_list).mean()
@@ -166,15 +166,9 @@ def train(net_type, use_cuda, is_local):
                         format(pass_id, batch_id + 1,
                                float(avg_loss_value), float(acc_value)))
 
-                    if acc_value > 0.75:  # Low threshold for speeding up CI
-                        save_dirname_fp32 = "image_classification_fp32.inference.model"
-                        save_dirname_fp16 = "image_classification_fp16.inference.model"
+                    if acc_value > 0.01:  # Low threshold for speeding up CI
                         fluid.io.save_inference_model(
-                            save_dirname_fp32, ["pixel"], [predict],
-                            exe,
-                            use_float16=False)
-                        fluid.io.save_inference_model(
-                            save_dirname_fp16, ["pixel"], [predict],
+                            save_dirname, ["pixel"], [predict],
                             exe,
                             use_float16=True)
                         return
@@ -209,7 +203,7 @@ def train(net_type, use_cuda, is_local):
             train_loop(t.get_trainer_program())
 
 
-def infer(use_cuda, tensor_img, save_dirname=None):
+def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
@@ -222,17 +216,10 @@ def infer(use_cuda, tensor_img, save_dirname=None):
         # the feed_target_names (the names of variables that will be feeded
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
+        """ Test code that validate the correctness of float16 inference
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-        # The input's dimension of conv should be 4-D or 5-D.
-        # Use normilized image pixels as input data, which should be in the range [0, 1.0].
-
-        # batch_size = 1
-        # tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
-
-        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
-        # and results will contain a list of data corresponding to fetch_targets.
         test_reader = paddle.dataset.cifar.test10()
         test_num = 0
         batch_size = 128
@@ -262,6 +249,18 @@ def infer(use_cuda, tensor_img, save_dirname=None):
 
         print("In", test_num, "tests,", correct_num, "of them are correct")
         print("Test accuray is", float(correct_num) / float(test_num))
+        """
+
+        # The input's dimension of conv should be 4-D or 5-D.
+        # Use normilized image pixels as input data, which should be in the range [0, 1.0].
+
+        batch_size = 1
+        tensor_img = numpy.random.rand(batch_size, 3, 32,
+                                       32).astype(numpy.uint16)
+
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
@@ -275,24 +274,13 @@ def main(net_type, use_cuda, is_local=True):
         return
 
     # Directory for saving the trained model
-    save_dirname_fp32 = "image_classification_fp32.inference.model"
-    save_dirname_fp16 = "image_classification_fp16.inference.model"
+    save_dirname = "image_classification_float16_" + net_type + ".inference.model"
 
-    # train(net_type, use_cuda, is_local)
-
-    batch_size = 1
-    tensor = numpy.random.rand(batch_size, 3, 32, 32)
-    infer(use_cuda, tensor.astype(numpy.float32), save_dirname_fp32)
-    infer(use_cuda,
-          tensor.astype(numpy.float16).view(numpy.uint16), save_dirname_fp16)
+    train(net_type, use_cuda, save_dirname, is_local)
+    infer(use_cuda, save_dirname)
 
 
 class TestImageClassificationFP16(unittest.TestCase):
-    def test_vgg_cuda(self):
-        return
-        with self.scope_prog_guard():
-            main('vgg', use_cuda=True)
-
     def test_resnet_cuda(self):
         with self.scope_prog_guard():
             main('resnet', use_cuda=True)
