@@ -143,12 +143,11 @@ class ListenAndServOp : public framework::OperatorBase {
       std::vector<std::future<void>> fs;
       // block0 contains only listen_and_serv op, start run from block1.
       for (int blkid = 1; blkid < num_blocks - 1; ++blkid) {
-        fs.push_back(framework::Async(
-            [&executor, &program, &recv_scope, blkid]() {
+        fs.push_back(
+            framework::Async([&executor, &program, &recv_scope, blkid]() {
               int run_block = blkid;  // thread local
               try {
-                executor.Run(*program, &recv_scope, run_block,
-                             false, false);
+                executor.Run(*program, &recv_scope, run_block, false, false);
               } catch (std::exception &e) {
                 LOG(ERROR) << "run sub program error " << e.what();
               }
@@ -158,8 +157,7 @@ class ListenAndServOp : public framework::OperatorBase {
       // Run global block at final step, or block1 if there are only 2 blocks
       if (num_blocks >= 2) {
         try {
-          executor.Run(*program, &recv_scope, num_blocks - 1,
-                       false, false);
+          executor.Run(*program, &recv_scope, num_blocks - 1, false, false);
         } catch (std::exception &e) {
           LOG(ERROR) << "run sub program error " << e.what();
         }
