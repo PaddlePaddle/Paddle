@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
@@ -77,8 +78,17 @@ class ReadOp : public framework::OperatorBase {
     for (size_t i = 0; i < ins.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
-      out->ShareDataWith(ins[i]);
-      out->set_lod(ins[i].lod());
+      if (!(ins[i].place() == dev_place)) {
+        LOG(INFO) << "Copy " << out_arg_names[i] << " from " << ins[i].place()
+                  << " to " << dev_place;
+        framework::TensorCopy(ins[i], dev_place, out);
+        PADDLE_ENFORCE(ins[i].lod().empty(),
+                       "Doesn't support copy lod"
+                       " across different GPU devices.");
+      } else {
+        out->ShareDataWith(ins[i]);
+        out->set_lod(ins[i].lod());
+      }
     }
   }
 };

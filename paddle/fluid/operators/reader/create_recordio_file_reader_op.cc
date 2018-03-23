@@ -100,4 +100,4 @@ REGISTER_FILE_READER_OPERATOR(create_recordio_file_reader,
                               reader::CreateRecordIOReaderOp,
                               reader::CreateRecordIOReaderOpMaker);
 
-REGISTER_FILE_READER(recordio, reader::RecordIOFileReader<false>);
+REGISTER_FILE_READER(recordio, reader::RecordIOFileReader<true>);

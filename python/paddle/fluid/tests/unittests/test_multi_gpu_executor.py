@@ -31,11 +31,11 @@ DTYPE = "float32"
 
 
 def convert_reader_to_record_io():
-    reader = paddle.batch(paddle.dataset.flowers.train(), batch_size=32)
+    reader = paddle.batch(paddle.dataset.flowers.train(), batch_size=4)
     feeder = fluid.DataFeeder(
         feed_list=[  # order is image and label
             fluid.layers.data(
-                name='image', shape=[3, 32, 32]),
+                name='image', shape=[3, 224, 224]),
             fluid.layers.data(
                 name='label', shape=[1], dtype='int64'),
         ],
@@ -48,8 +48,6 @@ def parse_args():
     parser = argparse.ArgumentParser("mnist model benchmark.")
     parser.add_argument(
         '--label_size', type=int, default=10, help='The label size.')
-    parser.add_argument(
-        '--batch_size', type=int, default=10, help='The minibatch size.')
     parser.add_argument(
         '--iterations', type=int, default=5, help='The number of minibatches.')
     parser.add_argument(
@@ -200,31 +198,19 @@ def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
 
 def run_benchmark(args):
     # Train program
-    # images = fluid.layers.fill_constant(
-    #     shape=(args.batch_size, 3, 200, 200), dtype='float32', value=0.1)
-    # idx = fluid.layers.fill_constant(shape=[4, 1], dtype='int64', value=1)
-    # emb = fluid.layers.embedding(input=idx, size=[2, 3])
-    # avg_cost = fluid.layers.mean(emb)
-    # predict = vgg16_bn_drop(images)
     reader = fluid.layers.open_recordio_file(
         filename='./flowers.recordio',
-        shapes=[[-1, 3, 32, 32], [-1, 1]],
+        shapes=[[-1, 3, 224, 224], [-1, 1]],
         lod_levels=[0, 0],
         dtypes=['float32', 'int64'])
     img, label = fluid.layers.read_file(reader)
     predict = vgg16_bn_drop(img)
-    # predict = resnet_imagenet(images, class_dim=1000)
-
-    # avg_cost = fluid.layers.mean(x=predict)
-
-    # fluid.layers.Print(idx, summarize=7)
-    # fluid.layers.Print(emb, summarize=7)
+    avg_cost = fluid.layers.mean(predict)
     # fluid.layers.Print(avg_cost)
-
-    # Optimization
-    # Note the flag append_all_reduce=True
     opt = fluid.optimizer.SGDOptimizer(learning_rate=0.001)
     opt.minimize(avg_cost)
+
+    # fluid.memory_optimize(fluid.default_main_program(), print_log=True)
 
     # program_summary(fluid.default_main_program())
     act_places = []
@@ -244,7 +230,6 @@ def run_benchmark(args):
                                       ]))
 
     # Parameter initialization
-    exe.run(fluid.default_startup_program().desc, 0, True, True)
     exe.init(fluid.default_startup_program().desc, 0, True, True)
     for iter_id in range(0, args.iterations):
         start = time.time()

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <thread>
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/reader.h"
 
 namespace paddle {
 namespace framework {
@@ -66,8 +67,8 @@ void ExecutorWithAllReduce::RunOperators(const ExecutorPrepareContext* ctx,
     for (auto& param2argu : op->Inputs()) {
       for (auto& argu : param2argu.second) {
         if (param_grads_->count(argu) != 0) {
-          LOG(INFO) << place_ << " " << op->Type() << param2argu.first << " "
-                    << argu;
+          VLOG(5) << place_ << " " << op->Type() << param2argu.first << " "
+                  << argu;
           PADDLE_ENFORCE(cudaStreamWaitEvent(computation_stream,
                                              all_reduce_event[argu], 0));
         }
@@ -81,8 +82,8 @@ void ExecutorWithAllReduce::RunOperators(const ExecutorPrepareContext* ctx,
     for (auto& param2argu : op->Outputs()) {
       for (auto& argu : param2argu.second) {
         if (param_grads_->count(argu) != 0) {
-          LOG(INFO) << place_ << " " << op->Type() << " Launch allreduce on "
-                    << argu;
+          VLOG(5) << place_ << " " << op->Type() << " Launch allreduce on "
+                  << argu;
 
           PADDLE_ENFORCE(
               cudaEventRecord(computation_event[argu], computation_stream));
@@ -117,7 +118,8 @@ MultiGPUExecutor::MultiGPUExecutor(
   for (auto& param : params) {
     param_grads_.insert(GradVarName(param));
   }
-  for (auto& place : places) {
+  for (size_t i = 0; i < places.size(); ++i) {
+    auto& place = places[i];
     exes_.push_back(
         framework::ExecutorWithAllReduce(place, &param_grads_, &nccl_ctx_));
     scopes_.push_back(new framework::Scope());
@@ -154,6 +156,16 @@ void MultiGPUExecutor::Init(const ProgramDesc& prog, int block_id,
                                      nccl_ctx_.ctxs_[i]->stream());
       }
       platform::dynload::ncclGroupEnd();
+    } else if (var_desc->GetType() == proto::VarType::READER) {
+      VLOG(4) << "Copy reader " << var_desc->Name();
+      auto& reader =
+          scopes_[0]->FindVar(var_desc->Name())->Get<framework::ReaderHolder>();
+      for (size_t i = 1; i < scopes_.size(); ++i) {
+        auto* reader_dup = scopes_[i]
+                               ->Var(var_desc->Name())
+                               ->GetMutable<framework::ReaderHolder>();
+        *reader_dup = reader;
+      }
     }
   }
 }

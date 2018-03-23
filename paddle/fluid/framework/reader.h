@@ -67,6 +67,11 @@ class FileReader : public ReaderBase {
 // making it easier to access different type reader in Variables.
 class ReaderHolder {
  public:
+  ReaderHolder& operator=(const ReaderHolder& rh) {
+    reader_ = rh.reader_;
+    return *this;
+  }
+
   void Reset(ReaderBase* reader) { reader_.reset(reader); }
 
   ReaderBase* Get() const { return reader_.get(); }
@@ -83,7 +88,7 @@ class ReaderHolder {
   bool HasNext() const { return reader_->HasNext(); }
 
  private:
-  std::unique_ptr<ReaderBase> reader_;
+  std::shared_ptr<ReaderBase> reader_;
 };
 
 }  // namespace framework
