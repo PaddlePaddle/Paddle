@@ -68,9 +68,10 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "Input X must have 2 to 5 dimensions.");
 
-    const int64_t C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
+    const int64_t C = (data_layout == DataLayout::kNCHW ||
+                               data_layout == DataLayout::kAnyLayout
+                           ? x_dims[1]
+                           : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
@@ -122,8 +123,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kMKLDNN;
     }
 #endif
-
-    std::string data_format = ctx.Attr<std::string>("data_format");
+    std::string data_format = ctx.Attr<std::string>("data_layout");
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     return framework::OpKernelType(
@@ -144,7 +144,7 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
                          "'epsilon' should be between 0.0 and 0.001.");
         });
-    AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
+    AddAttr<std::string>("data_layout", "").SetDefault("AnyLayout");
     AddInput("X", "The input tensor");
     AddInput("Scale",
              "Scale is a 1-dimensional tensor of size C "
@@ -176,13 +176,14 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout");
+    //    AddAttr<std::string>(
+    //        "data_format",
+    //        "(string, default NCHW) Only used in "
+    //        "An optional string from: \"NHWC\", \"NCHW\". "
+    //        "Defaults to \"NHWC\". Specify the data format of the output data,
+    //        "
+    //        "the input will be transformed automatically. ")
+    //        .SetDefault("AnyLayout");
 
     AddComment(R"DOC(
 Batch Normalization.
@@ -382,8 +383,28 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     if (t == nullptr) {
       PADDLE_THROW("can't find Y@GRAD");
     }
-    return framework::OpKernelType(framework::ToDataType(t->type()),
-                                   ctx.GetPlace());
+    //    return framework::OpKernelType(framework::ToDataType(t->type()),
+    //                                   ctx.GetPlace());
+
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+    }
+#endif
+
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
+        ctx.GetPlace(), layout_, library_);
   }
 };
 

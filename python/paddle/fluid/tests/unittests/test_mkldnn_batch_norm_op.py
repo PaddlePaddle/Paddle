@@ -181,7 +181,7 @@ class TestMKLDNNBatchNormOp(OpTest):
 
             # run forward
             y_out, saved_mean, var_ref = _reference_training(
-                x_val, scale_val, bias_val, epsilon, data_format)
+                x_val, scale_val, bias_val, epsilon, data_layout)
 
             # update moving mean and variance
             mean_out = saved_mean * (1. - momentum) + momentum * mean
@@ -189,16 +189,16 @@ class TestMKLDNNBatchNormOp(OpTest):
             saved_variance = 1. / np.sqrt(var_ref + epsilon)
 
             #  for gradient test
-            # y_grad = np.ones(x_shape).astype(np.float32)
+            y_grad = np.ones(x_shape).astype(np.float32)
             y_grad = np.zeros(x_shape).astype(np.float32)
             if len(y_grad.shape) == 2:
                 y_grad[0, 0] = 1.
             else:
                 y_grad[0, 0, 0, 0] = 1.
-            # y_grad = np.random.random_sample(x_shape).astype(np.float32)
-            #            x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_grad(
-            #                x_val, y_grad, scale_val, saved_mean, var_ref, epsilon,
-            #                data_format)
+            y_grad = np.random.random_sample(x_shape).astype(np.float32)
+            x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_grad(
+                x_val, y_grad, scale_val, saved_mean, var_ref, epsilon,
+                data_format)
 
             scope = core.Scope()
 
@@ -237,15 +237,11 @@ class TestMKLDNNBatchNormOp(OpTest):
                 SavedVariance="saved_variance",
                 # attrs
                 is_test=False,
-                data_layout=data_layout,
                 momentum=momentum,
                 epsilon=epsilon,
                 use_mkldnn=True)
 
             batch_norm_op.run(scope, place)
-
-            print y_out
-            print np.array(y_tensor)
 
             # check forward result
             self.__assert_close(y_tensor, y_out, "y_out")
@@ -261,10 +257,36 @@ class TestMKLDNNBatchNormOp(OpTest):
                                 "variance_out", atol)
             print "op test forward passed: ", str(place), data_layout
 
+            batch_norm_op_grad = get_backward_op(scope, batch_norm_op, set())
+            set_output_grad(
+                scope,
+                ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
+                place,
+                feed_dict={"y_out": y_grad})
+
+            batch_norm_op_grad.run(scope, place)
+
+            x_grad_tensor = create_or_get_tensor(scope,
+                                                 grad_var_name("x_val"), None,
+                                                 place)
+            scale_grad_tensor = create_or_get_tensor(scope,
+                                                     grad_var_name("scale_val"),
+                                                     None, place)
+            bias_grad_tensor = create_or_get_tensor(scope,
+                                                    grad_var_name("bias_val"),
+                                                    None, place)
+
+            # check gradient output
+            self.__assert_close(x_grad_tensor, x_grad_ref, "x_grad")
+            self.__assert_close(scale_grad_tensor, scale_grad_ref, "scale_grad")
+            self.__assert_close(bias_grad_tensor, bias_grad_ref, "bias_grad")
+            print "op test backward passed: ", str(place), data_layout
+
+#
+
         place = core.CPUPlace()
         data_format = "NCHW"
         test_with_place(place, data_format, [2, 3, 4, 5])
-
 
 if __name__ == '__main__':
     unittest.main()
