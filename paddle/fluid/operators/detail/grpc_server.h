@@ -22,9 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/grpc_service.h"
-#include "paddle/fluid/operators/detail/grpc_service.h"
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
+#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/simple_block_queue.h"
 
 namespace paddle {
 namespace operators {
