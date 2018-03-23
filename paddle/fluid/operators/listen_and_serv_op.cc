@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/proto_desc.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 #include "paddle/fluid/operators/detail/simple_block_queue.h"
@@ -68,9 +69,7 @@ class ListenAndServOp : public framework::OperatorBase {
   }
 
   void Stop() override {
-    detail::MessageWithName term_msg;
-    term_msg.first = LISTEN_TERMINATE_MESSAGE;
-    rpc_service_->Push(term_msg);
+    rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
     rpc_service_->ShutDown();
     server_thread_->join();
   }
@@ -89,7 +88,17 @@ class ListenAndServOp : public framework::OperatorBase {
 
     auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
     auto *program = block->Program();
+    int num_blocks = program->Size();
+    PADDLE_ENFORCE_GE(num_blocks, 2,
+                      "server program should have at least 2 blocks");
+
     framework::Executor executor(dev_place);
+    std::vector<framework::ExecutorPrepareContext *> blk_ctx_list;
+    blk_ctx_list.push_back(nullptr);  // block0 is not used.
+    for (int blkid = 1; blkid < num_blocks; ++blkid) {
+      auto *exe_ctx = executor.Prepare(*program, blkid);
+      blk_ctx_list.push_back(exe_ctx);
+    }
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
@@ -103,7 +112,7 @@ class ListenAndServOp : public framework::OperatorBase {
       size_t recv_var_cnt = 0;
       int batch_barrier = 0;
       while (batch_barrier != fan_in) {
-        const detail::MessageWithName &v = rpc_service_->Get();
+        const detail::ReceivedMessage v = rpc_service_->Get();
         auto recv_var_name = v.first;
         if (recv_var_name == LISTEN_TERMINATE_MESSAGE) {
           LOG(INFO) << "received terminate message and exit";
@@ -116,28 +125,52 @@ class ListenAndServOp : public framework::OperatorBase {
         } else {
           VLOG(3) << "received grad: " << recv_var_name;
           recv_var_cnt++;
-          auto *var = recv_scope.FindVar(recv_var_name);
+          auto var = v.second->GetVar();
           if (var == nullptr) {
             LOG(ERROR) << "Can not find server side var: " << recv_var_name;
             PADDLE_THROW("Can not find server side var");
           }
-          detail::DeserializeFromMessage(v.second, dev_ctx, var);
           if (var->IsType<framework::SelectedRows>()) {
             sparse_vars.push_back(var);
           }
         }
       }
       if (exit_flag) {
-        rpc_service_->ShutDown();
         rpc_service_->SetCond(1);
+        rpc_service_->ShutDown();
         break;
       }
-      try {
-        executor.Run(*program, &recv_scope, block->ID(), /*global_block*/
-                     false /*create_local_scope*/, false /*create_vars*/);
-      } catch (std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
+
+      // put optimize blocks in the thread pool to start run, the last block
+      // should be global ops.
+      // NOTE: if is_gpu_place, CUDA kernels are laugched by multiple threads
+      // and this will still work.
+
+      std::vector<std::future<void>> fs;
+      // block0 contains only listen_and_serv op, start run from block1.
+      for (int blkid = 1; blkid < num_blocks - 1; ++blkid) {
+        fs.push_back(framework::Async(
+            [&executor, &program, &recv_scope, &blk_ctx_list, blkid]() {
+              int run_block = blkid;  // thread local
+              try {
+                executor.RunPreparedContext(blk_ctx_list[run_block],
+                                            &recv_scope, false, false);
+              } catch (std::exception &e) {
+                LOG(ERROR) << "run sub program error " << e.what();
+              }
+            }));
       }
+      for (int i = 0; i < num_blocks - 2; ++i) fs[i].wait();
+      // Run global block at final step, or block1 if there are only 2 blocks
+      if (num_blocks >= 2) {
+        try {
+          executor.RunPreparedContext(blk_ctx_list[num_blocks - 1], &recv_scope,
+                                      false, false);
+        } catch (std::exception &e) {
+          LOG(ERROR) << "run sub program error " << e.what();
+        }
+      }
+
       // Reset the received sparse variables, the sum operator would not
       // sum the input sparse variables which rows is empty at the next
       // mini-batch.
@@ -148,9 +181,13 @@ class ListenAndServOp : public framework::OperatorBase {
       }
       rpc_service_->SetCond(1);
       // FIXME(typhoonzero): use another condition to sync wait clients get.
-      rpc_service_->WaitClientGet(ins.size());
+      rpc_service_->WaitClientGet(fan_in);
       sparse_vars.clear();
     }  // while(true)
+
+    for (int i = 0; i < num_blocks; ++i) {
+      delete blk_ctx_list[i];
+    }
   }
 
  protected:

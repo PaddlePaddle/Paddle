@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "grpc_client.h"
+#include <sys/time.h>
 #include "paddle/fluid/framework/threadpool.h"
+
 namespace paddle {
 namespace operators {
 namespace detail {
@@ -31,8 +33,9 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 
   framework::Async([var_name_val, p_ctx, ep_val, p_scope, time_out, ch, this] {
     auto* var = p_scope->FindVar(var_name_val);
-    sendrecv::VariableMessage req;
-    SerializeToMessage(var_name_val, var, *p_ctx, &req);
+
+    ::grpc::ByteBuffer req;
+    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req);
 
     // varhandle
     VarHandle var_h;
@@ -46,8 +49,11 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     s->Prepare(var_h, time_out);
     s->response_call_back_ = NULL;
 
-    auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-    rpc->Finish(&s->reply_, &s->status_, (void*)s);
+    auto call = std::move(s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req,
+        &cq_));
+    call->StartCall();
+    call->Finish(&s->reply_, &s->status_, (void*)s);
   });
 
   req_count_++;
@@ -56,9 +62,19 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 }
 
 void ProcGetResponse(const VarHandle& var_h,
-                     const sendrecv::VariableMessage& ret_msg) {
-  auto* outvar = var_h.scope->FindVar(var_h.name);
-  DeserializeFromMessage(ret_msg, *var_h.ctx, outvar);
+                     // const sendrecv::VariableMessage& ret_msg) {
+                     const ::grpc::ByteBuffer& ret_msg) {
+  framework::Variable* outvar = NULL;
+  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, outvar);
+}
+
+template <typename T>
+void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
+  ::grpc::Slice slice(proto.ByteSizeLong());
+  proto.SerializeWithCachedSizesToArray(
+      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(slice.begin())));
+  ::grpc::ByteBuffer tmp(&slice, 1);
+  result->Swap(&tmp);
 }
 
 bool RPCClient::AsyncGetVariable(const std::string& ep,
@@ -88,8 +104,13 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
     s->Prepare(var_h, time_out);
     s->response_call_back_ = ProcGetResponse;
 
-    auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
-    rpc->Finish(&s->reply_, &s->status_, (void*)s);
+    ::grpc::ByteBuffer buf;
+    RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
+
+    auto call = std::move(s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_));
+    call->StartCall();
+    call->Finish(&s->reply_, &s->status_, (void*)s);
   });
 
   req_count_++;
@@ -97,7 +118,7 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   return true;
 }
 
-bool RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
+void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
@@ -108,8 +129,18 @@ bool RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, (void*)s);
   req_count_++;
+}
 
-  return true;
+void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
+  const auto ch = GetChannel(ep);
+  FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
+  s->Prepare(time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(FETCH_BARRIER_MESSAGE);
+  auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, (void*)s);
+  req_count_++;
 }
 
 bool RPCClient::Wait() {
@@ -154,7 +185,7 @@ bool RPCClient::Proceed() {
   PADDLE_ENFORCE(tag);
 
   // TODO(gongwb): add more retries.
-  ClientBase* c = static_cast<ClientBase*>(tag);
+  BaseProcessor* c = static_cast<BaseProcessor*>(tag);
   if (!c->status_.ok()) {
     LOG(ERROR) << "proc param error:" << c->var_h_.String()
                << " grpc error:" << c->status_.error_message();
@@ -174,6 +205,8 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
   }
 
   grpc::ChannelArguments args;
+  args.SetInt("grpc.testing.fixed_reconnect_backoff_ms", 5000);
+  args.SetCompressionAlgorithm(GRPC_COMPRESS_NONE);
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
 

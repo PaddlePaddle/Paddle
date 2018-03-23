@@ -21,7 +21,7 @@ endif()
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 nv_test(mixed_vector_test SRCS mixed_vector_test.cu DEPS place paddle_memory device_context init)
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio)
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor paddle_memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor init)
 
@@ -103,4 +103,5 @@ cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 cc_test(channel_test SRCS channel_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 cc_test(concurrency_test SRCS concurrency_test.cc DEPS go_op channel_close_op channel_create_op
-        channel_send_op channel_recv_op sum_op elementwise_add_op executor proto_desc)
+        channel_send_op channel_recv_op sum_op select_op elementwise_add_op compare_op
+        conditional_block_op while_op assign_op print_op executor proto_desc)

@@ -13,7 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/softmax_op.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 namespace paddle {
 namespace operators {
 
@@ -33,8 +39,37 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
-};
 
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+    }
+#endif
+
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    if (input_data_type == framework::proto::VarType::FP16) {
+      PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
+                        "float16 can only be used when CUDNN is used");
+    }
+
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                   framework::StringToDataLayout(data_format),
+                                   library_);
+  }
+};
 class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
@@ -43,6 +78,20 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor of softmax. "
              "2-D with shape [batch_size, input_feature_dimensions].");
     AddOutput("Out", "The normalized values with the same shape as X.");
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Softmax Operator.
 
@@ -79,6 +128,22 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
                       "Input(Out) and its gradients should have a same shape.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_CUDA
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+        framework::StringToDataLayout(data_format), library_);
   }
 };
 

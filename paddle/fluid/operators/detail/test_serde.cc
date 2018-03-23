@@ -16,11 +16,13 @@ limitations under the License. */
 #include <string>
 #include <thread>
 
+#include <google/protobuf/text_format.h>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+#include "paddle/fluid/operators/detail/variable_response.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
@@ -31,7 +33,82 @@ namespace operators = paddle::operators;
 namespace math = paddle::operators::math;
 namespace memory = paddle::memory;
 
-void RunSerdeTestTensor(platform::Place place) {
+void RunSerdeTestSelectedRows(platform::Place place) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& ctx = *pool.Get(place);
+
+  // serialize var to ByteBuffer
+  framework::Variable var;
+  auto* slr = var.GetMutable<framework::SelectedRows>();
+  auto* tensor = slr->mutable_value();
+  auto* rows = slr->mutable_rows();
+  tensor->Resize(framework::make_ddim({2, 10}));
+  tensor->mutable_data<float>(place);
+  int tensor_numel = 2 * 10;
+  math::set_constant(ctx, tensor, 32.7);
+  rows->push_back(3);
+  rows->push_back(10);
+
+  ::grpc::ByteBuffer msg;
+  operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
+  EXPECT_GT(msg.Length(), 0);
+
+  // deserialize
+  std::vector<::grpc::Slice> slices;
+  (void)msg.Dump(&slices);
+  std::string tmp;
+  for (const auto& s : slices) {
+    tmp.append(reinterpret_cast<const char*>(s.begin()), s.size());
+  }
+
+  sendrecv::VariableMessage varmsg;
+  EXPECT_TRUE(varmsg.ParseFromString(tmp));
+
+  EXPECT_EQ(varmsg.varname(), "myvar");
+  EXPECT_EQ(varmsg.type(), 1);
+
+  const float* tensor_data =
+      reinterpret_cast<const float*>(varmsg.serialized().data());
+  const int64_t* rows_data =
+      reinterpret_cast<const int64_t*>(varmsg.rows().data());
+  for (int i = 0; i < tensor_numel; ++i) {
+    EXPECT_FLOAT_EQ(tensor_data[i], 32.7);
+  }
+  EXPECT_EQ(rows_data[0], 3);
+  EXPECT_EQ(rows_data[1], 10);
+  // deserialize zero-copy
+  // framework::Variable var2;
+  // operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
+  framework::Scope scope;
+  scope.Var("myvar");
+  operators::detail::VariableResponse resp(&scope, &ctx);
+  EXPECT_EQ(resp.Parse(msg), 0);
+
+  framework::Variable* var2 = resp.GetVar();
+
+  auto* slr2 = var2->GetMutable<framework::SelectedRows>();
+  auto* tensor2 = slr2->mutable_value();
+  auto* rows2 = slr2->mutable_rows();
+  float* tensor_data2 = nullptr;
+  framework::Tensor tmp_tensor;
+
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+    platform::CPUPlace cpu;
+    framework::TensorCopy(*tensor2, cpu, &tmp_tensor);
+    tensor_data2 = tmp_tensor.data<float>();
+  } else {
+    tensor_data2 = const_cast<float*>(tensor2->data<float>());
+  }
+  const int64_t* rows_data2 = rows2->data();
+
+  for (int i = 0; i < tensor_numel; ++i) {
+    EXPECT_FLOAT_EQ(tensor_data2[i], 32.7);
+  }
+  EXPECT_EQ(rows_data2[0], 3);
+  EXPECT_EQ(rows_data2[1], 10);
+}
+
+void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // serialize var to ByteBuffer
   framework::Variable var;
   auto* tensor = var.GetMutable<framework::LoDTensor>();
@@ -75,10 +152,30 @@ void RunSerdeTestTensor(platform::Place place) {
     EXPECT_FLOAT_EQ(tensor_data[i], 31.9);
   }
 
+  // message binary
+  std::string str;
+  varmsg.SerializeToString(&str);
+
+  // message bytebuffer
+  ::grpc::Slice slices_2[1];
+  int num_slices = 1;
+  slices_2[0] = ::grpc::Slice(str.length());
+  memcpy(const_cast<uint8_t*>(slices_2[0].begin()), str.c_str(), str.length());
+  ::grpc::ByteBuffer bytebuffer2(&slices_2[0], num_slices);
+
   // deserialize zero-copy
-  framework::Variable var2;
-  operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
-  auto tensor2 = var2.Get<framework::LoDTensor>();
+  framework::Scope scope;
+  scope.Var("myvar");
+  operators::detail::VariableResponse resp(&scope, &ctx);
+  if (from_type == 0) {
+    EXPECT_EQ(resp.Parse(msg), 0);
+  } else {
+    EXPECT_EQ(resp.Parse(bytebuffer2), 0);
+  }
+
+  framework::Variable* var2 = resp.GetVar();
+
+  auto tensor2 = var2->Get<framework::LoDTensor>();
   float* tensor_data2 = nullptr;
   framework::Tensor tmp_tensor;
 
@@ -97,90 +194,23 @@ void RunSerdeTestTensor(platform::Place place) {
   for (int i = 0; i < tensor_numel; ++i) EXPECT_FLOAT_EQ(tensor_data2[i], 31.9);
 }
 
-void RunSerdeTestSelectedRows(platform::Place place) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& ctx = *pool.Get(place);
-
-  // serialize var to ByteBuffer
-  framework::Variable var;
-  auto* slr = var.GetMutable<framework::SelectedRows>();
-  auto* tensor = slr->mutable_value();
-  auto* rows = slr->mutable_rows();
-  tensor->Resize(framework::make_ddim({2, 10}));
-  tensor->mutable_data<float>(place);
-  int tensor_numel = 2 * 10;
-  math::set_constant(ctx, tensor, 32.7);
-  rows->push_back(3);
-  rows->push_back(10);
-
-  ::grpc::ByteBuffer msg;
-  operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
-  EXPECT_GT(msg.Length(), 0);
-
-  // deserialize
-  std::vector<::grpc::Slice> slices;
-  (void)msg.Dump(&slices);
-  std::string tmp;
-  for (const auto& s : slices) {
-    tmp.append(reinterpret_cast<const char*>(s.begin()), s.size());
-  }
-  sendrecv::VariableMessage varmsg;
-  EXPECT_TRUE(varmsg.ParseFromString(tmp));
-
-  EXPECT_EQ(varmsg.varname(), "myvar");
-  EXPECT_EQ(varmsg.type(), 1);
-
-  const float* tensor_data =
-      reinterpret_cast<const float*>(varmsg.serialized().data());
-  const int64_t* rows_data =
-      reinterpret_cast<const int64_t*>(varmsg.rows().data());
-  for (int i = 0; i < tensor_numel; ++i) {
-    EXPECT_FLOAT_EQ(tensor_data[i], 32.7);
-  }
-  EXPECT_EQ(rows_data[0], 3);
-  EXPECT_EQ(rows_data[1], 10);
-  // deserialize zero-copy
-  framework::Variable var2;
-  operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
-
-  auto* slr2 = var2.GetMutable<framework::SelectedRows>();
-  auto* tensor2 = slr2->mutable_value();
-  auto* rows2 = slr2->mutable_rows();
-  float* tensor_data2 = nullptr;
-  framework::Tensor tmp_tensor;
-
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    platform::CPUPlace cpu;
-    framework::TensorCopy(*tensor2, cpu, &tmp_tensor);
-    tensor_data2 = tmp_tensor.data<float>();
-  } else {
-    tensor_data2 = const_cast<float*>(tensor2->data<float>());
-  }
-  const int64_t* rows_data2 = rows2->data();
-
-  for (int i = 0; i < tensor_numel; ++i) {
-    EXPECT_FLOAT_EQ(tensor_data2[i], 32.7);
-  }
-  EXPECT_EQ(rows_data2[0], 3);
-  EXPECT_EQ(rows_data2[1], 10);
+TEST(LodTensor, Run) {
+  platform::CPUPlace place;
+  RunTestLodTensor(place);
+  RunTestLodTensor(place, 1);
+#ifdef PADDLE_WITH_CUDA
+  platform::CUDAPlace place;
+  RunTestLodTensor(place);
+  RunTestLodTensor(place, 1);
+#endif
 }
 
-TEST(SelectedRows, CPU) {
+TEST(SelectedRows, Run) {
   platform::CPUPlace place;
   RunSerdeTestSelectedRows(place);
-}
 
-TEST(SelectedRows, GPU) {
+#ifdef PADDLE_WITH_CUDA
   platform::CUDAPlace place;
   RunSerdeTestSelectedRows(place);
-}
-
-TEST(Tensor, CPU) {
-  platform::CPUPlace place;
-  RunSerdeTestTensor(place);
-}
-
-TEST(Tensor, GPU) {
-  platform::CUDAPlace place;
-  RunSerdeTestTensor(place);
+#endif
 }

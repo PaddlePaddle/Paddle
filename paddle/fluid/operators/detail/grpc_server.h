@@ -14,28 +14,30 @@ limitations under the License. */
 
 #pragma once
 
+#include <grpc++/grpc++.h>
+#include <thread>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/simple_block_queue.h"
-
+#include "paddle/fluid/operators/detail/grpc_service.h"
+#include "paddle/fluid/operators/detail/grpc_service.h"
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
-
-#include <grpc++/grpc++.h>
-#include <grpc/support/log.h>
-#include <thread>
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
 namespace paddle {
 namespace operators {
 namespace detail {
 
+typedef std::pair<std::string, std::shared_ptr<VariableResponse>>
+    ReceivedMessage;
+typedef SimpleBlockQueue<ReceivedMessage> ReceivedQueue;
+
 typedef std::pair<std::string, sendrecv::VariableMessage> MessageWithName;
 class RequestBase;
 
-class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
+class AsyncGRPCServer final {
  public:
   explicit AsyncGRPCServer(const std::string &address) : address_(address) {}
 
@@ -50,14 +52,16 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
 
   void SetDevCtx(const platform::DeviceContext *dev_ctx) { dev_ctx_ = dev_ctx; }
 
-  const MessageWithName Get() { return this->var_recv_queue_.Pop(); }
+  const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
 
-  void Push(const MessageWithName &msg) { this->var_recv_queue_.Push(msg); }
+  void Push(const std::string &msg_name) {
+    this->var_recv_queue_.Push(std::make_pair(msg_name, nullptr));
+  }
 
   void ShutDown();
 
  protected:
-  void HandleRequest(grpc::ServerCompletionQueue *cq, std::string cq_name,
+  void HandleRequest(::grpc::ServerCompletionQueue *cq, std::string cq_name,
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
@@ -66,18 +70,19 @@ class AsyncGRPCServer final : public sendrecv::SendRecvService::Service {
  private:
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
-  std::unique_ptr<grpc::ServerCompletionQueue> cq_send_;
-  std::unique_ptr<grpc::ServerCompletionQueue> cq_get_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_send_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_get_;
 
-  sendrecv::SendRecvService::AsyncService service_;
-  std::unique_ptr<grpc::Server> server_;
+  GrpcService::AsyncService service_;
+  std::unique_ptr<::grpc::Server> server_;
 
   std::string address_;
   framework::Scope *scope_;
   const platform::DeviceContext *dev_ctx_;
+
   // received variable from RPC, operators fetch variable from this queue.
-  SimpleBlockQueue<MessageWithName> var_recv_queue_;
-  SimpleBlockQueue<char> var_get_queue_;
+  SimpleBlockQueue<MessageWithName> var_get_queue_;
+  ReceivedQueue var_recv_queue_;
 
   // condition of the sub program
   std::mutex barrier_mutex_;
