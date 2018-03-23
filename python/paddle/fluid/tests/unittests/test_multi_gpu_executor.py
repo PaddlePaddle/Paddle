@@ -31,11 +31,11 @@ DTYPE = "float32"
 
 
 def convert_reader_to_record_io():
-    reader = paddle.batch(paddle.dataset.flowers.train(), batch_size=32)
+    reader = paddle.batch(paddle.dataset.flowers.train(), batch_size=4)
     feeder = fluid.DataFeeder(
         feed_list=[  # order is image and label
             fluid.layers.data(
-                name='image', shape=[3, 32, 32]),
+                name='image', shape=[3, 224, 224]),
             fluid.layers.data(
                 name='label', shape=[1], dtype='int64'),
         ],
@@ -48,8 +48,6 @@ def parse_args():
     parser = argparse.ArgumentParser("mnist model benchmark.")
     parser.add_argument(
         '--label_size', type=int, default=10, help='The label size.')
-    parser.add_argument(
-        '--batch_size', type=int, default=10, help='The minibatch size.')
     parser.add_argument(
         '--iterations', type=int, default=5, help='The number of minibatches.')
     parser.add_argument(
@@ -200,11 +198,12 @@ def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
 
 def run_benchmark(args):
     # Train program
-    reader = fluid.layers.open_recordio_file(
-        filename='./flowers.recordio',
-        shapes=[[-1, 3, 32, 32], [-1, 1]],
-        lod_levels=[0, 0],
-        dtypes=['float32', 'int64'])
+    reader = fluid.layers.create_double_buffer_reader(
+        fluid.layers.open_recordio_file(
+            filename='./flowers.recordio',
+            shapes=[[-1, 3, 224, 224], [-1, 1]],
+            lod_levels=[0, 0],
+            dtypes=['float32', 'int64']))
     img, label = fluid.layers.read_file(reader)
     predict = vgg16_bn_drop(img)
     # predict = resnet_imagenet(images, class_dim=1000)
