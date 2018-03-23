@@ -258,7 +258,7 @@ class ScopedConvolutionDescriptor {
 #endif
 
     cudnnDataType_t compute_type =
-        (type == CUDA_DATA_DOUBLE) ? CUDA_DATA_DOUBLE : CUDA_DATA_FLOAT;
+        (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
     PADDLE_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
         desc_, pads.size(), pads.data(), strides.data(), dilations.data(),
         CUDNN_CROSS_CORRELATION, compute_type));

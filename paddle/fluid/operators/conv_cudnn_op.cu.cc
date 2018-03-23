@@ -48,8 +48,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
-    int64_t user_workspace_size =
-        static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
+    // int64_t user_workspace_size =
+    //    static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -113,10 +113,10 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         output_channels / groups * output_height * output_width * output_depth;
     int group_offset_filter = filter->numel() / groups;
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     void* cudnn_workspace = nullptr;
     size_t workspace_size_in_bytes;  // final workspace to allocate.
-    // cudnnConvolutionFwdAlgo_t algo;
+    cudnnConvolutionFwdAlgo_t algo;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
 
@@ -125,9 +125,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, algo, &workspace_size_in_bytes));
 
+    // Allocate on GPU memory
+    platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     if (workspace_size_in_bytes > 0) {
-      // Allocate on GPU memory
-      platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
       cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     }
 #else
