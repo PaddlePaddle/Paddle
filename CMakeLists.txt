@@ -36,6 +36,7 @@ include(simd)
 
 ################################ Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
+option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
@@ -179,6 +180,11 @@ set(EXTERNAL_LIBS
 if(WITH_GPU)
     include(cuda)
 endif(WITH_GPU)
+
+if(WITH_AMD_GPU)
+    find_package(HIP)
+    include(hip)
+endif(WITH_AMD_GPU)
 
 if(WITH_MKLML)
     list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})

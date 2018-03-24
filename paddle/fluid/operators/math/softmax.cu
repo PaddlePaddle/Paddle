@@ -89,6 +89,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       XGrad->mutable_data<T>(context.GetPlace())));
 }
 
+template class SoftmaxCUDNNFunctor<platform::float16>;
 template class SoftmaxCUDNNFunctor<float>;
 template class SoftmaxCUDNNFunctor<double>;
 template class SoftmaxGradCUDNNFunctor<float>;
