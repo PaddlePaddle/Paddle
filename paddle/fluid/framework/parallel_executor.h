@@ -34,7 +34,7 @@ class ParallelExecutor {
   DISABLE_COPY_AND_ASSIGN(ParallelExecutor);
 
  public:
-  explicit ParallelExecutor(size_t num_threads,
+  explicit ParallelExecutor(size_t num_threads, bool use_event,
                             const std::vector<platform::Place>& places,
                             const std::unordered_set<std::string>& params,
                             const ProgramDesc& startup_program,
