@@ -59,6 +59,10 @@ class SendOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
+    // For profiling, don't move out of this function because that will result
+    // in the failure of multi-GPU profiling.
+    platform::RecordEvent record_event(Type(), ctx);
+
     auto client_var_name = Output("RPCClient");
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
                             "Can not find variable '%s' in the scope.",
