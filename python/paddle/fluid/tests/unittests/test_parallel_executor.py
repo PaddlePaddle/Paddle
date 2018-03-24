@@ -19,8 +19,54 @@ import paddle.v2.dataset.mnist as mnist
 import numpy
 
 
+def simple_fc_net():
+    reader = fluid.layers.open_recordio_file(
+        filename='./mnist.recordio',
+        shapes=[[-1, 784], [-1, 1]],
+        lod_levels=[0, 0],
+        dtypes=['float32', 'int64'])
+    img, label = fluid.layers.read_file(reader)
+    hidden = img
+    for _ in xrange(4):
+        hidden = fluid.layers.fc(
+            hidden,
+            size=200,
+            act='tanh',
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)))
+    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = fluid.layers.mean(loss)
+    return loss
+
+
+def fc_with_batchnorm():
+    reader = fluid.layers.open_recordio_file(
+        filename='./mnist.recordio',
+        shapes=[[-1, 784], [-1, 1]],
+        lod_levels=[0, 0],
+        dtypes=['float32', 'int64'])
+    img, label = fluid.layers.read_file(reader)
+    hidden = img
+    for _ in xrange(4):
+        hidden = fluid.layers.fc(
+            hidden,
+            size=200,
+            act='tanh',
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)))
+
+        hidden = fluid.layers.batch_norm(input=hidden)
+
+    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = fluid.layers.mean(loss)
+    return loss
+
+
 class ParallelExecutor(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         # Convert mnist to recordio file
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             reader = paddle.batch(mnist.train(), batch_size=32)
@@ -35,51 +81,28 @@ class ParallelExecutor(unittest.TestCase):
             fluid.recordio_writer.convert_reader_to_recordio_file(
                 './mnist.recordio', reader, feeder)
 
-    def test_main(self):
+    def test_simple_fc(self):
+        self.check_network_convergence(simple_fc_net)
+
+    def test_batchnorm_fc(self):
+        self.check_network_convergence(fc_with_batchnorm)
+
+    def check_network_convergence(self, method):
         main = fluid.Program()
         startup = fluid.Program()
-
         with fluid.program_guard(main, startup):
-            reader = fluid.layers.open_recordio_file(
-                filename='./mnist.recordio',
-                shapes=[[-1, 784], [-1, 1]],
-                lod_levels=[0, 0],
-                dtypes=['float32', 'int64'])
-            img, label = fluid.layers.read_file(reader)
-            hidden = img
-            for _ in xrange(4):
-                hidden = fluid.layers.fc(
-                    hidden,
-                    size=200,
-                    act='tanh',
-                    bias_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(value=1.0)))
-            prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-            loss = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.mean(loss)
+            loss = method()
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
-        act_places = []
-        for each in [fluid.CUDAPlace(0)]:
-            p = fluid.core.Place()
-            p.set_place(each)
-            act_places.append(p)
+            exe = fluid.ParallelExecutor(loss_name=loss.name, use_cuda=True)
+            first_loss, = exe.run([loss.name])
+            first_loss = numpy.array(first_loss)
 
-        exe = fluid.core.ParallelExecutor(
-            act_places,
-            set([p.name for p in main.global_block().iter_parameters()]),
-            startup.desc, main.desc, loss.name, fluid.global_scope())
-        exe.run([loss.name], 'fetched_var')
+            for i in xrange(10):
+                exe.run([])
 
-        first_loss = numpy.array(fluid.global_scope().find_var('fetched_var')
-                                 .get_lod_tensor_array()[0])
-        print first_loss
+            last_loss, = exe.run([loss.name])
+            last_loss = numpy.array(last_loss)
 
-        for i in xrange(10):
-            exe.run([], 'fetched_var')
-        exe.run([loss.name], 'fetched_var')
-        last_loss = numpy.array(fluid.global_scope().find_var('fetched_var')
-                                .get_lod_tensor_array()[0])
-
-        print first_loss, last_loss
-        self.assertGreater(first_loss[0], last_loss[0])
+            print first_loss, last_loss
+            self.assertGreater(first_loss[0], last_loss[0])
