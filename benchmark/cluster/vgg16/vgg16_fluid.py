@@ -205,13 +205,13 @@ def main():
                        len(data) / (time.time() - ts))
                 )  # The accuracy is the accumulation of batches, but not the current batch.
 
-                pass_elapsed = time.time() - start_time
-                pass_train_acc = train_pass_acc.eval()
-                pass_test_acc = test(exe)
-                print(
-                    "Pass = %d, Training performance = %f imgs/s, Train accuracy = %f, Test accuracy = %f\n"
-                    % (pass_id, num_samples / pass_elapsed, pass_train_acc,
-                       pass_test_acc))
+            pass_elapsed = time.time() - start_time
+            pass_train_acc = train_pass_acc.eval()
+            pass_test_acc = test(exe)
+            print(
+                "Pass = %d, Training performance = %f imgs/s, Train accuracy = %f, Test accuracy = %f\n"
+                % (pass_id, num_samples / pass_elapsed, pass_train_acc,
+                   pass_test_acc))
 
     if args.local:
         # Parameter initialization
