@@ -150,8 +150,9 @@ void AddFibonacciSelect(Scope *scope, p::CPUPlace *place, ProgramDesc *program,
   // Select block
   AddOp("select", {{"X", {dataChanName, quitChanName}},
                    {"case_to_execute", {"caseToExecute"}}},
-        {}, {{"sub_block", casesBlock},
-             {"cases", std::vector<std::string>{case0Config, case1Config}}},
+        {{"Out", {}}},
+        {{"sub_block", casesBlock},
+         {"cases", std::vector<std::string>{case0Config, case1Config}}},
         whileBlock);
 
   scope->Var("stepScopes");
@@ -209,9 +210,8 @@ TEST(Concurrency, Go_Op) {
 
   executor.Run(program, &scope, 0, true, true);
 
-  // After we call executor.run, the Go operator should do a channel_send to set
-  // the
-  // "result" variable to 99
+  // After we call executor.run, the Go operator should do a channel_send to
+  // set the "result" variable to 99.
   auto *finalData = tensor.data<int>();
   EXPECT_EQ(finalData[0], 99);
 }
