@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -28,7 +29,7 @@ class SSAGraphBuilder {
  public:
   SSAGraphBuilder() {}
   virtual ~SSAGraphBuilder() {}
-  virtual void Build(const ProgramDesc &program, SSAGraph *graph) const = 0;
+  virtual std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const = 0;
 
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 

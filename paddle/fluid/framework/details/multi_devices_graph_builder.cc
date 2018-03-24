@@ -37,8 +37,9 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
   }
 }
 
-void MultiDevSSAGraphBuilder::Build(const ProgramDesc &program,
-                                    SSAGraph *graph) const {
+std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
+    const ProgramDesc &program) const {
+  auto graph = new SSAGraph();
   SSAGraph &result = *graph;
   result.vars_.resize(places_.size());
 
@@ -134,6 +135,8 @@ void MultiDevSSAGraphBuilder::Build(const ProgramDesc &program,
     harzaeds need to be handled.
    */
   PolishGraphToSupportDataHazards(&result);
+
+  return std::unique_ptr<SSAGraph>(graph);
 }
 }  // namespace details
 }  // namespace framework

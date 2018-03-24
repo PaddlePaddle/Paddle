@@ -32,7 +32,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::vector<Scope *> &local_scopes,
                           platform::NCCLContextMap *nccl_ctxs);
 
-  void Build(const ProgramDesc &program, SSAGraph *graph) const override;
+  std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
 
  private:
   std::string loss_var_name_;
