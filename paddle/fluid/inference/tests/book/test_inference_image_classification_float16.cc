@@ -15,12 +15,15 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/platform/float16.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_int32(batch_size, 1, "Batch size of input data");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times");
 
 TEST(inference, image_classification) {
+  using float16 = paddle::platform::float16;
+
   if (FLAGS_dirname.empty() || FLAGS_batch_size < 1 || FLAGS_repeat < 1) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model "
                   "--batch_size=1 --repeat=1";
@@ -35,10 +38,10 @@ TEST(inference, image_classification) {
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
-  SetupTensor<float>(input,
-                     {FLAGS_batch_size, 3, 32, 32},
-                     static_cast<float>(0),
-                     static_cast<float>(1));
+  SetupTensor<float16>(input,
+                       {FLAGS_batch_size, 3, 32, 32},
+                       static_cast<float16>(0),
+                       static_cast<float16>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -46,11 +49,13 @@ TEST(inference, image_classification) {
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
-  // Run inference on CPU
-  LOG(INFO) << "--- CPU Runs: ---";
-  TestInference<paddle::platform::CPUPlace>(
-      dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
-  LOG(INFO) << output1.dims();
+// Run inference on CPU
+/*
+LOG(INFO) << "--- CPU Runs: ---";
+TestInference<paddle::platform::CPUPlace>(
+    dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
+LOG(INFO) << output1.dims();
+*/
 
 #ifdef PADDLE_WITH_CUDA
   paddle::framework::LoDTensor output2;

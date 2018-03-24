@@ -83,6 +83,7 @@ def fc(input,
        param_attr=None,
        bias_attr=None,
        use_mkldnn=False,
+       use_cudnn=False,
        act=None,
        name=None):
     """
