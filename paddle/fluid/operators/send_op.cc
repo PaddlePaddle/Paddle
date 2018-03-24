@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include <future>
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -61,7 +62,7 @@ class SendOp : public framework::OperatorBase {
 
     // For profiling, don't move out of this function because that will result
     // in the failure of multi-GPU profiling.
-    platform::RecordEvent record_event(Type(), ctx);
+    platform::RecordEvent record_event(Type(), &ctx);
 
     auto client_var_name = Output("RPCClient");
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
