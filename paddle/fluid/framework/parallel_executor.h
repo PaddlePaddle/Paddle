@@ -31,6 +31,8 @@ namespace framework {
 class ParallelExecutorPrivate;
 
 class ParallelExecutor {
+  DISABLE_COPY_AND_ASSIGN(ParallelExecutor);
+
  public:
   explicit ParallelExecutor(size_t num_threads,
                             const std::vector<platform::Place>& places,
@@ -46,8 +48,6 @@ class ParallelExecutor {
   ParallelExecutorPrivate* member_;
 
   void BCastParamsToGPUs(const ProgramDesc& startup_program) const;
-
-  void BuildNCCLCommunicator() const;
 };
 
 }  // namespace framework

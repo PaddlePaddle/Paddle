@@ -27,15 +27,16 @@ namespace framework {
 class ParallelExecutorPrivate {
  public:
   explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
-      : places_(places), fetch_dev_ctxs_(places) {}
+      : places_(places) {}
 
   std::vector<platform::Place> places_;
-  platform::DeviceContextPool fetch_dev_ctxs_;
   std::vector<Scope *> local_scopes_;
   Scope *global_scope_;
-
-  std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
   std::unique_ptr<details::SSAGraphExecutor> executor_;
+
+#ifdef PADDLE_WITH_CUDA
+  std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
+#endif
 };
 
 ParallelExecutor::ParallelExecutor(
@@ -54,8 +55,10 @@ ParallelExecutor::ParallelExecutor(
     member_->local_scopes_.push_back(&scope->NewScope());
   }
 
-  // Bcast Parameters to all GPUs
-  BuildNCCLCommunicator();
+// Bcast Parameters to all GPUs
+#ifdef PADDLE_WITH_CUDA
+  member_->nccl_ctxs_.reset(new platform::NCCLContextMap(member_->places_));
+#endif
   if (platform::is_gpu_place(places[0]) &&
       member_->local_scopes_.size() != 1) {  // Is CUDA
     BCastParamsToGPUs(startup_program);
@@ -120,12 +123,6 @@ void ParallelExecutor::BCastParamsToGPUs(
   }
 #else
   PADDLE_THROW("Not compiled with CUDA");
-#endif
-}
-
-void ParallelExecutor::BuildNCCLCommunicator() const {
-#ifdef PADDLE_WITH_CUDA
-  member_->nccl_ctxs_.reset(new platform::NCCLContextMap(member_->places_));
 #endif
 }
 
