@@ -183,32 +183,27 @@ def main():
             start_time = time.time()
             num_samples = 0
             train_pass_acc.reset()
-            with profiler.profiler("All", 'total') as prof:
-                for batch_id, data in enumerate(train_reader()):
-                    ts = time.time()
-                    img_data = np.array(
-                        map(lambda x: x[0].reshape(data_shape), data)).astype(
-                            "float32")
-                    y_data = np.array(map(lambda x: x[1], data)).astype("int64")
-                    y_data = y_data.reshape([-1, 1])
+            for batch_id, data in enumerate(train_reader()):
+                ts = time.time()
+                img_data = np.array(
+                    map(lambda x: x[0].reshape(data_shape), data)).astype(
+                        "float32")
+                y_data = np.array(map(lambda x: x[1], data)).astype("int64")
+                y_data = y_data.reshape([-1, 1])
 
-                    loss, acc, b_size = exe.run(
-                        trainer_prog,
-                        feed={"pixel": img_data,
-                              "label": y_data},
-                        fetch_list=[avg_cost, batch_acc, batch_size])
-                    iters += 1
-                    num_samples += len(data)
-                    train_pass_acc.add(value=acc, weight=b_size)
-                    print(
-                        "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, Speed = %.2f img/s"
-                        % (pass_id, iters, loss, acc,
-                           len(data) / (time.time() - ts))
-                    )  # The accuracy is the accumulation of batches, but not the current batch.
-
-                    if batch_id >= 20:
-                        print("profile exit after 20 batch!")
-                        break
+                loss, acc, b_size = exe.run(
+                    trainer_prog,
+                    feed={"pixel": img_data,
+                          "label": y_data},
+                    fetch_list=[avg_cost, batch_acc, batch_size])
+                iters += 1
+                num_samples += len(data)
+                train_pass_acc.add(value=acc, weight=b_size)
+                print(
+                    "Pass = %d, Iters = %d, Loss = %f, Accuracy = %f, Speed = %.2f img/s"
+                    % (pass_id, iters, loss, acc,
+                       len(data) / (time.time() - ts))
+                )  # The accuracy is the accumulation of batches, but not the current batch.
 
                 pass_elapsed = time.time() - start_time
                 pass_train_acc = train_pass_acc.eval()
