@@ -34,6 +34,7 @@ struct RowwiseMean2D {
                   const framework::Tensor& input, framework::Tensor* vec);
 };
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T>
 class RowwiseMean2D<platform::CUDADeviceContext, T> {
  public:
@@ -55,6 +56,7 @@ class RowwiseMean2D<platform::CUDADeviceContext, T> {
   int right_;
   framework::Tensor divisor_;
 };
+#endif
 
 template <typename T>
 class RowwiseMean2D<platform::CPUDeviceContext, T> {
@@ -78,6 +80,7 @@ struct ColwiseSum2D {
                   const framework::Tensor& input, framework::Tensor* vec);
 };
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T>
 class ColwiseSum2D<platform::CUDADeviceContext, T> {
  public:
@@ -100,6 +103,7 @@ class ColwiseSum2D<platform::CUDADeviceContext, T> {
   int right_;
   framework::Tensor divisor_;
 };
+#endif
 
 template <typename T>
 class ColwiseSum2D<platform::CPUDeviceContext, T> {
