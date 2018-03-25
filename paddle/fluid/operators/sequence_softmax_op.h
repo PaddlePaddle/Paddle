@@ -24,11 +24,45 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
+struct SequenceSoftmaxFunctor {
+  void operator()(const DeviceContext& ctx, const LoDTensor& x, LoDTensor* out);
+};
+
+template <typename DeviceContext, typename T>
+struct SequenceSoftmaxGradFunctor {
+  void operator()(const DeviceContext& ctx, const LoDTensor& out,
+                  const LoDTensor& dout, LoDTensor* dx);
+};
+
+// implementation
+template <typename T>
+struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx, const LoDTensor& x,
+                  LoDTensor* out) {
+    auto lod = x.lod();
+    const size_t level = lod.size() - 1;
+    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
+      int start_pos = static_cast<int>(lod[level][i]);
+      int end_pos = static_cast<int>(lod[level][i + 1]);
+      Tensor x_i = x.Slice(start_pos, end_pos);
+      Tensor out_i = out->Slice(start_pos, end_pos);
+
+      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
+      framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
+      x_i.Resize(dims_i);
+      out_i.Resize(dims_i);
+      math::SoftmaxFunctor<DeviceContext, T>()(ctx, &x_i, &out_i);
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
 class SequenceSoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
 
     auto lod = x->lod();
     auto dims = x->dims();
@@ -41,20 +75,8 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
                       "The width of each timestep in Input(X) of "
                       "SequenceSoftmaxOp should be 1.");
 
-    out->mutable_data<T>(ctx.GetPlace());
-    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
-      int start_pos = static_cast<int>(lod[level][i]);
-      int end_pos = static_cast<int>(lod[level][i + 1]);
-      Tensor x_i = x->Slice(start_pos, end_pos);
-      Tensor out_i = out->Slice(start_pos, end_pos);
-
-      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
-      x_i.Resize(dims_i);
-      out_i.Resize(dims_i);
-      math::SoftmaxFunctor<DeviceContext, T>()(
-          ctx.template device_context<DeviceContext>(), &x_i, &out_i);
-    }
+    SequenceSoftmaxFunctor<DeviceContext, T> funtor;
+    functor(ctx.template device_context<DeviceContext>(), *x, out);
   }
 };
 
