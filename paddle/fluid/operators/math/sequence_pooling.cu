@@ -144,7 +144,7 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
                   framework::Tensor* output,
                   framework::Tensor* index = nullptr) {
     auto lod = input.lod()[0];
-    int item_dim = input.numel() / output->dims()[0];
+    const size_t item_dim = input.numel() / output->dims()[0];
     dim3 threads(1024, 1);
     dim3 grid(lod.size(), 1);
     if (pooltype == "MAX") {
@@ -152,13 +152,13 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
           T, MaxPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           MaxPoolFunctor<T>(), input.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
-          output->mutable_data<T>(context.GetPlace()), index->data<T>());
+          output->mutable_data<T>(context.GetPlace()), index->data<int>());
     } else if (pooltype == "AVG") {
       sequence_pool_kernel<
           T, AvgPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           AvgPoolFunctor<T>(), input.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
-          output->mutable_data<T>(context.GetPlace()));
+          output->mutable_data<T>(context.GetPlace()), nullptr);
     }
   }
 };
@@ -167,7 +167,7 @@ template <typename T>
 struct MaxPoolGradFunctor {
   HOSTDEVICE void operator()(const T* out_grad, const size_t start,
                              const size_t end, const size_t item_dim,
-                             T* in_grad, int* index) {
+                             T* in_grad, const int* index) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       for (int i = start; i < end; ++i) {
         if (i == *index) {
@@ -184,7 +184,7 @@ template <typename T>
 struct AvgPoolGradFunctor {
   HOSTDEVICE void operator()(const T* out_grad, const size_t start,
                              const size_t end, const size_t item_dim,
-                             T* in_grad, int* index) {
+                             T* in_grad, const int* index) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       for (int i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] = out_grad[tid] / (end - start);
@@ -198,7 +198,7 @@ __global__ void sequence_pool_grad_kernel(Range_OP op, const T* out_grad,
                                           const size_t* lod,
                                           const size_t lod_size,
                                           const size_t item_dim, T* in_grad,
-                                          int* index) {
+                                          const int* index) {
   int bid = blockIdx.x;
   if (bid >= lod_size) return;
   size_t start = lod[bid];
@@ -215,7 +215,7 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
                   /* max pool has index */
                   const framework::Tensor* index = nullptr) {
     auto lod = in_grad->lod()[0];
-    int item_dim = in_grad->numel() / out_grad.dims()[0];
+    const size_t item_dim = in_grad->numel() / out_grad.dims()[0];
     dim3 threads(1024, 1);
     dim3 block(lod.size(), 1);
     if (pooltype == "MAX") {
@@ -223,13 +223,13 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
           T, MaxPoolGradFunctor<T>><<<block, threads, 0, context.stream()>>>(
           MaxPoolGradFunctor<T>(), out_grad.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
-          in_grad->mutable_data<T>(context.GetPlace()), index->data<T>());
+          in_grad->mutable_data<T>(context.GetPlace()), index->data<int>());
     } else if (pooltype == "AVG") {
       sequence_pool_grad_kernel<
           T, AvgPoolGradFunctor<T>><<<block, threads, 0, context.stream()>>>(
           AvgPoolGradFunctor<T>(), out_grad.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
-          in_grad->mutable_data<T>(context.GetPlace()));
+          in_grad->mutable_data<T>(context.GetPlace()), nullptr);
     }
   }
 };
