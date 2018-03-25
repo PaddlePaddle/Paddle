@@ -20,6 +20,7 @@ from layer_helper import LayerHelper
 from distributed_spliter import *
 import math
 from . import core
+import debuger
 
 
 class VarBlock:
@@ -289,6 +290,7 @@ class DistributeTranspiler:
                     dtype=v.dtype,
                     shape=v.shape)
                 recv_inputs.append(var)
+
         # step3
         optimize_block = pserver_program.create_block(0)
         # step 4
@@ -563,6 +565,8 @@ class DistributeTranspiler:
         orig_var_name = ""
         if suff_idx >= 0:
             orig_var_name = varname[:suff_idx]
+        else:
+            orig_var_name = varname
         return orig_var_name
 
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
@@ -577,7 +581,8 @@ class DistributeTranspiler:
                 grad_block = None
                 for g in self.param_grad_ep_mapping[endpoint]["grads"]:
                     if same_or_split_var(
-                            self._orig_varname(g.name), opt_op.input(key)[0]):
+                            self._orig_varname(g.name),
+                            self._orig_varname(opt_op.input(key)[0])):
                         grad_block = g
                         break
                 if not grad_block:
@@ -748,7 +753,7 @@ class DistributeTranspiler:
         param_names = [
             p.name for p in self.param_grad_ep_mapping[endpoint]["params"]
         ]
-        if op.input("Param") in param_names:
+        if op.input("Param")[0] in param_names:
             return True
         else:
             for n in param_names:
