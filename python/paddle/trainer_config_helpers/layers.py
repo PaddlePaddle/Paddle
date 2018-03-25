@@ -2747,17 +2747,17 @@ def img_pool_layer(input,
 
     ..  math::
 
-        w & = 1 + \\frac{ceil(input\_width + 2 * padding - pool\_size)}{stride}
+        w & = 1 + ceil(\\frac{input\_width + 2 * padding - pool\_size}{stride})
 
-        h & = 1 + \\frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        h & = 1 + ceil(\\frac{input\_height + 2 * padding\_y - pool\_size\_y}{stride\_y})
 
     - ceil_mode=False:
 
     ..  math::
 
-        w & = 1 + \\frac{floor(input\_width + 2 * padding - pool\_size)}{stride}
+        w & = 1 + floor(\\frac{input\_width + 2 * padding - pool\_size}{stride})
 
-        h & = 1 + \\frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        h & = 1 + floor(\\frac{input\_height + 2 * padding\_y - pool\_size\_y}{stride\_y})
 
     The example usage is:
 

@@ -772,7 +772,6 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
   __macro(logsigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);     \
   __macro(exp, ExpFunctor, ExpGradFunctor);                          \
-  __macro(relu, ReluFunctor, ReluGradFunctor);                       \
   __macro(tanh, TanhFunctor, TanhGradFunctor);                       \
   __macro(softshrink, SoftShrinkFunctor, SoftShrinkGradFunctor);     \
   __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                       \

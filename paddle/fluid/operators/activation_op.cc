@@ -613,3 +613,14 @@ REGISTER_OP(swish, ops::ActivationOp, ops::SwishOpMaker, swish_grad,
                                 ops::grad_functor<double>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);
+
+REGISTER_OP_CPU_KERNEL(relu,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ReluFunctor<float>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ReluFunctor<double>>);
+REGISTER_OP_CPU_KERNEL(
+    relu_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                         ops::ReluGradFunctor<float>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::ReluGradFunctor<double>>);
