@@ -187,12 +187,6 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
   }
 };
 
-// explicit functor specialization
-template class MaxSeqPoolFunctor<float>;
-template class MaxSeqPoolFunctor<double>;
-template class MaxSeqPoolGradFunctor<float>;
-template class MaxSeqPoolGradFunctor<double>;
-// sequence pooling
 template class SequencePoolFunctor<platform::CPUDeviceContext, float>;
 template class SequencePoolFunctor<platform::CPUDeviceContext, double>;
 template class SequencePoolGradFunctor<platform::CPUDeviceContext, float>;

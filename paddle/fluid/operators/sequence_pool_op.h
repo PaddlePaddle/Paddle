@@ -30,8 +30,11 @@ class SequencePoolKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<Tensor>("Out");
-    auto* index = context.Output<Tensor>("MaxIndex");
     std::string pooltype = context.Attr<std::string>("pooltype");
+    Tensor* index = nullptr;
+    if (pooltype == "MAX") {
+      index = context.Output<Tensor>("MaxIndex");
+    }
 
     auto dims = in->dims();
     auto lod = in->lod();
@@ -60,8 +63,11 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out_g = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* index = context.Input<Tensor>(framework::GradVarName("MaxIndex"));
     std::string pooltype = context.Attr<std::string>("pooltype");
+    Tensor* index = nullptr;
+    if (pooltype == "MAX") {
+      index = context.Input<Tensor>("MaxIndex");
+    }
     in_g->mutable_data<T>(context.GetPlace());
     math::SequencePoolGradFunctor<DeviceContext, T> pool;
     pool(context.template device_context<DeviceContext>(), pooltype, *out_g,
