@@ -101,5 +101,7 @@ int BlockDepth();
 void SetCurThread(int thread_id);
 void ClearCurThread();
 int CurThread();
+
+uint64_t PosixInNsec();
 }  // namespace platform
 }  // namespace paddle

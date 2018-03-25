@@ -140,16 +140,22 @@ class ParallelDoOp : public framework::OperatorBase {
                                      Inputs(kInputs));
 
     // copy parameter
-    for (auto &param : Inputs(kParameters)) {
-      PADDLE_ENFORCE(scope.FindVar(param)->IsType<LoDTensor>(),
-                     "Only support parameter type as LoDTensor");
-      auto &src = scope.FindVar(param)->Get<LoDTensor>();
-      for (size_t i = 0; i < sub_scopes.size(); ++i) {
-        auto &place = places[i];
-        auto *sub_scope = sub_scopes[i];
-        auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();
-        framework::TensorCopy(src, place, dst);
-      }
+    std::vector<std::future<void>> memcpy_workers;
+    memcpy_workers.reserve(places.size());
+    for (size_t place_idx = 0; place_idx < sub_scopes.size(); ++place_idx) {
+      auto &place = places[place_idx];
+      auto *cur_scope = sub_scopes[place_idx];
+      memcpy_workers.emplace_back(
+          framework::Async([this, &place, cur_scope, &scope, place_idx]() {
+            for (auto &param : Inputs(kParameters)) {
+              auto &src = scope.FindVar(param)->Get<LoDTensor>();
+              auto *dst = cur_scope->Var(param)->GetMutable<LoDTensor>();
+              framework::TensorCopy(src, place, dst);
+            }
+          }));
+    }
+    for (auto &worker : memcpy_workers) {
+      worker.wait();
     }
     WaitOnPlaces(places);
 
