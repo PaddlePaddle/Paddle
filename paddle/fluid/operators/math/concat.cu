@@ -125,7 +125,7 @@ __global__ void KernelConcatGrad(const T* input_data, const int in_row,
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatFunctor<platform::CUDADeviceContext, T> {
@@ -195,7 +195,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatGradFunctor<platform::CUDADeviceContext, T> {
