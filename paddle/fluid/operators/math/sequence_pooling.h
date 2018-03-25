@@ -31,13 +31,32 @@ class MaxSeqPoolFunctor {
                   framework::Tensor* index);
 };
 
-template <typename DeviceContext, class T>
+template <typename DeviceContext, typename T>
 class MaxSeqPoolGradFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const framework::Tensor& out_grad,
                   const framework::Tensor& index,
                   framework::LoDTensor* in_grad);
+};
+
+template <typename DeviceContext, typename T>
+class SequencePoolFunctor {
+ public:
+  /* max pool has index output */
+  void operator()(const DeviceContext& context, const std::string pooltype,
+                  const framework::LoDTensor& input, framework::Tensor* output,
+                  framework::Tensor* index = nullptr);
+};
+
+template <typename DeviceContext, typename T>
+class SequencePoolGradFunctor {
+ public:
+  void operator()(const DeviceContext& context, const std::string pooltype,
+                  const framework::Tensor& out_grad,
+                  framework::LoDTensor* in_grad,
+                  /* max pool has index */
+                  const framework::Tensor* index = nullptr)
 };
 
 }  // namespace math

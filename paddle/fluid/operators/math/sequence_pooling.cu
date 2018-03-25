@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
+#include "paddle/fluid/platform/cuda_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -129,6 +130,95 @@ template class MaxSeqPoolFunctor<platform::CUDADeviceContext, float>;
 template class MaxSeqPoolFunctor<platform::CUDADeviceContext, double>;
 template class MaxSeqPoolGradFunctor<platform::CUDADeviceContext, float>;
 template class MaxSeqPoolGradFunctor<platform::CUDADeviceContext, double>;
+
+template <typename T>
+struct MaxPoolFunctor {
+  HOSTDEVICE void operator()(const T* input, const size_t start,
+                             const size_t end, const size_t item_dim, T* output,
+                             int* index) {
+    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      T max_val = static_cast<T>(FLT_MAX);
+      int max_index = -1;
+      for (int i = start; i < end; ++i) {
+        if (max_val < input[item_dim * i + tid]) {
+          max_val = input[item_dim * i + tid];
+          max_index = i;
+        }
+      }
+      output[tid] = max_val;
+      index[tid] = max_index;
+    }
+  }
+};
+
+template <typename T>
+struct AvgPoolFunctor {
+  HOSTDEVICE void operator()(const T* input, const size_t start,
+                             const size_t end, const size_t item_dim, T* output,
+                             int* index) {
+    int offset = end - start > blockDim.x ? blockDim.x : end - start;
+    for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+      T val = static_cast<T>(0);
+      for (int i = start; i < end; ++i) {
+        val += input[item_dim * i + tid];
+      }
+      // end, start is lod, so end - start != 0
+      output[tid] = val / (end - start);
+    }
+  }
+};
+
+template <typename T>
+HOSTDEVICE void sum_pool(const T* input, const size_t start, const size_t end,
+                         const size_t item_dim, T* output, int* index) {
+  int offset = end - start > blockDim.x ? blockDim.x : end - start;
+  for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
+    T val = static_cast<T>(0);
+    for (int i = start; i < end; ++i) {
+      val += input[item_dim * i + tid];
+    }
+    output[tid] = val;
+  }
+}
+
+template <typename T, typename Range_OP>
+__global__ void sequence_pool_kernel(Range_OP op, const T* input,
+                                     const size_t* lod, const size_t lod_size,
+                                     const size_t item_dim, T* output,
+                                     int* index) {
+  int bid = blockIdx.x;
+  if (bid >= lod_size) return;
+  size_t start = lod[bid];
+  size_t end = lod[bid + 1];
+  op(input, start, end, item_dim, &output[bid * item_dim], index);
+}
+
+template <typename T>
+class SequencePoolFunctor<platform::CUDADeviceContext, T> {
+ public:
+  void operator()(const platform::CUDADeviceContext& context,
+                  const std::string pooltype, const framework::LoDTensor& input,
+                  framework::Tensor* output,
+                  framework::Tensor* index = nullptr) {
+    auto lod = input.lod()[0];
+    int item_dim = input.numel() / output->dims()[0];
+    dim3 threads(1024, 1);
+    dim3 grid(lod.size(), 1);
+    if (pooltype == "MAX") {
+      sequence_pool_kernel<
+          T, MaxPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+          MaxPoolFunctor<T>(), input.data<T>(),
+          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          output->mutable_data<T>(context.GetPlace()), index->data<T>());
+    } else if (pooltype == "AVG") {
+      sequence_pool_kernel<
+          T, AvgPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+          AvgPoolFunctor<T>(), input.data<T>(),
+          lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
+          output->mutable_data<T>(context.GetPlace()));
+    }
+  }
+};
 
 }  // namespace math
 }  // namespace operators
