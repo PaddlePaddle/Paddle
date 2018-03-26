@@ -160,7 +160,7 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@Grad be zero at first when pooltype is LAST/FIRST
       math::SetConstant<platform::CPUDeviceContext, T> functor;
-      functor(context, in_grad, 0)
+      functor(context, in_grad, 0);
     }
     auto lod = in_grad->lod()[0];
     auto& place = *context.eigen_device();
