@@ -170,13 +170,8 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     for (auto p : this->places_) {
       platform::DeviceContextPool::Instance().Get(p)->Wait();
     }
-
-    // NOTE: the temp scope can be dropped lazily if needed.
-    // Drop tmp scopes;
-    for (auto &scope : local_scopes_) {
-      auto &kid = *scope->Var("@TMP_SCOPE@")->GetMutable<Scope *>();
-      kid = nullptr;
-      scope->DropKids();
+    for (auto &drop_fn : this->drop_functions_) {
+      drop_fn();
     }
   };
 
@@ -188,6 +183,14 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
   if (computation_count_ == max_async_computation) {
     sync_computation();
+  }
+
+  // NOTE: the temp scope can be dropped lazily if needed.
+  // Drop tmp scopes;
+  for (auto &scope : local_scopes_) {
+    auto &kid = *scope->Var("@TMP_SCOPE@")->GetMutable<Scope *>();
+    this->drop_functions_.emplace_back([=] { scope->DeleteScope(kid); });
+    kid = nullptr;
   }
 
   return fetch_data;
