@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 import paddle.fluid.core as core
+import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -81,6 +82,39 @@ class TestDropoutOp5(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+#Reference: https://github.com/PaddlePaddle/Paddle/issues/8654
+class TestDropoutOp6(unittest.TestCase):
+    def program(self):
+        x = fluid.layers.data(
+            name='x',
+            shape=[64, 32, 512],
+            dtype='float32',
+            append_batch_size=False)
+        out = fluid.layers.dropout(x, dropout_prob=0.1, is_test=False)
+        return out
+
+    def LoopMaxMin(self, place):
+        exe = fluid.Executor(place)
+        out = self.program()
+        data_input = {}
+        in_tensor = fluid.LoDTensor()
+        in_tensor.set(np.ones([64, 32, 512], dtype="float32"), place)
+        data_input['x'] = in_tensor
+        for i in range(10):
+            out_ = exe.run(fluid.framework.default_main_program(),
+                           feed=data_input,
+                           fetch_list=[out])[0]
+            self.assertTrue(abs(np.max(out_) - 1.0) <= 0.000001)
+            self.assertTrue(abs(np.min(out_) - 0.0) <= 0.000001)
+
+    def test_all(self):
+        place = fluid.CUDAPlace(0)
+        self.LoopMaxMin(place)
+
+        place = fluid.CPUPlace()
+        self.LoopMaxMin(place)
 
 
 class TestFP16DropoutOp(OpTest):
