@@ -54,25 +54,25 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
     auto& ids_dims = ids_t->dims();
     auto outs = ctx.MultiOutput<framework::LoDTensor>("Out");
 
-    const int64_t* ids = ids_t->data<int64_t>();
+    const T* ids = ids_t->data<T>();
 
     const size_t shard_num = outs.size();
 
-    std::vector<std::vector<int64_t>> out_ids;
+    std::vector<std::vector<T>> out_ids;
     out_ids.resize(outs.size());
 
     // split id by their shard_num.
     for (size_t i = 0; i < ids_dims[0]; ++i) {
-      int64_t id = ids[i];
-      size_t shard_id = id % shard_num;
+      T id = ids[i];
+      size_t shard_id = static_cast<size_t>(id) % shard_num;
       out_ids[shard_id].push_back(id);
     }
 
     // create tensor for each shard and send to parameter server
     for (size_t i = 0; i < out_ids.size(); ++i) {
       auto* shard_t = outs[i];
-      std::vector<int64_t> ids = out_ids[i];
-      auto* shard_data = shard_t->mutable_data<int64_t>(
+      std::vector<T> ids = out_ids[i];
+      auto* shard_data = shard_t->mutable_data<T>(
           framework::make_ddim({static_cast<int64_t>(ids.size()), 1}), place);
       for (size_t i = 0; i < ids.size(); ++i) {
         shard_data[i] = ids[i];

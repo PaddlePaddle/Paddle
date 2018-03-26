@@ -73,4 +73,4 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(split_ids, ops::SplitIdsOp, ops::SplitIdsOpMaker,
                   ops::SplitIdsOpInferVarType);
 REGISTER_OP_CPU_KERNEL(
-    split_ids, ops::SplitIdsOpKernel<paddle::platform::CPUPlace, float>);
+    split_ids, ops::SplitIdsOpKernel<paddle::platform::CPUPlace, int64_t>);
