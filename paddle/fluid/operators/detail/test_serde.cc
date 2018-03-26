@@ -81,7 +81,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   // operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::TensorResponse resp(&scope, &ctx);
+  operators::detail::VariableResponse resp(&scope, &ctx);
   EXPECT_EQ(resp.Parse(msg), 0);
 
   framework::Variable* var2 = resp.GetVar();
@@ -166,7 +166,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   // deserialize zero-copy
   framework::Scope scope;
   scope.Var("myvar");
-  operators::detail::TensorResponse resp(&scope, &ctx);
+  operators::detail::VariableResponse resp(&scope, &ctx);
   if (from_type == 0) {
     EXPECT_EQ(resp.Parse(msg), 0);
   } else {
@@ -194,24 +194,23 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   for (int i = 0; i < tensor_numel; ++i) EXPECT_FLOAT_EQ(tensor_data2[i], 31.9);
 }
 
-TEST(LodTensor, GPU) {
-  platform::CUDAPlace place;
-  RunTestLodTensor(place);
-  RunTestLodTensor(place, 1);
-}
-
-TEST(LodTensor, CPU) {
+TEST(LodTensor, Run) {
   platform::CPUPlace place;
   RunTestLodTensor(place);
   RunTestLodTensor(place, 1);
+#ifdef PADDLE_WITH_CUDA
+  platform::CUDAPlace gpu(0);
+  RunTestLodTensor(gpu);
+  RunTestLodTensor(gpu, 1);
+#endif
 }
 
-TEST(SelectedRows, CPU) {
+TEST(SelectedRows, Run) {
   platform::CPUPlace place;
   RunSerdeTestSelectedRows(place);
-}
 
-TEST(SelectedRows, GPU) {
-  platform::CUDAPlace place;
-  RunSerdeTestSelectedRows(place);
+#ifdef PADDLE_WITH_CUDA
+  platform::CUDAPlace gpu;
+  RunSerdeTestSelectedRows(gpu);
+#endif
 }
