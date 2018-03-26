@@ -178,42 +178,7 @@ def SE_ResNeXt152():
     return loss
 
 
-class ParallelExecutor(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # Convert mnist to recordio file
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            reader = paddle.batch(mnist.train(), batch_size=32)
-            feeder = fluid.DataFeeder(
-                feed_list=[  # order is image and label
-                    fluid.layers.data(
-                        name='image', shape=[784]),
-                    fluid.layers.data(
-                        name='label', shape=[1], dtype='int64'),
-                ],
-                place=fluid.CPUPlace())
-            fluid.recordio_writer.convert_reader_to_recordio_file(
-                './mnist.recordio', reader, feeder)
-
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            reader = paddle.batch(flowers.train(), batch_size=4)
-            feeder = fluid.DataFeeder(
-                feed_list=[
-                    fluid.layers.data(
-                        name='image', shape=[3, 224, 224]),
-                    fluid.layers.data(
-                        name='label', shape=[1], dtype='int64'),
-                ],
-                place=fluid.CPUPlace())
-            fluid.recordio_writer.convert_reader_to_recordio_file(
-                "./flowers.recordio", reader, feeder)
-
-    def test_simple_fc(self):
-        self.check_network_convergence(simple_fc_net)
-
-    def test_batchnorm_fc(self):
-        self.check_network_convergence(fc_with_batchnorm)
-
+class TestParallelExecutorBase(unittest.TestCase):
     def check_network_convergence(self, method, memory_opt=True, iter=10):
         main = fluid.Program()
         startup = fluid.Program()
@@ -237,5 +202,46 @@ class ParallelExecutor(unittest.TestCase):
             print first_loss, last_loss
             self.assertGreater(first_loss[0], last_loss[0])
 
+
+class TestMNIST(TestParallelExecutorBase):
+    @classmethod
+    def setUpClass(cls):
+        # Convert mnist to recordio file
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            reader = paddle.batch(mnist.train(), batch_size=32)
+            feeder = fluid.DataFeeder(
+                feed_list=[  # order is image and label
+                    fluid.layers.data(
+                        name='image', shape=[784]),
+                    fluid.layers.data(
+                        name='label', shape=[1], dtype='int64'),
+                ],
+                place=fluid.CPUPlace())
+            fluid.recordio_writer.convert_reader_to_recordio_file(
+                './mnist.recordio', reader, feeder)
+
+    def test_simple_fc(self):
+        self.check_network_convergence(simple_fc_net)
+
+    def test_batchnorm_fc(self):
+        self.check_network_convergence(fc_with_batchnorm)
+
+
+class TestResnet(TestParallelExecutorBase):
+    @classmethod
+    def setUpClass(cls):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            reader = paddle.batch(flowers.train(), batch_size=4)
+            feeder = fluid.DataFeeder(
+                feed_list=[
+                    fluid.layers.data(
+                        name='image', shape=[3, 224, 224]),
+                    fluid.layers.data(
+                        name='label', shape=[1], dtype='int64'),
+                ],
+                place=fluid.CPUPlace())
+            fluid.recordio_writer.convert_reader_to_recordio_file(
+                "./flowers.recordio", reader, feeder)
+
     def test_resnet(self):
-        self.check_network_convergence(SE_ResNeXt152, iter=20)
+        self.check_network_convergence(SE_ResNeXt152, iter=200)
