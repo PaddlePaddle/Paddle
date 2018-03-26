@@ -285,6 +285,10 @@ class TestImageClassificationFP16(unittest.TestCase):
         with self.scope_prog_guard():
             main('resnet', use_cuda=True)
 
+    def test_vgg_cuda(self):
+        with self.scope_prog_guard():
+            main('vgg', use_cuda=True)
+
     @contextlib.contextmanager
     def scope_prog_guard(self):
         prog = fluid.Program()

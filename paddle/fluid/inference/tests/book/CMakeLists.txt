@@ -26,7 +26,7 @@ endfunction(inference_test)
 
 inference_test(fit_a_line)
 inference_test(image_classification ARGS vgg resnet)
-inference_test(image_classification_float16 ARGS resnet)
+inference_test(image_classification_float16 ARGS vgg resnet)
 inference_test(label_semantic_roles)
 inference_test(recognize_digits ARGS mlp conv)
 inference_test(recommender_system)
