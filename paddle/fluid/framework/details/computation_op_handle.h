@@ -31,6 +31,8 @@ struct ComputationOpHandle : public OpHandleBase {
   ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
                       platform::Place place);
 
+  std::string Name() const override;
+
  protected:
   void RunImpl() override;
 };

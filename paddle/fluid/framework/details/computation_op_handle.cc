@@ -35,6 +35,8 @@ void ComputationOpHandle::RunImpl() {
 
   op_->Run(*scope_, place_);
 }
+
+std::string ComputationOpHandle::Name() const { return op_->Type(); }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

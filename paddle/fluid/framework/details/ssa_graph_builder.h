@@ -51,6 +51,8 @@ class SSAGraphBuilder {
   static void CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
                              const std::string &each_var_name,
                              const platform::Place &place, size_t place_offset);
+
+  static void PrintGraphviz(const SSAGraph &graph, std::ostream &sout);
 };
 }  // namespace details
 }  // namespace framework

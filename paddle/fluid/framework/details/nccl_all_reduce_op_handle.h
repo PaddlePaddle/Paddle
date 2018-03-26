@@ -32,6 +32,8 @@ struct NCCLAllReduceOpHandle : public OpHandleBase {
                         const std::vector<platform::Place> &places,
                         const platform::NCCLContextMap &ctxs);
 
+  std::string Name() const override;
+
  protected:
   void RunImpl() override;
 };

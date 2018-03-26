@@ -45,6 +45,8 @@ void ScaleLossGradOpHandle::RunImpl() {
 #endif
   }
 }
+
+std::string ScaleLossGradOpHandle::Name() const { return "Scale LossGrad"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
