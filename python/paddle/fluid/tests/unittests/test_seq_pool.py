@@ -29,6 +29,18 @@ class TestSeqAvgPool(OpTest):
         self.outputs = {'Out': out}
         return x, lod, out
 
+    # def set_data(self):
+    #     self.op_type = "sequence_pool"
+    #     x = np.array([0.1, 0.2, 0.3, 0.4, 0.5]).astype("float32")
+    #     lod = [[0, 1, 4, 5]]
+    #     self.inputs = {'X': (x, lod)}
+    #     out = np.array([0.1, 0.2, 0.5]).astype("float32")
+    #     self.outputs = {'Out': out}
+    #     return x, lod, out
+
+    # def compute(self, x, lod, out):
+    #     self.attrs = {'pooltype': "FIRST"}
+
     def compute(self, x, lod, out):
         self.attrs = {'pooltype': "AVERAGE"}
         for i in range(4):
@@ -49,7 +61,16 @@ class TestSeqAvgPool(OpTest):
         self.check_grad(["X"], "Out")
 
 
-class TestSeqAvgPool2D(TestSeqAvgPool):
+# class TestSeqFirstPool(TestSeqAvgPool):
+#     def compute(self, x, lod, out):
+#         self.attrs = {'pooltype': "FIRST"}
+#         for i in range(4):
+#             sub_x = x[lod[0][i]:lod[0][i + 1], :]
+#             out[i] = sub_x[0, :]
+
+
+# class TestSeqAvgPool2D(TestSeqAvgPool):
+class TestSeqAvgPool2D(OpTest):
     def set_data(self):
         self.op_type = 'sequence_pool'
         # one level, batch size is 4
@@ -66,6 +87,19 @@ class TestSeqAvgPool2D(TestSeqAvgPool):
         for i in range(4):
             sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
             out[i] = np.reshape(sub_x.mean(axis=0), (3, 17))
+
+    def setUp(self):
+        x, lod, out = self.set_data()
+        self.compute(x, lod, out)
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        # Remove MaxIndex after check_grad is refined.
+        self.outputs['MaxIndex'] = \
+            np.zeros(self.outputs['Out'].shape).astype('int32')
+        self.check_grad(["X"], "Out")
 
 
 class TestSeqSumPool(TestSeqAvgPool):
@@ -151,37 +185,26 @@ class TestSeqMaxPool2D(TestSeqAvgPool2D):
             out[i] = np.reshape(np.amax(sub_x, axis=0), (3, 11))
 
 
-class TestSeqLastPool(TestSeqAvgPool):
-    def compute(self, x, lod, out):
-        self.attrs = {'pooltype': "LAST"}
-        for i in range(4):
-            sub_x = x[lod[0][i]:lod[0][i + 1], :]
-            out[i] = sub_x[-1, :]
+# class TestSeqLastPool(TestSeqAvgPool):
+#     def compute(self, x, lod, out):
+#         self.attrs = {'pooltype': "LAST"}
+#         for i in range(4):
+#             sub_x = x[lod[0][i]:lod[0][i + 1], :]
+#             out[i] = sub_x[-1, :]
 
+# class TestSeqLastPool2D(TestSeqAvgPool2D):
+#     def compute(self, x, lod, out):
+#         self.attrs = {'pooltype': "LAST"}
+#         for i in range(4):
+#             sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
+#             out[i] = np.reshape(sub_x[-1, :], (3, 17))
 
-class TestSeqLastPool2D(TestSeqAvgPool2D):
-    def compute(self, x, lod, out):
-        self.attrs = {'pooltype': "LAST"}
-        for i in range(4):
-            sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
-            out[i] = np.reshape(sub_x[-1, :], (3, 17))
-
-
-class TestSeqFirstPool(TestSeqAvgPool):
-    def compute(self, x, lod, out):
-        self.attrs = {'pooltype': "FIRST"}
-        for i in range(4):
-            sub_x = x[lod[0][i]:lod[0][i + 1], :]
-            out[i] = sub_x[0, :]
-
-
-class TestSeqFirstPool2D(TestSeqAvgPool2D):
-    def compute(self, x, lod, out):
-        self.attrs = {'pooltype': "FIRST"}
-        for i in range(4):
-            sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
-            out[i] = np.reshape(sub_x[0, :], (3, 17))
-
+# class TestSeqFirstPool2D(TestSeqAvgPool2D):
+#     def compute(self, x, lod, out):
+#         self.attrs = {'pooltype': "FIRST"}
+#         for i in range(4):
+#             sub_x = np.reshape(x[lod[0][i]:lod[0][i + 1], :], (-1, 3 * 17))
+#             out[i] = np.reshape(sub_x[0, :], (3, 17))
 
 if __name__ == '__main__':
     unittest.main()
