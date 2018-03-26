@@ -29,11 +29,6 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
       for (; it_old != name_pair.second.rend(); it_new = it_old, ++it_old) {
         auto *write_op = it_new->second.generated_op_;
         auto &read_ops = it_old->second.pending_ops_;
-        auto *ex_write_op = it_old->second.generated_op_;
-
-        if (ex_write_op == nullptr) {  // Nobody write this var.
-          continue;
-        }
 
         for (auto *read_op : read_ops) {
           // Manually add a dependency var from read_op to write_op;
