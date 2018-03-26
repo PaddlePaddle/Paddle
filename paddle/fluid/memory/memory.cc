@@ -82,16 +82,6 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   return as[gpu_id];
 }
 
-BuddyAllocator* GetCUDAPinnedBuddyAllocator(int gpu_id) {
-  static BuddyAllocator* as = NULL;
-  if (as == NULL) {
-    as = new BuddyAllocator(new detail::CUDAPinnedAllocator,
-                            platform::CpuMinChunkSize(),
-                            platform::CpuMaxChunkSize());
-  }
-  return as;
-}
-
 template <>
 size_t Used<platform::CUDAPlace>(platform::CUDAPlace place) {
   return GetGPUBuddyAllocator(place.device)->Used();
@@ -100,8 +90,7 @@ size_t Used<platform::CUDAPlace>(platform::CUDAPlace place) {
 template <>
 void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
   auto* buddy_allocator = GetGPUBuddyAllocator(place.device);
-  void* ptr = buddy_allocator->Alloc(size);
-
+  auto* ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
     int cur_dev = platform::GetCurrentDeviceId();
     platform::SetDeviceId(place.device);
@@ -123,37 +112,39 @@ void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p) {
   GetGPUBuddyAllocator(place.device)->Free(p);
 }
 
+BuddyAllocator* GetCUDAPinnedBuddyAllocator() {
+  static BuddyAllocator* ba = NULL;
+  if (ba == NULL) {
+    ba = new BuddyAllocator(new detail::CUDAPinnedAllocator,
+                            platform::CpuMinChunkSize(),
+                            platform::CpuMaxChunkSize());
+  }
+  return ba;
+}
+
+template <>
 size_t Used<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place) {
-  return GetGPUBuddyAllocator(place.device)->Used();
+  return GetCUDAPinnedBuddyAllocator()->Used();
 }
 
 template <>
 void* Alloc<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place,
                                        size_t size) {
-  auto* buddy_allocator = GetCUDAPinnedBuddyAllocator(place.device);
+  auto* buddy_allocator = GetCUDAPinnedBuddyAllocator();
   void* ptr = buddy_allocator->Alloc(size);
 
-  if (ptr == nullptr) {
-    int cur_dev = platform::GetCurrentDeviceId();
-    platform::SetDeviceId(place.device);
-    size_t avail, total;
-    platform::GpuMemoryUsage(avail, total);
-    LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
-                 << place.device << ", available " << avail << " bytes";
-    LOG(WARNING) << "total " << total;
-    LOG(WARNING) << "GpuMinChunkSize " << platform::GpuMinChunkSize();
-    LOG(WARNING) << "GpuMaxChunkSize " << platform::GpuMaxChunkSize();
-    LOG(WARNING) << "GPU memory used: " << Used<platform::CUDAPlace>(place);
-    platform::SetDeviceId(cur_dev);
-  }
+  //  if (ptr == nullptr) {
+  //    LOG(WARNING) << "Cannot allocate " << size << " bytes in CUDAPinnedPlace
+  //    "
+  //                 << ", available " << avail << " bytes"
+  //  }
   return ptr;
 }
 
 template <>
 void Free<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place, void* p) {
-  GetCUDAPinnedBuddyAllocator(place.device)->Free(p);
+  GetCUDAPinnedBuddyAllocator()->Free(p);
 }
-
 #endif
 
 size_t Usage::operator()(const platform::CPUPlace& cpu) const {

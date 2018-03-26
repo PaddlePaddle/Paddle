@@ -92,9 +92,6 @@ class Tensor {
   /*! Return the numel of the memory block. */
   inline int64_t numel() const;
 
-  /*! Return the numel of the memory block. */
-  inline bool isPinned() const;
-
   /*! Resize the dimensions of the memory block. */
   inline Tensor& Resize(const DDim& dims);
 
