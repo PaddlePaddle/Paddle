@@ -26,7 +26,7 @@ class SplitIdsOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
 
     AddComment(R"DOC(
-Split a LoDTensor of Ids into multi LoDTensor, the number is pserver's number
+Split a LoDTensor of Ids into multi LoDTensors, the number is pserver's number
 Example:
   Input:
     X = [1,2,3,4,5,6]
@@ -34,7 +34,7 @@ Example:
   Out(3 output):
     out0 = [3, 6]
     out1 = [1, 4]
-    out2 = [2, 4]
+    out2 = [2, 5]
 )DOC");
   }
 };
