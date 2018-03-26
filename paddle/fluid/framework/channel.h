@@ -85,55 +85,68 @@ class ChannelHolder {
 
   template <typename T>
   void Send(T* data) {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
-    PADDLE_ENFORCE_EQ(holder_->Type(), std::type_index(typeid(T)));
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    PADDLE_ENFORCE_EQ(
+        holder_->Type(), std::type_index(typeid(T)),
+        "Channel type is not same as the type of the data being sent");
     // Static cast should be safe because we have ensured that types are same
     Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-    PADDLE_ENFORCE_EQ(channel != nullptr, true);
+    PADDLE_ENFORCE_EQ(channel != nullptr, true, "Channel should not be null.");
     channel->Send(data);
   }
 
   template <typename T>
   bool Receive(T* data) {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
-    PADDLE_ENFORCE_EQ(holder_->Type(), std::type_index(typeid(T)));
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
+    PADDLE_ENFORCE_EQ(
+        holder_->Type(), std::type_index(typeid(T)),
+        "Channel type is not same as the type of the data being sent");
     Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
-    PADDLE_ENFORCE_EQ(channel != nullptr, true);
+    PADDLE_ENFORCE_EQ(channel != nullptr, true, "Channel should not be null.");
     return channel->Receive(data);
   }
 
   bool IsClosed() {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     return holder_->IsClosed();
   }
 
   bool CanSend() {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     return holder_->CanSend();
   }
 
   bool CanReceive() {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     return holder_->CanReceive();
   }
 
   void close() {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     holder_->Close();
   }
 
   size_t Cap() {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     return holder_->Cap();
   }
 
   void Lock() {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     holder_->Lock();
   }
 
   void Unlock() {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     holder_->Unlock();
   }
 
@@ -141,7 +154,8 @@ class ChannelHolder {
   void AddToSendQ(const void* referrer, T* data,
                   std::shared_ptr<std::condition_variable_any> cond,
                   std::function<bool(ChannelAction)> cb) {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
     if (channel != nullptr) {
       channel->AddToSendQ(referrer, data, cond, cb);
@@ -152,7 +166,8 @@ class ChannelHolder {
   void AddToReceiveQ(const void* referrer, T* data,
                      std::shared_ptr<std::condition_variable_any> cond,
                      std::function<bool(ChannelAction)> cb) {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     Channel<T>* channel = static_cast<Channel<T>*>(holder_->Ptr());
     if (channel != nullptr) {
       channel->AddToReceiveQ(referrer, data, cond, cb);
@@ -160,19 +175,22 @@ class ChannelHolder {
   }
 
   void RemoveFromSendQ(const void* referrer) {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     holder_->RemoveFromSendQ(referrer);
   }
 
   void RemoveFromReceiveQ(const void* referrer) {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     holder_->RemoveFromReceiveQ(referrer);
   }
 
   inline bool IsInitialized() const { return holder_ != nullptr; }
 
   inline const std::type_index Type() {
-    PADDLE_ENFORCE_EQ(IsInitialized(), true);
+    PADDLE_ENFORCE_EQ(IsInitialized(), true,
+                      "The Channel hasn't been initialized");
     return holder_->Type();
   }
 
