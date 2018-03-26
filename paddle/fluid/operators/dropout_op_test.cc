@@ -30,7 +30,7 @@ namespace m = paddle::operators::math;
 
 USE_OP(dropout);
 
-void InitTensorInScope(f::Scope& scope, p::DeviceContext& ctx) {
+void Compare(f::Scope& scope, p::DeviceContext& ctx) {
   // init
   auto var = scope.Var("X");
   auto tensor = var->GetMutable<f::LoDTensor>();
@@ -79,19 +79,18 @@ void InitTensorInScope(f::Scope& scope, p::DeviceContext& ctx) {
   for (uint32_t i = 0; i < out_vec.size(); i++) {
     EXPECT_EQ(out_vec[i], std_out[i]);
   }
-  std::cout << std::endl;
 }
 
 TEST(Dropout, CPUDense) {
   f::Scope scope;
   p::CPUPlace place;
   p::CPUDeviceContext ctx(place);
-  InitTensorInScope(scope, ctx);
+  Compare(scope, ctx);
 }
 
 TEST(Dropout, GPUDense) {
   f::Scope scope;
   p::CUDAPlace place;
   p::CUDADeviceContext ctx(place);
-  InitTensorInScope(scope, ctx);
+  Compare(scope, ctx);
 }
