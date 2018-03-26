@@ -160,7 +160,11 @@ size_t Usage::operator()(const platform::CUDAPlace& gpu) const {
 }
 
 size_t Usage::operator()(const platform::CUDAPinnedPlace& cuda_pinned) const {
+#ifdef PADDLE_WITH_CUDA
   return Used(cuda_pinned);
+#else
+  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
+#endif
 }
 
 size_t memory_usage(const platform::Place& p) {
