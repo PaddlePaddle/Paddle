@@ -84,6 +84,10 @@ class TestDropoutOp5(OpTest):
         self.check_output()
 
 
+def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
+    return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+
+
 #Reference: https://github.com/PaddlePaddle/Paddle/issues/8654
 class TestDropoutOp6(unittest.TestCase):
     def program(self):
@@ -103,11 +107,14 @@ class TestDropoutOp6(unittest.TestCase):
         in_tensor.set(np.ones([64, 32, 512], dtype="float32"), place)
         data_input['x'] = in_tensor
         for i in range(10):
-            out_ = exe.run(fluid.framework.default_main_program(),
-                           feed=data_input,
-                           fetch_list=[out])[0]
-            self.assertTrue(abs(np.max(out_) - 1.0) <= 0.000001)
-            self.assertTrue(abs(np.min(out_) - 0.0) <= 0.000001)
+            ret_out = exe.run(fluid.framework.default_main_program(),
+                              feed=data_input,
+                              fetch_list=[out])[0]
+            out_max = np.max(ret_out)
+            out_min = np.min(ret_out)
+
+            self.assertTrue(isclose(out_max, 1.0))
+            self.assertTrue(isclose(out_min, 0.0))
 
     def test_all(self):
         place = fluid.CUDAPlace(0)
