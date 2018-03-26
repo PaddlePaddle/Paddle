@@ -26,6 +26,7 @@ class PlacePrinter : public boost::static_visitor<> {
   void operator()(const CUDAPlace &p) {
     os_ << "CUDAPlace(" << p.device << ")";
   }
+  void operator()(const CUDAPinnedPlace &p) { os_ << "CUDAPinnedPlace"; }
 
  private:
   std::ostream &os_;

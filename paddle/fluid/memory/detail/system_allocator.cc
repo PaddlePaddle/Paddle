@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -127,10 +128,12 @@ void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
   // NOTE: here, we use CpuMaxAllocSize()/2 as the maximum memory size
   // of host pinned allocation. Allocates too much would reduce
   // the amount of memory available to the underlying system for paging.
-  size_t usable = CpuMaxAllocSize() / 2 - cuda_pinnd_alloc_size_;
+  size_t usable =
+      paddle::platform::CpuMaxAllocSize() / 2 - cuda_pinnd_alloc_size_;
 
   if (size > usable) return nullptr;
 
+  void* p;
   // PINNED memory is visible to all CUDA contexts.
   cudaError_t result = cudaMallocHost(&p, size);
 
@@ -161,7 +164,7 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   }
 }
 
-bool CUDAPinnedAllocator::UseGpu() const { return true; }
+bool CUDAPinnedAllocator::UseGpu() const { return false; }
 
 #endif
 
