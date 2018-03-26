@@ -48,6 +48,9 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   platform::DeviceContextPool fetch_ctxs_;
   const bool use_event_;
   std::unique_ptr<platform::EnforceNotMet> exception_;
+
+  size_t computation_count_{0};
+  size_t max_async_computation{100};
 };
 
 }  // namespace details

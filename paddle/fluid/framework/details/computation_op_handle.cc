@@ -33,7 +33,7 @@ void ComputationOpHandle::RunImpl() {
     }
   }
 
-  op_->Run(*scope_, place_);
+  op_->Run(*scope_->FindVar("@TMP_SCOPE@")->Get<Scope *>(), place_);
 }
 
 std::string ComputationOpHandle::Name() const { return op_->Type(); }
