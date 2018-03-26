@@ -487,7 +487,8 @@ class Operator(object):
             'rnn_memory_helper_grad', 'conditional_block', 'while', 'send',
             'recv', 'listen_and_serv', 'parallel_do', 'save_combine',
             'load_combine', 'ncclInit', 'channel_create', 'channel_close',
-            'channel_send', 'channel_recv', 'select'
+            'channel_send', 'channel_recv', 'select', 'send_vars',
+            'send_barrier'
         }
         if type not in no_kernel_op_set:
             self.desc.infer_var_type(self.block.desc)
@@ -829,6 +830,14 @@ class Block(object):
 
     def slice_ops(self, start, end):
         return list(self.ops)[start:end]
+
+    def insert_op(self, index, *args, **kwargs):
+        op_desc = self.desc.insert_op(index)
+        op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        tmp = list(self.ops)
+        tmp.insert(index, op)
+        self.ops = collections.deque(tmp)
+        return op
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()

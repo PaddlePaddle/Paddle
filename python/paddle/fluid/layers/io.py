@@ -22,7 +22,8 @@ from ..executor import global_scope
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
     'open_files', 'read_file', 'create_shuffle_reader',
-    'create_double_buffer_reader', 'create_multi_pass_reader'
+    'create_double_buffer_reader', 'create_multi_pass_reader', 'send_barrier',
+    'send_vars', 'get_rpc_client_var'
 ]
 
 
@@ -171,6 +172,28 @@ class ListenAndServ(object):
             })
 
 
+def get_rpc_client_var(program):
+    if "RPCClient" not in program.global_block().vars:
+        rpc_client_var = default_main_program().global_block().create_var(
+            name="RPC_CLIENT_VAR",
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+    else:
+        rpc_client_var = program.global_block().var("RPC_CLIENT_VAR")
+
+    return rpc_client_var
+
+
+def send_barrier(endpoints):
+    help = LayerHelper("send_barrier", **locals())
+    rpc_client_var = get_rpc_client_var(default_main_program())
+
+    help.append_op(
+        type="send_barrier",
+        outputs={"RPCClient": rpc_client_var},
+        attrs={"endpoints": endpoints})
+
+
 def Send(endpoints, send_vars, get_vars):
     """
     Send layer
@@ -191,8 +214,7 @@ def Send(endpoints, send_vars, get_vars):
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Send", **locals())
-    rpc_client_var = default_main_program().global_block().create_var(
-        name="RPC_CLIENT_VAR", persistable=True, type=core.VarDesc.VarType.RAW)
+    rpc_client_var = get_rpc_client_var(default_main_program())
 
     helper.append_op(
         type="send",
@@ -203,7 +225,7 @@ def Send(endpoints, send_vars, get_vars):
                "epmap": epmap})
 
 
-def Recv(endpoints, get_vars):
+def Recv(endpoints, recv_vars):
     """
     Recv layer
 
@@ -216,17 +238,18 @@ def Recv(endpoints, get_vars):
     Send variables to the server side, and get vars from server
     side when server have finished running server side program.
     """
-    assert (type(send_vars) == list)
-    assert (type(get_vars) == list)
+    assert (type(recv_vars) == list)
 
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Recv", **locals())
+    rpc_client_var = get_rpc_client_var(default_main_program())
     helper.append_op(
         type="recv",
-        inputs={"X": get_vars},
-        outputs={"Out": get_vars},
+        inputs={"X": recv_vars},
+        outputs={"Out": recv_vars,
+                 "RPCClient": rpc_client_var},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
 

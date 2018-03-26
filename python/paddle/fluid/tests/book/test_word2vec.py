@@ -30,7 +30,7 @@ def create_random_lodtensor(lod, place, low, high):
     return res
 
 
-def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
+def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=False):
     PASS_NUM = 100
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256
@@ -135,11 +135,14 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         train_loop(fluid.default_main_program())
     else:
         port = os.getenv("PADDLE_INIT_PORT", "6174")
+        """
         pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
+        """
+        pserver_endpoints = os.getenv("PADDLE_PSERVER_EPS")
         trainers = int(os.getenv("TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
@@ -250,20 +253,18 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
                     is_sparse=is_sparse,
                     is_parallel=is_parallel)
 
-    if use_cuda and is_sparse:
-        fn = __impl__
-    else:
-        # skip the other test when on CI server
-        fn = unittest.skipUnless(
-            condition=FULL_TEST, reason=SKIP_REASON)(__impl__)
-
+    fn = __impl__
     setattr(W2VTest, fn_name, fn)
 
 
+"""
 for use_cuda in (False, True):
     for is_sparse in (False, True):
         for is_parallel in (False, True):
             inject_test_method(use_cuda, is_sparse, is_parallel)
+"""
+
+inject_test_method(False, False, False)
 
 if __name__ == '__main__':
     unittest.main()

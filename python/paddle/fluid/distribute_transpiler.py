@@ -17,10 +17,11 @@ import framework
 from framework import Program, default_main_program, default_startup_program, Parameter, Variable
 import optimizer
 from layer_helper import LayerHelper
-from distributed_spliter import *
+import distributed_spliter
 import math
 from . import core
 import debuger
+import layers
 
 
 class VarBlock:
@@ -138,7 +139,7 @@ class DistributeTranspiler:
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
-                  split_method=round_robin):
+                  split_method="RoundRobin"):
         """
             Transpile the program to distributed data-parallelism programs.
             The main_program will be transformed to use a remote parameter server
@@ -176,11 +177,10 @@ class DistributeTranspiler:
             :type pservers: string
             :param trainers: total number of workers/trainers in the job
             :type trainers: int
-            :param split_method: A function to determin how to split variables
-                to different servers equally.
+            :param split_method: Specified a function by name to determin how to
+                split variables to different servers equally.
             :type split_method: function
         """
-        assert (callable(split_method))
         if program is None:
             program = default_main_program()
         self.program = program
@@ -192,13 +192,18 @@ class DistributeTranspiler:
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
 
+        # instantiate spliter method from given name
+        assert (split_method in dir(distributed_spliter))
+        spliter = getattr(distributed_spliter, split_method)(pserver_endpoints)
+
         # step1
         param_list = [pg[0] for pg in params_grads]
         grad_list = [pg[1] for pg in params_grads]
         grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
         param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
         # step2
-        grad_var_mapping = self._append_split_op(program, grad_blocks)
+        grad_var_mapping, eplist = self._append_trainer_op(program, grad_blocks,
+                                                           spliter)
         # step3
         send_inputs = []
         send_outputs = []
@@ -213,7 +218,7 @@ class DistributeTranspiler:
             send_outputs.append(param_var_mapping[varname][int(block_id)])
         # let send_op know which endpoint to send which var to, eplist has the same
         # order as send_inputs.
-        eplist = split_method(send_inputs, pserver_endpoints)
+        # eplist = split_method(send_inputs, pserver_endpoints)
         # create mapping of endpoint -> split var to create pserver side program
         self.param_grad_ep_mapping = dict()
         for i, ep in enumerate(eplist):
@@ -224,20 +229,12 @@ class DistributeTranspiler:
             self.param_grad_ep_mapping[ep]["params"].append(param)
             self.param_grad_ep_mapping[ep]["grads"].append(grad)
 
-        rpc_client_var = program.global_block().create_var(
-            name="RPC_CLIENT_VAR",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
+        # append send_barrier_op
+        layers.io.send_barrier(pserver_endpoints)
+        # append recv op to receive parameters
+        layers.io.Recv(send_outputs, eplist)
 
-        # create send_op
-        program.global_block().append_op(
-            type="send",
-            inputs={"X": send_inputs},
-            outputs={"Out": send_outputs,
-                     "RPCClient": rpc_client_var},
-            attrs={"endpoints": pserver_endpoints,
-                   "epmap": eplist})
-        # step4
+        # step 4
         for varname, splited_var in param_var_mapping.iteritems():
             if len(splited_var) <= 1:
                 continue
@@ -351,14 +348,6 @@ class DistributeTranspiler:
         # append global ops
         for glb_op in global_ops:
             __append_optimize_op__(glb_op, per_opt_block)
-
-        # NOT USED: single block version:
-        #
-        # for _, op in enumerate(self.optimize_ops):
-        #     for _, opt_op in enumerate(opt_op_on_pserver):
-        #         if ufind.is_connected(op, opt_op):
-        #             __append_optimize_op__(glb_op, optimize_block)
-        #             break
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -500,7 +489,14 @@ class DistributeTranspiler:
             lod_level=var.lod_level,
             persistable=True)
 
-    def _append_split_op(self, program, gradblocks):
+    def _find_op_by_out(self, program, var):
+        for idx, op in enumerate(program.global_block().ops):
+            if var.name in op.output_arg_names:
+                return idx + 1
+        return -1
+
+    def _append_trainer_op(self, program, gradblocks, spliter):
+        ret_eplist = []
         # Split variables that need to be split and append respective ops
         var_mapping = self._create_vars_from_blocklist(
             program, gradblocks, add_trainer_suffix=True)
@@ -509,11 +505,16 @@ class DistributeTranspiler:
             if len(splited_vars) <= 1:
                 continue
             orig_var = program.global_block().vars[varname]
+            insert_idx = self._find_op_by_out(program, orig_var)
+            eplist = []
+            print(program.global_block().ops[insert_idx])
+
             if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
                 height_sections = []
                 for v in splited_vars:
                     height_sections.append(v.shape[0])
-                program.global_block().append_op(
+                program.global_block().insert_op(
+                    index=insert_idx + 1,
                     type="split_selected_rows",
                     inputs={"X": orig_var},
                     outputs={"Out": splited_vars},
@@ -522,7 +523,8 @@ class DistributeTranspiler:
                 sections = []
                 for v in splited_vars:
                     sections.append(v.shape[0])
-                program.global_block().append_op(
+                program.global_block().insert_op(
+                    index=insert_idx + 1,
                     type="split",
                     inputs={"X": orig_var},
                     outputs={"Out": splited_vars},
@@ -531,7 +533,23 @@ class DistributeTranspiler:
             else:
                 AssertionError("Variable type should be in set "
                                "[LOD_TENSOR, SELECTED_ROWS]")
-        return var_mapping
+
+            eplist = spliter.dispatch(splited_vars)
+            rpc_client_var = layers.io.get_rpc_client_var(program)
+
+            program.global_block().insert_op(
+                index=insert_idx + 2,
+                type="send_vars",
+                inputs={"X": splited_vars},
+                outputs={"RPCClient": rpc_client_var},
+                attrs={
+                    "sync_send": 0,
+                    "epmap": eplist,
+                    "endpoints": spliter.eps
+                })
+            ret_eplist.extend(eplist)
+
+        return var_mapping, ret_eplist
 
     def _get_optimizer_input_shape(self, op_type, varkey, orig_shape,
                                    param_shape):

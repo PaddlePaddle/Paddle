@@ -13,38 +13,63 @@
 # limitations under the License.
 
 
-def hash_name(varlist, pserver_endpoints):
+class DistributedSpliter(object):
     """
-    hash variable names to several endpoints.
-
-    :param varlist: a list of Variables
-    :return: a map of pserver endpoint -> varname
+    DistributedSpliter is the base class for dispatching vars
+    into different pserver instance.
+    You need to implement the `dispatch` inferface.
     """
 
-    def _hash_block(block_str, total):
+    def __init__(self, pserver_endpoints):
+        self._eps = pserver_endpoints
+
+    @property
+    def eps(self):
+        return self._eps
+
+    def dispatch(self, varlist):
+        """
+        :param varlist: a list of Variables
+        :return: a map of pserver endpoint -> varname 
+        """
+        AssertionError("Interface has not been implemented.")
+
+
+class HashName(DistributedSpliter):
+    """
+      Hash variable names to servral endpoints
+    """
+
+    def __init__(self, pserver_endpoints):
+        super(self.__class__, self).__init__(pserver_endpoints)
+
+    def _hash_block(self, block_str, total):
         return hash(block_str) % total
 
-    eplist = []
-    for var in varlist:
-        server_id = _hash_block(var.name(), len(pserver_endpoints))
-        server_for_param = pserver_endpoints[server_id]
-        eplist.append(server_for_param)
-    return eplist
+    def dispatch(self, varlist):
+        eplist = []
+        for var in varlist:
+            server_id = self._hash_block(var.name(), len(self._eps))
+            server_for_param = self._eps[server_id]
+            eplist.append(server_for_param)
+        return eplist
 
 
-def round_robin(varlist, pserver_endpoints):
+class RoundRobin(DistributedSpliter):
     """
-    distribute variables to several endpoints.
+    Distribute variables to serveral endpoints.
     """
-    assert (len(varlist) > len(pserver_endpoints))
 
-    eplist = []
-    pserver_idx = 0
-    for var in varlist:
-        server_for_param = pserver_endpoints[pserver_idx]
-        eplist.append(server_for_param)
+    def __init__(self, pserver_endpoints):
+        super(self.__class__, self).__init__(pserver_endpoints)
+        self._pserver_idx = 0
 
-        pserver_idx += 1
-        if pserver_idx >= len(pserver_endpoints):
-            pserver_idx = 0
-    return eplist
+    def dispatch(self, varlist):
+        eplist = []
+        for var in varlist:
+            server_for_param = self._eps[self._pserver_idx]
+            eplist.append(server_for_param)
+            self._pserver_idx += 1
+            if self._pserver_idx >= len(self._eps):
+                self._pserver_idx = 0
+        return eplist

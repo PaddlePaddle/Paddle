@@ -36,6 +36,12 @@ class RecvOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto outs = Outputs("Out");
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
+    auto client_var_name = Output("RPCClient");
+    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
+                            "Can not find variable '%s' in the scope.",
+                            client_var_name);
+    auto* client_var = scope.FindVar(client_var_name);
+    detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
@@ -45,10 +51,19 @@ class RecvOp : public framework::OperatorBase {
       client_.AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
     }
     PADDLE_ENFORCE(client_.Wait());
-  }
 
- private:
-  mutable detail::RPCClient client_;
+    for (size_t i = 0; i < outs.size(); i++) {
+      VLOG(2) << "getting " << outs[i] << " from " << epmap[i];
+      rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
+    }
+    PADDLE_ENFORCE(rpc_client->Wait());
+    // tell pservers that current trainer have called fetch
+    for (auto& ep : endpoints) {
+      VLOG(2) << "send fetch barrier, ep: " << ep;
+      rpc_client->AsyncSendFetchBarrier(ep);
+    }
+    PADDLE_ENFORCE(rpc_client->Wait());
+  }
 };
 
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -56,6 +71,9 @@ class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
   RecvOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddOutput("Out", "(Tensor) Variables to get from server.").AsDuplicable();
+    AddOutput("RPCClient",
+              "(RPCClient) The RPC client object which will be"
+              "initialized at most once.");
     AddComment(R"DOC(
 Recv operator
 
