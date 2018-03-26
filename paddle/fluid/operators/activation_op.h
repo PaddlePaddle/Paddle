@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,6 +16,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -772,7 +776,6 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
   __macro(logsigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);     \
   __macro(exp, ExpFunctor, ExpGradFunctor);                          \
-  __macro(relu, ReluFunctor, ReluGradFunctor);                       \
   __macro(tanh, TanhFunctor, TanhGradFunctor);                       \
   __macro(softshrink, SoftShrinkFunctor, SoftShrinkGradFunctor);     \
   __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                       \
