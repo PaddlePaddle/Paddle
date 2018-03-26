@@ -14,12 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 
-#include <set>
-
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -40,14 +36,13 @@ namespace {
 int kProgramId = -1;
 }  // namespace
 
-struct ExecutorPrepareContext {
-  ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id)
-      : prog_(prog), block_id_(block_id) {}
+ExecutorPrepareContext::ExecutorPrepareContext(
+    const framework::ProgramDesc& prog, size_t block_id)
+    : prog_(prog), block_id_(block_id) {}
 
-  const framework::ProgramDesc& prog_;
-  size_t block_id_;
-  std::vector<std::unique_ptr<OperatorBase>> ops_;
-};
+ExecutorPrepareContext::~ExecutorPrepareContext() {
+  VLOG(5) << "destroy ExecutorPrepareContext";
+}
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
@@ -101,9 +96,8 @@ static void CheckTensorNANOrInf(const std::string& name,
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
   platform::RecordBlock b(block_id);
-  auto* ctx = Prepare(pdesc, block_id);
-  RunPreparedContext(ctx, scope, create_local_scope, create_vars);
-  delete ctx;
+  auto ctx = Prepare(pdesc, block_id);
+  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -191,7 +185,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>& feed_targets,
                    std::map<std::string, LoDTensor*>& fetch_targets,
                    const std::string& feed_holder_name,
-                   const std::string& fetch_holder_name) {
+                   const std::string& fetch_holder_name, bool create_vars) {
   platform::RecordBlock b(kProgramId);
   bool has_feed_ops =
       has_feed_operators(program.Block(0), feed_targets, feed_holder_name);
@@ -261,7 +255,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     }
   }
 
-  Run(*copy_program, scope, 0, true, true);
+  Run(*copy_program, scope, 0, create_vars, create_vars);
 
   // obtain the data of fetch_targets from fetch_holder
   for (auto* op : global_block->AllOps()) {
@@ -274,15 +268,15 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   }
 }
 
-ExecutorPrepareContext* Executor::Prepare(const ProgramDesc& program,
-                                          int block_id) {
+std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
+    const ProgramDesc& program, int block_id) {
   auto* ctx = new ExecutorPrepareContext(program, block_id);
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  return ctx;
+  return std::unique_ptr<ExecutorPrepareContext>(ctx);
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,

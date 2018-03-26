@@ -26,7 +26,7 @@ lookup of rows.
 The following figure illustrates the multiplication of x with two
 non-zero elements, or say, two symbols, and a lookup table W:
 
-![lookup table](./lookup_table.png)
+![lookup table](./src/lookup_table.png)
 
 ### The Backward Algorithm
 
@@ -42,7 +42,7 @@ or some more sophisticated algorithms that rely on both W' and W:
 $$W = f(W, W')$$
 
 The following figure illustrates the backward pass of the lookup
-operator: ![lookup table training](./lookup_table_training.png)
+operator: ![lookup table training](./src/lookup_table_training.png)
 
 ## Distributed Storage Service
 
