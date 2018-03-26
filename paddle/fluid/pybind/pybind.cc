@@ -476,7 +476,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
 
-  py::class_<MultiGPUExecutor>(m, "ParallelExecutor")
+  py::class_<MultiGPUExecutor>(m, "MultiGPUExecutor")
       .def(
           "__init__",
           [](MultiGPUExecutor &self, const std::vector<platform::Place> &places,

@@ -102,7 +102,7 @@ def vgg16_bn_drop(input):
     return fc2
 
 
-def vgg16_bn(input):
+def vgg16(input):
     def conv_block(input, num_filter, groups, dropouts):
         return fluid.nets.img_conv_group(
             input=input,
@@ -121,8 +121,8 @@ def vgg16_bn(input):
     conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
     conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
-    fc1 = fluid.layers.fc(input=conv5, size=4096, act=None)
-    fc2 = fluid.layers.fc(input=fc1, size=4096, act=None)
+    fc1 = fluid.layers.fc(input=conv5, size=4096, act='softmax')
+    fc2 = fluid.layers.fc(input=fc1, size=4096, act='softmax')
     return fc2
 
 
@@ -204,11 +204,16 @@ def run_benchmark(args):
         lod_levels=[0, 0],
         dtypes=['float32', 'int64'])
     img, label = fluid.layers.read_file(reader)
-    predict = vgg16_bn_drop(img)
-    avg_cost = fluid.layers.mean(predict)
-    # fluid.layers.Print(avg_cost)
+    predict = vgg16(img)
+    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    avg_cost = fluid.layers.mean(cost)
     opt = fluid.optimizer.SGDOptimizer(learning_rate=0.001)
     opt.minimize(avg_cost)
+
+    # fluid.layers.Print(predict, summarize=10)
+    # fluid.layers.Print(label, summarize=10)
+    # fluid.layers.Print(cost, summarize=10)
+    fluid.layers.Print(avg_cost)
 
     # fluid.memory_optimize(fluid.default_main_program(), print_log=True)
 
@@ -222,7 +227,7 @@ def run_benchmark(args):
         p.set_place(each)
         act_places.append(p)
 
-    exe = fluid.core.ParallelExecutor(act_places,
+    exe = fluid.core.MultiGPUExecutor(act_places,
                                       set([
                                           p.name
                                           for p in fluid.default_main_program()
