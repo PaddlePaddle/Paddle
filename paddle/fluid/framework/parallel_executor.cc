@@ -144,4 +144,3 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 
 }  // namespace framework
 }  // namespace paddle
-A
