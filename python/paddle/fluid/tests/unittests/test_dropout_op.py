@@ -89,7 +89,7 @@ class TestDropoutOp6(unittest.TestCase):
     def program(self):
         x = fluid.layers.data(
             name='x',
-            shape=[16, 32, 33],
+            shape=[64, 32, 512],
             dtype='float32',
             append_batch_size=False)
         out = fluid.layers.dropout(x, dropout_prob=0.1, is_test=False)
