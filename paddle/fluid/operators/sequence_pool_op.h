@@ -64,7 +64,7 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     auto* out_g = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
     std::string pooltype = context.Attr<std::string>("pooltype");
-    Tensor* index = nullptr;
+    const Tensor* index = nullptr;
     if (pooltype == "MAX") {
       index = context.Input<Tensor>("MaxIndex");
     }
