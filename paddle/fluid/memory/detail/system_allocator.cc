@@ -119,18 +119,20 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
 
 bool GPUAllocator::UseGpu() const { return true; }
 
+// PINNED memory allows direct DMA transfers by the GPU to and from system
+// memory. It’s locked to a physical address.
 void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
   if (size <= 0) return nullptr;
   void* p;
   // NOTE: here, we use GpuMaxAllocSize() as the maximum memory size
   // of host pinned allocation. Allocates too much would reduce
   // the amount of memory available to the underlying system for paging.
-  // Because the memory is in CPU side, other device can access it too.
 
   size_t usable = paddle::platform::GpuMaxAllocSize() - fallback_alloc_size_;
 
   if (size > usable) return nullptr;
 
+  // PINNED memory is visible to all CUDA contexts.
   cudaError_t result = cudaMallocHost(&p, size);
   if (result == cudaSuccess) {
     index = 1;
