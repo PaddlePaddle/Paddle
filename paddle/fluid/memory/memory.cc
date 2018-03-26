@@ -39,7 +39,7 @@ BuddyAllocator* GetCPUBuddyAllocator() {
 
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size,
-                                bool use_pinned) {
+                                bool is_pinned) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
   VLOG(10) << "  pointer=" << p;
@@ -48,7 +48,7 @@ void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size,
 
 template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p,
-                              bool use_pinned) {
+                              bool is_pinned) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
@@ -115,9 +115,9 @@ size_t Used<platform::CUDAPlace>(platform::CUDAPlace place) {
 
 template <>
 void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size,
-                                 bool use_pinned) {
+                                 bool is_pinned) {
   void* ptr;
-  if (use_pinned) {
+  if (is_pinned) {
     auto* buddy_allocator = GetCUDAPinnedBuddyAllocator(place.device);
     ptr = buddy_allocator->Alloc(size);
   } else {
@@ -143,8 +143,8 @@ void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size,
 
 template <>
 void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p,
-                               bool use_pinned) {
-  if (use_pinned) {
+                               bool is_pinned) {
+  if (is_pinned) {
     GetCUDAPinnedBuddyAllocator(place.device)->Free(p);
   } else {
     GetGPUBuddyAllocator(place.device)->Free(p);

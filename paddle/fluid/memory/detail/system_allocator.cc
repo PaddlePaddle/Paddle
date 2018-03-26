@@ -123,8 +123,9 @@ void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
   if (size <= 0) return nullptr;
   void* p;
   // NOTE: here, we use GpuMaxAllocSize() as the maximum memory size
-  // of host fallback allocation. Allocates too much would reduce
+  // of host pinned allocation. Allocates too much would reduce
   // the amount of memory available to the underlying system for paging.
+  // Because the memory is in CPU side, other device can access it too.
 
   size_t usable = paddle::platform::GpuMaxAllocSize() - fallback_alloc_size_;
 
@@ -149,10 +150,10 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   err = cudaFreeHost(p);
 
   // Purposefully allow cudaErrorCudartUnloading, because
-  // that is returned if you ever call cudaFree after the
+  // that is returned if you ever call cudaFreeHost after the
   // driver has already shutdown. This happens only if the
   // process is terminating, in which case we don't care if
-  // cudaFree succeeds.
+  // cudaFreeHost succeeds.
   if (err != cudaErrorCudartUnloading) {
     PADDLE_ENFORCE(err, "cudaFreeHost failed in GPUPinnedAllocator::Free.");
   }
