@@ -506,5 +506,54 @@ class TestSwish(OpTest):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
+#--------------------test MKLDNN--------------------
+class TestMKLDNNRelu(TestRelu):
+    def setUp(self):
+        super(TestMKLDNNRelu, self).setUp()
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNTanh(TestTanh):
+    def setUp(self):
+        super(TestMKLDNNTanh, self).setUp()
+
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
+        }
+        self.outputs = {'Out': np.tanh(self.inputs['X'])}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNSqrt(TestSqrt):
+    def setUp(self):
+        super(TestMKLDNNSqrt, self).setUp()
+
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
+        }
+        self.outputs = {'Out': np.sqrt(self.inputs['X'])}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNAbs(TestAbs):
+    def setUp(self):
+        super(TestMKLDNNAbs, self).setUp()
+
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        self.inputs = {'X': x}
+        self.outputs = {'Out': np.abs(self.inputs['X'])}
+        self.attrs = {"use_mkldnn": True}
+
+
 if __name__ == "__main__":
     unittest.main()

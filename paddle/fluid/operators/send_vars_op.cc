@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include <future>
 #include "paddle/fluid/operators/detail/grpc_client.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -42,26 +41,22 @@ static bool NeedSend(const framework::Scope& scope,
   return false;
 }
 
-class SendOp : public framework::OperatorBase {
+class SendVarsOp : public framework::OperatorBase {
  public:
-  SendOp(const std::string& type, const framework::VariableNameMap& inputs,
-         const framework::VariableNameMap& outputs,
-         const framework::AttributeMap& attrs)
+  SendVarsOp(const std::string& type, const framework::VariableNameMap& inputs,
+             const framework::VariableNameMap& outputs,
+             const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     auto ins = Inputs("X");
-    auto outs = Outputs("Out");
+
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    std::vector<std::string> endpoints =
-        Attr<std::vector<std::string>>("endpoints");
+    int sync_send = Attr<int>("sync_sent");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
-
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
 
     auto client_var_name = Output("RPCClient");
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
@@ -72,66 +67,47 @@ class SendOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
-        VLOG(2) << "sending " << ins[i] << " to " << epmap[i];
+        VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
+        // TODO(Yancey1989): we need to use an IO threadpool which has
+        // a larger number of threads than the computing threadpool.
         rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    PADDLE_ENFORCE(rpc_client->Wait());
-
-    for (auto& ep : endpoints) {
-      VLOG(2) << "batch barrier, ep: " << ep;
-      rpc_client->AsyncSendBatchBarrier(ep);
-    }
-    PADDLE_ENFORCE(rpc_client->Wait());
-
-    if (outs.size() > 0) {
-      for (size_t i = 0; i < outs.size(); i++) {
-        VLOG(2) << "getting " << outs[i] << " from " << epmap[i];
-        rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
-      }
-      PADDLE_ENFORCE(rpc_client->Wait());
-      // tell pservers that current trainer have called fetch
-      for (auto& ep : endpoints) {
-        VLOG(2) << "send fetch barrier, ep: " << ep;
-        rpc_client->AsyncSendFetchBarrier(ep);
-      }
-      PADDLE_ENFORCE(rpc_client->Wait());
+    if (sync_send) {
+      rpc_client->Wait();
     }
   }
 };
 
-class SendOpMaker : public framework::OpProtoAndCheckerMaker {
+class SendVarsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SendOpMaker(OpProto* proto, OpAttrChecker* op_checker)
+  SendVarsOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "(Tensor) Input tensor to be sent").AsDuplicable();
-    AddOutput("Out", "(Tensor) Output tensor to be received from server")
+    AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
         .AsDuplicable();
     AddOutput("RPCClient",
-              "(RPCClient) The RPC client object which is"
+              "(RPCClient) The RPC client object which will be"
               "initialized at most once.");
     AddComment(R"DOC(
 Send operator
 
-This operator will send tensor to recv_op at the parameter server.
+This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
-    // TODO(typhoonzero): remove this attr generate de-duplicated vector from
-    // epmap when initializing.
-    AddAttr<std::vector<std::string>>("endpoints",
-                                      "(string vector, default 127.0.0.1:6164)"
-                                      "Server endpoints to send variables to.")
-        .SetDefault({});
+    AddAttr<int>("ync_send",
+                 "(int, default 0)"
+                 "sync send or async send.")
+        .SetDefault(0);
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
-        .SetDefault({});
+        .SetDefault({"127.0.0.1:6164"});
   }
 };
 
-class SendOpVarTypeInference : public framework::VarTypeInference {
+class SendVarsOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDesc& op_desc,
                   framework::BlockDesc* block) const override {
@@ -142,7 +118,7 @@ class SendOpVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-class SendOpShapeInference : public framework::InferShapeBase {
+class SendVarsOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {}
 };
@@ -152,6 +128,7 @@ class SendOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send, ops::SendOp, paddle::framework::EmptyGradOpMaker,
-                  ops::SendOpMaker, ops::SendOpVarTypeInference,
-                  ops::SendOpShapeInference);
+REGISTER_OPERATOR(send_vars, ops::SendVarsOp,
+                  paddle::framework::EmptyGradOpMaker, ops::SendVarsOpMaker,
+                  ops::SendVarsOpVarTypeInference,
+                  ops::SendVarsOpShapeInference);
