@@ -57,6 +57,7 @@ size_t Used(Place place);
 struct Usage : public boost::static_visitor<size_t> {
   size_t operator()(const platform::CPUPlace& cpu) const;
   size_t operator()(const platform::CUDAPlace& gpu) const;
+  size_t operator()(const platform::CUDAPinnedPlace& cuda_pinned) const;
 };
 
 size_t memory_usage(const platform::Place& p);

@@ -123,20 +123,20 @@ bool GPUAllocator::UseGpu() const { return true; }
 // memory. It’s locked to a physical address.
 void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
   if (size <= 0) return nullptr;
-  void* p;
-  // NOTE: here, we use GpuMaxAllocSize() as the maximum memory size
+
+  // NOTE: here, we use CpuMaxAllocSize()/2 as the maximum memory size
   // of host pinned allocation. Allocates too much would reduce
   // the amount of memory available to the underlying system for paging.
-
-  size_t usable = paddle::platform::GpuMaxAllocSize() - fallback_alloc_size_;
+  size_t usable = CpuMaxAllocSize() / 2 - cuda_pinnd_alloc_size_;
 
   if (size > usable) return nullptr;
 
   // PINNED memory is visible to all CUDA contexts.
   cudaError_t result = cudaMallocHost(&p, size);
+
   if (result == cudaSuccess) {
-    index = 1;
-    fallback_alloc_size_ += size;
+    index = 1;  // PINNED memory
+    cuda_pinnd_alloc_size_ += size;
     return p;
   }
 
@@ -147,8 +147,8 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   cudaError_t err;
   PADDLE_ASSERT(index == 1);
 
-  PADDLE_ASSERT(fallback_alloc_size_ >= size);
-  fallback_alloc_size_ -= size;
+  PADDLE_ASSERT(cuda_pinnd_alloc_size_ >= size);
+  cuda_pinnd_alloc_size_ -= size;
   err = cudaFreeHost(p);
 
   // Purposefully allow cudaErrorCudartUnloading, because

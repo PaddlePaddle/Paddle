@@ -45,11 +45,10 @@ class Tensor {
   friend struct EigenVector;
 
  public:
-  Tensor() : offset_(0), is_pinned_(false) {}
+  Tensor() : offset_(0) {}
 
   /*! Constructor with place should only be used in pybind. */
-  explicit Tensor(const platform::Place& place)
-      : offset_(0), is_pinned_(false) {
+  explicit Tensor(const platform::Place& place) : offset_(0) {
     holder_->set_place(place);
   }
 
@@ -70,12 +69,11 @@ class Tensor {
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  inline T* mutable_data(platform::Place place, bool is_pinned = false);
+  inline T* mutable_data(platform::Place place);
 
-  inline void* mutable_data(platform::Place place, std::type_index type,
-                            bool is_pinned = false);
+  inline void* mutable_data(platform::Place place, std::type_index type);
 
-  inline void* mutable_data(platform::Place place, bool is_pinned = false);
+  inline void* mutable_data(platform::Place place);
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -86,8 +84,7 @@ class Tensor {
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  inline T* mutable_data(DDim dims, platform::Place place,
-                         bool is_pinned = false);
+  inline T* mutable_data(DDim dims, platform::Place place);
 
   /*! Return the dimensions of the memory block. */
   inline const DDim& dims() const;
@@ -152,14 +149,12 @@ class Tensor {
 
   template <typename Place>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(Place place, size_t size, std::type_index type,
-                    bool is_pinned = false)
-        : ptr_(static_cast<uint8_t*>(memory::Alloc(place, size, is_pinned)),
-               memory::PODDeleter<uint8_t, Place>(place, is_pinned)),
+    PlaceholderImpl(Place place, size_t size, std::type_index type)
+        : ptr_(static_cast<uint8_t*>(memory::Alloc(place, size)),
+               memory::PODDeleter<uint8_t, Place>(place)),
           place_(place),
           size_(size),
-          type_(type),
-          is_pinned_(is_pinned) {
+          type_(type) {
       PADDLE_ENFORCE_NOT_NULL(ptr_, "Insufficient %s memory to allocation.",
                               (is_cpu_place(place_) ? "CPU" : "GPU"));
     }
@@ -182,9 +177,6 @@ class Tensor {
 
     /* the current type of memory */
     std::type_index type_;
-
-    /*! use pinned memory or not. */
-    bool is_pinned_;
   };
 
   /*! holds the memory block if allocated. */
@@ -219,7 +211,6 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
-  bool is_pinned_;
 };
 
 inline void Tensor::switch_place(platform::Place new_place) {
