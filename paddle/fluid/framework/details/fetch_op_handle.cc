@@ -72,6 +72,8 @@ void FetchOpHandle::RunImpl() {
   }
 }
 
+std::string FetchOpHandle::Name() const { return "Fetch"; }
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -38,6 +38,8 @@ struct FetchOpHandle : public OpHandleBase {
 
   void WaitAndMergeCPUTensors() const;
 
+  std::string Name() const override;
+
  protected:
   void RunImpl() override;
 };

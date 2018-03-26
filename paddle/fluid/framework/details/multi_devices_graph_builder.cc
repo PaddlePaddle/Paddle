@@ -136,6 +136,12 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
    */
   PolishGraphToSupportDataHazards(&result);
 
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    PrintGraphviz(*graph, sout);
+    VLOG(10) << sout.str();
+  }
+
   return std::unique_ptr<SSAGraph>(graph);
 }
 }  // namespace details

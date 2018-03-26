@@ -33,6 +33,8 @@ struct OpHandleBase {
 
   std::string DebugString() const;
 
+  virtual std::string Name() const = 0;
+
   virtual ~OpHandleBase();
 
   void Run(bool use_event);

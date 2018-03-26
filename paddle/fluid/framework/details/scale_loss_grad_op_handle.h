@@ -32,6 +32,8 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
 
   ~ScaleLossGradOpHandle() final;
 
+  std::string Name() const override;
+
  protected:
   void RunImpl() override;
 };

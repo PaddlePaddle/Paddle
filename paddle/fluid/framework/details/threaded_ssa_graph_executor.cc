@@ -133,6 +133,12 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
       if (exception_) {
         throw * exception_;
       }
+
+      VLOG(10) << "=============================";
+      for (auto &op : pending_ops) {
+        VLOG(10) << op.first->DebugString();
+      }
+
       // keep waiting the ready variables
       continue;
     }
