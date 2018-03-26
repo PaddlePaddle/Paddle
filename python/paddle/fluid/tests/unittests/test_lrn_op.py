@@ -87,5 +87,15 @@ class TestLRNOp(OpTest):
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
+class TestLRNMKLDNNOp(TestLRNOp):
+    def get_attrs(self):
+        attrs = TestLRNOp.get_attrs(self)
+        attrs['use_mkldnn'] = True
+        return attrs
+
+    def test_check_output(self):
+        self.check_output(atol=0.002)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
 
 #include "paddle/fluid/operators/detail/send_recv.grpc.pb.h"
@@ -36,21 +37,14 @@ namespace detail {
 
 typedef void (*DestroyCallback)(void*);
 
-void SerializeToMessage(const std::string& name, const framework::Variable* var,
-                        const platform::DeviceContext& ctx,
-                        sendrecv::VariableMessage* msg);
-
-void DeserializeFromMessage(const sendrecv::VariableMessage& msg,
-                            const platform::DeviceContext& ctx,
-                            framework::Variable* var);
-
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg);
 
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
-                               framework::Variable* var);
+                               const framework::Scope* scope,
+                               framework::Variable*& var);
 
 inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
   switch (type) {
