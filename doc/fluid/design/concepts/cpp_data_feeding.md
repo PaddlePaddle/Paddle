@@ -185,8 +185,8 @@ With `MultiPassReader`, the startup program would be like this:
 ```
 multiple_reader = open_files_op(...)
 batch_reader = create_batch_reader_op(multiple_reader)
-double_buffer_reader = create_double_buffer_op(batch_reader)
-multi_pass_reader = create_multi_pass_reader_op(double_buffer_reader)
+multi_pass_reader = create_multi_pass_reader_op(batch_reader)
+double_buffer_reader = create_double_buffer_op(multi_pass_reader)
 ... (other initializers)
 ```
 
@@ -195,8 +195,8 @@ The forwarding part of the corresponding `main_program` would be like this:
 ```
 not_completed = true
 while_op(not_completed) {
-    batch_data = read_op(multi_pass_reader)
+    batch_data = read_op(double_buffer_reader)
     ... (subsequent training ops)
-    not_completed = has_next_op(multi_pass_reader)
+    not_completed = has_next_op(double_buffer_reader)
 }
 ```
