@@ -148,14 +148,40 @@ void BlockDesc::RemoveOp(size_t s, size_t e) {
     return;
   }
   need_update_ = true;
+  std::vector<std::string> vars1;  // input vars from delete ops
   for (auto it = ops_.begin() + s; it != ops_.begin() + e; it++) {
-    auto names = (*it)->InputArgumentNames();
-    for (auto n : names) {
-      // TODO(typhoonzero): delete vars if no other op use it.
-      VLOG(3) << "deleting var " << n;
+    // delete all output vars
+    auto out_names = (*it)->OutputArgumentNames();
+    for (auto n : out_names) {
+      vars_.erase(vars_.find(n));
     }
+    // collect all input vars from remove ops
+    auto in_names = (*it)->InputArgumentNames();
+    vars1.insert(vars1.end(), in_names.begin(), in_names.end());
   }
   ops_.erase(ops_.begin() + s, ops_.begin() + e);
+
+  // collect input and output vars from remain ops
+  std::vector<std::string> vars2;
+  for (auto it = ops_.begin(); it != ops_.end(); it++) {
+    auto in_names = (*it)->InputArgumentNames();
+    auto out_names = (*it)->OutputArgumentNames();
+    vars2.insert(vars2.end(), in_names.begin(), in_names.end());
+    vars2.insert(vars2.end(), out_names.begin(), out_names.end());
+  }
+
+  // delete input vars if no other op use it.
+  std::vector<std::string> del_vars;
+  std::sort(vars1.begin(), vars1.end());
+  std::unique(vars1.begin(), vars1.end());
+  std::sort(vars2.begin(), vars2.end());
+  std::unique(vars2.begin(), vars2.end());
+  // del_vars = vars1 -  vars1 ^ vars2
+  std::set_difference(vars1.begin(), vars1.end(), vars2.begin(), vars2.end(),
+                      std::inserter(del_vars, del_vars.end()));
+  for (auto it = del_vars.begin(); it != del_vars.end(); it++) {
+    vars_.erase(vars_.find(*it));
+  }
 }
 
 std::vector<OpDesc *> BlockDesc::AllOps() const {
