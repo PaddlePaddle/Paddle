@@ -74,6 +74,7 @@ __all__ = [
     'one_hot',
     'autoincreased_step_counter',
     'lod_reset',
+    'lrn',
 ]
 
 
@@ -82,6 +83,7 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
+       use_mkldnn=False,
        act=None,
        name=None):
     """
@@ -163,8 +165,11 @@ def fc(input,
             inputs={"X": input_var,
                     "Y": w},
             outputs={"Out": tmp},
-            attrs={"x_num_col_dims": num_flatten_dims,
-                   "y_num_col_dims": 1})
+            attrs={
+                "x_num_col_dims": num_flatten_dims,
+                "y_num_col_dims": 1,
+                'use_mkldnn': use_mkldnn
+            })
         mul_results.append(tmp)
 
     # sum
@@ -1117,12 +1122,14 @@ def conv2d(input,
            filter_size,
            stride=1,
            padding=0,
+           dilation=1,
            groups=None,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
            use_mkldnn=False,
-           act=None):
+           act=None,
+           name=None):
     """
     **Convlution2D Layer**
 
@@ -1183,6 +1190,9 @@ def conv2d(input,
        padding(int|tuple): The padding size. If padding is a tuple, it must
            contain two integers, (padding_H, padding_W). Otherwise, the
            padding_H = padding_W = padding. Default: padding = 0.
+       dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+           contain two integers, (dilation_H, dilation_W). Otherwise, the
+           dilation_H = dilation_W = dilation. Default: dilation = 1.
        groups(int): The groups number of the Conv2d Layer. According to grouped
            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
            the first half of the filters is only connected to the first half
@@ -1193,6 +1203,8 @@ def conv2d(input,
        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
            library is installed. Default: True
        act(str): Activation type. Default: None
+       name(str|None): A name for this layer(optional). If set None, the layer
+           will be named automatically.
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -1233,6 +1245,7 @@ def conv2d(input,
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
     stride = utils.convert_to_list(stride, 2, 'stride')
     padding = utils.convert_to_list(padding, 2, 'padding')
+    dilation = utils.convert_to_list(dilation, 2, 'dilation')
 
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
@@ -1262,6 +1275,7 @@ def conv2d(input,
         attrs={
             'strides': stride,
             'paddings': padding,
+            'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
             'use_mkldnn': use_mkldnn
@@ -1670,7 +1684,9 @@ def conv2d_transpose(input,
                      stride=1,
                      dilation=1,
                      param_attr=None,
+                     bias_attr=None,
                      use_cudnn=True,
+                     act=None,
                      name=None):
     """
     **Convlution2D transpose layer**
@@ -1739,8 +1755,10 @@ def conv2d_transpose(input,
            dilation_H = dilation_W = dilation. Default: dilation = 1.
        param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
                               Default: None
+       bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
            library is installed. Default: True
+       act(str): Activation type. Default: None
        name(str|None): A name for this layer(optional). If set None, the layer
            will be named automatically.
 
@@ -1793,12 +1811,12 @@ def conv2d_transpose(input,
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
-    out = helper.create_tmp_variable(dtype=input.dtype)
+    pre_bias = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='conv2d_transpose',
         inputs={'Input': [input],
                 'Filter': [img_filter]},
-        outputs={'Output': out},
+        outputs={'Output': pre_bias},
         attrs={
             'strides': stride,
             'paddings': padding,
@@ -1806,55 +1824,57 @@ def conv2d_transpose(input,
             'use_cudnn': use_cudnn
         })
 
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    out = helper.append_activation(pre_act)
     return out
 
 
-def sequence_expand(x, y, name=None):
+def sequence_expand(x, y, ref_level=-1, name=None):
     """Sequence Expand Layer. This layer will expand the input variable **x**
-    according to LoD information of **y**. And the following examples will
-    explain how sequence_expand works:
+    according to specified level lod of **y**. Please note that lod level of
+    **x** is at most 1 and rank of **x** is at least 2. When rank of **x**
+    is greater than 2, then it would be viewed as a 2-D tensor.
+    Following examples will explain how sequence_expand works:
 
     .. code-block:: text
 
         * Case 1
             x is a LoDTensor:
-                x.lod = [[0,       2, 3],
-                         [0, 1,    3, 4]]
-                x.data = [a, b, c, d]
+                x.lod  = [[0,   2,        4]]
+                x.data = [[a], [b], [c], [d]]
                 x.dims = [4, 1]
 
             y is a LoDTensor:
                 y.lod = [[0,    2,    4],
                          [0, 3, 6, 7, 8]]
 
-            with condition len(y.lod[-1]) - 1 == x.dims[0]
+            ref_level: 0
 
-            then output is a 2-level LoDTensor:
-                out.lod = [[0,                2,    4],
-                           [0,       3,       6, 7, 8]]
-                out.data = [a, a, a, b, b, b, c, d]
+            then output is a 1-level LoDTensor:
+                out.lod =  [[0,   2,        4,        6,        8]]
+                out.data = [[a], [b], [a], [b], [c], [d], [c], [d]]
                 out.dims = [8, 1]
 
         * Case 2
             x is a Tensor:
-                x.data = [a, b, c]
+                x.data = [[a], [b], [c]]
                 x.dims = [3, 1]
 
             y is a LoDTensor:
-                y.lod = [[0, 2, 3, 6]]
+                y.lod = [[0, 2, 2, 5]]
 
-            with condition len(y.lod[-1]) - 1 == x.dims[0]
+            ref_level: -1
 
-            then output is a 1-level LoDTensor:
-                out.lod = [[0,    2, 3,      6]]
-                out.data = [a, a, b, c, c, c]
-                out.dims = [6, 1]
-
+            then output is a Tensor:
+                out.data = [[a], [a], [c], [c], [c]]
+                out.dims = [5, 1]
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
         y (Variable): The input variable which is a LoDTensor.
+        ref_level (int): Lod level of `y` to be referred by `x`. If set to -1,
+                         refer the last level of lod.
         name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+                        will be named automatically.
 
     Returns:
         Variable: The expanded variable which is a LoDTensor.
@@ -1865,14 +1885,17 @@ def sequence_expand(x, y, name=None):
             x = fluid.layers.data(name='x', shape=[10], dtype='float32')
             y = fluid.layers.data(name='y', shape=[10, 20],
                              dtype='float32', lod_level=1)
-            out = layers.sequence_expand(x=x, y=y)
+            out = layers.sequence_expand(x=x, y=y, ref_level=0)
     """
     helper = LayerHelper('sequence_expand', input=x, **locals())
     dtype = helper.input_dtype()
     tmp = helper.create_tmp_variable(dtype)
     helper.append_op(
-        type='sequence_expand', inputs={'X': x,
-                                        'Y': y}, outputs={'Out': tmp})
+        type='sequence_expand',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': tmp},
+        attrs={'ref_level': ref_level})
     return tmp
 
 
@@ -3388,3 +3411,73 @@ def lod_reset(x, y=None, target_lod=None):
         raise ValueError("y and target_lod should not be both None.")
 
     return out
+
+
+def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
+    """
+    Local Response Normalization Layer. This layer performs a type of
+    "lateral inhibition" by normalizing over local input regions.
+
+    The formula is as follows:
+
+    .. math::
+
+        Output(i, x, y) = Input(i, x, y) / \left(
+        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
+        (Input(j, x, y))^2 \right)^{\beta}
+
+    In the above equation:
+
+    * :math:`n`: The number of channels to sum over.
+    * :math:`k`: The offset (avoid being divided by 0).
+    * :math:`alpha`: The scaling parameter.
+    * :math:`beta`: The exponent parameter.
+
+    Refer to `ImageNet Classification with Deep Convolutional Neural Networks
+    <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+
+    Args:
+        input (Variable): The input tensor of this layer, and the dimension of input tensor must be 4.
+        n (int, default 5): The number of channels to sum over.
+        k (float, default 1.0): An offset (usually positive to avoid dividing by 0).
+        alpha (float, default 1e-4): The scaling parameter.
+        beta (float, default 0.75): The exponent.
+        name (str, default None): A name for this operation.
+
+    Raises:
+        ValueError: If rank of the input tensor is not 4.
+
+    Returns:
+        A tensor variable storing the transformation result.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name="data", shape=[3, 112, 112], dtype="float32")
+          lrn = fluid.layers.lrn(input=data)
+    """
+    helper = LayerHelper('lrn', **locals())
+    dtype = helper.input_dtype()
+    input_shape = input.shape
+    dims = len(input_shape)
+
+    if dims != 4:
+        raise ValueError(
+            "dims of input must be 4(not %d), and it's order must be NCHW" %
+            (dims))
+
+    mid_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    lrn_out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="lrn",
+        inputs={"X": input},
+        outputs={
+            "Out": lrn_out,
+            "MidOut": mid_out,
+        },
+        attrs={"n": n,
+               "k": k,
+               "alpha": alpha,
+               "beta": beta})
+
+    return lrn_out

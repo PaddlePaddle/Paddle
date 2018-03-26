@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/mkldnn_activation_op.h"
 
 namespace paddle {
 namespace operators {
@@ -87,6 +88,9 @@ class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Relu operator");
     AddOutput("Out", "Output of Relu operator");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Relu Activation Operator.
 
@@ -140,6 +144,9 @@ class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Tanh operator");
     AddOutput("Out", "Output of Tanh operator");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Tanh Activation Operator.
 
@@ -193,6 +200,9 @@ class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Sqrt operator");
     AddOutput("Out", "Output of Sqrt operator");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Sqrt Activation Operator.
 
@@ -208,6 +218,9 @@ class AbsOpMaker : public framework::OpProtoAndCheckerMaker {
       : framework::OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "Input of Abs operator");
     AddOutput("Out", "Output of Abs operator");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddComment(R"DOC(
 Abs Activation Operator.
 
@@ -524,11 +537,11 @@ REGISTER_OP(logsigmoid, ops::ActivationOp, ops::LogSigmoidOpMaker,
 REGISTER_OP(exp, ops::ActivationOp, ops::ExpOpMaker, exp_grad,
             ops::ActivationOpGrad);
 
-REGISTER_OP(relu, ops::ActivationOp, ops::ReluOpMaker, relu_grad,
-            ops::ActivationOpGrad);
+REGISTER_OP(relu, ops::ActivationWithMKLDNNOp, ops::ReluOpMaker, relu_grad,
+            ops::ActivationWithMKLDNNOpGrad);
 
-REGISTER_OP(tanh, ops::ActivationOp, ops::TanhOpMaker, tanh_grad,
-            ops::ActivationOpGrad);
+REGISTER_OP(tanh, ops::ActivationWithMKLDNNOp, ops::TanhOpMaker, tanh_grad,
+            ops::ActivationWithMKLDNNOpGrad);
 
 REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
             tanh_shrink_grad, ops::ActivationOpGrad);
@@ -536,11 +549,11 @@ REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
 REGISTER_OP(softshrink, ops::ActivationOp, ops::SoftShrinkOpMaker,
             softshrink_grad, ops::ActivationOpGrad);
 
-REGISTER_OP(sqrt, ops::ActivationOp, ops::SqrtOpMaker, sqrt_grad,
-            ops::ActivationOpGrad);
+REGISTER_OP(sqrt, ops::ActivationWithMKLDNNOp, ops::SqrtOpMaker, sqrt_grad,
+            ops::ActivationWithMKLDNNOpGrad);
 
-REGISTER_OP(abs, ops::ActivationOp, ops::AbsOpMaker, abs_grad,
-            ops::ActivationOpGrad);
+REGISTER_OP(abs, ops::ActivationWithMKLDNNOp, ops::AbsOpMaker, abs_grad,
+            ops::ActivationWithMKLDNNOpGrad);
 
 REGISTER_OP(ceil, ops::ActivationOp, ops::CeilOpMaker, ceil_grad,
             ops::ActivationOpGrad);
@@ -613,3 +626,14 @@ REGISTER_OP(swish, ops::ActivationOp, ops::SwishOpMaker, swish_grad,
                                 ops::grad_functor<double>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);
+
+REGISTER_OP_CPU_KERNEL(relu,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ReluFunctor<float>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ReluFunctor<double>>);
+REGISTER_OP_CPU_KERNEL(
+    relu_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                         ops::ReluGradFunctor<float>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::ReluGradFunctor<double>>);

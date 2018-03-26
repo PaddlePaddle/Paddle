@@ -20,7 +20,7 @@ namespace math {
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatFunctor<platform::CPUDeviceContext, T> {
@@ -44,7 +44,7 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
       out_cols += t_cols;
       input_cols[i] = t_cols;
     }
-    auto& cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+    auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
 
     // computation
     for (int k = 0; k < out_rows; ++k) {
@@ -63,7 +63,7 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatGradFunctor<platform::CPUDeviceContext, T> {
@@ -87,7 +87,7 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
       input_cols += t_cols;
       output_cols[i] = t_cols;
     }
-    auto& cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+    auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
 
     // computation
     for (int k = 0; k < input_rows; ++k) {
