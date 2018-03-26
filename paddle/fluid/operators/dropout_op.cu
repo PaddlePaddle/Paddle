@@ -33,6 +33,7 @@ __global__ void RandomGenerator(const size_t n, const int seed,
 
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
+    rng.discard(idx);
     if (dist(rng) < dropout_prob) {
       mask_data[idx] = static_cast<T>(0);
     } else {
