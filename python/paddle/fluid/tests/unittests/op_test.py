@@ -483,9 +483,9 @@ class OpTest(unittest.TestCase):
             input: input numpy array
 
         Returns:
-            input: if the dtype of input is np.float16, its dtype will be
-                changed to np.uint16 so that the internal memory will be 
-                reinterpreted input as of dtype np.uint16. 
+            input: The dtype of input will be changed to np.uint16 if 
+                it is originally np.float16, such that the internal memory
+                of input will be reinterpreted as of dtype np.uint16. 
         """
         if input.dtype == np.float16:
             input.dtype = np.uint16

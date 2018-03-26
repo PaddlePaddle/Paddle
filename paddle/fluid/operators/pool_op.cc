@@ -124,11 +124,15 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   }
 #endif
 
+  auto input_data_type = framework::ToDataType(ctx.Input<Tensor>("X")->type());
+  if (input_data_type == framework::proto::VarType::FP16) {
+    PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
+                      "float16 can only be used when CUDNN is used");
+  }
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-      layout_, library_);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                 library_);
 }
 
 Pool2dOpMaker::Pool2dOpMaker(OpProto *proto, OpAttrChecker *op_checker)
