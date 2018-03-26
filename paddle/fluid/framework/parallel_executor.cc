@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include "ThreadPool.h"
 
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
@@ -64,13 +66,18 @@ ParallelExecutor::ParallelExecutor(
       member_->local_scopes_.size() != 1) {  // Is CUDA
     BCastParamsToGPUs(startup_program);
   }
-  // Startup Program has been run. All local scopes has correct parameters.
+// Startup Program has been run. All local scopes has correct parameters.
 
-  // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
-  // ncclOp
+// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
+// ncclOp
+#ifdef PADDLE_WITH_CUDA
   details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
                                            params, member_->local_scopes_,
                                            member_->nccl_ctxs_.get());
+#else
+  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
+                                           params, member_->local_scopes_);
+#endif
   auto graph = builder.Build(main_program);
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
@@ -137,3 +144,4 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 
 }  // namespace framework
 }  // namespace paddle
+A

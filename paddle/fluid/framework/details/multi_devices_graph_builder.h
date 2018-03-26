@@ -26,11 +26,18 @@ class Scope;
 namespace details {
 class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  public:
+#ifdef PADDLE_WITH_CUDA
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
                           platform::NCCLContextMap *nccl_ctxs);
+#else
+  MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
+                          const std::string &loss_var_name,
+                          const std::unordered_set<std::string> &params,
+                          const std::vector<Scope *> &local_scopes);
+#endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
 
@@ -38,8 +45,11 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   std::string loss_var_name_;
   const std::vector<platform::Place> &places_;
   const std::vector<Scope *> &local_scopes_;
-  platform::NCCLContextMap *nccl_ctxs_;
   std::unordered_set<std::string> grad_names_;
+
+#ifdef PADDLE_WITH_CUDA
+  platform::NCCLContextMap *nccl_ctxs_;
+#endif
 };
 }  // namespace details
 }  // namespace framework
