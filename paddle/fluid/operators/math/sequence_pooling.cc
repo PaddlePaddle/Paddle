@@ -156,6 +156,12 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
       max_pool_grad(context, out_grad, *index, in_grad);
       return;
     }
+
+    if (pooltype == "LAST" || pooltype == "FIRST") {
+      // set X@Grad be zero at first when pooltype is LAST/FIRST
+      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      functor(context, in_grad, 0)
+    }
     auto lod = in_grad->lod()[0];
     auto& place = *context.eigen_device();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
@@ -163,7 +169,7 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
                                    static_cast<int>(lod[i + 1]));
       auto out_g_t = out_grad.Slice(i, i + 1);
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-      int64_t w = in_grad->numel() / in_grad->dims()[0];
+      int64_t w = in->numel() / in_grad->dims()[0];
       auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
       auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
       auto out_g_e_v = EigenVector<T>::Flatten(out_g_t);
