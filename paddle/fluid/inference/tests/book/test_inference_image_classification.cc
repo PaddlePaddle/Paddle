@@ -46,11 +46,13 @@ TEST(inference, image_classification) {
   std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
-  // Run inference on CPU
-  LOG(INFO) << "--- CPU Runs: ---";
-  TestInference<paddle::platform::CPUPlace>(
-      dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
-  LOG(INFO) << output1.dims();
+// Run inference on CPU
+/*
+LOG(INFO) << "--- CPU Runs: ---";
+TestInference<paddle::platform::CPUPlace>(
+    dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
+LOG(INFO) << output1.dims();
+*/
 
 #ifdef PADDLE_WITH_CUDA
   paddle::framework::LoDTensor output2;
