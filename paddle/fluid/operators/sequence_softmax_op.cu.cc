@@ -14,21 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_softmax_op.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename T>
-__global__
-
-    template <typename T>
-    struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& ctx, const LoDTensor& x,
-                  LoDTensor* out) {}
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     sequence_softmax,

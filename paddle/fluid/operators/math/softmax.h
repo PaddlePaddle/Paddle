@@ -50,6 +50,18 @@ class SoftmaxGradCUDNNFunctor {
 };
 #endif
 
+template <typename DeviceContext, typename T>
+struct SequenceSoftmaxFunctor {
+  void operator()(const DeviceContext& ctx, const framework::LoDTensor& x,
+                  framework::LoDTensor* out);
+};
+
+template <typename DeviceContext, typename T>
+struct SequenceSoftmaxGradFunctor {
+  void operator()(const DeviceContext& ctx, const framework::LoDTensor& out,
+                  const framework::LoDTensor& dout, framework::LoDTensor* dx);
+};
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

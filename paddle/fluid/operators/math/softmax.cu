@@ -19,11 +19,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
+#define FLT_MAX __FLT_MAX__
+
 namespace paddle {
 namespace operators {
 namespace math {
 
 using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using DataLayout = platform::DataLayout;
 template <typename T>
@@ -88,6 +91,78 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
       XGrad->mutable_data<T>(context.GetPlace())));
 }
+
+template <typename T>
+__global__ void sequence_softmax(const T* x, const size_t num_classes,
+                                 const size_t* lod, const size_t lod_size,
+                                 T* out) {
+  extern __shared__ T mem[];
+
+  int bid = blockIdx.x;
+  if (bid >= lod_size) return;
+  int start_pos = static_cast<int>(lod[bid]);
+  int end_pos = static_cast<int>(lod[bid + 1]);
+  T* shm = &mem[start_pos];
+  // get max logits
+  for (int tid = threadIdx.x; tid < (end_pos - start_pos); tid += blockIdx.x) {
+    T max_logits = static_cast<T>(-FLT_MAX);
+    int offset = (start_pos + tid) * num_classes;
+    for (int i = 0; i < num_classes; ++i) {
+      if (x[offset + i] > max_logits) {
+        max_logits = ValueClip<T>(x[offset + i]);
+      }
+    }
+    shm[tid] = max_logits;
+  }
+  __syncthreads();
+
+  // compute softmax sum
+  for (int tid = threadIdx.x; tid < (end_pos - start_pos); tid += blockIdx.x) {
+    int offset = (start_pos + tid) * num_classes;
+    T softmax_sum = static_cast<T>(0);
+    for (int i = 0; i < num_classes; ++i) {
+      out[offset + i] = exp(x[offset + i] - shm[tid]);
+      softmax_sum += out[offset + i];
+    }
+    shm[tid] = 1.0 / softmax_sum;
+  }
+  __syncthreads();
+
+  // generate per class softmax prob.
+  for (int tid = threadIdx.x; tid < (end_pos - start_pos); tid += blockIdx.x) {
+    int offset = (start_pos + tid) * num_classes;
+    for (int i = 0; i < num_classes; ++i) {
+      out[offset + i] = shm[tid] * out[offset + i];
+    }
+  }
+}
+
+template <typename T>
+struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& ctx, const LoDTensor& x,
+                  LoDTensor* out) {
+    const size_t level = x.lod().size() - 1;
+    auto lod = x.lod()[level];
+    dim3 threads(1024, 1);
+    dim3 block(lod.size(), 1);
+    sequence_softmax<
+        T><<<block, threads, framework::product(x.dims()) * sizeof(T),
+             ctx.stream()>>>(x.data<T>(), lod.CUDAData(ctx.GetPlace()),
+                             lod.size(), out->mutable_data<T>(ctx.GetPlace()));
+  }
+};
+
+template <typename T>
+struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& ctx,
+                  const framework::LoDTensor& out,
+                  const framework::LoDTensor& dout, framework::LoDTensor* dx) {
+    auto lod = dx->lod();
+    const size_t level = lod.size() - 1;
+    dim3 threads(1024, 1);
+    dim3 block(lod.size(), 1);
+  }
+};
 
 template class SoftmaxCUDNNFunctor<platform::float16>;
 template class SoftmaxCUDNNFunctor<float>;

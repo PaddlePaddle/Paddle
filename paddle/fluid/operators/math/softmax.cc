@@ -19,6 +19,57 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+
+template <typename T>
+struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx, const LoDTensor& x,
+                  LoDTensor* out) {
+    auto lod = x.lod();
+    const size_t level = lod.size() - 1;
+    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
+      int start_pos = static_cast<int>(lod[level][i]);
+      int end_pos = static_cast<int>(lod[level][i + 1]);
+      Tensor x_i = x.Slice(start_pos, end_pos);
+      Tensor out_i = out->Slice(start_pos, end_pos);
+
+      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
+      framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
+      x_i.Resize(dims_i);
+      out_i.Resize(dims_i);
+      math::SoftmaxFunctor<platform::CPUDeviceContext, T>()(ctx, &x_i, &out_i);
+    }
+  }
+};
+
+template <typename T>
+struct SequenceSoftmaxGradFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext& ctx,
+                  const framework::LoDTensor& out,
+                  const framework::LoDTensor& dout, framework::LoDTensor* dx) {
+    auto lod = dx->lod();
+    const size_t level = lod.size() - 1;
+
+    for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
+      int start_pos = static_cast<int>(lod[level][i]);
+      int end_pos = static_cast<int>(lod[level][i + 1]);
+
+      Tensor out_i = out.Slice(start_pos, end_pos);
+      Tensor out_grad_i = dout.Slice(start_pos, end_pos);
+      Tensor x_grad_i = dx->Slice(start_pos, end_pos);
+
+      // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
+      framework::DDim dims_i = framework::make_ddim({1UL, end_pos - start_pos});
+      out_i.Resize(dims_i);
+      out_grad_i.Resize(dims_i);
+      x_grad_i.Resize(dims_i);
+      math::SoftmaxGradFunctor<platform::CPUDeviceContext, T>()(
+          ctx, &out_i, &out_grad_i, &x_grad_i);
+    }
+  }
+};
+
 template class SoftmaxFunctor<platform::CPUDeviceContext, float>;
 template class SoftmaxFunctor<platform::CPUDeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CPUDeviceContext, float>;
