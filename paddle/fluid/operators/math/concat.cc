@@ -20,7 +20,7 @@ namespace math {
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatFunctor<platform::CPUDeviceContext, T> {
@@ -63,7 +63,7 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
 
 /*
  * All tensors' dimension should be the same and the values of
- * each dimension are the same, except the axis dimension.
+ * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
 class ConcatGradFunctor<platform::CPUDeviceContext, T> {
