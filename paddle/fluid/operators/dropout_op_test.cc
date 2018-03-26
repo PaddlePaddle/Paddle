@@ -65,8 +65,6 @@ void InitTensorInScope(f::Scope& scope, p::DeviceContext& ctx) {
 
   dropout_op->Run(scope, place);
 
-  // auto out_var = scope.Var("Out");
-  // auto out_tensor = out_var->GetMutable<f::LoDTensor>();
   std::vector<float> out_vec;
   TensorToVector(*out_tensor, ctx, &out_vec);
 
