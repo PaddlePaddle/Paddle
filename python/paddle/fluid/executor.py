@@ -181,7 +181,9 @@ def get_program_cache_key(feed, fetch_list):
 class Executor(object):
     def __init__(self, place):
         self.place = place
-        self.executor = core.Executor(core.Place().set_place(place))
+        p = core.Place()
+        p.set_place(place)
+        self.executor = core.Executor(p)
         self.program_caches = dict()
 
     def as_lodtensor(self, data):
