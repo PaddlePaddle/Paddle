@@ -84,46 +84,6 @@ class TestDropoutOp5(OpTest):
         self.check_output()
 
 
-def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
-    return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
-
-
-#Reference: https://github.com/PaddlePaddle/Paddle/issues/8654
-class TestDropoutOp6(unittest.TestCase):
-    def program(self):
-        x = fluid.layers.data(
-            name='x',
-            shape=[64, 32, 512],
-            dtype='float32',
-            append_batch_size=False)
-        out = fluid.layers.dropout(x, dropout_prob=0.1, is_test=False)
-        return out
-
-    def LoopMaxMin(self, place):
-        exe = fluid.Executor(place)
-        out = self.program()
-        data_input = {}
-        in_tensor = fluid.LoDTensor()
-        in_tensor.set(np.ones([64, 32, 512], dtype="float32"), place)
-        data_input['x'] = in_tensor
-        for i in range(10):
-            ret_out = exe.run(fluid.framework.default_main_program(),
-                              feed=data_input,
-                              fetch_list=[out])[0]
-            out_max = np.max(ret_out)
-            out_min = np.min(ret_out)
-
-            self.assertTrue(isclose(out_max, 1.0))
-            self.assertTrue(isclose(out_min, 0.0))
-
-    def test_all(self):
-        place = fluid.CUDAPlace(0)
-        self.LoopMaxMin(place)
-
-        place = fluid.CPUPlace()
-        self.LoopMaxMin(place)
-
-
 class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"

@@ -55,9 +55,6 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
-    auto X = EigenMatrix<T>::Reshape(*x, 1);
-    auto Y = EigenMatrix<T>::Reshape(*y, 1);
-
     auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
@@ -76,6 +73,8 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
           T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
           size, seed, dropout_prob, x_data, mask_data, y_data);
     } else {
+      auto X = EigenMatrix<T>::Reshape(*x, 1);
+      auto Y = EigenMatrix<T>::Reshape(*y, 1);
       Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
   }

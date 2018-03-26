@@ -30,16 +30,20 @@ namespace m = paddle::operators::math;
 
 USE_OP(dropout);
 
-void InitTensorInScope(f::Scope &scope, p::CPUPlace &place) {
-  p::CPUDeviceContext ctx(place);
+void InitTensorInScope(f::Scope& scope, p::DeviceContext& ctx) {
+  // init
   auto var = scope.Var("X");
   auto tensor = var->GetMutable<f::LoDTensor>();
   tensor->Resize({10, 10});
-  float *expect = tensor->mutable_data<float>(place);
-  for (int64_t i = 0; i < tensor->numel(); ++i) {
-    expect[i] = 1.0;
+
+  std::vector<float> init;
+  for (int64_t i = 0; i < 10 * 10; ++i) {
+    init.push_back(1.0);
   }
 
+  TensorFromVector(init, ctx, tensor);
+
+  auto place = ctx.GetPlace();
   auto out_var = scope.Var("Out");
   auto out_tensor = out_var->GetMutable<f::LoDTensor>();
   out_tensor->Resize({10, 10});
@@ -49,14 +53,8 @@ void InitTensorInScope(f::Scope &scope, p::CPUPlace &place) {
   auto mask_tensor = mask_var->GetMutable<f::LoDTensor>();
   mask_tensor->Resize({10, 10});
   mask_tensor->mutable_data<float>(place);  // allocate
-}
 
-TEST(Dropout, CPUDense) {
-  f::Scope scope;
-  p::CPUPlace place;
-  p::CPUDeviceContext ctx(place);
-  InitTensorInScope(scope, place);
-
+  // run
   f::AttributeMap attrs;
   float dropout_prob = 0.5;
   attrs.insert({"fix_seed", 1});
@@ -67,10 +65,10 @@ TEST(Dropout, CPUDense) {
 
   dropout_op->Run(scope, place);
 
-  auto out_var = scope.Var("Out");
-  auto out_tensor = out_var->GetMutable<f::LoDTensor>();
+  // auto out_var = scope.Var("Out");
+  // auto out_tensor = out_var->GetMutable<f::LoDTensor>();
   std::vector<float> out_vec;
-  TensorToVector(*out_tensor, &out_vec);
+  TensorToVector(*out_tensor, ctx, &out_vec);
 
   std::vector<float> std_out = {
       0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1,
@@ -81,8 +79,21 @@ TEST(Dropout, CPUDense) {
 
   EXPECT_EQ(out_vec.size(), std_out.size());
   for (uint32_t i = 0; i < out_vec.size(); i++) {
-    std::cout << out_vec[i] << ",";
     EXPECT_EQ(out_vec[i], std_out[i]);
   }
   std::cout << std::endl;
+}
+
+TEST(Dropout, CPUDense) {
+  f::Scope scope;
+  p::CPUPlace place;
+  p::CPUDeviceContext ctx(place);
+  InitTensorInScope(scope, ctx);
+}
+
+TEST(Dropout, GPUDense) {
+  f::Scope scope;
+  p::CUDAPlace place;
+  p::CUDADeviceContext ctx(place);
+  InitTensorInScope(scope, ctx);
 }
