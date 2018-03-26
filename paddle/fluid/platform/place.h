@@ -45,12 +45,33 @@ struct CUDAPlace {
   int device;
 };
 
+struct CUDAPinnedPlace {
+  CUDAPinnedPlace() {}
+
+  // needed for variant equality comparison
+  inline bool operator==(const CUDAPinnedPlace &) const { return true; }
+  inline bool operator!=(const CUDAPinnedPlace &) const { return false; }
+};
+
 struct IsCUDAPlace : public boost::static_visitor<bool> {
   bool operator()(const CPUPlace &) const { return false; }
   bool operator()(const CUDAPlace &gpu) const { return true; }
+  bool operator()(const CUDAPinnedPlace &) const { return false; }
 };
 
-typedef boost::variant<CUDAPlace, CPUPlace> Place;
+struct IsCPUPlace : public boost::static_visitor<bool> {
+  bool operator()(const CPUPlace &cpu) const { return true; }
+  bool operator()(const CUDAPlace &) const { return false; }
+  bool operator()(const CUDAPinnedPlace &) const { return false; }
+};
+
+struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
+  bool operator()(const CPUPlace &) const { return false; }
+  bool operator()(const CUDAPlace &) const { return false; }
+  bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
+};
+
+typedef boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> Place;
 
 using PlaceList = std::vector<Place>;
 
@@ -59,9 +80,11 @@ const Place &get_place();
 
 const CUDAPlace default_gpu();
 const CPUPlace default_cpu();
+const CUDAPinnedPlace default_cuda_pinned();
 
 bool is_gpu_place(const Place &);
 bool is_cpu_place(const Place &);
+bool is_cuda_pinned_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
 
@@ -96,6 +119,11 @@ struct PlaceVisitorWrapper
     PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda device");
     return typename Visitor::result_type();
 #endif
+  }
+
+  typename Visitor::result_type operator()(
+      const CUDAPinnedPlace &cuda_pinned) const {
+    return visitor_(cuda_pinned);
   }
 };
 
