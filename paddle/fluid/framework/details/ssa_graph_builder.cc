@@ -21,7 +21,7 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
   for (auto &var_map : graph->vars_) {
     for (auto &name_pair : var_map) {
       if (name_pair.second.size() <= 1) {
-        return;
+        continue;
       }
       auto it_new = name_pair.second.rbegin();
       auto it_old = name_pair.second.rbegin();

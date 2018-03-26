@@ -31,7 +31,13 @@ std::string OpHandleBase::DebugString() const {
   return ss.str();
 }
 
-OpHandleBase::~OpHandleBase() {}
+OpHandleBase::~OpHandleBase() {
+#ifdef PADDLE_WITH_CUDA
+  for (auto &ev : events_) {
+    cudaEventDestroy(ev.second);
+  }
+#endif
+}
 
 void OpHandleBase::Run(bool use_event) {
 #ifdef PADDLE_WITH_CUDA
