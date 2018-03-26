@@ -20,10 +20,10 @@ from op_test import OpTest
 class TestSplitIdsOp(OpTest):
     def setUp(self):
         self.op_type = "split_ids"
-        ids = np.array([[0], [1], [2], [3], [4], [5], [6]]).astype('int64')
+        ids = np.array([[0], [2], [2], [3], [5], [5], [6]]).astype('int64')
         out0 = np.array([[0], [3], [6]]).astype('int64')
-        out1 = np.array([[1], [4]]).astype('int64')
-        out2 = np.array([[2], [5]]).astype('int64')
+        out1 = np.array([[]]).astype('int64')
+        out2 = np.array([[2], [2], [5], [5]]).astype('int64')
         self.inputs = {'Ids': ids}
         self.outputs = {'Out': [('out0', out0), ('out1', out1), ('out2', out2)]}
 
