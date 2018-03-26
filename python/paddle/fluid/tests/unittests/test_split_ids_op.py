@@ -30,9 +30,6 @@ class TestSplitIdsOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    # def test_check_grad(self):
-    #     self.check_grad(['X'], ['out0', 'out1', 'out2'])
-
 
 if __name__ == '__main__':
     unittest.main()
