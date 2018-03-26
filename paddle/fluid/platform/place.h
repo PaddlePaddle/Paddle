@@ -123,7 +123,12 @@ struct PlaceVisitorWrapper
 
   typename Visitor::result_type operator()(
       const CUDAPinnedPlace &cuda_pinned) const {
+#ifdef PADDLE_WITH_CUDA
     return visitor_(cuda_pinned);
+#else
+    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda_pinned");
+    return typename Visitor::result_type();
+#endif
   }
 };
 
