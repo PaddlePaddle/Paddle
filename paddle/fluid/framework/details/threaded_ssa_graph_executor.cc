@@ -211,7 +211,6 @@ void ThreadedSSAGraphExecutor::RunOp(
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";
     }
-    PADDLE_ENFORCE(cudaDeviceSynchronize());
   };
   if (pool_) {
     pool_->enqueue(op_run);
