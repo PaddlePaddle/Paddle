@@ -66,7 +66,7 @@ class MultiGPUExecutor {
                             const std::unordered_set<std::string>& params);
 
   // Init parameters on one device and broadcast them to other devices
-  void Init(const ProgramDesc& prog, int block_id,
+  void Init(const ProgramDesc& prog, Scope* scope, int block_id,
             bool create_local_scope = true, bool create_vars = true);
 
   /* @Brief
@@ -76,7 +76,7 @@ class MultiGPUExecutor {
    *  ProgramDesc
    *  Scope
    */
-  void Run(const ProgramDesc& prog, int block_id,
+  void Run(const ProgramDesc& prog, Scope* scope, int block_id,
            bool create_local_scope = true, bool create_vars = true);
 
  private:
@@ -86,7 +86,6 @@ class MultiGPUExecutor {
   std::unordered_set<std::string> param_grads_;
 
   std::vector<framework::ExecutorWithAllReduce> exes_;
-  std::vector<framework::Scope*> scopes_;
 };
 
 }  // namespace framework

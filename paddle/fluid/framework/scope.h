@@ -59,6 +59,8 @@ class Scope {
 
   const Scope& parent() const { return *parent_; }
 
+  std::vector<std::shared_ptr<Scope>>& replicas(size_t replica_count);
+
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 
@@ -86,6 +88,7 @@ class Scope {
   mutable std::unordered_map<std::string, Variable*> vars_;
   mutable std::list<Scope*> kids_;
   Scope const* parent_{nullptr};
+  std::vector<std::shared_ptr<Scope>> replicas_;
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 };
