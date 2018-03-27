@@ -208,6 +208,11 @@ void ThreadedSSAGraphExecutor::RunOp(
     try {
       VLOG(10) << op->DebugString();
       op->Run(use_event_);
+
+      for (auto &dev_ctx : op->dev_ctx_) {
+        dev_ctx.second->Wait();  // Sync error
+      }
+
       for (auto *ready : *ready_buffer) {
         ready->store(true, std::memory_order_release);
       }
