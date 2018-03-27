@@ -153,6 +153,7 @@ bool VariableResponse::CopySelectRowsData(
     const platform::DeviceContext& ctx, int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
+  slr->mutable_rows()->resize(length / 8);
   int64_t* rows_data = slr->mutable_rows()->data();
 
   // copy rows CPU data, GPU data will be copied lazily.
