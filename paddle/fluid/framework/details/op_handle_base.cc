@@ -34,7 +34,7 @@ std::string OpHandleBase::DebugString() const {
 OpHandleBase::~OpHandleBase() {
 #ifdef PADDLE_WITH_CUDA
   for (auto &ev : events_) {
-    cudaEventDestroy(ev.second);
+    PADDLE_ENFORCE(cudaEventDestroy(ev.second));
   }
 #endif
 }
@@ -44,8 +44,9 @@ void OpHandleBase::Run(bool use_event) {
   if (events_.empty() && use_event) {
     for (auto &p : dev_ctx_) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
-      cudaSetDevice(dev_id);
-      cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming);
+      PADDLE_ENFORCE(cudaSetDevice(dev_id));
+      PADDLE_ENFORCE(
+          cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
     }
   }
 #else
@@ -60,7 +61,7 @@ void OpHandleBase::Run(bool use_event) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
       auto stream =
           static_cast<platform::CUDADeviceContext *>(p.second)->stream();
-      cudaEventRecord(events_.at(dev_id), stream);
+      PADDLE_ENFORCE(cudaEventRecord(events_.at(dev_id), stream));
     }
   }
 #endif
