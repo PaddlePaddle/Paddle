@@ -33,7 +33,7 @@ calculations.
 
 ## How it Works
 
-Similair to other control blocks, go_op will create a sub block and add it
+Similar to other control blocks, go_op will create a sub block and add it
 as a child to the current block.  Operators and variables defined in this
 block will be added to the go sub_block.
 
@@ -43,7 +43,13 @@ information.
 
 When Paddle executor runs go_op, go_op will take the sub_block and pass it to
 the executor.run method (along with a newly created local scope) on a detached
-thread.  
+thread.
+
+An example of the generated program description is shown below.  Take note of
+the **go_op** in particular.  It is added as an operator in the current 
+block (in this example, block0).  The **go_op** contains a `sub_block`
+attribute, which points to the id of the block that will be executed in a 
+detached thread.
 
 ```
 blocks {
@@ -186,7 +192,7 @@ blocks {
 
 ## Current Limitations
 
-####<a name="block-captures"></a>Scopes and block captures:
+#### <a name="block-captures"></a>Scopes and block captures:
 
 Paddle utilizes [scopes](./../concepts/scope.md) to store variables used in a
 block.  When a block is executed, a new local scope is created from the parent
@@ -203,10 +209,21 @@ been deleted.
 We need to implement block closures in order to prevent access to parent
 scope variables from causing a segmentation fault.  As a temporary workaround,
 please ensure that all variables accessed in the go block is not destructed
-before it is being accessed.
+before it is being accessed.  Currently, the go_op will explicitly enforce 
+this requirement and raise an exception if a variable could not be found in 
+the scope.
 
 Please refer to [Closure issue](https://github.com/PaddlePaddle/Paddle/issues/8502)
 for more details.
+
+#### Green Threads
+
+Golang utilizes `green threads`, which is a mechnism for the runtime library to 
+manage multiple threads (instead of natively by the OS).  Green threads usually
+allows for faster thread creation and switching, as there is less overhead
+when spawning these threads.  For the first version of CSP, we only support
+OS threads.
+
 
 #### Backward Propegation:
 
