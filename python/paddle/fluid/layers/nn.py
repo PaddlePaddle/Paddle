@@ -3320,42 +3320,54 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     return counter
 
 
-def reshape(x, shape, act=None, inplace=True, name=None):
+def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     """
     Gives a new shape to the input Tensor without changing its data.
 
-    This layer takes a tensor and the attribute shape which specifies the
-    new shape as its inputs. The shape attribute must be given. It cannot be
-    empty. One and only one dimension of shape can be -1. More than one
-    dimension of shape can be 0.
+    The target shape can be given by :attr:`shape` or :attr:`actual_shape`.
+    :attr:`shape` is a list of integer while :attr:`actual_shape` is a tensor
+    variable. :attr:`actual_shape` has a higher priority than :attr:`shape`
+    if it is provided, while :attr:`shape` still should be set correctly to
+    gurantee shape inference in compile-time.
 
-    -1 means the value of this dimension is inferred from the total element
-    number of x and remaining dimensions.
+    Some tricks exist when specifying the target shape.
 
-    0 means the actual dimension value is going to be copied from the
-    corresponding dimension of x.
+    1. -1 means the value of this dimension is inferred from the total element
+    number of x and remaining dimensions. Thus one and only one dimension can
+    be set -1.
 
-    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    specified by Attr(shape) is [6, 8], the reshape operator will transform x
-    into a 2-D tensor with shape [6, 8] and leaving x's data unchanged.
+    1. 0 means the actual dimension value is going to be copied from the
+    corresponding dimension of x. The indice of 0s in shape can not exceed
+    Rank(X).
 
-    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    specified by Attr(shape) is [2, 3, -1, 2], the reshape operator will
-    transform x into a 4-D tensor with shape [2, 3, 4, 2] and leaving x's data
-    unchanged. In this case, one and only dimension of Attr(shape) can be set
-    to -1, the value of this dimension is inferred from the total element number
-    of x and remaining dimensions.
+    Here are some examples to explain it.
 
     1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    specified by Attr(shape) is [-1, 0, 3, 2], the reshape operator will
-    transform x into a 4-D tensor with shape [2, 4, 3, 2] and leaving x's data
-    unchanged. In this case, besides -1, 0 means the actual dimension value is
-    going to be copied from the corresponding dimension of x during runtime.
+    is [6, 8], the reshape operator will transform x into a 2-D tensor with 
+    shape [6, 8] and leaving x's data unchanged.
+
+    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    specified is [2, 3, -1, 2], the reshape operator will transform x into a
+    4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this
+    case, one dimension of the target shape is set to -1, the value of this 
+    dimension is inferred from the total element number of x and remaining 
+    dimensions.
+
+    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor
+    with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case,
+    besides -1, 0 means the actual dimension value is going to be copied from
+    the corresponding dimension of x.
 
     Args:
         input(variable): The input tensor.
         shape(list): The new shape. At most one dimension of the new shape can
                      be -1.
+        actual_shape(variable): An optional input. If provided, reshape
+                                according to this given shape rather than
+                                :attr:`shape` specifying shape. That is to
+                                say :attr:`actual_shape` has a higher priority
+                                than :attr:`shape`.
         act (str): The non-linear activation to be applied to output variable.
         inplace(bool): If this flag is set true, a new output tensor is created
                        whose data is copied from input x, otherwise the output
@@ -3366,12 +3378,9 @@ def reshape(x, shape, act=None, inplace=True, name=None):
     Examples:
         .. code-block:: python
             data = fluid.layers.data(
-                name='data', shape=[2, 4, 6], dtype='float32'
-            )
+                name='data', shape=[2, 4, 6], dtype='float32')
             reshaped = fluid.layers.reshape(
-                x=data, shape=[-1, 0, 3, 2], act='tanh', inplace=True
-            )
-
+                x=data, shape=[-1, 0, 3, 2], act='tanh', inplace=True)
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
@@ -3396,7 +3405,9 @@ def reshape(x, shape, act=None, inplace=True, name=None):
     reshaped = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
-        inputs={"X": x},
+        inputs={"X": x,
+                "Shape": actual_shape}
+        if isinstance(actual_shape, Variable) else {"X": x},
         attrs={"shape": shape,
                "inplace": inplace},
         outputs={"Out": reshaped})
