@@ -34,6 +34,27 @@ template <typename T>
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
+namespace {
+template <typename T>
+struct bn_type_traits {
+  using op_type = T;
+  using op_desc = typename op_type::desc;
+  using op_prim = typename op_type::primitive_desc;
+};
+
+template <typename T, typename Container>
+void create_weights_memory(T scale_begin, T scale_end, T shift_begin,
+                           T shift_end, Container &c) {
+  auto it = std::begin(c);
+
+  std::copy(scale_begin, scale_end, std::inserter(c, it));
+  std::copy(
+      shift_begin, shift_end,
+      std::inserter(c, std::next(it, std::distance(scale_begin, scale_end))));
+}
+
+}  // namespace
+
 template <typename T>
 class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
@@ -87,24 +108,20 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     unsigned flags = mkldnn::use_scale_shift | !mkldnn::use_global_stats;
 
-    using bnfwd = mkldnn::batch_normalization_forward;
-    using bnfwd_desc = bnfwd::desc;
-    using bnfwd_prim = bnfwd::primitive_desc;
+    using bn_fwd_types = bn_type_traits<mkldnn::batch_normalization_forward>;
 
-    bnfwd_desc batch_norm_fwd_desc{propagation, src_md, epsilon, flags};
-    bnfwd_prim batch_norm_fwd_pd{batch_norm_fwd_desc, mkldnn_engine};
+    typename bn_fwd_types::op_desc batch_norm_fwd_desc{propagation, src_md,
+                                                       epsilon, flags};
+    typename bn_fwd_types::op_prim batch_norm_fwd_pd{batch_norm_fwd_desc,
+                                                     mkldnn_engine};
 
     // MKLDNN requires a single piece of memory for scale and shift/bias data
     std::vector<T> scaleshift_data;
     scaleshift_data.reserve(2 * ic);
 
-    typename std::vector<T>::iterator it = std::begin(scaleshift_data);
-
-    std::copy(scale->data<T>(), scale->data<T>() + ic,
-              std::inserter(scaleshift_data, it));
-    std::advance(it, ic);
-    std::copy(shift->data<T>(), shift->data<T>() + ic,
-              std::inserter(scaleshift_data, it));
+    create_weights_memory(scale->data<T>(), scale->data<T>() + ic,
+                          shift->data<T>(), shift->data<T>() + ic,
+                          scaleshift_data);
 
     mkldnn::memory scaleshift_memory{batch_norm_fwd_pd.weights_primitive_desc(),
                                      scaleshift_data.data()};
@@ -122,9 +139,9 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::copy(mean->data<T>(), mean->data<T>() + ic,
               std::inserter(mean_copy, std::begin(mean_copy)));
 
-    bnfwd batch_norm_fwd_op{batch_norm_fwd_pd, src,
-                            scaleshift_memory, dst,
-                            mean_memory,       variance_memory};
+    bn_fwd_types::op_type batch_norm_fwd_op{batch_norm_fwd_pd, src,
+                                            scaleshift_memory, dst,
+                                            mean_memory,       variance_memory};
 
     std::vector<mkldnn::primitive> pipeline;
     pipeline.push_back(batch_norm_fwd_op);
@@ -162,12 +179,121 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       running_mean_arr = mean_arr * momentum + saved_mean_e * (1. - momentum);
       running_var_arr =
           variance_arr * momentum + saved_variance_e * (1. - momentum);
-
-      EigenVectorArrayMap<T> saved_inv_std(
-          ctx.Output<Tensor>("SavedVariance")->data<T>(), ic);
-      // inverse SavedVariance first, gradient will use it too.
-      saved_inv_std = (saved_inv_std + epsilon).inverse().sqrt();
     }
+  }
+};
+
+template <typename T>
+class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext &ctx) const override {
+    auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+    auto mkldnn_engine = dev_ctx.GetEngine();
+
+    const float epsilon = ctx.Attr<float>("epsilon");
+
+    const auto *x = ctx.Input<Tensor>("X");
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *shift = ctx.Input<Tensor>("Bias");
+    const auto *batch_mean = ctx.Input<Tensor>("SavedMean");
+    // SavedVariance have been reverted in forward operator
+    const auto *batch_inv_variance = ctx.Input<Tensor>("SavedVariance");
+
+    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *d_shift = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
+    d_x->mutable_data<T>(ctx.GetPlace());
+    d_scale->mutable_data<T>(ctx.GetPlace());
+    d_shift->mutable_data<T>(ctx.GetPlace());
+
+    auto x_dims = x->dims();
+    const int in = x_dims[0];
+    const int ic = x_dims[1];
+    const int ih = x_dims[2];
+    const int iw = x_dims[3];
+
+    memory::dims tz = {in, ic, ih, iw};
+
+    unsigned flags = mkldnn::use_scale_shift | !mkldnn::use_global_stats;
+
+    memory::desc src_md{{tz}, memory::data_type::f32, memory::format::nchw};
+    memory::desc dst_md{{tz}, memory::data_type::f32, memory::format::nchw};
+    memory::desc diff_src_md{
+        {tz}, memory::data_type::f32, memory::format::nchw};
+    memory::desc diff_dst_md{
+        {tz}, memory::data_type::f32, memory::format::nchw};
+
+    using bn_bwd_types = bn_type_traits<mkldnn::batch_normalization_backward>;
+    using bn_fwd_types = bn_type_traits<mkldnn::batch_normalization_forward>;
+
+    typename bn_fwd_types::op_desc batch_norm_fwd_desc{
+        mkldnn::prop_kind::forward_training, src_md, epsilon, flags};
+    typename bn_fwd_types::op_prim batch_norm_fwd_pd{batch_norm_fwd_desc,
+                                                     mkldnn_engine};
+
+    typename bn_bwd_types::op_desc batch_norm_bwd_desc{
+        mkldnn::prop_kind::backward, diff_dst_md, dst_md, epsilon, flags};
+    typename bn_bwd_types::op_prim batch_norm_bwd_pd{
+        batch_norm_bwd_desc, mkldnn_engine, batch_norm_fwd_pd};
+
+    auto src =
+        mkldnn::memory{{src_md, mkldnn_engine},
+                       static_cast<void *>(const_cast<T *>(x->data<T>()))};
+
+    auto mean = mkldnn::memory{
+        batch_norm_bwd_pd.mean_primitive_desc(),
+        static_cast<void *>(const_cast<T *>(batch_mean->data<T>()))};
+
+    auto variance = mkldnn::memory{
+        batch_norm_bwd_pd.variance_primitive_desc(),
+        static_cast<void *>(const_cast<T *>(batch_inv_variance->data<T>()))};
+
+    auto diff_dst =
+        mkldnn::memory{{diff_dst_md, mkldnn_engine},
+                       static_cast<void *>(const_cast<T *>(d_y->data<T>()))};
+
+    std::vector<T> scaleshift_data;
+    scaleshift_data.reserve(2 * ic);
+    create_weights_memory(scale->data<T>(), scale->data<T>() + ic,
+                          shift->data<T>(), shift->data<T>() + ic,
+                          scaleshift_data);
+
+    mkldnn::memory scaleshift_memory{batch_norm_bwd_pd.weights_primitive_desc(),
+                                     scaleshift_data.data()};
+
+    std::vector<T> diff_scaleshift_data;
+    diff_scaleshift_data.reserve(2 * ic);
+    create_weights_memory(d_scale->data<T>(), d_scale->data<T>() + ic,
+                          d_shift->data<T>(), d_shift->data<T>() + ic,
+                          diff_scaleshift_data);
+
+    mkldnn::memory diff_scaleshift_memory{
+        batch_norm_bwd_pd.diff_weights_primitive_desc(),
+        diff_scaleshift_data.data()};
+
+    auto diff_src = mkldnn::memory{{diff_src_md, mkldnn_engine},
+                                   static_cast<void *>(d_x->data<T>())};
+
+    bn_bwd_types::op_type batch_norm_bwd_op{batch_norm_bwd_pd,
+                                            src,
+                                            mean,
+                                            variance,
+                                            diff_dst,
+                                            scaleshift_memory,
+                                            diff_src,
+                                            diff_scaleshift_memory};
+
+    std::vector<mkldnn::primitive> pipeline;
+    pipeline.push_back(batch_norm_bwd_op);
+    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+
+    auto it = std::begin(diff_scaleshift_data);
+
+    std::copy(it, std::next(it, ic), d_scale->data<T>());
+    std::copy(std::next(it, ic), std::end(diff_scaleshift_data),
+              d_shift->data<T>());
   }
 };
 }
@@ -176,3 +302,5 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(batch_norm, MKLDNN, paddle::platform::CPUPlace,
                    ops::BatchNormMKLDNNOpKernel<float>);
+REGISTER_OP_KERNEL(batch_norm_grad, MKLDNN, paddle::platform::CPUPlace,
+                   ops::BatchNormMKLDNNGradOpKernel<float>);
