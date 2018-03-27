@@ -2,9 +2,9 @@
 
 Set Command-line Parameters
 ===========================
-The implementation of the deep learning algorithm has a variety of characteristics，such as running environment, running stage, structure of the model and the traning strategy. PaddlePaddle supports the user to set various command-line parameters flexibly, which help to achieve control of the model training or prediction process.
+The implementation of deep learning algorithms has a variety of characteristics，such as running environment, running stage, structure of the model and the traning strategy. PaddlePaddle supports the user to set various command-line parameters flexibly, which helps to achieve control of the model training or prediction process.
 
-In this part，we take several actual scenes as an example, and the use of some command-line parameters is displayed:
+In this part，we take several actual scenarios as an example, and the use of some command-line parameters is displayed:
 
 ..  toctree::
   :maxdepth: 1
