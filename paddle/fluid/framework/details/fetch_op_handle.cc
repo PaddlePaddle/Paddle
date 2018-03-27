@@ -67,9 +67,9 @@ void FetchOpHandle::RunImpl() {
       tensors_[i].ShareDataWith(t);
       tensors_[i].set_lod(t.lod());
     }
-
-    this->WaitAndMergeCPUTensors();
   }
+
+  this->WaitAndMergeCPUTensors();
 }
 
 std::string FetchOpHandle::Name() const { return "Fetch"; }
