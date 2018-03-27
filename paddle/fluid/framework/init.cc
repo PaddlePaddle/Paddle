@@ -85,7 +85,7 @@ void InitDevices() {
   for (int i = 0; i < count; ++i) {
     places.emplace_back(platform::CUDAPlace(i));
   }
-  //  InitP2P(count);
+  InitP2P(count);
   platform::DeviceContextPool::Init(places);
 }
 
