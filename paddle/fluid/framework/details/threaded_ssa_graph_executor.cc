@@ -199,7 +199,7 @@ void ThreadedSSAGraphExecutor::RunOp(
 
   auto op_run = [ready_buffer, op, this] {
     try {
-      VLOG(10) << op->DebugString();
+      VLOG(10) << op->Name() << " : " << op->DebugString();
       op->Run(use_event_);
 
       for (auto *ready : *ready_buffer) {
@@ -211,6 +211,7 @@ void ThreadedSSAGraphExecutor::RunOp(
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";
     }
+    PADDLE_ENFORCE(cudaDeviceSynchronize());
   };
   if (pool_) {
     pool_->enqueue(op_run);
