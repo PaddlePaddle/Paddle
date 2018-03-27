@@ -1,3 +1,4 @@
+
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -10,45 +11,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <mpi/mpi.h>
-#include <map>
-#include <string>
-#include <vector>
-
 namespace paddle {
 namespace operators {
 namespace detail {
-class MPIUtils {
+class MPIServer {
  public:
-  MPIUtils(const std::string& worker_name);
-  const int GetRankID(const std::string& task_id);
-
  private:
-  void InitMPI();
-  std::map<std::string, int> name_id_map;
 };
-
-class MPIIsend {
- public:
-  void init();
-  int isFinished();
-  void send();
-  ~MPIIsend();
-
- private:
-    int done1;
-    int done2;
-    sendrecv::VariableMessage req;
-};
-
-class MPIIrecv {
- public:
-  void init();
-  int isFinished();
-  void recv();
-  ~MPIIrecv();
-};
-
 }  // namespace detail
 }  // namespace operators
 }  // namespace paddle
