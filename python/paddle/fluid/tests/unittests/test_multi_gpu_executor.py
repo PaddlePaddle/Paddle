@@ -204,7 +204,7 @@ def run_benchmark(args):
         lod_levels=[0, 0],
         dtypes=['float32', 'int64'])
     img, label = fluid.layers.read_file(reader)
-    predict = vgg16(img)
+    predict = resnet_imagenet(img, class_dim=1000)
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(cost)
     opt = fluid.optimizer.SGDOptimizer(learning_rate=0.001)
@@ -213,7 +213,7 @@ def run_benchmark(args):
     # fluid.layers.Print(predict, summarize=10)
     # fluid.layers.Print(label, summarize=10)
     # fluid.layers.Print(cost, summarize=10)
-    fluid.layers.Print(avg_cost)
+    # fluid.layers.Print(avg_cost)
 
     # fluid.memory_optimize(fluid.default_main_program(), print_log=True)
 

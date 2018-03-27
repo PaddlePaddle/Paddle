@@ -316,6 +316,17 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   RunOperators(ctx, local_scope);
 
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(place_);
+  dev_ctx.Wait();
+
+  if (FLAGS_benchmark) {
+    VLOG(2) << "-------------------------------------------------------";
+    VLOG(2) << "Memory used after operator run: "
+            << memory::memory_usage(place_);
+    VLOG(2) << "-------------------------------------------------------";
+  }
+
   if (create_vars && create_local_scope) {
     scope->DeleteScope(local_scope);
   }
