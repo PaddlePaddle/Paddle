@@ -122,5 +122,27 @@ class TestReshapeOpDimInferInplace2(OpTest):
         self.check_grad(["X"], "Out")
 
 
+class TestReshapeOpWithInputShape(OpTest):
+    def setUp(self):
+        ori_shape = (6, 5)
+        new_shape = (0, -1, 5)
+        actual_shape = (2, 3, 5)
+
+        self.op_type = "reshape"
+        self.inputs = {
+            "X": np.random.random(ori_shape).astype("float32"),
+            "Shape": np.array(
+                actual_shape, dtype="int32")
+        }
+        self.attrs = {"shape": new_shape}
+        self.outputs = {"Out": self.inputs["X"].reshape(actual_shape)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    # def test_check_grad(self):
+    #     self.check_grad(["X"], "Out")
+
+
 if __name__ == "__main__":
     unittest.main()
