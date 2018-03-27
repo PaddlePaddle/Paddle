@@ -67,7 +67,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   }
 
   // Step 2. Insert FetchOps
-  std::vector<FetchOpHandle> fetch_ops;
+  std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
   std::vector<DummyVarHandle> dummy_vars;
   FeedFetchList fetch_data(fetch_tensors.size());
 
@@ -84,9 +84,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors[i];
-    auto &vars = fetched_vars[var_name];
-    fetch_ops.emplace_back(&fetch_data, i, &local_scopes_);
-    details::FetchOpHandle *op = &fetch_ops.back();
+    auto &vars = fetched_vars.at(var_name);
+    auto *op = new FetchOpHandle(&fetch_data, i, &local_scopes_);
+    fetch_ops.emplace_back(op);
 
     // FIXME: Use new device context
     for (auto &p : places_) {
@@ -138,7 +138,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
       for (auto &op : pending_ops) {
         VLOG(10) << op.first->DebugString();
       }
-
       // keep waiting the ready variables
       continue;
     }
