@@ -128,6 +128,18 @@ void ChannelImpl<T>::Send(T *item) {
     PADDLE_THROW("Cannot send on closed channel");
   }
 
+  // Unbuffered channel will always bypass this
+  // If buffered channel has space in buffer,
+  // write the element to the buffer.
+  if (buf_.size() < cap_) {
+    // Copy to buffer
+    buf_.push_back(std::move(*item));
+    // Release lock and return true
+    lock.unlock();
+    send_return();
+    return;
+  }
+
   // If there is a receiver, directly pass the value we want
   // to send to the receiver, bypassing the channel buffer if any
   if (!recvq.empty()) {
@@ -163,18 +175,6 @@ void ChannelImpl<T>::Send(T *item) {
     return;
   }
 
-  // Unbuffered channel will always bypass this
-  // If buffered channel has space in buffer,
-  // write the element to the buffer.
-  if (buf_.size() < cap_) {
-    // Copy to buffer
-    buf_.push_back(std::move(*item));
-    // Release lock and return true
-    lock.unlock();
-    send_return();
-    return;
-  }
-
   // Block on channel, because some receiver will complete
   // the operation for us
   auto m = std::make_shared<QueueMessage>(item);
@@ -198,6 +198,16 @@ bool ChannelImpl<T>::Receive(T *item) {
   if (closed_ && buf_.empty()) {
     lock.unlock();
     return recv_return(false);
+  }
+
+  // If this is a buffered channel and there are items in buffer
+  if (buf_.size() > 0) {
+    // Directly read from buffer
+    *item = std::move(buf_.front());
+    buf_.pop_front();
+    // Release lock and return true
+    lock.unlock();
+    return recv_return(true);
   }
 
   // If there is a sender, directly receive the value we want
@@ -227,16 +237,6 @@ bool ChannelImpl<T>::Receive(T *item) {
 
     // Wake up the blocked process and unlock
     m->Notify();
-    lock.unlock();
-    return recv_return(true);
-  }
-
-  // If this is a buffered channel and there are items in buffer
-  if (buf_.size() > 0) {
-    // Directly read from buffer
-    *item = std::move(buf_.front());
-    buf_.pop_front();
-    // Release lock and return true
     lock.unlock();
     return recv_return(true);
   }

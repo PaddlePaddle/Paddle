@@ -44,6 +44,8 @@ void RecevingOrderEqualToSendingOrder(Channel<int> *ch) {
       sum_send += i;
     }
   });
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
   for (int i = 0; i < 5; i++) {
     int recv = 999;
     EXPECT_EQ(ch->Receive(&recv), true);
@@ -189,7 +191,7 @@ TEST(Channel, RecevingOrderEqualToSendingOrderWithUnBufferedChannel) {
 }
 
 TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel) {
-  auto ch = MakeChannel<int>(10);
+  auto ch = MakeChannel<int>(2);
   RecevingOrderEqualToSendingOrder(ch);
 }
 
