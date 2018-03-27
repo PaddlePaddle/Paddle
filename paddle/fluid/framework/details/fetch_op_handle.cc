@@ -66,6 +66,7 @@ void FetchOpHandle::RunImpl() {
     if (platform::is_gpu_place(var->place_)) {
 #ifdef PADDLE_WITH_CUDA
       TensorCopy(t, cpu, *dev_ctx_[t.place()], &tensors_[i]);
+      dev_ctx_[t.place()]->Wait();
 #endif
     } else {
       tensors_[i].ShareDataWith(t);

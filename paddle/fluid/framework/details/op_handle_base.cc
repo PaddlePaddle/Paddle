@@ -33,9 +33,6 @@ std::string OpHandleBase::DebugString() const {
 
 OpHandleBase::~OpHandleBase() {
 #ifdef PADDLE_WITH_CUDA
-  for (auto &ctx : dev_ctx_) {
-    ctx.second->Wait();
-  }
   for (auto &ev : events_) {
     PADDLE_ENFORCE(cudaEventDestroy(ev.second));
   }
