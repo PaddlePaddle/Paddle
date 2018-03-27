@@ -2377,7 +2377,7 @@ def l2_distance_layer(x, y, name=None, layer_attr=None):
     vectors x and y. The equation is as follows:
 
     ..  math::
-        l2_distance(\\mathbf{x}, \\mathbf{y}) = \\sqrt{\\sum_{i=1}^D(x_i - y_i)}
+        l2\\_distance(\\mathbf{x}, \\mathbf{y}) = \\sqrt{\\sum_{i=1}^D(x_i - y_i)^2}
 
     The output size of this layer is fixed to be 1. Note that the above
     computation is for one sample. Multiple samples are processed in one batch.
