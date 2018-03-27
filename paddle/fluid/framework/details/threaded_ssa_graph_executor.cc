@@ -96,12 +96,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     for (auto *var : vars) {
       op->AddInput(var);
     }
-
-    dummy_vars.emplace_back();
-    auto *var = &dummy_vars.back();
-    var->generated_op_ = nullptr;
-    op->AddOutput(var);
-    InsertPendingVar(*var);
     InsertPendingOp(*op);
   }
 
@@ -176,8 +170,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   };
 
   // Wait FetchOps.
-  for (auto &fetch_op : fetch_ops) {
-    fetch_op.WaitAndMergeCPUTensors();
+  if (!fetch_ops.empty()) {
     sync_computation();
   }
 
