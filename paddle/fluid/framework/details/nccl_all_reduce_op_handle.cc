@@ -50,10 +50,6 @@ void NCCLAllReduceOpHandle::RunImpl() {
 
       auto &lod_tensor = s->FindVar(var_name)->Get<LoDTensor>();
       void *buffer = const_cast<void *>(lod_tensor.data<void>());
-      uintptr_t buf = reinterpret_cast<uintptr_t>(buffer);
-      if (buf % sizeof(float) != 0) {
-        VLOG(3) << "Buffer is not aligned " << buf;
-      }
 
       if (dtype == -1) {
         dtype = platform::ToNCCLDataType(lod_tensor.type());

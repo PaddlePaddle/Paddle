@@ -36,12 +36,10 @@ inline ncclDataType_t ToNCCLDataType(std::type_index type) {
 
 class NCCLGroupGuard {
  public:
-  inline NCCLGroupGuard() {
-    mutex().lock();
-    PADDLE_ENFORCE(dynload::ncclGroupStart());
-  }
+  inline NCCLGroupGuard() { PADDLE_ENFORCE(dynload::ncclGroupStart()); }
 
   inline ~NCCLGroupGuard() {
+    mutex().lock();
     PADDLE_ENFORCE(dynload::ncclGroupEnd());
     mutex().unlock();
   }
