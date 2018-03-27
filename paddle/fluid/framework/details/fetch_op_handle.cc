@@ -47,9 +47,11 @@ void FetchOpHandle::WaitAndMergeCPUTensors() const {
 }
 
 void FetchOpHandle::RunImpl() {
+  auto cpu_ctx =
+      platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
   for (auto *input : inputs_) {
     auto *var = static_cast<VarHandle *>(input);
-    var->generated_op_->Wait(this->dev_ctx_[var->place_]);
+    var->generated_op_->Wait(cpu_ctx);
   }
 
   tensors_.resize(inputs_.size());
