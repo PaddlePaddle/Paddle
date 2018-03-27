@@ -170,6 +170,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
   // Wait FetchOps.
   if (!fetch_ops.empty()) {
+    fetch_ops.clear();
     sync_computation();
   }
 
