@@ -51,6 +51,18 @@ class GPUAllocator : public SystemAllocator {
   size_t gpu_alloc_size_ = 0;
   size_t fallback_alloc_size_ = 0;
 };
+
+class CUDAPinnedAllocator : public SystemAllocator {
+ public:
+  virtual void* Alloc(size_t& index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
+
+ private:
+  size_t gpu_alloc_size_ =
+      0;  // TODO(zcd): how to define the upper limit of CUDAPinnedMemory?
+  size_t fallback_alloc_size_ = 0;
+};
 #endif
 
 }  // namespace detail

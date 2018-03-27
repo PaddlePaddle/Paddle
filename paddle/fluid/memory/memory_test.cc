@@ -59,7 +59,7 @@ TEST(BuddyAllocator, CPUMultAlloc) {
   EXPECT_EQ(total_size, 0UL);
 
   for (auto size :
-       {128, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
+       {0, 128, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
     ps[paddle::memory::Alloc(cpu, size)] = size;
 
     // Buddy Allocator doesn't manage too large memory chunk
@@ -117,7 +117,7 @@ TEST(BuddyAllocator, GPUMultAlloc) {
   EXPECT_EQ(total_size, 0UL);
 
   for (auto size :
-       {128, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
+       {0, 128, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304}) {
     ps[paddle::memory::Alloc(gpu, size)] = size;
 
     // Buddy Allocator doesn't manage too large memory chunk
