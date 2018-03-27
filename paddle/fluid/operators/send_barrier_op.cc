@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include <future>
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -41,6 +42,10 @@ class SendBarrierOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
                             "Can not find variable '%s' in the scope.",
                             client_var_name);
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(place);
+    platform::RecordEvent record_event(Type(), &ctx);
     auto* client_var = scope.FindVar(client_var_name);
     detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
 

@@ -152,10 +152,10 @@ class DistributeTranspiler:
             Steps to transpile trainer:
             1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
             2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
-            3. modify trainer program add split_op to each grad variable.
-            4. append send_op to send splited variables to server and fetch
-               params(splited blocks or origin param) from server.
-            5. append concat_op to merge splited blocks to update local weights.
+            3. modify trainer program add split_op and send_op to each grad variable.
+            4. append send_barrier to send barrier message to server
+            5. append recv_op to fetch params(splited blocks or origin param) from server.
+            6. append concat_op to merge splited blocks to update local weights.
 
             Steps to transpile pserver:
             1. create new program for parameter server.
@@ -202,23 +202,16 @@ class DistributeTranspiler:
         grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
         param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
         # step2
-        grad_var_mapping, eplist = self._append_trainer_op(program, grad_blocks,
-                                                           spliter)
+        send_inputs, eplist = self._append_trainer_op(program, grad_blocks,
+                                                      spliter)
         # step3
-        send_inputs = []
         send_outputs = []
-        for b in grad_blocks:  # append by order
-            varname, block_id, _ = b.split(":")
-            send_inputs.append(grad_var_mapping[varname][int(block_id)])
-
         param_var_mapping = self._create_vars_from_blocklist(program,
                                                              param_blocks)
         for b in param_blocks:
             varname, block_id, _ = b.split(":")
             send_outputs.append(param_var_mapping[varname][int(block_id)])
-        # let send_op know which endpoint to send which var to, eplist has the same
-        # order as send_inputs.
-        # eplist = split_method(send_inputs, pserver_endpoints)
+
         # create mapping of endpoint -> split var to create pserver side program
         self.param_grad_ep_mapping = dict()
         for i, ep in enumerate(eplist):
@@ -229,12 +222,14 @@ class DistributeTranspiler:
             self.param_grad_ep_mapping[ep]["params"].append(param)
             self.param_grad_ep_mapping[ep]["grads"].append(grad)
 
+        # step 4 
         # append send_barrier_op
         layers.io.send_barrier(pserver_endpoints)
+        # step 5
         # append recv op to receive parameters
-        layers.io.Recv(send_outputs, eplist)
+        layers.io.Recv(send_outputs, eplist, pserver_endpoints)
 
-        # step 4
+        # step 6
         for varname, splited_var in param_var_mapping.iteritems():
             if len(splited_var) <= 1:
                 continue
@@ -495,45 +490,60 @@ class DistributeTranspiler:
                 return idx + 1
         return -1
 
+    def _insert_send_vars_op(self, program, index, send_vars, epmap, eps):
+        rpc_client_var = layers.io.get_rpc_client_var(program)
+
+        program.global_block().insert_op(
+            index=index,
+            type="send_vars",
+            inputs={"X": send_vars},
+            outputs={"RPCClient": rpc_client_var},
+            attrs={"sync_send": 0,
+                   "epmap": epmap,
+                   "endpoints": eps})
+
     def _append_trainer_op(self, program, gradblocks, spliter):
+        send_inputs = []
         ret_eplist = []
         # Split variables that need to be split and append respective ops
         var_mapping = self._create_vars_from_blocklist(
             program, gradblocks, add_trainer_suffix=True)
         for varname, splited_vars in var_mapping.iteritems():
             # variable that don't need to split have empty splited_vars
-            if len(splited_vars) <= 1:
-                continue
-            orig_var = program.global_block().vars[varname]
-            insert_idx = self._find_op_by_out(program, orig_var)
             eplist = []
-            print(program.global_block().ops[insert_idx])
+            insert_idx = -1
 
-            if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
-                height_sections = []
-                for v in splited_vars:
-                    height_sections.append(v.shape[0])
-                program.global_block().insert_op(
-                    index=insert_idx + 1,
-                    type="split_selected_rows",
-                    inputs={"X": orig_var},
-                    outputs={"Out": splited_vars},
-                    attrs={"height_sections": height_sections})
-            elif orig_var.type == core.VarDesc.VarType.LOD_TENSOR:
-                sections = []
-                for v in splited_vars:
-                    sections.append(v.shape[0])
-                program.global_block().insert_op(
-                    index=insert_idx + 1,
-                    type="split",
-                    inputs={"X": orig_var},
-                    outputs={"Out": splited_vars},
-                    attrs={"sections": sections}  # assume split evenly
-                )
+            if len(splited_vars) == 0:
+                continue
+            elif len(splited_vars) == 1:
+                insert_idx = self._find_op_by_out(program, splited_vars[0])
             else:
-                AssertionError("Variable type should be in set "
-                               "[LOD_TENSOR, SELECTED_ROWS]")
-
+                orig_var = program.global_block().vars[varname]
+                insert_idx = self._find_op_by_out(program, orig_var)
+                if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
+                    height_sections = []
+                    for v in splited_vars:
+                        height_sections.append(v.shape[0])
+                    program.global_block().insert_op(
+                        index=insert_idx + 1,
+                        type="split_selected_rows",
+                        inputs={"X": orig_var},
+                        outputs={"Out": splited_vars},
+                        attrs={"height_sections": height_sections})
+                elif orig_var.type == core.VarDesc.VarType.LOD_TENSOR:
+                    sections = []
+                    for v in splited_vars:
+                        sections.append(v.shape[0])
+                    program.global_block().insert_op(
+                        index=insert_idx + 1,
+                        type="split",
+                        inputs={"X": orig_var},
+                        outputs={"Out": splited_vars},
+                        attrs={"sections": sections}  # assume split evenly
+                    )
+                else:
+                    AssertionError("Variable type should be in set "
+                                   "[LOD_TENSOR, SELECTED_ROWS]")
             eplist = spliter.dispatch(splited_vars)
             rpc_client_var = layers.io.get_rpc_client_var(program)
 
@@ -548,8 +558,9 @@ class DistributeTranspiler:
                     "endpoints": spliter.eps
                 })
             ret_eplist.extend(eplist)
+            send_inputs.extend(splited_vars)
 
-        return var_mapping, ret_eplist
+        return send_inputs, ret_eplist
 
     def _get_optimizer_input_shape(self, op_type, varkey, orig_shape,
                                    param_shape):

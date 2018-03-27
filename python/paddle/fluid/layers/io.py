@@ -23,7 +23,7 @@ __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
     'open_files', 'read_file', 'create_shuffle_reader',
     'create_double_buffer_reader', 'create_multi_pass_reader', 'send_barrier',
-    'send_vars', 'get_rpc_client_var'
+    'get_rpc_client_var'
 ]
 
 
@@ -225,7 +225,7 @@ def Send(endpoints, send_vars, get_vars):
                "epmap": epmap})
 
 
-def Recv(endpoints, recv_vars):
+def Recv(recv_vars, epmap, endpoints):
     """
     Recv layer
 
@@ -238,10 +238,9 @@ def Recv(endpoints, recv_vars):
     Send variables to the server side, and get vars from server
     side when server have finished running server side program.
     """
-    assert (type(recv_vars) == list)
-
-    epmap = endpoints.split(",")
-    endpoints = list(set(epmap))
+    assert (isinstance(epmap, list))
+    assert (isinstance(endpoints, list))
+    assert (isinstance(recv_vars, list))
 
     helper = LayerHelper("Recv", **locals())
     rpc_client_var = get_rpc_client_var(default_main_program())
