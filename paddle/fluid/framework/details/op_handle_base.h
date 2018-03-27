@@ -16,11 +16,17 @@
 
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/macros.h"
+
 namespace paddle {
 namespace framework {
 namespace details {
 
-struct OpHandleBase {
+class OpHandleBase {
+ private:
+  DISABLE_COPY_AND_ASSIGN(OpHandleBase);
+
+ public:
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
   std::unordered_map<platform::Place, platform::DeviceContext *,
@@ -30,6 +36,8 @@ struct OpHandleBase {
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<int, cudaEvent_t> events_;
 #endif
+
+  OpHandleBase() {}
 
   std::string DebugString() const;
 

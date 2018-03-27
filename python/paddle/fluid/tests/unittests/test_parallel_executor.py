@@ -231,6 +231,9 @@ class TestMNIST(TestParallelExecutorBase):
 class TestResnet(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
+        import os
+        if os.path.exists('./flowers.recordio'):
+            return
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             reader = paddle.batch(flowers.train(), batch_size=4)
             feeder = fluid.DataFeeder(
