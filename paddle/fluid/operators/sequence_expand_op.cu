@@ -150,7 +150,14 @@ struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     sequence_expand,
-    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SequenceExpandKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     sequence_expand_grad,
-    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SequenceExpandGradKernel<paddle::platform::CUDADeviceContext,
+                                  int64_t>);

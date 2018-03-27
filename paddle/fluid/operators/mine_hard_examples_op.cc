@@ -324,8 +324,9 @@ MatchIndices elements with value -1.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(mine_hard_examples, ops::MineHardExamplesOp,
-                             ops::MineHardExamplesOpMaker);
+REGISTER_OPERATOR(mine_hard_examples, ops::MineHardExamplesOp,
+                  ops::MineHardExamplesOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
 
 REGISTER_OP_CPU_KERNEL(
     mine_hard_examples,

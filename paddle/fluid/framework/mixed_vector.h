@@ -176,7 +176,7 @@ class Vector {
 
   // resize the vector
   void resize(size_t size) {
-    if (size + 1 < capacity()) {
+    if (size + 1 <= capacity()) {
       size_ = size;
     } else {
       MutableCPU();

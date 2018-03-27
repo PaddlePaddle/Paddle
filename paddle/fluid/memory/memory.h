@@ -33,7 +33,7 @@ namespace memory {
  *          address is valid or not.
  */
 template <typename Place>
-void* Alloc(Place place, size_t size);
+void* Alloc(Place place, size_t size, bool is_pinned = false);
 
 /**
  * \brief   Free memory block in one place.
@@ -43,7 +43,7 @@ void* Alloc(Place place, size_t size);
  *
  */
 template <typename Place>
-void Free(Place place, void* ptr);
+void Free(Place place, void* ptr, bool is_pinned = false);
 
 /**
  * \brief   Total size of used memory in one place.
@@ -74,11 +74,13 @@ class PODDeleter {
   static_assert(std::is_pod<T>::value, "T must be POD");
 
  public:
-  explicit PODDeleter(Place place) : place_(place) {}
-  void operator()(T* ptr) { Free(place_, static_cast<void*>(ptr)); }
+  explicit PODDeleter(Place place, bool is_pinned = false)
+      : place_(place), is_pinned_(is_pinned) {}
+  void operator()(T* ptr) { Free(place_, static_cast<void*>(ptr), is_pinned_); }
 
  private:
   Place place_;
+  bool is_pinned_;
 };
 
 /**

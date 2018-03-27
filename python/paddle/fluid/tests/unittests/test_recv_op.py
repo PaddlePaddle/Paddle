@@ -38,14 +38,15 @@ class TestRecvOp(unittest.TestCase):
     def init_serv(self, place):
         main = fluid.Program()
         with fluid.program_guard(main):
-            x = layers.data(
-                shape=[32, 32],
-                dtype='float32',
-                name="X",
-                append_batch_size=False)
-            fluid.initializer.Constant(value=1.0)(x, main.global_block())
-            serv = layers.ListenAndServ("127.0.0.1:6174", optimizer_mode=False)
+            serv = layers.ListenAndServ(
+                "127.0.0.1:6174", ["X"], optimizer_mode=False)
             with serv.do():
+                x = layers.data(
+                    shape=[32, 32],
+                    dtype='float32',
+                    name="X",
+                    append_batch_size=False)
+                fluid.initializer.Constant(value=1.0)(x, main.global_block())
                 o = layers.scale(x=x, scale=10.0)
             main.global_block().create_var(
                 name=o.name, psersistable=False, dtype=o.dtype, shape=o.shape)

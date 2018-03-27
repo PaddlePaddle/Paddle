@@ -2,13 +2,14 @@
 如何贡献文档
 #############
 
-PaddlePaddle的文档包括中英文两个部分。文档都是通过 ``cmake`` 驱动 ``sphinx`` 编译生成，也可以利用paddlepaddle.org工具来编译和预览文档。
+PaddlePaddle的文档包括中英文两个部分。文档都是通过 ``cmake`` 驱动 ``sphinx`` 编译生成的，PaddlePaddle.org工具可以帮助我们实现这一编译过程，并提供更好的预览效果。
 
 如何构建文档
 ============
 
 PaddlePaddle的文档构建有两种方式，分别为使用paddlepaddle.org工具和不使用paddlepaddle.org工具，两种方式都有各自的优点，前者方便预览，后者方便开发者进行调试。这两种方式中又分别有使用docker和不使用docker的两种构建方法。
 
+我们建议使用PaddlePaddle.org工具来构建文档。
 
 使用PaddlePaddle.org工具
 ------------------------
@@ -31,7 +32,7 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
     docker run -it -p 8000:8000 -v `pwd`:/var/content paddlepaddle/paddlepaddle.org:latest
 
 注意: PaddlePaddle.org 会在 -v (volume) 指定的内容存储库运行命令
-之后再用网页连到http://localhost:8000就可以在网页上生成需要的文档
+之后再用网页连到 http://localhost:8000 就可以在网页上生成需要的文档
 编译后的文件将被存储在工作目录 <paddlepaddle working directory>/.ppo_workspace/content。
 
 如果不想使用Docker，你还可以通过运行Django框架直接激活工具的服务器。使用下面的命令来运行它。
@@ -56,7 +57,7 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
     python manage.py runserver
 
 工具服务器将读取环境变量 CONTENT_DIR 搜索代码库。请指定的PaddlePaddle工作目录给环境变量 CONTENT_DIR。
-之后再用网页连到http://localhost:8000就可以在网页上生成需要的文档。
+之后再用网页连到 http://localhost:8000 就可以在网页上生成需要的文档。
 编译后的文件将被存储在工作目录 <paddlepaddle working directory>/.ppo_workspace/content。
 
 想了解更多PaddlePaddle.org工具的详细信息，可以 `点击这里 <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.cn.md>`_ 。
@@ -96,7 +97,7 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 
    python -m SimpleHTTPServer 8088
 
-在浏览器中输入http://localhost:8088就可以看到编译生成的中/英文的文档页面和英文的API页面,下图为生成的英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
+在浏览器中输入 http://localhost:8088 就可以看到编译生成的中/英文的文档页面和英文的API页面,下图为生成的英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
 
 ..  image:: src/doc_en.png
     :align: center

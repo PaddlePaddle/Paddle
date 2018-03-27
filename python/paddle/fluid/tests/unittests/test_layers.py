@@ -181,8 +181,8 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[10], dtype='float32')
             y = layers.data(
-                name='y', shape=[10, 20], dtype='float32', lod_level=1)
-            self.assertIsNotNone(layers.sequence_expand(x=x, y=y))
+                name='y', shape=[10, 20], dtype='float32', lod_level=2)
+            self.assertIsNotNone(layers.sequence_expand(x=x, y=y, ref_level=1))
         print(str(program))
 
     def test_lstm_unit(self):
@@ -229,6 +229,13 @@ class TestBook(unittest.TestCase):
             data = layers.data(name='data', shape=[10], dtype='float32')
             hid = layers.fc(input=data, size=20)
             self.assertIsNotNone(layers.softmax(hid))
+        print(str(program))
+
+    def test_lrn(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='data', shape=[6, 2, 2], dtype='float32')
+            self.assertIsNotNone(layers.lrn(data))
         print(str(program))
 
     def test_get_places(self):

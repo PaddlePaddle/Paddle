@@ -278,6 +278,7 @@ void axpy<platform::CPUDeviceContext, double>(
   cblas_daxpy(n, alpha, x, 1, y, 1);
 }
 
+template struct SetConstant<platform::CPUDeviceContext, platform::float16>;
 template struct SetConstant<platform::CPUDeviceContext, float>;
 template struct SetConstant<platform::CPUDeviceContext, double>;
 template struct SetConstant<platform::CPUDeviceContext, int>;
@@ -371,6 +372,8 @@ template struct RowwiseAdd<platform::CPUDeviceContext, double>;
 
 template struct ColwiseSum<platform::CPUDeviceContext, float>;
 template struct ColwiseSum<platform::CPUDeviceContext, double>;
+template struct ColwiseSum<platform::CPUDeviceContext, int>;
+template struct ColwiseSum<platform::CPUDeviceContext, int64_t>;
 
 template struct RowwiseSum<platform::CPUDeviceContext, float>;
 template struct RowwiseSum<platform::CPUDeviceContext, double>;
