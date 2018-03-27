@@ -35,6 +35,17 @@ class BlockingQueue {
     cv_.notify_one();
   }
 
+  template <typename U>
+  void Extend(const U &items) {
+    {
+      std::lock_guard<std::mutex> g(mutex_);
+      for (auto &item : items) {
+        q_.emplace_back(item);
+      }
+    }
+    cv_.notify_all();
+  }
+
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
     while (q_.empty()) {

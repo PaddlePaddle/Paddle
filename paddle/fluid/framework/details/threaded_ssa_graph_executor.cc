@@ -178,10 +178,7 @@ void ThreadedSSAGraphExecutor::RunOp(
     try {
       VLOG(10) << op->Name() << " : " << op->DebugString();
       op->Run(use_event_);
-
-      for (auto &each : op->outputs_) {
-        ready_var_q.Push(each);
-      }
+      ready_var_q.Extend(op->outputs_);
     } catch (platform::EnforceNotMet ex) {
       exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {
