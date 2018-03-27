@@ -52,7 +52,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   size_t computation_count_{0};
   size_t max_async_computation{100};
-  std::vector<std::function<void()>> drop_functions_;
 };
 
 }  // namespace details
