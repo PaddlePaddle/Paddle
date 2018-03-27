@@ -48,20 +48,24 @@ class DoubleBufferReader : public framework::DecoratedReader {
 
   void start_thread() {
     buffer_ = framework::MakeChannel<Item>(kDoubleBufferSize);
-    std::thread prefetch([this] { PrefetchThreadFunc(); });
-    prefetch.detach();
+    prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
   void ReInit() override;
 
-  ~DoubleBufferReader() { buffer_->Close(); }
+  ~DoubleBufferReader() {
+    buffer_->Close();
+    prefetcher_.join();
+    delete buffer_;
+  }
 
   bool HasNext() const override;
 
  private:
   void PrefetchThreadFunc();
 
+  std::thread prefetcher_;
   framework::Channel<Item>* buffer_;
   platform::Place place_;
   std::vector<std::unique_ptr<platform::DeviceContext>> ctxs_;
@@ -120,10 +124,13 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
 };
 
 void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+  if (!HasNext()) {
+    PADDLE_THROW("There is no next data!");
+  }
+
   if (local_buffer_.payloads_.empty()) {
     buffer_->Receive(&local_buffer_);
   }
-
   *out = local_buffer_.payloads_;
   local_buffer_.payloads_.clear();
   if (local_buffer_.ctx_) {
@@ -134,6 +141,8 @@ void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
 void DoubleBufferReader::ReInit() {
   reader_->ReInit();
   buffer_->Close();
+  prefetcher_.join();
+  delete buffer_;
   start_thread();
 }
 
@@ -157,13 +166,16 @@ void DoubleBufferReader::PrefetchThreadFunc() {
       std::swap(gpu_batch, batch.payloads_);
     }
 
-    if (!buffer_->Send(&batch)) {
+    try {
+      buffer_->Send(&batch);
+    } catch (paddle::platform::EnforceNotMet e) {
       VLOG(5) << "WARNING: The double buffer channel has been closed. The "
-                 "prefetch thread terminates.";
+                 "prefetch thread will terminate.";
       break;
     }
   }
   buffer_->Close();
+  VLOG(5) << "Prefetch thread terminates.";
 }
 
 bool DoubleBufferReader::HasNext() const {

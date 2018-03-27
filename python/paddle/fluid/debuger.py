@@ -16,7 +16,6 @@ import sys
 import re
 from graphviz import GraphPreviewGenerator
 import proto.framework_pb2 as framework_pb2
-import paddle.fluid.core as core
 
 _vartype2str_ = [
     "UNK",
@@ -126,7 +125,6 @@ def pprint_block_codes(block_desc, show_backward=False):
     def is_var_backward(var_desc):
         return "@GRAD" in var_desc.name
 
-    #print(type(block_desc))
     if type(block_desc) is not framework_pb2.BlockDesc:
         block_desc = framework_pb2.BlockDesc.FromString(
             block_desc.serialize_to_string())
