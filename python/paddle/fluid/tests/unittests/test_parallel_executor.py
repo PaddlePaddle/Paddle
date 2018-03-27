@@ -135,14 +135,11 @@ def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
     return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
 
 
-def SE_ResNeXt152():
-    reader = fluid.layers.open_recordio_file(
-        filename='./flowers.recordio',
-        shapes=[[-1, 3, 224, 224], [-1, 1]],
-        lod_levels=[0, 0],
-        dtypes=['float32', 'int64'])
-
-    img, label = fluid.layers.read_file(reader)
+def SE_ResNeXt152(batch_size=4):
+    img = fluid.layers.fill_constant(
+        shape=[batch_size, 3, 224, 224], dtype='float32', value=0.0)
+    label = fluid.layers.fill_constant(
+        shape=[batch_size, 1], dtype='int64', value=0.0)
 
     conv = conv_bn_layer(
         input=img, num_filters=64, filter_size=3, stride=2, act='relu')
@@ -179,8 +176,15 @@ def SE_ResNeXt152():
     return loss
 
 
+import time
+
+
 class TestParallelExecutorBase(unittest.TestCase):
-    def check_network_convergence(self, method, memory_opt=True, iter=10):
+    def check_network_convergence(self,
+                                  method,
+                                  memory_opt=True,
+                                  iter=10,
+                                  batch_size=None):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -191,6 +195,9 @@ class TestParallelExecutorBase(unittest.TestCase):
                 fluid.memory_optimize(main)
 
             exe = fluid.ParallelExecutor(loss_name=loss.name, use_cuda=True)
+            if batch_size is not None:
+                batch_size *= fluid.core.get_cuda_device_count()
+            begin = time.time()
             first_loss, = exe.run([loss.name])
             first_loss = numpy.array(first_loss)
 
@@ -198,6 +205,12 @@ class TestParallelExecutorBase(unittest.TestCase):
                 exe.run([])
 
             last_loss, = exe.run([loss.name])
+            end = time.time()
+
+            if batch_size is not None:
+                print "%.4f Instance per second" % (
+                    (batch_size * iter + 2) / (end - begin))
+
             last_loss = numpy.array(last_loss)
 
             print first_loss, last_loss
@@ -229,26 +242,32 @@ class TestMNIST(TestParallelExecutorBase):
 
 
 class TestResnet(TestParallelExecutorBase):
-    @classmethod
-    def setUpClass(cls):
-        import os
-        if os.path.exists('./flowers.recordio'):
-            return
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            reader = paddle.batch(flowers.train(), batch_size=4)
-            feeder = fluid.DataFeeder(
-                feed_list=[
-                    fluid.layers.data(
-                        name='image', shape=[3, 224, 224]),
-                    fluid.layers.data(
-                        name='label', shape=[1], dtype='int64'),
-                ],
-                place=fluid.CPUPlace())
-            fluid.recordio_writer.convert_reader_to_recordio_file(
-                "./flowers.recordio", reader, feeder)
+    # @classmethod
+    # def setUpClass(cls):
+    #     # import os
+    #     # if os.path.exists('./flowers.recordio'):
+    #     #     return
+    #     with fluid.program_guard(fluid.Program(), fluid.Program()):
+    #         reader = paddle.batch(flowers.train(), batch_size=4)
+    #         feeder = fluid.DataFeeder(
+    #             feed_list=[
+    #                 fluid.layers.data(
+    #                     name='image', shape=[3, 224, 224]),
+    #                 fluid.layers.data(
+    #                     name='label', shape=[1], dtype='int64'),
+    #             ],
+    #             place=fluid.CPUPlace())
+    #         fluid.recordio_writer.convert_reader_to_recordio_file(
+    #             "./flowers.recordio", reader, feeder, compressor=fluid.core.RecordIOWriter.Compressor.NoCompress)
 
     def test_resnet(self):
-        self.check_network_convergence(SE_ResNeXt152, iter=200)
+        import functools
+        batch_size = 4
+        self.check_network_convergence(
+            functools.partial(
+                SE_ResNeXt152, batch_size=batch_size),
+            iter=20,
+            batch_size=batch_size)
 
 
 class ModelHyperParams(object):
