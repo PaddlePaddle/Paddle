@@ -82,7 +82,6 @@ class TestSliceOp(OpTest):
 
         s, e = complement_axes(self.x_dim, axes, starts, ends)
         outs = slices[len(self.x_dim) - 1](x, s, e)
-        #print 'x: %s, s: %s, e: %s, out: %s ' % (x, s, e, outs)
         self.outputs = {'Out': outs}
 
     def init_test_case(self):
