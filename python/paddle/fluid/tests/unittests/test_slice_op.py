@@ -17,7 +17,7 @@ import numpy as np
 import sys
 from op_test import OpTest
 
-def accomplement_axes(dims, axes, starts, ends):
+def complement_axes(dims, axes, starts, ends):
     s = map(int, np.zeros(len(dims)))
     e = map(lambda x:dims[int(x)], range(len(dims)))
 
@@ -80,7 +80,7 @@ class TestSliceOp(OpTest):
         if len(self.x_dim) > 10:
             raise Exception("x_dim must be less than 10!")
 
-        s, e = accomplement_axes(self.x_dim, axes, starts, ends)
+        s, e = complement_axes(self.x_dim, axes, starts, ends)
         outs = slices[len(self.x_dim) - 1](x, s, e)
         #print 'x: %s, s: %s, e: %s, out: %s ' % (x, s, e, outs)
         self.outputs = {'Out': outs}
