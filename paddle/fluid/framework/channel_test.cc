@@ -206,7 +206,7 @@ TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel2) {
 
 TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel3) {
   // Test that Receive Order is same as Send Order when number of items
-  // sent is equal to size of buffer
+  // sent is greater than the size of buffer
   auto ch = MakeChannel<int>(10);
   RecevingOrderEqualToSendingOrder(ch, 20);
 }

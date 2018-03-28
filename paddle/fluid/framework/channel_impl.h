@@ -91,7 +91,7 @@ class ChannelImpl : public paddle::framework::Channel<T> {
       std::deque<std::shared_ptr<QueueMessage>> &queue, ChannelAction action) {
     while (!queue.empty()) {
       // Check whether this message was added by Select
-      // If this was added by Select then execte the callback
+      // If this was added by Select then execute the callback
       // to check if you can execute this message. The callback
       // can return false if some other case was executed in Select.
       // In that case just discard this QueueMessage and process next.
