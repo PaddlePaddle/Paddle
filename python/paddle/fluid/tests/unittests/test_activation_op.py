@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import math
 import paddle.fluid.core as core
 from op_test import OpTest
 from scipy.special import expit
@@ -202,7 +201,21 @@ class TestCos(OpTest):
         self.op_type = "cos"
         x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
         self.inputs = {'X': x}
-        self.outputs = {'Out': math.cos(self.inputs['X'])}
+        self.outputs = {'Out': np.cos(self.inputs['X'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestSin(OpTest):
+    def setUp(self):
+        self.op_type = "sin"
+        x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
+        self.inputs = {'X': x}
+        self.outputs = {'Out': np.sin(self.inputs['X'])}
 
     def test_check_output(self):
         self.check_output()

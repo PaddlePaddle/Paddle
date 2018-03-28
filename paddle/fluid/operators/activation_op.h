@@ -831,6 +831,7 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(ceil, CeilFunctor, ZeroGradFunctor);                       \
   __macro(floor, FloorFunctor, ZeroGradFunctor);                     \
   __macro(cos, CosFunctor, CosGradFunctor);                          \
+  __macro(sin, SinFunctor, SinGradFunctor);                          \
   __macro(round, RoundFunctor, ZeroGradFunctor);                     \
   __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);     \
   __macro(log, LogFunctor, LogGradFunctor);                          \
