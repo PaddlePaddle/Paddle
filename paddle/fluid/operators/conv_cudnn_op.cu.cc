@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <iostream>
+#include <typeindex>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
@@ -139,22 +140,28 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
         workspace_size_limit, &algo));
 
-    //    std::cout << "The chosen algorithm is " << static_cast<int>(algo)
-    //              << std::endl;
+//    std::cout << "The chosen algorithm is " << static_cast<int>(algo)
+//              << std::endl;
 
-    /*
-    #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-        if (dev_ctx.GetComputeCapability() >= 70) {
-          // Currently tensor core is only used in this algo
-          algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-        }
-    #endif
-    */
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    if (dev_ctx.GetComputeCapability() >= 70 &&
+        std::type_index(typeid(T)) ==
+            std::type_index(typeid(platform::float16))) {
+      // Currently tensor core is only used in this algo
+      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+    }
+#endif
 
     // get workspace size able to allocate
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, algo, &workspace_size_in_bytes));
+
+    // It is possible for float16 on Volta GPU to allocate more memory than
+    // the limit because the algo is overrided to use tensor core.
+    PADDLE_ENFORCE_LT(workspace_size_in_bytes, workspace_size_limit,
+                      "workspace size to be allocated needs to be less than
+                       the workspace_size_limit");
 
     // if (workspace_size_in_bytes > workspace_size_limit) {
     // std::cout << "Workspace size is " << workspace_size_in_bytes
