@@ -68,9 +68,29 @@ Please `click here <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develo
 Manually Building the Documentation
 -------------------------------------
 
-Build PaddlePaddle's documentation with Docker，you need to install Docker first. Please refer to `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. After Docker is installed, you could use the scripts in the source directory to build the documentation.
+Build PaddlePaddle's documentation with Docker，you need to install Docker first. Please refer to `Docker's official website <https://docs.docker.com/>`_ on how to install Docker. This method is quite similar to ` Build From Sources <http://paddlepaddle.org/docs/develop/documentation/en/build_and_install/build_from_source_en.html>`_ , by constructing, from source code, a docker image that can be used to build PaddlePaddle documentation. Enter the Docker container and use the script ``build.sh`` in the source directory to build the PaddlePaddle documentation. The specific steps are as follows:
 
-[TBD]
+.. code-block:: bash
+
+   git clone https://github.com/PaddlePaddle/Paddle.git
+   cd Paddle
+
+   # Construct a docker image from source code
+   docker build -t paddle:dev .
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" -e "WITH_DOC=ON" paddle:dev /bin/bash
+
+   # Use build.sh to build PaddlePaddle documentation
+   bash -x /paddle/paddle/scripts/docker/build.sh
+
+Note: The above commands maps the current directory (source root directory) to the :code:`/paddle` directory in the container.
+
+After compiling, you could enter the ``paddle/build/doc/v2`` directory, where three subdirectories ``cn/html/``, ``en/html`` and ``api/en/html`` are generated. Please enter these directories respectively and execute the following commands:
+
+.. code-block:: bash
+
+   python -m SimpleHTTPServer 8088
+
+Use a web browser and navigate to http://localhost:8000, you could see the compiled Chinese/English documents page and the English APIs page.
 
 If you do not wish to use Docker, you can also use the following commands to directly build the PaddlePaddle documentation.
 
