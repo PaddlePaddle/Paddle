@@ -155,8 +155,8 @@ class LRNOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp should be 4.");
 
     ctx->SetOutputDim("Out", x_dim);
-    ctx->SetOutputDim("MidOut", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("MidOut", x_dim);
   }
 
   framework::OpKernelType GetExpectedKernelType(
