@@ -551,6 +551,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // copy inplace var back to it's original place
   for (auto& var_name : need_copy_back_vars) {
+    VLOG(3) << "copy inplace var " + var_name + " back to it's original scope";
     auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
     auto* transformed_tensor = GetTensorFromVar(new_scope.FindVar(var_name));
     original_tensor->ShareDataWith(*transformed_tensor);
