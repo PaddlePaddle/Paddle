@@ -333,6 +333,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
   if (create_vars && create_local_scope) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
     scope->DeleteScope(local_scope);
   }
   if (FLAGS_benchmark) {
