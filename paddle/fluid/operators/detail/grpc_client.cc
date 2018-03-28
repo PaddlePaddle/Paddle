@@ -49,9 +49,8 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     s->Prepare(var_h, time_out);
     s->response_call_back_ = NULL;
 
-    auto call = std::move(s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req,
-        &cq_));
+    auto call = s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, (void*)s);
   });
@@ -107,8 +106,8 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
     ::grpc::ByteBuffer buf;
     RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 
-    auto call = std::move(s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_));
+    auto call = s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, (void*)s);
   });
