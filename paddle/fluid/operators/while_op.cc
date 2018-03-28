@@ -54,8 +54,6 @@ class WhileOp : public framework::OperatorBase {
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
-    PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
-                   "Condition of while op must in CPU memory.");
     while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
