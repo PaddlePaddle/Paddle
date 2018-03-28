@@ -96,7 +96,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
     // FIXME: Use new device context
     for (auto &p : places_) {
-      op->dev_ctx_[p] = fetch_ctxs_.Get(p);
+      op->dev_ctxes_[p] = fetch_ctxs_.Get(p);
     }
 
     for (auto *var : vars) {
