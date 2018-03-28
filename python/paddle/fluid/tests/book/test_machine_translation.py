@@ -83,7 +83,7 @@ def decoder_train(context, is_sparse):
 def decoder_decode(context, is_sparse):
     init_state = context
     array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
-    counter = pd.zeros(shape=[1], dtype='int64', force_cpu=True)
+    counter = pd.zeros(shape=[1], dtype='int64')
 
     # fill the first element with init_state
     state_array = pd.create_array('float32')
