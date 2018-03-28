@@ -517,6 +517,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // do data transform
   Scope& new_scope = scope.NewScope();
 
+  std::vector<std::string> need_copy_back_vars;
   for (auto& var_name_item : this->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope.FindVar(var_name);
@@ -529,10 +530,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             auto out_var_names = OutputVars(true);
             if (std::find(out_var_names.begin(), out_var_names.end(),
                           var_name) != out_var_names.end()) {
-              PADDLE_THROW(
-                  "var %s is both input and output, "
-                  "does not support transform",
-                  var_name);
+              need_copy_back_vars.push_back(var_name);
             }
             VLOG(3) << "Transform Variable " << var_name << " from "
                     << kernel_type_for_var << " to " << expected_kernel_key;
@@ -550,6 +548,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
   kernel_iter->second->Compute(
       ExecutionContext(*this, new_scope, *new_dev_ctx));
+
+  // copy inplace var back to it's original place
+  for (auto& var_name : need_copy_back_vars) {
+    auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
+    auto* transformed_tensor = GetTensorFromVar(new_scope.FindVar(var_name));
+    original_tensor->ShareDataWith(*transformed_tensor);
+  }
+  // delete scope used for variable transform
+  const_cast<framework::Scope&>(scope).DeleteScope(&new_scope);
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
