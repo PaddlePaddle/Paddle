@@ -124,16 +124,26 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     run_all_ready_ops();
 
     // 2. Find ready variable
-    VarHandleBase *ready_var = ready_vars.Pop();
+    bool timeout;
+    auto cur_ready_vars = ready_vars.PopAll(100, &timeout);
 
+    if (timeout) {
+      if (exception_) {
+        throw * exception_;
+      } else {
+        continue;
+      }
+    }
     // 3. Remove the dependency of ready_var.
     // Find the ready_ops after the ready_var.
-    pending_vars.erase(ready_var);
-    for (auto *op : ready_var->pending_ops_) {
-      auto &deps = pending_ops[op];
-      --deps;
-      if (deps == 0) {
-        ready_ops.insert(op);
+    for (auto ready_var : cur_ready_vars) {
+      pending_vars.erase(ready_var);
+      for (auto *op : ready_var->pending_ops_) {
+        auto &deps = pending_ops[op];
+        --deps;
+        if (deps == 0) {
+          ready_ops.insert(op);
+        }
       }
     }
     // Keep loop until all vars are ready.
