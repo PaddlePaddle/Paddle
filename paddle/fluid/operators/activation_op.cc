@@ -260,6 +260,21 @@ $out = floor(x)$
   }
 };
 
+class CosOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  CosOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Floor operator");
+    AddOutput("Out", "Output of Floor operator");
+    AddComment(R"DOC(
+Floor Activation Operator.
+
+$out = cos(x)$
+
+)DOC");
+  }
+};
+
 class RoundOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   RoundOpMaker(OpProto *proto, OpAttrChecker *op_checker)
@@ -559,6 +574,9 @@ REGISTER_OP(ceil, ops::ActivationOp, ops::CeilOpMaker, ceil_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(floor, ops::ActivationOp, ops::FloorOpMaker, floor_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(cos, ops::ActivationOp, ops::CosOpMaker, cos_grad,
             ops::ActivationOpGrad);
 
 REGISTER_OP(round, ops::ActivationOp, ops::RoundOpMaker, round_grad,

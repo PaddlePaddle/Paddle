@@ -63,6 +63,7 @@ struct EigenBlasGemm {
     const EigenMatrix a(const_cast<T*>(A), sizeA);
     const EigenMatrix b(const_cast<T*>(B), sizeB);
     EigenMatrix c(C, sizeC);
+    Eigen::Tensor<T, 2, Eigen::RowMajor, int> ss;
 
     typedef typename Eigen::Tensor<T, 2>::DimensionPair DimPair;
     Eigen::array<DimPair, 1> dims;
