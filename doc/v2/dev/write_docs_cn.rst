@@ -19,6 +19,9 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 
 ..  code-block:: bash
 
+    mkdir paddlepaddle # Create paddlepaddle working directory
+    cd paddlepaddle
+
     # Clone the content repositories
     git clone https://github.com/PaddlePaddle/Paddle.git
     git clone https://github.com/PaddlePaddle/book.git
@@ -35,6 +38,9 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 如果不想使用Docker，你还可以通过运行Django框架直接激活工具的服务器。使用下面的命令来运行它。
 
 ..  code-block:: bash
+
+    mkdir paddlepaddle # Create paddlepaddle working directory
+    cd paddlepaddle
 
     # Clone the content repositories and PaddlePaddle.org
     git clone https://github.com/PaddlePaddle/Paddle.git
