@@ -17,7 +17,6 @@ import framework
 from framework import Program, default_main_program, default_startup_program, Parameter, Variable
 import optimizer
 from layer_helper import LayerHelper
-import distributed_spliter
 import ps_dispatcher
 import math
 from . import core
