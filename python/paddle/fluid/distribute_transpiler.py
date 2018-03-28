@@ -18,6 +18,7 @@ from framework import Program, default_main_program, default_startup_program, Pa
 import optimizer
 from layer_helper import LayerHelper
 import distributed_spliter
+import ps_dispatcher
 import math
 from . import core
 import debuger
@@ -139,7 +140,7 @@ class DistributeTranspiler:
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
-                  split_method="RoundRobin"):
+                  dispatch_method="RoundRobin"):
         """
             Transpile the program to distributed data-parallelism programs.
             The main_program will be transformed to use a remote parameter server
@@ -152,7 +153,8 @@ class DistributeTranspiler:
             Steps to transpile trainer:
             1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
             2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
-            3. modify trainer program add split_op and send_op to each grad variable.
+            3. dispatch gradient variable blocks to multiple server and insert
+               split_op and send_vars_op to the trainer program.
             4. append send_barrier to send barrier message to server
             5. append recv_op to fetch params(splited blocks or origin param) from server.
             6. append concat_op to merge splited blocks to update local weights.
@@ -193,17 +195,21 @@ class DistributeTranspiler:
         pserver_endpoints = pservers.split(",")
 
         # instantiate spliter method from given name
-        assert (split_method in dir(distributed_spliter))
-        spliter = getattr(distributed_spliter, split_method)(pserver_endpoints)
+        assert (dispatch_method in dir(ps_dispatcher))
+        dispatcher = getattr(ps_dispatcher, dispatch_method)(pserver_endpoints)
 
         # step1
         param_list = [pg[0] for pg in params_grads]
         grad_list = [pg[1] for pg in params_grads]
         grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
         param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
+
         # step2
-        send_inputs, eplist = self._append_trainer_op(program, grad_blocks,
-                                                      spliter)
+        # Dispatch each gradient variable block to the parameter server by dispatcher,
+        # and also insert splite_op and send_var_op after each grad op
+        # in the trainer program.
+        send_inputs, eplist = self._dispatch_trainer_grads(program, grad_blocks,
+                                                           dispatcher)
         # step3
         send_outputs = []
         param_var_mapping = self._create_vars_from_blocklist(program,
@@ -487,22 +493,10 @@ class DistributeTranspiler:
     def _find_op_by_out(self, program, var):
         for idx, op in enumerate(program.global_block().ops):
             if var.name in op.output_arg_names:
-                return idx + 1
+                return idx
         return -1
 
-    def _insert_send_vars_op(self, program, index, send_vars, epmap, eps):
-        rpc_client_var = layers.io.get_rpc_client_var(program)
-
-        program.global_block().insert_op(
-            index=index,
-            type="send_vars",
-            inputs={"X": send_vars},
-            outputs={"RPCClient": rpc_client_var},
-            attrs={"sync_send": 0,
-                   "epmap": epmap,
-                   "endpoints": eps})
-
-    def _append_trainer_op(self, program, gradblocks, spliter):
+    def _dispatch_trainer_grads(self, program, gradblocks, dispatcher):
         send_inputs = []
         ret_eplist = []
         # Split variables that need to be split and append respective ops
@@ -516,10 +510,10 @@ class DistributeTranspiler:
             if len(splited_vars) == 0:
                 continue
             elif len(splited_vars) == 1:
-                insert_idx = self._find_op_by_out(program, splited_vars[0])
+                insert_idx = self._find_op_by_out(program, splited_vars[0]) + 1
             else:
                 orig_var = program.global_block().vars[varname]
-                insert_idx = self._find_op_by_out(program, orig_var)
+                insert_idx = self._find_op_by_out(program, orig_var) + 1
                 if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
                     height_sections = []
                     for v in splited_vars:
@@ -544,7 +538,7 @@ class DistributeTranspiler:
                 else:
                     AssertionError("Variable type should be in set "
                                    "[LOD_TENSOR, SELECTED_ROWS]")
-            eplist = spliter.dispatch(splited_vars)
+            eplist = dispatcher.dispatch(splited_vars)
             rpc_client_var = layers.io.get_rpc_client_var(program)
 
             program.global_block().insert_op(
@@ -552,11 +546,8 @@ class DistributeTranspiler:
                 type="send_vars",
                 inputs={"X": splited_vars},
                 outputs={"RPCClient": rpc_client_var},
-                attrs={
-                    "sync_send": 0,
-                    "epmap": eplist,
-                    "endpoints": spliter.eps
-                })
+                attrs={"sync_send": 0,
+                       "epmap": eplist})
             ret_eplist.extend(eplist)
             send_inputs.extend(splited_vars)
 

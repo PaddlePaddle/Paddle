@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class DistributedSpliter(object):
+class PSDispatcher(object):
     """
     DistributedSpliter is the base class for dispatching vars
     into different pserver instance.
@@ -35,7 +35,7 @@ class DistributedSpliter(object):
         AssertionError("Interface has not been implemented.")
 
 
-class HashName(DistributedSpliter):
+class HashName(PSDispatcher):
     """
       Hash variable names to servral endpoints
     """
@@ -55,7 +55,7 @@ class HashName(DistributedSpliter):
         return eplist
 
 
-class RoundRobin(DistributedSpliter):
+class RoundRobin(PSDispatcher):
     """
     Distribute variables to serveral endpoints.
     """

@@ -57,11 +57,6 @@ class RecvOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE(rpc_client->Wait());
 
-    for (size_t i = 0; i < outs.size(); i++) {
-      VLOG(2) << "getting " << outs[i] << " from " << epmap[i];
-      rpc_client->AsyncGetVariable(epmap[i], ctx, scope, outs[i]);
-    }
-    PADDLE_ENFORCE(rpc_client->Wait());
     // tell pservers that current trainer have called fetch
     for (auto& ep : endpoints) {
       VLOG(2) << "send fetch barrier, ep: " << ep;
