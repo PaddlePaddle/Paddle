@@ -143,7 +143,7 @@ TEST(BuddyAllocator, GPUMultAlloc) {
 
 size_t align(size_t size, paddle::platform::CUDAPinnedPlace place) {
   size += sizeof(paddle::memory::detail::Metadata);
-  size_t alignment = paddle::platform::CpuMinChunkSize();
+  size_t alignment = paddle::platform::CUDAPinnedMinChunkSize();
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
 }

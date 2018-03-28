@@ -116,8 +116,8 @@ BuddyAllocator* GetCUDAPinnedBuddyAllocator() {
   static BuddyAllocator* ba = NULL;
   if (ba == NULL) {
     ba = new BuddyAllocator(new detail::CUDAPinnedAllocator,
-                            platform::CpuMinChunkSize(),
-                            platform::CpuMaxChunkSize());
+                            platform::CUDAPinnedMinChunkSize(),
+                            platform::CUDAPinnedMaxChunkSize());
   }
   return ba;
 }

@@ -125,11 +125,11 @@ bool GPUAllocator::UseGpu() const { return true; }
 void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
   if (size <= 0) return nullptr;
 
-  // NOTE: here, we use CpuMaxAllocSize()/2 as the maximum memory size
+  // NOTE: here, we use CUDAPinnedMaxAllocSize as the maximum memory size
   // of host pinned allocation. Allocates too much would reduce
   // the amount of memory available to the underlying system for paging.
   size_t usable =
-      paddle::platform::CpuMaxAllocSize() / 2 - cuda_pinnd_alloc_size_;
+      paddle::platform::CUDAPinnedMaxAllocSize() - cuda_pinnd_alloc_size_;
 
   if (size > usable) return nullptr;
 
