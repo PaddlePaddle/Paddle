@@ -125,7 +125,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
     // 2. Find ready variable
     bool timeout;
-    auto cur_ready_vars = ready_vars.PopAll(100, &timeout);
+    auto cur_ready_vars = ready_vars.PopAll(1000, &timeout);
 
     if (timeout) {
       if (exception_) {
