@@ -23,7 +23,7 @@ NCCLAllReduceOpHandle::NCCLAllReduceOpHandle(
     const platform::NCCLContextMap &ctxs)
     : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
   for (auto &p : places_) {
-    this->dev_ctx_[p] = nccl_ctxs_.DevCtx(p);
+    this->dev_ctxes_[p] = nccl_ctxs_.DevCtx(p);
   }
 }
 
@@ -34,7 +34,7 @@ void NCCLAllReduceOpHandle::RunImpl() {
     // Wait input done
     for (auto *in : inputs_) {
       auto &p = static_cast<VarHandle *>(in)->place_;
-      in->generated_op_->Wait(dev_ctx_[p]);
+      in->generated_op_->Wait(dev_ctxes_[p]);
     }
 
     auto &var_name = static_cast<VarHandle *>(this->inputs_[0])->name_;

@@ -74,7 +74,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
 
       result.ops_.emplace_back(new ComputationOpHandle(*op, s, p));
       auto *op_handle = result.ops_.back().get();
-      op_handle->dev_ctx_[p] = const_cast<platform::DeviceContext *>(
+      op_handle->dev_ctxes_[p] = const_cast<platform::DeviceContext *>(
           platform::DeviceContextPool::Instance().Get(p));
 
       auto var_names = op->InputArgumentNames();

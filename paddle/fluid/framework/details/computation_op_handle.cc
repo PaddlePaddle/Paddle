@@ -24,10 +24,10 @@ ComputationOpHandle::ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
       place_(place) {}
 
 void ComputationOpHandle::RunImpl() {
-  auto *cur_ctx = dev_ctx_[place_];
+  auto *cur_ctx = dev_ctxes_[place_];
   for (auto *in : inputs_) {
     bool need_wait =
-        in->generated_op_ && in->generated_op_->dev_ctx_[place_] != cur_ctx;
+        in->generated_op_ && in->generated_op_->dev_ctxes_[place_] != cur_ctx;
     if (need_wait) {
       in->generated_op_->Wait(cur_ctx);
     }
