@@ -1,0 +1,64 @@
+apiVersion: extensions/v1beta1
+kind: ReplicaSet
+metadata:
+  name: vgg16v2job-pserver
+spec:
+  replicas: 10
+  template:
+    metadata:
+      labels:
+        paddle-job-pserver: vgg16v2job
+    spec:
+      hostNetwork: true
+      imagePullSecrets:
+      - name: job-registry-secret
+      containers:
+      - name: pserver
+        image: "registry.baidu.com/paddlepaddle/fluid_benchmark:vgg16"
+        imagePullPolicy: Always
+        ports:
+        - name: jobport-30236
+          containerPort: 30236
+        env:
+        - name: PADDLE_JOB_NAME
+          value: vgg16v2job
+        - name: TRAINERS
+          value: "20"
+        - name: PSERVERS
+          value: "10"
+        - name: TOPOLOGY
+          value: ""
+        - name: ENTRY
+          value: "python train.py"
+        - name: TRAINER_PACKAGE
+          value: "/workspace"
+        - name: PADDLE_INIT_PORT
+          value: "30236"
+        - name: PADDLE_INIT_NICS
+          value: "xgbe0"
+        - name: PADDLE_INIT_TRAINER_COUNT
+          value: "1"
+        - name: PADDLE_INIT_PORTS_NUM
+          value: "1"
+        - name: PADDLE_INIT_PORTS_NUM_FOR_SPARSE
+          value: "1"
+        - name: PADDLE_INIT_NUM_GRADIENT_SERVERS
+          value: "20"
+        - name: PADDLE_INIT_NUM_PASSES
+          value: "1"
+        - name: PADDLE_INIT_USE_GPU
+          value: "0"
+        - name: LD_LIBRARY_PATH
+          value: "/usr/local/lib:/usr/local/nvidia/lib64"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+        command: ["paddle_k8s", "start_pserver"]
+        resources:
+          requests:
+            memory: 10Gi
+            cpu: 4
+          limits:
+            memory: 10Gi
+            cpu: 4

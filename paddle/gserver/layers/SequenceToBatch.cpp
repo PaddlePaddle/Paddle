@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -171,12 +171,31 @@ void SequenceToBatch::sequence2BatchCopy(Matrix &batch,
     hl_sequence2batch_copy(
         batchData, seqData, idxData, seqWidth, batchCount, seq2batch);
   } else {
-    for (int i = 0; i < batchCount; ++i) {
-      if (seq2batch) {
+    if (seq2batch) {
+#ifdef PADDLE_USE_MKLML
+      const int blockMemSize = 8 * 1024;
+      const int blockSize = blockMemSize / sizeof(real);
+#pragma omp parallel for collapse(2)
+      for (int i = 0; i < batchCount; ++i) {
+        for (int j = 0; j < seqWidth; j += blockSize) {
+          memcpy(batch.rowBuf(i) + j,
+                 sequence.rowBuf(idxData[i]) + j,
+                 (j + blockSize > seqWidth) ? (seqWidth - j) * sizeof(real)
+                                            : blockMemSize);
+        }
+      }
+#else
+      for (int i = 0; i < batchCount; ++i) {
         memcpy(batch.rowBuf(i),
                sequence.rowBuf(idxData[i]),
                seqWidth * sizeof(real));
-      } else {
+      }
+#endif
+    } else {
+#ifdef PADDLE_USE_MKLML
+#pragma omp parallel for
+#endif
+      for (int i = 0; i < batchCount; ++i) {
         memcpy(sequence.rowBuf(idxData[i]),
                batch.rowBuf(i),
                seqWidth * sizeof(real));

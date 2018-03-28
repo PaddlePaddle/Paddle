@@ -140,8 +140,13 @@ def init_config_environment(
         g_submodel_stack=[],
         g_add_submodel_suffix=False, ):
 
-    for k, v in locals().iteritems():
-        globals()[k] = copy.deepcopy(v)
+    # directly iterate through locals().iteritems() will change
+    # the size of locals() due to introducing k, v into scope
+    # which will break the process in some env
+
+    local_vars = copy.deepcopy(locals())
+    for k, v in local_vars.iteritems():
+        globals()[k] = v
 
 
 # Because type is widely used as a variable name in this code.
@@ -3670,8 +3675,13 @@ class ConcatenateLayer2(LayerBase):
 
 @config_layer('recurrent')
 class RecurrentLayer(LayerBase):
+    layer_type = 'recurrent'
+
     def __init__(self, name, inputs, reversed=False, bias=True, **xargs):
-        super(RecurrentLayer, self).__init__(name, 'recurrent', 0, inputs,
+        use_mkl_packed = bool(
+            int(g_command_config_args.get("use_mkl_packed", 0)))
+        self.layer_type = 'mkl_packed_recurrent' if use_mkl_packed else 'recurrent'
+        super(RecurrentLayer, self).__init__(name, self.layer_type, 0, inputs,
                                              **xargs)
         config_assert(len(self.inputs) == 1, 'RecurrentLayer must have 1 input')
         input_layer = self.get_input_layer(0)
