@@ -8,7 +8,7 @@ The executor is a very naive interpreter. It runs operators one by one. We can u
 
 We want a `ProgramDesc` can be run on different nodes. It is better not to contain device information in `ProgramDesc`. However, we can write a high-performance interpreter, which can hold an alternative intermediate representation of `ProgramDesc`, to take full usage of Multi-GPUs. 
 
-ParallelExecutor is an interpreter of `ProgramDesc` which will [out-of-order execute](Out-of-order execution) `Program` in data parallelism mode and maximise the utility of Multi-GPUs.
+ParallelExecutor is an interpreter of `ProgramDesc` which will [out-of-order execute](https://en.wikipedia.org/wiki/Out-of-order_execution) `Program` in data parallelism mode and maximise the utility of Multi-GPUs.
 
 
 ## Overview of MultiGPUs logic
