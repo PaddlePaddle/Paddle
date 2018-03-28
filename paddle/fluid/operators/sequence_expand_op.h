@@ -15,8 +15,6 @@ limitations under the License. */
 #pragma once
 #include <numeric>  // std::iota
 
-#include <glog/logging.h>
-#include <sstream>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/math_function.h"
