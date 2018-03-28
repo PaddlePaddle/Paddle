@@ -191,29 +191,48 @@ class TestParallelExecutorBase(unittest.TestCase):
             loss = method()
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
+            avg_loss = fluid.layers.mean(loss)
+            fluid.layers.Print(avg_loss)
             if memory_opt:
                 fluid.memory_optimize(main)
 
-            exe = fluid.ParallelExecutor(loss_name=loss.name, use_cuda=True)
+            act_places = []
+            for each in [
+                    fluid.CUDAPlace(i)
+                    for i in range(fluid.core.get_cuda_device_count())
+            ]:
+                p = fluid.core.Place()
+                p.set_place(each)
+                act_places.append(p)
+
+            exe = fluid.core.MultiGPUExecutor(
+                act_places,
+                set([
+                    p.name
+                    for p in fluid.default_main_program()
+                    .global_block().iter_parameters()
+                ]))
+            exe.init(startup.desc, fluid.global_scope(), 0, True, True)
+
             if batch_size is not None:
-                batch_size *= fluid.core.get_cuda_device_count()
+                batch_size *= len(act_places)
             begin = time.time()
-            first_loss, = exe.run([loss.name])
-            first_loss = numpy.array(first_loss)
+            # first_loss, = exe.run([loss.name])
+            # first_loss = numpy.array(first_loss)
 
             for i in xrange(iter):
-                exe.run([])
+                exe.run(main.desc, fluid.global_scope(), 0, True, True)
 
-            last_loss, = exe.run([loss.name])
+            # last_loss, = exe.run([loss.name])
             end = time.time()
 
             if batch_size is not None:
                 print "%.4f Instance per second" % (
                     (batch_size * iter + 2) / (end - begin))
 
-            last_loss = numpy.array(last_loss)
+            # last_loss = numpy.array(last_loss)
 
-            print first_loss, last_loss
+            # print first_loss, last_loss
             # self.assertGreater(first_loss[0], last_loss[0])
 
 
@@ -262,7 +281,7 @@ class TestResnet(TestParallelExecutorBase):
 
     def test_resnet(self):
         import functools
-        batch_size = 4
+        batch_size = 8
         self.check_network_convergence(
             functools.partial(
                 SE_ResNeXt152, batch_size=batch_size),
