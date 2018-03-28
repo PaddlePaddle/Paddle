@@ -97,5 +97,24 @@ class TestLRNMKLDNNOp(TestLRNOp):
         self.check_output(atol=0.002)
 
 
+class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
+    def get_attrs(self):
+        attrs = TestLRNMKLDNNOp.get_attrs(self)
+        attrs['is_test'] = True
+        return attrs
+
+    def test_check_grad_normal(self):
+        def check_raise_is_test():
+            try:
+                self.check_grad(['X'], 'Out', max_relative_error=0.01)
+            except Exception as e:
+                t = \
+                "is_test attribute should be set to False in training phase."
+                if t in str(e):
+                    raise AttributeError
+
+        self.assertRaises(AttributeError, check_raise_is_test)
+
+
 if __name__ == "__main__":
     unittest.main()
