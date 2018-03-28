@@ -1357,8 +1357,7 @@ class DynamicRNN(object):
         self.lod_rank_table = None
         self.max_seq_len = None
         self.step_idx = None
-        self.zero_idx = fill_constant(
-            shape=[1], value=0, dtype='int64', force_cpu=True)
+        self.zero_idx = fill_constant(shape=[1], value=0, dtype='int64')
         self.mem_dict = dict()
         self.output_array = []
         self.outputs = []
@@ -1434,8 +1433,7 @@ class DynamicRNN(object):
     def block(self):
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
-        self.step_idx = fill_constant(
-            shape=[1], dtype='int64', value=0, force_cpu=True)
+        self.step_idx = fill_constant(shape=[1], dtype='int64', value=0)
         self.step_idx.stop_gradient = False
         self.status = DynamicRNN.IN_RNN
         with self.while_op.block():

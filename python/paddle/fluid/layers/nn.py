@@ -3306,8 +3306,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         name=counter_name, dtype='int64', shape=[1], persistable=True)
     if is_new_var:
         helper.set_variable_initializer(
-            counter, initializer=Constant(
-                value=begin - 1, force_cpu=True))
+            counter, initializer=Constant(value=begin - 1))
         helper.main_program.global_block().prepend_op(
             type='increment',
             inputs={'X': [counter]},
