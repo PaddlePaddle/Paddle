@@ -58,7 +58,7 @@ def fc_with_batchnorm():
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)))
 
-        hidden = fluid.layers.batch_norm(input=hidden)
+        hidden = fluid.layers.batch_norm(input=hidden, in_place=True)
 
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
@@ -96,7 +96,7 @@ def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
         groups=groups,
         act=None,
         bias_attr=False)
-    return fluid.layers.batch_norm(input=conv, act=act, momentum=0.1)
+    return fluid.layers.batch_norm(input=conv, act=act, momentum=0.1, in_place=True)
 
 
 def shortcut(input, ch_out, stride):
@@ -281,7 +281,7 @@ class TestResnet(TestParallelExecutorBase):
 
     def test_resnet(self):
         import functools
-        batch_size = 8
+        batch_size = 16
         self.check_network_convergence(
             functools.partial(
                 SE_ResNeXt152, batch_size=batch_size),
