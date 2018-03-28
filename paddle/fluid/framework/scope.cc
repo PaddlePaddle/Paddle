@@ -25,6 +25,7 @@ DEFINE_bool(benchmark, false,
             "Doing memory benchmark. It will make deleting scope synchronized, "
             "and add some memory usage logs."
             "Default cuda is asynchronous device, set to True will"
+
             "force op run in synchronous mode.");
 
 namespace paddle {
@@ -36,6 +37,20 @@ Scope::~Scope() {
     VLOG(3) << "Destroy variable " << kv.first;
     delete kv.second;
   }
+}
+
+std::vector<std::shared_ptr<Scope>>& Scope::replicas(size_t replica_count) {
+  if (replicas_.size() >= replica_count) {
+    return replicas_;
+  }
+
+  auto more = replica_count - replicas_.size();
+  replicas_.reserve(more);
+  for (size_t i = 0; i < more; i++) {
+    replicas_.push_back(std::make_shared<Scope>());
+  }
+
+  return replicas_;
 }
 
 Scope& Scope::NewScope() const {

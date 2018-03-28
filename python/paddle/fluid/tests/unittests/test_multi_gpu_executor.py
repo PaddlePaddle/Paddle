@@ -235,10 +235,12 @@ def run_benchmark(args):
                                       ]))
 
     # Parameter initialization
-    exe.init(fluid.default_startup_program().desc, 0, True, True)
+    exe.init(fluid.default_startup_program().desc,
+             fluid.global_scope(), 0, True, True)
     for iter_id in range(0, args.iterations):
         start = time.time()
-        exe.run(fluid.default_main_program().desc, 0, True, True)
+        exe.run(fluid.default_main_program().desc,
+                fluid.global_scope(), 0, True, True)
         end = time.time()
         print("iter=%d, elapse=%f" % (iter_id, (end - start)))
 
