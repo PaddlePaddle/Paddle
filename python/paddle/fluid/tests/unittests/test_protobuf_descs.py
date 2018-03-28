@@ -186,6 +186,34 @@ class TestBlockDesc(unittest.TestCase):
             all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op1, op2])
 
+    def test_remove_op(self):
+        prog = core.ProgramDesc()
+        self.assertIsNotNone(prog)
+        block = prog.block(0)
+        self.assertIsNotNone(block)
+        op1 = block.append_op()
+        op2 = block.append_op()
+        var1 = block.var("var1")
+        var2 = block.var("var2")
+        var3 = block.var("var3")
+        var4 = block.var("var4")
+        var5 = block.var("var5")
+        op1.set_input("X", ["var1", "var2"])
+        op1.set_output("Y", ["var3", "var4"])
+        op2.set_input("X", ["var1"])
+        op2.set_output("Y", ["var4", "var5"])
+
+        # remove op1, its input var2 and output var3 will be removed at the same time,
+        # but its input var1 and output var4 will not be removed since they are used for op2.
+        block.remove_op(0, 1)
+
+        all_ops = []
+        for idx in xrange(0, block.op_size()):
+            all_ops.append(block.op(idx))
+        self.assertEqual(all_ops, [op2])
+        all_vars = block.all_vars()
+        self.assertEqual(set(all_vars), {var1, var4, var5})
+
 
 if __name__ == '__main__':
     unittest.main()
