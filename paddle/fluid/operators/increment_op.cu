@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/minus_op.h"
+#include "paddle/fluid/operators/increment_op.h"
 
+namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     increment, ops::IncrementKernel<paddle::platform::CUDADeviceContext, float>,
     ops::IncrementKernel<paddle::platform::CUDADeviceContext, double>,
