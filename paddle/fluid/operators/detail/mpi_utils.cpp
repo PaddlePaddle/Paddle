@@ -3,10 +3,13 @@
 //
 
 #include <stdio.h>
+#include <string.h>
 
-#include "paddle/fluid/operators/detail/mpi_utils.h"
+#include <mpi.h>
+#include "mpi_utils.h"
 
 #define max_worker_name_length 128
+#define mpi_tag = 2008
 
 namespace paddle {
 namespace operators {
@@ -42,6 +45,47 @@ void MPIUtils::InitMPI() {
     MPI_Get_processor_name(host_name, &len)
   }
 };
+
+MPIIsend::MPIIsend(int dst, const char* req) {
+  done1 = 0;
+  done2 = 0;
+  length = strlen(req);
+  req = req;
+}
+
+MPIIsend::Send() {
+  MPI_Isend(&req, length, MPI_CHAR, dst, mpi_tag, MPI_COMM_WORLD,
+            &msg1_);
+  MPI_Test(&msg1_, &done1_, MPI_STATUS_IGNORE)
+}
+
+  bool MPIIsend::IsFinished() {
+     MPI_Status status;
+     if (!done1_) MPI_Test(&msg1_, &done1_, &status);
+     return done1;
+  }
+
+MPIIsend::~MPIIsend(){
+  MPI_Wait(&msg1_, MPI_STATUS_IGNORE);
+  MPI_Free_mem(req);
+}
+
+MPIIrecv::MPIIrecv(){
+
+}
+
+MPIIrecv::Recv(){
+
+}
+
+MPIIrecv::IsFinished(){
+
+}
+
+MPIIrecv::~MPIIrecv(){
+
+}
+
 }  // namespace detail
 
 }  // namespace operators

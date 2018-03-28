@@ -26,23 +26,26 @@ namespace operators {
 namespace detail {
 class MPIClient {
  public:
-  bool AsyncSendVariable(const std::string& ep,
-                         const platform::DeviceContext& ctx,
-                         const framework::Scope& scope,
-                         const std::string& var_name,
-                         int64_t time_out = 600 * 1000);
+  //   bool AsyncSendVariable(const std::string& ep,
+  //                          const platform::DeviceContext& ctx,
+  //                          const framework::Scope& scope,
+  //                          const std::string& var_name,
+  //                          int64_t time_out = 600 * 1000);
 
-  bool AsyncGetVariable(const std::string& ep,
-                        const platform::DeviceContext& ctx,
-                        const framework::Scope& scope,
-                        const std::string& var_name,
-                        int64_t time_out = 600 * 1000);
+  //   bool AsyncGetVariable(const std::string& ep,
+  //                         const platform::DeviceContext& ctx,
+  //                         const framework::Scope& scope,
+  //                         const std::string& var_name,
+  //                         int64_t time_out = 600 * 1000);
 
-  void AsyncSendBatchBarrier(const std::string& ep,
-                             int64_t time_out = 600 * 1000);
+  //   void AsyncSendBatchBarrier(const std::string& ep,
+  //                              int64_t time_out = 600 * 1000);
 
-  void AsyncSendFetchBarrier(const std::string& ep,
-                             int64_t time_out = 600 * 1000);
+  //   void AsyncSendFetchBarrier(const std::string& ep,
+  //                              int64_t time_out = 600 * 1000);
+
+  bool AsyncSendVariable();
+
   bool Wait();
 
  private:
