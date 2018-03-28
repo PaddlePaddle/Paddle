@@ -2,6 +2,7 @@
 build
 dist
 paddle.egg-info
+paddlepaddle_gpu.egg-info
 .idea
 paddle/proto/*.py
 paddle/proto/*.pyc

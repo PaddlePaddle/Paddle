@@ -1,25 +1,29 @@
-
-file(GLOB TRAINER_PY_FILES . ./paddle/trainer/*.py)
-file(GLOB HELPERS_PY_FILES . ./paddle/trainer_config_helpers/*.py)
 file(GLOB UTILS_PY_FILES . ./paddle/utils/*.py)
-file(GLOB_RECURSE V2_PY_FILES ./paddle/v2/ *.py)
-
+file(GLOB_RECURSE FLUID_PY_FILES ./paddle/fluid/ *.py)
 set(PY_FILES paddle/__init__.py
-  ${TRAINER_PY_FILES}
-  ${HELPERS_PY_FILES}
   ${UTILS_PY_FILES}
-  ${V2_PY_FILES})
+  ${FLUID_PY_FILES})
 
-add_custom_target(copy_paddle_master)
+if(NOT WITH_FLUID)
+  file(GLOB TRAINER_PY_FILES . ./paddle/trainer/*.py)
+  file(GLOB HELPERS_PY_FILES . ./paddle/trainer_config_helpers/*.py)
+  file(GLOB_RECURSE V2_PY_FILES ./paddle/v2/ *.py)
+  set(PY_FILES ${PY_FILES}
+    ${TRAINER_PY_FILES}
+    ${HELPERS_PY_FILES}
+    ${V2_PY_FILES})
 
-SET(COPY_PADDLE_MASTER "")
-if(WITH_GOLANG)
-  SET(COPY_PADDLE_MASTER "copy_paddle_master")
-  add_custom_command(TARGET ${COPY_PADDLE_MASTER}
-    COMMAND cp ${paddle_master_LIB_PATH} ${PADDLE_SOURCE_DIR}/python/paddle/v2/master/
-    )
-  add_dependencies(copy_paddle_master paddle_master)
-endif(WITH_GOLANG)
+  add_custom_target(copy_paddle_master)
+
+  SET(COPY_PADDLE_MASTER "")
+  if(WITH_GOLANG)
+    SET(COPY_PADDLE_MASTER "copy_paddle_master")
+    add_custom_command(TARGET ${COPY_PADDLE_MASTER}
+      COMMAND cp ${paddle_master_LIB_PATH} ${PADDLE_SOURCE_DIR}/python/paddle/v2/master/
+      )
+    add_dependencies(copy_paddle_master paddle_master)
+  endif(WITH_GOLANG)
+endif()
 
 set(MKL_SHARED_LIBS "")
 set(MKL_DEPENDS "")
@@ -29,8 +33,8 @@ if(WITH_MKLML)
 endif()
 
 if(WITH_MKLDNN)
-  list(APPEND MKL_SHARED_LIBS "${MKLDNN_LIB}" "${MKLDNN_LIB}.0")
-  list(APPEND MKL_DEPENDS mkldnn)
+  list(APPEND MKL_SHARED_LIBS "${MKLDNN_SHARED_LIB}")
+  list(APPEND MKL_DEPENDS mkldnn mkldnn_shared_lib)
 endif()
 
 if(WITH_GPU)
@@ -43,10 +47,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 
-add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/python/paddle/v2/fluid/core.so
-        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PADDLE_SOURCE_DIR}/python/paddle/v2/fluid/core.so
+add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/python/paddle/fluid/core.so
+        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PADDLE_SOURCE_DIR}/python/paddle/fluid/core.so
         DEPENDS paddle_pybind)
-add_custom_target(copy_paddle_pybind ALL DEPENDS ${PADDLE_SOURCE_DIR}/python/paddle/v2/fluid/core.so)
+add_custom_target(copy_paddle_pybind ALL DEPENDS ${PADDLE_SOURCE_DIR}/python/paddle/fluid/core.so)
 
 
 add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
@@ -55,25 +59,30 @@ add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_PYTHON_BUILD_DIR}/lib* ${PADDLE_PYTHON_BUILD_DIR}/lib-python
-    DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
+    DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 
-set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp paddle_pserver_main paddle_trainer paddle_merge_model ${MKL_DEPENDS})
-if(WITH_SWIG_PY)
-    list(APPEND paddle_python_deps python_api_wheel)
+set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp ${MKL_DEPENDS})
+if(NOT WITH_FLUID)
+    set(paddle_python_deps ${paddle_python_deps} paddle_pserver_main paddle_trainer paddle_merge_model)
+    if(WITH_SWIG_PY)
+        list(APPEND paddle_python_deps python_api_wheel)
+    endif()
 endif()
 add_custom_target(paddle_python ALL DEPENDS ${paddle_python_deps})
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
 if (WITH_TESTING)
-  add_subdirectory(paddle/trainer_config_helpers/tests)
-  if (WITH_SWIG_PY)
-    # enable v2 API unittest only when paddle swig api is compiled
-    add_subdirectory(paddle/v2/tests)
-    add_subdirectory(paddle/v2/reader/tests)
-    add_subdirectory(paddle/v2/plot/tests)
-    add_subdirectory(paddle/v2/fluid/tests)
+  if(NOT WITH_FLUID)
+    add_subdirectory(paddle/trainer_config_helpers/tests)
+    if (WITH_SWIG_PY)
+      # enable v2 API unittest only when paddle swig api is compiled
+      add_subdirectory(paddle/v2/tests)
+      add_subdirectory(paddle/v2/reader/tests)
+      add_subdirectory(paddle/v2/plot/tests)
+    endif()
   endif()
+  add_subdirectory(paddle/fluid/tests)
 endif()
 install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
     DESTINATION opt/paddle/share/wheels

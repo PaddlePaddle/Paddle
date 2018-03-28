@@ -32,14 +32,17 @@ function cmake_gen() {
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
-        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
-        -DWITH_DOC=OFF
+        -DWITH_DSO=ON
+        -DWITH_DOC=${WITH_DOC:-OFF}
         -DWITH_GPU=${WITH_GPU:-OFF}
+        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
-        -DWITH_GOLANG=${WITH_GOLANG:-ON}
+        -DWITH_GOLANG=${WITH_GOLANG:-OFF}
+        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
         -DWITH_SWIG_PY=ON
         -DWITH_C_API=${WITH_C_API:-OFF}
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
@@ -47,6 +50,8 @@ function cmake_gen() {
         -DCUDNN_ROOT=/usr/
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
+        -DWITH_FAST_BUNDLE_TEST=ON
+        -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     ========================================
 EOF
@@ -54,20 +59,25 @@ EOF
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
     cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
-        -DWITH_DOC=OFF \
+        -DWITH_DSO=ON \
+        -DWITH_DOC=${WITH_DOC:-OFF} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
-        -DWITH_GOLANG=${WITH_GOLANG:-ON} \
+        -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
+        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
         -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
         -DWITH_C_API=${WITH_C_API:-OFF} \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
+        -DWITH_FAST_BUNDLE_TEST=ON \
+        -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 }
 
@@ -77,6 +87,7 @@ function run_build() {
     Building in /paddle/build ...
     ============================================
 EOF
+    make clean
     make -j `nproc`
 }
 
@@ -112,11 +123,9 @@ EOF
             -DWITH_AVX=${WITH_AVX:-ON} \
             -DWITH_SWIG_PY=ON \
             -DWITH_STYLE_CHECK=OFF
-        make -j `nproc` gen_proto_py
-        make -j `nproc` paddle_python
-        make -j `nproc` paddle_docs paddle_docs_cn
-        make -j `nproc` print_operators_doc
-        paddle/pybind/print_operators_doc > doc/en/html/operators.json
+        make -j `nproc` gen_proto_py framework_py_proto
+        make -j `nproc` copy_paddle_pybind
+        make -j `nproc` paddle_docs paddle_docs_cn paddle_api_docs
         popd
     fi
 
@@ -168,9 +177,9 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y libnccl-dev &&"
+        NCCL_DEPS="apt-get install -y libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 &&"
     else
-        NCCL_DEPS="" 
+        NCCL_DEPS=""
     fi
 
     cat >> /paddle/build/Dockerfile <<EOF
@@ -178,7 +187,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode && pip install -U pip && \
+        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
@@ -186,11 +195,33 @@ EOF
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
+    ENV NCCL_LAUNCH_MODE PARALLEL
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
     # default command shows the paddle version and exit
     CMD ["paddle", "version"]
 EOF
+}
+
+function gen_capi_package() {
+  if [[ ${WITH_C_API} == "ON" ]]; then
+    install_prefix="/paddle/build/capi_output"
+    rm -rf $install_prefix
+    make DESTDIR="$install_prefix" install
+    cd $install_prefix/usr/local
+    ls | egrep -v "^Found.*item$" | xargs tar -cf /paddle/build/paddle.tgz
+  fi
+}
+
+function gen_fluid_inference_lib() {
+    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+    cat <<EOF
+    ========================================
+    Deploying fluid inference library ...
+    ========================================
+EOF
+        make inference_lib_dist
+    fi
 }
 
 set -xe
@@ -200,6 +231,12 @@ run_build
 run_test
 gen_docs
 gen_dockerfile
+gen_capi_package
+gen_fluid_inference_lib
 
-printf "If you need to install PaddlePaddle in develop docker image,"
-printf "please make install or pip install build/python/dist/*.whl.\n"
+if [[ ${WITH_C_API:-OFF} == "ON" ]]; then
+  printf "PaddlePaddle C-API libraries was generated on build/paddle.tgz\n"
+else
+  printf "If you need to install PaddlePaddle in develop docker image,"
+  printf "please make install or pip install build/python/dist/*.whl.\n"
+fi

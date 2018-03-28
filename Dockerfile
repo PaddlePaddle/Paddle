@@ -22,12 +22,13 @@ COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y \
-    git python-pip python-dev openssh-server bison libnccl-dev \
+    git python-pip python-dev openssh-server bison \
+    libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
     automake locales clang-format swig doxygen cmake  \
-    liblapack-dev liblapacke-dev libboost-dev \
+    liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools libtool && \
     apt-get clean -y
@@ -52,10 +53,14 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
 # FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
 # version util jupyter fixes this issue.
+
+# specify sphinx version as 1.5.6 and remove -U option for [pip install -U
+# sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
+# version(1.7.1 for now), which causes building documentation failed.
 RUN pip install --upgrade pip && \
     pip install -U wheel && \
-    pip install -U docopt PyYAML sphinx && \
-    pip install -U sphinx-rtd-theme==0.1.9 recommonmark
+    pip install -U docopt PyYAML sphinx==1.5.6 && \
+    pip install sphinx-rtd-theme==0.1.9 recommonmark
 
 RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \

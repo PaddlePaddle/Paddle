@@ -62,12 +62,15 @@ __all__ = [
 cp.begin_parse()
 
 
-def set_omp_mkl_env_vars(trainer_count):
+def set_env_vars(trainer_count):
     '''Auto set CPU environment if have not set before.
-       export KMP_AFFINITY, OMP_DYNAMIC according to the Hyper Threading status.
-       export OMP_NUM_THREADS, MKL_NUM_THREADS according to trainer_count.
+       For MKL:
+         export KMP_AFFINITY, OMP_DYNAMIC according to the Hyper Threading status.
+         export OMP_NUM_THREADS, MKL_NUM_THREADS according to trainer_count.
+       For OpenBLAS:
+         export OPENBLAS_NUM_THREADS, OPENBLAS_MAIN_FREE according to trainer_count. 
     '''
-    import platform
+    import platform, paddle
     if not platform.system() in ['Linux', 'Darwin']:
         return
 
@@ -103,16 +106,22 @@ def set_omp_mkl_env_vars(trainer_count):
 
     num_cores = num_physical_cores()
     num_processors = num_logical_processors()
-    if num_processors > num_cores:  # Hyper Threading is enabled
-        set_env("OMP_DYNAMIC", "true")
-        set_env("KMP_AFFINITY", "granularity=fine,compact,1,0")
-    else:
-        set_env("OMP_DYNAMIC", "false")
-        set_env("KMP_AFFINITY", "granularity=fine,compact,0,0")
+    if paddle.version.mkl() == 'ON':
+        if num_processors > num_cores:  # Hyper Threading is enabled
+            set_env("OMP_DYNAMIC", "true")
+            set_env("KMP_AFFINITY", "granularity=fine,compact,1,0")
+        else:
+            set_env("OMP_DYNAMIC", "false")
+            set_env("KMP_AFFINITY", "granularity=fine,compact,0,0")
     threads = num_processors / trainer_count
     threads = '1' if threads < 1 else str(threads)
-    set_env("OMP_NUM_THREADS", threads)
-    set_env("MKL_NUM_THREADS", threads)
+    if paddle.version.mkl() == 'ON':
+        set_env("OMP_NUM_THREADS", threads)
+        set_env("MKL_NUM_THREADS", threads)
+    else:
+        set_env("OPENBLAS_NUM_THREADS", threads)
+        if threads > 1:
+            set_env("OPENBLAS_MAIN_FREE", '1')
 
 
 def init(**kwargs):
@@ -129,12 +138,14 @@ def init(**kwargs):
     for key in args_dict.keys():
         args.append('--%s=%s' % (key, str(args_dict[key])))
 
-    set_omp_mkl_env_vars(kwargs.get('trainer_count', 1))
+    set_env_vars(kwargs.get('trainer_count', 1))
 
     if 'use_gpu' in kwargs:
         cp.g_command_config_args['use_gpu'] = kwargs['use_gpu']
     if 'use_mkldnn' in kwargs:
         cp.g_command_config_args['use_mkldnn'] = kwargs['use_mkldnn']
+    if 'use_mkl_packed' in kwargs:
+        cp.g_command_config_args['use_mkl_packed'] = kwargs['use_mkl_packed']
     assert 'parallel_nn' not in kwargs, ("currently 'parallel_nn' is not "
                                          "supported in v2 APIs.")
 

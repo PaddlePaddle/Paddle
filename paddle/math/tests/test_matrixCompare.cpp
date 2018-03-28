@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -244,7 +244,7 @@ TEST(Matrix, unary) {
     LOG(WARNING) << "This version of PaddlePaddle was not built with LAPACK"
                  << "support so we cannot test matrix inverse. To test "
                  << "matrix inverse, please install LAPACKE "
-                 << "and MKL/Openblas/ATLAS, and re-build PaddlePaddle.";
+                 << "and MKL/Openblas, and re-build PaddlePaddle.";
 #endif
   }
 }
