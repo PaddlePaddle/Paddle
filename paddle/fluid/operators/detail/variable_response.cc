@@ -68,6 +68,8 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
       if (total_written + size_to_write > length) {
         size_to_write = length - total_written;
       }
+      VLOG(3) << "copy raw " << size_to_write
+              << " bytes, written: " << total_written << ", length: " << length;
       memory::Copy(boost::get<platform::CUDAPlace>(place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
@@ -147,6 +149,7 @@ bool VariableResponse::CopySelectRowsTensorData(
     const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
+  slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
   void* tensor_data = tensor->mutable_data(
@@ -346,6 +349,14 @@ int VariableResponse::Parse(Source* source) {
         for (uint32_t i = 0; i < lod_data.size(); i++) {
           lod->add_lod_data(lod_data[i]);
         }
+        break;
+      }
+      case sendrecv::VariableMessage::kSlrHeightFieldNumber: {
+        uint64_t v = 0;
+        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
+          return tag;
+        }
+        meta_.set_slr_height(static_cast<int64_t>(v));
         break;
       }
       case sendrecv::VariableMessage::kSerializedFieldNumber: {

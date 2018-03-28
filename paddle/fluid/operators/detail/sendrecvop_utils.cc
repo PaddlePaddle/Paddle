@@ -108,6 +108,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
       }
       e.WriteUint64(VarMsg::kLodLevelFieldNumber, 0);
+      e.WriteUint64(VarMsg::kSlrHeightFieldNumber, slr->height());
       auto* tensor = slr->mutable_value();
       if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA

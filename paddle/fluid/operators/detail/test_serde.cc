@@ -40,6 +40,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   // serialize var to ByteBuffer
   framework::Variable var;
   auto* slr = var.GetMutable<framework::SelectedRows>();
+  slr->set_height(1000);
   auto* tensor = slr->mutable_value();
   auto* rows = slr->mutable_rows();
   tensor->Resize(framework::make_ddim({2, 10}));
@@ -106,6 +107,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   }
   EXPECT_EQ(rows_data2[0], 3);
   EXPECT_EQ(rows_data2[1], 10);
+  EXPECT_EQ(slr2->height(), 1000);
 }
 
 void RunTestLodTensor(platform::Place place, int from_type = 0) {
