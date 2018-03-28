@@ -129,7 +129,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     // Tensor core is supported since the volta GPU
     if (dev_ctx.GetComputeCapability() >= 70) {
-      PADDLE_ENFORCE(dynload::cudnnSetConvolutionMathType(
+      PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
           cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
     }
 #endif
@@ -139,24 +139,27 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
         workspace_size_limit, &algo));
 
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    if (dev_ctx.GetComputeCapability() >= 70) {
-      // Currently tensor core is only used in this algo
-      if (algo != CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM) {
-        std::cout << "For volta, algo is " << static_cast<int>(algo)
-                  << std::endl;
-        algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-      }
-    }
-#endif
+    //    std::cout << "The chosen algorithm is " << static_cast<int>(algo)
+    //              << std::endl;
+
+    /*
+    #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+        if (dev_ctx.GetComputeCapability() >= 70) {
+          // Currently tensor core is only used in this algo
+          algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+        }
+    #endif
+    */
+
     // get workspace size able to allocate
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, algo, &workspace_size_in_bytes));
 
-    if (workspace_size_in_bytes > workspace_size_limit) {
-      std::cout << "Workspace size is " << workspace_size_in_bytes << std::endl;
-    }
+    // if (workspace_size_in_bytes > workspace_size_limit) {
+    // std::cout << "Workspace size is " << workspace_size_in_bytes
+    // << std::endl;
+    // }
 
     // Allocate on GPU memory
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
