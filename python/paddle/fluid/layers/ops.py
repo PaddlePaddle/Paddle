@@ -26,6 +26,7 @@ __activations__ = [
     'ceil',
     'floor',
     'cos',
+    'sin',
     'round',
     'reciprocal',
     'log',
