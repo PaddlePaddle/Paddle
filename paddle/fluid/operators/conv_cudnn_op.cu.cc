@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <iostream>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
@@ -48,6 +49,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
+    int64_t user_workspace_size =
+        static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
@@ -111,30 +114,10 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         output_channels / groups * output_height * output_width * output_depth;
     int group_offset_filter = filter->numel() / groups;
 
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    void* cudnn_workspace = nullptr;
-    size_t workspace_size_in_bytes;  // final workspace to allocate.
-    cudnnConvolutionFwdAlgo_t algo;
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
-
-    algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-    PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-        handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-        cudnn_output_desc, algo, &workspace_size_in_bytes));
-
-    // Allocate on GPU memory
-    platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-    if (workspace_size_in_bytes > 0) {
-      cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
-    }
-#else
     // ------------------- cudnn conv workspace ---------------------
     void* cudnn_workspace = nullptr;
     size_t workspace_size_in_bytes;  // final workspace to allocate.
     size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
-    int64_t user_workspace_size =
-        static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
     if (user_workspace_size > 0) {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
@@ -143,18 +126,41 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
 
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    // Tensor core is supported since the volta GPU
+    if (dev_ctx.GetComputeCapability() >= 70) {
+      PADDLE_ENFORCE(dynload::cudnnSetConvolutionMathType(
+          cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
+    }
+#endif
+
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
         workspace_size_limit, &algo));
+
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    if (dev_ctx.GetComputeCapability() >= 70) {
+      // Currently tensor core is only used in this algo
+      if (algo != CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM) {
+        std::cout << "For volta, algo is " << static_cast<int>(algo)
+                  << std::endl;
+        algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+      }
+    }
+#endif
     // get workspace size able to allocate
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, algo, &workspace_size_in_bytes));
+
+    if (workspace_size_in_bytes > workspace_size_limit) {
+      std::cout << "Workspace size is " << workspace_size_in_bytes << std::endl;
+    }
+
     // Allocate on GPU memory
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
-#endif
 
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;

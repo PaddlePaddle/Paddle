@@ -263,11 +263,6 @@ class ScopedConvolutionDescriptor {
         desc_, pads.size(), pads.data(), strides.data(), dilations.data(),
         CUDNN_CROSS_CORRELATION, compute_type));
 
-#if CUDNN_VERSION_MIN(7, 0, 1)
-    PADDLE_ENFORCE(
-        dynload::cudnnSetConvolutionMathType(desc_, CUDNN_TENSOR_OP_MATH));
-#endif
-
     return desc_;
   }
 
