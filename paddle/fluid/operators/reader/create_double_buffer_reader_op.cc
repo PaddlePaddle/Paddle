@@ -166,7 +166,9 @@ void DoubleBufferReader::PrefetchThreadFunc() {
       std::swap(gpu_batch, batch.payloads_);
     }
 
-    if (!buffer_->Send(&batch)) {
+    try {
+      buffer_->Send(&batch);
+    } catch (paddle::platform::EnforceNotMet e) {
       VLOG(5) << "WARNING: The double buffer channel has been closed. The "
                  "prefetch thread will terminate.";
       break;

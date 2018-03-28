@@ -74,6 +74,7 @@ __all__ = [
     'one_hot',
     'autoincreased_step_counter',
     'lod_reset',
+    'lrn',
 ]
 
 
@@ -1482,6 +1483,7 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
+               in_place=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None):
@@ -1537,7 +1539,7 @@ def batch_norm(input,
     saved_mean = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
 
-    batch_norm_out = helper.create_tmp_variable(dtype)
+    batch_norm_out = input if in_place else helper.create_tmp_variable(dtype)
 
     helper.append_op(
         type="batch_norm",
@@ -3410,3 +3412,73 @@ def lod_reset(x, y=None, target_lod=None):
         raise ValueError("y and target_lod should not be both None.")
 
     return out
+
+
+def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
+    """
+    Local Response Normalization Layer. This layer performs a type of
+    "lateral inhibition" by normalizing over local input regions.
+
+    The formula is as follows:
+
+    .. math::
+
+        Output(i, x, y) = Input(i, x, y) / \left(
+        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
+        (Input(j, x, y))^2 \right)^{\beta}
+
+    In the above equation:
+
+    * :math:`n`: The number of channels to sum over.
+    * :math:`k`: The offset (avoid being divided by 0).
+    * :math:`alpha`: The scaling parameter.
+    * :math:`beta`: The exponent parameter.
+
+    Refer to `ImageNet Classification with Deep Convolutional Neural Networks
+    <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+
+    Args:
+        input (Variable): The input tensor of this layer, and the dimension of input tensor must be 4.
+        n (int, default 5): The number of channels to sum over.
+        k (float, default 1.0): An offset (usually positive to avoid dividing by 0).
+        alpha (float, default 1e-4): The scaling parameter.
+        beta (float, default 0.75): The exponent.
+        name (str, default None): A name for this operation.
+
+    Raises:
+        ValueError: If rank of the input tensor is not 4.
+
+    Returns:
+        A tensor variable storing the transformation result.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name="data", shape=[3, 112, 112], dtype="float32")
+          lrn = fluid.layers.lrn(input=data)
+    """
+    helper = LayerHelper('lrn', **locals())
+    dtype = helper.input_dtype()
+    input_shape = input.shape
+    dims = len(input_shape)
+
+    if dims != 4:
+        raise ValueError(
+            "dims of input must be 4(not %d), and it's order must be NCHW" %
+            (dims))
+
+    mid_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    lrn_out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="lrn",
+        inputs={"X": input},
+        outputs={
+            "Out": lrn_out,
+            "MidOut": mid_out,
+        },
+        attrs={"n": n,
+               "k": k,
+               "alpha": alpha,
+               "beta": beta})
+
+    return lrn_out
