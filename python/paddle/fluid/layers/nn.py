@@ -86,6 +86,7 @@ def fc(input,
        param_attr=None,
        bias_attr=None,
        use_mkldnn=False,
+       with_bias=False,
        act=None,
        name=None):
     """
@@ -133,6 +134,8 @@ def fc(input,
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
             of this layer. If it is set to None, no bias will be added to the output units.
         act (str, default None): Activation to be applied to the output of this layer.
+        use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
+            library is installed. Default: False
         name (str, default None): The name of this layer.
 
     Returns:
@@ -162,16 +165,25 @@ def fc(input,
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
         tmp = helper.create_tmp_variable(dtype)
-        helper.append_op(
-            type="mul",
-            inputs={"X": input_var,
-                    "Y": w},
-            outputs={"Out": tmp},
-            attrs={
-                "x_num_col_dims": num_flatten_dims,
-                "y_num_col_dims": 1,
-                'use_mkldnn': use_mkldnn
-            })
+        if use_mkldnn == False:
+            helper.append_op(
+                type="mul",
+                inputs={"X": input_var,
+                        "Y": w},
+                outputs={"Out": tmp},
+                attrs={
+                    "x_num_col_dims": num_flatten_dims,
+                    "y_num_col_dims": 1,
+                    'use_mkldnn': use_mkldnn
+                })
+        else:
+            helper.append_op(
+                type="fc",
+                inputs={"Input": input_var,
+                        "W": w},
+                outputs={"Out": tmp},
+                attrs={"use_mkldnn": use_mkldnn,
+                       "with_bias": with_bias})
         mul_results.append(tmp)
 
     # sum
