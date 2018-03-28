@@ -77,7 +77,7 @@ class SoftmaxActivation(BaseActivation):
 
     .. math::
 
-       P(y=j|x) = \\frac{e^{x_j}} {\\sum^K_{k=1} e^{x_j} }
+       P(y=j|x) = \\frac{e^{x_j}} {\\sum^K_{k=1} e^{x_k} }
     """
 
     def __init__(self):
