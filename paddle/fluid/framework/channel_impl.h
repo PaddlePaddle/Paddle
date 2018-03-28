@@ -31,7 +31,7 @@ class ChannelImpl : public paddle::framework::Channel<T> {
  public:
   virtual bool CanSend();
   virtual bool CanReceive();
-  virtual bool Send(T *);
+  virtual void Send(T *);
   virtual bool Receive(T *);
   virtual size_t Cap() { return cap_; }
   virtual void Lock();
@@ -76,10 +76,9 @@ class ChannelImpl : public paddle::framework::Channel<T> {
     }
   };
 
-  bool send_return(bool value) {
+  void send_return() {
     send_ctr--;
     destructor_cond_.notify_all();
-    return value;
   }
 
   bool recv_return(bool value) {
@@ -118,15 +117,15 @@ bool ChannelImpl<T>::CanReceive() {
 }
 
 template <typename T>
-bool ChannelImpl<T>::Send(T *item) {
+void ChannelImpl<T>::Send(T *item) {
   send_ctr++;
   std::unique_lock<std::recursive_mutex> lock{mu_};
 
-  // If channel is closed, do nothing
+  // If channel is closed, throw exception
   if (closed_) {
     lock.unlock();
-    // TODO(abhinavarora) Should panic on closed channel
-    return send_return(false);
+    send_return();
+    PADDLE_THROW("Cannot send on closed channel");
   }
 
   // If there is a receiver, directly pass the value we want
@@ -143,7 +142,7 @@ bool ChannelImpl<T>::Send(T *item) {
     if (m->callback != nullptr) do_send = m->callback(ChannelAction::SEND);
     if (do_send)
       *(m->data) = std::move(*item);
-    else
+    else {
       // We cannot do the data transfer because
       // this QueueMessage was added by Select
       // and some other case was executed.
@@ -151,12 +150,17 @@ bool ChannelImpl<T>::Send(T *item) {
       // We do not care about notifying other
       // because they would have been notified
       // by the executed select case.
-      return send_return(Send(item));
+      lock.unlock();
+      Send(item);
+      send_return();
+      return;
+    }
 
     // Wake up the blocked process and unlock
     m->Notify();
     lock.unlock();
-    return send_return(true);
+    send_return();
+    return;
   }
 
   // Unbuffered channel will always bypass this
@@ -167,7 +171,8 @@ bool ChannelImpl<T>::Send(T *item) {
     buf_.push_back(std::move(*item));
     // Release lock and return true
     lock.unlock();
-    return send_return(true);
+    send_return();
+    return;
   }
 
   // Block on channel, because some receiver will complete
@@ -175,8 +180,12 @@ bool ChannelImpl<T>::Send(T *item) {
   auto m = std::make_shared<QueueMessage>(item);
   sendq.push_back(m);
   m->Wait(lock);
-  // TODO(abhinavarora) Should panic on closed channel
-  return send_return(!m->chan_closed);
+  if (m->chan_closed) {
+    lock.unlock();
+    send_return();
+    PADDLE_THROW("Cannot send on closed channel");
+  }
+  send_return();
 }
 
 template <typename T>
