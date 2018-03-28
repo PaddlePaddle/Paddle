@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
+
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class SoftmaxFunctor {

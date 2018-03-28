@@ -19,14 +19,11 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
 template <typename T>
 struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, const LoDTensor& x,
                   LoDTensor* out) {
-    auto lod = x.lod();
+    auto& lod = x.lod();
     const size_t level = lod.size() - 1;
     for (int i = 0; i < static_cast<int>(lod[level].size()) - 1; ++i) {
       int start_pos = static_cast<int>(lod[level][i]);

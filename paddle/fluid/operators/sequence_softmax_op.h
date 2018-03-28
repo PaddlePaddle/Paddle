@@ -42,7 +42,7 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
                       "The width of each timestep in Input(X) of "
                       "SequenceSoftmaxOp should be 1.");
 
-    SequenceSoftmaxFunctor<DeviceContext, T> funtor;
+    math::SequenceSoftmaxFunctor<DeviceContext, T> functor;
     functor(ctx.template device_context<DeviceContext>(), *x, out);
   }
 };
@@ -56,7 +56,7 @@ class SequenceSoftmaxGradKernel : public framework::OpKernel<T> {
     // auto* x = ctx.Input<LoDTensor>("X");
     auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(ctx.GetPlace());
-    SequenceSoftmaxGradKernel<DeviceContext, T> functor;
+    math::SequenceSoftmaxGradFunctor<DeviceContext, T> functor;
     functor(ctx.template device_context<DeviceContext>(), *out, *out_grad,
             x_grad);
   }

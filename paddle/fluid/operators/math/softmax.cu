@@ -99,7 +99,7 @@ __global__ void sequence_softmax(const T* x, const size_t num_classes,
   extern __shared__ T mem[];
 
   int bid = blockIdx.x;
-  if (bid >= lod_size) return;
+  if (bid >= lod_size - 1) return;
   int start_pos = static_cast<int>(lod[bid]);
   int end_pos = static_cast<int>(lod[bid + 1]);
   T* shm = &mem[start_pos];
