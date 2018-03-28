@@ -47,16 +47,6 @@ class BlockingQueue {
     cv_.notify_all();
   }
 
-  T Pop() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    while (q_.empty()) {
-      cv_.wait(lock);
-    }
-    T v = q_.front();
-    q_.pop_front();
-    return v;
-  }
-
   std::deque<T> PopAll(size_t ms, bool *timeout) {
     auto time =
         std::chrono::system_clock::now() + std::chrono::milliseconds(ms);
