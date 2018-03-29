@@ -49,14 +49,14 @@ Examples:
 specified by Attr(shape) is [6, 8], the reshape operator will transform Input(X)
 into a 2-D tensor with shape [6, 8] and leaving Input(X)'s data unchanged.
 
-1. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
+2. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
 specified by Attr(shape) is [2, 3, -1, 2], the reshape operator will transform
 Input(X) into a 4-D tensor with shape [2, 3, 4, 2] and leaving Input(X)'s data
 unchanged. In this case, one and only dimension of Attr(shape) can be set to -1,
 the value of this dimension is inferred from the total element number of
 Input(X) and remaining dimensions.
 
-1. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
+3. Given a 3-D tensor Input(X) with a shape [2, 4, 6], and the target shape
 specified by Attr(shape) is [-1, 0, 3, 2], the reshape operator will transform
 Input(X) into a 4-D tensor with shape [2, 4, 3, 2] and leaving Input(X)'s data
 unchanged. In this case, besides -1, 0 means the actual dimension value is going
@@ -67,11 +67,13 @@ Note:
 1. One and only one dimension in Attr(shape) can be set -1. In this case,
 the actual dimension value will be infered from the total element number of
 Input(X) and remaining dimensions.
-1. More than one dimensions in Attr(shape) can be set to 0, which means the real
+
+2. More than one dimensions in Attr(shape) can be set to 0, which means the real
 dimension value will be copied from Input(X) at runtime. Note that the index of
 0 can not exceed Rank(X). For example, Input(X) is a 3-D tensor with shape
 [2, 3, 4], Attr(shape) = [2, 3, 2, 0] is an invalid input.
-1. Input(Shape) has a higher priority than Attr(shape) if it is provided, while
+
+3. Input(Shape) has a higher priority than Attr(shape) if it is provided, while
 Attr(shape) still should be set correctly to gurantee shape inference in 
 compile-time.
 

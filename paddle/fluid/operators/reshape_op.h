@@ -66,7 +66,6 @@ class ReshapeOp : public framework::OperatorWithKernel {
     int64_t capacity = 1;
     int unk_dim_idx = -1;
     for (size_t i = 0; i < shape.size(); ++i) {
-      // std::cout<< shape[i] << "haha";
       if (shape[i] == unk_dim_val) {
         PADDLE_ENFORCE(
             unk_dim_idx == -1,
