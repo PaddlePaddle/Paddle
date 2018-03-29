@@ -204,7 +204,6 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
   }
 
   grpc::ChannelArguments args;
-  args.SetInt("grpc.testing.fixed_reconnect_backoff_ms", 5000);
   args.SetCompressionAlgorithm(GRPC_COMPRESS_NONE);
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());

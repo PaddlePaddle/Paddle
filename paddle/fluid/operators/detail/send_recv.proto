@@ -59,12 +59,12 @@ message VariableMessage {
   // lod details:
   int64 lod_level = 5;
   repeated LodData lod = 6;
+  // selected_rows height, aka. original dim0
+  int64 slr_height = 7;
   // tensor data
-  bytes serialized = 7;
+  bytes serialized = 8;
   // selected_rows data
-  bytes rows = 8;
+  bytes rows = 9;
 }
 
 message VoidMessage {}
-
-message TestMessage { int64 test_1 = 1; }
