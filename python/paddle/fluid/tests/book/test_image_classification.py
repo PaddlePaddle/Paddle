@@ -38,7 +38,7 @@ def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
 
 
 def shortcut(input, ch_out, stride):
-    ch_in = input.shape[1] if args.data_format == 'NCHW' else input.shape[-1]
+    ch_in = input.shape[1]
     if ch_in != ch_out:
         return conv_bn_layer(input, ch_out, 1, stride, 0, None)
     else:
@@ -166,9 +166,7 @@ def train(net_type, data_set, use_cuda, save_dirname, is_local):
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = fluid.layers.mean(cost)
 
-    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-    batch_acc = fluid.layers.accuracy(
-        input=predict, label=label, total=batch_size_tensor)
+    acc = fluid.layers.accuracy(input=predict, label=label)
 
     # inference program
     #inference_program = fluid.default_main_program().clone()
@@ -177,7 +175,7 @@ def train(net_type, data_set, use_cuda, save_dirname, is_local):
     #                        target_vars=[batch_acc, batch_size_tensor])
 
     # test program
-    test_program = fluid.default_main_program.clone(for_test=True)
+    test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimize_ops, params_grads = optimizer.minimize(avg_cost)
@@ -217,11 +215,11 @@ def train(net_type, data_set, use_cuda, save_dirname, is_local):
                 train_label = train_label.reshape([-1, 1])
 
                 # exe.run(main_program, feed=feeder.feed(data))
-                loss, acc, weight = exe.run(
-                    fluid.default_main_program(),
+                loss, acc = exe.run(
+                    main_program,
                     feed={'data': train_image,
                           'label': train_label},
-                    fetch_list=[avg_cost, batch_acc, batch_size_tensor])
+                    fetch_list=[avg_cost, acc])
 
                 if (batch_id % 10) == 0:
                     acc_list = []
@@ -238,7 +236,7 @@ def train(net_type, data_set, use_cuda, save_dirname, is_local):
                             program=test_program,
                             feed={"data": test_image,
                                   "label": test_label},
-                            fetch_list=[avg_cost, batch_acc])
+                            fetch_list=[avg_cost, acc])
                         if math.isnan(float(loss_t)):
                             sys.exit("got NaN loss, training failed.")
                         acc_list.append(float(acc_t))
