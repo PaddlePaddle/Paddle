@@ -76,6 +76,9 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
     // set output lod
     std::vector<size_t> host_out_lod0(dev_out_lod0.begin(), dev_out_lod0.end());
     framework::LoD out_lod;
+    if (host_out_lod0.back() == 0) {
+      host_out_lod0.resize(1);
+    }
     out_lod.push_back(host_out_lod0);
     output->set_lod(out_lod);
 
