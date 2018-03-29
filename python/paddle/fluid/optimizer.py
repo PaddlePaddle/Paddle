@@ -24,7 +24,6 @@ from layer_helper import LayerHelper
 from regularizer import append_regularization_ops
 from clip import append_gradient_clip_ops, error_clip_callback
 from contextlib import contextmanager
-from distribute_transpiler import UnionFind
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad',
@@ -218,9 +217,8 @@ class Optimizer(object):
             # Get custom finish ops for subclasses
             # FIXME: Need to fix this once we figure out how to handle dependencies
             self._finish_update(loss.block)
-            end = len(global_block.ops)
 
-            optimize_ops = global_block.slice_ops(start, end)
+            end = len(global_block.ops)
             return global_block.slice_ops(start, end)
 
     def minimize(self,
