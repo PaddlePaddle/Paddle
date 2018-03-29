@@ -195,7 +195,7 @@ class Executor(object):
                 ")
         # single tensor case
         tensor = core.LoDTensor()
-        tensor.set(data, self.places[0])
+        tensor.set(data, self.place)
         return tensor
 
     def _get_program_cache(self, program_cache_key):
