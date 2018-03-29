@@ -161,6 +161,7 @@ class ListenAndServOp : public framework::OperatorBase {
       size_t last_parent_blkid = program->Block(1).Parent();
       std::vector<size_t> parallel_blkids;
       parallel_blkids.push_back(1);
+      double ts = detail::GetTimestamp();
       for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
         if (program->Block(blkid).Parent() != last_parent_blkid) {
           for (size_t idx : parallel_blkids) VLOG(3) << idx;
@@ -171,8 +172,9 @@ class ListenAndServOp : public framework::OperatorBase {
         }
         parallel_blkids.push_back(blkid);
       }
-
       ParallelExecuteBlocks(parallel_blkids, &executor, program, &recv_scope);
+
+      VLOG(2) << "run all blocks spent (ms) " << detail::GetTimestamp() - ts;
 
       // Reset the received sparse variables, the sum operator would not
       // sum the input sparse variables which rows is empty at the next
