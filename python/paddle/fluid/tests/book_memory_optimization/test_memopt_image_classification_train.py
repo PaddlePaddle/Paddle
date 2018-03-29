@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import sys
 
-import paddle.v2 as paddle
+import paddle
 import paddle.fluid as fluid
 import math
 import sys
