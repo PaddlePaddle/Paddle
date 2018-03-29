@@ -43,5 +43,10 @@ class FCOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 };
 
+class FCOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  FCOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+};
+
 }  // namespace operators
 }  // namespace paddle
