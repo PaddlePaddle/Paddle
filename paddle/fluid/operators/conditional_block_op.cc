@@ -54,7 +54,7 @@ class ConditionalOp : public framework::OperatorBase {
           "numel should be 1, actual numel is %d",
           ips[0]->numel());
     }
-    bool res;
+    bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {
 #ifdef PADDLE_WITH_CUDA
       framework::LoDTensor cpu_tensor;
