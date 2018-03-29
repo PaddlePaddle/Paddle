@@ -19,25 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/send_recv_util.h"
 
 namespace paddle {
 namespace operators {
-static bool NeedSend(const framework::Scope& scope,
-                     const std::string& varname) {
-  auto* var = scope.FindVar(varname);
-  PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
-                          varname);
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().numel() > 0;
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().value().numel() > 0;
-  } else {
-    PADDLE_THROW(
-        "Variable type in send side should be in "
-        "[LodTensor, SelectedRows]");
-  }
-  return false;
-}
 
 class PrefetchOp : public framework::OperatorBase {
  public:
@@ -95,7 +80,7 @@ class PrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
         "Server endpoints in the order of input variables for mapping")
         .SetDefault({"127.0.0.1:6164"});
     AddComment(R"DOC(
-Send operator
+Prefetch operator
 
 This operator will send Ids variables to listen_and_serve op at
 the parameter server and fetch result back.

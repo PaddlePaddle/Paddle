@@ -25,22 +25,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-static bool NeedSend(const framework::Scope& scope,
-                     const std::string& varname) {
-  auto* var = scope.FindVar(varname);
-  PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
-                          varname);
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().IsInitialized();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().rows().size() > 0UL;
-  } else {
-    PADDLE_THROW(
-        "Variable type in send side should be in "
-        "[LodTensor, SelectedRows]");
-  }
-  return false;
-}
 
 class SendOp : public framework::OperatorBase {
  public:
