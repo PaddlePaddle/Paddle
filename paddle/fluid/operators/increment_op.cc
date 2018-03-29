@@ -33,6 +33,15 @@ class IncrementOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    // IncrementOp kernel's device type is decided by input tensor place
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    return kt;
+  }
 };
 
 class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
