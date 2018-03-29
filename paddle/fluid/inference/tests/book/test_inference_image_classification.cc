@@ -19,6 +19,7 @@ limitations under the License. */
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_int32(batch_size, 1, "Batch size of input data");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times");
+DEFINE_string(data_set, "cifar10", "Data set to use");
 
 TEST(inference, image_classification) {
   if (FLAGS_dirname.empty() || FLAGS_batch_size < 1 || FLAGS_repeat < 1) {
@@ -35,10 +36,18 @@ TEST(inference, image_classification) {
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
-  SetupTensor<float>(input,
-                     {FLAGS_batch_size, 3, 32, 32},
-                     static_cast<float>(0),
-                     static_cast<float>(1));
+  if (FLAGS_data_set == "cifar10") {
+    SetupTensor<float>(input,
+                       {FLAGS_batch_size, 3, 32, 32},
+                       static_cast<float>(0),
+                       static_cast<float>(1));
+  } else {
+    SetupTensor<float>(input,
+                       {FLAGS_batch_size, 3, 224, 224},
+                       static_cast<float>(0),
+                       static_cast<float>(1));
+  }
+
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
