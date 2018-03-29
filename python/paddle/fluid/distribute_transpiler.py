@@ -806,7 +806,7 @@ class DistributeTranspiler:
 
         find_ops = []
         # find ops which output is lr var
-        block = default_main_program().global_block()
+        block = self.program.global_block()
         for op in block.ops:
             if set(op.output_arg_names) & lr_vars:
                 find_ops.append(op)
