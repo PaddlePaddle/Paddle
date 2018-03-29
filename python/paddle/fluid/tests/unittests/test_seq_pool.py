@@ -29,18 +29,6 @@ class TestSeqAvgPool(OpTest):
         self.outputs = {'Out': out}
         return x, lod, out
 
-    # def set_data(self):
-    #     self.op_type = "sequence_pool"
-    #     x = np.array([0.1, 0.2, 0.3, 0.4, 0.5]).astype("float32")
-    #     lod = [[0, 1, 4, 5]]
-    #     self.inputs = {'X': (x, lod)}
-    #     out = np.array([0.1, 0.2, 0.5]).astype("float32")
-    #     self.outputs = {'Out': out}
-    #     return x, lod, out
-
-    # def compute(self, x, lod, out):
-    #     self.attrs = {'pooltype': "FIRST"}
-
     def compute(self, x, lod, out):
         self.attrs = {'pooltype': "AVERAGE"}
         for i in range(4):
