@@ -4,7 +4,7 @@ set(PY_FILES paddle/__init__.py
   ${UTILS_PY_FILES}
   ${FLUID_PY_FILES})
 
-if(NOT WITH_FLUID)
+if(NOT WITH_FLUID_ONLY)
   file(GLOB TRAINER_PY_FILES . ./paddle/trainer/*.py)
   file(GLOB HELPERS_PY_FILES . ./paddle/trainer_config_helpers/*.py)
   file(GLOB_RECURSE V2_PY_FILES ./paddle/v2/ *.py)
@@ -62,7 +62,7 @@ add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     DEPENDS gen_proto_py copy_paddle_pybind framework_py_proto profiler_py_proto ${PY_FILES} ${external_project_dependencies} ${COPY_PADDLE_MASTER})
 
 set(paddle_python_deps ${PADDLE_PYTHON_BUILD_DIR}/.timestamp ${MKL_DEPENDS})
-if(NOT WITH_FLUID)
+if(NOT WITH_FLUID_ONLY)
     set(paddle_python_deps ${paddle_python_deps} paddle_pserver_main paddle_trainer paddle_merge_model)
     if(WITH_SWIG_PY)
         list(APPEND paddle_python_deps python_api_wheel)
@@ -73,7 +73,7 @@ add_custom_target(paddle_python ALL DEPENDS ${paddle_python_deps})
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
 if (WITH_TESTING)
-  if(NOT WITH_FLUID)
+  if(NOT WITH_FLUID_ONLY)
     add_subdirectory(paddle/trainer_config_helpers/tests)
     if (WITH_SWIG_PY)
       # enable v2 API unittest only when paddle swig api is compiled
