@@ -135,6 +135,7 @@ class DistributeTranspiler:
                   optimize_ops,
                   params_grads,
                   trainer_id,
+                  lr_decay_ops=[],
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
@@ -186,6 +187,7 @@ class DistributeTranspiler:
         self.program = program
         self.trainers = trainers
         self.optimize_ops = optimize_ops
+        self.lr_decay_ops = lr_decay_ops
         # TODO(typhoonzero): currently trainer_id is fetched from cluster system
         # like Kubernetes, we should port this to use etcd later when developing
         # fluid distributed training with fault-tolerance.
@@ -338,15 +340,23 @@ class DistributeTranspiler:
             else:
                 self._append_pserver_non_opt_ops(block, op)
 
+        append_block = optimize_block
+        # append lr decay ops to the child block if exits
+        if self.lr_decay_ops:
+            for _, op in enumerate(self.lr_decay_ops):
+                self._append_pserver_non_opt_ops(append_block, op)
+
+            append_block = pserver_program.create_block(append_block.idx)
+
         # append op to the current block
-        per_opt_block = optimize_block
+        per_opt_block = append_block
         for _, opt_op in enumerate(opt_op_on_pserver):
             for _, op in enumerate(self.optimize_ops):
                 # optimizer is connected to itself
                 if ufind.is_connected(op, opt_op) and \
                     op not in global_ops:
                     __append_optimize_op__(op, per_opt_block)
-            per_opt_block = pserver_program.create_block(0)
+            per_opt_block = pserver_program.create_block(append_block.idx)
 
         # append global ops
         for glb_op in global_ops:
