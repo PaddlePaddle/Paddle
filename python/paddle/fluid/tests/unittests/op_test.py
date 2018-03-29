@@ -362,9 +362,6 @@ class OpTest(unittest.TestCase):
         for a, b, name in itertools.izip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
             abs_a[abs_a < 1e-3] = 1
-            print("actual", a)
-            print("*****")
-            print("expected", b)
 
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
