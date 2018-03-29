@@ -43,12 +43,11 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   slr->set_height(1000);
   auto* tensor = slr->mutable_value();
   auto* rows = slr->mutable_rows();
-  tensor->Resize(framework::make_ddim({2, 10}));
+  tensor->Resize(framework::make_ddim({564, 128}));
   tensor->mutable_data<float>(place);
-  int tensor_numel = 2 * 10;
+  int tensor_numel = 564 * 128;
   math::set_constant(ctx, tensor, 32.7);
-  rows->push_back(3);
-  rows->push_back(10);
+  for (int i = 0; i < 564; ++i) rows->push_back(i);
 
   ::grpc::ByteBuffer msg;
   operators::detail::SerializeToByteBuffer("myvar", &var, ctx, &msg);
@@ -65,6 +64,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   sendrecv::VariableMessage varmsg;
   EXPECT_TRUE(varmsg.ParseFromString(tmp));
 
+  // deserialize bytebuffer
   EXPECT_EQ(varmsg.varname(), "myvar");
   EXPECT_EQ(varmsg.type(), 1);
 
@@ -75,8 +75,10 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   for (int i = 0; i < tensor_numel; ++i) {
     EXPECT_FLOAT_EQ(tensor_data[i], 32.7);
   }
-  EXPECT_EQ(rows_data[0], 3);
-  EXPECT_EQ(rows_data[1], 10);
+  for (int i = 0; i < 564; ++i) {
+    EXPECT_EQ(rows_data[i], i);
+  }
+
   // deserialize zero-copy
   // framework::Variable var2;
   // operators::detail::DeserializeFromByteBuffer(msg, ctx, &var2);
@@ -105,8 +107,9 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   for (int i = 0; i < tensor_numel; ++i) {
     EXPECT_FLOAT_EQ(tensor_data2[i], 32.7);
   }
-  EXPECT_EQ(rows_data2[0], 3);
-  EXPECT_EQ(rows_data2[1], 10);
+  for (int i = 0; i < rows2->size(); ++i) {
+    EXPECT_EQ(rows_data2[i], i);
+  }
   EXPECT_EQ(slr2->height(), 1000);
 }
 
