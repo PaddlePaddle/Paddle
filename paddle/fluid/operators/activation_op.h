@@ -331,6 +331,54 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct Sine {
+  HOSTDEVICE T operator()(const T& val) const { return sin(val); }
+};
+
+template <typename T>
+struct Cosine {
+  HOSTDEVICE T operator()(const T& val) const { return cos(val); }
+};
+
+// cosine'(x) = -sin(x)
+template <typename T>
+struct CosGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = -dout * x.unaryExpr(Sine<T>());
+  }
+};
+
+// cosine(x) = cos(x)
+template <typename T>
+struct CosFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Cosine<T>());
+  }
+};
+
+// sine'(x) = cos(x)
+template <typename T>
+struct SinGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * x.unaryExpr(Cosine<T>());
+  }
+};
+
+// sine(x) = sin(x)
+template <typename T>
+struct SinFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Sine<T>());
+  }
+};
+
 // round(x) = [x]
 template <typename T>
 struct RoundFunctor : public BaseActivationFunctor<T> {
@@ -782,6 +830,8 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(abs, AbsFunctor, AbsGradFunctor);                          \
   __macro(ceil, CeilFunctor, ZeroGradFunctor);                       \
   __macro(floor, FloorFunctor, ZeroGradFunctor);                     \
+  __macro(cos, CosFunctor, CosGradFunctor);                          \
+  __macro(sin, SinFunctor, SinGradFunctor);                          \
   __macro(round, RoundFunctor, ZeroGradFunctor);                     \
   __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);     \
   __macro(log, LogFunctor, LogGradFunctor);                          \
