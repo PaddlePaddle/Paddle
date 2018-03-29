@@ -13,7 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/detail/variable_response.h"
+
 #include <string.h>
+
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
@@ -108,7 +114,8 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
 
 bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
-    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
@@ -144,14 +151,15 @@ inline framework::DDim GetDims(
 
 bool VariableResponse::CopySelectRowsTensorData(
     ::google::protobuf::io::CodedInputStream* input,
-    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
   PADDLE_ENFORCE_EQ(
-      tensor->numel(),
+      static_cast<size_t>(tensor->numel()),
       length / framework::SizeOfType(
                    paddle::operators::detail::ToTypeIndex(meta_.data_type())));
   void* tensor_data = tensor->mutable_data(

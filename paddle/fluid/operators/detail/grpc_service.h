@@ -114,5 +114,5 @@ class GrpcService final {
 };
 
 }  // namespace detail
-}  // namespace operator
+}  // namespace operators
 }  // namespace paddle
