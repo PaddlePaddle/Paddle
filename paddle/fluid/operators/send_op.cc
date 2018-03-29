@@ -72,7 +72,7 @@ class SendOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
-        VLOG(2) << "sending " << ins[i] << " to " << epmap[i];
+        VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
         rpc_client->AsyncSendVariable(epmap[i], ctx, scope, ins[i]);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
@@ -81,7 +81,7 @@ class SendOp : public framework::OperatorBase {
     PADDLE_ENFORCE(rpc_client->Wait());
 
     for (auto& ep : endpoints) {
-      VLOG(2) << "batch barrier, ep: " << ep;
+      VLOG(3) << "batch barrier, ep: " << ep;
       rpc_client->AsyncSendBatchBarrier(ep);
     }
     PADDLE_ENFORCE(rpc_client->Wait());

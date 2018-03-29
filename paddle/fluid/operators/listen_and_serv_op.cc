@@ -141,6 +141,7 @@ class ListenAndServOp : public framework::OperatorBase {
       // and this will still work.
 
       std::vector<std::future<void>> fs;
+      double ts = detail::GetTimestamp();
       // block0 contains only listen_and_serv op, start run from block1.
       for (int blkid = 1; blkid < num_blocks - 1; ++blkid) {
         fs.push_back(
@@ -162,6 +163,7 @@ class ListenAndServOp : public framework::OperatorBase {
           LOG(ERROR) << "run sub program error " << e.what();
         }
       }
+      VLOG(2) << "run all blocks spent (ms) " << detail::GetTimestamp() - ts;
 
       // Reset the received sparse variables, the sum operator would not
       // sum the input sparse variables which rows is empty at the next
