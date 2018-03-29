@@ -398,7 +398,6 @@ class LayerHelper(object):
             return input_var
         if isinstance(act, basestring):
             act = {'type': act}
-        tmp = self.create_tmp_variable(dtype=input_var.dtype)
 
         if 'use_mkldnn' in self.kwargs:
             act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
@@ -408,9 +407,9 @@ class LayerHelper(object):
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
-            outputs={"Out": [tmp]},
+            outputs={"Out": [input_var]},
             attrs=act)
-        return tmp
+        return input_var
 
     def _get_default_initializer(self, dtype):
         if dtype is None or dtype_is_floating(dtype) is True:
