@@ -29,7 +29,7 @@ def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
         else:
             x = np.reshape(x, (x.shape[0], 1, 1, x.shape[1]))
 
-    if data_format == "NCHW":
+    if data_format == "NCHW" or data_format == "AnyLayout":
         n, c, h, w = x.shape
         mean_tile = np.reshape(mean, (1, c, 1, 1))
         mean_tile = np.tile(mean_tile, (n, 1, h, w))
@@ -55,7 +55,7 @@ def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
 def _reference_training(x, scale, offset, epsilon, data_format):
     x_shape = x.shape
 
-    if data_format == "NCHW":
+    if data_format == "NCHW" or data_format == "AnyLayout":
         n, c, h, w = x.shape
         x_square = x * x
         x_square_sum = np.sum(x_square, (0, 2, 3))
@@ -169,7 +169,7 @@ class TestBatchNormOpInference(unittest.TestCase):
             c = x_shape[1]
         else:
             n, h, w, c = shape[0], shape[1], shape[2], shape[3]
-            if data_layout == "NHWC":
+            if data_layout == "NHWC" or data_layout == "AnyLayout":
                 x_shape = [n, h, w, c]
             elif data_layout == "NCHW":
                 x_shape = [n, c, h, w]
@@ -393,6 +393,255 @@ class TestBatchNormOpTraining(unittest.TestCase):
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 test_with_place(place, data_format, [2, 3, 4, 5])
+
+
+class TestMKLDNNBatchNormOpTraining(OpTest):
+    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
+        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+
+    def test_forward_backward(self):
+        def test_with_place(place, data_layout, shape):
+            # attr
+            epsilon = 0.00001
+            momentum = 0.9
+
+            # n, h, w, c = 2, 3, 4, 2
+            n, c, h, w = shape[0], shape[1], shape[2], shape[3]
+            # data_format is "NCHW":
+            x_shape = [n, c, h, w]
+
+            scale_shape = [c]
+
+            x_val = np.random.random_sample(x_shape).astype(np.float32)
+            scale_val = np.random.random_sample(scale_shape).astype(np.float32)
+            bias_val = np.random.random_sample(scale_shape).astype(np.float32)
+
+            mean = np.zeros(scale_shape).astype(np.float32)
+            variance = np.ones(scale_shape).astype(np.float32)
+
+            # run forward
+            y_out, saved_mean, var_ref = _reference_training(
+                x_val, scale_val, bias_val, epsilon, data_layout)
+
+            # update moving mean and variance
+            mean_out = saved_mean * (1. - momentum) + momentum * mean
+            variance_out = var_ref * (1. - momentum) + momentum * variance
+
+            #  for gradient test
+            y_grad = np.ones(x_shape).astype(np.float32)
+            y_grad = np.zeros(x_shape).astype(np.float32)
+            if len(y_grad.shape) == 2:
+                y_grad[0, 0] = 1.
+            else:
+                y_grad[0, 0, 0, 0] = 1.
+            y_grad = np.random.random_sample(x_shape).astype(np.float32)
+            x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_grad(
+                x_val, y_grad, scale_val, saved_mean, var_ref, epsilon,
+                data_format)
+
+            scope = core.Scope()
+
+            # create input
+            x_tensor = create_or_get_tensor(scope, "x_val", x_val, place)
+            scale_tensor = create_or_get_tensor(scope, "scale_val", scale_val,
+                                                place)
+            bias_tensor = create_or_get_tensor(scope, "bias_val", bias_val,
+                                               place)
+            mean_tensor = create_or_get_tensor(scope, "mean", mean, place)
+            variance_tensor = create_or_get_tensor(scope, "variance", variance,
+                                                   place)
+
+            # create output
+            y_tensor = create_or_get_tensor(scope, "y_out", None, place)
+            saved_mean_tensor = create_or_get_tensor(scope, "saved_mean", None,
+                                                     place)
+            saved_variance_tensor = create_or_get_tensor(
+                scope, "saved_variance", None, place)
+            mean_out_tensor = mean_tensor
+            variance_out_tensor = variance_tensor
+
+            batch_norm_op = Operator(
+                "batch_norm",
+                # inputs
+                X="x_val",
+                Scale="scale_val",
+                Bias="bias_val",
+                Mean="mean",
+                Variance="variance",
+                # outputs
+                Y="y_out",
+                MeanOut="mean",
+                VarianceOut="variance",
+                SavedMean="saved_mean",
+                SavedVariance="saved_variance",
+                # attrs
+                is_test=False,
+                momentum=momentum,
+                epsilon=epsilon,
+                use_mkldnn=True)
+
+            batch_norm_op.run(scope, place)
+
+            # check forward result
+            self.__assert_close(y_tensor, y_out, "y_out")
+            self.__assert_close(saved_mean_tensor, saved_mean, "saved_mean")
+            self.__assert_close(saved_variance_tensor, var_ref,
+                                "saved_variance")
+            self.__assert_close(mean_out_tensor, mean_out, "mean_out")
+            if isinstance(place, core.CUDAPlace):
+                atol = 5e-2
+            else:
+                atol = 1e-4
+            self.__assert_close(variance_out_tensor, variance_out,
+                                "variance_out", atol)
+
+            batch_norm_op_grad = get_backward_op(scope, batch_norm_op, set())
+
+            set_output_grad(
+                scope,
+                ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
+                place,
+                feed_dict={"y_out": y_grad})
+
+            batch_norm_op_grad.run(scope, place)
+
+            x_grad_tensor = create_or_get_tensor(scope,
+                                                 grad_var_name("x_val"), None,
+                                                 place)
+            scale_grad_tensor = create_or_get_tensor(scope,
+                                                     grad_var_name("scale_val"),
+                                                     None, place)
+            bias_grad_tensor = create_or_get_tensor(scope,
+                                                    grad_var_name("bias_val"),
+                                                    None, place)
+
+            # check gradient output
+            self.__assert_close(x_grad_tensor, x_grad_ref, "x_grad")
+            self.__assert_close(scale_grad_tensor, scale_grad_ref, "scale_grad")
+            self.__assert_close(bias_grad_tensor, bias_grad_ref, "bias_grad")
+            print "MKLDNN op test forward backward passed: ", str(
+                place), data_layout
+
+        place = core.CPUPlace()
+        data_format = "AnyLayout"
+        test_with_place(place, data_format, [2, 3, 4, 5])
+
+
+class TestMKLDNNBatchNormOpInference(OpTest):
+    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
+        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+
+    def reference_testing(self, x, scale, offset, epsilon, data_format, mean,
+                          var):
+        x_shape = x.shape
+
+        n, c, h, w = x.shape
+        x_square = x * x
+        x_square_sum = np.sum(x_square, (0, 2, 3))
+        x_sum = np.sum(x, axis=(0, 2, 3))
+        element_count = np.size(x) / int(np.shape(x)[1])
+        mean_tile = np.reshape(mean, (1, c, 1, 1))
+        mean_tile = np.tile(mean_tile, (n, 1, h, w))
+        var_tile = np.reshape(var, (1, c, 1, 1))
+        var_tile = np.tile(var_tile, (n, 1, h, w))
+        normalized = (x - mean_tile) / np.sqrt(var_tile + epsilon)
+        scale_tile = np.reshape(scale, (1, c, 1, 1))
+        scale_tile = np.tile(scale_tile, (n, 1, h, w))
+        offset_tile = np.reshape(offset, (1, c, 1, 1))
+        offset_tile = np.reshape(offset_tile, (1, c, 1, 1))
+        y = normalized * scale_tile + offset_tile
+        if len(x_shape) == 2:
+            y = np.reshape(y, (y.shape[0], y.shape[1]))
+        return y
+
+    def test_backward_forward(self):
+        def test_with_place(place, data_layout, shape):
+            # attr
+            epsilon = 0.00001
+            momentum = 0.9
+
+            # n, h, w, c = 2, 3, 4, 2
+            n, c, h, w = shape[0], shape[1], shape[2], shape[3]
+            # data_format is "NCHW":
+            x_shape = [n, c, h, w]
+
+            scale_shape = [c]
+
+            x_val = np.random.random_sample(x_shape).astype(np.float32)
+            scale_val = np.random.random_sample(scale_shape).astype(np.float32)
+            bias_val = np.random.random_sample(scale_shape).astype(np.float32)
+
+            mean = np.zeros(scale_shape).astype(np.float32)
+            variance = np.ones(scale_shape).astype(np.float32)
+
+            # run forward
+            y_out, saved_mean, var_ref = _reference_training(
+                x_val, scale_val, bias_val, epsilon, data_layout)
+
+            # update moving mean and variance
+            mean_out = saved_mean * (1. - momentum) + momentum * mean
+            variance_out = var_ref * (1. - momentum) + momentum * variance
+
+            y_out = self.reference_testing(x_val, scale_val, bias_val, epsilon,
+                                           data_layout, mean_out, variance_out)
+
+            scope = core.Scope()
+
+            # create input
+            x_tensor = create_or_get_tensor(scope, "x_val", x_val, place)
+            scale_tensor = create_or_get_tensor(scope, "scale_val", scale_val,
+                                                place)
+            bias_tensor = create_or_get_tensor(scope, "bias_val", bias_val,
+                                               place)
+            mean_tensor = create_or_get_tensor(scope, "mean", mean_out, place)
+            variance_tensor = create_or_get_tensor(scope, "variance",
+                                                   variance_out, place)
+
+            # create output
+            y_tensor = create_or_get_tensor(scope, "y_out", None, place)
+            saved_mean_tensor = create_or_get_tensor(scope, "saved_mean", None,
+                                                     place)
+            saved_variance_tensor = create_or_get_tensor(
+                scope, "saved_variance", None, place)
+            mean_out_tensor = mean_tensor
+            variance_out_tensor = variance_tensor
+
+            batch_norm_op = Operator(
+                "batch_norm",
+                # inputs
+                X="x_val",
+                Scale="scale_val",
+                Bias="bias_val",
+                Mean="mean",
+                Variance="variance",
+                # outputs
+                Y="y_out",
+                MeanOut="mean",
+                VarianceOut="variance",
+                SavedMean="saved_mean",
+                SavedVariance="saved_variance",
+                # attrs
+                is_test=True,
+                momentum=momentum,
+                epsilon=epsilon,
+                use_mkldnn=True)
+
+            batch_norm_op.run(scope, place)
+
+            # check forward result
+            self.__assert_close(y_tensor, y_out, "y_out")
+            self.__assert_close(mean_out_tensor, mean_out, "mean_out")
+            if isinstance(place, core.CUDAPlace):
+                atol = 5e-2
+            else:
+                atol = 1e-4
+            self.__assert_close(variance_out_tensor, variance_out,
+                                "variance_out", atol)
+            print "MKLDNN op test inference: ", str(place), data_layout
+
+        place = core.CPUPlace()
+        data_format = "AnyLayout"
+        test_with_place(place, data_format, [2, 3, 4, 5])
 
 
 if __name__ == '__main__':
