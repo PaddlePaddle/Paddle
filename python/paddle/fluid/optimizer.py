@@ -173,42 +173,6 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
-    def _get_lr_decay_ops(self):
-        def __is_op_connected(op1, op2):
-            op1_input_names = op1.input_arg_names
-            op1_output_names = op1.output_arg_names
-
-            op2_input_names = op2.input_arg_names
-            op2_output_names = op2.output_arg_names
-
-            if set(op1_output_names) & set(op2_input_names) or \
-               set(op1_input_names) & set(op2_output_names):
-                return True
-            return False
-
-        ret_ops = []
-        if isinstance(self._learning_rate, framework.Variable):
-            output_op_idx = -1
-            global_block = framework.default_main_program().global_block()
-
-            for idx, op in enumerate(global_block.ops):
-                if self._learning_rate.name in op.output_arg_names:
-                    output_op_idx = idx
-                    break
-            sliced_ops = global_block.slice_ops(0, output_op_idx + 1)
-            ufind = UnionFind(sliced_ops)
-            for _, op1 in enumerate(sliced_ops):
-                for _, op2 in enumerate(sliced_ops):
-                    if op1 != op2 and __is_op_connected(op1, op2):
-                        ufind.union(op1, op2)
-
-            for _, op in enumerate(sliced_ops):
-                if ufind.is_connected(op, global_block.ops[output_op_idx]):
-                    ret_ops.append(op)
-            ret_ops.append(global_block.ops[output_op_idx])
-
-        return ret_ops
-
     def create_optimization_pass(self,
                                  parameters_and_grads,
                                  loss,
@@ -256,9 +220,8 @@ class Optimizer(object):
             self._finish_update(loss.block)
             end = len(global_block.ops)
 
-            lr_decay_ops = self._get_lr_decay_ops()
             optimize_ops = global_block.slice_ops(start, end)
-            return lr_decay_ops, optimize_ops
+            return global_block.slice_ops(start, end)
 
     def minimize(self,
                  loss,
@@ -281,9 +244,9 @@ class Optimizer(object):
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)
 
-        lr_decay_ops, optimize_ops = self.create_optimization_pass(
-            params_grads, loss, startup_program)
-        return lr_decay_ops, optimize_ops, params_grads,
+        optimize_ops = self.create_optimization_pass(params_grads, loss,
+                                                     startup_program)
+        return optimize_ops, params_grads
 
 
 class SGDOptimizer(Optimizer):
