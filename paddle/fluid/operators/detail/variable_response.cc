@@ -147,8 +147,13 @@ bool VariableResponse::CopySelectRowsTensorData(
     const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
+  slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
+  PADDLE_ENFORCE_EQ(
+      tensor->numel(),
+      length / framework::SizeOfType(
+                   paddle::operators::detail::ToTypeIndex(meta_.data_type())));
   void* tensor_data = tensor->mutable_data(
       ctx.GetPlace(),
       paddle::operators::detail::ToTypeIndex(meta_.data_type()));
@@ -165,7 +170,8 @@ bool VariableResponse::CopySelectRowsData(
     const platform::DeviceContext& ctx, int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
-  slr->mutable_rows()->resize(length / 8);  // int64
+  slr->mutable_rows()->resize(length /
+                              framework::SizeOfType(typeid(int64_t)));  // int64
   int64_t* rows_data = slr->mutable_rows()->data();
 
   // copy rows CPU data, GPU data will be copied lazily.
@@ -346,6 +352,14 @@ int VariableResponse::Parse(Source* source) {
         for (uint32_t i = 0; i < lod_data.size(); i++) {
           lod->add_lod_data(lod_data[i]);
         }
+        break;
+      }
+      case sendrecv::VariableMessage::kSlrHeightFieldNumber: {
+        uint64_t v = 0;
+        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
+          return tag;
+        }
+        meta_.set_slr_height(static_cast<int64_t>(v));
         break;
       }
       case sendrecv::VariableMessage::kSerializedFieldNumber: {
