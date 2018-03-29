@@ -2,12 +2,11 @@
 set -e
 
 CPPLINT="tools/codestyle/cpplint.py"
-CPPLINT_ARGS=""
 SUM=0
 
 # The trick to remove deleted files: https://stackoverflow.com/a/2413151
-for file in $(git diff --cached --name-status | awk '$1!="D" {print $2}'); do
-    $CPPLINT --filter=$FILTERS $file
+for file in $(git diff --cached --name-status | awk '$1 != "D" {print $2}'); do
+    $CPPLINT $file
     SUM=$(expr ${SUM} + $?)
 done
 

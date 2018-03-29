@@ -1,3 +1,4 @@
+repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
     sha: v1.0.1
     hooks:
@@ -27,7 +28,7 @@
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
 -   repo: local
     hooks:
-    -   id: cpplint
+    -   id: cpplint-cpp-source
         name: cpplint
         description: Check C++ code style using cpplint.py.
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
