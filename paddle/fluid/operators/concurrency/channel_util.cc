@@ -17,20 +17,20 @@ limitations under the License. */
 
 namespace poc = paddle::operators::concurrency;
 
-bool poc::ChannelSend(framework::ChannelHolder *ch, framework::Variable *var) {
+void poc::ChannelSend(framework::ChannelHolder *ch, framework::Variable *var) {
   auto type = framework::ToVarType(var->Type());
   if (type == framework::proto::VarType_Type_LOD_TENSOR)
-    return ch->Send(var->GetMutable<framework::LoDTensor>());
+    ch->Send(var->GetMutable<framework::LoDTensor>());
   else if (type == framework::proto::VarType_Type_LOD_RANK_TABLE)
-    return ch->Send(var->GetMutable<framework::LoDRankTable>());
+    ch->Send(var->GetMutable<framework::LoDRankTable>());
   else if (type == framework::proto::VarType_Type_LOD_TENSOR_ARRAY)
-    return ch->Send(var->GetMutable<framework::LoDTensorArray>());
+    ch->Send(var->GetMutable<framework::LoDTensorArray>());
   else if (type == framework::proto::VarType_Type_SELECTED_ROWS)
-    return ch->Send(var->GetMutable<framework::SelectedRows>());
+    ch->Send(var->GetMutable<framework::SelectedRows>());
   else if (type == framework::proto::VarType_Type_READER)
-    return ch->Send(var->GetMutable<framework::ReaderHolder>());
+    ch->Send(var->GetMutable<framework::ReaderHolder>());
   else if (type == framework::proto::VarType_Type_CHANNEL)
-    return ch->Send(var->GetMutable<framework::ChannelHolder>());
+    ch->Send(var->GetMutable<framework::ChannelHolder>());
   else
     PADDLE_THROW("ChannelSend:Unsupported type");
 }

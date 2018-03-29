@@ -173,16 +173,10 @@ class TestRoutineOp(unittest.TestCase):
                 with while_op.block():
                     result2 = fill_constant(
                         shape=[1], dtype=core.VarDesc.VarType.INT32, value=0)
-                    x_to_send_tmp = fill_constant(
-                        shape=[1], dtype=core.VarDesc.VarType.INT32, value=0)
-
-                    # TODO(abhinav): Need to perform copy when doing a channel send.
-                    #   Once this is complete, we can remove these lines
-                    assign(input=x, output=x_to_send_tmp)
 
                     with fluid.Select() as select:
-                        with select.case(fluid.channel_send, channel,
-                                         x_to_send_tmp):
+                        with select.case(
+                                fluid.channel_send, channel, x, is_copy=True):
                             assign(input=x, output=x_tmp)
                             assign(input=y, output=x)
                             assign(elementwise_add(x=x_tmp, y=y), output=y)
@@ -230,21 +224,12 @@ class TestRoutineOp(unittest.TestCase):
                                               core.VarDesc.VarType.LOD_TENSOR,
                                               core.VarDesc.VarType.FP64)
 
-            pong_result = self._create_tensor('pong_return_value',
-                                              core.VarDesc.VarType.LOD_TENSOR,
-                                              core.VarDesc.VarType.FP64)
-
             def ping(ch, message):
-                message_to_send_tmp = fill_constant(
-                    shape=[1], dtype=core.VarDesc.VarType.FP64, value=0)
-
-                assign(input=message, output=message_to_send_tmp)
-                fluid.channel_send(ch, message_to_send_tmp)
+                fluid.channel_send(ch, message, is_copy=True)
 
             def pong(ch1, ch2):
                 fluid.channel_recv(ch1, ping_result)
-                assign(input=ping_result, output=pong_result)
-                fluid.channel_send(ch2, pong_result)
+                fluid.channel_send(ch2, ping_result, is_copy=True)
 
             pings = fluid.make_channel(
                 dtype=core.VarDesc.VarType.LOD_TENSOR, capacity=1)

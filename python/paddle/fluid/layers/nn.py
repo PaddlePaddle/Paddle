@@ -74,6 +74,7 @@ __all__ = [
     'one_hot',
     'autoincreased_step_counter',
     'lod_reset',
+    'lrn',
 ]
 
 
@@ -82,6 +83,7 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
+       use_mkldnn=False,
        act=None,
        name=None):
     """
@@ -163,8 +165,11 @@ def fc(input,
             inputs={"X": input_var,
                     "Y": w},
             outputs={"Out": tmp},
-            attrs={"x_num_col_dims": num_flatten_dims,
-                   "y_num_col_dims": 1})
+            attrs={
+                "x_num_col_dims": num_flatten_dims,
+                "y_num_col_dims": 1,
+                'use_mkldnn': use_mkldnn
+            })
         mul_results.append(tmp)
 
     # sum
@@ -1117,12 +1122,14 @@ def conv2d(input,
            filter_size,
            stride=1,
            padding=0,
+           dilation=1,
            groups=None,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
            use_mkldnn=False,
-           act=None):
+           act=None,
+           name=None):
     """
     **Convlution2D Layer**
 
@@ -1183,6 +1190,9 @@ def conv2d(input,
        padding(int|tuple): The padding size. If padding is a tuple, it must
            contain two integers, (padding_H, padding_W). Otherwise, the
            padding_H = padding_W = padding. Default: padding = 0.
+       dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+           contain two integers, (dilation_H, dilation_W). Otherwise, the
+           dilation_H = dilation_W = dilation. Default: dilation = 1.
        groups(int): The groups number of the Conv2d Layer. According to grouped
            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
            the first half of the filters is only connected to the first half
@@ -1193,6 +1203,8 @@ def conv2d(input,
        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
            library is installed. Default: True
        act(str): Activation type. Default: None
+       name(str|None): A name for this layer(optional). If set None, the layer
+           will be named automatically.
 
     Returns:
         Variable: The tensor variable storing the convolution and \
@@ -1233,6 +1245,7 @@ def conv2d(input,
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
     stride = utils.convert_to_list(stride, 2, 'stride')
     padding = utils.convert_to_list(padding, 2, 'padding')
+    dilation = utils.convert_to_list(dilation, 2, 'dilation')
 
     if not isinstance(use_cudnn, bool):
         raise ValueError("use_cudnn should be True or False")
@@ -1262,6 +1275,7 @@ def conv2d(input,
         attrs={
             'strides': stride,
             'paddings': padding,
+            'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
             'use_mkldnn': use_mkldnn
@@ -1469,6 +1483,7 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
+               in_place=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None):
@@ -1524,7 +1539,7 @@ def batch_norm(input,
     saved_mean = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
 
-    batch_norm_out = helper.create_tmp_variable(dtype)
+    batch_norm_out = input if in_place else helper.create_tmp_variable(dtype)
 
     helper.append_op(
         type="batch_norm",
@@ -1670,7 +1685,9 @@ def conv2d_transpose(input,
                      stride=1,
                      dilation=1,
                      param_attr=None,
+                     bias_attr=None,
                      use_cudnn=True,
+                     act=None,
                      name=None):
     """
     **Convlution2D transpose layer**
@@ -1739,8 +1756,10 @@ def conv2d_transpose(input,
            dilation_H = dilation_W = dilation. Default: dilation = 1.
        param_attr(ParamAttr): The parameters to the Conv2d_transpose Layer.
                               Default: None
+       bias_attr(ParamAttr): Bias parameter for the Conv2d layer. Default: None
        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
            library is installed. Default: True
+       act(str): Activation type. Default: None
        name(str|None): A name for this layer(optional). If set None, the layer
            will be named automatically.
 
@@ -1793,12 +1812,12 @@ def conv2d_transpose(input,
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
-    out = helper.create_tmp_variable(dtype=input.dtype)
+    pre_bias = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type='conv2d_transpose',
         inputs={'Input': [input],
                 'Filter': [img_filter]},
-        outputs={'Output': out},
+        outputs={'Output': pre_bias},
         attrs={
             'strides': stride,
             'paddings': padding,
@@ -1806,6 +1825,8 @@ def conv2d_transpose(input,
             'use_cudnn': use_cudnn
         })
 
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    out = helper.append_activation(pre_act)
     return out
 
 
@@ -3391,3 +3412,73 @@ def lod_reset(x, y=None, target_lod=None):
         raise ValueError("y and target_lod should not be both None.")
 
     return out
+
+
+def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
+    """
+    Local Response Normalization Layer. This layer performs a type of
+    "lateral inhibition" by normalizing over local input regions.
+
+    The formula is as follows:
+
+    .. math::
+
+        Output(i, x, y) = Input(i, x, y) / \left(
+        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
+        (Input(j, x, y))^2 \right)^{\beta}
+
+    In the above equation:
+
+    * :math:`n`: The number of channels to sum over.
+    * :math:`k`: The offset (avoid being divided by 0).
+    * :math:`alpha`: The scaling parameter.
+    * :math:`beta`: The exponent parameter.
+
+    Refer to `ImageNet Classification with Deep Convolutional Neural Networks
+    <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+
+    Args:
+        input (Variable): The input tensor of this layer, and the dimension of input tensor must be 4.
+        n (int, default 5): The number of channels to sum over.
+        k (float, default 1.0): An offset (usually positive to avoid dividing by 0).
+        alpha (float, default 1e-4): The scaling parameter.
+        beta (float, default 0.75): The exponent.
+        name (str, default None): A name for this operation.
+
+    Raises:
+        ValueError: If rank of the input tensor is not 4.
+
+    Returns:
+        A tensor variable storing the transformation result.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name="data", shape=[3, 112, 112], dtype="float32")
+          lrn = fluid.layers.lrn(input=data)
+    """
+    helper = LayerHelper('lrn', **locals())
+    dtype = helper.input_dtype()
+    input_shape = input.shape
+    dims = len(input_shape)
+
+    if dims != 4:
+        raise ValueError(
+            "dims of input must be 4(not %d), and it's order must be NCHW" %
+            (dims))
+
+    mid_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    lrn_out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="lrn",
+        inputs={"X": input},
+        outputs={
+            "Out": lrn_out,
+            "MidOut": mid_out,
+        },
+        attrs={"n": n,
+               "k": k,
+               "alpha": alpha,
+               "beta": beta})
+
+    return lrn_out
