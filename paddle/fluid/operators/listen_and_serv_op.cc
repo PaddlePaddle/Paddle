@@ -54,6 +54,24 @@ static void CreateTensorFromMessageType(framework::Variable *var,
   }
 }
 
+static void ParallelExecuteBlocks(const std::vector<size_t> &parallel_blkids,
+                                  framework::Executor *executor,
+                                  framework::ProgramDesc *program,
+                                  framework::Scope *scope) {
+  std::vector<std::future<void>> fs;
+  for (size_t idx : parallel_blkids) {
+    fs.push_back(framework::Async([&executor, &program, &scope, idx]() {
+      int run_block = idx;  // thread local
+      try {
+        executor->Run(*program, scope, run_block, false, false);
+      } catch (std::exception &e) {
+        LOG(ERROR) << "run sub program error " << e.what();
+      }
+    }));
+  }
+  for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+}
+
 class ListenAndServOp : public framework::OperatorBase {
  public:
   ListenAndServOp(const std::string &type,
@@ -135,33 +153,26 @@ class ListenAndServOp : public framework::OperatorBase {
         break;
       }
 
-      // put optimize blocks in the thread pool to start run, the last block
-      // should be global ops.
       // NOTE: if is_gpu_place, CUDA kernels are laugched by multiple threads
       // and this will still work.
 
-      std::vector<std::future<void>> fs;
-      // block0 contains only listen_and_serv op, start run from block1.
-      for (int blkid = 1; blkid < num_blocks - 1; ++blkid) {
-        fs.push_back(
-            framework::Async([&executor, &program, &recv_scope, blkid]() {
-              int run_block = blkid;  // thread local
-              try {
-                executor.Run(*program, &recv_scope, run_block, false, false);
-              } catch (std::exception &e) {
-                LOG(ERROR) << "run sub program error " << e.what();
-              }
-            }));
-      }
-      for (int i = 0; i < num_blocks - 2; ++i) fs[i].wait();
-      // Run global block at final step, or block1 if there are only 2 blocks
-      if (num_blocks >= 2) {
-        try {
-          executor.Run(*program, &recv_scope, num_blocks - 1, false, false);
-        } catch (std::exception &e) {
-          LOG(ERROR) << "run sub program error " << e.what();
+      // The optimize block which has the same parent ID would run parallel
+      // TODO(Yancey1989): need to use ParallelExecutor for future
+      size_t last_parent_blkid = program->Block(1).Parent();
+      std::vector<size_t> parallel_blkids;
+      parallel_blkids.push_back(1);
+      for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
+        if (program->Block(blkid).Parent() != last_parent_blkid) {
+          for (size_t idx : parallel_blkids) VLOG(3) << idx;
+          ParallelExecuteBlocks(parallel_blkids, &executor, program,
+                                &recv_scope);
+          parallel_blkids.clear();
+          last_parent_blkid = program->Block(blkid).Parent();
         }
+        parallel_blkids.push_back(blkid);
       }
+
+      ParallelExecuteBlocks(parallel_blkids, &executor, program, &recv_scope);
 
       // Reset the received sparse variables, the sum operator would not
       // sum the input sparse variables which rows is empty at the next
@@ -176,10 +187,6 @@ class ListenAndServOp : public framework::OperatorBase {
       rpc_service_->WaitClientGet(fan_in);
       sparse_vars.clear();
     }  // while(true)
-
-    // for (int i = 0; i < num_blocks; ++i) {
-    //   delete blk_ctx_list[i];
-    // }
   }
 
  protected:
