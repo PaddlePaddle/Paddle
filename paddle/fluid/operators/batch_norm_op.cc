@@ -110,7 +110,7 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(bn_param_type, framework::ToDataType(
                                          ctx.Input<Tensor>("Variance")->type()),
                       "Variance input should be of float type");
-    
+
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
@@ -123,12 +123,13 @@ class BatchNormOp : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kMKLDNN;
     }
 #endif
-    std::string data_format = ctx.Attr<std::string>("data_layout");
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout_, library_);
+    // TODO(tpatejko): Batch normalization unit tests set data_layout
+    // explicitely, but kernel has layout set to kAnyLayout,
+    // when it's added to op registrar.
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+                                   library_);
   }
 };
 
@@ -176,14 +177,6 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    //    AddAttr<std::string>(
-    //        "data_format",
-    //        "(string, default NCHW) Only used in "
-    //        "An optional string from: \"NHWC\", \"NCHW\". "
-    //        "Defaults to \"NHWC\". Specify the data format of the output data,
-    //        "
-    //        "the input will be transformed automatically. ")
-    //        .SetDefault("AnyLayout");
 
     AddComment(R"DOC(
 Batch Normalization.
@@ -346,6 +339,7 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("X"));
     PADDLE_ENFORCE(ctx->HasInput("Scale"), "");
+    PADDLE_ENFORCE(ctx->HasInput("Bias"), "");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")), "");
     PADDLE_ENFORCE(ctx->HasInput("SavedMean"), "");
     PADDLE_ENFORCE(ctx->HasInput("SavedVariance"), "");
@@ -399,10 +393,11 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kMKLDNN;
     }
 #endif
-
-    std::string data_format = ctx.Attr<std::string>("data_layout");
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    // TODO(tpatejko): Batch normalization unit tests set data_layout
+    // explicitely, but kernel has layout set to kAnyLayout,
+    // when it's added to op registrar.
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
         layout_, library_);
@@ -530,6 +525,7 @@ class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
     op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
     op->SetInput("Scale", Input("Scale"));
+    op->SetInput("Bias", Input("Bias"));
     op->SetInput("SavedMean", Output("SavedMean"));
     op->SetInput("SavedVariance", Output("SavedVariance"));
 
