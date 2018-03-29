@@ -108,6 +108,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
       }
       e.WriteUint64(VarMsg::kLodLevelFieldNumber, 0);
+      e.WriteUint64(VarMsg::kSlrHeightFieldNumber, slr->height());
       auto* tensor = slr->mutable_value();
       if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
@@ -154,7 +155,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     ProtoEncodeHelper e2((char*)buf, 128);
     // NOTE: rows is of type int64_t
     size_t rows_memory_size =
-        slr->rows().capacity() * framework::SizeOfType(typeid(int64_t));
+        slr->rows().size() * framework::SizeOfType(typeid(int64_t));
     e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
     slices[2] = ::grpc::Slice(e2.size());
     memcpy(const_cast<uint8_t*>(slices[2].begin()), e2.data(), e2.size());
