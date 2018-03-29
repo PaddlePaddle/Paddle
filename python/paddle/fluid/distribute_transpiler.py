@@ -135,7 +135,6 @@ class DistributeTranspiler:
                   optimize_ops,
                   params_grads,
                   trainer_id,
-                  lr_decay_ops=[],
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
@@ -187,7 +186,6 @@ class DistributeTranspiler:
         self.program = program
         self.trainers = trainers
         self.optimize_ops = optimize_ops
-        self.lr_decay_ops = lr_decay_ops
         # TODO(typhoonzero): currently trainer_id is fetched from cluster system
         # like Kubernetes, we should port this to use etcd later when developing
         # fluid distributed training with fault-tolerance.
@@ -342,8 +340,9 @@ class DistributeTranspiler:
 
         append_block = optimize_block
         # append lr decay ops to the child block if exits
-        if self.lr_decay_ops:
-            for _, op in enumerate(self.lr_decay_ops):
+        lr_ops = self._get_lr_ops()
+        if len(lr_ops) > 0:
+            for _, op in enumerate(lr_ops):
                 self._append_pserver_non_opt_ops(append_block, op)
 
             append_block = pserver_program.create_block(append_block.idx)
@@ -796,3 +795,32 @@ class DistributeTranspiler:
             else:
                 iomap[key] = vars
         return iomap
+
+    def _get_lr_ops(self):
+        lr_ops = []
+        # find lr variables by optimize op
+        lr_vars = set()
+        for op in self.optimize_ops:
+            if self._is_opt_op(op):
+                lr_vars.add(op.input("LearningRate")[0])
+
+        find_ops = []
+        # find ops which output is lr var
+        # make a union-find struct by all ops
+        block = default_main_program().global_block()
+        for op in block.ops:
+            if set(op.output_arg_names) & lr_vars:
+                find_ops.append(op)
+        # make a union find struct by default_main_program
+        ufind = UnionFind(block.ops)
+        for op1 in block.ops:
+            for op2 in block.ops:
+                if op1 != op2 and self._is_op_connected(op1, op2) and \
+                    not self._is_opt_op(op1) and not self._is_opt_op(op2):
+                    ufind.union(op1, op2)
+        # find all ops which related lr var
+        for op1 in block.ops:
+            for op2 in find_ops:
+                if ufind.is_connected(op1, op2):
+                    lr_ops.append(op1)
+        return lr_ops
