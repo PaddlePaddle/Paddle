@@ -68,8 +68,6 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
       if (total_written + size_to_write > length) {
         size_to_write = length - total_written;
       }
-      VLOG(3) << "copy raw " << size_to_write
-              << " bytes, written: " << total_written << ", length: " << length;
       memory::Copy(boost::get<platform::CUDAPlace>(place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
@@ -152,6 +150,10 @@ bool VariableResponse::CopySelectRowsTensorData(
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
+  PADDLE_ENFORCE_EQ(
+      tensor->numel(),
+      length / framework::SizeOfType(
+                   paddle::operators::detail::ToTypeIndex(meta_.data_type())));
   void* tensor_data = tensor->mutable_data(
       ctx.GetPlace(),
       paddle::operators::detail::ToTypeIndex(meta_.data_type()));
@@ -168,7 +170,8 @@ bool VariableResponse::CopySelectRowsData(
     const platform::DeviceContext& ctx, int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
-  slr->mutable_rows()->resize(length / 8);  // int64
+  slr->mutable_rows()->resize(length /
+                              framework::SizeOfType(typeid(int64_t)));  // int64
   int64_t* rows_data = slr->mutable_rows()->data();
 
   // copy rows CPU data, GPU data will be copied lazily.
