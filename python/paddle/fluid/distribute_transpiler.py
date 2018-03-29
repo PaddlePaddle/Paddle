@@ -798,7 +798,7 @@ class DistributeTranspiler:
 
     def _get_lr_ops(self):
         lr_ops = []
-        # find lr variables by optimize op
+        # find learning rate variables by optimize op
         lr_vars = set()
         for op in self.optimize_ops:
             if self._is_opt_op(op):
@@ -806,19 +806,20 @@ class DistributeTranspiler:
 
         find_ops = []
         # find ops which output is lr var
-        # make a union-find struct by all ops
         block = default_main_program().global_block()
         for op in block.ops:
             if set(op.output_arg_names) & lr_vars:
                 find_ops.append(op)
-        # make a union find struct by default_main_program
+        # make a union find struct by the ops in default_main_program
         ufind = UnionFind(block.ops)
         for op1 in block.ops:
             for op2 in block.ops:
+                # NOTE: we need to skip all optimize ops, since it is connected
+                # with forward/backward ops and lr ops, we only need the lr ops.
                 if op1 != op2 and self._is_op_connected(op1, op2) and \
                     not self._is_opt_op(op1) and not self._is_opt_op(op2):
                     ufind.union(op1, op2)
-        # find all ops which related lr var
+        # find all ops which is related with lr var
         for op1 in block.ops:
             for op2 in find_ops:
                 if ufind.is_connected(op1, op2):
