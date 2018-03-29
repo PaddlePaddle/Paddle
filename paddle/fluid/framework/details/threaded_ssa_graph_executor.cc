@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
-#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {

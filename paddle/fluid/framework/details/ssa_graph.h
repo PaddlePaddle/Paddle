@@ -25,6 +25,7 @@ namespace details {
 
 struct SSAGraph {
   std::vector<std::unordered_map<std::string, std::map<int, VarHandle>>> vars_;
+  // aux variables to represent dependency. Useful to resolve data hazard.
   std::unordered_set<std::unique_ptr<VarHandleBase>> dep_vars_;
   std::vector<std::unique_ptr<OpHandleBase>> ops_;
 };
