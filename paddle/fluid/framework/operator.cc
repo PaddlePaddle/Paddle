@@ -549,15 +549,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   kernel_iter->second->Compute(
       ExecutionContext(*this, new_scope, *new_dev_ctx));
 
-  // copy inplace var back to it's original place
   for (auto& var_name : need_copy_back_vars) {
-    VLOG(3) << "copy inplace var " + var_name + " back to it's original scope";
+    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
     auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
     auto* transformed_tensor = GetTensorFromVar(new_scope.FindVar(var_name));
     original_tensor->ShareDataWith(*transformed_tensor);
   }
-  // delete scope used for variable transform
-  const_cast<framework::Scope&>(scope).DeleteScope(&new_scope);
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
