@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <future>
 #include <ostream>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-
-#include <future>
 #include "paddle/fluid/operators/detail/grpc_client.h"
 
 namespace paddle {
@@ -75,7 +73,7 @@ class PrefetchOp : public framework::OperatorBase {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    rpc_client->Wait();
+    PADDLE_ENFORCE(rpc_client->Wait());
   }
 };
 
@@ -91,16 +89,17 @@ class PrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
               "(SelectedRows) result "
               "to be fetched from parameter server")
         .AsDuplicable();
+    AddAttr<std::vector<std::string>>(
+        "epmap",
+        "(string vector, default 127.0.0.1:6164)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({"127.0.0.1:6164"});
     AddComment(R"DOC(
 Send operator
 
-This operator will send Ids variables to listen_and_serve op at the parameter server and fetch result back.
+This operator will send Ids variables to listen_and_serve op at
+the parameter server and fetch result back.
 )DOC");
-    AddAttr<std::vector<std::string>>("epmap",
-                                      "(string vector, default 127.0.0.1:6164)"
-                                      "Server endpoints in the order of input "
-                                      "variables for mapping")
-        .SetDefault({"127.0.0.1:6164"});
   }
 };
 
