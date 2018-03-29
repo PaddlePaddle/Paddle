@@ -159,9 +159,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
 
     // It is possible for float16 on Volta GPU to allocate more memory than
     // the limit because the algo is overrided to use tensor core.
-    PADDLE_ENFORCE_LT(workspace_size_in_bytes, workspace_size_limit,
-                      "workspace size to be allocated needs to be less than
-                       the workspace_size_limit");
+    PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
+                      "workspace_size to be allocated exceeds the limit");
 
     // if (workspace_size_in_bytes > workspace_size_limit) {
     // std::cout << "Workspace size is " << workspace_size_in_bytes
