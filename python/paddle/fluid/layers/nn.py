@@ -86,7 +86,6 @@ def fc(input,
        param_attr=None,
        bias_attr=None,
        use_mkldnn=False,
-       with_bias=False,
        act=None,
        name=None):
     """
@@ -156,16 +155,39 @@ def fc(input,
     dtype = helper.input_dtype()
 
     mul_results = []
-    for input_var, param_attr in helper.iter_inputs_and_params():
-        input_shape = input_var.shape
+    if use_mkldnn:
+        tmp = helper.create_tmp_variable(dtype)
+        input_shape = input.shape
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
 
         w = helper.create_parameter(
-            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-        tmp = helper.create_tmp_variable(dtype)
-        if use_mkldnn == False:
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            is_bias=False)
+        bias_attr = False
+        if bias_attr is not None:
+            bias_attr = True
+        helper.append_op(
+            type="fc",
+            inputs={"Input": input,
+                    "W": w},
+            outputs={"Out": tmp},
+            attrs={"use_mkldnn": use_mkldnn,
+                   "bias_attr": bias_attr})
+        return helper.append_activation(tmp)
+    else:
+        for input_var, param_attr in helper.iter_inputs_and_params():
+            input_shape = input_var.shape
+            param_shape = [
+                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
+            ] + [size]
+
+            w = helper.create_parameter(
+                attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+            tmp = helper.create_tmp_variable(dtype)
             helper.append_op(
                 type="mul",
                 inputs={"X": input_var,
@@ -174,29 +196,22 @@ def fc(input,
                 attrs={
                     "x_num_col_dims": num_flatten_dims,
                     "y_num_col_dims": 1,
-                    'use_mkldnn': use_mkldnn
                 })
-        else:
-            helper.append_op(
-                type="fc",
-                inputs={"Input": input_var,
-                        "W": w},
-                outputs={"Out": tmp},
-                attrs={"use_mkldnn": use_mkldnn,
-                       "with_bias": with_bias})
-        mul_results.append(tmp)
+            mul_results.append(tmp)
 
-    # sum
-    if len(mul_results) == 1:
-        pre_bias = mul_results[0]
-    else:
-        pre_bias = helper.create_tmp_variable(dtype)
-        helper.append_op(
-            type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
-    # add bias
-    pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
-    # add activation
-    return helper.append_activation(pre_activation)
+        if len(mul_results) == 1:
+            pre_bias = mul_results[0]
+        else:
+            pre_bias = helper.create_tmp_variable(dtype)
+            helper.append_op(
+                type="sum",
+                inputs={"X": mul_results},
+                outputs={"Out": pre_bias})
+        # add bias
+        pre_activation = helper.append_bias_op(
+            pre_bias, dim_start=num_flatten_dims)
+        # add activation
+        return helper.append_activation(pre_activation)
 
 
 def embedding(input,

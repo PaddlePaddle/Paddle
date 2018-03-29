@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fc_mkldnn_op.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
@@ -23,105 +23,12 @@ namespace operators {
 using paddle::framework::Tensor;
 using paddle::platform::MKLDNNDeviceContext;
 
-void FCOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("Input"),
-                 "X(Input) of Fully Connected should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "Out(Output) of Fully Connected should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("W"),
-                 "W(Input) of Fully Connected should not be null.");
-
-  auto in_dims = ctx->GetInputDim("Input");
-  auto w_dims = ctx->GetInputDim("W");
-  std::vector<int64_t> output_shape({in_dims[0], w_dims[1]});
-
-  PADDLE_ENFORCE(in_dims.size() == 4,
-                 "Fully Connected input should be 4-D tensor.");
-
-  PADDLE_ENFORCE(w_dims.size() == 2,
-                 "Fully Connected input should be 2-D tensor.");
-
-  ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
-  ctx->ShareLoD("Input", "Out");
-}
-
-framework::OpKernelType FCOp::GetExpectedKernelType(
-    const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library{framework::LibraryType::kMKLDNN};
-
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout = framework::StringToDataLayout(data_format);
-
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout, library);
-}
-
-void FCOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  auto in_dims = ctx->GetInputDim("Input");
-  auto w_dims = ctx->GetInputDim("W");
-
-  if (ctx->HasOutput(framework::GradVarName("Input"))) {
-    ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
-  }
-  if (ctx->HasOutput(framework::GradVarName("W"))) {
-    ctx->SetOutputDim(framework::GradVarName("W"), w_dims);
-  }
-}
-
-framework::OpKernelType FCOpGrad::GetExpectedKernelType(
-    const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library{framework::LibraryType::kMKLDNN};
-
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout = framework::StringToDataLayout(data_format);
-
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
-      layout, library);
-}
-
-class FCOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  FCOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput(
-        "Input",
-        "(Tensor) The input tensor of fully connected operator. "
-        "The format of input tensor is NCHW, where N is batch size, C is the "
-        "number of channels, H is the height of the feature, "
-        "and W is the width of the feature.");
-    AddInput("W", "(Tensor), The second input tensor of fc op.");
-    AddOutput("Out",
-              "(Tensor) The output tensor of pooling operator. "
-              "The format of output tensor is also NCHW, "
-              "where N is batch size, C is the number of channels, "
-              "H is the height of the feature, "
-              "and W is the width of the feature.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<bool>("with_bias",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout");
-    AddComment(R"DOC(
-)DOC");
-  }
-};
-
 struct MKLDNNMatrixSize final {
   explicit MKLDNNMatrixSize(const std::vector<int>& in,
                             const std::vector<int>& w)
       : mb{in[0]}, ic{in[1]}, oc{w[1]}, h{in[2]}, w{in[3]} {}
 
-  bool is_spatial() const { return h > 1 && w > 1; }
+  bool is_spatial() const { return h > 2 && w > 2; }
 
   const int mb;
   const int ic;
@@ -229,12 +136,12 @@ class FCMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto input = ctx.Input<Tensor>("Input");
     auto w = ctx.Input<Tensor>("W");
 
-    PADDLE_ENFORCE(input->dims().size() == 4,
-                   "Input must be with 4 dimensions, i.e. NCHW");
+    PADDLE_ENFORCE(input->dims().size() == 4 || input->dims().size() == 2,
+                   "Input must be with 2 or 4 dimensions, i.e. NCHW");
     PADDLE_ENFORCE(w->dims().size() == 2,
                    "Weights must be with 2 dimensions, i.e. NC");
 
-    bool with_bias = ctx.Attr<bool>("with_bias");
+    bool with_bias = ctx.Attr<bool>("bias_attr");
     MKLDNNMD<Tensor> md(input, w, with_bias);
 
     std::shared_ptr<mkldnn::inner_product_forward::primitive_desc> pd =
@@ -319,7 +226,7 @@ class FCMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     const T* out_grad_data = out_grad->data<T>();
 
-    bool with_bias = ctx.Attr<bool>("with_bias");
+    bool with_bias = ctx.Attr<bool>("bias_attr");
 
     MKLDNNMD<Tensor> md(input, w, with_bias);
     MKLDNNMemory mem(&md, mkldnn_engine);
@@ -399,9 +306,6 @@ class FCMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 };
 }  // namespace operators
 }  // namespace paddle
-
-REGISTER_OP(fc, paddle::operators::FCOp, paddle::operators::FCOpMaker, fc_grad,
-            paddle::operators::FCOpGrad);
 
 REGISTER_OP_KERNEL(fc, MKLDNN, ::paddle::platform::CPUPlace,
                    paddle::operators::FCMKLDNNOpKernel<float>);
