@@ -113,7 +113,7 @@ To solve this problem, we introduce `ReaderHolder` as a wrapper. It acts as an e
 
 To create and invoke readers, some new ops are introduced:
 
-### Operators That Creates Readers
+### Operators That Create Readers
 
 Each reader has its creation op. File readers' creation ops have no input and yield the created file reader as its output. Decorated readers' creation ops take the underlying readers as inputs and then yield new decorated readers.
 
@@ -168,17 +168,19 @@ while_op(not_completed) {
 }
 ```
 
-Two important considerations for these programs are as follows:
+A few important considerations for these programs are as follows:
 
-1. The multiple\_reader is the batch\_reader's underlying reader, and the batch\_reader is the double\_buffer\_reader's underlying reader. `read_op`, `has_next_op` and other reader related ops will only invoke the top-most reader. In this case, it's the double\_buffer\_reader.
+1. `not_completed`, `pass_count` and other variables shown above are all Fluid Variables.
 
-2. All readers exist in both `startup_program` and `main_program`. And they are persistable.
+2. The multiple\_reader is the batch\_reader's underlying reader, and the batch\_reader is the double\_buffer\_reader's underlying reader. `read_op`, `has_next_op` and other reader related ops will only invoke the top-most reader. In this case, it's the double\_buffer\_reader.
+
+3. All readers exist in both `startup_program` and `main_program`. And they are persistable.
 
 ### Simplify Configuration by MultiPassReader
 
-The  Program configuration mentioned above is somehow complicated. Users need to be very similar to concepts of Program and Block to prevent making mistakes in their code. To make the usage of C++ readers more friendly to beginning users, we introduce `MultiPassReader`.
+The Program configuration mentioned above is complicated. Users need to be very familiar to concepts of Program and Block to prevent making mistakes in their code. To make the usage of C++ readers more friendly to new users, we introduce `MultiPassReader`.
 
-`MultiPassReader` is a decorated reader. A multi-pass reader is used to continuously yield data for several pass training. It takes the number of passes to run as one of its attributes('pass_num') and maintains a counter to record how many passes it has completed. Each time its underlying reader reaches the EOF, the multi-pass reader checks whether it has completed the training of given number of pass. If not, the underlying reader will be re-initialized and starts a new pass automatically. Before completing the whole training, the return of MultiPassReader's `HasNext()` will always be `true`.
+`MultiPassReader` is a decorated reader. A multi-pass reader is used to continuously yield data for several training passes. It takes the number of passes to run as one of its attributes('pass_num') and maintains a counter to record how many passes it has completed. Each time its underlying reader reaches the EOF, the multi-pass reader checks whether it has completed the training of given number of pass. If not, the underlying reader will be re-initialized and starts a new pass automatically. Before completing the whole training, the return of MultiPassReader's `HasNext()` will always be `true`.
 
 With `MultiPassReader`, the startup program would be like this:
 
