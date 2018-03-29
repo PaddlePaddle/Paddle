@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/grpc_server.h"
 
+#include <limits>
+#include <string>
+
 using ::grpc::ServerAsyncResponseWriter;
 
 namespace paddle {
@@ -205,7 +208,7 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
 
 // FIXME(typhoonzero): change cq_name to enum.
 void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
-                                    std::string cq_name,
+                                    const std::string& cq_name,
                                     std::function<void()> TryToRegisterNewOne) {
   TryToRegisterNewOne();
 
@@ -222,7 +225,7 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
     if (cq_name == "cq_get") WaitCond(1);
     if (cq_name == "cq_send") WaitCond(0);
 
-    RequestBase* base = (RequestBase*)tag;
+    RequestBase* base = reinterpret_cast<RequestBase*>(tag);
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
