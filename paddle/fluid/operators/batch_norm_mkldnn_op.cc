@@ -304,8 +304,8 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
               d_shift->data<T>());
   }
 };
-}
-}
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(batch_norm, MKLDNN, paddle::platform::CPUPlace,
