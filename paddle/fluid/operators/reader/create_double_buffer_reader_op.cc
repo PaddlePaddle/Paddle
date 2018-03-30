@@ -146,8 +146,8 @@ void DoubleBufferReader::PrefetchThreadFunc() {
     reader_->ReadNext(&batch->payloads_);
     if (platform::is_gpu_place(place_)) {
       std::vector<framework::LoDTensor> gpu_batch;
-      auto& gpu_ctx = this->ctxs_[gpu_ctx_offset++];
       gpu_ctx_offset %= this->ctxs_.size();
+      auto& gpu_ctx = this->ctxs_[gpu_ctx_offset++];
       gpu_batch.resize(batch->payloads_.size());
       for (size_t i = 0; i < batch->payloads_.size(); ++i) {
         framework::TensorCopy(batch->payloads_[i], place_, *gpu_ctx,
