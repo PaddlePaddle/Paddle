@@ -187,6 +187,7 @@ void ThreadedSSAGraphExecutor::RunOp(
     try {
       VLOG(10) << op->Name() << " : " << op->DebugString();
       op->Run(use_event_);
+      PADDLE_ENFORCE(cudaDeviceSynchronize());
       ready_var_q.Extend(op->outputs_);
     } catch (platform::EnforceNotMet ex) {
       exception_.reset(new platform::EnforceNotMet(ex));
