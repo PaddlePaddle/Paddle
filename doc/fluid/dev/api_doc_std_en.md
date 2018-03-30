@@ -1,11 +1,11 @@
 # API Doc Standard
 
-- [API Doc Structure](#API Doc Strucuture)
+- [API Doc Structure](#API Doc Structure)
 - [Format and Examples](#Format and Examples)
 - [Complete Example](#Complete Example)
 
 
-## API Doc Strucuture
+## API Doc Structure
 
 API Doc should contain the following parts(please write them in order):
 
@@ -45,7 +45,7 @@ API Doc should contain the following parts(please write them in order):
 
 ## Format and Examples
 
-API documentation must obey reStructuredText format, please refer to [link](http://sphinx-doc-zh.readthedocs.io/en/latest/rest.html).
+API documentation must obey reStructuredText format, please refer to [here](http://sphinx-doc-zh.readthedocs.io/en/latest/rest.html).
 Format and examples of each part of API documantation are as follows: (take fc for example)
 
 - Python API Definition
