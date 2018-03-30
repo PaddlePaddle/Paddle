@@ -1,6 +1,9 @@
-#你好
 
-##实例的会计法
+# Kubernetes on AWS
+
+We will show you step by step on how to run distributed PaddlePaddle training on AWS cluster with Kubernetes. Let's start from core concepts.
+
+## Distributed PaddlePaddle Training Core Concepts
 
 
 #kubernetes on aws
