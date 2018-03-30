@@ -12,35 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <future>
 #include <ostream>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-
-#include <future>
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/send_recv_util.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
-static bool NeedSend(const framework::Scope& scope,
-                     const std::string& varname) {
-  auto* var = scope.FindVar(varname);
-  PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
-                          varname);
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().IsInitialized();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().rows().size() > 0UL;
-  } else {
-    PADDLE_THROW(
-        "Variable type in send side should be in "
-        "[LodTensor, SelectedRows]");
-  }
-  return false;
-}
 
 class SendOp : public framework::OperatorBase {
  public:
