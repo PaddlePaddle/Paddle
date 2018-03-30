@@ -129,6 +129,9 @@ void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
   }
 
   *out = local_buffer_->payloads_;
+  if (local_buffer_->ctx_) {
+    local_buffer_->ctx_->Wait();
+  }
   local_buffer_.reset();
 }
 
@@ -155,18 +158,9 @@ void DoubleBufferReader::PrefetchThreadFunc() {
       ++gpu_ctx_offset;
       gpu_batch.resize(batch->payloads_.size());
       for (size_t i = 0; i < batch->payloads_.size(); ++i) {
-        if (batch->payloads_[i].type() == typeid(float)) {  // NOLINT
-          VLOG(10) << batch->payloads_[i]
-                          .data<float>()[batch->payloads_[i].numel() - 1];
-        } else if (batch->payloads_[i].type() == typeid(int64_t)) {  // NOLINT
-          VLOG(10) << batch->payloads_[i]
-                          .data<int64_t>()[batch->payloads_[i].numel() - 1];
-        }
-
         framework::TensorCopy(batch->payloads_[i], place_, *gpu_ctx,
                               &gpu_batch[i]);
         gpu_batch[i].set_lod(batch->payloads_[i].lod());
-        PADDLE_ENFORCE(cudaDeviceSynchronize());
       }
       batch->ctx_ = gpu_ctx.get();
       batch->payloads_ = gpu_batch;
