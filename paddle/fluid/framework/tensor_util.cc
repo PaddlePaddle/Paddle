@@ -32,6 +32,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
   auto size = src.numel() * SizeOfType(src.type());
 
+  VLOG(10) << "SRCPTR=" << src_ptr << " DSTPtr=" << dst_ptr << " size=" << size;
+
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);

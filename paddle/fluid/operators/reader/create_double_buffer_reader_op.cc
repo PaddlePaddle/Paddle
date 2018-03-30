@@ -14,6 +14,7 @@
 
 #include <thread>
 #include "paddle/fluid/framework/channel.h"
+#include "paddle/fluid/framework/details/blocking_queue.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
@@ -33,7 +34,7 @@ class DoubleBufferReader : public framework::DecoratedReader {
 
   explicit DoubleBufferReader(
       ReaderBase* reader, platform::Place target_place = platform::CPUPlace())
-      : DecoratedReader(reader), place_(target_place) {
+      : DecoratedReader(reader), buffer_(2), place_(target_place) {
     for (size_t i = 0; i < kDoubleBufferSize; ++i) {
       if (platform::is_gpu_place(place_)) {
 #ifdef PADDLE_WITH_CUDA
@@ -47,7 +48,6 @@ class DoubleBufferReader : public framework::DecoratedReader {
   }
 
   void start_thread() {
-    buffer_ = framework::MakeChannel<Item>(kDoubleBufferSize);
     prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
   }
 
@@ -55,9 +55,8 @@ class DoubleBufferReader : public framework::DecoratedReader {
   void ReInit() override;
 
   ~DoubleBufferReader() {
-    buffer_->Close();
+    buffer_.Close();
     prefetcher_.join();
-    delete buffer_;
   }
 
   bool HasNext() const override;
@@ -66,10 +65,10 @@ class DoubleBufferReader : public framework::DecoratedReader {
   void PrefetchThreadFunc();
 
   std::thread prefetcher_;
-  framework::Channel<Item>* buffer_;
+  mutable framework::details::FixedBlockingQueue<std::unique_ptr<Item>> buffer_;
   platform::Place place_;
   std::vector<std::unique_ptr<platform::DeviceContext>> ctxs_;
-  mutable Item local_buffer_;
+  mutable std::unique_ptr<Item> local_buffer_;
 };
 
 class CreateDoubleBufferReaderOp : public framework::OperatorBase {
@@ -79,6 +78,7 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    VLOG(10) << "Create/Reset Double Buffer Reader";
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))
@@ -128,59 +128,60 @@ void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
     PADDLE_THROW("There is no next data!");
   }
 
-  if (local_buffer_.payloads_.empty()) {
-    buffer_->Receive(&local_buffer_);
+  *out = local_buffer_->payloads_;
+  if (local_buffer_->ctx_) {
+    local_buffer_->ctx_->Wait();
   }
-  *out = local_buffer_.payloads_;
-  local_buffer_.payloads_.clear();
-  if (local_buffer_.ctx_) {
-    local_buffer_.ctx_->Wait();
-  }
+  local_buffer_.reset();
 }
 
 void DoubleBufferReader::ReInit() {
   reader_->ReInit();
-  buffer_->Close();
+  buffer_.Reset();
   prefetcher_.join();
-  delete buffer_;
   start_thread();
 }
 
 void DoubleBufferReader::PrefetchThreadFunc() {
   VLOG(5) << "A new prefetch thread starts.";
   size_t gpu_ctx_offset = 0;
+  std::vector<std::vector<framework::LoDTensor>> gpu_tensors;
+  gpu_tensors.resize(2);  // double buffer
+
   while (reader_->HasNext()) {
-    Item batch;
-    reader_->ReadNext(&batch.payloads_);
+    Item* batch = new Item();
+    reader_->ReadNext(&batch->payloads_);
     if (platform::is_gpu_place(place_)) {
-      std::vector<framework::LoDTensor> gpu_batch;
-      auto& gpu_ctx = this->ctxs_[gpu_ctx_offset++];
       gpu_ctx_offset %= this->ctxs_.size();
-      gpu_batch.resize(batch.payloads_.size());
-      for (size_t i = 0; i < batch.payloads_.size(); ++i) {
-        framework::TensorCopy(batch.payloads_[i], place_, *gpu_ctx,
+      auto& gpu_ctx = this->ctxs_[gpu_ctx_offset];
+      auto& gpu_batch = gpu_tensors[gpu_ctx_offset];
+      ++gpu_ctx_offset;
+      gpu_batch.resize(batch->payloads_.size());
+      for (size_t i = 0; i < batch->payloads_.size(); ++i) {
+        framework::TensorCopy(batch->payloads_[i], place_, *gpu_ctx,
                               &gpu_batch[i]);
-        gpu_batch[i].set_lod(batch.payloads_[i].lod());
+        gpu_batch[i].set_lod(batch->payloads_[i].lod());
       }
-      batch.ctx_ = gpu_ctx.get();
-      std::swap(gpu_batch, batch.payloads_);
+      batch->ctx_ = gpu_ctx.get();
+      batch->payloads_ = gpu_batch;
     }
 
-    try {
-      buffer_->Send(&batch);
-    } catch (paddle::platform::EnforceNotMet e) {
+    bool ok;
+    buffer_.Push(std::unique_ptr<Item>(batch), &ok);
+    if (!ok) {
       VLOG(5) << "WARNING: The double buffer channel has been closed. The "
                  "prefetch thread will terminate.";
       break;
     }
   }
-  buffer_->Close();
+  buffer_.Close();
   VLOG(5) << "Prefetch thread terminates.";
 }
 
 bool DoubleBufferReader::HasNext() const {
-  if (local_buffer_.payloads_.empty()) {
-    bool ok = buffer_->Receive(&local_buffer_);
+  if (!local_buffer_) {
+    bool ok;
+    local_buffer_ = buffer_.Pop(&ok);
     return ok;
   } else {
     return true;

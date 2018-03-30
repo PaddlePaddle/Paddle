@@ -318,6 +318,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
 
+    PADDLE_ENFORCE(cudaDeviceSynchronize());
+
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);
