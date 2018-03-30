@@ -157,7 +157,7 @@ void DoubleBufferReader::PrefetchThreadFunc() {
         gpu_ctx->Wait();
       }
       batch->ctx_ = gpu_ctx.get();
-      std::swap(gpu_batch, batch->payloads_);
+      batch->payloads_ = gpu_batch;
     }
 
     bool ok;
