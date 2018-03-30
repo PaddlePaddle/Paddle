@@ -68,7 +68,7 @@ packages=['paddle',
           'paddle.fluid.proto.profiler',
           'paddle.fluid.layers']
 
-if '${WITH_FLUID}'== 'OFF':
+if '${WITH_FLUID_ONLY}'== 'OFF':
     packages+=['paddle.proto',
                'paddle.trainer',
                'paddle.trainer_config_helpers',
@@ -87,7 +87,7 @@ if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
 
 # the prefix is sys.prefix which should always be usr
 paddle_bins = ''
-if '${WITH_FLUID}'== 'OFF':
+if '${WITH_FLUID_ONLY}'== 'OFF':
     paddle_bin_dir = 'opt/paddle/bin'
     paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/trainer/paddle_trainer',
                    '${PADDLE_BINARY_DIR}/paddle/trainer/paddle_merge_model',
@@ -95,7 +95,7 @@ if '${WITH_FLUID}'== 'OFF':
                    '${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 
 package_data={'paddle.fluid': ['core.so']}
-if '${WITH_FLUID}'== 'OFF':
+if '${WITH_FLUID_ONLY}'== 'OFF':
     package_data['paddle.v2.master']=['libpaddle_master.so']
     package_data['py_paddle']=['*.py','_swig_paddle.so']
 
@@ -106,7 +106,7 @@ package_dir={
     'paddle.fluid.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
     'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
 }
-if '${WITH_FLUID}'== 'OFF':
+if '${WITH_FLUID_ONLY}'== 'OFF':
     package_dir['py_paddle']='${PADDLE_SOURCE_DIR}/paddle/py_paddle'
     
 

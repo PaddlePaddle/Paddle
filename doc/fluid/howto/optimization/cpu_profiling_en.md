@@ -14,7 +14,7 @@ the profiling and tuning of
 1. the Python code and
 1. the mixture of Python and C++ code.
 
-## Profiling the Python Code
+# Profiling the Python Code
 
 ### Generate the Performance Profiling File
 
@@ -81,7 +81,7 @@ focus on. We can sort above profiling file by tottime:
 
 We can see that the most time-consuming function is the `built-in
 method run`, which is a C++ function in `libpaddle.so`.  We will
-explain how to profile C++ code in the next section.  At this 
+explain how to profile C++ code in the next section.  At this
 moment, let's look into the third function `sync_with_cpp`, which is a
 Python function.  We can click it to understand more about it:
 
