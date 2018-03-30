@@ -20,7 +20,7 @@ configure_file(
     "${BINARY_BUILD_DIR_EN}/conf.py"
     @ONLY)
 
-sphinx_add_target(paddle_docs
+sphinx_add_target(paddle_v2_docs
                   html
                   ${BINARY_BUILD_DIR_EN}
                   ${SPHINX_CACHE_DIR_EN}
@@ -41,7 +41,7 @@ configure_file(
     "${BINARY_BUILD_DIR_CN}/conf.py"
     @ONLY)
 
-sphinx_add_target(paddle_docs_cn
+sphinx_add_target(paddle_v2_docs_cn
                   html
                   ${BINARY_BUILD_DIR_CN}
                   ${SPHINX_CACHE_DIR_CN}

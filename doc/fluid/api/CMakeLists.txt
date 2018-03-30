@@ -12,7 +12,7 @@ configure_file(
     "${BINARY_BUILD_DIR_EN}/conf.py"
     @ONLY)
 
-sphinx_add_target(paddle_v2_apis
+sphinx_add_target(paddle_fluid_apis
                   html
                   ${BINARY_BUILD_DIR_EN}
                   ${SPHINX_CACHE_DIR_EN}
