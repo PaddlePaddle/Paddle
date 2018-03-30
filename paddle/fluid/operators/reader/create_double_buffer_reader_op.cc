@@ -128,9 +128,6 @@ void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
   }
 
   *out = local_buffer_->payloads_;
-  if (local_buffer_->ctx_) {
-    local_buffer_->ctx_->Wait();
-  }
   local_buffer_.reset();
 }
 
@@ -158,6 +155,7 @@ void DoubleBufferReader::PrefetchThreadFunc() {
         gpu_batch[i].set_lod(batch->payloads_[i].lod());
       }
       batch->ctx_ = gpu_ctx.get();
+      batch->ctx_->Wait();
       std::swap(gpu_batch, batch->payloads_);
     }
 
