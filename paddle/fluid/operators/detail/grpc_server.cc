@@ -128,6 +128,47 @@ class RequestGet final : public RequestBase {
   SimpleBlockQueue<MessageWithName>* queue_;
 };
 
+class RequestPrefetch final : public RequestBase {
+ public:
+  explicit RequestPrefetch(GrpcService::AsyncService* service,
+                           ::grpc::ServerCompletionQueue* cq,
+                           framework::Scope* scope,
+                           const platform::DeviceContext* dev_ctx,
+                           framework::Executor* executor,
+                           framework::ProgramDesc* program, int blkid)
+      : RequestBase(service, cq, dev_ctx),
+        responder_(&ctx_),
+        scope_(scope),
+        executor_(executor),
+        program_(program),
+        blkid_(blkid) {
+    int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
+    service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
+                                cq_, this);
+  }
+
+  virtual ~RequestPrefetch() {}
+
+  virtual std::string GetReqName() { return request_.varname(); }
+
+  virtual void Process() {
+    // prefetch process...
+    ::grpc::ByteBuffer relay;
+    // TODO(Yancey1989): execute the Block which containers prefetch ops
+
+    responder_.Finish(relay, ::grpc::Status::OK, this);
+    status_ = FINISH;
+  }
+
+ protected:
+  sendrecv::VariableMessage request_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
+  framework::Scope* scope_;
+  framework::Executor* executor_;
+  framework::ProgramDesc* program_;
+  int blkid_;
+};
+
 void AsyncGRPCServer::WaitClientGet(int count) {
   int fetch_barriers = 0;
   while (fetch_barriers < count) {
@@ -147,6 +188,7 @@ void AsyncGRPCServer::RunSyncUpdate() {
 
   cq_send_ = builder.AddCompletionQueue();
   cq_get_ = builder.AddCompletionQueue();
+  cq_prefetch_ = builder.AddCompletionQueue();
 
   server_ = builder.BuildAndStart();
   LOG(INFO) << "Server listening on " << address_ << std::endl;
@@ -155,6 +197,8 @@ void AsyncGRPCServer::RunSyncUpdate() {
       std::bind(&AsyncGRPCServer::TryToRegisterNewSendOne, this);
   std::function<void()> get_register =
       std::bind(&AsyncGRPCServer::TryToRegisterNewGetOne, this);
+  std::function<void()> prefetch_register =
+      std::bind(&AsyncGRPCServer::TryToRegisterNewPrefetchOne, this);
 
   t_send_.reset(
       new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
@@ -163,11 +207,14 @@ void AsyncGRPCServer::RunSyncUpdate() {
   t_get_.reset(
       new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
                                 cq_get_.get(), "cq_get", get_register)));
-
+  t_prefetch_.reset(new std::thread(
+      std::bind(&AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
+                "cq_prefetch", prefetch_register)));
   // wait server
   server_->Wait();
   t_send_->join();
   t_get_->join();
+  t_prefetch_->join();
 }
 
 void AsyncGRPCServer::ShutdownQueue() {
@@ -201,6 +248,18 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
   RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_, dev_ctx_,
                                    &var_get_queue_);
   VLOG(4) << "Create RequestGet status:" << get->Status();
+}
+
+void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
+  std::unique_lock<std::mutex> lock(cq_mutex_);
+  if (is_shut_down_) {
+    return;
+  }
+  RequestPrefetch* prefetch =
+      new RequestPrefetch(&service_, cq_prefetch_.get(), scope_, dev_ctx_,
+                          executor_, program_, prefetch_blk_id_);
+
+  VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
 
 // FIXME(typhoonzero): change cq_name to enum.

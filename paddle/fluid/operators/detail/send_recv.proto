@@ -21,6 +21,8 @@ service SendRecvService {
   rpc SendVariable(VariableMessage) returns (VoidMessage) {}
   // Argument VariableMessage for GetVariable should only contain varname.
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
+  // Prefetch variable by Ids
+  rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 }
 
 // VariableMessage is serialized paddle variable message.
