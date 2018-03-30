@@ -131,7 +131,7 @@ void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
   if (local_buffer_->ctx_) {
     local_buffer_->ctx_->Wait();
   }
-  local_buffer.reset();
+  local_buffer_.reset();
 }
 
 void DoubleBufferReader::ReInit() {
