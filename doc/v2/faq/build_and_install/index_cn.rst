@@ -139,3 +139,77 @@ PaddlePaddle使用avx SIMD指令提高cpu执行效率，因此错误的使用二
     touch ../extern_mklml-stamp/extern_mklml-download
 
     // 4. 接着编译即可
+
+9. 在Mac上无法安装numpy等Python包，权限错误
+------------------
+
+Mac上对自带的Python和包有严格的权限保护，最好不要在自带的Python上安装。建议用virtualenv建立一个新的Python环境来操作。
+
+virtualenv的基本原理是将机器上的Python运行所需的运行环境完整地拷贝一份。我们可以在一台机器上制造多份拷贝，并在这多个拷贝之间自由切换，这样就相当于在一台机器上拥有了多个相互隔离、互不干扰的Python环境。
+
+下面简单介绍下如何用virtualenv为Paddle生成一个专用的Python环境：
+
+安装virtualenv：
+::::::::::::::::
+
+virtualenv本身也是Python的一个包，可以用pip进行安装：
+
+..  code-block:: bash
+
+    sudo -H pip install virtualenv
+
+由于virtualenv需要安装给系统自带的Python，因此需要使用sudo权限。
+
+创建一个新的Python运行环境：
+:::::::::::::::::::
+
+..  code-block:: bash
+
+    virtualenv --no-site-packages paddle
+
+--no-site-packages 参数表示不拷贝已有的任何第三方包，创造一个完全干净的新Python环境。后面的paddle是我们为这个新创建的环境取的名字。
+
+执行完这一步后，当前目录下应该会出现一个名为paddle（或者你取的其他名字）的目录。这个目录里保存了运行一个Python环境所需要的各种文件。
+
+启动运行环境：
+::::::::::::::::
+
+..  code-block:: bash
+
+    source paddle/bin/activate
+
+执行后会发现命令提示符前面增加了(paddle)字样，说明已经成功启动了名为‘paddle’的Python环境。执行which python，可以发现使用的已经是刚刚创建的paddle目录下的Python。
+
+在这个环境中，我们可以自由地进行Paddle的安装、使用和开发工作，无需担心对系统自带Python的影响。
+
+退出运行环境：
+:::::::::::::::
+
+直接执行：
+
+..  code-block:: bash
+
+    deactivate
+
+可以看到命令提示符前面的(paddle)字样消失。
+
+自动启动某一Python环境：
+::::::::::::::::
+
+如果我们经常使用Paddle，我们每次打开终端后都需要执行一下source paddle/bin/activate来启动环境，比较繁琐。为了简便，可以修改终端的配置文件，来让终端每次启动后自动启动特定的Python环境。
+
+执行:
+
+..  code-block:: bash
+
+    vi ~/.bash_profile
+
+打开终端配置文件，并在文件的最后添加一行：
+
+..  code-block:: bash
+
+    source paddle/bin/activate
+
+保存并关闭文件。
+
+这样，每次打开终端时就会自动启动名为‘paddle’的Python环境了。

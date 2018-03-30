@@ -41,6 +41,7 @@ from memory_optimization_transpiler import memory_optimize, release_memory
 import profiler
 import unique_name
 import recordio_writer
+from parallel_executor import ParallelExecutor
 
 Tensor = LoDTensor
 
@@ -68,6 +69,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'profiler',
     'unique_name',
     'recordio_writer',
+    'ParallelExecutor',
 ]
 
 

@@ -196,6 +196,34 @@ class TestFloor(OpTest):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestCos(OpTest):
+    def setUp(self):
+        self.op_type = "cos"
+        x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
+        self.inputs = {'X': x}
+        self.outputs = {'Out': np.cos(self.inputs['X'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestSin(OpTest):
+    def setUp(self):
+        self.op_type = "sin"
+        x = np.random.uniform(-1, 1, [4, 4]).astype("float32")
+        self.inputs = {'X': x}
+        self.outputs = {'Out': np.sin(self.inputs['X'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
 class TestRound(OpTest):
     def setUp(self):
         self.op_type = "round"

@@ -1,4 +1,7 @@
 HOW TO
 ------------
 
-This is how to page
+.. toctree::
+  :maxdepth: 1
+
+  optimization/index_en.rst
