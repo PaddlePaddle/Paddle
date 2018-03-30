@@ -99,7 +99,7 @@ private:
     - 由于传递过程是以复制`shared_ptr`的方式实现，因此框架只需要传递一次 `lod_start_pos`
 
 2. 对于不感知 `lod_start_pos` 的Op足够透明
-3. 需要修改 `lod_start_pos` 的producer Op可以在 `Run` 时更新自己的 `lod_start_pos` 数据 
+3. 需要修改 `lod_start_pos` 的producer Op可以在 `Run` 时更新自己的 `lod_start_pos` 数据
 
 具体的设计分为以下3小节
 
@@ -189,7 +189,7 @@ struct SortedSeqItem {
 
 std::vector<SortedSeqItem> sorted_seqs;
 ```
-来追踪序列排序后的位置，并添加一个新的接口 
+来追踪序列排序后的位置，并添加一个新的接口
 
 ```c++
 std::vector<SortedSeqItem> SortBySeqLen(const LODTensor& tensor);
@@ -233,7 +233,10 @@ x    x
 - 将每个序列concat 为规则的mini-batch表示
 
 ## 参考文献
-1. [Tensorflow Bucketing](https://www.tensorflow.org/versions/r0.12/api_docs/python/contrib.training/bucketing)
-2. [mxnet Bucketing](http://mxnet.io/how_to/bucketing.html)
-3. [variable length input in RNN scenario](https://discuss.pytorch.org/t/about-the-variable-length-input-in-rnn-scenario/345/5)
-4. [Level of details](https://en.wikipedia.org/wiki/Level_of_detail)
+[Tensorflow Bucketing](https://www.tensorflow.org/versions/r0.12/api_docs/python/contrib.training/bucketing)
+
+[mxnet Bucketing](http://mxnet.io/how_to/bucketing.html)
+
+[variable length input in RNN scenario](https://discuss.pytorch.org/t/about-the-variable-length-input-in-rnn-scenario/345/5)
+
+[Level of details](https://en.wikipedia.org/wiki/Level_of_detail)

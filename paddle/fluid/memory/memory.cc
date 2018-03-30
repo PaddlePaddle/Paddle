@@ -71,7 +71,7 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   }
   platform::SetDeviceId(gpu_id);
   if (!as[gpu_id]) {
-    as[gpu_id] = new BuddyAllocator(new detail::GPUAllocator,
+    as[gpu_id] = new BuddyAllocator(new detail::GPUAllocator(gpu_id),
                                     platform::GpuMinChunkSize(),
                                     platform::GpuMaxChunkSize());
     VLOG(10) << "\n\nNOTE: each GPU device use "
