@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <mutex>
+#include <thread>
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 #include "paddle/fluid/recordio/scanner.h"
 
 namespace paddle {
 namespace operators {
 namespace reader {
+template <bool ThreadSafe>
 class RecordIOFileReader : public framework::FileReader {
  public:
   explicit RecordIOFileReader(const std::string& filename,
@@ -25,7 +28,12 @@ class RecordIOFileReader : public framework::FileReader {
       : FileReader(dims),
         scanner_(filename),
         dev_ctx_(*platform::DeviceContextPool::Instance().Get(
-            platform::CPUPlace())) {}
+            platform::CPUPlace())) {
+    if (ThreadSafe) {
+      mutex_.reset(new std::mutex());
+    }
+    LOG(INFO) << "Creating file reader" << filename;
+  }
 
   bool HasNext() const override { return scanner_.HasNext(); }
 
@@ -33,10 +41,16 @@ class RecordIOFileReader : public framework::FileReader {
 
  protected:
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
-    *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+    if (ThreadSafe) {
+      std::lock_guard<std::mutex> guard(*mutex_);
+      *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+    } else {
+      *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+    }
   }
 
  private:
+  std::unique_ptr<std::mutex> mutex_;
   recordio::Scanner scanner_;
   const platform::DeviceContext& dev_ctx_;
 };
@@ -59,8 +73,9 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(
-        new RecordIOFileReader(filename, RestoreShapes(shape_concat, ranks)));
+
+    out->Reset(new RecordIOFileReader<true>(
+        filename, RestoreShapes(shape_concat, ranks)));
   }
 };
 
@@ -87,4 +102,4 @@ REGISTER_FILE_READER_OPERATOR(create_recordio_file_reader,
                               reader::CreateRecordIOReaderOp,
                               reader::CreateRecordIOReaderOpMaker);
 
-REGISTER_FILE_READER(recordio, reader::RecordIOFileReader);
+REGISTER_FILE_READER(recordio, reader::RecordIOFileReader<false>);

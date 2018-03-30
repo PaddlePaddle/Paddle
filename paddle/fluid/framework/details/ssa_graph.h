@@ -12,26 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/reader.h"
+#pragma once
+
+#include <map>
+#include <string>
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 
 namespace paddle {
 namespace framework {
-ReaderBase::~ReaderBase() {}
+namespace details {
 
-FileReader::FileReader(const std::vector<DDim> &dims) : dims_(dims) {}
+struct SSAGraph {
+  std::vector<std::unordered_map<std::string, std::map<int, VarHandle>>> vars_;
+  // aux variables to represent dependency. Useful to resolve data hazard.
+  std::unordered_set<std::unique_ptr<VarHandleBase>> dep_vars_;
+  std::vector<std::unique_ptr<OpHandleBase>> ops_;
+};
 
-void FileReader::ReadNext(std::vector<LoDTensor> *out) {
-  ReadNextImpl(out);
-  PADDLE_ENFORCE_EQ(out->size(), dims_.size());
-  for (size_t i = 0; i < dims_.size(); ++i) {
-    auto &actual = out->at(i).dims();
-    auto &expect = dims_[i];
-
-    PADDLE_ENFORCE_EQ(actual.size(), expect.size());
-    for (int j = 0; j < actual.size(); ++j) {
-      //      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
-    }
-  }
-}
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle
