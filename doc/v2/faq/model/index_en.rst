@@ -12,8 +12,6 @@ The general reason for this error is that users may have set the same value for 
 2. How to use :code:`paddle.layer.memory`'s attribute :code:`name`
 ----------------------------------------------------------------------
 
-* :code:`paddle.layer.memory` 用于获取特定layer上一时间步的输出，该layer是通过参数 :code:`name` 指定，即，:code:`paddle.layer.memory` 会关联参数 :code:`name` 取值相同的layer，并将该layer上一时间步的输出作为自身当前时间步的输出。
-
 * :code:`paddle.layer.memory` is used to get the output of a layer's last timestep and the layer is specified by the attribute :code:`name` . Thus,  :code:`paddle.layer.memory` will associate with the layer that has the same value of attribute :code:`name` , and uses the output of the layer's last timestep as the input of its current timestep.
 
 * All the PaddlePaddle's layers have a unique name, which is set by the attribute :code:`name` . PaddlePaddle will automatically set it for the user when it is not explicitly set. :code:`paddle.layer.memory` is not a real layer, its name is set by the attribute :code:`memory_name`  and PaddlePaddle will also automatically set it when the user does not explicitly set. The :code:`paddle.layer.memory` attribute :code:`name` is used to specify the layer it is associated with, and needs to be explicitly set by the user.
@@ -64,8 +62,6 @@ According to implementations, recurrent layer can be classified into 2 types:
   * Users can only access output values when using this type of recurrent layers.
   * :code:`paddle.networks.lstmemory_group` , :code:`paddle.networks.simple_lstm` and  :code:`paddle.networks.bidirectional_lstm` belong to this type of recurrent layer；
 
-将recurrent layer作为一个整体来实现， 能够针对CPU和GPU的计算做更多优化， 所以相比于recurrent group的实现方式， 第二类 recurrent layer 计算效率更高。 在实际应用中，如果用户不需要访问LSTM的中间变量，而只需要获得recurrent layer计算的输出，我们建议使用第二类实现。
-
 By implementing recurrent layer as a complete operation, CPU and GPU calculations can be optimized. Therefore, the second type of recurrent layer is more efficient than the first one. In practical applications, we propose to use the second type of recurrent layers if there is no need to access the intermediate variable of LSTM.
 
 In addition, PaddlePaddle also contains a kind of LSTM calculation unit: :code:`paddle.networks.lstmemory_unit`:
@@ -79,7 +75,7 @@ In addition, PaddlePaddle also contains a kind of LSTM calculation unit: :code:`
 We can't specify calculation dimension for PaddlePaddle's softmax. It can only be calculated by rows.
 In image tasks, for NCHW, if you need to calculate softmax in C dimension, you could use :code:`paddle.layer.switch_order` to change the dimension order, that is, convert NCHW to NHWC, then do the reshape operation and calculate softmax.
 
-6. Does PaddlePaddle support variable-dimensional data input
+6. Does PaddlePaddle support variable-dimensional data inputs
 ----------------------------------------------------------------
 
 PaddlePaddle provides :code:`paddle.data_type.dense_array` to support variable-dimensional data input. Simply set the dimension of the data layer to a value larger than the dimension of the input data for occupancy.
