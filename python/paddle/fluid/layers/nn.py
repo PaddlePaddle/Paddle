@@ -167,8 +167,9 @@ def fc(input,
             shape=param_shape,
             dtype=dtype,
             is_bias=False)
-        bias_attr = False
-        if bias_attr is not None:
+        if bias_attr is None or bias_attr is False:
+            bias_attr = False
+        else:
             bias_attr = True
         helper.append_op(
             type="fc",
