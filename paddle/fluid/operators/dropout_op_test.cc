@@ -32,9 +32,9 @@ namespace m = paddle::operators::math;
 
 USE_OP(dropout);
 
-void Compare(const f::Scope& scope, const p::DeviceContext& ctx) {
+void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
-  auto var = scope.Var("X");
+  auto var = scope->Var("X");
   auto tensor = var->GetMutable<f::LoDTensor>();
   tensor->Resize({10, 10});
 
@@ -46,12 +46,12 @@ void Compare(const f::Scope& scope, const p::DeviceContext& ctx) {
   TensorFromVector(init, ctx, tensor);
 
   auto place = ctx.GetPlace();
-  auto out_var = scope.Var("Out");
+  auto out_var = scope->Var("Out");
   auto out_tensor = out_var->GetMutable<f::LoDTensor>();
   out_tensor->Resize({10, 10});
   out_tensor->mutable_data<float>(place);  // allocate
 
-  auto mask_var = scope.Var("Mask");
+  auto mask_var = scope->Var("Mask");
   auto mask_tensor = mask_var->GetMutable<f::LoDTensor>();
   mask_tensor->Resize({10, 10});
   mask_tensor->mutable_data<float>(place);  // allocate
@@ -65,7 +65,7 @@ void Compare(const f::Scope& scope, const p::DeviceContext& ctx) {
   auto dropout_op = f::OpRegistry::CreateOp(
       "dropout", {{"X", {"X"}}}, {{"Out", {"Out"}}, {"Mask", {"Mask"}}}, attrs);
 
-  dropout_op->Run(scope, place);
+  dropout_op->Run(*scope, place);
 
   std::vector<float> out_vec;
   TensorToVector(*out_tensor, ctx, &out_vec);
