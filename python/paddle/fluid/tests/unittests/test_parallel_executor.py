@@ -425,4 +425,5 @@ class TestTransformer(TestParallelExecutorBase):
                 writer.complete_append_tensor()
 
     def test_main(self):
-        self.check_network_convergence(transformer)
+        self.check_network_convergence(
+            transformer, batch_size=transformer_model.batch_size)
