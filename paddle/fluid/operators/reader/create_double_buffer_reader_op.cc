@@ -151,6 +151,14 @@ void DoubleBufferReader::PrefetchThreadFunc() {
       auto& gpu_ctx = this->ctxs_[gpu_ctx_offset++];
       gpu_batch.resize(batch->payloads_.size());
       for (size_t i = 0; i < batch->payloads_.size(); ++i) {
+        if (batch->payloads_[i].type() == typeid(float)) {  // NOLINT
+          VLOG(10) << batch->payloads_[i]
+                          .data<float>()[batch->payloads_[i].numel() - 1];
+        } else if (batch->payloads_[i].type() == typeid(int64_t)) {  // NOLINT
+          VLOG(10) << batch->payloads_[i]
+                          .data<int64_t>()[batch->payloads_[i].numel() - 1];
+        }
+
         framework::TensorCopy(batch->payloads_[i], place_, *gpu_ctx,
                               &gpu_batch[i]);
         gpu_batch[i].set_lod(batch->payloads_[i].lod());
