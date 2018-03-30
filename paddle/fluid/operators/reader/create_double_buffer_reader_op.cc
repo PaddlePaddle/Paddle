@@ -154,7 +154,7 @@ void DoubleBufferReader::PrefetchThreadFunc() {
         framework::TensorCopy(batch->payloads_[i], place_, *gpu_ctx,
                               &gpu_batch[i]);
         gpu_batch[i].set_lod(batch->payloads_[i].lod());
-        gpu_ctx->Wait();
+        PADDLE_ENFORCE(cudaDeviceSynchronize());
       }
       batch->ctx_ = gpu_ctx.get();
       batch->payloads_ = gpu_batch;
