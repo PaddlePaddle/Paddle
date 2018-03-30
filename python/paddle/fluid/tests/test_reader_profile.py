@@ -237,3 +237,4 @@ if __name__ == "__main__":
     print("Complete trans.")
     print_arguments()
     main_train()
+    exit(0)
