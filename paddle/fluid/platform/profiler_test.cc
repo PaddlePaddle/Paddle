@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
+#include "cuda_runtime.h"
 #include "gtest/gtest.h"
 
 TEST(Event, CpuElapsedTime) {
@@ -156,4 +157,12 @@ TEST(RecordEvent, RecordEvent) {
 
   // Will remove parsing-related code from test later
   DisableProfiler(EventSortingKey::kTotal, "/tmp/profiler");
+}
+
+TEST(TMP, stream_wait) {
+  cudaStream_t stream;
+  cudaStreamCreate(&stream);
+  cudaStreamSynchronize(stream);
+  cudaStreamSynchronize(stream);
+  cudaStreamSynchronize(stream);
 }

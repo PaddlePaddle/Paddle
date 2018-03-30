@@ -1,6 +1,6 @@
-## Optimizer Design
+# Optimizer Design
 
-### The Problem
+## The Problem
 
 A PaddlePaddle program, or a block, is a sequence of operators operating variables.  A training program needs to do three kinds of works:
 
@@ -19,7 +19,7 @@ It's true that users should be able to create all these operators manually by ca
 In this design, we propose a high-level API that automatically derives the optimisation pass and operators from the forward pass.
 
 
-### High-level Python API to describe the training process
+## High-level Python API to describe the training process
 
 1. User write code to describe the network:
 
@@ -54,7 +54,7 @@ In this design, we propose a high-level API that automatically derives the optim
 	sess.run(target= opt_op_list, ...)
 	```
 
-#### Optimizer Python interface:
+### Optimizer Python interface:
 
 ```python
 class Optimizer(object):
