@@ -190,6 +190,7 @@ void ThreadedSSAGraphExecutor::RunOp(
       PADDLE_ENFORCE(cudaDeviceSynchronize());
       ready_var_q.Extend(op->outputs_);
     } catch (platform::EnforceNotMet ex) {
+      LOG(WARNING) << "Operator " << op->ErrorDebugString() << " error.";
       exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";

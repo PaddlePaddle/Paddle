@@ -33,6 +33,8 @@ struct ComputationOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
+  std::string ErrorDebugString() const override;
+
  protected:
   void RunImpl() override;
 };

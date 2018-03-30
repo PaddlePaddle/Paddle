@@ -41,6 +41,8 @@ class OpHandleBase {
 
   std::string DebugString() const;
 
+  virtual std::string ErrorDebugString() const;
+
   virtual std::string Name() const = 0;
 
   virtual ~OpHandleBase();

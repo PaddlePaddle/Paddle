@@ -37,6 +37,10 @@ void ComputationOpHandle::RunImpl() {
 }
 
 std::string ComputationOpHandle::Name() const { return op_->Type(); }
+
+std::string ComputationOpHandle::ErrorDebugString() const {
+  return op_->DebugStringEx(scope_);
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

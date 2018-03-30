@@ -97,6 +97,8 @@ void OpHandleBase::AddOutput(VarHandleBase *out) {
   out->generated_op_ = this;
 }
 
+std::string OpHandleBase::ErrorDebugString() const { return DebugString(); }
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
