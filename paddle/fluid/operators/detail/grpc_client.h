@@ -172,6 +172,13 @@ class RPCClient {
                         const std::string& var_name,
                         int64_t time_out = 600 * 1000);
 
+  bool AsyncPrefetchVariable(const std::string& ep,
+                             const platform::DeviceContext& ctx,
+                             const framework::Scope& scope,
+                             const std::string& in_var_name,
+                             const std::string& out_var_name,
+                             int64_t time_out = 600 * 1000);
+
   void AsyncSendBatchBarrier(const std::string& ep,
                              int64_t time_out = 600 * 1000);
 
