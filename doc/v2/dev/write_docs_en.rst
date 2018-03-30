@@ -111,13 +111,13 @@ If you do not wish to use Docker, you can also use the following commands to dir
 
 $processors indicates that as many processes as the CPU cores are started to compile in parallel. It should be set according to the number of CPU cores of your machine.
 
-After the compilation is complete, enter the ``doc/v2`` directory. If you chose to build documents, it will generate ``cn/html/`` and ``en/html`` subdirectories under this directory. If you chose to build APIs，it will generate``api/en/html`` subdirectory. Please enter these directories respectively and execute the following commands:
+After the compilation is complete, there should be two generated directories: ``doc/v2`` and ``doc/fluid`` . If you chose to build documents, two subdirectories ``cn/html/`` and ``en/html``  will be generated in both two directories. If you chose to build APIs，a subdirectory ``api/en/html`` will be generated. Please enter these directories respectively and execute the following commands:
 
 .. code-block:: bash
 
    python -m SimpleHTTPServer 8088
 
-Use a web browser and navigate to http://localhost:8000, you could see the compiled Chinese/English documents page and the English APIs page. The following figure is an example of the built English documents home page. Note that due to the sphinx's original theme used in the example, the style of the page is not consistent with the official website, but this does not affect the developer's debugging.
+Use a web browser and navigate to http://localhost:8000, you could see the compiled  ``v2`` 's and ``fluid`` 's Chinese/English documents page and English APIs page. The following figure is an example of the built ``v2`` 's English documents home page. Note that due to the sphinx's original theme used in the example, the style of the page is not consistent with the official website, but this does not affect the developer's debugging.
 
 ..  image:: src/doc_en.png
     :align: center
