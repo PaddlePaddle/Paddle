@@ -147,7 +147,6 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
-  SetDeviceId(place_.device);
   Wait();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
   if (cudnn_handle_ != nullptr) {
@@ -161,6 +160,7 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
+  SetDeviceId(place_.device);
   std::lock_guard<std::mutex> guard(mutex_);
   PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
   PADDLE_ENFORCE(cudaGetLastError());
