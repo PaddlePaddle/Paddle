@@ -424,6 +424,5 @@ class TestTransformer(TestParallelExecutorBase):
                     writer.append_tensor(t)
                 writer.complete_append_tensor()
 
-    @unittest.skip("transformer is buggy in multi gpu")
     def test_main(self):
         self.check_network_convergence(transformer)
