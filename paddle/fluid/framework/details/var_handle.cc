@@ -12,26 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 
 namespace paddle {
 namespace framework {
-ReaderBase::~ReaderBase() {}
+namespace details {
 
-FileReader::FileReader(const std::vector<DDim> &dims) : dims_(dims) {}
+VarHandleBase::~VarHandleBase() {}
 
-void FileReader::ReadNext(std::vector<LoDTensor> *out) {
-  ReadNextImpl(out);
-  PADDLE_ENFORCE_EQ(out->size(), dims_.size());
-  for (size_t i = 0; i < dims_.size(); ++i) {
-    auto &actual = out->at(i).dims();
-    auto &expect = dims_[i];
-
-    PADDLE_ENFORCE_EQ(actual.size(), expect.size());
-    for (int j = 0; j < actual.size(); ++j) {
-      //      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
-    }
-  }
+std::string VarHandle::DebugString() const {
+  std::stringstream ss;
+  ss << name_ << ":" << place_;
+  return ss.str();
 }
+
+std::string DummyVarHandle::DebugString() const { return "dummy"; }
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle

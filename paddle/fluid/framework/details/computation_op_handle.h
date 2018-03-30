@@ -12,26 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/reader.h"
+#pragma once
+
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
-ReaderBase::~ReaderBase() {}
+namespace details {
+struct ComputationOpHandle : public OpHandleBase {
+  std::unique_ptr<OperatorBase> op_;
+  Scope *scope_;
+  platform::Place place_;
 
-FileReader::FileReader(const std::vector<DDim> &dims) : dims_(dims) {}
+  ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
+                      platform::Place place);
 
-void FileReader::ReadNext(std::vector<LoDTensor> *out) {
-  ReadNextImpl(out);
-  PADDLE_ENFORCE_EQ(out->size(), dims_.size());
-  for (size_t i = 0; i < dims_.size(); ++i) {
-    auto &actual = out->at(i).dims();
-    auto &expect = dims_[i];
+  std::string Name() const override;
 
-    PADDLE_ENFORCE_EQ(actual.size(), expect.size());
-    for (int j = 0; j < actual.size(); ++j) {
-      //      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
-    }
-  }
-}
+ protected:
+  void RunImpl() override;
+};
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle

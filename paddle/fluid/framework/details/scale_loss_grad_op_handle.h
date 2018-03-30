@@ -12,26 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/reader.h"
+#pragma once
+
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
-ReaderBase::~ReaderBase() {}
+namespace details {
 
-FileReader::FileReader(const std::vector<DDim> &dims) : dims_(dims) {}
+struct ScaleLossGradOpHandle : public OpHandleBase {
+  float coeff_;
+  Scope *scope_;
+  platform::Place place_;
 
-void FileReader::ReadNext(std::vector<LoDTensor> *out) {
-  ReadNextImpl(out);
-  PADDLE_ENFORCE_EQ(out->size(), dims_.size());
-  for (size_t i = 0; i < dims_.size(); ++i) {
-    auto &actual = out->at(i).dims();
-    auto &expect = dims_[i];
+  ScaleLossGradOpHandle(size_t num_dev, Scope *scope, platform::Place place,
+                        platform::DeviceContext *context);
 
-    PADDLE_ENFORCE_EQ(actual.size(), expect.size());
-    for (int j = 0; j < actual.size(); ++j) {
-      //      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
-    }
-  }
-}
+  ~ScaleLossGradOpHandle() final;
+
+  std::string Name() const override;
+
+ protected:
+  void RunImpl() override;
+};
+
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle
