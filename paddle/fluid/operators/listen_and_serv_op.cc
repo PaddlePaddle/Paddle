@@ -156,7 +156,7 @@ class ListenAndServOp : public framework::OperatorBase {
       // NOTE: if is_gpu_place, CUDA kernels are laugched by multiple threads
       // and this will still work.
 
-      // The optimize block which has the same parent ID would run parallel
+      // The optimize blocks which have the same parent ID would run parallel
       // TODO(Yancey1989): need to use ParallelExecutor for future
       size_t last_parent_blkid = program->Block(1).Parent();
       std::vector<size_t> parallel_blkids;
