@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include <future>
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -53,7 +54,7 @@ class SendVarsOp : public framework::OperatorBase {
     auto ins = Inputs("X");
 
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    int sync_send = Attr<int>("sync_sent");
+    int sync_send = Attr<int>("sync_send");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
@@ -62,6 +63,8 @@ class SendVarsOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(client_var_name),
                             "Can not find variable '%s' in the scope.",
                             client_var_name);
+    platform::RecordEvent record_event(Type(), &ctx);
+
     auto* client_var = scope.FindVar(client_var_name);
     detail::RPCClient* rpc_client = client_var->GetMutable<detail::RPCClient>();
 
@@ -95,7 +98,7 @@ Send operator
 
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
-    AddAttr<int>("ync_send",
+    AddAttr<int>("sync_send",
                  "(int, default 0)"
                  "sync send or async send.")
         .SetDefault(0);
