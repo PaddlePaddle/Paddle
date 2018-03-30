@@ -1,3 +1,4 @@
+add_subdirectory(details)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -87,6 +88,9 @@ cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glo
 cc_library(executor SRCS executor.cc DEPS op_registry device_context scope
 framework_proto backward glog lod_rank_table feed_fetch_method)
 
+
+cc_library(parallel_executor SRCS parallel_executor.cc DEPS multi_devices_graph_builder threaded_ssa_graph_executor)
+
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -100,7 +104,7 @@ cc_test(init_test SRCS init_test.cc DEPS init)
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
       
-cc_test(channel_test SRCS channel_test.cc)
+# cc_test(channel_test SRCS channel_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 cc_test(concurrency_test SRCS concurrency_test.cc DEPS go_op channel_close_op channel_create_op
         channel_send_op channel_recv_op sum_op select_op elementwise_add_op compare_op
