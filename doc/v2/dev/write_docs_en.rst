@@ -96,21 +96,18 @@ If you do not wish to use Docker, you can also use the following commands to dir
 
 .. code-block:: bash
 
-   mkdir paddle
-   cd paddle
+
    git clone https://github.com/PaddlePaddle/Paddle.git
+   cd Paddle
    mkdir -p build
    cd build
    cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
 
    # If you only need to build documents, use the following commands
-   make -j $processors gen_proto_py
-   make -j $processors paddle_docs paddle_docs_cn
+   make -j $processors paddle_docs
 
    # If you only need to build APIs, use the following commands
-   make -j $processors gen_proto_py framework_py_proto
-   make -j $processors copy_paddle_pybind
-   make -j $processors paddle_api_docs
+   make -j $processors paddle_apis
 
 $processors indicates that as many processes as the CPU cores are started to compile in parallel. It should be set according to the number of CPU cores of your machine.
 

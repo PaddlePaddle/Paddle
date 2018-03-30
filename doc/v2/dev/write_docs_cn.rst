@@ -100,13 +100,10 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
    cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
 
    # 如果只需要构建使用文档，则执行以下命令
-   make -j $processors gen_proto_py
-   make -j $processors paddle_docs paddle_docs_cn
+   make -j $processors paddle_docs
 
    # 如果只需要构建API，则执行以下命令
-   make -j $processors gen_proto_py framework_py_proto
-   make -j $processors copy_paddle_pybind
-   make -j $processors paddle_api_docs
+   make -j $processors paddle_apis
 
 其中$processors代表启动和CPU核一样多的进程来并行编译，可以根据本机的CPU核数设置相应的值。
 
