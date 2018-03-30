@@ -153,9 +153,9 @@ void DoubleBufferReader::PrefetchThreadFunc() {
         framework::TensorCopy(batch->payloads_[i], place_, *gpu_ctx,
                               &gpu_batch[i]);
         gpu_batch[i].set_lod(batch->payloads_[i].lod());
+        gpu_ctx->Wait();
       }
       batch->ctx_ = gpu_ctx.get();
-      batch->ctx_->Wait();
       std::swap(gpu_batch, batch->payloads_);
     }
 

@@ -148,7 +148,7 @@ class TestDoubleBuffer(unittest.TestCase):
             images, label = fluid.layers.read_file(data_file)
 
             net = vgg16_bn_drop(images)
-            predict = fluid.layers.fc(input=net, size=102, act='softmax')
+            predict = fluid.layers.fc(input=net, size=1000, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(x=cost)
             optimizer = fluid.optimizer.Adam(learning_rate=1e-4)
