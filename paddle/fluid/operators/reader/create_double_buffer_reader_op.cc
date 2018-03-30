@@ -142,13 +142,17 @@ void DoubleBufferReader::ReInit() {
 void DoubleBufferReader::PrefetchThreadFunc() {
   VLOG(5) << "A new prefetch thread starts.";
   size_t gpu_ctx_offset = 0;
+  std::vector<std::vector<framework::LoDTensor>> gpu_tensors;
+  gpu_tensors.resize(2);  // double buffer
+
   while (reader_->HasNext()) {
     Item* batch = new Item();
     reader_->ReadNext(&batch->payloads_);
     if (platform::is_gpu_place(place_)) {
-      std::vector<framework::LoDTensor> gpu_batch;
       gpu_ctx_offset %= this->ctxs_.size();
-      auto& gpu_ctx = this->ctxs_[gpu_ctx_offset++];
+      auto& gpu_ctx = this->ctxs_[gpu_ctx_offset];
+      auto& gpu_batch = gpu_tensors[gpu_ctx_offset];
+      ++gpu_ctx_offset;
       gpu_batch.resize(batch->payloads_.size());
       for (size_t i = 0; i < batch->payloads_.size(); ++i) {
         if (batch->payloads_[i].type() == typeid(float)) {  // NOLINT
