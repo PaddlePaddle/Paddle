@@ -78,6 +78,7 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    VLOG(10) << "Create/Reset Double Buffer Reader";
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))
