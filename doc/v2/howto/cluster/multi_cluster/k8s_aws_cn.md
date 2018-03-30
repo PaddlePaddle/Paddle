@@ -1,10 +1,12 @@
 
 # Kubernetes on AWS
-
-We will show you step by step on how to run distributed PaddlePaddle training on AWS cluster with Kubernetes. Let's start from core concepts.
-
-## Distributed PaddlePaddle Training Core Concepts
-
+我们将向你展示怎么样在AWS的kubernetes集群上运行分布式paddlepaddle训练，让我们从核心概念开始
+## 分布式paddlepaddle训练的核心概念
+一个分布式训练任务可以看做是一个kubernetes任务
+每一个kubernetes任务都有相应的配置文件，此配置文件指定了像任务的pods和环境变量信息
+在分布式训练任务中，我们可以如下操作：
+1. 在分布式文件系统中，准备分区数据和配置文件（在此次教学中，我们会用到亚马逊分布式存储服务（EFS））
+2. 创建和提交一个kubernetes任务配置到集群中开始训练
 
 #kubernetes on aws
 我们将向你展示怎么样在AWS的kubernetes集群上运行分布式paddlepaddle训练，让我们从核心概念开始
