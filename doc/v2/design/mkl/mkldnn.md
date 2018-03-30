@@ -44,7 +44,7 @@ MKL，MKLML以及MKL-DNN三者关系如下表：
 
 | Name        |  Open Source     | License     | Descriptions  |
 | :---------- | :--------------- | :---------- | :------------ |
-|   MKL       |     No           | Proprietary | Accelerate math processing routines | 
+|   MKL       |     No           | Proprietary | Accelerate math processing routines |
 |   MKLML     |     No           | Proprietary | Small package of MKL, especially for Machine Learning |
 |   MKL-DNN   |     Yes          | Apache 2.0  | Accelerate primitives processing routines especially for Deep Neural Networks  |
 
@@ -89,7 +89,7 @@ PaddlePaddle/Paddle
 ### CMake
 在`CMakeLists.txt`中提供一个与MKL有关的总开关：`WITH_MKL`，它负责决定编译时是否使用MKLML和MKL-DNN
 
-- `WITH_MKLML` 控制是否使用MKLML库。 
+- `WITH_MKLML` 控制是否使用MKLML库。
 当打开`WITH_MKL`时，会自动使用MKLML库作为PaddlePaddle的CBLAS和LAPACK库，同时会开启Intel OpenMP用于提高MKLML的性能。
 编译时会把对应的头文件和库放在`build/third_party/install/mklml/*`目录下对应的地方。
 MKLML的库目前都是动态库，主要包括`libiomp5.so`和`libmklml_intel.so`。
@@ -172,7 +172,7 @@ if use_mkldnn
     self.layer_type = mkldnn_*
 ```
 
-所有MKL-DNN的`layer_type`会以*mkldnn_*开头，这些会在`MKLDNN*Layer`注册layer的时候保证，以示区分。 
+所有MKL-DNN的`layer_type`会以*mkldnn_*开头，这些会在`MKLDNN*Layer`注册layer的时候保证，以示区分。
 
 同时,会在`paddle/utils.Flags`中添加一个`use_mkldnn`的flag，用于选择是否使用MKL-DNN的相关功能。
 

@@ -1,4 +1,4 @@
-if(NOT WITH_FLUID)
+if(NOT WITH_FLUID_ONLY)
   add_subdirectory(cuda)
   add_subdirectory(function)
   add_subdirectory(utils)
