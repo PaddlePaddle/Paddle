@@ -621,9 +621,9 @@ mkdir efs
 sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 EFS_DNS_NAME:/ efs
 ```
 
-`EFS_DNS_NAME`: DNS name as shown in description of `paddle-efs` that we created. Look similar to `fs-2cbf7385.efs.us-west-2.amazonaws.com`.
+`EFS_DNS_NAME`: DNS名称最好能描述我们创建的`paddle-efs`，看起来像`fs-2cbf7385.efs.us-west-2.amazonaws.com`.
 
-Now folder `efs` will have structure similar to:
+文件夹`efs`上有这结构相似的node信息:
 ```
 -- paddle-cluster-job
     |-- ...
@@ -645,29 +645,28 @@ Now folder `efs` will have structure similar to:
     |   |   `-- trainer_config.lr.py
 	|   |-- pass-00001...
 ```
-`server.log` contains log for `pserver`. `train.log` contains log for `trainer`. Model description and snapshot is stored in `pass-0000*`.
+`server.log` 是`pserver`的log日志，`train.log`是`trainer`的log日志，模型快照和描述存放在`pass-0000*`.
 
-### Kubernetes Cluster Tear Down
+### kubernetes集群卸载或删除
 
-#### Delete EFS
+#### 删除EFS
 
-Go to [EFS Console](https://us-west-2.console.aws.amazon.com/efs/home?region=us-west-2) and delete the EFS volumn that we created.
+到[EFS Console](https://us-west-2.console.aws.amazon.com/efs/home?region=us-west-2) 中删除创建的EFS卷
 
-#### Delete security group
+#### 删除安全组
 
-Go to [Security Group Console](https://us-west-2.console.aws.amazon.com/ec2/v2/home?region=us-west-2#SecurityGroups:sort=groupId) and delete security group `paddle-efs`.
+去[Security Group Console](https://us-west-2.console.aws.amazon.com/ec2/v2/home?region=us-west-2#SecurityGroups:sort=groupId) 删除安全组`paddle-efs`.
 
+#### 删除S3 bucket
 
-#### Delete S3 Bucket
+进入 [S3 Console](https://console.aws.amazon.com/s3/home?region=us-west-2#)删除S3 bucket
 
-Go to [S3 Console](https://console.aws.amazon.com/s3/home?region=us-west-2#) and delete the S3 bucket that we created.
-
-#### Destroy Cluster
+#### 销毁集群
 
 ```
 kube-aws destroy
 ```
 
-The command will return immediately, but it might take 5 min to tear down the whole cluster.
+命令会立刻返回，但需要大约5分钟来销毁集群
 
-You can go to [CludFormation Console](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks?filter=active) to check destroy process.
+可以进入 [CludFormation Console](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks?filter=active)检查销毁的过程。
