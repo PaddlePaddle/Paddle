@@ -1,4 +1,4 @@
-## Design Doc: Distributed Lookup Table Operator
+# Design Doc: Distributed Lookup Table Operator
 
 A lookup table operator in PaddlePaddle where the table could be out
 of the memory of a computer.

@@ -122,7 +122,8 @@ void StartServerNet(bool is_sparse) {
 
   // sub program run in listen_and_serv_op, for simple test we use sum
   f::ProgramDesc program;
-  f::BlockDesc *optimize_block = program.MutableBlock(0);
+  const auto &root_block = program.Block(0);
+  auto *optimize_block = program.AppendBlock(root_block);
   // X for server side tensors, RX for received tensers, must be of same shape.
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
 
