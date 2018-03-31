@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-// 'Double buffer' means we shall maintain two batch of input data at the same
+// 'Double buffer' means we shall maintain two batches of input data at the same
 // time. So the kCacheSize shoul be at least 2.
 static constexpr size_t kCacheSize = 2;
 // There will be two bacthes out of the channel during training:
