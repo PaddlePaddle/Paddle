@@ -16,23 +16,23 @@ API Doc should contain the following parts(please write them in order):
 - Function Description
 
   Description of API's function. 
-  The discription includes: meaning, purpose and operation on input of API, reference and corresponding link(if any), formula(if necessary) and explanations of key variables in the formula.
+  The description includes: meaning, purpose and operation on input of API, reference and corresponding link(if any), formula(if necessary) and explanations of key variables in the formula.
 
 - Args Description
 
   Description of API parameters.
   Introduce parameters one by one according to the order in API definition.
-  The introduction includes: data type, defualt value(if any), meaning, etc.
+  The introduction includes: data type, default value(if any), meaning, etc.
 
 - Returns
 
   Introduction of API returned value.
-  Introduce meaning of returned value, provide corrspoding format if necessary.
-  If returned value is tuple containing multiple parameters, then introduce parameters one by one in order.
+  Introduce meaning of returned value, provide correspoding format if necessary.
+  If returned value is a tuple containing multiple parameters, then introduce parameters one by one in order.
 
 - Raises（if any）
 
-  Abnormity, error that may occur, and possible reasons. If there are more than one possible abnormity or error, they should be listed in order. 
+   Abnormality, error that may occur, and possible reasons. If there are more than one possible abnormity or error, they should be listed in order. 
 
 - Note（if any）
 
