@@ -112,6 +112,10 @@ class ListenAndServOp : public framework::OperatorBase {
 
     framework::Executor executor(dev_place);
 
+    rpc_service_->SetExecutor(&executor);
+    rpc_service_->SetPrefetchBlkdId(0);
+    rpc_service_->SetProgram(program);
+
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
     // Record received sparse variables, so that
