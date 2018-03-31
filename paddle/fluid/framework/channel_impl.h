@@ -138,8 +138,8 @@ void ChannelImpl<T>::Send(T *item) {
 
   // If channel is closed, throw exception
   if (closed_) {
-    lock.unlock();
     send_return();
+    lock.unlock();
     PADDLE_THROW("Cannot send on closed channel");
   }
 
@@ -152,11 +152,9 @@ void ChannelImpl<T>::Send(T *item) {
     if (m != nullptr) {
       *(m->data) = std::move(*item);
       m->Notify();
-      lock.unlock();
       send_return();
       return;
     } else {
-      lock.unlock();
       Send(item);
       send_return();
       return;
@@ -169,8 +167,6 @@ void ChannelImpl<T>::Send(T *item) {
   if (buf_.size() < cap_) {
     // Copy to buffer
     buf_.push_back(std::move(*item));
-    // Release lock and return true
-    lock.unlock();
     send_return();
     return;
   }
@@ -181,8 +177,8 @@ void ChannelImpl<T>::Send(T *item) {
   sendq.push_back(m);
   m->Wait(lock);
   if (m->chan_closed) {
-    lock.unlock();
     send_return();
+    lock.unlock();
     PADDLE_THROW("Cannot send on closed channel");
   }
   send_return();
@@ -195,10 +191,7 @@ bool ChannelImpl<T>::Receive(T *item) {
 
   // If channel is closed and buffer is empty or
   // channel is unbuffered
-  if (closed_ && buf_.empty()) {
-    lock.unlock();
-    return recv_return(false);
-  }
+  if (closed_ && buf_.empty()) return recv_return(false);
 
   // If there is a sender, directly receive the value we want
   // from the sender. In case of a buffered channel, read from
@@ -229,7 +222,6 @@ bool ChannelImpl<T>::Receive(T *item) {
       } else
         return recv_return(Receive(item));
     }
-    lock.unlock();
     return recv_return(true);
   }
 
@@ -238,8 +230,7 @@ bool ChannelImpl<T>::Receive(T *item) {
     // Directly read from buffer
     *item = std::move(buf_.front());
     buf_.pop_front();
-    // Release lock and return true
-    lock.unlock();
+    // return true
     return recv_return(true);
   }
 
