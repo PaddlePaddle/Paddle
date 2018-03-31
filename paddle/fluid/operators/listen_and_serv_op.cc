@@ -88,7 +88,6 @@ class ListenAndServOp : public framework::OperatorBase {
 
   void Stop() override {
     rpc_service_->Push(LISTEN_TERMINATE_MESSAGE);
-    rpc_service_->ShutDown();
     server_thread_->join();
   }
 
