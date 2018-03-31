@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detail/grpc_server.h"
+#include <paddle/fluid/operators/detail/send_recv.pb.h>
 
 using ::grpc::ServerAsyncResponseWriter;
 
@@ -156,6 +157,8 @@ class RequestPrefetch final : public RequestBase {
     ::grpc::ByteBuffer relay;
     // TODO(Yancey1989): execute the Block which containers prefetch ops
 
+    VLOG(3) << "RequestPrefetch Process in";
+
     responder_.Finish(relay, ::grpc::Status::OK, this);
     status_ = FINISH;
   }
@@ -251,6 +254,7 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
 }
 
 void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
+  VLOG(4) << "TryToRegisterNewPrefetchOne in";
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
     return;
@@ -287,8 +291,8 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
     // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
     if (!ok) {
-      LOG(WARNING) << cq_name << " recv no regular event:argument name"
-                   << base->GetReqName();
+      LOG(WARNING) << cq_name << " recv no regular event:argument name["
+                   << base->GetReqName() << "]";
       TryToRegisterNewOne();
       delete base;
       continue;
