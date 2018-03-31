@@ -11,17 +11,38 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-try:
-    from version import full_version as __version__
-    from version import commit as __git_commit__
+"""
+Dataset package.
+"""
 
-except ImportError:
-    import sys
-    sys.stderr.write('''Warning with import paddle: you should not 
-     import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
-                     )
+import mnist
+import imikolov
+import imdb
+import cifar
+import movielens
+import conll05
+import uci_housing
+import sentiment
+import wmt14
+import wmt16
+import mq2007
+import flowers
+import voc2012
+import image
 
-import reader
-import dataset
-import batch
-batch = batch.batch
+__all__ = [
+    'mnist',
+    'imikolov',
+    'imdb',
+    'cifar',
+    'movielens',
+    'conll05',
+    'sentiment'
+    'uci_housing',
+    'wmt14',
+    'wmt16',
+    'mq2007',
+    'flowers',
+    'voc2012',
+    'image',
+]
