@@ -53,6 +53,7 @@ function cmake_gen() {
         -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -78,6 +79,7 @@ EOF
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 }
 
@@ -123,9 +125,8 @@ EOF
             -DWITH_AVX=${WITH_AVX:-ON} \
             -DWITH_SWIG_PY=ON \
             -DWITH_STYLE_CHECK=OFF
-        make -j `nproc` gen_proto_py framework_py_proto
-        make -j `nproc` copy_paddle_pybind
-        make -j `nproc` paddle_docs paddle_docs_cn paddle_api_docs
+
+        make -j `nproc` paddle_docs paddle_apis
         popd
     fi
 
