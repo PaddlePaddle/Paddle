@@ -20,7 +20,14 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
+// 'Double buffer' means we shall maintain two batch of input data at the same
+// time. So the kCacheSize shoul be at least 2.
 static constexpr size_t kCacheSize = 2;
+// There will be two bacthes out of the channel during training:
+// 1. the one waiting to be sent to the channel
+// 2. the one just be received from the channel, which is also being used by
+// subsequent operators.
+// So the channel size should be kChacheSize - 2
 static constexpr size_t kChannelSize = 0;  // kCacheSize - 2
 
 class DoubleBufferReader : public framework::DecoratedReader {
