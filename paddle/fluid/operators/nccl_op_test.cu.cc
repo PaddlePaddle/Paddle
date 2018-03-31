@@ -236,48 +236,49 @@ TEST_F(NCCLTester, ncclReduceOp) {
 }
 
 // ncclBcastOp with desc
-TEST_F(NCCLTester, ncclBcastOp) {
-  std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
-  const int kRoot = 0;
-  op2->SetType("ncclBcast");
-  op2->SetInput("X", {"st"});
-  op2->SetInput("Communicator", {"comm"});
-  op2->SetOutput("Out", {"rt"});
-  op2->SetAttr("root", kRoot);
+// TODO(helin): enable the test for ncclBcastOp
+// TEST_F(NCCLTester, ncclBcastOp) {
+//   std::unique_ptr<f::OpDesc> op2(new f::OpDesc);
+//   const int kRoot = 0;
+//   op2->SetType("ncclBcast");
+//   op2->SetInput("X", {"st"});
+//   op2->SetInput("Communicator", {"comm"});
+//   op2->SetOutput("Out", {"rt"});
+//   op2->SetAttr("root", kRoot);
 
-  std::vector<f::Scope *> dev_scopes;
+//   std::vector<f::Scope *> dev_scopes;
 
-  std::vector<std::thread> ths;
+//   std::vector<std::thread> ths;
 
-  for (size_t i = 0; i < gpu_list_.size(); ++i) {
-    dev_scopes.emplace_back(&g_scope_.NewScope());
-    std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list_[i],
-                   *op2.get(), dev_scopes[i]);
-    ths.emplace_back(std::move(th));
-  }
+//   for (size_t i = 0; i < gpu_list_.size(); ++i) {
+//     dev_scopes.emplace_back(&g_scope_.NewScope());
+//     std::thread th(&NCCLTester::PerThreadProgram<float>, this, gpu_list_[i],
+//                    *op2.get(), dev_scopes[i]);
+//     ths.emplace_back(std::move(th));
+//   }
 
-  for (size_t i = 0; i < gpu_list_.size(); ++i) {
-    ths[i].join();
-  }
+//   for (size_t i = 0; i < gpu_list_.size(); ++i) {
+//     ths[i].join();
+//   }
 
-  const int idx = 1;
-  float result = GetGPUData(kRoot);
+//   const int idx = 1;
+//   float result = GetGPUData(kRoot);
 
-  p::CPUPlace cpu_place;
-  p::CUDAPlace gpu_place(gpu_list_[idx]);
+//   p::CPUPlace cpu_place;
+//   p::CUDAPlace gpu_place(gpu_list_[idx]);
 
-  auto &recv_tensor = dev_scopes[idx]->FindVar("rt")->Get<f::LoDTensor>();
-  auto *rt = recv_tensor.data<float>();
-  auto *result_tensor = dev_scopes[idx]->Var("ct")->GetMutable<f::LoDTensor>();
-  result_tensor->Resize(kDims);
-  auto *ct = result_tensor->mutable_data<float>(cpu_place);
+//   auto &recv_tensor = dev_scopes[idx]->FindVar("rt")->Get<f::LoDTensor>();
+//   auto *rt = recv_tensor.data<float>();
+//   auto *result_tensor = dev_scopes[idx]->Var("ct")->GetMutable<f::LoDTensor>();
+//   result_tensor->Resize(kDims);
+//   auto *ct = result_tensor->mutable_data<float>(cpu_place);
 
-  paddle::memory::Copy(
-      cpu_place, ct, p::CUDAPlace(gpu_list_[idx]), rt,
-      recv_tensor.numel() * sizeof(float),
-      static_cast<p::CUDADeviceContext *>(dev_ctxs_[idx])->stream());
+//   paddle::memory::Copy(
+//       cpu_place, ct, p::CUDAPlace(gpu_list_[idx]), rt,
+//       recv_tensor.numel() * sizeof(float),
+//       static_cast<p::CUDADeviceContext *>(dev_ctxs_[idx])->stream());
 
-  for (int64_t j = 0; j < f::product(kDims); ++j) {
-    ASSERT_NEAR(ct[j], result, 1e-5);
-  }
-}
+//   for (int64_t j = 0; j < f::product(kDims); ++j) {
+//     ASSERT_NEAR(ct[j], result, 1e-5);
+//   }
+// }
