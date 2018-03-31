@@ -27,6 +27,7 @@
 # limitations under the License.
 import unittest
 import math
+import paddle.dataset as dataset
 import paddle.v2 as paddle
 
 
@@ -40,7 +41,7 @@ def wordemb(inlayer):
 
 
 def train():
-    word_dict = paddle.dataset.imikolov.build_dict()
+    word_dict = dataset.imikolov.build_dict()
     dict_size = len(word_dict)
     # Every layer takes integer value of range [0, dict_size)
     firstword = paddle.layer.data(

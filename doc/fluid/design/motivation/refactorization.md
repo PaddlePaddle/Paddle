@@ -97,13 +97,13 @@ Compile Time -> IR -> Runtime
 
 ---
 
-# Operator/OpWithKernel/OpKernel
+## Operator/OpWithKernel/OpKernel
 
 ![class_diagram](http://api.paddlepaddle.org/graphviz?dot=https://gist.githubusercontent.com/reyoung/53df507f6749762675dff3e7ce53372f/raw/49caf1fb70820fb4a6c217634317c9306f361f36/op_op_with_kern_class_diagram.dot)
 
 ---
 
-# Operator
+## Operator
 ![class_diagram](http://api.paddlepaddle.org/graphviz?dot=https://gist.githubusercontent.com/reyoung/53df507f6749762675dff3e7ce53372f/raw/dd598e8f1976f5759f58af5e5ef94738a6b2e661/op.dot)
 
 * `Operator` is the fundamental building block of the user interface.
@@ -113,7 +113,7 @@ Compile Time -> IR -> Runtime
 
 ---
 
-# OpWithKernel/Kernel
+## OpWithKernel/Kernel
 
 ![class_diagram](http://api.paddlepaddle.org/graphviz?dot=https://gist.githubusercontent.com/reyoung/53df507f6749762675dff3e7ce53372f/raw/9d7f4eba185cf41c8e2fbfb40ae21890dbddcd39/op_with_kernel.dot)
 
@@ -124,7 +124,7 @@ Compile Time -> IR -> Runtime
 
 ---
 
-# Why separate Kernel and Operator
+## Why separate Kernel and Operator
 
 * Separate GPU and CPU code.
     * Make Paddle capable of running without GPU.
@@ -132,7 +132,7 @@ Compile Time -> IR -> Runtime
     * For example, same multiplication op can have different implementations kernels such as FP16 kernel, FP32 kernel, MKL, eigen kernel.
 ---
 
-# Libraries for Kernel development
+## Libraries for Kernel development
 
 * `Eigen::Tensor` contains basic math and element-wise functions.
     * Note that `Eigen::Tensor` has broadcast implementation.
@@ -143,16 +143,16 @@ Compile Time -> IR -> Runtime
 * Hand-writing `GPUKernel` and `CPU` code
     * Do not write in header (`.h`) files. CPU Kernel should be in cpp source (`.cc`) and GPU kernels should be in cuda (`.cu`) files. (GCC cannot compile GPU code.)
 ---
-# Operator Registration
+## Operator Registration
 
-## Why is registration necessary?
+### Why is registration necessary?
 We need a method to build mappings between Op type names and Op classes.
 
-## How is registration implemented?
+### How is registration implemented?
 Maintaining a map, whose key is the type name and the value is the corresponding Op constructor.
 
 ---
-# The Registry Map
+## The Registry Map
 
 ### `OpInfoMap`
 
@@ -166,7 +166,7 @@ Maintaining a map, whose key is the type name and the value is the corresponding
 - **`checker`**: Used to check attributes.
 
 ---
-# Related Concepts
+## Related Concepts
 
 ### Op_Maker
 It's constructor takes `proto` and `checker`. They are completed during Op_Maker's construction. ([ScaleOpMaker](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/scale_op.cc#L37))
@@ -178,7 +178,7 @@ REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class)
 ```
 
 ---
-# Registration Process
+## Registration Process
 1. Write an Op class and its gradient Op class, if required.
 2. Write an Op maker class. In the constructor of this class, describe the inputs, outputs and attributes of the operator.
 3. Invoke the macro `REGISTER_OP`. This macro will
@@ -186,13 +186,13 @@ REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class)
 	2. Using the completed `proto` and `checker`, it will add a new key-value pair to the `OpInfoMap`
 
 ---
-# Backward Module (1/2)
+## Backward Module (1/2)
 ### Create Backward Operator
 - Mapping from forward Op to backward Op
 ![backward](https://gist.githubusercontent.com/dzhwinter/a6fbd4623ee76c459f7f94591fd1abf0/raw/61026ab6e518e66bde66a889bc42557a1fccff33/backward.png)
 
 ---
-# Backward Module (2/2)
+## Backward Module (2/2)
 ### Build Backward Network
 - **Input**: a graph of forward operators
 - **Output**: a graph of backward operators
@@ -205,7 +205,7 @@ REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class)
 
 
 ---
-# Scope, Variable, Tensor
+## Scope, Variable, Tensor
 
 * `Tensor` is an n-dimension array with type.
 	* Only dims and data pointers are stored in `Tensor`.
@@ -218,8 +218,8 @@ REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class)
 	* `Scope` has a hierarchical structure. The local scope can get variables from its parent scope.
 
 ---
-# Block (in design)
-## the difference between original RNNOp and Block
+## Block (in design)
+### the difference between original RNNOp and Block
 - As an operator is more intuitive than `RNNOp`,
 - Offers a new interface `Eval(targets)` to deduce the minimal block to `Run`,
 - Fits the compile-time/ runtime separation design paradigm.
@@ -227,7 +227,7 @@ REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class)
   - When graph executes, a Block with `BlockDesc` is passed. It then creates `Op` and `Var` instances and then invokes `Run`.
 
 ---
-# Milestone
+## Milestone
 - Take Paddle/books as the main line, the requirement of the models motivates framework refactoring,
 - Model migration
   - Framework development gives **priority support** to model migration, for example,
@@ -240,7 +240,7 @@ REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class)
 - Accept imperfection, concentrate on solving the specific problem at the right price.
 
 ---
-# Control the migration quality
+## Control the migration quality
 - Compare the performance of migrated models with old ones.
 - Follow the google C++ style guide.
 - Build the automatic workflow of generating Python/C++ documentations.
