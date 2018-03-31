@@ -27,6 +27,15 @@ class DoubleBufferReader : public framework::DecoratedReader {
  public:
   struct Item {
     Item() : ctx_(nullptr) {}
+    Item(Item&& b) {
+      payloads_ = std::move(b.payloads_);
+      ctx_ = std::move(b.ctx_);
+    }
+    Item& operator=(Item&& b) {
+      payloads_ = std::move(b.payloads_);
+      ctx_ = std::move(b.ctx_);
+      return *this;
+    }
 
     std::vector<framework::LoDTensor> payloads_;
     platform::DeviceContext* ctx_;
