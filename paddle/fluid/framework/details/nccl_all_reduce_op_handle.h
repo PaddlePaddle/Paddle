@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -33,6 +36,8 @@ struct NCCLAllReduceOpHandle : public OpHandleBase {
                         const platform::NCCLContextMap &ctxs);
 
   std::string Name() const override;
+
+  bool IsDelayedOp() override { return true; };
 
  protected:
   void RunImpl() override;

@@ -14,7 +14,12 @@
 
 #pragma once
 
-#include <chrono>
+#include <deque>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 #include <functional>
 #include "ThreadPool.h"  // ThreadPool in thrird party
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
@@ -79,8 +84,10 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ~ThreadedSSAGraphExecutor() {}
 
  private:
-  void RunOp(BlockingQueue<VarHandleBase *> &ready_var_q,
+  void RunOp(BlockingQueue<VarHandleBase *> *ready_var_q,
              details::OpHandleBase *op);
+
+  void RunDelayedOps(const std::unordered_set<OpHandleBase *> &delayed_ops);
 
  private:
   std::unique_ptr<::ThreadPool> pool_;
@@ -89,6 +96,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   platform::DeviceContextPool fetch_ctxs_;
   const bool use_event_;
   std::unique_ptr<platform::EnforceNotMet> exception_;
+  std::atomic<int> running_ops_;
 
   size_t computation_count_{0};
   size_t max_async_computation{100};

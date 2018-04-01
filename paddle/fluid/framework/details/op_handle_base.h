@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -52,6 +54,8 @@ class OpHandleBase {
   void AddInput(VarHandleBase *in);
 
   void AddOutput(VarHandleBase *out);
+
+  virtual bool IsDelayedOp() { return false; }
 
  protected:
   virtual void RunImpl() = 0;
