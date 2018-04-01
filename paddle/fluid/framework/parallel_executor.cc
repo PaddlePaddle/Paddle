@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 #include <string>
 #include <vector>
@@ -151,6 +152,7 @@ void ParallelExecutor::BCastParamsToGPUs(
 
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
+  platform::RecordBlock b(0);
   auto fetch_data = member_->executor_->Run(fetch_tensors);
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
       fetch_data;

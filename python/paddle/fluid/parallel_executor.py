@@ -16,6 +16,7 @@ import core
 import multiprocessing
 import framework
 import executor
+import sys
 
 __all__ = ['ParallelExecutor']
 
@@ -35,7 +36,7 @@ class ParallelExecutor(object):
                 places.append(p)
 
         if num_threads is None:
-            num_threads = min(len(places) * 2, multiprocessing.cpu_count())
+            num_threads = len(places)
 
         startup = framework.default_startup_program()
         main = framework.default_main_program()
