@@ -89,7 +89,7 @@ inline const char* GrpcMethodName(GrpcMethod id) {
     case GrpcMethod::kGetVariable:
       return "/sendrecv.SendRecvService/GetVariable";
     case GrpcMethod::kPrefetchVariable:
-      return "/sendrecv.SendREcvService/PrefetchVariable";
+      return "/sendrecv.SendRecvService/PrefetchVariable";
   }
 
   // Shouldn't be reached.
@@ -117,5 +117,5 @@ class GrpcService final {
 };
 
 }  // namespace detail
-}  // namespace operator
+}  // namespace operators
 }  // namespace paddle

@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detail/grpc_server.h"
-#include <paddle/fluid/operators/detail/send_recv.pb.h>
+
+#include <limits>
+#include <string>
 
 using ::grpc::ServerAsyncResponseWriter;
 
@@ -224,6 +226,7 @@ void AsyncGRPCServer::ShutdownQueue() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   cq_send_->Shutdown();
   cq_get_->Shutdown();
+  cq_prefetch_->Shutdown();
 }
 
 // This URL explains why shutdown is complicate:
@@ -236,6 +239,7 @@ void AsyncGRPCServer::ShutDown() {
 void AsyncGRPCServer::TryToRegisterNewSendOne() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
+    VLOG(3) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
   RequestSend* send = new RequestSend(&service_, cq_send_.get(), scope_,
@@ -246,6 +250,7 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
 void AsyncGRPCServer::TryToRegisterNewGetOne() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
+    VLOG(3) << "shutdown, do not TryToRegisterNewGetOne";
     return;
   }
   RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_, dev_ctx_,
@@ -257,6 +262,7 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
   VLOG(4) << "TryToRegisterNewPrefetchOne in";
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
+    VLOG(3) << "shutdown, do not TryToRegisterNewPrefetchOne";
     return;
   }
   RequestPrefetch* prefetch =
@@ -274,18 +280,21 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
 
   void* tag = NULL;
   bool ok = false;
+
   while (true) {
+    VLOG(3) << "HandleRequest for " << cq_name << " while in";
     if (!cq->Next(&tag, &ok)) {
       LOG(INFO) << cq_name << " CompletionQueue shutdown!";
       break;
     }
+    VLOG(3) << "HandleRequest for " << cq_name << " while after Next";
 
     PADDLE_ENFORCE(tag);
     // FIXME(typhoonzero): de-couple the barriers with recv_op
     if (!is_shut_down_ && cq_name == "cq_get") WaitCond(1);
     if (!is_shut_down_ && cq_name == "cq_send") WaitCond(0);
 
-    RequestBase* base = (RequestBase*)tag;
+    RequestBase* base = reinterpret_cast<RequestBase*>(tag);
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
