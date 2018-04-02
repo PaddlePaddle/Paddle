@@ -91,5 +91,20 @@ void ThreadPool::TaskLoop() {
   }
 }
 
+std::unique_ptr<ThreadPool> MultiStreamThreadPool::io_threadpool_(nullptr);
+std::once_flag MultiStreamThreadPool::io_init_flag_;
+
+MultiStreamThreadPool* MultiStreamThreadPool::GetInstanceIO() {
+  std::call_once(io_init_flag_, &MultiStreamThreadPool::InitIO);
+  return static_cast<MultiStreamThreadPool*>(io_threadpool_.get());
+}
+
+void MultiStreamThreadPool::InitIO() {
+  if (io_threadpool_.get() == nullptr) {
+    // TODO(typhoonzero1986): make this configurable
+    io_threadpool_.reset(new ThreadPool(100));
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

@@ -135,12 +135,28 @@ class ThreadPool {
   std::condition_variable completed_;
 };
 
+class MultiStreamThreadPool : ThreadPool {
+ public:
+  static MultiStreamThreadPool* GetInstanceIO();
+  static void InitIO();
+
+ private:
+  // NOTE: threadpool in base will be inhereted here.
+  static std::unique_ptr<ThreadPool> io_threadpool_;
+  static std::once_flag io_init_flag_;
+};
+
 // Run a function asynchronously.
 // NOTE: The function must return void. If the function need to return a value,
 // you can use lambda to capture a value pointer.
 template <typename Callback>
 std::future<void> Async(Callback callback) {
   return ThreadPool::GetInstance()->Run(callback);
+}
+
+template <typename Callback>
+std::future<void> AsyncIO(Callback callback) {
+  return MultiStreamThreadPool::GetInstanceIO()->Run(callback);
 }
 
 }  // namespace framework
