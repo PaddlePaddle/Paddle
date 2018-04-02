@@ -127,6 +127,11 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
 
+    PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+        handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
+        cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+        workspace_size_limit, &algo));
+
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     // Tensor core is supported since the volta GPU and
     // is only enabled when input and filter data are float16
@@ -140,10 +145,6 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
           cudnn_conv_desc, CUDNN_DEFAULT_MATH));
-      PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
-          handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-          cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-          workspace_size_limit, &algo));
     }
 #endif
 

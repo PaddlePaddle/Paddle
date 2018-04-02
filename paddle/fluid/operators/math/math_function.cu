@@ -49,12 +49,12 @@ void gemm<platform::CUDADeviceContext, float16>(
   cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
   if (context.GetComputeCapability() >= 70) {
-    PADDLE_ENFORCE(dynload::cublasSetMathMode(context.cublas_handle(),
-                                              CUBLAS_TENSOR_OP_MATH));
+    PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(context.cublas_handle(),
+                                                        CUBLAS_TENSOR_OP_MATH));
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
   } else {
-    PADDLE_ENFORCE(dynload::cublasSetMathMode(context.cublas_handle(),
-                                              CUBLAS_DEFAULT_MATH));
+    PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(context.cublas_handle(),
+                                                        CUBLAS_DEFAULT_MATH));
   }
 #endif
 

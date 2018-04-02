@@ -92,12 +92,12 @@ extern void *cublas_dso_handle;
   __macro(cublasDgetrfBatched);           \
   __macro(cublasDgetriBatched);
 
-CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP);
+CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
 // APIs available after CUDA 9.0
 #if CUDA_VERSION >= 9000
-#define CUBLAS_BLAS_ROUTINE_EACH_R2(__macro) __macro(cublasSetMathMode)
-CUBLAS_BLAS_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP);
+#define CUBLAS_BLAS_ROUTINE_EACH_R2(__macro) __macro(cublasSetMathMode);
+CUBLAS_BLAS_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP
