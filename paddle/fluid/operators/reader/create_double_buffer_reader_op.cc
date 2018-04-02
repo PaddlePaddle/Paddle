@@ -66,6 +66,9 @@ class DoubleBufferReader : public framework::DecoratedReader {
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
   void ReInit() override;
 
+  ~DoubleBufferReader() { EndPrefetcher(); }
+
+ private:
   void StartPrefetcher() {
     channel_ = framework::MakeChannel<Item>(kChannelSize);
     prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
@@ -80,9 +83,6 @@ class DoubleBufferReader : public framework::DecoratedReader {
     channel_ = nullptr;
   }
 
-  ~DoubleBufferReader() { EndPrefetcher(); }
-
- private:
   void PrefetchThreadFunc();
 
   std::thread prefetcher_;
