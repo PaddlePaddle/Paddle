@@ -133,11 +133,10 @@ void* Alloc<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place,
   auto* buddy_allocator = GetCUDAPinnedBuddyAllocator();
   void* ptr = buddy_allocator->Alloc(size);
 
-  //  if (ptr == nullptr) {
-  //    LOG(WARNING) << "Cannot allocate " << size << " bytes in CUDAPinnedPlace
-  //    "
-  //                 << ", available " << avail << " bytes"
-  //  }
+  if (ptr == nullptr) {
+    LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
+                 << " bytes in CUDAPinnedPlace";
+  }
   return ptr;
 }
 
