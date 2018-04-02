@@ -69,6 +69,12 @@ if(NOT CBLAS_FOUND)
       SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
       DSTS ${dst_dir} ${dst_dir}
     )
+elseif (WITH_MKLML)
+    set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/mklml")
+    copy(mklml_lib
+      SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
+      DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}
+    )
 endif()
 
 # paddle fluid module
