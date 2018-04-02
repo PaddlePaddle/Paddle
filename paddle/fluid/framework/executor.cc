@@ -279,7 +279,7 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   return std::unique_ptr<ExecutorPrepareContext>(ctx);
 }
 
-std::vector<std::shared_ptr<ExecutorPrepareContext>> Prepare(
+std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
     const ProgramDesc& program, const std::vector<int>& block_ids) {
   std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
   for (auto& bid : block_ids) {
