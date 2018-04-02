@@ -39,7 +39,7 @@ struct NCCLAllReduceOpHandle : public OpHandleBase {
 
   // Delay and buffer nccl_all_reduce together can significantly increase
   // performance. Disable this feature by returning false.
-  bool IsDelayedOp() override { return true; };
+  bool IsMultiDeviceTransfer() override { return true; };
 
  protected:
   void RunImpl() override;
