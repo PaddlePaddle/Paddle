@@ -55,6 +55,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     const ProgramDesc &program) const {
   auto graph = new SSAGraph();
   SSAGraph &result = *graph;
+  std::unordered_set<std::string> og_has_bc;
   result.vars_.resize(places_.size());
 
   bool is_forwarding = true;
@@ -123,8 +124,10 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     if (!is_forwarding) {
       auto var_names = op->OutputArgumentNames();
       for (auto &og : var_names) {
-        if (grad_names_.count(og) != 0) {  // is param grad
-                                           // Insert NCCL AllReduce Op
+        if (grad_names_.count(og) != 0 &&
+            og_has_bc.count(og) == 0) {  // is param grad
+                                         // Insert NCCL AllReduce Op
+          og_has_bc.insert(og);
 #ifdef PADDLE_WITH_CUDA
           result.ops_.emplace_back(
               new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
