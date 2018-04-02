@@ -1486,7 +1486,9 @@ def batch_norm(input,
                in_place=False,
                name=None,
                moving_mean_name=None,
-               moving_variance_name=None):
+               moving_variance_name=None,
+               average_mean=True,
+               average_variance=True):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -1517,7 +1519,10 @@ def batch_norm(input,
 
     mean = helper.create_parameter(
         attr=ParamAttr(
-            name=moving_mean_name, initializer=Constant(0.0), trainable=False),
+            name=moving_mean_name,
+            initializer=Constant(0.0),
+            trainable=False,
+            average=average_variance),
         shape=param_shape,
         dtype=input.dtype)
     mean.stop_gradient = True
@@ -1526,7 +1531,8 @@ def batch_norm(input,
         attr=ParamAttr(
             name=moving_variance_name,
             initializer=Constant(1.0),
-            trainable=False),
+            trainable=False,
+            average=average_mean),
         shape=param_shape,
         dtype=input.dtype)
     variance.stop_gradient = True
