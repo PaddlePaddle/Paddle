@@ -102,6 +102,7 @@ class ListenAndServOp : public framework::OperatorBase {
 
     framework::Executor executor(dev_place);
 
+    // TODO(qiao) set proper fields for table lookup and update
     rpc_service_->SetExecutor(&executor);
     rpc_service_->SetPrefetchBlkdId(0);
     rpc_service_->SetProgram(program);
