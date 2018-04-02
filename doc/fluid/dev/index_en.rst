@@ -5,7 +5,7 @@ Development
   :maxdepth: 1
 
   new_op_en.md
-  new_op_kernel_en.md
+  new_op_kernel.md
   use_eigen_en.md
   name_convention.md
   support_new_device.md
