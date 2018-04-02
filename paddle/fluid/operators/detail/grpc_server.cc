@@ -156,12 +156,12 @@ class RequestPrefetch final : public RequestBase {
 
   virtual void Process() {
     // prefetch process...
-    ::grpc::ByteBuffer relay;
+    ::grpc::ByteBuffer reply;
     // TODO(Yancey1989): execute the Block which containers prefetch ops
 
     VLOG(3) << "RequestPrefetch Process in";
 
-    responder_.Finish(relay, ::grpc::Status::OK, this);
+    responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
   }
 
