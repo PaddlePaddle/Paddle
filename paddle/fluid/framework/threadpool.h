@@ -32,6 +32,8 @@ namespace framework {
 // number of threads.
 class ThreadPool {
  public:
+  explicit ThreadPool(int num_threads);
+
   using Task = std::packaged_task<std::unique_ptr<platform::EnforceNotMet>()>;
 
   // Returns the singleton of ThreadPool.
@@ -102,8 +104,6 @@ class ThreadPool {
   };
 
   DISABLE_COPY_AND_ASSIGN(ThreadPool);
-
-  explicit ThreadPool(int num_threads);
 
   // If the task queue is empty and avaialbe is equal to the number of
   // threads, means that all tasks are completed.  Note: this function
