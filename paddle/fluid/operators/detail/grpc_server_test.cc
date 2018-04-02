@@ -28,6 +28,7 @@ std::unique_ptr<detail::AsyncGRPCServer> rpc_service_;
 
 void StartServer(const std::string& endpoint) {
   rpc_service_.reset(new detail::AsyncGRPCServer(endpoint));
+  rpc_service_->RunSyncUpdate();
 }
 
 TEST(PREFETCH, CPU) {
@@ -39,13 +40,23 @@ TEST(PREFETCH, CPU) {
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
   // create var on local scope
-  std::string var_name("tmp_0");
-  auto var = scope.Var(var_name);
-  auto tensor = var->GetMutable<framework::LoDTensor>();
-  tensor->Resize({10, 10});
+  std::string in_var_name("in");
+  std::string out_var_name("out");
+  auto* in_var = scope.Var(in_var_name);
+  auto* in_tensor = in_var->GetMutable<framework::LoDTensor>();
+  in_tensor->Resize({10, 10});
+  VLOG(3) << "before mutable_data";
+  in_tensor->mutable_data<int>(place);
 
+  scope.Var(out_var_name);
+
+  VLOG(3) << "before fetch";
   detail::RPCClient client;
-  client.AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, var_name, "");
+  client.AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, in_var_name,
+                               out_var_name);
+  client.Wait();
+
+  rpc_service_->ShutDown();
   server_thread.join();
   rpc_service_.reset(nullptr);
 }
