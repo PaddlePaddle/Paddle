@@ -3380,6 +3380,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
     Examples:
         .. code-block:: python
+
             data = fluid.layers.data(
                 name='data', shape=[2, 4, 6], dtype='float32')
             reshaped = fluid.layers.reshape(
@@ -3585,12 +3586,13 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
 def pad(x, paddings, pad_value=0., name=None):
     """
-    Pads a tensor with a constant value given by :attr:pad_value, and the
-    padded width is specified by :attr:paddings. 
+    Pads a tensor with a constant value given by :attr:`pad_value`, and the
+    padded width is specified by :attr:`paddings`. 
 
-    Specifically, the number of values padded before each dimension 
-    :attr:i is indicated by :attr:paddings[i], and the number of values padded
-    after each dimension :attr:i is indicated by :attr:paddings[i+1].
+    Specifically, the number of values padded before the contents of :attr:`x`
+    in dimension :attr:`i` is indicated by :attr:`paddings[i]`, and the number
+    of values padded after the contents of :attr:`x` in dimension :attr:`i` is
+    indicated by :attr:`paddings[i+1]`.
 
     See below for an example.
 
@@ -3624,6 +3626,7 @@ def pad(x, paddings, pad_value=0., name=None):
 
     Examples:
         .. code-block:: python
+
             # x is a rank 2 tensor variable.
             out = fluid.layers.pad(
                 x=x, paddings=[0, 1, 1, 2], pad_value=0.)
