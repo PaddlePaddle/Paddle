@@ -1,0 +1,1 @@
+../../v2/getstarted/quickstart_en.rst
