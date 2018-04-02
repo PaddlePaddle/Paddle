@@ -27,9 +27,10 @@ DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
 
-DEFINE_double(fraction_of_cuda_pinned_memory_to_use, 0.5,
-              "Default use 100% of CPU memory for PaddlePaddle,"
-              "reserve the rest for page tables, etc");
+DEFINE_double(
+    fraction_of_cuda_pinned_memory_to_use, 0.5,
+    "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
+    "reserve the rest for page tables, etc");
 
 namespace paddle {
 namespace platform {
@@ -78,7 +79,7 @@ size_t CUDAPinnedMinChunkSize() {
 }
 
 size_t CUDAPinnedMaxChunkSize() {
-  // Allow to allocate the maximum chunk size is roughly 0.39% of CUDA_PINNED
+  // Allow to allocate the maximum chunk size is roughly 1/256 of CUDA_PINNED
   // memory.
   return CUDAPinnedMaxAllocSize() / 256;
 }
