@@ -15,7 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <grpc++/grpc++.h>
-#include <thread>
+#include <string>
+#include <utility>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -93,6 +94,7 @@ class AsyncGRPCServer final {
 
   // received variable from RPC, operators fetch variable from this queue.
   SimpleBlockQueue<MessageWithName> var_get_queue_;
+  // client send variable to this queue.
   ReceivedQueue var_recv_queue_;
 
   // condition of the sub program

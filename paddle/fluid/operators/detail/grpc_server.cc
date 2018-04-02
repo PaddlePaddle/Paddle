@@ -259,7 +259,6 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
 }
 
 void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
-  VLOG(4) << "TryToRegisterNewPrefetchOne in";
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
     VLOG(3) << "shutdown, do not TryToRegisterNewPrefetchOne";

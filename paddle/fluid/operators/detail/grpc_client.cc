@@ -72,8 +72,7 @@ void ProcGetResponse(const VarHandle& var_h,
 template <typename T>
 void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   ::grpc::Slice slice(proto.ByteSizeLong());
-  proto.SerializeWithCachedSizesToArray(
-      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(slice.begin())));
+  proto.SerializeWithCachedSizesToArray(const_cast<uint8_t*>(slice.begin()));
   ::grpc::ByteBuffer tmp(&slice, 1);
   result->Swap(&tmp);
 }
