@@ -48,13 +48,13 @@ You should pull all remote branches to your local machine with the command :code
 
 The primary cause for this issue is that it can not find the correct PaddlePaddle installation package that matches your current system.The latest PaddlePaddle Python installation package supports Linux x86_64 and MacOS 10.12 os including Python2.7 and Pip 9.0.1.
 
-You can upgrade pip with the following command\:
+You can upgrade Pip with the following command\:
 
 ..  code-block:: bash
 
     pip install --upgrade pip
 
-If it does not work for you, you can run the command :code:`python -c "import pip; print(pip.pep425tags.get_supported())"` to get the suffix of the python package which your system may support and then compare it with the suffix of your installation.
+If it does not work for you, you can run the command :code:`python -c "import pip; print(pip.pep425tags.get_supported())"` to get the suffix of Python package which your system may support and then compare it with the suffix of your installation.
 
 If the system supports :code:`linux_x86_64` and  the installation package is :code:`manylinux1_x86_64`, you should upgrade pip to the latest 
 
