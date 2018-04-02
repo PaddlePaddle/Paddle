@@ -1,15 +1,15 @@
 .. _install_faq:
 
-##############################
-compile, install and unit test
-##############################
+###############################
+Compile, Install, and Unit Test
+###############################
 
 ..  contents::
 
-1. CUDA driver version is insufficient
+1. Insufficient CUDA driver version
 ----------------------------------------------------------------
 
-Many users usually face the issue like `Cuda Error: CUDA driver version is insufficient for CUDA runtime version` when running the paddlepaddle GPU docker image.The cause is that you may not map the local CUDA driver to a container directory.
+Many users usually face issues like `Cuda Error: CUDA driver version is insufficient for CUDA runtime version` when running the PaddlePaddle GPU Docker image. The cause is that you may not map the local CUDA driver to a container directory.
 You can solve the issue by running the following commands:
 
 ..  code-block:: bash
@@ -18,13 +18,13 @@ You can solve the issue by running the following commands:
     $ export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
     $ docker run ${CUDA_SO} ${DEVICES} -it paddlepaddle/paddle:latest-gpu
 
-For more infomation about docker's installation and usage, please refer to `PaddlePaddle Docker documentation <http://www.paddlepaddle.org/docs/0.11.0/documentation/zh/getstarted/build_and_install/docker_install_en.html>`_ .
+For more infomation about Docker's installation and usage, please refer to `PaddlePaddle Docker documentation <http://www.paddlepaddle.org/docs/0.11.0/documentation/zh/getstarted/build_and_install/docker_install_en.html>`_ .
 
 
-2. The version mismatch between PythonLibs and PythonInterpr
+2. Version mismatch between PythonLibs and PythonInterpreter
 ----------------------------------------------------------------
 
-It is a common bug when CMake looks up python.If you install multiple versions of python, Cmake may find the version mismatch between PythonLibs and PythonInterpr . You are forced to specify a python version, as follows.
+It is a common bug when CMake looks up Python. If you install multiple versions of Python, Cmake may find the version mismatch between PythonLibs and PythonInterpreter . You are forced to specify a Python version, as follows.
 
     ..  code-block:: bash
 
@@ -32,7 +32,7 @@ It is a common bug when CMake looks up python.If you install multiple versions o
 
 You should specify ``<exc_path>``, ``<lib_path>``, ``<inc_path>`` to your local paths.
 
-3. The version of Paddle is 0.0.0
+3. PaddlePaddle version is 0.0.0
 ------------------------------------------------
 This issue would happen when you run the code  `paddle version` or `cmake ..`
 
@@ -46,7 +46,7 @@ You should pull all remote branches to your local machine with the command :code
 4. paddlepaddle\*.whl is not a supported wheel on this platform.
 ------------------------------------------------------------------------
 
-The primary cause for this issue is that it can not find the correct paddlepaddle installation package that matches your current system.The latest paddlepaddle python installation package supports Linux x86_64 and MacOS 10.12 os including python2.7 and pip 9.0.1.
+The primary cause for this issue is that it can not find the correct PaddlePaddle installation package that matches your current system.The latest PaddlePaddle Python installation package supports Linux x86_64 and MacOS 10.12 os including Python2.7 and Pip 9.0.1.
 
 You can upgrade pip with the following command\:
 
@@ -63,13 +63,13 @@ if the system supports :code:`manylinux_x86_64` and the local installation packa
 
 5. ImportError: No module named v2
 ----------------------------------
-please uninstall paddle v1 version if you have installed before.
+Please uninstall Paddle V1 if you have installed it before.
 
 ..  code-block:: bash
 
     pip uninstall py_paddle paddle
 
-Then install python for PaddlePaddle , enter the build directory and run the following commands
+Then install Python for PaddlePaddle , enter the build directory and run the following commands
 
 pip install python/dist/paddle*.whl && pip install ../paddle/dist/py_paddle*.whl
 
@@ -110,10 +110,10 @@ Please check the PaddlePaddle unittest logs which may suggest the following:
 
 The solution is:
 
-* Remove the old PaddlePaddle to make a clean environment for the unit tests. If the PaddlePaddle package is already in python's site-packages, unit tests would refer the python package in site-packages instead of the python package in the :code:`/python` directory of the source directory.  Setting :code:`PYTHONPATH` to :code:`/python` is also useless because python's search path would give the priority to the installed python package.
+* Remove old PaddlePaddle to make a clean environment for the unit tests. If PaddlePaddle package is already in Python's site-packages, unit tests would refer Python package in site-packages instead of Python package in the :code:`/python` directory of the source directory.  Setting :code:`PYTHONPATH` to :code:`/python` is also useless because Python's search path would give the priority to the installed Python package.
 
 
-8. Fail to download the MKLML library
+8. Failed to download the MKLML library
 ----------------------------------------------
 
 ..  code-block:: bash
