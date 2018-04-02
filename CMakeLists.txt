@@ -53,8 +53,7 @@ option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(ON_TRAVIS        "Exclude special unit test on Travis CI"        OFF)
 option(WITH_C_API       "Compile PaddlePaddle with C-API(Prediction)"   OFF)
-# TODO: Only compile PaddlePaddle fluid version by WITH_FLUID option. 
-option(WITH_FLUID       "Compile PaddlePaddle fluid only(TODO)"         OFF)
+option(WITH_FLUID_ONLY  "Compile PaddlePaddle fluid only"               OFF)
 option(WITH_GOLANG      "Compile PaddlePaddle with GOLANG"              OFF)
 option(GLIDE_INSTALL    "Download and install go dependencies "         ON)
 option(USE_NNPACK       "Compile PaddlePaddle with NNPACK library"      OFF)
@@ -109,7 +108,7 @@ if (WITH_C_API AND WITH_PYTHON)
 endif()
 
 if (WITH_C_API)
-  set(WITH_FLUID OFF CACHE STRING "Disable install fluid when compile the C_API" FORCE)
+  set(WITH_FLUID_ONLY OFF CACHE STRING "Disable install fluid when compile the C_API" FORCE)
 endif()
 
 if(MOBILE_INFERENCE)
@@ -147,6 +146,7 @@ include(external/cares)
 include(external/grpc)
 include(external/snappy)    # download snappy
 include(external/snappystream)
+include(external/threadpool)
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(cupti)

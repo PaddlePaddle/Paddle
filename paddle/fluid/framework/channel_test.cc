@@ -36,23 +36,25 @@ TEST(Channel, ChannelCapacityTest) {
   delete ch;
 }
 
-void RecevingOrderEqualToSendingOrder(Channel<int> *ch) {
+void RecevingOrderEqualToSendingOrder(Channel<int> *ch, int num_items) {
   unsigned sum_send = 0;
   std::thread t([&]() {
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < num_items; i++) {
       ch->Send(&i);
       sum_send += i;
     }
   });
-  for (int i = 0; i < 5; i++) {
-    int recv = 999;
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  for (int i = 0; i < num_items; i++) {
+    int recv = -1;
     EXPECT_EQ(ch->Receive(&recv), true);
     EXPECT_EQ(recv, i);
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
   CloseChannel(ch);
   t.join();
-  EXPECT_EQ(sum_send, 10U);
+  unsigned expected_sum = (num_items * (num_items - 1)) / 2;
+  EXPECT_EQ(sum_send, expected_sum);
   delete ch;
 }
 
@@ -185,12 +187,28 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
 
 TEST(Channel, RecevingOrderEqualToSendingOrderWithUnBufferedChannel) {
   auto ch = MakeChannel<int>(0);
-  RecevingOrderEqualToSendingOrder(ch);
+  RecevingOrderEqualToSendingOrder(ch, 20);
 }
 
-TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel) {
+TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel1) {
+  // Test that Receive Order is same as Send Order when number of items
+  // sent is less than size of buffer
   auto ch = MakeChannel<int>(10);
-  RecevingOrderEqualToSendingOrder(ch);
+  RecevingOrderEqualToSendingOrder(ch, 5);
+}
+
+TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel2) {
+  // Test that Receive Order is same as Send Order when number of items
+  // sent is equal to size of buffer
+  auto ch = MakeChannel<int>(10);
+  RecevingOrderEqualToSendingOrder(ch, 10);
+}
+
+TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel3) {
+  // Test that Receive Order is same as Send Order when number of items
+  // sent is greater than the size of buffer
+  auto ch = MakeChannel<int>(10);
+  RecevingOrderEqualToSendingOrder(ch, 20);
 }
 
 void ChannelCloseUnblocksReceiversTest(Channel<int> *ch) {

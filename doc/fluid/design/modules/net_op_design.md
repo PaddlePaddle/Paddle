@@ -1,16 +1,16 @@
 # Network Design
 
 `Network` is the container and controller of a set of operators,
-user can build a real network from a `NetDesc` which is a protobuf message 
+user can build a real network from a `NetDesc` which is a protobuf message
 and use `Network.Run()` to run all the operators in the network.
 
-A network object knows all Operators belonging to this network. Variables, 
-which are inputs and outputs of these operators, 
+A network object knows all Operators belonging to this network. Variables,
+which are inputs and outputs of these operators,
 are created and managed by a hierarchy of Scope objects.
 
-# API
+## API
 
-## Net
+### Net
 To make the `Network` extendable, a base class is defined like this
 
 ```c++
@@ -43,8 +43,8 @@ class Net {
 };
 ```
 
-All network implementations should build networks from a protobuf message which 
-describes the structure of a real network; `Run` method should be implemented by 
+All network implementations should build networks from a protobuf message which
+describes the structure of a real network; `Run` method should be implemented by
 all implementations to offer a universal method to forward or backward compute a network.
 
 `Net::Create` is a method of factory pattern and can be implemented like
@@ -64,7 +64,7 @@ std::unique<Net> Net::Create(const NetDesc& def) {
 ```
 
 Network is designed as the container of operators. to make it more extendable,
-we decouple it from the related variable resources. 
+we decouple it from the related variable resources.
 
 `Run(Scope* scope)` takes the scope as a argument so that it can run in different scopes.
 
@@ -80,7 +80,7 @@ if (net) {
 }
 ```
 
-## `PlainNet` as a simple implementation of `BaseNet`
+### `PlainNet` as a simple implementation of `BaseNet`
 
 A very basic implementation is as follows. All it does is simply to run every operators in sequence.
 
@@ -211,9 +211,9 @@ class NetBuilder final {
 }
 ```
 
-## Compatibility with RNN
+### Compatibility with RNN
 
-Benefitting from the decoupling of `PlainNet.Run` and `Scope`, `PlainNet` is compatible with future RNN design, 
+Benefitting from the decoupling of `PlainNet.Run` and `Scope`, `PlainNet` is compatible with future RNN design,
 for example we can implement a simple recurrent neural network as follows
 
 ```c++
