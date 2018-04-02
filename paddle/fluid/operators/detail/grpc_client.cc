@@ -150,7 +150,8 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
     s->response_call_back_ = ProcGetResponse;
 
     auto call = s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/GetVariable", req, &cq_);
+        s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
+        &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, (void*)s);
   });
