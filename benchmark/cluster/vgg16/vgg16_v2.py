@@ -15,12 +15,36 @@
 import gzip
 
 import paddle.v2.dataset.cifar as cifar
+import paddle.v2.dataset.flowers as flowers
 import paddle.v2 as paddle
 import time
 import os
 
-DATA_DIM = 3 * 32 * 32
-CLASS_DIM = 10
+if os.getenv("IS_LOCAL", "False") == "False":
+    IS_LOCAL = False
+else:
+    IS_LOCAL = True
+
+DATA_SET = os.getenv("DATA_SET", "cifar10")
+if DATA_SET == "cifar10":
+    DATA_DIM = 3 * 32 * 32
+    CLASS_DIM = 10
+    tr_reader = cifar.train10()
+    te_reader = cifar.test10()
+elif DATA_SET == "flowers":
+    DATA_DIM = 3 * 224 * 224
+    CLASS_DIM = 102
+    tr_reader = flowers.train()
+    te_reader = flowers.test()
+else:
+    raise ValueError("DATA_SET must be cifar10 or flowers")
+
+USE_GPU = os.getenv("USE_GPU", "False")
+if USE_GPU == "False":
+    USE_GPU = False
+else:
+    USE_GPU = True
+
 BATCH_SIZE = os.getenv("BATCH_SIZE")
 if BATCH_SIZE:
     BATCH_SIZE = int(BATCH_SIZE)
@@ -83,7 +107,7 @@ def vgg19(input, class_dim):
 
 def main():
     global ts
-    paddle.init(use_gpu=False)
+    paddle.init(use_gpu=USE_GPU)
     image = paddle.layer.data(
         name="image", type=paddle.data_type.dense_vector(DATA_DIM))
     lbl = paddle.layer.data(
@@ -110,13 +134,13 @@ def main():
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            cifar.train10(),
+            tr_reader,
             # To use other data, replace the above line with:
             # reader.train_reader('train.list'),
             buf_size=1000),
         batch_size=BATCH_SIZE)
     test_reader = paddle.batch(
-        cifar.test10(),
+        te_reader,
         # To use other data, replace the above line with:
         # reader.test_reader('val.list'),
         batch_size=BATCH_SIZE)
@@ -126,7 +150,7 @@ def main():
                                  parameters=parameters,
                                  update_equation=optimizer,
                                  extra_layers=extra_layers,
-                                 is_local=False)
+                                 is_local=IS_LOCAL)
 
     # End batch and end pass event handler
     def event_handler(event):

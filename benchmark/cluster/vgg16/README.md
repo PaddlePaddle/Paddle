@@ -1,6 +1,6 @@
 # Performance for Distributed vgg16
 
-## Test Result
+## Test Result (CPU with cifar10)
 
 ### Hardware Infomation
 
@@ -61,6 +61,28 @@ Setting environment variable: `MKL_NUM_THREADS=1`.
 
 *The performance gap between Fuild and v2 comes from the network interference.*
 
+
+## Test Result (GPU with flowers)
+
+### Hardware Infomation
+
+- GPU: NVIDIA Tesla P40, Driver Version: 375.26
+- CPU: Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz
+- Network: Mellanox Technologies MT27700 Family [ConnectX-4] (100Gb)
+
+### Accelerate Rate
+
+- Pserver Count: 4
+- Batch Size: 20
+- Metrics: samples / sec
+
+| Trainer Count | local | 4 | 10 | 20 |
+| -- | -- | -- | -- | -- |
+| PaddlePaddle Fluid | 42.49 | 45.32 | - | - |
+| PaddlePaddle v2 (1 port) | 22.06 | 6.0 | - | - |
+
+NOTE: GPU cluster training have bottle neck when doing communications.
+NOTE: increasing port number for PaddlePaddle v2 will not increase the total throughput.
 
 ## Steps to Run the Performance Test
 
