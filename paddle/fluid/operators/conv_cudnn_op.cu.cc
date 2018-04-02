@@ -128,29 +128,27 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     auto handle = dev_ctx.cudnn_handle();
 
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    // Tensor core is supported since the volta GPU
-    if (dev_ctx.GetComputeCapability() >= 70) {
-      PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
-    }
-#endif
-
-    PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
-        handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-        cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-        workspace_size_limit, &algo));
-
-//    std::cout << "The chosen algorithm is " << static_cast<int>(algo)
-//              << std::endl;
-
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    // Tensor core is supported since the volta GPU and
+    // is only enabled when input and filter data are float16
     if (dev_ctx.GetComputeCapability() >= 70 &&
         std::type_index(typeid(T)) ==
             std::type_index(typeid(platform::float16))) {
-      // Currently tensor core is only used in this algo
+      PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
+      // Currently tensor core is only enabled using this algo
       algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+    } else {
+      PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          cudnn_conv_desc, CUDNN_DEFAULT_MATH));
+      PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+          handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
+          cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+          workspace_size_limit, &algo));
     }
 #endif
+
+    //    std::cout << "The chosen algorithm is " << static_cast<int>(algo)
+    //              << std::endl;
 
     // get workspace size able to allocate
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(

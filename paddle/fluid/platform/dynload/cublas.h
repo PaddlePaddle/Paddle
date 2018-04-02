@@ -70,6 +70,7 @@ extern void *cublas_dso_handle;
   __macro(cublasDgemm_v2);                \
   __macro(cublasHgemm);                   \
   __macro(cublasSgemmEx);                 \
+  __macro(cublasGemmEx);                  \
   __macro(cublasSgeam_v2);                \
   __macro(cublasDgeam_v2);                \
   __macro(cublasCreate_v2);               \
