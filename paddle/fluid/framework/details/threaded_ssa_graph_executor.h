@@ -75,7 +75,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ThreadedSSAGraphExecutor(size_t num_threads, bool use_event,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           std::unique_ptr<SSAGraph> &&graph);
+                           std::unique_ptr<SSAGraph> &&graph,
+                           bool allow_op_delay);
 
   // Run a SSAGraph by a thread pool
   // Use topological sort algorithm
@@ -97,6 +98,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   const bool use_event_;
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
+  bool allow_op_delay_;
 
   size_t computation_count_{0};
   size_t max_async_computation{100};

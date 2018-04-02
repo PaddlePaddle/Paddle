@@ -184,7 +184,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   method,
                                   memory_opt=True,
                                   iter=10,
-                                  batch_size=None):
+                                  batch_size=None,
+                                  allow_op_delay=False):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -194,7 +195,10 @@ class TestParallelExecutorBase(unittest.TestCase):
             if memory_opt:
                 fluid.memory_optimize(main)
 
-            exe = fluid.ParallelExecutor(loss_name=loss.name, use_cuda=True)
+            exe = fluid.ParallelExecutor(
+                loss_name=loss.name,
+                use_cuda=True,
+                allow_op_delay=allow_op_delay)
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
@@ -236,9 +240,11 @@ class TestMNIST(TestParallelExecutorBase):
 
     def test_simple_fc(self):
         self.check_network_convergence(simple_fc_net)
+        self.check_network_convergence(simple_fc_net, allow_op_delay=True)
 
     def test_batchnorm_fc(self):
         self.check_network_convergence(fc_with_batchnorm)
+        self.check_network_convergence(fc_with_batchnorm, allow_op_delay=True)
 
 
 class TestResnet(TestParallelExecutorBase):
@@ -268,6 +274,12 @@ class TestResnet(TestParallelExecutorBase):
                 SE_ResNeXt152, batch_size=batch_size),
             iter=20,
             batch_size=batch_size)
+        self.check_network_convergence(
+            functools.partial(
+                SE_ResNeXt152, batch_size=batch_size),
+            iter=20,
+            batch_size=batch_size,
+            allow_op_delay=True)
 
 
 class ModelHyperParams(object):

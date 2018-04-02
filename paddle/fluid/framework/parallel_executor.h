@@ -14,8 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <future>
+#include <string>
 #include <unordered_set>
+#include <vector>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -37,7 +38,8 @@ class ParallelExecutor {
                             const std::unordered_set<std::string>& params,
                             const ProgramDesc& startup_program,
                             const ProgramDesc& main_program,
-                            const std::string& loss_var_name, Scope* scope);
+                            const std::string& loss_var_name, Scope* scope,
+                            bool allow_op_delay);
 
   void Run(const std::vector<std::string>& fetch_tensors,
            const std::string& fetched_var_name = "fetched_var");
