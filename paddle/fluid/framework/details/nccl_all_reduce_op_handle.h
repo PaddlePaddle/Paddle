@@ -37,6 +37,8 @@ struct NCCLAllReduceOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
+  // Delay and buffer nccl_all_reduce together can significantly increase
+  // performance. Disable this feature by returning false.
   bool IsDelayedOp() override { return true; };
 
  protected:

@@ -45,7 +45,10 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   std::unordered_set<VarHandleBase *> pending_vars;
   BlockingQueue<VarHandleBase *> ready_vars;
   std::unordered_set<OpHandleBase *> ready_ops;
-
+  // For ops (e.g. nccl_all_reduce) that need to coordinate multiple
+  // streams from multiple GPUs, it's faster to buffer them and schedule
+  // together since we currently cannot overlap computation and memcpy streams.
+  // Should revisit it if overlapping is available.
   std::unordered_set<OpHandleBase *> delayed_ops;
   std::unordered_set<OpHandleBase *> after_delayed_ops;
   std::unordered_set<VarHandleBase *> delayed_vars;

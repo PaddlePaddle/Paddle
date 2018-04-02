@@ -16,7 +16,6 @@ import core
 import multiprocessing
 import framework
 import executor
-import sys
 
 __all__ = ['ParallelExecutor']
 
@@ -36,7 +35,12 @@ class ParallelExecutor(object):
                 places.append(p)
 
         if num_threads is None:
-            num_threads = len(places)
+            if use_cuda:
+                # Experiments on se-resnext shows that too many threads hurt
+                # performance. Worth tunning for other models in the future.
+                num_threads = len(places)
+            else:
+                min(len(places) * 2, multiprocessing.cpu_count())
 
         startup = framework.default_startup_program()
         main = framework.default_main_program()
