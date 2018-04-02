@@ -28,7 +28,6 @@ import wmt16
 import mq2007
 import flowers
 import voc2012
-import image
 
 __all__ = [
     'mnist',
@@ -44,5 +43,4 @@ __all__ = [
     'mq2007',
     'flowers',
     'voc2012',
-    'image',
 ]
