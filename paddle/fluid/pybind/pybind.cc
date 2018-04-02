@@ -499,13 +499,13 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<ParallelExecutor>(m, "ParallelExecutor")
       .def("__init__",
-           [](ParallelExecutor &self, size_t num_threads, bool use_event,
+           [](ParallelExecutor &self, size_t per_place_threads, bool use_event,
               const std::vector<platform::Place> &places,
               const std::unordered_set<std::string> &params,
               const ProgramDesc &startup_program,
               const ProgramDesc &main_program, const std::string &loss_var_name,
               Scope *scope) {
-             new (&self) ParallelExecutor(num_threads, use_event, places,
+             new (&self) ParallelExecutor(per_place_threads, use_event, places,
                                           params, startup_program, main_program,
                                           loss_var_name, scope);
            })

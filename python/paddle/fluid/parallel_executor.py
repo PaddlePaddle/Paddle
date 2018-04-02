@@ -21,7 +21,15 @@ __all__ = ['ParallelExecutor']
 
 
 class ParallelExecutor(object):
-    def __init__(self, loss_name, use_cuda, num_threads=None):
+    def __init__(self, loss_name, use_cuda, per_place_threads=1):
+        """Run the program in multiple GPUs or multiple cpu threads.
+
+        :param loss_name: The name of the loss tensor
+        :param use_cuda: Whether to use GPU.
+        :param per_place_threads: If use GPU, it specifies the number of
+           threads used for for each GPU. If use CPU, it specifies the number
+           of threads for each core.
+        """
         places = []
         if use_cuda:
             for i in xrange(core.get_cuda_device_count()):
@@ -34,15 +42,12 @@ class ParallelExecutor(object):
                 p.set_place(core.CPUPlace())
                 places.append(p)
 
-        if num_threads is None:
-            num_threads = min(len(places) * 2, multiprocessing.cpu_count())
-
         startup = framework.default_startup_program()
         main = framework.default_main_program()
         scope = executor.global_scope()
 
         self.executor = core.ParallelExecutor(
-            num_threads,
+            per_place_threads,
             True if use_cuda else False,  # use_event
             places,
             set([
