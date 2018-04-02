@@ -1,2 +1,1 @@
-安装与使用
-------------
+../../v2/build_and_install/index_cn.rst

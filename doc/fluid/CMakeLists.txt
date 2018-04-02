@@ -27,6 +27,8 @@ sphinx_add_target(paddle_fluid_docs
                   ${CMAKE_CURRENT_SOURCE_DIR}
                   ${SPHINX_HTML_DIR_EN})
 
+add_dependencies(paddle_fluid_docs gen_proto_py)
+
 # configured documentation tools and intermediate build results
 set(BINARY_BUILD_DIR_CN "${CMAKE_CURRENT_BINARY_DIR}/cn/_build")
 
@@ -47,3 +49,7 @@ sphinx_add_target(paddle_fluid_docs_cn
                   ${SPHINX_CACHE_DIR_CN}
                   ${CMAKE_CURRENT_SOURCE_DIR}
                   ${SPHINX_HTML_DIR_CN})
+
+add_dependencies(paddle_fluid_docs_cn gen_proto_py)
+
+add_subdirectory(api)
