@@ -30,12 +30,12 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-static const int64_t kNoPadding = -1;
+static constexpr int64_t kNoPadding = -1;
 
 inline size_t getIndex(const std::vector<int64_t> &rows, int64_t value) {
   auto it = std::find(rows.begin(), rows.end(), value);
   PADDLE_ENFORCE(it != rows.end(), "id should be in rows");
-  return std::distance(rows.begin(), it);
+  return static_cast<size_t>(std::distance(rows.begin(), it));
 }
 
 template <typename T>
