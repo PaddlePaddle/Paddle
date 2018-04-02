@@ -18,6 +18,7 @@ from tensor import assign, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
+from ..initializer import force_init_on_cpu
 from ops import logical_and, logical_not, logical_or
 
 __all__ = [
@@ -949,7 +950,7 @@ def create_array(dtype):
         dtype=dtype)
 
 
-def less_than(x, y, cond=None, **ignored):
+def less_than(x, y, force_cpu=True, cond=None, **ignored):
     """
     **Less than**
 
@@ -958,6 +959,7 @@ def less_than(x, y, cond=None, **ignored):
     Args:
         x(Variable): First operand of *less_than*
         y(Variable): Second operand of *less_than*
+        force_cpu(Bool|True): The output data will be on CPU if set true.
         cond(Variable|None): Optional output variable to store the result of *less_than*
 
     Returns:
@@ -974,8 +976,11 @@ def less_than(x, y, cond=None, **ignored):
         cond.stop_gradient = True
 
     helper.append_op(
-        type='less_than', inputs={'X': [x],
-                                  'Y': [y]}, outputs={'Out': [cond]})
+        type='less_than',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [cond]},
+        attrs={'force_cpu': force_cpu or force_init_on_cpu()})
     return cond
 
 
@@ -1396,7 +1401,8 @@ class DynamicRNN(object):
                 type='less_than',
                 inputs={'X': self.step_idx,
                         'Y': self.max_seq_len},
-                outputs={'Out': self.cond})
+                outputs={'Out': self.cond},
+                attrs={'force_cpu': True})
 
         input_array = parent_block.create_var(
             name=unique_name.generate('dynamic_rnn_input_array'),
@@ -1445,7 +1451,11 @@ class DynamicRNN(object):
             for new_mem, mem_array in self.mem_link:
                 array_write(x=new_mem, i=self.step_idx, array=mem_array)
 
-            less_than(x=self.step_idx, y=self.max_seq_len, cond=self.cond)
+            less_than(
+                x=self.step_idx,
+                y=self.max_seq_len,
+                force_cpu=True,
+                cond=self.cond)
 
         self.status = DynamicRNN.AFTER_RNN
         for each_array in self.output_array:

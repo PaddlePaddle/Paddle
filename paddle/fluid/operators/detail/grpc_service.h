@@ -76,6 +76,7 @@ namespace detail {
 enum class GrpcMethod {
   kSendVariable,
   kGetVariable,
+  kPrefetchVariable,
 };
 
 static const int kGrpcNumMethods =
@@ -87,6 +88,8 @@ inline const char* GrpcMethodName(GrpcMethod id) {
       return "/sendrecv.SendRecvService/SendVariable";
     case GrpcMethod::kGetVariable:
       return "/sendrecv.SendRecvService/GetVariable";
+    case GrpcMethod::kPrefetchVariable:
+      return "/sendrecv.SendREcvService/PrefetchVariable";
   }
 
   // Shouldn't be reached.
