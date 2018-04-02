@@ -21,7 +21,11 @@ __all__ = ['ParallelExecutor']
 
 
 class ParallelExecutor(object):
-    def __init__(self, loss_name, use_cuda, num_threads=None):
+    def __init__(self,
+                 loss_name,
+                 use_cuda,
+                 num_threads=None,
+                 allow_op_delay=False):
         places = []
         if use_cuda:
             for i in xrange(core.get_cuda_device_count()):
@@ -57,7 +61,8 @@ class ParallelExecutor(object):
             startup.desc,
             main.desc,
             loss_name,
-            scope)
+            scope,
+            allow_op_delay)
         self.scope = scope
 
     def run(self, fetch_list):

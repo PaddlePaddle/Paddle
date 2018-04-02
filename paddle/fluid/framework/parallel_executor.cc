@@ -48,7 +48,7 @@ ParallelExecutor::ParallelExecutor(
     const std::vector<platform::Place> &places,
     const std::unordered_set<std::string> &params,
     const ProgramDesc &startup_program, const ProgramDesc &main_program,
-    const std::string &loss_var_name, Scope *scope)
+    const std::string &loss_var_name, Scope *scope, bool allow_op_delay)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
@@ -83,8 +83,8 @@ ParallelExecutor::ParallelExecutor(
   auto graph = builder.Build(main_program);
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      num_threads, use_event, member_->local_scopes_, places,
-      std::move(graph)));
+      num_threads, use_event, member_->local_scopes_, places, std::move(graph),
+      allow_op_delay));
 
   // Step 3. Create vars in each scope;
   for (auto *scope : member_->local_scopes_) {
