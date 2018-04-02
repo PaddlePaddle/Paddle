@@ -55,7 +55,9 @@ class OpHandleBase {
 
   void AddOutput(VarHandleBase *out);
 
-  virtual bool IsDelayedOp() { return false; }
+  // If the Op involves data transfer of multiple devices that
+  // will likely block other computations.
+  virtual bool IsMultiDeviceTransfer() { return false; }
 
  protected:
   virtual void RunImpl() = 0;
