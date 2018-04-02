@@ -28,7 +28,6 @@ import wmt16
 import mq2007
 import flowers
 import voc2012
-import image
 
 __all__ = [
     'mnist',
@@ -37,12 +36,11 @@ __all__ = [
     'cifar',
     'movielens',
     'conll05',
-    'sentiment',
+    'sentiment'
     'uci_housing',
     'wmt14',
     'wmt16',
     'mq2007',
     'flowers',
     'voc2012',
-    'image',
 ]
