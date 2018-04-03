@@ -22,13 +22,17 @@ import data_type
 import topology
 import networks
 import evaluator
+from . import dataset
+from . import reader
 from . import plot
 import attr
 import op
 import pooling
 import inference
 import networks
+import minibatch
 import plot
+import image
 import paddle.trainer.config_parser as cp
 
 __all__ = [
@@ -44,11 +48,14 @@ __all__ = [
     'data_type',
     'attr',
     'pooling',
+    'dataset',
+    'reader',
     'topology',
     'networks',
     'infer',
     'plot',
     'evaluator',
+    'image',
     'master',
 ]
 
@@ -146,3 +153,4 @@ def init(**kwargs):
 
 
 infer = inference.infer
+batch = minibatch.batch

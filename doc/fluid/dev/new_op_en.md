@@ -33,6 +33,33 @@ Op definition           | `.cc` files
 Kernel implementation       | The kernel methods shared between CPU and CUDA are defined in `.h` files. CPU-specific kernels live in `.cc` files, while CUDA-specific kernels are implemented in `.cu`files.
 Registering the Op           | Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation, while `.cu` files contain the CUDA implementation.
 
+<table>
+<thead>
+<tr>
+<th>Information</th>
+<th> Where is it defined</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpProtoMake definition </td>
+<td> `.cc`files, Backward Op does not need an OpProtoMake interface. </td>
+</tr>
+<tr>
+<td>Op definition  </td>
+<td> `.cc` files</td>
+</tr>
+<tr>
+<td>Kernel implementation  </td>
+<td> The kernel methods shared between CPU and CUDA are defined in `.h` files. CPU-specific kernels live in `.cc` files, while CUDA-specific kernels are implemented in `.cu`files.</td>
+</tr>
+<tr>
+<td>Registering the Op  </td>
+<td> Ops are registered in `.cc` files; For Kernel registration, `.cc` files contain the CPU implementation, while `.cu` files contain the CUDA implementation.</td>
+</tr>
+</tbody>
+</table>
+
 
 New Operator implementations are added to the list [paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators), with file names in the format `*_op.h` (if applicable), `*_op.cc`, `*_op.cu` (if applicable).** The system will use the naming scheme to automatically build operators and their corresponding Python extensions.**
 
@@ -279,7 +306,7 @@ A forward operator unit test inherits `unittest.TestCase` and defines metaclass 
 
       def test_check_output(self):
           self.check_output()
-          
+
       def test_check_grad_normal(self):
           self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
 
