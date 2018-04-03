@@ -21,23 +21,23 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-#define FLT_MAX __FLT_MAX__
-
 template <typename DeviceContext, typename T>
-class MaxSeqPoolFunctor {
+class SequencePoolFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  /* max pool has index output */
+  void operator()(const DeviceContext& context, const std::string pooltype,
                   const framework::LoDTensor& input, framework::Tensor* output,
-                  framework::Tensor* index);
+                  framework::Tensor* index = nullptr);
 };
 
-template <typename DeviceContext, class T>
-class MaxSeqPoolGradFunctor {
+template <typename DeviceContext, typename T>
+class SequencePoolGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& context, const std::string pooltype,
                   const framework::Tensor& out_grad,
-                  const framework::Tensor& index,
-                  framework::LoDTensor* in_grad);
+                  framework::LoDTensor* in_grad,
+                  /* max pool has index */
+                  const framework::Tensor* index = nullptr);
 };
 
 }  // namespace math

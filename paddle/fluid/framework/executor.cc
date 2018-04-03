@@ -46,7 +46,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
-static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
+void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
@@ -110,12 +110,12 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
-        CreateTensor(ptr, var->GetType());
+        InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
                 << " global, which pointer is " << ptr;
       } else {
         auto* ptr = scope->Var(var->Name());
-        CreateTensor(ptr, var->GetType());
+        InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
                 << " locally, which pointer is " << ptr;
       }
@@ -123,7 +123,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
   } else {
     for (auto& var : global_block.AllVars()) {
       auto* ptr = scope->Var(var->Name());
-      CreateTensor(ptr, var->GetType());
+      InitializeVariable(ptr, var->GetType());
       VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
               << ptr;
     }
@@ -319,11 +319,12 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars) {
   Scope* local_scope = scope;
-  if (create_vars && create_local_scope) {
-    local_scope = &scope->NewScope();
+  if (create_vars) {
+    if (create_local_scope) {
+      local_scope = &scope->NewScope();
+    }
+    CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
-
-  CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
 
   for (auto& op : ctx->ops_) {
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);

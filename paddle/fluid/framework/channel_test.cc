@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <chrono>
 #include <thread>
-
 #include "gtest/gtest.h"
 
 using paddle::framework::Channel;
@@ -37,23 +36,25 @@ TEST(Channel, ChannelCapacityTest) {
   delete ch;
 }
 
-void RecevingOrderEqualToSendingOrder(Channel<int> *ch) {
+void RecevingOrderEqualToSendingOrder(Channel<int> *ch, int num_items) {
   unsigned sum_send = 0;
   std::thread t([&]() {
-    for (int i = 0; i < 5; i++) {
-      EXPECT_EQ(ch->Send(&i), true);
+    for (int i = 0; i < num_items; i++) {
+      ch->Send(&i);
       sum_send += i;
     }
   });
-  for (int i = 0; i < 5; i++) {
-    int recv = 999;
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  for (int i = 0; i < num_items; i++) {
+    int recv = -1;
     EXPECT_EQ(ch->Receive(&recv), true);
     EXPECT_EQ(recv, i);
   }
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
   CloseChannel(ch);
   t.join();
-  EXPECT_EQ(sum_send, 10U);
+  unsigned expected_sum = (num_items * (num_items - 1)) / 2;
+  EXPECT_EQ(sum_send, expected_sum);
   delete ch;
 }
 
@@ -61,7 +62,7 @@ TEST(Channel, SufficientBufferSizeDoesntBlock) {
   const size_t buffer_size = 10;
   auto ch = MakeChannel<size_t>(buffer_size);
   for (size_t i = 0; i < buffer_size; ++i) {
-    EXPECT_EQ(ch->Send(&i), true);  // should not block
+    ch->Send(&i);
   }
 
   size_t out;
@@ -82,7 +83,7 @@ void SendReceiveWithACloseChannelShouldPanic(Channel<size_t> *ch) {
   const size_t data = 5;
   std::thread send_thread{[&]() {
     size_t i = data;
-    EXPECT_EQ(ch->Send(&i), true);  // should not block
+    ch->Send(&i);  // should not block
   }};
 
   std::thread recv_thread{[&]() {
@@ -94,12 +95,18 @@ void SendReceiveWithACloseChannelShouldPanic(Channel<size_t> *ch) {
   send_thread.join();
   recv_thread.join();
 
-  // After closing send should return false. Receive should
-  // also return false as there is no data in queue.
+  // After closing send should panic. Receive should
+  // also  false as there is no data in queue.
   CloseChannel(ch);
   send_thread = std::thread{[&]() {
     size_t i = data;
-    EXPECT_EQ(ch->Send(&i), false);  // should return false
+    bool is_exception = false;
+    try {
+      ch->Send(&i);
+    } catch (paddle::platform::EnforceNotMet e) {
+      is_exception = true;
+    }
+    EXPECT_EQ(is_exception, true);
   }};
   recv_thread = std::thread{[&]() {
     size_t i;
@@ -129,7 +136,7 @@ TEST(Channel, ReceiveFromBufferedChannelReturnResidualValuesTest) {
   auto ch = MakeChannel<size_t>(buffer_size);
 
   for (size_t i = 0; i < buffer_size; ++i) {
-    EXPECT_EQ(ch->Send(&i), true);  // sending should not block
+    ch->Send(&i);  // sending should not block
   }
 
   size_t out;
@@ -160,9 +167,16 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
     // Try to write more than buffer size.
     for (size_t i = 0; i < 2 * buffer_size; ++i) {
       if (i < buffer_size)
-        EXPECT_EQ(ch->Send(&i), true);  // should block after 10 iterations
-      else
-        EXPECT_EQ(ch->Send(&i), false);
+        ch->Send(&i);  // should block after 10 iterations
+      else {
+        bool is_exception = false;
+        try {
+          ch->Send(&i);
+        } catch (paddle::platform::EnforceNotMet e) {
+          is_exception = true;
+        }
+        EXPECT_EQ(is_exception, true);
+      }
     }
   });
   std::this_thread::sleep_for(std::chrono::milliseconds(200));  // wait 0.2 sec
@@ -173,12 +187,28 @@ TEST(Channel, ConcurrentSendNonConcurrentReceiveWithSufficientBufferSize) {
 
 TEST(Channel, RecevingOrderEqualToSendingOrderWithUnBufferedChannel) {
   auto ch = MakeChannel<int>(0);
-  RecevingOrderEqualToSendingOrder(ch);
+  RecevingOrderEqualToSendingOrder(ch, 20);
 }
 
-TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel) {
+TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel1) {
+  // Test that Receive Order is same as Send Order when number of items
+  // sent is less than size of buffer
   auto ch = MakeChannel<int>(10);
-  RecevingOrderEqualToSendingOrder(ch);
+  RecevingOrderEqualToSendingOrder(ch, 5);
+}
+
+TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel2) {
+  // Test that Receive Order is same as Send Order when number of items
+  // sent is equal to size of buffer
+  auto ch = MakeChannel<int>(10);
+  RecevingOrderEqualToSendingOrder(ch, 10);
+}
+
+TEST(Channel, RecevingOrderEqualToSendingOrderWithBufferedChannel3) {
+  // Test that Receive Order is same as Send Order when number of items
+  // sent is greater than the size of buffer
+  auto ch = MakeChannel<int>(10);
+  RecevingOrderEqualToSendingOrder(ch, 20);
 }
 
 void ChannelCloseUnblocksReceiversTest(Channel<int> *ch) {
@@ -231,7 +261,13 @@ void ChannelCloseUnblocksSendersTest(Channel<int> *ch, bool isBuffered) {
     t[i] = std::thread(
         [&](bool *ended, bool *success) {
           int data = 10;
-          *success = ch->Send(&data);
+          bool is_exception = false;
+          try {
+            ch->Send(&data);
+          } catch (paddle::platform::EnforceNotMet e) {
+            is_exception = true;
+          }
+          *success = !is_exception;
           *ended = true;
         },
         &thread_ended[i], &send_success[i]);
@@ -316,8 +352,11 @@ TEST(Channel, UnbufferedLessReceiveMoreSendTest) {
     // Try to send more number of times
     // than receivers
     for (int i = 0; i < 4; i++) {
-      ch->Send(&i);
-      sum_send += i;
+      try {
+        ch->Send(&i);
+        sum_send += i;
+      } catch (paddle::platform::EnforceNotMet e) {
+      }
     }
   });
   for (int i = 0; i < 3; i++) {
@@ -382,7 +421,13 @@ void ChannelDestroyUnblockSenders(Channel<int> *ch, bool isBuffered) {
     t[i] = std::thread(
         [&](bool *ended, bool *success) {
           int data = 10;
-          *success = ch->Send(&data);
+          bool is_exception = false;
+          try {
+            ch->Send(&data);
+          } catch (paddle::platform::EnforceNotMet e) {
+            is_exception = true;
+          }
+          *success = !is_exception;
           *ended = true;
         },
         &thread_ended[i], &send_success[i]);
@@ -508,7 +553,7 @@ void ChannelHolderSendReceive(ChannelHolder *ch) {
   unsigned sum_send = 0;
   std::thread t([&]() {
     for (int i = 0; i < 5; i++) {
-      EXPECT_EQ(ch->Send(&i), true);
+      ch->Send(&i);
       sum_send += i;
     }
   });
@@ -541,8 +586,22 @@ TEST(ChannelHolder, ChannelUninitializedTest) {
   ChannelHolder *ch = new ChannelHolder();
   EXPECT_EQ(ch->IsInitialized(), false);
   int i = 10;
-  EXPECT_EQ(ch->Send(&i), false);
-  EXPECT_EQ(ch->Receive(&i), false);
+  bool send_exception = false;
+  try {
+    ch->Send(&i);
+  } catch (paddle::platform::EnforceNotMet e) {
+    send_exception = true;
+  }
+  EXPECT_EQ(send_exception, true);
+
+  bool recv_exception = false;
+  try {
+    ch->Receive(&i);
+  } catch (paddle::platform::EnforceNotMet e) {
+    recv_exception = true;
+  }
+  EXPECT_EQ(recv_exception, true);
+
   bool is_exception = false;
   try {
     ch->Type();
@@ -669,7 +728,13 @@ void ChannelHolderCloseUnblocksSendersTest(ChannelHolder *ch, bool isBuffered) {
     t[i] = std::thread(
         [&](bool *ended, bool *success) {
           int data = 10;
-          *success = ch->Send(&data);
+          bool is_exception = false;
+          try {
+            ch->Send(&data);
+          } catch (paddle::platform::EnforceNotMet e) {
+            is_exception = true;
+          }
+          *success = !is_exception;
           *ended = true;
         },
         &thread_ended[i], &send_success[i]);
@@ -760,7 +825,13 @@ void ChannelHolderDestroyUnblockSenders(ChannelHolder *ch, bool isBuffered) {
     t[i] = std::thread(
         [&](bool *ended, bool *success) {
           int data = 10;
-          *success = ch->Send(&data);
+          bool is_exception = false;
+          try {
+            ch->Send(&data);
+          } catch (paddle::platform::EnforceNotMet e) {
+            is_exception = true;
+          }
+          *success = !is_exception;
           *ended = true;
         },
         &thread_ended[i], &send_success[i]);

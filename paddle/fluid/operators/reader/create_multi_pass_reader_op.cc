@@ -81,10 +81,10 @@ class CreateMultiPassReaderOpMaker : public DecoratedReaderMakerBase {
 
       This operator creates a multi-pass reader. A multi-pass reader 
       is used to yield data for several pass training continuously. 
-      It takes the the number of pass to run as one of its attributes
+      It takes the number of passes to run as one of its attributes
       ('pass_num'), and maintains a pass counter to record how many 
-      passes it has completed. When the underlying reader reach the EOF, 
-      the multi-pass reader checks whether it has completed training 
+      passes it has completed. When the underlying reader reaches the 
+      EOF, the multi-pass reader checks whether it has completed training 
       of the given number of pass. If not, the underlying reader will 
       be re-initialized and starts a new pass automatically.
     )DOC");
