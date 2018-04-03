@@ -2,15 +2,15 @@
 
 ## Overview
 
-Sequential data is a major input type dealing with natural language processing tasks.
+Sequential data is common in natural language processing.
 
-A sentence is a sequence of words. Many sentences form a paragraph further. Therefore, a paragraph can be viewed as a nested sequence with two level, where each element of the sequence is another sequence.
+A sentence is a sequence of words and many sentences form a paragraph further. Therefore, a paragraph can be viewed as a nested sequence with two level, where each element of the sequence is another sequence. That is to say, sequential data could be recursive. An example of two-level recursive sequential data is that an article is composed of a sequence of sentences, and each sentence a sequence of words.
 
-The double-level sequence is a very flexible data organization method supported by PaddlePaddle, which helps us to better describe more complex language data such as discribing paragraphs and several rounds of dialogues. Based on double-level sequence input, we can design and build a flexible, hierarchical RNN model that encodes input data from the word and sentence level, and can also introduce more complex memory mechanisms to better complete some complex language understanding tasks.
+PaddlePaddle and PaddlePaddle v2 support two-level recursive sequential data. The two-level sequence is a very flexible data, which helps us to better describe more complex language data such as discribing paragraphs and several rounds of dialogues. Based on two-level sequence input, we can design and build a flexible, hierarchical RNN model that encodes input data from the word and sentence level. For the support of arbitrary levels, please refer to PaddlePaddle Fluid.
 
 In PaddlePaddle, `recurrent_group` is an arbitrarily complex RNN unit. The user only needs to define the calculation that the RNN will complete in one time step. PaddlePaddle is responsible for the propagation of information and error in time series.
 
-Furthermore, `recurrent_group` can also be extended to handle double-level sequence. By defining two nested `recurrent_group` operations at the clause level and the word level respectively, a hierarchical and complex RNN is finally achieved.
+Furthermore, `recurrent_group` can also be extended to handle two-level sequence. By defining two nested `recurrent_group` operations at the clause level and the word level respectively, a hierarchical and complex RNN is finally achieved.
 
 Currently, in the PaddlePaddle, there are `recurrent_group` and some Layers that can process bidirectional sequences. For details, refer to the document: <a href = "hierarchical_layer_en.html">Layers for supporting double-layer sequences as input.</a>
 
@@ -33,7 +33,7 @@ The core of using `recurrent_group` is to design the logic of the step function.
 ### Input
 The input sequence processed by `recurrent_group` is mainly divided into the following three types:
 
-- **Input Data**: When putting a double-level sequence into `recurrent_group`, it will be disassembled into a single-level sequence. When putting a single-level sequence into `recurrent_group`, it will be disassembled into a non-sequence and then passed to the step function. This process is completely transparent to the user. There are two possible types: 1) User input via data_layer; 2) Output from other layers.
+- **Input Data**: When putting a two-level sequence into `recurrent_group`, it will be disassembled into a single-level sequence. When putting a single-level sequence into `recurrent_group`, it will be disassembled into a non-sequence and then passed to the step function. This process is completely transparent to the user. There are two possible types: 1) User input via data_layer; 2) Output from other layers.
 		
 - **Read-only Memory Input**: `StaticInput` defines a read-only Memory. The input specified by `StaticInput` will not be disassembled by `recurrent_group`, and each time step of the `recurrent_group` loop will always be able to reference all inputs. It may be a non-sequence or a single-layer sequence.
 	  
@@ -63,12 +63,12 @@ The user can explicitly specify the output of a layer to initialize the memory. 
 
 `recurrent_group` helps us to split the input sequence, merge the output, and loop through the sequence of computational logic.
 
-Using this feature, the two nested `recurrent_group` can handle the nested double-level sequences, implementing sequence-level RNN structures at both the word and sentence levels.
+Using this feature, the two nested `recurrent_group` can handle the nested two-level sequences, implementing sequence-level RNN structures at both the word and sentence levels.
 
 - Word-level RNN:  each state corresponds to a word.
 - Sequence-level RNN: a sequence-layer RNN consists of multiple word-layer RNNs. Each word-layer RNN (ie, each state of a sequence-layer RNN) has a subsequence.
 
-For convenience of description, the following takes the NLP task as an example. A paragraph containing a subsequence is defined as a double-level sequence, and a sentence containing a word is defined as a single-layer sequence. Then, the zero-level sequence is a word.
+For convenience of description, the following takes the NLP task as an example. A paragraph containing a subsequence is defined as a two-level sequence, and a sentence containing a word is defined as a single-layer sequence. Then, the zero-level sequence is a word.
 
 ## Usage of Sequence-level RNN
 
@@ -81,9 +81,9 @@ Using `recurrent_group` requires the following conventions:
   - memory: define memory to point to a layer in the step function, get a moment output from this layer by referencing memory to form a recurrent connection. The is_seq parameter of memory must be false. If memory is not defined, the operations within each time step are independent.
   - boot_layer: the initial state of memory, set 0 by default. is_seq in memory must be false.
  
-- **Double-input Double-output**: Both input and output are double-level sequence.
+- **Double-input Double-output**: Both input and output are two-level sequence.
   - If there are multiple input sequences, the number of subsequence contained in different inputs must be strictly equal, but the number of words in the subsequence may not be equal.
-  - output a double-level sequence. The number of subsequence and the number of words are the same as the specified input sequence and the first input is default.
+  - output a two-level sequence. The number of subsequence and the number of words are the same as the specified input sequence and the first input is default.
   - memory: defining memory in the step function, pointing to a layer, by referring to the memory to get the output of this layer at a time, forming a recurrent connection. The memory defined in the outer `recurrent_group` step function can record the state of the previous subsequence, either as a single-level sequence (only as read-only memory) or as a word. If memory is not defined, the operations between subsequence are independent.
   - boot_layer: the initial state of memory. It is either a single-level sequence (only as read-only memory) or a vector. The default is not set, that is, the initial state is 0.
 
