@@ -131,7 +131,6 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         w_tensor.set(w_array, place)
 
         w_before_optimize = np.array(w_tensor)
-        print(w_before_optimize)
 
         # create and initialize LeraningRate Variable
         lr_value = 0.1
