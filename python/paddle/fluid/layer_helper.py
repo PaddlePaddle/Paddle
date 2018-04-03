@@ -407,6 +407,8 @@ class LayerHelper(object):
             print "use_cudnn for", act['type'], "is", act['use_cudnn']
 
         act_type = act.pop('type')
+        if 'use_mkldnn' in self.kwargs:
+            act['use_mkldnn'] = self.kwargs.get('use_mkldnn')
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},

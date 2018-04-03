@@ -146,14 +146,19 @@ void MultipleReader::PrefetchThreadFunc(std::string file_name,
   while (reader->HasNext()) {
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
-    if (!buffer_->Send(&ins)) {
+    try {
+      buffer_->Send(&ins);
+    } catch (paddle::platform::EnforceNotMet e) {
       VLOG(5) << "WARNING: The buffer channel has been closed. The prefetch "
                  "thread of file '"
               << file_name << "' will terminate.";
       break;
     }
   }
-  if (!available_thread_idx_->Send(&thread_idx)) {
+
+  try {
+    available_thread_idx_->Send(&thread_idx);
+  } catch (paddle::platform::EnforceNotMet e) {
     VLOG(5) << "WARNING: The available_thread_idx_ channel has been closed. "
                "Fail to send thread_idx.";
   }

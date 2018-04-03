@@ -103,6 +103,7 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
 
+  mutable std::mutex mutex_;
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
@@ -159,7 +160,7 @@ class DeviceContextPool {
   }
 
   /*! \brief  Return handle of single device context. */
-  const platform::DeviceContext* Get(const platform::Place& place);
+  platform::DeviceContext* Get(const platform::Place& place);
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
@@ -172,19 +173,8 @@ class DeviceContextPool {
 
  private:
   static DeviceContextPool* pool;
-  constexpr static int LEFT_SHIFT = 8;
-  struct Hash {
-    std::hash<int> hash_;
-    size_t operator()(const platform::Place& place) const {
-      int pre_hash = place.which() << LEFT_SHIFT;
-      if (platform::is_gpu_place(place)) {
-        pre_hash += boost::get<platform::CUDAPlace>(place).GetDeviceId();
-      }
-      return hash_(pre_hash);
-    }
-  };
-  std::unordered_map<const platform::Place, const platform::DeviceContext*,
-                     Hash>
+  std::unordered_map<const platform::Place,
+                     std::unique_ptr<platform::DeviceContext>, PlaceHash>
       device_contexts_;
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };

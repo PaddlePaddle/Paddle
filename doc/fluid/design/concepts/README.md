@@ -2,15 +2,37 @@ A few months ago when we were trying to replace CMake with Bazel, @emailweixu su
 
 Here are some initial thoughts. Your comments are welcome!
 
-### Required CMake Function
+# Required CMake Function
 
 I think we need only the following few CMake functions to make a project description mean and clean:
 
-| C++ | CUDA C++ | Go |
-|---|---|---|
-| cc_library | nv_library | go_library |
-| cc_binary | nv_binary | go_binary |
-| cc_test | nv_test | go_test |
+<table>
+<thead>
+<tr>
+<th>C++</th>
+<th>CUDA C++</th>
+<th>Go</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cc_library </td>
+<td>nv_library </td>
+<td>go_library </td>
+</tr>
+<tr>
+<td>cc_binary </td>
+<td>nv_binary </td>
+<td>go_binary </td>
+</tr>
+<tr>
+<td> cc_test </td>
+<td> nv_test </td>
+<td> go_test </td>
+</tr>
+</tbody>
+</table>
+
 
 - The `_library` functions generate  .a files from source code.
 - The `_binary` functions generate executable binary files.
@@ -25,7 +47,7 @@ Also,
 - to describe external dependencies, we need `external_library`.
 - to build shared libraries, we need `shared_library`.
 
-### An Example Project
+## An Example Project
 
 Suppose that we have aforementioned functions defined in our `/cmake` directory.  The following example `CMakeLists.txt` describes a project including the following source files:
 
@@ -102,11 +124,11 @@ shared_library(api
 
 ```
 
-### Implementation
+## Implementation
 
 As above example CMakeLists.txt executes, each function invocation adds "nodes" to a dependency graph.  It also use this graph to generate CMake commands including `add_executable`, `add_dependencies`, `target_link_libraries`, and `add_test`.
 
-### Using Package Manager For Go
+## Using Package Manager For Go
 
 Building Go binaries and libraries need to satisfy their dependencies, generally
 we can do `go get ./...` to download and compile all external dependencies. The
@@ -122,7 +144,7 @@ problems are:
    at many cloud file hosting, so users what to compile paddle by themselves can
    download this "vendor" package from a mirror site.
 
-#### Choose A Suitable Tool
+### Choose A Suitable Tool
 
 As mentioned by @wangkuiyi, [Here](https://github.com/golang/go/wiki/PackageManagementTools)
 list dozens of Go package managers. We choose the tool using following principles:
@@ -140,7 +162,7 @@ management tool has been started at: https://github.com/golang/dep to resolve
 such problems, but it's currently at Alpha stage. So the best choice now is
 glide obviously.
 
-#### Manage Go Packages
+### Manage Go Packages
 
 - Dependencies: `go/glide.yaml` will store the dependencies and their versions which
   is directly imported by paddle. `go/glide.lock` will store all dependencies recursively

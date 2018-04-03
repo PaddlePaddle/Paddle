@@ -126,7 +126,6 @@ class TestTensor(unittest.TestCase):
     def test_lod_tensor_gpu_init(self):
         if not core.is_compiled_with_cuda():
             return
-        scope = core.Scope()
         place = core.CUDAPlace(0)
         lod_py = [[0, 2, 5], [0, 2, 4, 5]]
         lod_tensor = core.LoDTensor()
@@ -143,6 +142,25 @@ class TestTensor(unittest.TestCase):
         self.assertAlmostEqual(1.0, lod_v[0, 0, 0, 0])
         self.assertAlmostEqual(2.0, lod_v[0, 0, 0, 1])
         self.assertListEqual(lod_py, lod_tensor.lod())
+
+    def test_empty_tensor(self):
+        place = core.CPUPlace()
+        scope = core.Scope()
+        var = scope.var("test_tensor")
+
+        tensor = var.get_tensor()
+
+        tensor.set_dims([0, 1])
+        tensor.alloc_float(place)
+
+        tensor_array = numpy.array(tensor)
+        self.assertEqual((0, 1), tensor_array.shape)
+
+        if core.is_compiled_with_cuda():
+            gpu_place = core.CUDAPlace(0)
+            tensor.alloc_float(gpu_place)
+            tensor_array = numpy.array(tensor)
+            self.assertEqual((0, 1), tensor_array.shape)
 
 
 if __name__ == '__main__':
