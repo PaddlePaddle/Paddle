@@ -10,46 +10,74 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <mpi.h>
 #include <map>
 #include <string>
 #include <vector>
 
 namespace paddle {
-namespace operators {
-namespace detail {
-class MPIUtils {
- public:
-  MPIUtils(const std::string& worker_name);
-  const int GetRankID(const std::string& task_id);
+    namespace operators {
+        namespace detail {
+            class MPIUtils {
+            public:
+                MPIUtils(const std::string &worker_name);
 
- private:
-  void InitMPI();
-  std::map<std::string, int> name_id_map;
-};
+                const int GetRankID(const std::string &task_id);
 
-class MPIIsend {
- public:
-  MPIIsend(int dst, const char* buf);
-  bool IsFinished();
-  void Send();
-  ~MPIIsend();
+            private:
+                void InitMPI();
 
- private:
-  int done1;
-  int length;
-  char* req;
-  MPI_Request msg1_;
-};
+                std::map<std::string, int> name_id_map;
+            };
 
-class MPIIrecv {
- public:
-MPIIrecv();
-bool IsFinished();
-  void Recv();
-  ~MPIIrecv();
-};
+            class Meta {
+            public:
+                int src;
+                int dst;
+                MPI_Datatype datatype;
+                char *request;
+                int count;
+                int tag;
+                int device;
+            };
 
-}  // namespace detail
-}  // namespace operators
+            class MPISend {
+            public:
+                MPISend(const Meta &meta);
+
+                bool IsFinished();
+
+                bool IsReady();
+
+                void Send();
+
+                ~MPISend();
+
+            private:
+                int done1_;
+                int done2_;
+                Meta *meta;
+            };
+
+            class MPIRecv {
+            public:
+                MPIRecv(const Meta &meta);
+
+                bool IsReady();
+
+                bool IsFinished();
+
+                void Recv();
+
+                ~MPIRecv();
+
+            private:
+                int done1_;
+                int done2_;
+                Meta *meta;
+            };
+
+        }  // namespace detail
+    }  // namespace operators
 }  // namespace paddle
