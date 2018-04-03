@@ -255,7 +255,22 @@ def _copy_reader_var_(block, var):
     new_var.desc.set_shapes(var.desc.shapes())
     new_var.desc.set_dtypes(var.desc.dtypes())
     new_var.persistable = True
-    return monkey_patch_reader_methods(new_var)
+    return new_var
+
+
+def _copy_reader_create_op_(block, op):
+    def _find_vars_(block, name_list):
+        res = {}
+        for n in name_list:
+            var = block.var(n)
+            res[n] = var
+        return res
+
+    input_map = _find_vars_(block, op.input_names)
+    output_map = _find_vars_(block, op.output_names)
+    new_op = block.append_op(
+        type=op.type, inputs=input_map, outputs=output_map, attrs=op.attrs)
+    return new_op
 
 
 def open_recordio_file(filename, shapes, lod_levels, dtypes):
@@ -283,8 +298,9 @@ def open_recordio_file(filename, shapes, lod_levels, dtypes):
 
     startup_var.desc.set_dtypes(dtypes)
     startup_var.persistable = True
-    return _copy_reader_var_(default_main_program().current_block(),
-                             startup_var)
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
+    return monkey_patch_reader_methods(main_prog_var)
 
 
 def open_files(filenames, thread_num, shapes, lod_levels, dtypes):
@@ -313,22 +329,25 @@ def open_files(filenames, thread_num, shapes, lod_levels, dtypes):
 
     startup_var.desc.set_dtypes(dtypes)
     startup_var.persistable = True
-    return _copy_reader_var_(default_main_program().current_block(),
-                             startup_var)
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
+    return monkey_patch_reader_methods(main_prog_var)
 
 
 def __create_decorated_reader__(op_type, reader, attrs):
     var_name = unique_name(op_type)
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=var_name)
-    startup_blk.append_op(
+    startop_op = startup_blk.append_op(
         type=op_type,
         inputs={'UnderlyingReader': reader},
         outputs={'Out': [startup_var]},
         attrs=attrs)
     startup_var.persistable = True
-    return _copy_reader_var_(default_main_program().current_block(),
-                             startup_var)
+    main_prog_block = default_main_program().current_block()
+    main_prog_var = _copy_reader_var_(main_prog_block, startup_var)
+    _copy_reader_create_op_(main_prog_block, startop_op)
+    return monkey_patch_reader_methods(main_prog_var)
 
 
 def create_shuffle_reader(reader, buffer_size):
