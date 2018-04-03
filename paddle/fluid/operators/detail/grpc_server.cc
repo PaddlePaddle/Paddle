@@ -157,9 +157,12 @@ class RequestPrefetch final : public RequestBase {
   virtual void Process() {
     // prefetch process...
     ::grpc::ByteBuffer reply;
-    // TODO(Yancey1989): execute the Block which containers prefetch ops
 
-    VLOG(3) << "RequestPrefetch Process in";
+    executor_->Run(*program_, scope_, blkid_, false, false);
+
+    std::string var_name = request_.out_varname();
+    auto* var = scope_->FindVar(var_name);
+    SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
