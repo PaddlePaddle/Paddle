@@ -2,12 +2,33 @@
 
 Due to the refactorization of the PaddlePaddle core, we need Python classes to construct corresponding protobuf messages that describe a DL program.
 
-| Python classes | Protobuf messages |
-| --- | --- |
-| Program | ProgramDesc |
-| Block | BlockDesc |
-| Operator | OpDesc |
-| Variable | VarDesc |
+<table>
+<thead>
+<tr>
+<th>Python classes</th>
+<th>Protobuf messages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Program </td>
+<td>ProgramDesc </td>
+</tr>
+<tr>
+<td>Block  </td>
+<td>BlockDesc </td>
+</tr>
+<tr>
+<td>Operator </td>
+<td>OpDesc </td>
+</tr>
+<tr>
+<td>Variable </td>
+<td>VarDesc </td>
+</tr>
+</tbody>
+</table>
+
 
 Please be aware that these Python classes need to maintain some construction-time information, which are not part of the protobuf messages.
 
