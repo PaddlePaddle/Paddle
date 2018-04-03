@@ -28,6 +28,22 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+struct ExceptionHandler {
+  mutable std::future<std::unique_ptr<platform::EnforceNotMet>> future_;
+  explicit ExceptionHandler(
+      std::future<std::unique_ptr<platform::EnforceNotMet>>&& f)
+      : future_(std::move(f)) {}
+  void operator()() const {
+    auto ex = this->future_.get();
+    if (ex != nullptr) {
+      LOG(FATAL) << "The exception is thrown inside the thread pool. You "
+                    "should use RunAndGetException to handle the exception.\n"
+                    "The default exception handler is LOG(FATAL)."
+                 << ex->what();
+    }
+  }
+};
+
 // ThreadPool maintains a queue of tasks, and runs them using a fixed
 // number of threads.
 class ThreadPool {
@@ -87,22 +103,6 @@ class ThreadPool {
   void Wait();
 
  private:
-  struct ExceptionHandler {
-    mutable std::future<std::unique_ptr<platform::EnforceNotMet>> future_;
-    explicit ExceptionHandler(
-        std::future<std::unique_ptr<platform::EnforceNotMet>>&& f)
-        : future_(std::move(f)) {}
-    void operator()() const {
-      auto ex = this->future_.get();
-      if (ex != nullptr) {
-        LOG(FATAL) << "The exception is thrown inside the thread pool. You "
-                      "should use RunAndGetException to handle the exception.\n"
-                      "The default exception handler is LOG(FATAL)."
-                   << ex->what();
-      }
-    }
-  };
-
   DISABLE_COPY_AND_ASSIGN(ThreadPool);
 
   // If the task queue is empty and avaialbe is equal to the number of
