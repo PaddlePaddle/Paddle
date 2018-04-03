@@ -1,4 +1,5 @@
 py_test(test_op SRCS test_op.py)
+py_test(test_image SRCS test_image.py)
 py_test(test_layer SRCS test_layer.py)
 py_test(test_topology SRCS test_topology.py)
 py_test(test_rnn_layer SRCS test_rnn_layer.py)
