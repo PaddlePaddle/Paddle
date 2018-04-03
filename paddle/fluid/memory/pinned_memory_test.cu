@@ -11,6 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <gtest/gtest.h>
+#include <unordered_map>
 
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/meta_data.h"
@@ -20,9 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
-
-#include <gtest/gtest.h>
-#include <unordered_map>
 
 // This unit test is an example comparing the performance between using pinned
 // memory and not. In general, using pinned memory will be faster.
@@ -114,8 +113,8 @@ float test_pinned_memory() {
   cudaEventSynchronize(stop_e);
   cudaEventElapsedTime(&elapsedTime, start_e, stop_e);
 
-  std::cout << cpu_place << " "
-            << "time consume:" << elapsedTime / 30 << std::endl;
+  // std::cout << cpu_place << " "
+  //          << "time consume:" << elapsedTime / 30 << std::endl;
 
   for (int l = 0; l < iteration; ++l) {
     for (int k = 0; k < data_size; ++k) {
@@ -144,5 +143,5 @@ TEST(CPUANDCUDAPinned, CPUAllocatorAndCUDAPinnedAllocator) {
   // test for the time being.
   float time1 = test_pinned_memory<paddle::platform::CPUPlace>();
   float time2 = test_pinned_memory<paddle::platform::CUDAPinnedPlace>();
-  EXPECT_GT(time1, time2)
+  EXPECT_GT(time1, time2);
 }
