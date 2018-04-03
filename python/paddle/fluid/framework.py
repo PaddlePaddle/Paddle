@@ -640,8 +640,7 @@ class Operator(object):
         """
         return self.desc.block_attr(name)
 
-    @property
-    def attrs(self):
+    def all_attrs(self):
         """
         Get the attribute dict
         Returns(dict): The Operator's attribute dict
