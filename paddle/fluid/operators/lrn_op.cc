@@ -155,8 +155,8 @@ class LRNOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp should be 4.");
 
     ctx->SetOutputDim("Out", x_dim);
-    ctx->SetOutputDim("MidOut", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("MidOut", x_dim);
   }
 
   framework::OpKernelType GetExpectedKernelType(
@@ -214,7 +214,10 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddAttr<bool>("is_test", "").SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "Turns on memory optimization that optimizes away "
+                  "unnecessary memory allocations. Used by MKLDNN.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Local Response Normalization Operator.
