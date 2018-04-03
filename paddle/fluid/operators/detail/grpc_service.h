@@ -76,10 +76,11 @@ namespace detail {
 enum class GrpcMethod {
   kSendVariable,
   kGetVariable,
+  kPrefetchVariable,
 };
 
 static const int kGrpcNumMethods =
-    static_cast<int>(GrpcMethod::kGetVariable) + 1;
+    static_cast<int>(GrpcMethod::kPrefetchVariable) + 1;
 
 inline const char* GrpcMethodName(GrpcMethod id) {
   switch (id) {
@@ -87,6 +88,8 @@ inline const char* GrpcMethodName(GrpcMethod id) {
       return "/sendrecv.SendRecvService/SendVariable";
     case GrpcMethod::kGetVariable:
       return "/sendrecv.SendRecvService/GetVariable";
+    case GrpcMethod::kPrefetchVariable:
+      return "/sendrecv.SendRecvService/PrefetchVariable";
   }
 
   // Shouldn't be reached.
@@ -114,5 +117,5 @@ class GrpcService final {
 };
 
 }  // namespace detail
-}  // namespace operator
+}  // namespace operators
 }  // namespace paddle

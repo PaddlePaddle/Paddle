@@ -104,7 +104,7 @@ cc_test(init_test SRCS init_test.cc DEPS init)
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
       
-# cc_test(channel_test SRCS channel_test.cc)
+cc_test(channel_test SRCS channel_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 cc_test(concurrency_test SRCS concurrency_test.cc DEPS go_op channel_close_op channel_create_op
         channel_send_op channel_recv_op sum_op select_op elementwise_add_op compare_op
