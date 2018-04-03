@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cublas_v2.h>
+#include <cuda.h>
 #include <dlfcn.h>
 #include <mutex>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
