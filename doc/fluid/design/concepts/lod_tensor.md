@@ -2,12 +2,38 @@
 
 Like other deep learning systems, PaddlePaddle supports training models from sequence data.  Also, like other systems, PaddlePaddle represent a mini-batch of sequences as a Tensor.  What is different is that PaddlePaddle doesn't require all sequences in a mini-batch to be of the same length. Thus no need for padding zeros.
 
-|                       | TensorFlow | PaddlePaddle |
-|-----------------------|------------|--------------|
-| RNN                   | Support    | Support      |
-| recursive RNN         | Support    | Support      |
-| padding zeros         | Must       | No need      |
-| blob data type        | Tensor     | LoDTensor    |
+<table>
+<thead>
+<tr>
+<th></th>
+<th>TensorFlow</th>
+<th>PaddlePaddle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RNN </td>
+<td>Support </td>
+<td>Support </td>
+</tr>
+<tr>
+<td>recursive RNN </td>
+<td>Support </td>
+<td>Support </td>
+</tr>
+<tr>
+<td>padding zeros </td>
+<td> Must </td>
+<td>No need </td>
+</tr>
+<tr>
+<td> blob data type </td>
+<td> Tensor</td>
+<td> LoDTensor </td>
+</tr>
+</tbody>
+</table>
+
 
 PaddlePaddle achieves this flexibility by passing through a new data type, *LoD Tensor*, which is a Tensor attached with segmentation index known as *LoD*, between operators.  The LoD index doesn't only segment a tensor, but also recursively segments sub-sequences.  This document presents the design of LoD and LoDTensor.
 

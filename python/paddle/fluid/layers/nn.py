@@ -76,6 +76,7 @@ __all__ = [
     'reshape',
     'lod_reset',
     'lrn',
+    'pad',
 ]
 
 
@@ -3379,6 +3380,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
     Examples:
         .. code-block:: python
+
             data = fluid.layers.data(
                 name='data', shape=[2, 4, 6], dtype='float32')
             reshaped = fluid.layers.reshape(
@@ -3580,3 +3582,62 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
                "beta": beta})
 
     return lrn_out
+
+
+def pad(x, paddings, pad_value=0., name=None):
+    """
+    Pads a tensor with a constant value given by :attr:`pad_value`, and the
+    padded width is specified by :attr:`paddings`. 
+
+    Specifically, the number of values padded before the contents of :attr:`x`
+    in dimension :attr:`i` is indicated by :attr:`paddings[i]`, and the number
+    of values padded after the contents of :attr:`x` in dimension :attr:`i` is
+    indicated by :attr:`paddings[i+1]`.
+
+    See below for an example.
+
+    .. code-block:: text
+
+        Given:
+            x = [[1, 2], [3, 4]]
+
+            paddings = [0, 1, 1, 2]
+
+            pad_value = 0
+
+        Return:
+
+            out = [[0, 1, 2, 0, 0]
+                   [0, 3, 4, 0, 0]
+                   [0, 0, 0, 0, 0]]
+
+    Args:
+        x (Variable): The input tensor variable.
+        paddings (list): A list of integers. Its elements specify the padded
+                         width before and after for each dimension in turn.
+                         The length of :attr:paddings must be 
+                         :math:`rank(x) \\times 2`.
+        pad_value (float): The constant value used to pad.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The padded tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a rank 2 tensor variable.
+            out = fluid.layers.pad(
+                x=x, paddings=[0, 1, 1, 2], pad_value=0.)
+    """
+    helper = LayerHelper('pad', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='pad',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'paddings': paddings,
+               'pad_value': float(pad_value)})
+    return out

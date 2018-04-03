@@ -65,10 +65,10 @@ exit(1)
 
 **因此，在分布式的Fluid环境中，我们有两个角色需要创建，分别是Parameter Server和Trainer。**
 
-### 分布式训练 
+### 分布式训练
 Fliud专门提供了工具[Distributed Transpiler](https://github.com/PaddlePaddle/Paddle/blob/ba65d54d9d3b41cd3c5171b00f476d4e60133ddb/doc/fluid/design/dist_train/distributed_architecture.md#distributed-transpiler)用于将单机版的训练程序转换为分布式版本的训练程序。工具背后的理念是找出程序的优化算子和梯度参数，将他们分隔为两部分，通过send/recv 操作算子进行连接,优化算子和梯度参数可以在优化器的minimize函数的返回值中获取到。
 ```python
-optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost) 
+optimize_ops, params_grads = sgd_optimizer.minimize(avg_cost)
 ```
 将Distributed Transpiler、优化算子和梯度函数放在一个代码中如下：
 ```python
@@ -99,15 +99,51 @@ for pass_id in range(100):
 ### 分布式训练脚本运行说明
 分布式任务的运行需要将表格中说明的多个参数进行赋值:
 
-| 参数名 | 值类型 | 说明 | 示例 |
-|:-------------|:------|:---------------------------------------|:-------------|
-| trainer_id | int | 当前训练节点的ID，训练节点ID编号为0 - n-1， n为trainers的值 | 0/1/2/3 |
-| pservers | str | parameter server 列表 | 127.0.0.1:6710,127.0.0.1:6711 |
-| trainers | int | 训练节点的总个数，>0的数字 | 4 |
-| server_endpoint | str | 当前所起的服务节点的IP:PORT | 127.0.0.1:8789 |
-| training_role | str | 节点角色， TRAINER/PSERVER | PSERVER |
+<table>
+<thead>
+<tr>
+<th>参数名</th>
+<th> 值类型</th>
+<th>说明</th>
+<th> 示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>trainer_id </td>
+<td> int</td>
+<td> 当前训练节点的ID，训练节点ID编号为0 - n-1， n为trainers的值 </td>
+<td> 0/1/2/3  </td>
+</tr>
+<tr>
+<td>pservers </td>
+<td> str</td>
+<td> parameter server 列表 </td>
+<td> 127.0.0.1:6710,127.0.0.1:6711 </td>
+</tr>
+<tr>
+<td>trainers </td>
+<td>int </td>
+<td> 训练节点的总个数，>0的数字 </td>
+<td> 4 </td>
+</tr>
+<tr>
+<td> server_endpoint</td>
+<td> str </td>
+<td> 当前所起的服务节点的IP:PORT </td>
+<td> 127.0.0.1:8789 </td>
+</tr>
+<tr>
+<td> training_role</td>
+<td>str </td>
+<td> 节点角色， TRAINER/PSERVER </td>
+<td> PSERVER </td>
+</tr>
+</tbody>
+</table>
 
-**注意：** ```training_role```是用来区分当前所起服务的角色的，用于训练程序中，用户可根据需要自行定义，其他参数为fluid.DistributeTranspiler的transpile函数所需要，需要在调用函数前进行定义，样例如下： 
+
+**注意：** ```training_role```是用来区分当前所起服务的角色的，用于训练程序中，用户可根据需要自行定义，其他参数为fluid.DistributeTranspiler的transpile函数所需要，需要在调用函数前进行定义，样例如下：
 
 ```python
 t = fluid.DistributeTranspiler()

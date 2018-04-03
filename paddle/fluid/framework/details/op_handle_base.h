@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -52,6 +54,10 @@ class OpHandleBase {
   void AddInput(VarHandleBase *in);
 
   void AddOutput(VarHandleBase *out);
+
+  // If the Op involves data transfer of multiple devices that
+  // will likely block other computations.
+  virtual bool IsMultiDeviceTransfer() { return false; }
 
  protected:
   virtual void RunImpl() = 0;
