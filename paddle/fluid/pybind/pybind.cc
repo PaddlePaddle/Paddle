@@ -504,10 +504,10 @@ All parameter, weight, gradient are variables in Paddle.
               const std::unordered_set<std::string> &params,
               const ProgramDesc &startup_program,
               const ProgramDesc &main_program, const std::string &loss_var_name,
-              Scope *scope) {
+              Scope *scope, bool allow_op_delay) {
              new (&self) ParallelExecutor(num_threads, use_event, places,
                                           params, startup_program, main_program,
-                                          loss_var_name, scope);
+                                          loss_var_name, scope, allow_op_delay);
            })
       .def("run", &ParallelExecutor::Run);
 
