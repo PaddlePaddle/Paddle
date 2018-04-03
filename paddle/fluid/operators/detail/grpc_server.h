@@ -62,6 +62,8 @@ class AsyncGRPCServer final {
 
   void SetExecutor(framework::Executor *executor) { executor_ = executor; }
 
+  int GetSelectedPort() { return selected_port_; }
+
   const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
 
   void Push(const std::string &msg_name) {
@@ -109,6 +111,7 @@ class AsyncGRPCServer final {
   int prefetch_blk_id_;
   framework::ProgramDesc *program_;
   framework::Executor *executor_;
+  int selected_port_;
 };
 
 };  // namespace detail
