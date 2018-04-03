@@ -17,12 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-size_t GetIndex(const std::vector<int64_t>& rows, int64_t value) {
-  auto it = std::find(rows.begin(), rows.end(), value);
-  PADDLE_ENFORCE(it != rows.end(), "id should be in rows");
-  return static_cast<size_t>(std::distance(rows.begin(), it));
-}
-
 void SerializeToStream(std::ostream& os, const SelectedRows& selected_rows,
                        const platform::DeviceContext& dev_ctx) {
   {  // the 1st field, uint32_t version

@@ -50,6 +50,15 @@ class SelectedRows {
 
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
+  /**
+   * get the index of id in rows
+   */
+  int64_t index(int64_t id) const {
+    auto it = std::find(rows_.begin(), rows_.end(), id);
+    PADDLE_ENFORCE(it != rows_.end(), "id should be in rows");
+    return static_cast<int64_t>(std::distance(rows_.begin(), it));
+  }
+
   DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
     dims[0] = height_;
@@ -64,11 +73,6 @@ class SelectedRows {
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
 };
-
-/**
- * Find the index of value in rows.
- */
-size_t GetIndex(const std::vector<int64_t>& rows, int64_t value);
 
 /*
  * Serialize/Desiralize SelectedRows to std::ostream

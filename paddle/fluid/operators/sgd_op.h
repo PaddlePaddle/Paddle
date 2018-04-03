@@ -106,7 +106,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < grad.rows().size(); i++) {
         PADDLE_ENFORCE(grad.rows()[i] < grad.height(),
                        "Input rows index should less than height");
-        size_t id_index = framework::GetIndex(param.rows(), grad.rows()[i]);
+        int64_t id_index = param.index(grad.rows()[i]);
         for (int64_t j = 0; j < grad_row_width; j++) {
           out_data[id_index * grad_row_width + j] -=
               lr[0] * grad_data[i * grad_row_width + j];
