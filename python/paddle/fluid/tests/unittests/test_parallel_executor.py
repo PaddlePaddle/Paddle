@@ -274,12 +274,6 @@ class TestResnet(TestParallelExecutorBase):
                 SE_ResNeXt152Small, batch_size=batch_size),
             iter=20,
             batch_size=batch_size)
-        self.check_network_convergence(
-            functools.partial(
-                SE_ResNeXt152Small, batch_size=batch_size),
-            iter=20,
-            batch_size=batch_size,
-            allow_op_delay=True)
 
 
 class ModelHyperParams(object):
