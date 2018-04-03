@@ -78,27 +78,6 @@ PaddlePaddle开发过程使用[git-flow](http://nvie.com/posts/a-successful-git-
 
 PaddlePaddle每次发版本首先要保证PaddlePaddle Book中所有章节功能的正确性。功能的正确性包括验证PaddlePaddle目前的`paddle_trainer`训练和纯使用`Python`训练模型正确性。
 
-
-| | 新手入门章节 | 识别数字 | 图像分类 | 词向量 | 情感分析 | 语意角色标注 | 机器翻译 | 个性化推荐 |
-
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-
-| API.V2 + Docker + GPU  |  |  |  |  |  |  |  |  |
-
-| API.V2 + Docker + CPU  |  |  |  |  |  |  |  |  |
-
-| `paddle_trainer` + Docker + GPU |  |  |  |  |  |  |  |  |
-
-| `paddle_trainer` + Docker + CPU |  |  |  |  |  |  |  |  |
-
-| API.V2 + Ubuntu + GPU |  |  |  |  |  |  |  |  |
-
-| API.V2 + Ubuntu + CPU |  |  |  |  |  |  |  |  |
-
-| `paddle_trainer` + Ubuntu + GPU |  |  |  |  |  |  |  |  |
-
-| `paddle_trainer` + Ubuntu + CPU |  |  |  |  |  |  |  |  |
-
 <table>
 <thead>
 <tr>
