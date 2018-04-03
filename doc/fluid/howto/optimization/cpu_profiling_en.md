@@ -57,15 +57,6 @@ port, we will see the output like the following:
 where each line corresponds to Python function, and the meaning of
 each column is as follows:
 
-| column | meaning |
-| --- | --- |
-| ncalls | the number of calls into a function |
-| tottime | the total execution time of the function, not including the execution time of other functions called by the function |
-| percall | tottime divided by ncalls |
-| cumtime | the total execution time of the function, including the execution time of other functions being called |
-| percall | cumtime divided by ncalls |
-| filename:lineno(function) | where the function is defined |
-
 <table>
 <thead>
 <tr>
