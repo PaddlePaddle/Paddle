@@ -67,6 +67,8 @@ message VariableMessage {
   bytes serialized = 8;
   // selected_rows data
   bytes rows = 9;
+  // prefetch var name
+  string out_varname = 10;
 }
 
 message VoidMessage {}
