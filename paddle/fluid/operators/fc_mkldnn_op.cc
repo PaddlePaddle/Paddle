@@ -125,10 +125,10 @@ class FCMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto input = ctx.Input<Tensor>("Input");
     auto w = ctx.Input<Tensor>("W");
 
-    PADDLE_ENFORCE(input->dims().size() == 4 || input->dims().size() == 2,
+    PADDLE_ENFORCE(input->dims().size() == 2 || input->dims().size() == 4,
                    "Input must be with 2 or 4 dimensions, i.e. NCHW");
-    PADDLE_ENFORCE(w->dims().size() == 2,
-                   "Weights must be with 2 dimensions, i.e. NC");
+    PADDLE_ENFORCE(w->dims().size() == 2 || w->dims().size() == 4,
+                   "Weights must be with 2 or 4 dimensions, i.e. OI or OIHW");
 
     bool with_bias = ctx.Attr<bool>("bias_attr");
     MKLDNNMD<Tensor> md(input, w, with_bias);
