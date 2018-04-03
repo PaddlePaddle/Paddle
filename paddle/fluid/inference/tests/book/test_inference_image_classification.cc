@@ -48,7 +48,7 @@ TEST(inference, image_classification) {
 
   // Run inference on CPU
   LOG(INFO) << "--- CPU Runs: ---";
-  TestInference<paddle::platform::CPUPlace>(
+  TestInference<paddle::platform::CPUPlace, true>(
       dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
   LOG(INFO) << output1.dims();
 
@@ -59,7 +59,7 @@ TEST(inference, image_classification) {
 
   // Run inference on CUDA GPU
   LOG(INFO) << "--- GPU Runs: ---";
-  TestInference<paddle::platform::CUDAPlace>(
+  TestInference<paddle::platform::CUDAPlace, true>(
       dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat);
   LOG(INFO) << output2.dims();
 
