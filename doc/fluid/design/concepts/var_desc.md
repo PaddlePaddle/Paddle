@@ -15,6 +15,28 @@ The computation `Program` consists of nested `Blocks`. Each `Block` will consist
 |Data|VarDesc(proto)|Variable(cpp)|
 |Operation|OpDesc(proto)|Operator(cpp)|
 
+<table>
+<thead>
+<tr>
+<th></th>
+<th>compile time</th>
+<th>runtime</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data </td>
+<td>VarDesc(proto) </td>
+<td>Variable(cpp) </td>
+</tr>
+<tr>
+<td>Operation </td>
+<td>OpDesc(proto) </td>
+<td>Operator(cpp) </td>
+</tr>
+</tbody>
+</table>
+
 
 ## Definition of VarType
 
