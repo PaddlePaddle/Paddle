@@ -157,10 +157,9 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         result_array = np.array(w_tensor)
         assert (result_array == w_after_optimize).all()
 
-    def test_sparse_sgd(self):
+    def test_sparse_parameter_sgd(self):
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        # do not support GPU kernel currently
         for place in places:
             self.check_with_place(place)
 
