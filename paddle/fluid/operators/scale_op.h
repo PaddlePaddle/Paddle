@@ -44,7 +44,7 @@ class ScaleKernel : public framework::OpKernel<T> {
     local_times.push_back(PosixInNsec());
     eigen_out.device(dev) = scale * eigen_in;
     local_times.push_back(PosixInNsec());
-    Times.push_back(local_times);
+    // Times.push_back(local_times);
   }
 };
 

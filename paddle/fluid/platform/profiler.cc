@@ -19,6 +19,7 @@ limitations under the License. */
 #include <iterator>
 #include <limits>
 #include <map>
+#include <mutex>
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
