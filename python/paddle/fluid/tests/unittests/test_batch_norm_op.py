@@ -301,6 +301,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
             mean_out = saved_mean * (1. - momentum) + momentum * mean
             variance_out = var_ref * (1. - momentum) + momentum * variance
             saved_variance = 1. / np.sqrt(var_ref + epsilon)
+            
             # run backward
             y_grad = np.random.random_sample(shape).astype(np.float32)
             x_grad, scale_grad, bias_grad = _reference_grad(

@@ -209,9 +209,11 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
-    const int C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
+    const int C = (data_layout == DataLayout::kNCHW ||
+                           data_layout == DataLayout::kAnyLayout
+                       ? x_dims[1]
+                       : x_dims[x_dims.size() - 1]);
+
     const int sample_size = x->numel() / N / C;
 
     auto *y = ctx.Output<Tensor>("Y");
@@ -237,6 +239,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       saved_variance_e.setZero();
 
       switch (data_layout) {
+        case DataLayout::kAnyLayout:
         case DataLayout::kNCHW: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
@@ -284,12 +287,11 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           ctx.Input<Tensor>("Variance")->data<T>(), C);
       inv_std = (var_arr + epsilon).sqrt().inverse();
     } else {
-      EigenVectorArrayMap<T> saved_inv_std(
+      EigenVectorArrayMap<T> saved_var_arr(
           ctx.Output<Tensor>("SavedVariance")->data<T>(), C);
-      // inverse SavedVariance first, gradient will use it too.
-      saved_inv_std = (saved_inv_std + epsilon).inverse().sqrt();
-      inv_std = saved_inv_std;
+      inv_std = (saved_var_arr + epsilon).sqrt().inverse();
     }
+
     ConstEigenVectorArrayMap<T> mean_arr(
         is_test ? ctx.Input<Tensor>("Mean")->data<T>()
                 : ctx.Output<Tensor>("SavedMean")->data<T>(),
@@ -307,6 +309,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         bias_arr - mean_arr * inv_std * scale_arr;
 
     switch (data_layout) {
+      case DataLayout::kAnyLayout:
       case DataLayout::kNCHW: {
         EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
                                N * C);
@@ -378,8 +381,6 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     if (t == nullptr) {
       PADDLE_THROW("can't find Y@GRAD");
     }
-    //    return framework::OpKernelType(framework::ToDataType(t->type()),
-    //                                   ctx.GetPlace());
 
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
@@ -409,12 +410,12 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    const float epsilon = ctx.Attr<float>("epsilon");
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
-    // SavedVariance have been reverted in forward operator
-    const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
+    const auto *saved_variance = ctx.Input<Tensor>("SavedVariance");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
@@ -425,15 +426,19 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
-    const int C =
-        (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                          : x_dims[x_dims.size() - 1]);
+    const int C = (data_layout == DataLayout::kNCHW ||
+                           data_layout == DataLayout::kAnyLayout
+                       ? x_dims[1]
+                       : x_dims[x_dims.size() - 1]);
 
     const int sample_size = x->numel() / N / C;
 
     ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
     ConstEigenVectorArrayMap<T> mean_arr(saved_mean->data<T>(), C);
-    ConstEigenVectorArrayMap<T> inv_var_arr(saved_inv_variance->data<T>(), C);
+    ConstEigenVectorArrayMap<T> var_arr(saved_variance->data<T>(), C);
+
+    Eigen::Array<T, Eigen::Dynamic, 1> inv_var_arr =
+        (var_arr + epsilon).inverse().sqrt();
 
     // init output
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -460,6 +465,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / (N * sample_size);
 
     switch (data_layout) {
+      case DataLayout::kAnyLayout:
       case DataLayout::kNCHW: {
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
