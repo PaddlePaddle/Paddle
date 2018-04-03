@@ -55,6 +55,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     const ProgramDesc &program) const {
   auto graph = new SSAGraph();
   SSAGraph &result = *graph;
+  std::unordered_set<std::string> og_has_been_broadcast;
   result.vars_.resize(places_.size());
 
   bool is_forwarding = true;
@@ -122,9 +123,15 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
 
     if (!is_forwarding) {
       auto var_names = op->OutputArgumentNames();
+      // Currently, we assume that once gradient is generated, it can be
+      // broadcast, and each gradient is only broadcast once. But there are no
+      // other cases, for example, we need to adjust the gradient according to
+      // the input when we get the gradient, which is not considered at present.
       for (auto &og : var_names) {
-        if (grad_names_.count(og) != 0) {  // is param grad
-                                           // Insert NCCL AllReduce Op
+        if (grad_names_.count(og) != 0 &&
+            og_has_been_broadcast.count(og) == 0) {  // is param grad
+                                                     // Insert NCCL AllReduce Op
+          og_has_been_broadcast.insert(og);
 #ifdef PADDLE_WITH_CUDA
           result.ops_.emplace_back(
               new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
