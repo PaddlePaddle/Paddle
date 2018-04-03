@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 namespace concurrency {
 
-bool ChannelSend(framework::ChannelHolder *ch, framework::Variable *var);
+void ChannelSend(framework::ChannelHolder *ch, framework::Variable *var);
 bool ChannelReceive(framework::ChannelHolder *ch, framework::Variable *var);
 
 void ChannelAddToSendQ(framework::ChannelHolder *ch, const void *referrer,
