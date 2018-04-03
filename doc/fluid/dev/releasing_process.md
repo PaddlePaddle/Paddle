@@ -66,7 +66,7 @@ PaddlePaddle开发过程使用[git-flow](http://nvie.com/posts/a-successful-git-
 	* 建议，开发者fork的版本库使用`develop`分支同步主版本库的`develop`分支
 	* 建议，开发者fork的版本库中，再基于`develop`版本fork出自己的功能分支。
 	* 当功能分支开发完毕后，向PaddlePaddle的主版本库提交`Pull Reuqest`，进而进行代码评审。
-		* 在评审过程中，开发者修改自己的代码，可以继续在自己的功能分支提交代码。 
+		* 在评审过程中，开发者修改自己的代码，可以继续在自己的功能分支提交代码。
 
 * BugFix分支也是在开发者自己的fork版本库维护，与功能分支不同的是，BugFix分支需要分别给主版本库的`master`、`develop`与可能有的`release/版本号`分支，同时提起`Pull Request`。
 
@@ -78,13 +78,116 @@ PaddlePaddle开发过程使用[git-flow](http://nvie.com/posts/a-successful-git-
 
 PaddlePaddle每次发版本首先要保证PaddlePaddle Book中所有章节功能的正确性。功能的正确性包括验证PaddlePaddle目前的`paddle_trainer`训练和纯使用`Python`训练模型正确性。
 
-| | 新手入门章节 | 识别数字 | 图像分类 | 词向量 | 情感分析 | 语意角色标注 | 机器翻译 | 个性化推荐 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| API.V2 + Docker + GPU  |  |  |  |  |  |  |  |  |
-| API.V2 + Docker + CPU  |  |  |  |  |  |  |  |  |
-| `paddle_trainer` + Docker + GPU |  |  |  |  |  |  |  |  |
-| `paddle_trainer` + Docker + CPU |  |  |  |  |  |  |  |  |
-| API.V2 + Ubuntu + GPU |  |  |  |  |  |  |  |  |
-| API.V2 + Ubuntu + CPU |  |  |  |  |  |  |  |  |
-| `paddle_trainer` + Ubuntu + GPU |  |  |  |  |  |  |  |  |
-| `paddle_trainer` + Ubuntu + CPU |  |  |  |  |  |  |  |  |
+<table>
+<thead>
+<tr>
+<th></th>
+<th>新手入门章节 </th>
+<th> 识别数字</th>
+<th> 图像分类</th>
+<th>词向量</th>
+<th> 情感分析</th>
+<th>语意角色标注</th>
+<th> 机器翻译</th>
+<th>个性化推荐</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>API.V2 + Docker + GPU </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+</tr>
+
+<tr>
+<td> API.V2 + Docker + CPU </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+</tr>
+
+<tr>
+<td>`paddle_trainer` + Docker + GPU </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+</tr>
+
+<tr>
+<td>`paddle_trainer` + Docker + CPU </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+</tr>
+
+<tr>
+<td> API.V2 + Ubuntu + GPU</td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+</tr>
+
+<tr>
+<td>API.V2 + Ubuntu + CPU </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+</tr>
+
+<tr>
+<td> `paddle_trainer` + Ubuntu + GPU</td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+</tr>
+
+<tr>
+<td> `paddle_trainer` + Ubuntu + CPU</td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+<td>  </td>
+<td> </td>
+</tr>
+</tbody>
+</table>
