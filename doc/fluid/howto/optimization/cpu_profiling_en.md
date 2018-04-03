@@ -66,6 +66,41 @@ each column is as follows:
 | percall | cumtime divided by ncalls |
 | filename:lineno(function) | where the function is defined |
 
+<table>
+<thead>
+<tr>
+<th>column</th>
+<th>meaning </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> ncalls</td>
+<td> the number of calls into a function</td>
+</tr>
+<tr>
+<td>tottime</td>
+<td> the total execution time of the function, not including the execution time of other functions called by the function</td>
+</tr>
+<tr>
+<td> percall </td>
+<td> tottime divided by ncalls</td>
+</tr>
+<tr>
+<td> cumtime</td>
+<td> the total execution time of the function, including the execution time of other functions being called</td>
+</tr>
+<tr>
+<td> percall</td>
+<td> cumtime divided by ncalls</td>
+</tr>
+<tr>
+<td> filename:lineno(function) </td>
+<td> where the function is define </td>
+</tr>
+</tbody>
+</table>
+
 ### Identify Performance Bottlenecks
 
 Usually, `tottime` and the related `percall` time is what we want to
