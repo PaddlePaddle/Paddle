@@ -10,11 +10,6 @@ PaddlePaddle uses proto message to describe compile time program because :
 
 The computation `Program` consists of nested `Blocks`. Each `Block` will consist of data(i.e. `Variable`)  and  `Operations`. The concept to represent them is in the table below.
 
-| |compile time|runtime|
-|---|---|---|
-|Data|VarDesc(proto)|Variable(cpp)|
-|Operation|OpDesc(proto)|Operator(cpp)|
-
 <table>
 <thead>
 <tr>
