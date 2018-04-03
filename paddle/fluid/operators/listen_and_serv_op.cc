@@ -96,7 +96,7 @@ class ListenAndServOp : public framework::OperatorBase {
 
     auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
     auto *program = block->Program();
-    int num_blocks = program->Size();
+    size_t num_blocks = program->Size();
     PADDLE_ENFORCE_GE(num_blocks, 2,
                       "server program should have at least 2 blocks");
 
@@ -153,7 +153,7 @@ class ListenAndServOp : public framework::OperatorBase {
 
       // The optimize blocks which have the same parent ID would run parallel
       // TODO(Yancey1989): need to use ParallelExecutor for future
-      size_t last_parent_blkid = program->Block(1).Parent();
+      int32_t last_parent_blkid = program->Block(1).Parent();
       std::vector<size_t> parallel_blkids;
       parallel_blkids.push_back(1);
       double ts = detail::GetTimestamp();
