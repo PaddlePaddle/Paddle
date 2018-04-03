@@ -102,12 +102,12 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   } else {
     tensor_data2 = const_cast<float*>(tensor2->data<float>());
   }
-  const size_t* rows_data2 = rows2->data();
+  const int64_t* rows_data2 = rows2->data();
 
   for (int i = 0; i < tensor_numel; ++i) {
     EXPECT_FLOAT_EQ(tensor_data2[i], 32.7);
   }
-  for (size_t i = 0; i < rows2->size(); ++i) {
+  for (int64_t i = 0; i < rows2->size(); ++i) {
     EXPECT_EQ(rows_data2[i], i);
   }
   EXPECT_EQ(slr2->height(), 1000);
