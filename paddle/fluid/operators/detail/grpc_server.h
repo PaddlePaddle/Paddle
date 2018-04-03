@@ -19,7 +19,9 @@ limitations under the License. */
 #include <utility>
 
 #include "grpc++/grpc++.h"
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -55,6 +57,12 @@ class AsyncGRPCServer final {
 
   void SetDevCtx(const platform::DeviceContext *dev_ctx) { dev_ctx_ = dev_ctx; }
 
+  void SetProgram(framework::ProgramDesc *program) { program_ = program; }
+
+  void SetPrefetchBlkdId(int blkid) { prefetch_blk_id_ = blkid; }
+
+  void SetExecutor(framework::Executor *executor) { executor_ = executor; }
+
   const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
 
   void Push(const std::string &msg_name) {
@@ -69,6 +77,7 @@ class AsyncGRPCServer final {
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
+  void TryToRegisterNewPrefetchOne();
   void ShutdownQueue();
 
  private:
@@ -76,6 +85,7 @@ class AsyncGRPCServer final {
   volatile bool is_shut_down_ = false;
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_send_;
   std::unique_ptr<::grpc::ServerCompletionQueue> cq_get_;
+  std::unique_ptr<::grpc::ServerCompletionQueue> cq_prefetch_;
 
   GrpcService::AsyncService service_;
   std::unique_ptr<::grpc::Server> server_;
@@ -86,6 +96,7 @@ class AsyncGRPCServer final {
 
   // received variable from RPC, operators fetch variable from this queue.
   SimpleBlockQueue<MessageWithName> var_get_queue_;
+  // client send variable to this queue.
   ReceivedQueue var_recv_queue_;
 
   // condition of the sub program
@@ -95,6 +106,11 @@ class AsyncGRPCServer final {
 
   std::unique_ptr<std::thread> t_send_;
   std::unique_ptr<std::thread> t_get_;
+  std::unique_ptr<std::thread> t_prefetch_;
+
+  int prefetch_blk_id_;
+  framework::ProgramDesc *program_;
+  framework::Executor *executor_;
 };
 
 };  // namespace detail

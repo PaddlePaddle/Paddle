@@ -74,8 +74,7 @@ void ProcGetResponse(const VarHandle& var_h,
 template <typename T>
 void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   ::grpc::Slice slice(proto.ByteSizeLong());
-  proto.SerializeWithCachedSizesToArray(
-      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(slice.begin())));
+  proto.SerializeWithCachedSizesToArray(const_cast<uint8_t*>(slice.begin()));
   ::grpc::ByteBuffer tmp(&slice, 1);
   result->Swap(&tmp);
 }
@@ -154,9 +153,10 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
     s->response_call_back_ = ProcGetResponse;
 
     auto call = s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/GetVariable", req, &cq_);
+        s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
+        &cq_);
     call->StartCall();
-    call->Finish(&s->reply_, &s->status_, (void*)s);
+    call->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
   });
 
   req_count_++;
