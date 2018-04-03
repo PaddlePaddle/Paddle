@@ -81,6 +81,7 @@ if (WITH_TESTING)
       # enable v2 API unittest only when paddle swig api is compiled
       add_subdirectory(paddle/v2/tests)
       add_subdirectory(paddle/v2/plot/tests)
+      add_subdirectory(paddle/v2/reader/tests)
     endif()
   endif()
   add_subdirectory(paddle/fluid/tests)
