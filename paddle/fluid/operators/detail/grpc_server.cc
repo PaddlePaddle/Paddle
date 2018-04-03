@@ -244,9 +244,6 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
     VLOG(3) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
-  while (scope_ == nullptr) {
-    sleep(0.01);
-  }
   RequestSend* send = new RequestSend(&service_, cq_send_.get(), scope_,
                                       &var_recv_queue_, dev_ctx_);
   VLOG(4) << "Create RequestSend status:" << send->Status();

@@ -30,38 +30,6 @@ constexpr char kOptimizeBlock[] = "OptimizeBlock";
 
 void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service);
 
-static void CreateTensorFromMessageType(framework::Variable *var,
-                                        sendrecv::VarType var_type) {
-  if (var_type == sendrecv::VarType::LOD_TENSOR) {
-    var->GetMutable<framework::LoDTensor>();
-  } else if (var_type == sendrecv::VarType::SELECTED_ROWS) {
-    var->GetMutable<framework::SelectedRows>();
-  } else {
-    PADDLE_THROW(
-        "VariableMessage type %d is not in "
-        "[LoDTensor, SelectedRows]",
-        var_type);
-  }
-}
-
-static void ParallelExecuteBlocks(const std::vector<size_t> &parallel_blkids,
-                                  framework::Executor *executor,
-                                  framework::ProgramDesc *program,
-                                  framework::Scope *scope) {
-  std::vector<std::future<void>> fs;
-  for (size_t idx : parallel_blkids) {
-    fs.push_back(framework::Async([&executor, &program, &scope, idx]() {
-      int run_block = idx;  // thread local
-      try {
-        executor->Run(*program, scope, run_block, false, false);
-      } catch (std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
-      }
-    }));
-  }
-  for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
-}
-
 class ListenAndServOp : public framework::OperatorBase {
  public:
   ListenAndServOp(const std::string &type,
