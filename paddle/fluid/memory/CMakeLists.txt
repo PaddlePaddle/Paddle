@@ -15,6 +15,6 @@ cc_library(paddle_memory
 
 cc_test(memory_test SRCS memory_test.cc DEPS place paddle_memory)
 
-# if (WITH_GPU)
-#    nv_test(pinned_memory_test SRCS pinned_memory_test.cu  DEPS place paddle_memory)
-# endif()
+#if (WITH_GPU)
+#   nv_test(pinned_memory_test SRCS pinned_memory_test.cu  DEPS place paddle_memory)
+#endif()
