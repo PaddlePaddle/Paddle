@@ -65,7 +65,6 @@ static void ParallelExecuteBlocks(
         framework::Async([&executor, &prepared, &program, &scope, idx]() {
           int run_block = idx;  // thread local
           try {
-            // executor->Run(*program, scope, run_block, false, false);
             executor->RunPreparedContext(prepared[run_block].get(), scope,
                                          false, false);
           } catch (std::exception &e) {
