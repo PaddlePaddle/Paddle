@@ -10,11 +10,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -30,6 +33,7 @@ template <typename DeviceContext, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    auto *ctx = &context.template device_context<DeviceContext>();
     auto in_vars = context.MultiInputVar("X");
     int N = in_vars.size();
     auto out_var = context.OutputVar("Out");
@@ -37,6 +41,8 @@ class SumKernel : public framework::OpKernel<T> {
     bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
+      platform::RecordEvent record_event("Sum LoDTensor", ctx);
+      platform::PushEvent("Sum Prepare", ctx);
       auto *out = context.Output<LoDTensor>("Out");
       if (!in_place) {
         out->mutable_data<T>(context.GetPlace());
@@ -51,9 +57,11 @@ class SumKernel : public framework::OpKernel<T> {
       math::SelectedRowsAddToTensor<DeviceContext, T> functor;
       auto &place =
           *context.template device_context<DeviceContext>().eigen_device();
+      platform::PopEvent("Sum Prepare", ctx);
       // If in_place, just skip the first tensor
       for (int i = in_place ? 1 : 0; i < N; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
+          platform::RecordEvent record_event("Sum SubLoDTensor", ctx);
           auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
           if (in_t.numel() == 0) {
             continue;
@@ -61,6 +69,7 @@ class SumKernel : public framework::OpKernel<T> {
           auto in = EigenVector<T>::Flatten(in_t);
           result.device(place) = result + in;
         } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
+          platform::RecordEvent record_event("Sum SubSelectedRows", ctx);
           auto &in_t = in_vars[i]->Get<framework::SelectedRows>();
           functor(context.template device_context<DeviceContext>(), in_t, out);
         } else {
@@ -68,6 +77,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
+      platform::RecordEvent record_event("Sum SelectedRows", ctx);
       std::unique_ptr<framework::SelectedRows> in0;
       if (in_place) {
         // If is in_place, we store the input[0] to in0
@@ -131,6 +141,7 @@ class SumKernel : public framework::OpKernel<T> {
         offset += sel_row.value().numel();
       }
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
+      platform::RecordEvent record_event("Sum LoDTensorArray", ctx);
       auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
       for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
         PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
@@ -143,11 +154,13 @@ class SumKernel : public framework::OpKernel<T> {
               out_array.resize(i + 1);
             }
             if (out_array[i].numel() == 0) {
+              platform::RecordEvent record_event("Sum TensorCopy", ctx);
               framework::TensorCopy(in_array[i], in_array[i].place(),
                                     context.device_context(), &out_array[i]);
               out_array[i].set_lod(in_array[i].lod());
             } else {
               PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
+              platform::RecordEvent record_event("Sum TensorCompute", ctx);
               auto in = EigenVector<T>::Flatten(in_array[i]);
               auto result = EigenVector<T>::Flatten(out_array[i]);
               result.device(*context.template device_context<DeviceContext>()

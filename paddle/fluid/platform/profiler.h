@@ -13,15 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <sys/time.h>
+#include <time.h>
 #include <forward_list>
 #include <list>
-#include <mutex>
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.pb.h"
 
 namespace paddle {
 namespace platform {
+extern std::list<std::list<uint64_t>> Times;
+
+inline uint64_t PosixInNsec() {
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
+}
 
 enum EventKind { kMark, kPushRange, kPopRange };
 

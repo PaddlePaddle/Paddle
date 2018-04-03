@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/profiler.h"
-#include <sys/time.h>
-#include <time.h>
+#include <algorithm>
+#include <cassert>
 #include <iomanip>
+#include <iterator>
+#include <limits>
 #include <map>
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -27,6 +29,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
+
+std::list<std::list<uint64_t>> Times;
 
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
@@ -54,11 +58,11 @@ inline uint64_t GetTimeInNsec() {
       .count();
 }
 
-inline uint64_t PosixInNsec() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
-}
+// inline uint64_t PosixInNsec() {
+//   struct timeval tv;
+//   gettimeofday(&tv, nullptr);
+//   return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
+// }
 
 Event::Event(EventKind kind, std::string name, uint32_t thread_id,
              const DeviceContext* dev_ctx)
@@ -120,7 +124,7 @@ static void ForEachDevice(std::function<void(int)> func) {
 
 inline EventList& GetEventList() {
   if (!g_event_list) {
-    std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
+    // std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
     g_event_list = std::make_shared<EventList>();
     g_thread_id = g_next_thread_id++;
     g_all_event_lists.emplace_front(g_event_list);
@@ -223,7 +227,7 @@ void EnableProfiler(ProfilerState state) {
 }
 
 void ResetProfiler() {
-  std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
+  // std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
        ++it) {
     (*it)->Clear();
@@ -231,13 +235,45 @@ void ResetProfiler() {
 }
 
 std::vector<std::vector<Event>> GetAllEvents() {
-  std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
+  // std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
   std::vector<std::vector<Event>> result;
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
        ++it) {
     result.emplace_back((*it)->Reduce());
   }
   return result;
+}
+
+void ParseTimes() {
+  std::vector<std::vector<float>> times(Times.size());
+  int i = 0;
+  for (auto& item : Times) {
+    auto it = item.begin();
+    while (it != std::prev(item.end())) {
+      times[i].push_back(*std::next(it) - *it);
+      it++;
+    }
+    // for (int j = 1; j < item.size(); ++j) {
+    //   times[i].push_back(item[j] - item[j-1]);
+    // }
+    i++;
+  }
+  int n = times.front().size();
+  std::vector<float> max_vals(n, std::numeric_limits<float>::min());
+  auto max_time = [&](const std::vector<float>& item) {
+    assert(item.size() == n);
+    for (int i = 0; i < item.size(); ++i) {
+      max_vals[i] = std::max(max_vals[i], item[i]);
+    }
+  };
+  for_each(times.begin(), times.end(), max_time);
+
+  // Print times
+  std::cout << "Print Times" << std::endl;
+  for (int i = 0; i < n; ++i) {
+    std::cout << max_vals[i] << " ";
+  }
+  std::cout << std::endl;
 }
 
 void DisableProfiler(EventSortingKey sorted_key,
@@ -250,6 +286,7 @@ void DisableProfiler(EventSortingKey sorted_key,
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
   ParseEvents(all_events, sorted_key);
+  ParseTimes();
   ResetProfiler();
   DeviceTracer* tracer = GetDeviceTracer();
   if (g_profiler_place == "All" && tracer && tracer->IsEnabled()) {
