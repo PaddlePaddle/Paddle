@@ -104,7 +104,9 @@ EOF
         # make install should also be test when unittest
         make install -j `nproc`
         pip install /usr/local/opt/paddle/share/wheels/*.whl
-        paddle version
+        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
+            paddle version
+        fi
     fi
 }
 
@@ -183,6 +185,14 @@ EOF
         NCCL_DEPS=""
     fi
 
+    if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
+        PADDLE_VERSION="paddle version"
+        CMD='"paddle", "version"'
+    else
+        PADDLE_VERSION="true"
+        CMD='"true"'
+    fi
+
     cat >> /paddle/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
@@ -192,7 +202,7 @@ EOF
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
-        paddle version && \
+        ${PADDLE_VERSION} && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
@@ -200,7 +210,7 @@ EOF
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
     # default command shows the paddle version and exit
-    CMD ["paddle", "version"]
+    CMD [${CMD}]
 EOF
 }
 

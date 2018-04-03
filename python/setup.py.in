@@ -77,6 +77,8 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
                'paddle.v2',
                'paddle.v2.master',
                'paddle.v2.plot',
+               'paddle.v2.reader',
+               'paddle.v2.dataset',
                'py_paddle']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
