@@ -13,22 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdint.h>
-#include <sys/stat.h>
 #include <ostream>
-#include <thread>
-
-#include <unistd.h>
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/simple_block_queue.h"
-#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
@@ -111,6 +102,11 @@ class ListenAndServOp : public framework::OperatorBase {
 
     framework::Executor executor(dev_place);
 
+    // TODO(qiao) set proper fields for table lookup and update
+    rpc_service_->SetExecutor(&executor);
+    rpc_service_->SetPrefetchBlkdId(0);
+    rpc_service_->SetProgram(program);
+
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
     // Record received sparse variables, so that
@@ -173,7 +169,8 @@ class ListenAndServOp : public framework::OperatorBase {
       }
       ParallelExecuteBlocks(parallel_blkids, &executor, program, &recv_scope);
 
-      VLOG(2) << "run all blocks spent (ms) " << detail::GetTimestamp() - ts;
+      VLOG(3) << "run all blocks spent " << detail::GetTimestamp() - ts
+              << "(ms)";
 
       // Reset the received sparse variables, the sum operator would not
       // sum the input sparse variables which rows is empty at the next

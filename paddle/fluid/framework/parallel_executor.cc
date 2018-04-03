@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
-#include <string>
 
-#include "ThreadPool.h"
+#include <string>
+#include <vector>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
