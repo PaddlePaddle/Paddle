@@ -16,7 +16,7 @@ import math
 import sys
 import os
 import numpy as np
-import paddle.v2 as paddle
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
