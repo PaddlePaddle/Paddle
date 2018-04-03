@@ -46,7 +46,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
-static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
+void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
@@ -294,12 +294,12 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
         if (var->Persistable()) {
           auto* ptr = scope->Var(var->Name());
-          CreateTensor(ptr, var->GetType());
+          InitializeVariable(ptr, var->GetType());
           VLOG(3) << "Create Variable " << var->Name()
                   << " global, which pointer is " << ptr;
         } else {
           auto* ptr = local_scope->Var(var->Name());
-          CreateTensor(ptr, var->GetType());
+          InitializeVariable(ptr, var->GetType());
           VLOG(3) << "Create Variable " << var->Name()
                   << " locally, which pointer is " << ptr;
         }
@@ -307,7 +307,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     } else {
       for (auto& var : block.AllVars()) {
         auto* ptr = local_scope->Var(var->Name());
-        CreateTensor(ptr, var->GetType());
+        InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
                 << ptr;
       }

@@ -144,7 +144,12 @@ class ParallelDoOp : public framework::OperatorBase {
       PADDLE_ENFORCE(scope.FindVar(param)->IsType<LoDTensor>(),
                      "Only support parameter type as LoDTensor");
       auto &src = scope.FindVar(param)->Get<LoDTensor>();
-      for (size_t i = 0; i < sub_scopes.size(); ++i) {
+
+      auto *sub_scope0 = sub_scopes[0];
+      auto *dst0 = sub_scope0->Var(param)->GetMutable<LoDTensor>();
+      dst0->ShareDataWith(src);
+
+      for (size_t i = 1; i < sub_scopes.size(); ++i) {
         auto &place = places[i];
         auto *sub_scope = sub_scopes[i];
         auto *dst = sub_scope->Var(param)->GetMutable<LoDTensor>();

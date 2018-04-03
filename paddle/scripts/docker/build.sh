@@ -35,8 +35,9 @@ function cmake_gen() {
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_DSO=ON
-        -DWITH_DOC=OFF
+        -DWITH_DOC=${WITH_DOC:-OFF}
         -DWITH_GPU=${WITH_GPU:-OFF}
+        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -50,7 +51,9 @@ function cmake_gen() {
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
         -DWITH_FAST_BUNDLE_TEST=ON
+        -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -60,8 +63,9 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_DSO=ON \
-        -DWITH_DOC=OFF \
+        -DWITH_DOC=${WITH_DOC:-OFF} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-OFF} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -74,6 +78,8 @@ EOF
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_FAST_BUNDLE_TEST=ON \
+        -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 }
 
@@ -98,7 +104,9 @@ EOF
         # make install should also be test when unittest
         make install -j `nproc`
         pip install /usr/local/opt/paddle/share/wheels/*.whl
-        paddle version
+        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
+            paddle version
+        fi
     fi
 }
 
@@ -119,9 +127,8 @@ EOF
             -DWITH_AVX=${WITH_AVX:-ON} \
             -DWITH_SWIG_PY=ON \
             -DWITH_STYLE_CHECK=OFF
-        make -j `nproc` gen_proto_py framework_py_proto
-        make -j `nproc` copy_paddle_pybind
-        make -j `nproc` paddle_docs paddle_docs_cn paddle_api_docs
+
+        make -j `nproc` paddle_docs paddle_apis
         popd
     fi
 
@@ -178,6 +185,14 @@ EOF
         NCCL_DEPS=""
     fi
 
+    if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
+        PADDLE_VERSION="paddle version"
+        CMD='"paddle", "version"'
+    else
+        PADDLE_VERSION="true"
+        CMD='"true"'
+    fi
+
     cat >> /paddle/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
@@ -187,7 +202,7 @@ EOF
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
-        paddle version && \
+        ${PADDLE_VERSION} && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
@@ -195,7 +210,7 @@ EOF
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
     # default command shows the paddle version and exit
-    CMD ["paddle", "version"]
+    CMD [${CMD}]
 EOF
 }
 
@@ -231,7 +246,7 @@ gen_capi_package
 gen_fluid_inference_lib
 
 if [[ ${WITH_C_API:-OFF} == "ON" ]]; then
-  printf "PaddlePaddle C-API libraries was generated on build/paddle.tgz\n" 
+  printf "PaddlePaddle C-API libraries was generated on build/paddle.tgz\n"
 else
   printf "If you need to install PaddlePaddle in develop docker image,"
   printf "please make install or pip install build/python/dist/*.whl.\n"

@@ -101,52 +101,55 @@ inline T* Tensor::data() {
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(DDim dims, platform::Place place) {
+inline T* Tensor::mutable_data(DDim dims, platform::Place place,
+                               bool is_pinned) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   Resize(dims);
-  return mutable_data<T>(place);
+  return mutable_data<T>(place, is_pinned);
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(platform::Place place) {
+inline T* Tensor::mutable_data(platform::Place place, bool is_pinned) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(place, typeid(T)));
+  return reinterpret_cast<T*>(mutable_data(place, typeid(T), is_pinned));
 }
 
-inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
+inline void* Tensor::mutable_data(platform::Place place, std::type_index type,
+                                  bool is_pinned) {
   if (holder_ != nullptr) {
     holder_->set_type(type);
   }
-  PADDLE_ENFORCE_GT(
-      numel(), 0,
-      "When calling this method, the Tensor's numel must be larger than zero. "
-      "Please check Tensor::Resize has been called first.");
+  PADDLE_ENFORCE_GE(numel(), 0,
+                    "When calling this method, the Tensor's numel must be "
+                    "equal or larger than zero. "
+                    "Please check Tensor::Resize has been called first.");
   int64_t size = numel() * SizeOfType(type);
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
     if (platform::is_cpu_place(place)) {
       holder_.reset(new PlaceholderImpl<platform::CPUPlace>(
-          boost::get<platform::CPUPlace>(place), size, type));
+          boost::get<platform::CPUPlace>(place), size, type, is_pinned));
     } else if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
     }
 #else
       holder_.reset(new PlaceholderImpl<platform::CUDAPlace>(
-          boost::get<platform::CUDAPlace>(place), size, type));
+          boost::get<platform::CUDAPlace>(place), size, type, is_pinned));
     }
 #endif
     offset_ = 0;
+    is_pinned_ = is_pinned;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
 
-inline void* Tensor::mutable_data(platform::Place place) {
+inline void* Tensor::mutable_data(platform::Place place, bool is_pinned) {
   PADDLE_ENFORCE(this->holder_ != nullptr,
                  "Cannot invoke mutable data if current hold nothing");
-  return mutable_data(place, holder_->type());
+  return mutable_data(place, holder_->type(), is_pinned);
 }
 
 inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
@@ -187,6 +190,8 @@ inline Tensor& Tensor::Resize(const DDim& dims) {
 inline const DDim& Tensor::dims() const { return dims_; }
 
 inline int64_t Tensor::numel() const { return product(dims_); }
+
+inline bool Tensor::isPinned() const { return is_pinned_; }
 
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   Tensor res;

@@ -1,4 +1,4 @@
-## how to use timeline tool to do profile
+# how to use timeline tool to do profile
 
 1. Add `with profiler.profiler(...)` to the main training loop. After run, the code will generate a profile record file `/tmp/profile`. **Warning**: Please do not run too many batches when use profiler to record timeline information, for the profile record will grow with the batch number.
 
