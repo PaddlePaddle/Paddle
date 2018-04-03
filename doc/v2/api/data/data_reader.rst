@@ -28,9 +28,9 @@ Reader
     :members:
     :noindex:
 
-minibatch
+Batch
 =========
 
-..  automodule:: paddle.batch.minibatch
+..  automodule:: paddle.batch.batch
     :members:
     :noindex:
