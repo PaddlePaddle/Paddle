@@ -287,7 +287,14 @@ def open_recordio_file(filename, shapes, lod_levels, dtypes):
                              startup_var)
 
 
-def open_files(filenames, thread_num, shapes, lod_levels, dtypes):
+def open_files(filenames,
+               shapes,
+               lod_levels,
+               dtypes,
+               thread_num,
+               buffer_size=None):
+    if buffer_size is None:
+        buffer_size = thread_num
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
     ranks = []
@@ -308,7 +315,8 @@ def open_files(filenames, thread_num, shapes, lod_levels, dtypes):
             'lod_levels': lod_levels,
             'ranks': ranks,
             'file_names': filenames,
-            'thread_num': thread_num
+            'thread_num': thread_num,
+            'buffer_size': buffer_size
         })
 
     startup_var.desc.set_dtypes(dtypes)
