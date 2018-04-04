@@ -847,6 +847,11 @@ class Block(object):
             if not self.has_var(var.name()):
                 self.create_var(name=var.name(), desc=var, type=var.type())
 
+        # sync variables removed from c++ end
+        for var in self.vars.keys():
+            if not self.desc.find_var(var):
+                self.vars.pop(var)
+
         # sync operators from cpp
         ops_in_cpp = []
         for op_idx in range(0, self.desc.op_size()):
@@ -880,6 +885,19 @@ class Block(object):
             op_desc = ops_in_cpp[index]
             op = Operator(self, op_desc)
             self.ops.append(op)
+
+        # sync ops removed from c++ end
+        if end_index != -1 and end_index < len(self.ops):
+            ops_in_cpp_index = 0
+            ops_in_python_index = 0
+            while ops_in_python_index < len(
+                    self.ops) and ops_in_cpp_index < len(ops_in_cpp):
+                if self.ops[ops_in_python_index].desc != ops_in_cpp[
+                        ops_in_cpp_index]:
+                    del self.ops[ops_in_python_index]
+                else:
+                    ops_in_cpp_index += 1
+                    ops_in_python_index += 1
 
         assert len(self.ops) == len(ops_in_cpp)
         for index in range(len(self.ops)):
@@ -928,13 +946,20 @@ class Block(object):
             The new  variable cloned from 'var' in current block.
         """
         assert isinstance(var, Variable)
-        return self.create_var(
-            name=var.name,
-            shape=var.shape,
-            dtype=var.dtype,
-            type=var.type,
-            lod_level=var.lod_level,
-            persistable=True)
+        ret_var = None
+        # make STEP_SCOPES var can be safely cloned.
+        if var.type == core.VarDesc.VarType.STEP_SCOPES:
+            ret_var = self.create_var(
+                name=var.name, persistable=var.persistable, type=var.type)
+        else:
+            ret_var = self.create_var(
+                name=var.name,
+                shape=var.shape,
+                dtype=var.dtype,
+                type=var.type,
+                lod_level=var.lod_level,
+                persistable=True)
+        return ret_var
 
 
 class Program(object):

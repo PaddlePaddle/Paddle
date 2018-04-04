@@ -408,11 +408,7 @@ class DistributeTranspiler:
         pserver_vars = pserver_program.global_block().vars
         created_var_map = dict()
         for _, var in pserver_vars.iteritems():
-            tmpvar = s_prog.global_block().create_var(
-                name=var.name,
-                persistable=var.persistable,
-                dtype=var.dtype,
-                shape=var.shape)
+            tmpvar = s_prog.global_block().clone_variable(var)
             created_var_map[var.name] = tmpvar
 
         # 2. rename op outputs
@@ -708,11 +704,7 @@ class DistributeTranspiler:
                 varlist = [varlist]
 
             for var in varlist:
-                program.global_block().create_var(
-                    name=var.name,
-                    persistable=var.persistable,
-                    dtype=var.dtype,
-                    shape=var.shape)
+                program.global_block().clone_variable(var)
 
         optimize_block.append_op(
             type=opt_op.type,

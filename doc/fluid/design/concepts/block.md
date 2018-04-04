@@ -14,11 +14,29 @@ In programming languages, a block is a pair of curly braces that includes local 
 
 Blocks work with control flow structures like `if`, `else`, and `for`, which have equivalents in deep learning:
 
-| programming languages | PaddlePaddle          |
-|-----------------------|-----------------------|
-| for, while loop       | RNN, WhileOp          |
-| if, if-else, switch   | IfElseOp, SwitchOp    |
-| sequential execution  | a sequence of layers  |
+<table>
+<thead>
+<tr>
+<th>programming languages</th>
+<th>PaddlePaddle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>for, while loop </td>
+<td>RNN, WhileOp </td>
+</tr>
+<tr>
+<td>if, if-else, switch </td>
+<td>IfElseOp, SwitchOp </td>
+</tr>
+<tr>
+<td>sequential execution </td>
+<td>a sequence of layers </td>
+</tr>
+</tbody>
+</table>
+
 
 A key difference is that a C++ program describes a one pass computation, whereas a deep learning program describes both the forward and backward passes.
 
@@ -26,12 +44,33 @@ A key difference is that a C++ program describes a one pass computation, whereas
 
 The existence of the backward pass makes the execution of a block of PaddlePaddle different from traditional programs:
 
-| programming languages | PaddlePaddle                    |
-|-----------------------|---------------------------------|
-| stack                 | scope hierarchy                 |
-| stack frame           | scope                           |
-| push at entering block| push at entering block          |
-| pop at leaving block  | destroy when minibatch completes|
+<table>
+<thead>
+<tr>
+<th>programming languages</th>
+<th>PaddlePaddle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>stack </td>
+<td>scope hierarchy </td>
+</tr>
+<tr>
+<td>stack frame  </td>
+<td>scope </td>
+</tr>
+<tr>
+<td>push at entering block </td>
+<td>push at entering block </td>
+</tr>
+<tr>
+<td>pop at leaving block </td>
+<td>destroy when minibatch completes </td>
+</tr>
+</tbody>
+</table>
+
 
 1. In traditional programs:
 
