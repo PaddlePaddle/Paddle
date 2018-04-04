@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <cudnn.h>
 #include <dlfcn.h>
-#include <mutex>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
@@ -140,7 +139,8 @@ CUDNN_DNN_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 #if CUDNN_VERSION >= 7001
 #define CUDNN_DNN_ROUTINE_EACH_R7(__macro) \
-  __macro(cudnnSetConvolutionGroupCount);
+  __macro(cudnnSetConvolutionGroupCount);  \
+  __macro(cudnnSetConvolutionMathType);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
