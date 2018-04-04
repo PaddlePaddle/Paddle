@@ -32,7 +32,7 @@ TEST(inference, fit_a_line) {
   // The input data should be >= 0
   int64_t batch_size = 10;
   SetupTensor<float>(
-      input, {batch_size, 13}, static_cast<float>(0), static_cast<float>(10));
+      &input, {batch_size, 13}, static_cast<float>(0), static_cast<float>(10));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -51,7 +51,7 @@ TEST(inference, fit_a_line) {
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
-  LOG(INFO) << "--- CPU Runs: ---";
+  LOG(INFO) << "--- GPU Runs: ---";
   TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
   LOG(INFO) << output2.dims();
 
@@ -79,10 +79,8 @@ TEST(multi_thread_inference, fit_a_line) {
     // The second dim of the input tensor should be 13
     // The input data should be >= 0
     int64_t batch_size = 10;
-    SetupTensor<float>(*input,
-                       {batch_size, 13},
-                       static_cast<float>(0),
-                       static_cast<float>(10));
+    SetupTensor<float>(
+        input, {batch_size, 13}, static_cast<float>(0), static_cast<float>(10));
     cpu_feeds[i].push_back(input);
   }
 
@@ -112,6 +110,7 @@ TEST(multi_thread_inference, fit_a_line) {
       dirname, cpu_feeds, cpu_fetchs2, num_threads);
 
   for (int i = 0; i < num_threads; ++i) {
+    CheckError<float>(*cpu_fetchs1[i][0], *cpu_fetchs2[i][0]);
     delete cpu_fetchs2[i][0];
   }
 #endif
