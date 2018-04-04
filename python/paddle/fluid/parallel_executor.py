@@ -76,6 +76,9 @@ class ParallelExecutor(object):
           or numpy array.
         :return: fetched value list.
         """
+        if not isinstance(feed_dict, dict):
+            raise TypeError("feed_dict should be a dict")
+
         feed_tensor_dict = {}
         for i, feed_name in enumerate(feed_dict):
             feed_tensor = feed_dict[feed_name]
