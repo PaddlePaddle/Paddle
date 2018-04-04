@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -54,6 +55,9 @@ class ProgramDesc {
 
   const std::vector<std::string> GetFeedTargetNames();
   const std::vector<std::string> GetFetchTargetNames();
+
+  void SetFeedHolderName(const std::string &feed_holder_name);
+  void SetFetchHolderName(const std::string &fetch_holder_name);
 
  private:
   proto::ProgramDesc desc_;

@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
 #include <thread>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
@@ -20,13 +22,23 @@ void ThreadedRunInference(
     std::unique_ptr<paddle::framework::ProgramDesc>& inference_program,
     paddle::framework::Executor& executor,
     paddle::framework::Scope* scope,
+    const int thread_id,
     const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
     std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
+  auto copy_program = std::unique_ptr<paddle::framework::ProgramDesc>(
+      new paddle::framework::ProgramDesc(*inference_program));
+
+  std::string feed_holder_name = "feed_" + paddle::string::to_string(thread_id);
+  std::string fetch_holder_name =
+      "fetch_" + paddle::string::to_string(thread_id);
+  copy_program->SetFeedHolderName(feed_holder_name);
+  copy_program->SetFetchHolderName(fetch_holder_name);
+
   // 3. Get the feed_target_names and fetch_target_names
   const std::vector<std::string>& feed_target_names =
-      inference_program->GetFeedTargetNames();
+      copy_program->GetFeedTargetNames();
   const std::vector<std::string>& fetch_target_names =
-      inference_program->GetFetchTargetNames();
+      copy_program->GetFetchTargetNames();
 
   // 4. Prepare inputs: set up maps for feed targets
   std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
@@ -42,7 +54,12 @@ void ThreadedRunInference(
   }
 
   // 6. Run the inference program
-  executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+  executor.Run(*copy_program,
+               scope,
+               feed_targets,
+               fetch_targets,
+               feed_holder_name,
+               fetch_holder_name);
 }
 
 template <typename Place>
@@ -66,6 +83,7 @@ void TestMultiThreadInference(
                                       std::ref(inference_program),
                                       std::ref(executor),
                                       scope,
+                                      i,
                                       std::ref(cpu_feeds[i]),
                                       std::ref(cpu_fetchs[i])));
   }

@@ -36,35 +36,35 @@ TEST(inference, label_semantic_roles) {
   int64_t predicate_dict_len = 3162;
   int64_t mark_dict_len = 2;
 
-  SetupLoDTensor(word,
+  SetupLoDTensor(&word,
                  lod,
                  static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(predicate,
+  SetupLoDTensor(&predicate,
                  lod,
                  static_cast<int64_t>(0),
                  static_cast<int64_t>(predicate_dict_len - 1));
-  SetupLoDTensor(ctx_n2,
+  SetupLoDTensor(&ctx_n2,
                  lod,
                  static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(ctx_n1,
+  SetupLoDTensor(&ctx_n1,
                  lod,
                  static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(ctx_0,
+  SetupLoDTensor(&ctx_0,
                  lod,
                  static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(ctx_p1,
+  SetupLoDTensor(&ctx_p1,
                  lod,
                  static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(ctx_p2,
+  SetupLoDTensor(&ctx_p2,
                  lod,
                  static_cast<int64_t>(0),
                  static_cast<int64_t>(word_dict_len - 1));
-  SetupLoDTensor(mark,
+  SetupLoDTensor(&mark,
                  lod,
                  static_cast<int64_t>(0),
                  static_cast<int64_t>(mark_dict_len - 1));
