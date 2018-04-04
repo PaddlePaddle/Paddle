@@ -29,6 +29,7 @@ function(py_test_modules TARGET_NAME)
 endfunction()
 
 # test time consuming OPs in a separate process for expliot parallism
+list(REMOVE_ITEM TEST_OPS test_parallel_executor)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dyn_rnn)
 list(REMOVE_ITEM TEST_OPS test_mul_op)
@@ -64,6 +65,7 @@ else()
 endif(WITH_FAST_BUNDLE_TEST)
 
 # tests with high overhead
+py_test_modules(test_parallel_executor MODULES test_parallel_executor)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR})
 py_test_modules(test_train_dyn_rnn MODULES test_dyn_rnn)
 py_test_modules(test_mul_op MODULES test_mul_op)

@@ -142,6 +142,7 @@ class LoDTensor : public Tensor {
     return (lod_)[level].size() - 1;
   }
 
+  // Split LoDTensor and copy to each place specified in places.
   std::vector<LoDTensor> SplitLoDTensor(
       const std::vector<platform::Place> places) const;
 

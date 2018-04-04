@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+
 #include <sys/time.h>
-#include <thread>
+#include <thread>  // NOLINT
+
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -42,7 +44,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   void* buf = malloc(1024);
   void* payload = nullptr;
   size_t payload_size;
-  ProtoEncodeHelper e((char*)buf, 1024);
+  ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
   e.WriteString(VarMsg::kVarnameFieldNumber, name);
   if (var->IsType<framework::LoDTensor>()) {
     e.WriteUint64(VarMsg::kTypeFieldNumber, 0);
@@ -152,7 +154,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       framework::proto::VarType_Type_SELECTED_ROWS) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
 
-    ProtoEncodeHelper e2((char*)buf, 128);
+    ProtoEncodeHelper e2(static_cast<char*>(buf), 128);
     // NOTE: rows is of type int64_t
     size_t rows_memory_size =
         slr->rows().size() * framework::SizeOfType(typeid(int64_t));
@@ -181,10 +183,10 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
-                               framework::Variable*& var) {
+                               framework::Variable** var) {
   operators::detail::VariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
-  var = resp.GetVar();
+  *var = resp.GetVar();
 }
 
 }  // namespace detail

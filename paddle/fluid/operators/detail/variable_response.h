@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -60,14 +62,14 @@ class VariableResponse {
  private:
   bool CopySelectRowsTensorData(::google::protobuf::io::CodedInputStream* input,
                                 const platform::DeviceContext& ctx,
-                                framework::DDim& dims, int length);
+                                const framework::DDim& dims, int length);
 
   bool CopySelectRowsData(::google::protobuf::io::CodedInputStream* input,
                           const platform::DeviceContext& ctx, int length);
 
   bool CopyLodTensorData(::google::protobuf::io::CodedInputStream* input,
                          const platform::DeviceContext& ctx,
-                         framework::DDim& dims, int length);
+                         const framework::DDim& dims, int length);
 
  private:
   const framework::Scope* scope_;
