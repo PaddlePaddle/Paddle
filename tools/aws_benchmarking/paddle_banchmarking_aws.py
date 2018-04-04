@@ -29,6 +29,19 @@ import paramiko
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
+    '--key_name',
+    type=str,
+    default="",
+    required=True,
+    help="required, key pair name")
+parser.add_argument(
+    '--security_group_id',
+    type=str,
+    default="",
+    required=True,
+    help="required, the security group id associated with your VPC")
+
+parser.add_argument(
     '--vpc_id',
     type=str,
     default="",
@@ -38,12 +51,7 @@ parser.add_argument(
     type=str,
     default="",
     help="The Subnet_id in which you wish to run test")
-parser.add_argument(
-    '--security_group_id',
-    type=str,
-    default="",
-    required=True,
-    help="required, the security group id associated with your VPC")
+
 parser.add_argument(
     '--pserver_instance_type',
     type=str,
@@ -54,12 +62,7 @@ parser.add_argument(
     type=str,
     default="p2.xlarge",
     help="your trainer instance type")
-parser.add_argument(
-    '--key_name',
-    type=str,
-    default="",
-    required=True,
-    help="required, key pair name")
+
 parser.add_argument(
     '--task_name',
     type=str,
@@ -316,7 +319,6 @@ def cleanup(task_name):
     }])
 
     ec2client.delete_subnet(SubnetId=subnet["Subnets"][0]["SubnetId"])
-
     # no subnet delete waiter, just leave it.
     return
 
