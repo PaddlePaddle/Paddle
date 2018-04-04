@@ -33,6 +33,10 @@ namespace platform {
 
 std::list<std::list<uint64_t>> Times;
 
+uint64_t in_var_length = 0;
+uint64_t single_var_length = 0;
+uint64_t in_var_length_total = 0;
+
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
 // To record which timer the profiler used, CUDA or CPU.
@@ -275,6 +279,11 @@ void ParseTimes() {
     std::cout << max_vals[i] << " ";
   }
   std::cout << std::endl;
+
+  std::cout << " Print Max length" << std::endl;
+  std::cout << " in_var_length " << in_var_length << "\n"
+            << " single_var_length" << single_var_length << "\n"
+            << "in_var_length_total" << in_var_length << std::endl;
 }
 
 void DisableProfiler(EventSortingKey sorted_key,

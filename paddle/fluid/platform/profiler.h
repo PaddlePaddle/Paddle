@@ -25,6 +25,10 @@ namespace paddle {
 namespace platform {
 extern std::list<std::list<uint64_t>> Times;
 
+extern uint64_t in_var_length;
+extern uint64_t single_var_length;
+extern uint64_t in_var_length_total;
+
 inline uint64_t PosixInNsec() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);

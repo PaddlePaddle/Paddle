@@ -29,6 +29,55 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
+using LoDTensorArray = framework::LoDTensorArray;
+using Variable = framework::Variable;
+
+template <typename DeviceContext, typename T>
+struct MySumFunctor {
+  void operator()(const DeviceContext &context,
+                  const std::vector<const Variable *> &in_vars,
+                  Variable *out_var);
+};
+
+template <typename T>
+struct MySumFunctor<platform::CPUDeviceContext, T> {
+  void operator()(const platform::CPUDeviceContext &context,
+                  const std::vector<const Variable *> &in_vars,
+                  Variable *out_var) {
+    auto *ctx = &context;
+    platform::RecordEvent record_event("Sum LoDTensorArray", ctx);
+    auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
+    bool in_place = out_var == in_vars[0];
+    for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
+      PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
+                     "Only support all inputs are TensorArray");
+      auto &in_array = in_vars[i]->Get<framework::LoDTensorArray>();
+
+      for (size_t i = 0; i < in_array.size(); ++i) {
+        if (in_array[i].numel() != 0) {
+          if (i >= out_array.size()) {
+            out_array.resize(i + 1);
+          }
+          if (out_array[i].numel() == 0) {
+            platform::RecordEvent record_event("Sum TensorCopy", ctx);
+            framework::TensorCopy(in_array[i], in_array[i].place(), context,
+                                  &out_array[i]);
+            out_array[i].set_lod(in_array[i].lod());
+          } else {
+            PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
+            platform::RecordEvent record_event("Sum TensorCompute", ctx);
+            auto in = EigenVector<T>::Flatten(in_array[i]);
+            auto result = EigenVector<T>::Flatten(out_array[i]);
+            // result.device(*context.template device_context<DeviceContext>()
+            //                    .eigen_device()) = result + in;
+            result.device(*context.eigen_device()) = result + in;
+          }
+        }
+      }
+    }
+  }
+};
+
 template <typename DeviceContext, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
@@ -141,34 +190,9 @@ class SumKernel : public framework::OpKernel<T> {
         offset += sel_row.value().numel();
       }
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
-      platform::RecordEvent record_event("Sum LoDTensorArray", ctx);
-      auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
-      for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
-        PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
-                       "Only support all inputs are TensorArray");
-        auto &in_array = in_vars[i]->Get<framework::LoDTensorArray>();
-
-        for (size_t i = 0; i < in_array.size(); ++i) {
-          if (in_array[i].numel() != 0) {
-            if (i >= out_array.size()) {
-              out_array.resize(i + 1);
-            }
-            if (out_array[i].numel() == 0) {
-              platform::RecordEvent record_event("Sum TensorCopy", ctx);
-              framework::TensorCopy(in_array[i], in_array[i].place(),
-                                    context.device_context(), &out_array[i]);
-              out_array[i].set_lod(in_array[i].lod());
-            } else {
-              PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
-              platform::RecordEvent record_event("Sum TensorCompute", ctx);
-              auto in = EigenVector<T>::Flatten(in_array[i]);
-              auto result = EigenVector<T>::Flatten(out_array[i]);
-              result.device(*context.template device_context<DeviceContext>()
-                                 .eigen_device()) = result + in;
-            }
-          }
-        }
-      }
+      MySumFunctor<DeviceContext, T> functor;
+      functor(context.template device_context<DeviceContext>(), in_vars,
+              out_var);
     } else {
       PADDLE_THROW("Unexpected branch, output variable type is %s",
                    out_var->Type().name());
