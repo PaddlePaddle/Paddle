@@ -18,6 +18,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static inline framework::OpKernelType ExpectedKernelType(
+    const framework::ExecutionContext& ctx) {
+  auto* table_var = ctx.InputVar("W");
+  if (table_var->IsType<LoDTensor>()) {
+    return framework::OpKernelType(
+        framework::ToDataType(table_var->Get<LoDTensor>().type()),
+        ctx.device_context());
+  } else if (table_var->IsType<SelectedRows>()) {
+    return framework::OpKernelType(
+        framework::ToDataType(table_var->Get<SelectedRows>().value().type()),
+        ctx.device_context());
+  } else {
+    PADDLE_THROW("W should be LoDTensor or SelectedRows");
+  }
+}
+
 class LookupTableOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -51,9 +67,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
-        ctx.device_context());
+    return ExpectedKernelType(ctx);
   }
 };
 
@@ -84,7 +98,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                      "If the value is -1, it makes no effect to lookup. "
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
-        .SetDefault(-1);
+        .SetDefault(kNoPadding);
     AddComment(R"DOC(
 Lookup Table Operator.
 
@@ -124,9 +138,7 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
-        ctx.device_context());
+    return ExpectedKernelType(ctx);
   }
 };
 
