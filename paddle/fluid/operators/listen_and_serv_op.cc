@@ -39,20 +39,23 @@ static void CreateTensorFromMessageType(framework::Variable *var,
   }
 }
 
-static void ParallelExecuteBlocks(const std::vector<size_t> &parallel_blkids,
-                                  framework::Executor *executor,
-                                  framework::ProgramDesc *program,
-                                  framework::Scope *scope) {
+static void ParallelExecuteBlocks(
+    const std::vector<size_t> &parallel_blkids, framework::Executor *executor,
+    const std::vector<std::shared_ptr<framework::ExecutorPrepareContext>>
+        &prepared,
+    framework::ProgramDesc *program, framework::Scope *scope) {
   std::vector<std::future<void>> fs;
   for (size_t idx : parallel_blkids) {
-    fs.push_back(framework::Async([&executor, &program, &scope, idx]() {
-      int run_block = idx;  // thread local
-      try {
-        executor->Run(*program, scope, run_block, false, false);
-      } catch (std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
-      }
-    }));
+    fs.push_back(
+        framework::Async([&executor, &prepared, &program, &scope, idx]() {
+          int run_block = idx;  // thread local
+          try {
+            executor->RunPreparedContext(prepared[run_block].get(), scope,
+                                         false, false);
+          } catch (std::exception &e) {
+            LOG(ERROR) << "run sub program error " << e.what();
+          }
+        }));
   }
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 }
@@ -77,7 +80,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
   framework::Scope &recv_scope = scope.NewScope();
-  LOG(INFO) << "created recv scope: " << &recv_scope;
 
   if (!rpc_service_) {
     std::string endpoint = Attr<std::string>("endpoint");
@@ -93,6 +95,14 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
                     "server program should have at least 2 blocks");
 
   framework::Executor executor(dev_place);
+  std::vector<int> block_list;
+  for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
+    block_list.push_back(blkid);
+  }
+  auto prepared = executor.Prepare(*program, block_list);
+  // Insert placeholder for block0 which holds current op itself.
+  prepared.insert(prepared.begin(),
+                  std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
   rpc_service_->SetScope(&recv_scope);
   rpc_service_->SetDevCtx(&dev_ctx);
@@ -157,16 +167,16 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     double ts = detail::GetTimestamp();
     for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
       if (program->Block(blkid).Parent() != last_parent_blkid) {
-        for (size_t idx : parallel_blkids) VLOG(3) << idx;
-        ParallelExecuteBlocks(parallel_blkids, &executor, program, &recv_scope);
+        ParallelExecuteBlocks(parallel_blkids, &executor, prepared, program,
+                              &recv_scope);
         parallel_blkids.clear();
         last_parent_blkid = program->Block(blkid).Parent();
       }
       parallel_blkids.push_back(blkid);
     }
-    ParallelExecuteBlocks(parallel_blkids, &executor, program, &recv_scope);
-
-    VLOG(3) << "run all blocks spent " << detail::GetTimestamp() - ts << "(ms)";
+    ParallelExecuteBlocks(parallel_blkids, &executor, prepared, program,
+                          &recv_scope);
+    VLOG(2) << "run all blocks spent " << detail::GetTimestamp() - ts << "(ms)";
 
     // Reset the received sparse variables, the sum operator would not
     // sum the input sparse variables which rows is empty at the next
