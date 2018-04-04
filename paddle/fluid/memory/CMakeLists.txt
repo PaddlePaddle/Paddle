@@ -10,6 +10,6 @@ cc_library(memory
 
 cc_test(malloc_test SRCS malloc_test.cc DEPS malloc)
 
-#if (WITH_GPU)
-#   nv_test(pinned_memory_test SRCS pinned_memory_test.cu  DEPS place memory)
-#endif()
+if (WITH_GPU)
+   nv_test(pinned_memory_test SRCS pinned_memory_test.cu  DEPS place memory)
+endif()

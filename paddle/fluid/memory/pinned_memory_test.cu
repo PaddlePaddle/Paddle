@@ -29,6 +29,9 @@ __global__ void Kernel(T* output, int dim) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < dim) {
     output[tid] = output[tid] * output[tid] / 100;
+    if (blockIdx.x = 0) {
+      printf("~~~~~~~~~~~~~~~~~%f~\n", output[tid]);
+    }
   }
 }
 
@@ -77,7 +80,7 @@ float test_pinned_memory() {
   cudaEventRecord(start_e, computation_stream);
 
   // computation
-  for (int m = 0; m < 30; ++m) {
+  for (int m = 0; m < 1; ++m) {
     for (int i = 0; i < iteration; ++i) {
       // cpu -> GPU on computation stream.
       // note: this operation is async for pinned memory.
@@ -133,14 +136,16 @@ float test_pinned_memory() {
     paddle::memory::Free(cpu_place, output_pinned_mem[j]);
     paddle::memory::Free(cuda_place, gpu_mem[j]);
   }
-  return elapsedTime / 30;
+  return elapsedTime / 1;
 }
 
 TEST(CPUANDCUDAPinned, CPUAllocatorAndCUDAPinnedAllocator) {
   // Generally speaking, operation on pinned_memory is faster than that on
   // unpinned-memory, but if this unit test fails frequently, please close this
   // test for the time being.
+  printf("~~~~~~~~~~~~~~~~~CPUPlace~\n");
   float time1 = test_pinned_memory<paddle::platform::CPUPlace>();
+  printf("~~~~~~~~~~~~~~~~~CUDAPinnedPlace~\n");
   float time2 = test_pinned_memory<paddle::platform::CUDAPinnedPlace>();
   EXPECT_GT(time1, time2);
 }
