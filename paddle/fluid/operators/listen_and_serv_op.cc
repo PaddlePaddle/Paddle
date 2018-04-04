@@ -45,20 +45,23 @@ static void CreateTensorFromMessageType(framework::Variable *var,
   }
 }
 
-static void ParallelExecuteBlocks(const std::vector<size_t> &parallel_blkids,
-                                  framework::Executor *executor,
-                                  framework::ProgramDesc *program,
-                                  framework::Scope *scope) {
+static void ParallelExecuteBlocks(
+    const std::vector<size_t> &parallel_blkids, framework::Executor *executor,
+    const std::vector<std::shared_ptr<framework::ExecutorPrepareContext>>
+        &prepared,
+    framework::ProgramDesc *program, framework::Scope *scope) {
   std::vector<std::future<void>> fs;
   for (size_t idx : parallel_blkids) {
-    fs.push_back(framework::Async([&executor, &program, &scope, idx]() {
-      int run_block = idx;  // thread local
-      try {
-        executor->Run(*program, scope, run_block, false, false);
-      } catch (std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
-      }
-    }));
+    fs.push_back(
+        framework::Async([&executor, &prepared, &program, &scope, idx]() {
+          int run_block = idx;  // thread local
+          try {
+            executor->RunPreparedContext(prepared[run_block].get(), scope,
+                                         false, false);
+          } catch (std::exception &e) {
+            LOG(ERROR) << "run sub program error " << e.what();
+          }
+        }));
   }
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 }
@@ -101,6 +104,13 @@ class ListenAndServOp : public framework::OperatorBase {
                       "server program should have at least 2 blocks");
 
     framework::Executor executor(dev_place);
+    std::vector<int> block_list;
+    for (size_t blkid = 1; blkid < num_blocks; ++blkid)
+      block_list.push_back(blkid);
+    auto prepared = executor.Prepare(*program, block_list);
+    prepared.insert(
+        prepared.begin(),
+        std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
     // TODO(qiao) set proper fields for table lookup and update
     rpc_service_->SetExecutor(&executor);
@@ -160,14 +170,15 @@ class ListenAndServOp : public framework::OperatorBase {
       for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
         if (program->Block(blkid).Parent() != last_parent_blkid) {
           for (size_t idx : parallel_blkids) VLOG(3) << idx;
-          ParallelExecuteBlocks(parallel_blkids, &executor, program,
+          ParallelExecuteBlocks(parallel_blkids, &executor, prepared, program,
                                 &recv_scope);
           parallel_blkids.clear();
           last_parent_blkid = program->Block(blkid).Parent();
         }
         parallel_blkids.push_back(blkid);
       }
-      ParallelExecuteBlocks(parallel_blkids, &executor, program, &recv_scope);
+      ParallelExecuteBlocks(parallel_blkids, &executor, prepared, program,
+                            &recv_scope);
 
       VLOG(3) << "run all blocks spent " << detail::GetTimestamp() - ts
               << "(ms)";
@@ -181,7 +192,8 @@ class ListenAndServOp : public framework::OperatorBase {
         var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
       }
       rpc_service_->SetCond(1);
-      // FIXME(typhoonzero): use another condition to sync wait clients get.
+      // NOTE: does not consider barrier request retry in here, we may use
+      // global barrier id to resolve this.
       rpc_service_->WaitClientGet(fan_in);
       sparse_vars.clear();
     }  // while(true)
