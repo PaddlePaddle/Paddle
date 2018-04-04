@@ -318,7 +318,6 @@ def cleanup(task_name):
     ec2client.delete_subnet(SubnetId=subnet["Subnets"][0]["SubnetId"])
 
     # no subnet delete waiter, just leave it.
-
     return
 
 
