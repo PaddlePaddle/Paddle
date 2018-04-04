@@ -5,7 +5,7 @@ This document describes the RNN (Recurrent Neural Network) operator and how it i
 ## RNN Algorithm Implementation
 
 <p align="center">
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/rnn.jpg"/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/rnn.jpg"/>
 </p>
 
 The above diagram shows an RNN unrolled into a full network.
