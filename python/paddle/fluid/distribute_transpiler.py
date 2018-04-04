@@ -408,11 +408,7 @@ class DistributeTranspiler:
         pserver_vars = pserver_program.global_block().vars
         created_var_map = dict()
         for _, var in pserver_vars.iteritems():
-            if var.type == core.VarDesc.VarType.STEP_SCOPES:
-                tmpvar = s_prog.global_block().create_var(
-                    name=var.name, persistable=var.persistable, type=var.type)
-            else:
-                tmpvar = s_prog.global_block().clone_variable(var)
+            tmpvar = s_prog.global_block().clone_variable(var)
             created_var_map[var.name] = tmpvar
 
         # 2. rename op outputs
@@ -708,13 +704,7 @@ class DistributeTranspiler:
                 varlist = [varlist]
 
             for var in varlist:
-                if var.type == core.VarDesc.VarType.STEP_SCOPES:
-                    program.global_block().create_var(
-                        name=var.name,
-                        persistable=var.persistable,
-                        type=var.type)
-                else:
-                    program.global_block().clone_variable(var)
+                program.global_block().clone_variable(var)
 
         optimize_block.append_op(
             type=opt_op.type,
