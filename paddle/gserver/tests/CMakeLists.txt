@@ -27,6 +27,7 @@ gserver_test(test_BatchNorm)
 gserver_test(test_KmaxSeqScore)
 gserver_test(test_Expand)
 gserver_test(test_MaxPoolingWithMaskOutput)
+gserver_test(test_Upsample)
 
 set(PYTHON_PATH 
    ${PADDLE_SOURCE_DIR}/paddle/.set_python_path.sh -d 
