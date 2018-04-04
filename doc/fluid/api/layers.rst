@@ -494,6 +494,12 @@ reshape
 ..  autofunction:: paddle.fluid.layers.reshape
     :noindex:
 
+pad
+---
+
+..  autofunction:: paddle.fluid.layers.pad
+    :noindex:
+
 scale
 -----
 

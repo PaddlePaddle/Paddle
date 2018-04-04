@@ -54,6 +54,16 @@ DeviceContextPool::DeviceContextPool(
           "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
           "option");
 #endif
+    } else if (platform::is_cuda_pinned_place(p)) {
+#ifdef PADDLE_WITH_CUDA
+      device_contexts_.emplace(
+          p,
+          PtrType(new CUDAPinnedDeviceContext(boost::get<CUDAPinnedPlace>(p))));
+#else
+      PADDLE_THROW(
+          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
+          "option");
+#endif
     }
   }
 }
@@ -186,6 +196,20 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext(CUDAPinnedPlace place)
+    : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
