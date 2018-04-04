@@ -6,17 +6,17 @@ A central problem in machine learning is how to design an algorithm that will pe
 ### Parameter Norm Penalties
 Most common regularization approaches in deep learning are based on limiting the capacity of the models by adding a parameter norm penalty to the objective function `J`. This is given as follows:
 
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/loss_equation.png" align="center"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/loss_equation.png" align="center"/><br/>
 
 The parameter `alpha` is a hyperparameter that weights the relative contribution of the norm penalty term, `omega`, relative to the standard objective function `J`.
 
 The most commonly used norm penalties are the L2 norm penalty and the L1 norm penalty. These are given as follows:
 
 ##### L2 Regularization:
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/l2_regularization.png" align="center"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/l2_regularization.png" align="center"/><br/>
 
 ##### L1 Regularization
-<img src=".https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/l1_regularization.png" align="center"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/l1_regularization.png" align="center"/><br/>
 
 A much more detailed mathematical background of regularization can be found [here](http://www.deeplearningbook.org/contents/regularization.html).
 
@@ -40,11 +40,11 @@ The idea of building ops for regularization is in sync with the refactored Paddl
 
 Below is an example of a really simple feed forward neural network.
 
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/feed_forward.png" align="center"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/feed_forward.png" align="center"/><br/>
 
 The Python API will modify this computation graph to add regularization operators. The modified computation graph will look as follows:
 
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/feed_forward_regularized.png" align="center"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/feed_forward_regularized.png" align="center"/><br/>
    
 ### Python API implementation for Regularization
 

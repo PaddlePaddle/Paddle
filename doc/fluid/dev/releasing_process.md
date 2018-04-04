@@ -37,7 +37,7 @@ PaddlePaddle每次发新的版本，遵循以下流程:
 可以在此页面的"Artifacts"下拉框中找到生成的3个二进制文件，分别对应CAPI，`cp27m`和`cp27mu`的版本。然后按照上述的方法
 使用`twine`工具上传即可。
 
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/ci_build_whl.png">
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/ci_build_whl.png">
 
 * 注：CI环境使用 https://github.com/PaddlePaddle/buildtools 这里的DockerImage作为编译环境以支持更多的Linux
   发型版，如果需要手动编译，也可以使用这些镜像。这些镜像也可以从 https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/ 下载得到。
