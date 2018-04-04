@@ -135,18 +135,18 @@ def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
     return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
 
 
-def SE_ResNeXt152(batch_size=4):
+def SE_ResNeXt152Small(batch_size=2):
     img = fluid.layers.fill_constant(
         shape=[batch_size, 3, 224, 224], dtype='float32', value=0.0)
     label = fluid.layers.fill_constant(
         shape=[batch_size, 1], dtype='int64', value=0.0)
 
     conv = conv_bn_layer(
-        input=img, num_filters=64, filter_size=3, stride=2, act='relu')
+        input=img, num_filters=16, filter_size=3, stride=2, act='relu')
     conv = conv_bn_layer(
-        input=conv, num_filters=64, filter_size=3, stride=1, act='relu')
+        input=conv, num_filters=16, filter_size=3, stride=1, act='relu')
     conv = conv_bn_layer(
-        input=conv, num_filters=128, filter_size=3, stride=1, act='relu')
+        input=conv, num_filters=16, filter_size=3, stride=1, act='relu')
     conv = fluid.layers.pool2d(
         input=conv, pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
@@ -184,7 +184,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   method,
                                   memory_opt=True,
                                   iter=10,
-                                  batch_size=None):
+                                  batch_size=None,
+                                  allow_op_delay=False):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -194,7 +195,10 @@ class TestParallelExecutorBase(unittest.TestCase):
             if memory_opt:
                 fluid.memory_optimize(main)
 
-            exe = fluid.ParallelExecutor(loss_name=loss.name, use_cuda=True)
+            exe = fluid.ParallelExecutor(
+                loss_name=loss.name,
+                use_cuda=True,
+                allow_op_delay=allow_op_delay)
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
@@ -222,7 +226,7 @@ class TestMNIST(TestParallelExecutorBase):
     def setUpClass(cls):
         # Convert mnist to recordio file
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            reader = paddle.batch(mnist.train(), batch_size=32)
+            reader = paddle.batch(mnist.train(), batch_size=4)
             feeder = fluid.DataFeeder(
                 feed_list=[  # order is image and label
                     fluid.layers.data(
@@ -236,9 +240,11 @@ class TestMNIST(TestParallelExecutorBase):
 
     def test_simple_fc(self):
         self.check_network_convergence(simple_fc_net)
+        self.check_network_convergence(simple_fc_net, allow_op_delay=True)
 
     def test_batchnorm_fc(self):
         self.check_network_convergence(fc_with_batchnorm)
+        self.check_network_convergence(fc_with_batchnorm, allow_op_delay=True)
 
 
 class TestResnet(TestParallelExecutorBase):
@@ -262,10 +268,10 @@ class TestResnet(TestParallelExecutorBase):
 
     def test_resnet(self):
         import functools
-        batch_size = 4
+        batch_size = 2
         self.check_network_convergence(
             functools.partial(
-                SE_ResNeXt152, batch_size=batch_size),
+                SE_ResNeXt152Small, batch_size=batch_size),
             iter=20,
             batch_size=batch_size)
 

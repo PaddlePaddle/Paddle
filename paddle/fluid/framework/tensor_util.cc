@@ -148,6 +148,11 @@ struct AnyVisitor : public boost::static_visitor<bool> {
                  const platform::CPUPlace& cpu) const {
     return *out.data<bool>();
   }
+
+  bool GetResult(const framework::Tensor& out,
+                 const platform::CUDAPinnedPlace& cpu) const {
+    return *out.data<bool>();
+  }
 };
 
 template <typename Predicate>

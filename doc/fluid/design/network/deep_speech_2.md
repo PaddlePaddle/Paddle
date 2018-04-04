@@ -1,4 +1,4 @@
-# DeepSpeech2 on PaddlePaddle: Design Doc 
+# DeepSpeech2 on PaddlePaddle: Design Doc
 
 We are planning to build Deep Speech 2 (DS2) \[[1](#references)\], a powerful Automatic Speech Recognition (ASR) engine,  on PaddlePaddle. For the first-stage plan, we have the following short-term goals:
 
@@ -68,11 +68,33 @@ We roughly break down the project into 14 tasks:
 
 Tasks parallelizable within phases:
 
-Roadmap     | Description                               | Parallelizable Tasks 
------------ | :------------------------------------     | :--------------------
-Phase I	    | Simplified model & components             | *Task 1* ~ *Task 8*
-Phase II    | Standard model & benchmarking & profiling | *Task 9* ~ *Task 12*
-Phase III   | Documentations                            | *Task13* ~ *Task14*
+<table>
+<thead>
+<tr>
+<th>Roadmap</th>
+<th>Description</th>
+<th> Parallelizable Tasks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Phase I </td>
+<td>Simplified model & components </td>
+<td>Task 1 ~ Task 8</td>
+</tr>
+<tr>
+<td>Phase II </td>
+<td> Standard model & benchmarking & profiling</td>
+<td>Task 9 ~ Task 12 </td>
+</tr>
+<tr>
+<td>Phase III </td>
+<td> Documentations</td>
+<td> Task13 ~ Task14 </td>
+</tr>
+</tbody>
+</table>
+
 
 Issue for each task will be created later. Contributions, discussions and comments are all highly appreciated and welcomed!
 
@@ -94,7 +116,7 @@ The classical DS2 network contains 15 layers (from bottom to top):
 - **One** CTC-loss layer
 
 <div align="center">
-<img src="images/ds2_network.png" width=350><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/ds2_network.png" width=350><br/>
 Figure 1. Archetecture of Deep Speech 2 Network.
 </div>
 
@@ -102,37 +124,82 @@ We don't have to persist on this 2-3-7-1-1-1 depth \[[2](#references)\]. Similar
 
 Key ingredients about the layers:
 
-- **Data Layers**: 
+- **Data Layers**:
    - Frame sequences data of audio **spectrogram** (with FFT).
-   - Token sequences data of **transcription** text (labels). 
+   - Token sequences data of **transcription** text (labels).
    - These two type of sequences do not have the same lengthes, thus a CTC-loss layer is required.
-- **2D Convolution Layers**: 
+- **2D Convolution Layers**:
    - Not only temporal convolution, but also **frequency convolution**. Like a 2D image convolution, but with a variable dimension (i.e. temporal dimension).
    - With striding for only the first convlution layer.
    - No pooling for all convolution layers.
-- **Uni-directional RNNs** 
+- **Uni-directional RNNs**
 	- Uni-directional + row convolution: for low-latency inference.
 	- Bi-direcitional + without row convolution: if we don't care about the inference latency.
 - **Row convolution**:
 	- For looking only a few steps ahead into the feature, instead of looking into a whole sequence in bi-directional RNNs.
-	- Not nessesary if with bi-direcitional RNNs. 
+	- Not nessesary if with bi-direcitional RNNs.
 	- "**Row**" means convolutions are done within each frequency dimension (row), and no convolution kernels shared across.
 - **Batch Normalization Layers**:
    - Added to all above layers (except for data and loss layer).
    - Sequence-wise normalization for RNNs: BatchNorm only performed on input-state projection and not state-state projection, for efficiency consideration.
- 
 
-Required Components                     | PaddlePaddle Support                      | Need to Develop
-:-------------------------------------  | :--------------------------------------   | :-----------------------
-Data Layer I (Spectrogram)	            | Not supported yet.                        |  TBD (Task 3)
-Data Layer II (Transcription)           | `paddle.data_type.integer_value_sequence` | -
-2D Convolution Layer                    | `paddle.layer.image_conv_layer`           | -
-DataType Converter (vec2seq)            | `paddle.layer.block_expand`               | -
-Bi-/Uni-directional RNNs                | `paddle.layer.recurrent_group`            | -
-Row Convolution Layer                   | Not supported yet.                        | TBD (Task 4)
-CTC-loss Layer                          | `paddle.layer.warp_ctc`                   | -
-Batch Normalization Layer               | `paddle.layer.batch_norm`                 | -
-CTC-Beam search                         | Not supported yet.                        | TBD (Task 6)
+<table>
+<thead>
+<tr>
+<th>Required Components</th>
+<th> PaddlePaddle Support</th>
+<th> Need to Develop</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data Layer I (Spectrogram) </td>
+<td>Not supported yet.</td>
+<td>TBD (Task 3)</td>
+</tr>
+<tr>
+<td>Data Layer II (Transcription)  </td>
+<td> paddle.data_type.integer_value_sequence</td>
+<td> - </td>
+</tr>
+<tr>
+<td>2D Convolution Layer </td>
+<td> paddle.layer.image_conv_layer</td>
+<td> - </td>
+</tr>
+<tr>
+<td>DataType Converter (vec2seq)</td>
+<td> paddle.layer.block_expand</td>
+<td> - </td>
+</tr>
+<tr>
+<td>Bi-/Uni-directional RNNs </td>
+<td>paddle.layer.recurrent_group</td>
+<td> - </td>
+</tr>
+<tr>
+<td>Row Convolution Layer </td>
+<td>Not supported yet.</td>
+<td>TBD (Task 4)</td>
+</tr>
+<tr>
+<td>CTC-loss Layer </td>
+<td>paddle.layer.warp_ctc</td>
+<td> - </td>
+</tr>
+<tr>
+<td>Batch Normalization Layer </td>
+<td>paddle.layer.batch_norm</td>
+<td> - </td>
+</tr>
+<tr>
+<td>CTC-Beam search </td>
+<td>Not supported yet.</td>
+<td> TBD (Task 6) </td>
+</tr>
+</tbody>
+</table>
+
 
 ### Row Convolution
 
@@ -141,18 +208,18 @@ TODO by Assignees
 ### Beam Search with CTC and LM
 
 <div align="center">
-<img src="images/beam_search.png" width=600><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/beam_search.png" width=600><br/>
 Figure 2. Algorithm for CTC Beam Search Decoder.
 </div>
 
-- The **Beam Search Decoder** for DS2 CTC-trained network follows the similar approach in \[[3](#references)\] as shown in Figure 2, with two important modifications for the ambiguous parts: 
-   - 1) in the iterative computation of probabilities, the assignment operation is changed to accumulation for one prefix may comes from different paths; 
+- The **Beam Search Decoder** for DS2 CTC-trained network follows the similar approach in \[[3](#references)\] as shown in Figure 2, with two important modifications for the ambiguous parts:
+   - 1) in the iterative computation of probabilities, the assignment operation is changed to accumulation for one prefix may comes from different paths;
    - 2) the if condition ```if l^+ not in A_prev then``` after probabilities' computation is deprecated for it is hard to understand and seems unnecessary.
 - An **external scorer** would be passed into the decoder to evaluate a candidate prefix during decoding whenever a white space appended in English decoding and any character appended in Mandarin decoding.
 - Such external scorer consists of language model, word count or any other custom scorers.
 - The **language model** is built from Task 5, with parameters should be carefully tuned to achieve minimum WER/CER (c.f. Task 7)
-- This decoder needs to perform with **high efficiency** for the convenience of parameters tuning and speech recognition in reality. 
- 
+- This decoder needs to perform with **high efficiency** for the convenience of parameters tuning and speech recognition in reality.
+
 
 ## Future Work
 

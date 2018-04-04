@@ -76,7 +76,7 @@ void NCCLAllReduceOpHandle::RunImpl() {
   }
 }
 
-std::string NCCLAllReduceOpHandle::Name() const { return "NCCL AllReduce"; }
+std::string NCCLAllReduceOpHandle::Name() const { return "nccl_all_reduce"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
