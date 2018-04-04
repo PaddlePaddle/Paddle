@@ -125,6 +125,12 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDATensorSetFromArray<int64_t>)
       .def("set", PyCUDATensorSetFromArray<bool>)
       .def("set", PyCUDATensorSetFromArray<uint16_t>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<float>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<int>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<double>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<bool>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
       .def("set_float_element", TensorSetElement<float>)
@@ -367,8 +373,8 @@ All parameter, weight, gradient are variables in Paddle.
              self = gpu_place;
            })
       .def("set_place", [](platform::Place &self,
-                           const platform::CUDAPinnedPlace &gpu_place) {
-        self = gpu_place;
+                           const platform::CUDAPinnedPlace &cuda_pinned_place) {
+        self = cuda_pinned_place;
       });
 
   py::class_<OperatorBase>(m, "Operator")
