@@ -29,14 +29,14 @@ class ParamAttr(object):
                  regularizer=None,
                  trainable=True,
                  gradient_clip=None,
-                 average=True):
+                 do_model_average=None):
         self.name = name
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
         self.gradient_clip = gradient_clip
-        self.average = average
+        self.model_average = do_model_average
 
     def set_default_initializer(self, initializer):
         if initializer is None:
@@ -83,7 +83,7 @@ class ParamAttr(object):
             'regularizer': self.regularizer,
             'trainable': self.trainable,
             'gradient_clip_attr': self.gradient_clip,
-            'average': self.average
+            'model_average': self.model_average
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
