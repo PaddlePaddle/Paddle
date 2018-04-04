@@ -186,7 +186,8 @@ void AsyncGRPCServer::WaitClientGet(int count) {
 
 void AsyncGRPCServer::RunSyncUpdate() {
   ::grpc::ServerBuilder builder;
-  builder.AddListeningPort(address_, ::grpc::InsecureServerCredentials());
+  builder.AddListeningPort(address_, ::grpc::InsecureServerCredentials(),
+                           &selected_port_);
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
   builder.RegisterService(&service_);
@@ -196,7 +197,8 @@ void AsyncGRPCServer::RunSyncUpdate() {
   cq_prefetch_ = builder.AddCompletionQueue();
 
   server_ = builder.BuildAndStart();
-  LOG(INFO) << "Server listening on " << address_ << std::endl;
+  LOG(INFO) << "Server listening on " << address_
+            << " selected port: " << selected_port_;
 
   std::function<void()> send_register =
       std::bind(&AsyncGRPCServer::TryToRegisterNewSendOne, this);
@@ -273,7 +275,7 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
 
 // FIXME(typhoonzero): change cq_name to enum.
 void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
-                                    std::string cq_name,
+                                    const std::string& cq_name,
                                     std::function<void()> TryToRegisterNewOne) {
   TryToRegisterNewOne();
 
