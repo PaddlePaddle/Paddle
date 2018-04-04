@@ -840,7 +840,7 @@ class ModelAverage(Optimizer):
     """
 
     def __init__(self,
-                 average_window_rate=0.15,
+                 average_window_rate,
                  params_grads=None,
                  min_average_window=10000,
                  max_average_window=10000,
@@ -856,7 +856,7 @@ class ModelAverage(Optimizer):
             params[param.name] = (param, grad)
         for param in framework.default_main_program().global_block(
         ).all_parameters():
-            if param.name not in params and param.average:
+            if param.name not in params and param.do_model_average != False:
                 grad = param.block.create_var(
                     name=unique_name.generate(".".join([param.name, 'tmp'])),
                     dtype=param.dtype,

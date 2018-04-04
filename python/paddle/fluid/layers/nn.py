@@ -1489,8 +1489,7 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               average_mean=True,
-               average_variance=True):
+               do_model_average_for_mean_and_var=False):
     """
     This function helps create an operator to implement
     the BatchNorm layer using the configurations from the input parameters.
@@ -1519,12 +1518,15 @@ def batch_norm(input,
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
+    if do_model_average_for_mean_and_var:
+        do_model_average_for_mean_and_var = None
+
     mean = helper.create_parameter(
         attr=ParamAttr(
             name=moving_mean_name,
             initializer=Constant(0.0),
             trainable=False,
-            average=average_variance),
+            do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
         dtype=input.dtype)
     mean.stop_gradient = True
@@ -1534,7 +1536,7 @@ def batch_norm(input,
             name=moving_variance_name,
             initializer=Constant(1.0),
             trainable=False,
-            average=average_mean),
+            do_model_average=do_model_average_for_mean_and_var),
         shape=param_shape,
         dtype=input.dtype)
     variance.stop_gradient = True
@@ -3352,14 +3354,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     Here are some examples to explain it.
 
     1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    is [6, 8], the reshape operator will transform x into a 2-D tensor with 
+    is [6, 8], the reshape operator will transform x into a 2-D tensor with
     shape [6, 8] and leaving x's data unchanged.
 
     2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
     specified is [2, 3, -1, 2], the reshape operator will transform x into a
     4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this
-    case, one dimension of the target shape is set to -1, the value of this 
-    dimension is inferred from the total element number of x and remaining 
+    case, one dimension of the target shape is set to -1, the value of this
+    dimension is inferred from the total element number of x and remaining
     dimensions.
 
     3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
@@ -3593,7 +3595,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 def pad(x, paddings, pad_value=0., name=None):
     """
     Pads a tensor with a constant value given by :attr:`pad_value`, and the
-    padded width is specified by :attr:`paddings`. 
+    padded width is specified by :attr:`paddings`.
 
     Specifically, the number of values padded before the contents of :attr:`x`
     in dimension :attr:`i` is indicated by :attr:`paddings[i]`, and the number
@@ -3621,7 +3623,7 @@ def pad(x, paddings, pad_value=0., name=None):
         x (Variable): The input tensor variable.
         paddings (list): A list of integers. Its elements specify the padded
                          width before and after for each dimension in turn.
-                         The length of :attr:paddings must be 
+                         The length of :attr:paddings must be
                          :math:`rank(x) \\times 2`.
         pad_value (float): The constant value used to pad.
         name(str|None): A name for this layer(optional). If set None, the layer

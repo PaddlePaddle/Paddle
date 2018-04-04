@@ -1155,7 +1155,7 @@ class Parameter(Variable):
 
         self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
 
-        self.average = kwargs.get('average', True)
+        self.do_model_average = kwargs.get('do_model_average', None)
 
     def __str__(self):
         return self.to_string(True)
@@ -1177,7 +1177,7 @@ class Parameter(Variable):
         if with_details:
             res_str = Variable.to_string(self, throw_on_error, True)
             additional_attr = ("trainable", "optimize_attr", "regularizer",
-                               "gradient_clip_attr", "average")
+                               "gradient_clip_attr", "do_model_average")
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (attr_name,
                                          str(getattr(self, attr_name)))
