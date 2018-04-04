@@ -14,12 +14,13 @@ limitations under the License. */
 
 #include <unistd.h>
 #include <string>
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
 
+#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -31,9 +32,9 @@ USE_OP(lookup_table);
 
 std::unique_ptr<detail::AsyncGRPCServer> rpc_service_;
 
-framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc& program) {
-  const auto &root_block = program.Block(0);
-  auto *block= program.AppendBlock(root_block);
+framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
+  auto root_block = program->MutableBlock(0);
+  auto* block = program->AppendBlock(*root_block);
 
   framework::VariableNameMap input({{"W", {"w"}}, {"Ids", {"ids"}}});
   framework::VariableNameMap output({{"Output", {"out"}}});
@@ -42,32 +43,48 @@ framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc& program) {
   op->SetInput("W", {"w"});
   op->SetInput("Ids", {"ids"});
   op->SetOutput("Out", {"out"});
+
+  auto& out = *root_block->Var("out");
+  out.SetType(framework::proto::VarType::LOD_TENSOR);
+  out.SetShape({10, 10});
+
   return block;
 }
 
-void InitTensorsInScope(framework::Scope &scope, platform::CPUPlace &place) {
-  auto w_var = scope.Var("w");
+void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
+  auto w_var = scope->Var("w");
   auto w = w_var->GetMutable<framework::LoDTensor>();
   w->Resize({10, 10});
-  float *ptr = w->mutable_data<float>(place);
-  for (int64_t i = 0; i < w->numel(); ++i) {
-    ptr[i] = static_cast<float>(i/10);
-  }
+  w->mutable_data<float>(*place);
 
-  auto out_var = scope.Var("out");
+  auto out_var = scope->Var("out");
   auto out = out_var->GetMutable<framework::LoDTensor>();
   out->Resize({5, 10});
-  out->mutable_data<float>(place);
+  out->mutable_data<float>(*place);
 
-  auto ids_var = scope.Var("ids");
+  auto ids_var = scope->Var("ids");
   auto ids = ids_var->GetMutable<framework::LoDTensor>();
   ids->Resize({5, 1});
-  auto ids_ptr = ids->mutable_data<int64_t>(place);
+}
+
+void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place) {
+  CreateVarsOnScope(scope, place);
+  auto ids = scope->Var("ids")->GetMutable<framework::LoDTensor>();
+  auto ptr = ids->mutable_data<int64_t>(*place);
   for (int64_t i = 0; i < ids->numel(); ++i) {
-    ids_ptr[i] = i * 2;
+    ptr[i] = i * 2;
   }
 }
 
+void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place) {
+  CreateVarsOnScope(scope, place);
+  auto w_var = scope->Var("w");
+  auto w = w_var->GetMutable<framework::LoDTensor>();
+  auto ptr = w->mutable_data<float>(*place);
+  for (int64_t i = 0; i < w->numel(); ++i) {
+    ptr[i] = static_cast<float>(i / 10);
+  }
+}
 
 void StartServer(const std::string& endpoint) {
   rpc_service_.reset(new detail::AsyncGRPCServer(endpoint));
@@ -76,8 +93,8 @@ void StartServer(const std::string& endpoint) {
   platform::CPUPlace place;
   framework::Executor exe(place);
   platform::CPUDeviceContext ctx(place);
-  auto* block = AppendPrefetchBlcok(program);
-  InitTensorsInScope(scope, place);
+  auto* block = AppendPrefetchBlcok(&program);
+  InitTensorsOnServer(&scope, &place);
 
   rpc_service_->SetProgram(&program);
   rpc_service_->SetPrefetchBlkdId(block->ID());
@@ -88,21 +105,19 @@ void StartServer(const std::string& endpoint) {
   rpc_service_->RunSyncUpdate();
 }
 
-
 TEST(PREFETCH, CPU) {
   // start up a server instance backend
   // TODO(Yancey1989): Need to start a server with optimize blocks and
   // prefetch blocks.
   std::thread server_thread(StartServer, "127.0.0.1:8889");
-  sleep(3);
+  sleep(2);
   framework::Scope scope;
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
   // create var on local scope
-  InitTensorsInScope(scope, place);
+  InitTensorsOnClient(&scope, &place);
   std::string in_var_name("ids");
   std::string out_var_name("out");
-
 
   detail::RPCClient client;
   client.AsyncPrefetchVariable("127.0.0.1:8889", ctx, scope, in_var_name,
@@ -111,6 +126,7 @@ TEST(PREFETCH, CPU) {
 
   auto out_var = scope.Var(out_var_name);
   auto out = out_var->Get<framework::LoDTensor>();
+
   auto out_ptr = out.data<float>();
   rpc_service_->ShutDown();
   server_thread.join();
