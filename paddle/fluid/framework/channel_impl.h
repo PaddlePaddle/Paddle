@@ -89,7 +89,7 @@ class ChannelImpl : public paddle::framework::Channel<T> {
 
   std::shared_ptr<QueueMessage> get_first_message(
       std::deque<std::shared_ptr<QueueMessage>> *queue, ChannelAction action) {
-    while (!queue.empty()) {
+    while (!queue->empty()) {
       // Check whether this message was added by Select
       // If this was added by Select then execute the callback
       // to check if you can execute this message. The callback
