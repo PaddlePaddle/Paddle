@@ -273,7 +273,7 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
 
 // FIXME(typhoonzero): change cq_name to enum.
 void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
-                                    std::string cq_name,
+                                    const std::string& cq_name,
                                     std::function<void()> TryToRegisterNewOne) {
   TryToRegisterNewOne();
 

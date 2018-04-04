@@ -112,7 +112,8 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
 
 bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
-    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
@@ -148,7 +149,8 @@ inline framework::DDim GetDims(
 
 bool VariableResponse::CopySelectRowsTensorData(
     ::google::protobuf::io::CodedInputStream* input,
-    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
   slr->set_height(meta_.slr_height());

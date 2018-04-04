@@ -14,12 +14,12 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+
 #include "paddle/fluid/framework/details/ssa_graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
-
-#include <memory>
-#include <string>
 
 namespace paddle {
 namespace framework {
@@ -51,6 +51,8 @@ class SSAGraphBuilder {
   static void CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
                              const std::string &each_var_name,
                              const platform::Place &place, size_t place_offset);
+
+  static void AddOutputToLeafOps(SSAGraph *graph);
 
   static void PrintGraphviz(const SSAGraph &graph, std::ostream &sout);
 };

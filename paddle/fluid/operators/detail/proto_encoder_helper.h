@@ -19,7 +19,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <grpc++/grpc++.h>
+#include <string>
+
+#include "grpc++/grpc++.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -142,6 +144,6 @@ class ProtoEncodeHelper {
   char* limit_;  // Just for CHECKs
 };
 
-}  // detail
-}  // operators
-}  // paddle
+}  // namespace detail
+}  // namespace operators
+}  // namespace paddle
