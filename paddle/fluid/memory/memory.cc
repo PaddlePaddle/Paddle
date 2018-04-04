@@ -38,8 +38,7 @@ BuddyAllocator* GetCPUBuddyAllocator() {
 }
 
 template <>
-void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size,
-                                bool is_pinned) {
+void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
   VLOG(10) << "  pointer=" << p;
@@ -47,8 +46,7 @@ void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size,
 }
 
 template <>
-void Free<platform::CPUPlace>(platform::CPUPlace place, void* p,
-                              bool is_pinned) {
+void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }
@@ -84,47 +82,15 @@ BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   return as[gpu_id];
 }
 
-BuddyAllocator* GetCUDAPinnedBuddyAllocator(int gpu_id) {
-  static BuddyAllocator** as = NULL;
-  if (as == NULL) {
-    int gpu_num = platform::GetCUDADeviceCount();
-    as = new BuddyAllocator*[gpu_num];
-    for (int gpu = 0; gpu < gpu_num; gpu++) {
-      as[gpu] = nullptr;
-    }
-  }
-  platform::SetDeviceId(gpu_id);
-  if (!as[gpu_id]) {
-    as[gpu_id] = new BuddyAllocator(new detail::CUDAPinnedAllocator,
-                                    platform::GpuMinChunkSize(),
-                                    platform::GpuMaxChunkSize());
-    VLOG(10) << "\n\nNOTE: each GPU device use "
-             << FLAGS_fraction_of_gpu_memory_to_use * 100
-             << "% of GPU memory.\n"
-             << "You can set GFlags environment variable '"
-             << "FLAGS_fraction_of_gpu_memory_to_use"
-             << "' to change the fraction of GPU usage.\n\n";
-  }
-  return as[gpu_id];
-}
-
 template <>
 size_t Used<platform::CUDAPlace>(platform::CUDAPlace place) {
   return GetGPUBuddyAllocator(place.device)->Used();
 }
 
 template <>
-void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size,
-                                 bool is_pinned) {
-  void* ptr;
-  if (is_pinned) {
-    auto* buddy_allocator = GetCUDAPinnedBuddyAllocator(place.device);
-    ptr = buddy_allocator->Alloc(size);
-  } else {
-    auto* buddy_allocator = GetGPUBuddyAllocator(place.device);
-    ptr = buddy_allocator->Alloc(size);
-  }
-
+void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
+  auto* buddy_allocator = GetGPUBuddyAllocator(place.device);
+  auto* ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
     int cur_dev = platform::GetCurrentDeviceId();
     platform::SetDeviceId(place.device);
@@ -142,15 +108,42 @@ void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size,
 }
 
 template <>
-void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p,
-                               bool is_pinned) {
-  if (is_pinned) {
-    GetCUDAPinnedBuddyAllocator(place.device)->Free(p);
-  } else {
-    GetGPUBuddyAllocator(place.device)->Free(p);
-  }
+void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p) {
+  GetGPUBuddyAllocator(place.device)->Free(p);
 }
 
+BuddyAllocator* GetCUDAPinnedBuddyAllocator() {
+  static BuddyAllocator* ba = NULL;
+  if (ba == NULL) {
+    ba = new BuddyAllocator(new detail::CUDAPinnedAllocator,
+                            platform::CUDAPinnedMinChunkSize(),
+                            platform::CUDAPinnedMaxChunkSize());
+  }
+  return ba;
+}
+
+template <>
+size_t Used<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place) {
+  return GetCUDAPinnedBuddyAllocator()->Used();
+}
+
+template <>
+void* Alloc<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place,
+                                       size_t size) {
+  auto* buddy_allocator = GetCUDAPinnedBuddyAllocator();
+  void* ptr = buddy_allocator->Alloc(size);
+
+  if (ptr == nullptr) {
+    LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
+                 << " bytes in CUDAPinnedPlace";
+  }
+  return ptr;
+}
+
+template <>
+void Free<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place, void* p) {
+  GetCUDAPinnedBuddyAllocator()->Free(p);
+}
 #endif
 
 size_t Usage::operator()(const platform::CPUPlace& cpu) const {
@@ -162,6 +155,14 @@ size_t Usage::operator()(const platform::CUDAPlace& gpu) const {
   return Used(gpu);
 #else
   PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+#endif
+}
+
+size_t Usage::operator()(const platform::CUDAPinnedPlace& cuda_pinned) const {
+#ifdef PADDLE_WITH_CUDA
+  return Used(cuda_pinned);
+#else
+  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
 #endif
 }
 
