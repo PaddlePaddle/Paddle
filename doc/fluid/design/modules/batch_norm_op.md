@@ -66,7 +66,7 @@ As most C++ operators do, `batch_norm_op` is defined by inputs, outputs, attribu
 
 The following graph showes the training computational process of `batch_norm_op`:
 
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/batch_norm_op_kernel.png" width="800"/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/batch_norm_op_kernel.png" width="800"/>
 
 cudnn provides APIs to finish the whole series of computation, we can use them in our GPU kernel.
 
@@ -124,7 +124,7 @@ for pass_id in range(PASS_NUM):
 `is_infer` is an attribute. Once an operator is created, its attributes can not be changed. It suggests us that we shall maintain two `batch_norm_op` in the model, one's `is_infer` is `True`(we call it `infer_batch_norm_op`) and the other one's is `False`(we call it `train_batch_norm_op`). They share all parameters and variables, but be placed in two different branches. That is to say, if a network contains a `batch_norm_op`, it will fork into two branches, one go through `train_batch_norm_op` and the other one go through `infer_batch_norm_op`:
 
 <div align=center>
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/batch_norm_fork.png" width="500"/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/batch_norm_fork.png" width="500"/>
 </div>
 
 Just like what is shown in the above graph, the net forks before `batch_norm_op` and will never merge again. All the operators after `batch_norm_op` will duplicate.
