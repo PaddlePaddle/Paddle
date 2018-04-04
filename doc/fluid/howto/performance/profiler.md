@@ -23,7 +23,7 @@ But how to record the time for the mixed C++ and CUDA program?  There many C++ A
 
 The overall flow is shown as the following figure.
 
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/profiler.png" align="center"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/profiler.png" align="center"/><br/>
 
 ### Event
 
