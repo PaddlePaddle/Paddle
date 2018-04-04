@@ -101,21 +101,19 @@ inline T* Tensor::data() {
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(DDim dims, platform::Place place,
-                               bool is_pinned) {
+inline T* Tensor::mutable_data(DDim dims, platform::Place place) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   Resize(dims);
-  return mutable_data<T>(place, is_pinned);
+  return mutable_data<T>(place);
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(platform::Place place, bool is_pinned) {
+inline T* Tensor::mutable_data(platform::Place place) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(place, typeid(T), is_pinned));
+  return reinterpret_cast<T*>(mutable_data(place, typeid(T)));
 }
 
-inline void* Tensor::mutable_data(platform::Place place, std::type_index type,
-                                  bool is_pinned) {
+inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
   if (holder_ != nullptr) {
     holder_->set_type(type);
   }
@@ -129,27 +127,26 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type,
       holder_->size() < size + offset_) {
     if (platform::is_cpu_place(place)) {
       holder_.reset(new PlaceholderImpl<platform::CPUPlace>(
-          boost::get<platform::CPUPlace>(place), size, type, is_pinned));
+          boost::get<platform::CPUPlace>(place), size, type));
     } else if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
     }
 #else
       holder_.reset(new PlaceholderImpl<platform::CUDAPlace>(
-          boost::get<platform::CUDAPlace>(place), size, type, is_pinned));
+          boost::get<platform::CUDAPlace>(place), size, type));
     }
 #endif
     offset_ = 0;
-    is_pinned_ = is_pinned;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
 
-inline void* Tensor::mutable_data(platform::Place place, bool is_pinned) {
+inline void* Tensor::mutable_data(platform::Place place) {
   PADDLE_ENFORCE(this->holder_ != nullptr,
                  "Cannot invoke mutable data if current hold nothing");
-  return mutable_data(place, holder_->type(), is_pinned);
+  return mutable_data(place, holder_->type());
 }
 
 inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
@@ -190,8 +187,6 @@ inline Tensor& Tensor::Resize(const DDim& dims) {
 inline const DDim& Tensor::dims() const { return dims_; }
 
 inline int64_t Tensor::numel() const { return product(dims_); }
-
-inline bool Tensor::isPinned() const { return is_pinned_; }
 
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
   Tensor res;

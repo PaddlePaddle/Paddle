@@ -14,10 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include <grpc++/grpc++.h>
 #include <string>
+#include <thread>  // NOLINT
 #include <utility>
 
+#include "grpc++/grpc++.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -71,7 +72,8 @@ class AsyncGRPCServer final {
   void ShutDown();
 
  protected:
-  void HandleRequest(::grpc::ServerCompletionQueue *cq, std::string cq_name,
+  void HandleRequest(::grpc::ServerCompletionQueue *cq,
+                     const std::string &cq_name,
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
