@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <unistd.h>
 #include <string>
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/detail/grpc_client.h"
