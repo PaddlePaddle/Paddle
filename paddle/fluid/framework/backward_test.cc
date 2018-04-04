@@ -19,7 +19,6 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/operators/net_op.h"
 
 USE_NO_KERNEL_OP(fill_constant);
 

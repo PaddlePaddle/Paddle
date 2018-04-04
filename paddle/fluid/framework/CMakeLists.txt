@@ -79,7 +79,7 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
     COMMENT "Copy generated python proto into directory paddle/fluid/proto."
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
-cc_library(backward SRCS backward.cc DEPS net_op)
+cc_library(backward SRCS backward.cc DEPS)
 cc_test(backward_test SRCS backward_test.cc DEPS backward recurrent_op device_context fill_constant_op)
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
