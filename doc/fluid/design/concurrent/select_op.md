@@ -2,13 +2,13 @@
 
 ## Introduction
 
-In golang, the [**select**](https://golang.org/ref/spec#Select_statements) 
-statement lets a goroutine wait on multiple communication operations at the 
-same time. The **select** blocks until one of its cases can run, then 
-executes the case.  If multiple cases are ready to run, then one case is 
+In golang, the [**select**](https://golang.org/ref/spec#Select_statements)
+statement lets a goroutine wait on multiple communication operations at the
+same time. The **select** blocks until one of its cases can run, then
+executes the case.  If multiple cases are ready to run, then one case is
 choosen at random to be executed.
 
-With the introduction of CSP for Paddle, we mimic this behavior by 
+With the introduction of CSP for Paddle, we mimic this behavior by
 creating a ***select_op***.
 
 ## How to use it
@@ -17,11 +17,11 @@ The **select_op** is available as a c++ operator.  However most users
 will prefer to use the much simplier Python API.
 
 - **fluid.Select()**: Creates a select operator and adds it to the current
-block within the main program.  Also creates a sub block and adds it to the 
-main program.  This sub block is used to hold all variables and operators 
+block within the main program.  Also creates a sub block and adds it to the
+main program.  This sub block is used to hold all variables and operators
 used by the case statements.
- 
-Within the select block, users can add cases by 
+
+Within the select block, users can add cases by
 calling **select.case** or **select.default** method.
 
 - **fluid.Select.case(channel_action, channel, result_variable)**: Represents
@@ -37,13 +37,13 @@ execute.
 ```
 ch1 = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
 quit_ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
-            
+
 x = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32, value=0)
 y = fill_constant(shape=[1], dtype=core.VarDesc.VarType.INT32, value=1)
- 
+
 while_cond = fill_constant(shape=[1], dtype=core.VarDesc.VarType.BOOL, value=True)
 while_op = While(cond=while_cond)    
- 
+
 with while_op.block():
     with fluid.Select() as select:
         with select.case(fluid.channel_send, channel, x):
@@ -99,17 +99,17 @@ blocks {
     }
   }
   // Create "select" operator.
-  // inputs: 
+  // inputs:
   //   X: All input variables used by operators within the select block
   //   case_to_execute: Variable filled in by select_op when it determines
   //     which case to execute.
   //  
   // outputs:
-  //   Out: All output variables referenced by operators within select block. 
-  // 
+  //   Out: All output variables referenced by operators within select block.
+  //
   // attrs:
   //   sub_block: The block id containing the select "cases"
-  //   cases:  Serialized list of all cases in the select op. 
+  //   cases:  Serialized list of all cases in the select op.
   //     Each case is serialized as: '<index>,<type>,<channel>,<value>'
   //     where type is 0 for default, 1 for send, and 2 for receive.
   //     No channel and values are needed for default cases.
@@ -150,7 +150,7 @@ into **X**.  It will also create a temp variable called **case_to_execute**.  Th
 filled in by the select_op after it has completed processing the case statements.
 
 If there are no available cases to execute (ie: all cases are blocked on channel operations, and
-there is no default statement), then the select_op will block the current thread.  The thread will 
+there is no default statement), then the select_op will block the current thread.  The thread will
 unblock once there is a channel operation affecting one of the case statements, at which point, the
 **select_op** will set the **case_to_execute** variable to the index of the case to execute.
 
@@ -247,17 +247,17 @@ blocks {
 
 ```
 
-Cases are represented by a **conditional_block operator**, whose's condition is set as the output of 
-equal(**case_to_execute**, **case_index**).  Since each case index is unique in this sub-block, 
+Cases are represented by a **conditional_block operator**, whose's condition is set as the output of
+equal(**case_to_execute**, **case_index**).  Since each case index is unique in this sub-block,
 only one case will be executed.
 
 ### select_op flow
 
 <p align="center">
-<img src="./images/select_op_workflow.png"/><br/>
+<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/select_op_workflow.png"/><br/>
 </p>
 
-The select algorithm is inspired by golang's select routine.  Please refer to 
+The select algorithm is inspired by golang's select routine.  Please refer to
 http://www.tapirgames.com/blog/golang-concurrent-select-implementation for more information.
 
 ## Backward Pass
