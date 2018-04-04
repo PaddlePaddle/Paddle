@@ -12,8 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
+
+#include <string>
+
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cuda_helper.h"
 
 namespace paddle {
@@ -113,7 +116,7 @@ struct FirstPoolFunctor {
 
 template <typename T, typename Range_OP>
 __global__ void sequence_pool_kernel(Range_OP op, const T* input,
-                                     const size_t* lod, const size_t lod_size,
+                                     const int* lod, const size_t lod_size,
                                      const size_t item_dim, T* output,
                                      int* index) {
   int bid = blockIdx.x;
@@ -273,8 +276,7 @@ struct FirstPoolGradFunctor {
 
 template <typename T, typename Range_OP>
 __global__ void sequence_pool_grad_kernel(Range_OP op, const T* out_grad,
-                                          const size_t* lod,
-                                          const size_t lod_size,
+                                          const int* lod, const size_t lod_size,
                                           const size_t item_dim, T* in_grad,
                                           const int* index) {
   int bid = blockIdx.x;

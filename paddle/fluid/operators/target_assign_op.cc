@@ -130,10 +130,10 @@ for i-th instance and each `id` of NegIndices in this instance:
 template <typename T, typename WT>
 struct NegTargetAssignFunctor<platform::CPUDeviceContext, T, WT> {
   void operator()(const platform::CPUDeviceContext& ctx, const int* neg_indices,
-                  const size_t* lod, const int N, const int M, const int K,
+                  const int* lod, const int N, const int M, const int K,
                   const int mismatch_value, T* out, WT* out_wt) {
     for (int i = 0; i < N; ++i) {
-      for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
+      for (int j = lod[i]; j < lod[i + 1]; ++j) {
         int id = neg_indices[j];
         int off = (i * M + id) * K;
         for (int k = 0; k < K; ++k) {

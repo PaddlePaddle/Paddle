@@ -12,10 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/pybind/protobuf.h"
-
-#include <mutex>  // for call_once
+#include <algorithm>
+#include <map>
+#include <mutex>  // NOLINT
+#include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
@@ -37,16 +41,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-
 #include "paddle/fluid/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/cuda_profiler.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #endif
 
 // disable auto conversion to list in Python
@@ -134,15 +137,15 @@ PYBIND11_PLUGIN(core) {
           })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       .def("set_lod",
-           [](LoDTensor &self, const std::vector<std::vector<size_t>> &lod) {
+           [](LoDTensor &self, const std::vector<std::vector<int>> &lod) {
              LoD new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              self.set_lod(new_lod);
            })
-      .def("lod", [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
+      .def("lod", [](LoDTensor &self) -> std::vector<std::vector<int>> {
         auto lod = self.lod();
-        std::vector<std::vector<size_t>> new_lod;
+        std::vector<std::vector<int>> new_lod;
         new_lod.reserve(lod.size());
         std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
         return new_lod;

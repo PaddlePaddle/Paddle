@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
@@ -28,11 +31,11 @@ using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
-                             framework::Vector<size_t> index_lod,
+                             framework::Vector<int> index_lod,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
-  row_shuffle(ctx, src, index_lod, *dst, indexed_src);
+  row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
 
 template <typename DeviceContext, typename T>
@@ -56,7 +59,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     bool is_reverse = ctx.Attr<bool>("is_reverse");
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& device_ctx = ctx.template device_context<DeviceContext>();
-    to_batch(device_ctx, *input, *batch_gate, true, is_reverse);
+    to_batch(device_ctx, *input, batch_gate, true, is_reverse);
 
     auto in_dims = input->dims();
     int frame_size = static_cast<int>(in_dims[1] / 4);
@@ -86,7 +89,7 @@ class LSTMKernel : public framework::OpKernel<T> {
     lstm_value.prev_state_value = nullptr;
     Tensor ordered_c0;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    framework::Vector<int> order(batch_gate->lod()[2]);
 
     if (cell_t0) {
       // Since the batch computing for LSTM reorders the input sequence
@@ -114,8 +117,8 @@ class LSTMKernel : public framework::OpKernel<T> {
         ctx.Attr<std::string>("candidate_activation"));
 
     for (size_t n = 0; n < num_batch; n++) {
-      int bstart = static_cast<int>(batch_starts[n]);
-      int bend = static_cast<int>(batch_starts[n + 1]);
+      int bstart = batch_starts[n];
+      int bend = batch_starts[n + 1];
 
       Tensor gate_t = batch_gate->Slice(bstart, bend);
       Tensor out_t = batch_hidden.Slice(bstart, bend);
@@ -125,7 +128,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       int cur_batch_size = bend - bstart;
 
       if (n > 0) {
-        int pre_h_start = static_cast<int>(batch_starts[n - 1]);
+        int pre_h_start = batch_starts[n - 1];
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_hidden_t = batch_hidden.Slice(pre_h_start, pre_h_end);
         math::matmul<DeviceContext, T>(device_ctx, pre_hidden_t, false, *weight,
@@ -160,11 +163,11 @@ class LSTMKernel : public framework::OpKernel<T> {
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden.set_lod(batch_gate->lod());
     // restore the output hidden in LoDTensor from the batch hidden
-    to_seq(device_ctx, batch_hidden, *hidden_out);
+    to_seq(device_ctx, batch_hidden, hidden_out);
 
     batch_cell.set_lod(batch_gate->lod());
     // restore the output cell state in LoDTensor from the batch cell
-    to_seq(device_ctx, batch_cell, *cell_out);
+    to_seq(device_ctx, batch_cell, cell_out);
   }
 };
 
@@ -205,7 +208,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     // ordered_h0_g/c0_g is the reordered gradient of hidden/cell
     // initialization.
     Tensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    framework::Vector<int> order(batch_gate->lod()[2]);
 
     if (c0) {
       ReorderInitState<DeviceContext, T>(device_ctx, *c0, order, &ordered_c0,
@@ -253,16 +256,16 @@ class LSTMGradKernel : public framework::OpKernel<T> {
 
     auto ToBatch = [&batch_gate, &to_batch](
         const DeviceContext& ctx, const framework::LoDTensor& src,
-        const framework::DDim& dims, framework::LoDTensor& dst) {
-      dst.mutable_data<T>(dims, ctx.GetPlace());
-      dst.set_lod(batch_gate->lod());
+        const framework::DDim& dims, framework::LoDTensor* dst) {
+      dst->mutable_data<T>(dims, ctx.GetPlace());
+      dst->set_lod(batch_gate->lod());
       to_batch(ctx, src, dst, false);
     };
 
     LoDTensor batch_hidden, batch_hidden_g, batch_cell;
-    ToBatch(device_ctx, *hidden_out, out_dims, batch_hidden);
-    ToBatch(device_ctx, *hidden_g, out_dims, batch_hidden_g);
-    ToBatch(device_ctx, *cell_out, out_dims, batch_cell);
+    ToBatch(device_ctx, *hidden_out, out_dims, &batch_hidden);
+    ToBatch(device_ctx, *hidden_g, out_dims, &batch_hidden_g);
+    ToBatch(device_ctx, *cell_out, out_dims, &batch_cell);
 
     LoDTensor batch_cell_g, batch_gate_g;
     batch_cell_g.mutable_data<T>(out_dims, ctx.GetPlace());
@@ -282,8 +285,8 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
-      int bstart = static_cast<int>(batch_starts[n]);
-      int bend = static_cast<int>(batch_starts[n + 1]);
+      int bstart = batch_starts[n];
+      int bend = batch_starts[n + 1];
 
       Tensor gate = batch_gate->Slice(bstart, bend);
       Tensor cell = batch_cell.Slice(bstart, bend);
@@ -350,7 +353,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     if (in_g) {
       /* backward data */
       in_g->mutable_data<T>(ctx.GetPlace());
-      to_seq(device_ctx, batch_gate_g, *in_g);
+      to_seq(device_ctx, batch_gate_g, in_g);
     }
     if (bias && bias_g) {
       /* backward bias */

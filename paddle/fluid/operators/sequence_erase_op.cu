@@ -12,10 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
 #include "paddle/fluid/operators/sequence_erase_op.h"
+
+#include <vector>
+
 #include "paddle/fluid/platform/cuda_helper.h"
+#include "thrust/device_vector.h"
+#include "thrust/host_vector.h"
 
 namespace paddle {
 namespace operators {
@@ -37,8 +40,8 @@ __global__ void LabelErasedIdx(const T* in_dat, const int64_t in_len,
   }
 }
 
-__global__ void GetOutLod(const size_t* num_erased, const size_t* in_lod,
-                          const size_t lod_len, size_t* out_lod0) {
+__global__ void GetOutLod(const size_t* num_erased, const int* in_lod,
+                          const size_t lod_len, int* out_lod0) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < lod_len) {
     out_lod0[index] = in_lod[index] - num_erased[in_lod[index]];
@@ -65,7 +68,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE_EQ(lod[0].back(), (size_t)in->numel(),
+    PADDLE_ENFORCE_EQ(lod[0].back(), in->numel(),
                       "The actual size mismatches with the LoD information.");
     auto tokens = ctx.Attr<std::vector<int>>("tokens");
     auto in_len = in->numel();
@@ -87,16 +90,16 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     // Copy LoD to GPU
     auto lod0 = lod[0];
     auto lod_len = lod0.size();
-    const size_t* dev_in_lod_ptr = lod0.CUDAData(ctx.GetPlace());
+    const int* dev_in_lod_ptr = lod0.CUDAData(ctx.GetPlace());
 
     // Calc output LoD
-    thrust::device_vector<size_t> dev_out_lod(lod_len);
-    size_t* dev_out_lod_ptr = thrust::raw_pointer_cast(dev_out_lod.data());
+    thrust::device_vector<int> dev_out_lod(lod_len);
+    int* dev_out_lod_ptr = thrust::raw_pointer_cast(dev_out_lod.data());
     GetOutLod<<<(lod_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
                 PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         num_erased_ptr, dev_in_lod_ptr, lod_len, dev_out_lod_ptr);
     // Set LoD for output
-    std::vector<size_t> out_lod0(dev_out_lod.begin(), dev_out_lod.end());
+    std::vector<int> out_lod0(dev_out_lod.begin(), dev_out_lod.end());
     framework::LoD out_lod;
     out_lod.push_back(out_lod0);
     out->set_lod(out_lod);

@@ -12,17 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/lod_tensor.h"
+
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <stdio.h>
+
+#include <vector>
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/init.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/place.h"
 
-__global__ void test(size_t* a, int size) {
+__global__ void test(int* a, int size) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size;
        i += blockDim.x * gridDim.x) {
     a[i] *= 2;
@@ -34,14 +36,14 @@ TEST(LoD, data) {
 
   paddle::framework::LoD lod{{0, 1, 2}};
   lod.push_back({0, 2, 4, 5});
-  lod.push_back(std::vector<size_t>({0, 1, 6, 8, 10, 11}));
+  lod.push_back(std::vector<int>({0, 1, 6, 8, 10, 11}));
 
   auto& v = lod[0];
   paddle::platform::CUDAPlace gpu(0);
   test<<<1, 1>>>(v.CUDAMutableData(gpu), v.size());
   cudaDeviceSynchronize();
   for (size_t i = 0; i < v.size(); ++i) {
-    EXPECT_EQ(v[i], i * 2);
+    EXPECT_EQ(v[i], static_cast<int>(i * 2));
   }
 }
 
@@ -52,7 +54,7 @@ TEST(LoDTensor, LoDInGPU) {
   paddle::platform::CUDAPlace place(0);
 
   paddle::framework::LoD src_lod;
-  src_lod.push_back(std::vector<size_t>{0, 2, 4, 6, 8, 10, 12, 14});
+  src_lod.push_back(std::vector<int>{0, 2, 4, 6, 8, 10, 12, 14});
 
   lod_tensor.Resize({14, 16});
   lod_tensor.mutable_data<float>(place);

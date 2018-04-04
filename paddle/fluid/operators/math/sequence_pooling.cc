@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_pooling.h"
+
+#include <string>
+
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -56,7 +59,7 @@ class MaxSeqPoolFunctor {
         out_data[i * dim + k] = in_data[starts[i] * dim + k];
         max_index[i * dim + k] = starts[i];
       }
-      for (size_t j = starts[i] + 1; j < starts[i + 1]; ++j) {
+      for (int j = starts[i] + 1; j < starts[i + 1]; ++j) {
         for (int64_t k = 0; k < dim; ++k) {
           if (in_data[j * dim + k] > out_data[i * dim + k]) {
             out_data[i * dim + k] = in_data[j * dim + k];

@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <string.h>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -47,12 +49,12 @@ class CTCAlignKernel : public framework::OpKernel<T> {
     // merge repeated tokens and delete blank
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     size_t output_idx = 0;
-    std::vector<size_t> output_lod0(1, 0);
+    std::vector<int> output_lod0(1, 0);
     const T* input_data = input->data<T>();
     for (size_t seq_idx = 0; seq_idx < num_sequences; ++seq_idx) {
       T prev_token = -1;
-      for (size_t i = input_lod[level][seq_idx];
-           i < input_lod[level][seq_idx + 1]; ++i) {
+      for (int i = input_lod[level][seq_idx]; i < input_lod[level][seq_idx + 1];
+           ++i) {
         if ((unsigned)input_data[i] != blank &&
             !(merge_repeated && input_data[i] == prev_token)) {
           output_data[output_idx] = input_data[i];

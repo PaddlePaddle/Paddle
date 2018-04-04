@@ -13,19 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/memory/memory.h"
-
-#include "paddle/fluid/recordio/scanner.h"
-#include "paddle/fluid/recordio/writer.h"
-
-#include <stdint.h>
-#include <string.h>
 #include <algorithm>
 #include <iterator>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/recordio/scanner.h"
+#include "paddle/fluid/recordio/writer.h"
 
 namespace paddle {
 namespace framework {
@@ -162,15 +162,16 @@ bool CheckLoD(const LoD &in, int tensor_height) {
   }
   // check: the lowest level's last offset should equals `tensor_height` if
   //        tensor_height>0.
-  if (tensor_height > 0 && (size_t)tensor_height != in.back().back())
-    return false;
+  if (tensor_height > 0 && tensor_height != in.back().back()) return false;
 
   // check: the higher level's last offset should equals the lower level's
   // size-1.
   // NOTE LoD store the levels from top to bottom, so the higher level goes
   // first.
   for (size_t level = 0; level < in.size() - 1; level++) {
-    if (in[level].back() != in[level + 1].size() - 1) return false;
+    if (in[level].back() != static_cast<int>(in[level + 1].size()) - 1) {
+      return false;
+    }
   }
   return true;
 }
@@ -195,7 +196,7 @@ bool CheckAbsLoD(const LoD &in, int tensor_height) {
     if (level.front() != 0) return false;
     if (tensor_height < 0) {
       tensor_height = level.back();
-    } else if ((size_t)tensor_height != level.back()) {
+    } else if (tensor_height != level.back()) {
       return false;
     }
   }
@@ -294,7 +295,7 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
-void WriteToRecordIO(recordio::Writer &writer,
+void WriteToRecordIO(recordio::Writer &writer,  // NOLINT: prevent propagation
                      const std::vector<LoDTensor> &tensor,
                      const platform::DeviceContext &dev_ctx) {
   std::stringstream buffer;
@@ -307,7 +308,8 @@ void WriteToRecordIO(recordio::Writer &writer,
 }
 
 std::vector<LoDTensor> ReadFromRecordIO(
-    recordio::Scanner &scanner, const platform::DeviceContext &dev_ctx) {
+    recordio::Scanner &scanner,  // NOLINT: prevent propagation
+    const platform::DeviceContext &dev_ctx) {
   std::istringstream sin(scanner.Next());
   uint32_t sz;
   sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));

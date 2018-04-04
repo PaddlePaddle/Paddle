@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <unistd.h>
 #include <string>
-#include <thread>
+#include <thread>  // NOLINT
 
-#include <google/protobuf/text_format.h>
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -119,7 +118,7 @@ void RunTestLodTensor(platform::Place place, int from_type = 0) {
   auto* tensor = var.GetMutable<framework::LoDTensor>();
   tensor->Resize(framework::make_ddim({4, 8, 4, 2}));
   framework::LoD lod;
-  lod.push_back(framework::Vector<size_t>({1, 3, 8}));
+  lod.push_back(framework::Vector<int>({1, 3, 8}));
   tensor->set_lod(lod);
   int tensor_numel = 4 * 8 * 4 * 2;
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();

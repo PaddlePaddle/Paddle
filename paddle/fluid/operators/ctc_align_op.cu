@@ -12,19 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <stdio.h>
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
+#include <vector>
+
 #include "paddle/fluid/operators/ctc_align_op.h"
+#include "thrust/device_vector.h"
+#include "thrust/host_vector.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
 __global__ void MergeAndDelCudaKernel(const int64_t num_token, const T* tokens,
-                                      const size_t num_seq, size_t* lod0,
+                                      const size_t num_seq, int* lod0,
                                       const int blank, const int merge_repeated,
-                                      size_t* out_lod0, T* output) {
+                                      int* out_lod0, T* output) {
   int ouput_idx = 0;
   out_lod0[0] = 0;
 
@@ -61,8 +62,8 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
         static_cast<int>(ctx.Attr<bool>("merge_repeated"));
 
     // prepare a lod to record lod information while merging elements
-    thrust::device_vector<size_t> dev_out_lod0(input_lod[level].size());
-    size_t* dev_out_lod0_ptr = thrust::raw_pointer_cast(dev_out_lod0.data());
+    thrust::device_vector<int> dev_out_lod0(input_lod[level].size());
+    int* dev_out_lod0_ptr = thrust::raw_pointer_cast(dev_out_lod0.data());
 
     // merge elements and delete blank
     T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
@@ -74,7 +75,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
         dev_out_lod0_ptr, output_data);
 
     // set output lod
-    std::vector<size_t> host_out_lod0(dev_out_lod0.begin(), dev_out_lod0.end());
+    std::vector<int> host_out_lod0(dev_out_lod0.begin(), dev_out_lod0.end());
     framework::LoD out_lod;
     out_lod.push_back(host_out_lod0);
     output->set_lod(out_lod);

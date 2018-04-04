@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -28,7 +30,7 @@ class SequenceEraseKernel : public framework::OpKernel<T> {
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE_EQ(lod[0].back(), (size_t)in->numel(),
+    PADDLE_ENFORCE_EQ(lod[0].back(), in->numel(),
                       "The actual size mismatches with the LoD information.");
     auto tokens = ctx.Attr<std::vector<int>>("tokens");
     auto in_len = in->numel();

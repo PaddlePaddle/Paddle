@@ -15,12 +15,16 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
 #ifdef PADDLE_WITH_CUDA
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
+#include "thrust/device_vector.h"
+#include "thrust/host_vector.h"
 #endif
 
-#include <glog/logging.h>
+#include "glog/logging.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -52,7 +56,7 @@ namespace framework {
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-using LoD = std::vector<Vector<size_t>>;
+using LoD = std::vector<Vector<int>>;
 
 std::ostream& operator<<(std::ostream& os, const LoD& lod);
 std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
@@ -215,12 +219,14 @@ void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
 void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx);
 
-extern void WriteToRecordIO(recordio::Writer& writer,
-                            const std::vector<LoDTensor>& tensor,
-                            const platform::DeviceContext& dev_ctx);
+extern void WriteToRecordIO(
+    recordio::Writer& writer,  // NOLINT: stop propagation
+    const std::vector<LoDTensor>& tensor,
+    const platform::DeviceContext& dev_ctx);
 
 extern std::vector<LoDTensor> ReadFromRecordIO(
-    recordio::Scanner& scanner, const platform::DeviceContext& dev_ctx);
+    recordio::Scanner& scanner,  // NOLINT: stop propagation
+    const platform::DeviceContext& dev_ctx);
 
 }  // namespace framework
 }  // namespace paddle

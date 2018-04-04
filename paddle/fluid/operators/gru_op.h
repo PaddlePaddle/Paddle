@@ -14,13 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
-
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -31,11 +32,11 @@ using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
-                             framework::Vector<size_t> index_lod,
+                             framework::Vector<int> index_lod,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
-  row_shuffle(ctx, src, index_lod, *dst, indexed_src);
+  row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
 
 template <typename DeviceContext, typename T>
@@ -64,7 +65,7 @@ class GRUKernel : public framework::OpKernel<T> {
     bool is_reverse = context.Attr<bool>("is_reverse");
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    to_batch(dev_ctx, *input, *batch_gate, true, is_reverse);
+    to_batch(dev_ctx, *input, batch_gate, true, is_reverse);
 
     if (bias) {
       math::RowwiseAdd<DeviceContext, T> add_bias;
@@ -78,7 +79,7 @@ class GRUKernel : public framework::OpKernel<T> {
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
     Tensor ordered_h0;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    framework::Vector<int> order(batch_gate->lod()[2]);
 
     if (h0) {
       // Since the batch computing for GRU reorders the input sequences
@@ -98,8 +99,8 @@ class GRUKernel : public framework::OpKernel<T> {
     auto active_gate = math::detail::GetActivationType(
         context.Attr<std::string>("gate_activation"));
     for (size_t n = 0; n < num_batch; n++) {
-      int bstart = static_cast<int>(batch_starts[n]);
-      int bend = static_cast<int>(batch_starts[n + 1]);
+      int bstart = batch_starts[n];
+      int bend = batch_starts[n + 1];
       int cur_batch_size = bend - bstart;
 
       Tensor gate_t = batch_gate->Slice(bstart, bend);
@@ -116,7 +117,7 @@ class GRUKernel : public framework::OpKernel<T> {
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden->set_lod(batch_gate->lod());
-    to_seq(dev_ctx, *batch_hidden, *hidden);
+    to_seq(dev_ctx, *batch_hidden, hidden);
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
@@ -163,7 +164,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
     Tensor ordered_h0, ordered_h0_grad;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    framework::Vector<int> order(batch_gate->lod()[2]);
 
     if (h0) {
       ReorderInitState<DeviceContext, T>(dev_ctx, *h0, order, &ordered_h0,
@@ -177,7 +178,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
 
     bool is_reverse = context.Attr<bool>("is_reverse");
     batch_hidden_grad.set_lod(batch_hidden->lod());
-    to_batch(dev_ctx, *hidden_grad, batch_hidden_grad, false, is_reverse);
+    to_batch(dev_ctx, *hidden_grad, &batch_hidden_grad, false, is_reverse);
 
     math::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
@@ -203,8 +204,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
     auto active_gate = math::detail::GetActivationType(
         context.Attr<std::string>("gate_activation"));
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
-      int bstart = static_cast<int>(batch_starts[n]);
-      int bend = static_cast<int>(batch_starts[n + 1]);
+      int bstart = batch_starts[n];
+      int bend = batch_starts[n + 1];
       int cur_batch_size = bend - bstart;
 
       Tensor gate_t = batch_gate->Slice(bstart, bend);
@@ -224,7 +225,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
         gru_grad.prev_out_grad =
             h0 && h0_grad ? ordered_h0_grad.data<T>() : nullptr;
       } else {
-        int bstart_pre = static_cast<int>(batch_starts[n - 1]);
+        int bstart_pre = batch_starts[n - 1];
         Tensor hidden_prev_t = batch_hidden->Slice(bstart_pre, bstart);
         gru_value.prev_out_value = hidden_prev_t.data<T>();
         Tensor hidden_prev_grad_t = batch_hidden_grad.Slice(bstart_pre, bstart);
@@ -239,7 +240,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(context.GetPlace());
       math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
       batch_gate_grad.set_lod(batch_gate->lod());
-      to_seq(dev_ctx, batch_gate_grad, *input_grad);
+      to_seq(dev_ctx, batch_gate_grad, input_grad);
     }
     if (bias_grad) {
       bias_grad->mutable_data<T>(context.GetPlace());

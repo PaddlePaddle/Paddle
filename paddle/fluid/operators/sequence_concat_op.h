@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 
@@ -46,7 +49,7 @@ LoD ConcatLoD(const std::vector<const T*> ins, const size_t level) {
     size_t idx = 1;
     for (size_t j = 0; j < ins[0]->lod()[i].size() - 1; ++j) {
       for (size_t k = 0; k < n; ++k) {
-        for (size_t m = ins[k]->lod()[i][j]; m < ins[k]->lod()[i][j + 1]; ++m) {
+        for (int m = ins[k]->lod()[i][j]; m < ins[k]->lod()[i][j + 1]; ++m) {
           out_lod[i + 1][idx] = out_lod[i + 1][idx - 1] +
                                 ins[k]->lod()[i + 1][m + 1] -
                                 ins[k]->lod()[i + 1][m];

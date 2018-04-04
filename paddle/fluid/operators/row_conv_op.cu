@@ -31,8 +31,7 @@ template <typename T>
 __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
                                            int num_sequence, int input_dim,
                                            int future_context,
-                                           const size_t *batch_indices,
-                                           T *out) {
+                                           const int *batch_indices, T *out) {
   int blx = blockDim.x;
   int bly = blockDim.y;
   int thx = threadIdx.x;
@@ -71,7 +70,7 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
 template <typename T>
 __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
                                int input_dim, int future_context,
-                               const size_t *batch_indices, T *out) {
+                               const int *batch_indices, T *out) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
@@ -98,8 +97,7 @@ template <typename T>
 __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
                                              int num_sequence, int input_dim,
                                              int future_context,
-                                             const size_t *batch_indices,
-                                             T *din) {
+                                             const int *batch_indices, T *din) {
   int blx = blockDim.x;
   int bly = blockDim.y;
   int thx = threadIdx.x;
@@ -136,7 +134,7 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
 template <typename T>
 __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
                                  int input_dim, int future_context,
-                                 const size_t *batch_indices, T *din) {
+                                 const int *batch_indices, T *din) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
@@ -161,8 +159,7 @@ template <typename T>
 __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
                                           int num_sequence, int input_dim,
                                           int future_context, int block_x,
-                                          int block_y,
-                                          const size_t *batch_indices,
+                                          int block_y, const int *batch_indices,
                                           T *dfilter) {
   int blx = blockDim.x;
   int bly = blockDim.y;
@@ -241,7 +238,7 @@ template <typename T>
 __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
                                   int input_dim, int future_context,
                                   int block_x, int block_y,
-                                  const size_t *batch_indices, T *dfilter) {
+                                  const int *batch_indices, T *dfilter) {
   int blx = blockDim.x;
   int thx = threadIdx.x;
   int thy = threadIdx.y;
@@ -307,7 +304,7 @@ class RowConvKernel<platform::CUDADeviceContext, T>
     int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    int *idx = batch_indices.CUDAMutableData(context.GetPlace());
     auto stream = context.cuda_device_context().stream();
 
     if (future_context <= 32) {
@@ -345,7 +342,7 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    int *idx = batch_indices.CUDAMutableData(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();
     math::SetConstant<platform::CUDADeviceContext, T> zero;

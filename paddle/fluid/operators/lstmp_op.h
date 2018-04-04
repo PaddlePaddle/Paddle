@@ -13,14 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <string>
+
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
-
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -35,11 +37,11 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
-                             framework::Vector<size_t> index,
+                             framework::Vector<int> index,
                              framework::Tensor* dst, bool indexed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
-  row_shuffle(ctx, src, index, *dst, indexed_src);
+  row_shuffle(ctx, src, index, dst, indexed_src);
 }
 
 template <typename DeviceContext, typename T>
@@ -80,7 +82,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     bool is_reverse = ctx.Attr<bool>("is_reverse");
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& device_ctx = ctx.template device_context<DeviceContext>();
-    to_batch(device_ctx, *input, *batch_gate, true, is_reverse);
+    to_batch(device_ctx, *input, batch_gate, true, is_reverse);
 
     auto in_dims = input->dims();
     int frame_size = static_cast<int>(in_dims[1] / 4);
@@ -111,7 +113,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
     lstmp_value.prev_state_value = nullptr;
     Tensor ordered_c0;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    framework::Vector<int> order(batch_gate->lod()[2]);
 
     if (cell_t0) {
       // Since the batch computing for LSTMP reorders the input sequence
@@ -144,8 +146,8 @@ class LSTMPKernel : public framework::OpKernel<T> {
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     for (size_t n = 0; n < num_batch; n++) {
-      int bstart = static_cast<int>(batch_starts[n]);
-      int bend = static_cast<int>(batch_starts[n + 1]);
+      int bstart = batch_starts[n];
+      int bend = batch_starts[n + 1];
 
       Tensor gate_t = batch_gate->Slice(bstart, bend);
       Tensor hidden_t = batch_hidden->Slice(bstart, bend);
@@ -156,7 +158,7 @@ class LSTMPKernel : public framework::OpKernel<T> {
       int cur_batch_size = bend - bstart;
 
       if (n > 0) {
-        int pre_h_start = static_cast<int>(batch_starts[n - 1]);
+        int pre_h_start = batch_starts[n - 1];
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_proj_t = batch_proj.Slice(pre_h_start, pre_h_end);
         math::matmul<DeviceContext, T>(device_ctx, pre_proj_t, false, *weight,
@@ -207,11 +209,11 @@ class LSTMPKernel : public framework::OpKernel<T> {
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_proj.set_lod(batch_gate->lod());
     // restore the output hidden in LoDTensor from the batch hidden
-    to_seq(device_ctx, batch_proj, *proj_out);
+    to_seq(device_ctx, batch_proj, proj_out);
 
     batch_cell.set_lod(batch_gate->lod());
     // restore the output cell state in LoDTensor from the batch cell
-    to_seq(device_ctx, batch_cell, *cell_out);
+    to_seq(device_ctx, batch_cell, cell_out);
   }
 };
 
@@ -279,7 +281,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     // initialization.
     Tensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    framework::Vector<int> order(batch_gate->lod()[2]);
 
     if (c0) {
       ReorderInitState<DeviceContext, T>(device_ctx, *c0, order, &ordered_c0,
@@ -328,17 +330,17 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
 
     auto ToBatch = [&batch_gate, &to_batch](
         const DeviceContext& ctx, const framework::LoDTensor& src,
-        const framework::DDim& dims, framework::LoDTensor& dst) {
-      dst.mutable_data<T>(dims, ctx.GetPlace());
-      dst.set_lod(batch_gate->lod());
+        const framework::DDim& dims, framework::LoDTensor* dst) {
+      dst->mutable_data<T>(dims, ctx.GetPlace());
+      dst->set_lod(batch_gate->lod());
       to_batch(ctx, src, dst, false);
     };
 
     LoDTensor batch_hidden_g, batch_proj, batch_proj_g, batch_cell;
     batch_hidden_g.mutable_data<T>(out_dims, ctx.GetPlace());
-    ToBatch(device_ctx, *proj_out, proj_dims, batch_proj);        // T x P
-    ToBatch(device_ctx, *projection_g, proj_dims, batch_proj_g);  // T x P
-    ToBatch(device_ctx, *cell_out, out_dims, batch_cell);         // T x D
+    ToBatch(device_ctx, *proj_out, proj_dims, &batch_proj);        // T x P
+    ToBatch(device_ctx, *projection_g, proj_dims, &batch_proj_g);  // T x P
+    ToBatch(device_ctx, *cell_out, out_dims, &batch_cell);         // T x D
 
     LoDTensor batch_cell_g, batch_gate_g;
     batch_cell_g.mutable_data<T>(out_dims, ctx.GetPlace());
@@ -361,8 +363,8 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     auto batch_starts = batch_gate->lod()[0];
     size_t num_batch = batch_starts.size() - 1;
     for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
-      int bstart = static_cast<int>(batch_starts[n]);
-      int bend = static_cast<int>(batch_starts[n + 1]);
+      int bstart = batch_starts[n];
+      int bend = batch_starts[n + 1];
 
       Tensor cur_proj = batch_proj.Slice(bstart, bend);
       Tensor proj_g = batch_proj_g.Slice(bstart, bend);
@@ -399,7 +401,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
       lstmp_grad.output_grad = out_g.data<T>();
 
       if (n > 0) {
-        int bstart_pre = static_cast<int>(batch_starts[n - 1]);
+        int bstart_pre = batch_starts[n - 1];
         Tensor cell_pre = batch_cell.Slice(bstart_pre, bstart);
         Tensor cell_pre_g = batch_cell_g.Slice(bstart_pre, bstart);
         lstmp_value.prev_state_value = cell_pre.data<T>();
@@ -415,7 +417,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
           gate_act, cell_act, cand_act);
 
       if (n > 0) {
-        int pre_h_start = static_cast<int>(batch_starts[n - 1]);
+        int pre_h_start = batch_starts[n - 1];
         int pre_h_end = pre_h_start + cur_batch_size;
         auto pre_proj_g = batch_proj_g.Slice(pre_h_start, pre_h_end);
         math::matmul<DeviceContext, T>(device_ctx, gate_g, false, *weight, true,
@@ -470,7 +472,7 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
     if (in_g) {
       /* backward data */
       in_g->mutable_data<T>(ctx.GetPlace());
-      to_seq(device_ctx, batch_gate_g, *in_g);
+      to_seq(device_ctx, batch_gate_g, in_g);
     }
     if (bias && bias_g) {
       /* backward bias */

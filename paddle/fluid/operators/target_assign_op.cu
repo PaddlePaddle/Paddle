@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename WT>
-__global__ void NegTargetAssignKernel(const int* neg_indices, const size_t* lod,
+__global__ void NegTargetAssignKernel(const int* neg_indices, const int* lod,
                                       const int N, const int M, const int K,
                                       const int mismatch_value, T* out,
                                       WT* out_wt) {
@@ -39,7 +39,7 @@ __global__ void NegTargetAssignKernel(const int* neg_indices, const size_t* lod,
 template <typename T, typename WT>
 struct NegTargetAssignFunctor<platform::CUDADeviceContext, T, WT> {
   void operator()(const platform::CUDADeviceContext& ctx,
-                  const int* neg_indices, const size_t* lod, const int N,
+                  const int* neg_indices, const int* lod, const int N,
                   const int M, const int K, const int mismatch_value, T* out,
                   WT* out_wt) {
     const int block_size = 256;

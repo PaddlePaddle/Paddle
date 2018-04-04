@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -21,10 +23,10 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-inline static size_t MaximumSequenceLength(const framework::LoD& lod,
-                                           const size_t level) {
+inline static int MaximumSequenceLength(const framework::LoD& lod,
+                                        const size_t level) {
   const size_t num_sequences = lod[level].size() - 1;
-  size_t max_sequence_length = 0;
+  int max_sequence_length = 0;
   framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
   for (size_t i = 0; i < num_sequences; ++i) {
     max_sequence_length =
@@ -64,13 +66,13 @@ template <typename DeviceContext, typename T>
 class PaddingLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::LoDTensor& seq,
-                  framework::Tensor& padding, bool norm_by_times);
+                  framework::Tensor* padding, bool norm_by_times);
 };
 
 template <typename DeviceContext, typename T>
 class UnpaddingLoDTensorFunctor {
  public:
-  void operator()(const DeviceContext& context, framework::LoDTensor& seq,
+  void operator()(const DeviceContext& context, framework::LoDTensor* seq,
                   const framework::Tensor& padding, bool norm_by_times);
 };
 
