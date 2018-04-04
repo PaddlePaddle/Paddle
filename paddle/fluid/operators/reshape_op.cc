@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/reshape_op.h"
 
+#include <string>
+#include <vector>
+
 namespace paddle {
 namespace operators {
 
