@@ -12,10 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/pybind/protobuf.h"
+#include "paddle/fluid/pybind/pybind.h"
 
-#include <mutex>  // for call_once
+#include <algorithm>
+#include <map>
+#include <mutex>  // NOLINT
+#include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
@@ -37,7 +43,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
-#include "paddle/fluid/pybind/pybind.h"
+#include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 
@@ -46,7 +52,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/cuda_profiler.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #endif
 
 // disable auto conversion to list in Python
@@ -504,11 +509,18 @@ All parameter, weight, gradient are variables in Paddle.
               const std::unordered_set<std::string> &params,
               const ProgramDesc &startup_program,
               const ProgramDesc &main_program, const std::string &loss_var_name,
-              Scope *scope, bool allow_op_delay) {
-             new (&self) ParallelExecutor(num_threads, use_event, places,
-                                          params, startup_program, main_program,
-                                          loss_var_name, scope, allow_op_delay);
+              Scope *scope, std::vector<Scope *> &local_scopes,
+              bool allow_op_delay) {
+             new (&self)
+                 ParallelExecutor(num_threads, use_event, places, params,
+                                  startup_program, main_program, loss_var_name,
+                                  scope, local_scopes, allow_op_delay);
            })
+      .def("local_scopes",
+           [](ParallelExecutor &self) -> std::vector<Scope *> * {
+             return &self.GetLocalScopes();
+           },
+           py::return_value_policy::reference)
       .def("run", &ParallelExecutor::Run);
 
   BindRecordIOWriter(m);

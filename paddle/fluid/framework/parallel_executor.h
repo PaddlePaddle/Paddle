@@ -39,7 +39,10 @@ class ParallelExecutor {
                             const ProgramDesc& startup_program,
                             const ProgramDesc& main_program,
                             const std::string& loss_var_name, Scope* scope,
+                            const std::vector<Scope*>& local_scopes,
                             bool allow_op_delay);
+
+  std::vector<Scope*>& GetLocalScopes();
 
   void Run(const std::vector<std::string>& fetch_tensors,
            const std::string& fetched_var_name = "fetched_var");
