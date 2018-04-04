@@ -35,7 +35,7 @@ TEST(inference, image_classification) {
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
-  SetupTensor<float>(input,
+  SetupTensor<float>(&input,
                      {FLAGS_batch_size, 3, 32, 32},
                      static_cast<float>(0),
                      static_cast<float>(1));

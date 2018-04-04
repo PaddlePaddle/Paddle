@@ -35,7 +35,7 @@ TEST(inference, recognize_digits) {
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [-1.0, 1.0].
-  SetupTensor<float>(input,
+  SetupTensor<float>(&input,
                      {FLAGS_batch_size, 1, 28, 28},
                      static_cast<float>(-1),
                      static_cast<float>(1));
