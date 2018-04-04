@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/operators/detail/variable_response.h"
 
-#include <string.h>
-
 #include <string>
 #include <utility>
 #include <vector>
