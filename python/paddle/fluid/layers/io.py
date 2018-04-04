@@ -279,7 +279,7 @@ def _copy_reader_create_op_(block, op):
         type=op.type,
         inputs=new_input_map,
         outputs=new_output_map,
-        attrs=op.attrs)
+        attrs=op.all_attrs())
     return new_op
 
 
