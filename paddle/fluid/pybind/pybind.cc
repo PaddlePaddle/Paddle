@@ -12,10 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/pybind/protobuf.h"
-
-#include <mutex>  // for call_once
+#include <algorithm>
+#include <map>
+#include <mutex>  // for call_once  // NOLINT
+#include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
@@ -31,12 +35,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
-#include "paddle/fluid/pybind/pybind.h"
+#include "paddle/fluid/pybind/protobuf.h"
+#include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 
