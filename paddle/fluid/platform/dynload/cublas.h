@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <cublas_v2.h>
+#include <cuda.h>
 #include <dlfcn.h>
-#include <mutex>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
@@ -70,6 +70,7 @@ extern void *cublas_dso_handle;
   __macro(cublasDgemm_v2);                \
   __macro(cublasHgemm);                   \
   __macro(cublasSgemmEx);                 \
+  __macro(cublasGemmEx);                  \
   __macro(cublasSgeam_v2);                \
   __macro(cublasDgeam_v2);                \
   __macro(cublasCreate_v2);               \
@@ -89,9 +90,15 @@ extern void *cublas_dso_handle;
   __macro(cublasSgetrfBatched);           \
   __macro(cublasSgetriBatched);           \
   __macro(cublasDgetrfBatched);           \
-  __macro(cublasDgetriBatched)
+  __macro(cublasDgetriBatched);
 
-CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP);
+CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+
+// APIs available after CUDA 9.0
+#if CUDA_VERSION >= 9000
+#define CUBLAS_BLAS_ROUTINE_EACH_R2(__macro) __macro(cublasSetMathMode);
+CUBLAS_BLAS_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+#endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP
 }  // namespace dynload
