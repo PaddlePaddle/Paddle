@@ -7,7 +7,9 @@ Polyak and Juditsky (1992) showed that the test performance of simple average of
 
 Hence, to accelerate the speed of Stochastic Gradient Descent, Averaged Stochastic Gradient Descent (ASGD) was proposed in Polyak and Juditsky (1992). For ASGD, the running average of parameters obtained by SGD, is used as the estimator for <img src="./images/theta_star.gif"/><br/> . The averaging is done as follows:
 
-![](./images/asgd.gif)
+<p align="center">
+<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/asgd.gif"><br />
+</p>
 
 We propose averaging for any optimizer similar to how ASGD performs it, as mentioned above.
 
