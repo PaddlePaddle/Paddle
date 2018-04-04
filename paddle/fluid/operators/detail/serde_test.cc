@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <google/protobuf/text_format.h>
 #include <unistd.h>
 #include <string>
-#include <thread>
+#include <thread>  // NOLINT
 
-#include <google/protobuf/text_format.h>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -107,7 +107,7 @@ void RunSerdeTestSelectedRows(platform::Place place) {
   for (int i = 0; i < tensor_numel; ++i) {
     EXPECT_FLOAT_EQ(tensor_data2[i], 32.7);
   }
-  for (int i = 0; i < rows2->size(); ++i) {
+  for (int64_t i = 0; i < (int64_t)(rows2->size()); ++i) {
     EXPECT_EQ(rows_data2[i], i);
   }
   EXPECT_EQ(slr2->height(), 1000);
