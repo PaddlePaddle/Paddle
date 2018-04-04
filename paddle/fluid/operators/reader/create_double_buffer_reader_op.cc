@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <thread>  //NOLINT
+
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
