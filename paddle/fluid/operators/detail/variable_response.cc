@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/detail/variable_response.h"
-#include <string.h>
+
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
@@ -151,7 +155,7 @@ bool VariableResponse::CopySelectRowsTensorData(
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
   PADDLE_ENFORCE_EQ(
-      tensor->numel(),
+      static_cast<size_t>(tensor->numel()),
       length / framework::SizeOfType(
                    paddle::operators::detail::ToTypeIndex(meta_.data_type())));
   void* tensor_data = tensor->mutable_data(

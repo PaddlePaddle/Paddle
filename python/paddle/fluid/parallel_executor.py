@@ -21,7 +21,11 @@ __all__ = ['ParallelExecutor']
 
 
 class ParallelExecutor(object):
-    def __init__(self, loss_name, use_cuda, num_threads=None):
+    def __init__(self,
+                 loss_name,
+                 use_cuda,
+                 num_threads=None,
+                 allow_op_delay=False):
         places = []
         if use_cuda:
             for i in xrange(core.get_cuda_device_count()):
@@ -35,7 +39,12 @@ class ParallelExecutor(object):
                 places.append(p)
 
         if num_threads is None:
-            num_threads = min(len(places) * 2, multiprocessing.cpu_count())
+            if use_cuda:
+                # Experiments on se-resnext shows that too many threads hurt
+                # performance. Worth tunning for other models in the future.
+                num_threads = len(places)
+            else:
+                min(len(places) * 2, multiprocessing.cpu_count())
 
         startup = framework.default_startup_program()
         main = framework.default_main_program()
@@ -52,7 +61,8 @@ class ParallelExecutor(object):
             startup.desc,
             main.desc,
             loss_name,
-            scope)
+            scope,
+            allow_op_delay)
         self.scope = scope
 
     def run(self, fetch_list):
