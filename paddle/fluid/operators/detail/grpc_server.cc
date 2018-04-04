@@ -145,23 +145,28 @@ class RequestPrefetch final : public RequestBase {
         executor_(executor),
         program_(program),
         blkid_(blkid) {
+    request_.reset(new VariableResponse(scope, dev_ctx_));
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
-    service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
-                                cq_, this);
+    service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
+                                cq_, cq_, this);
   }
 
   virtual ~RequestPrefetch() {}
 
-  virtual std::string GetReqName() { return request_.varname(); }
+  virtual std::string GetReqName() { return request_->Varname(); }
 
   virtual void Process() {
     // prefetch process...
     ::grpc::ByteBuffer reply;
 
-    executor_->Run(*program_, scope_, blkid_, false, false);
+    std::string var_name = request_->OutVarname();
+    auto var_desc = program_->Block(0).FindVar(var_name);
+    framework::Scope* local_scope = &scope_->NewScope();
+    auto* var = local_scope->FindVar(var_name);
+    InitializeVariable(var, var_desc->GetType());
 
-    std::string var_name = request_.out_varname();
-    auto* var = scope_->FindVar(var_name);
+    executor_->Run(*program_, local_scope, blkid_, false, false);
+
     SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
@@ -169,7 +174,7 @@ class RequestPrefetch final : public RequestBase {
   }
 
  protected:
-  sendrecv::VariableMessage request_;
+  std::shared_ptr<VariableResponse> request_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
   framework::Scope* scope_;
   framework::Executor* executor_;

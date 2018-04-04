@@ -14,6 +14,10 @@
 
 #pragma once
 
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -53,6 +57,7 @@ class VariableResponse {
   int Parse(const ::grpc::ByteBuffer& byte_buffer);
 
   inline std::string Varname() { return meta_.varname(); }
+  inline std::string OutVarname() { return meta_.out_varname(); }
 
   // should call parse first.
   framework::Variable* GetVar() { return scope_->FindVar(meta_.varname()); }
@@ -60,14 +65,14 @@ class VariableResponse {
  private:
   bool CopySelectRowsTensorData(::google::protobuf::io::CodedInputStream* input,
                                 const platform::DeviceContext& ctx,
-                                framework::DDim& dims, int length);
+                                const framework::DDim& dims, int length);
 
   bool CopySelectRowsData(::google::protobuf::io::CodedInputStream* input,
                           const platform::DeviceContext& ctx, int length);
 
   bool CopyLodTensorData(::google::protobuf::io::CodedInputStream* input,
                          const platform::DeviceContext& ctx,
-                         framework::DDim& dims, int length);
+                         const framework::DDim& dims, int length);
 
  private:
   const framework::Scope* scope_;
