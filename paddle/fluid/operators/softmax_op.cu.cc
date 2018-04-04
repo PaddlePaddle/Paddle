@@ -18,8 +18,7 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    softmax, ops::SoftmaxKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(softmax,
-                        ops::SoftmaxKernel<plat::CUDADeviceContext, float>);
+    softmax, ops::SoftmaxKernel<plat::CUDADeviceContext, float>,
+    ops::SoftmaxKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(softmax_grad,
                         ops::SoftmaxGradKernel<plat::CUDADeviceContext, float>);
