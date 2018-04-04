@@ -43,19 +43,8 @@ class SGDOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto* table_var = ctx.InputVar("Param");
-    if (table_var->IsType<framework::LoDTensor>()) {
-      return framework::OpKernelType(
-          framework::ToDataType(table_var->Get<framework::LoDTensor>().type()),
-          ctx.device_context());
-    } else if (table_var->IsType<framework::SelectedRows>()) {
-      return framework::OpKernelType(
-          framework::ToDataType(
-              table_var->Get<framework::SelectedRows>().value().type()),
-          ctx.device_context());
-    } else {
-      PADDLE_THROW("Param should be LoDTensor or SelectedRows");
-    }
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
