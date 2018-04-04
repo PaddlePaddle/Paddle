@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import paddle
+import paddle.v2 as paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import contextlib
@@ -90,7 +90,10 @@ def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
         pool_type='avg',
         pool_stride=1,
         global_pooling=True)
-    out = fluid.layers.fc(input=pool2, size=class_dim, act='softmax')
+    out = fluid.layers.fc(input=pool2,
+                          size=class_dim,
+                          act='softmax',
+                          use_cudnn=True)
     return out
 
 
@@ -106,7 +109,10 @@ def resnet_cifar10(input, class_dim, depth=32, data_format='NCHW'):
     res3 = layer_warp(basicblock, res2, 64, n, 2)
     pool = fluid.layers.pool2d(
         input=res3, pool_size=8, pool_type='avg', pool_stride=1)
-    out = fluid.layers.fc(input=pool, size=class_dim, act='softmax')
+    out = fluid.layers.fc(input=pool,
+                          size=class_dim,
+                          act='softmax',
+                          use_cudnn=True)
     return out
 
 
@@ -134,7 +140,10 @@ def vgg16_bn_drop(input, class_dim):
     bn = fluid.layers.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
-    out = fluid.layers.fc(input=fc2, size=class_dim, act='softmax')
+    out = fluid.layers.fc(input=fc2,
+                          size=class_dim,
+                          act='softmax',
+                          use_cudnn=True)
     return out
 
 
@@ -205,7 +214,8 @@ def train(net_type, data_set, use_cuda, save_dirname, is_local):
     def train_loop(main_program):
         exe.run(fluid.default_startup_program())
         loss = 0.0
-        fluid.io.save_inference_model(save_dirname, ["pixel"], [predict], exe)
+        fluid.io.save_inference_model(
+            save_dirname, ["pixel"], [predict], exe, use_float16=True)
         """
         for pass_id in range(PASS_NUM):
             for batch_id, data in enumerate(train_reader()):
@@ -307,16 +317,17 @@ def infer(use_cuda, data_set, save_dirname=None):
         # Use normilized image pixels as input data, which should be in the range [0, 1.0].
         batch_size = 1
         if data_set == 'cifar10':
-            tensor_img = np.random.rand(batch_size, 3, 32, 32).astype("float32")
+            tensor_img = np.random.rand(batch_size, 3, 32, 32).astype(np.uint16)
         else:
             tensor_img = np.random.rand(batch_size, 3, 224,
-                                        224).astype("float32")
+                                        224).astype(np.uint16)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
+        print(results[0].dtype)
         print("infer results: ", results[0])
 
 
@@ -325,28 +336,28 @@ def main(net_type, data_set, use_cuda, is_local=True):
         return
 
     # Directory for saving the trained model
-    save_dirname = "image_classification_" + net_type + "_" + data_set + ".inference.model"
+    save_dirname = "image_classification_float16_" + net_type + "_" + data_set + ".inference.model"
 
     train(net_type, data_set, use_cuda, save_dirname, is_local)
     infer(use_cuda, data_set, save_dirname)
 
 
-class TestImageClassification(unittest.TestCase):
+class TestImageClassificationFP16(unittest.TestCase):
     def test_vgg_imagenet_cuda(self):
         with self.scope_prog_guard():
             main('vgg', 'imagenet', use_cuda=True)
 
-    #def test_resnet_imagenet_cuda(self):
-    #    with self.scope_prog_guard():
-    #        main('resnet', 'imagenet', use_cuda=True)
+    def test_resnet_imagenet_cuda(self):
+        with self.scope_prog_guard():
+            main('resnet', 'imagenet', use_cuda=True)
 
-    #def test_vgg_cifar10_cuda(self):
-    #    with self.scope_prog_guard():
-    #        main('vgg', 'cifar10', use_cuda=True)
+    def test_vgg_cifar10_cuda(self):
+        with self.scope_prog_guard():
+            main('vgg', 'cifar10', use_cuda=True)
 
-    #def test_resnet_cifar10_cuda(self):
-    #    with self.scope_prog_guard():
-    #        main('resnet', 'cifar10', use_cuda=True)
+    def test_resnet_cifar10_cuda(self):
+        with self.scope_prog_guard():
+            main('resnet', 'cifar10', use_cuda=True)
 
     #def test_vgg_cpu(self):
     #    with self.scope_prog_guard():

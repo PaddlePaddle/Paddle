@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/platform/float16.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_int32(batch_size, 1, "Batch size of input data");
@@ -22,6 +23,8 @@ DEFINE_int32(repeat, 1, "Running the inference program repeat times");
 DEFINE_string(data_set, "cifar10", "Data set to use");
 
 TEST(inference, image_classification) {
+  using float16 = paddle::platform::float16;
+
   if (FLAGS_dirname.empty() || FLAGS_batch_size < 1 || FLAGS_repeat < 1) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model "
                   "--batch_size=1 --repeat=1";
@@ -37,15 +40,15 @@ TEST(inference, image_classification) {
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
   if (FLAGS_data_set == "cifar10") {
-    SetupTensor<float>(input,
-                       {FLAGS_batch_size, 3, 32, 32},
-                       static_cast<float>(0),
-                       static_cast<float>(1));
+    SetupTensor<float16>(input,
+                         {FLAGS_batch_size, 3, 32, 32},
+                         static_cast<float16>(0),
+                         static_cast<float16>(1));
   } else {
-    SetupTensor<float>(input,
-                       {FLAGS_batch_size, 3, 224, 224},
-                       static_cast<float>(0),
-                       static_cast<float>(1));
+    SetupTensor<float16>(input,
+                         {FLAGS_batch_size, 3, 224, 224},
+                         static_cast<float16>(0),
+                         static_cast<float16>(1));
   }
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;

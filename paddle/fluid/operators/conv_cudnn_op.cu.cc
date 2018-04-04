@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <iostream>
+#include <typeindex>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
@@ -112,6 +114,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     int group_offset_out =
         output_channels / groups * output_height * output_width * output_depth;
     int group_offset_filter = filter->numel() / groups;
+
     // ------------------- cudnn conv workspace ---------------------
     void* cudnn_workspace = nullptr;
     size_t workspace_size_in_bytes;  // final workspace to allocate.
@@ -128,13 +131,45 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
         workspace_size_limit, &algo));
+
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    // Tensor core is supported since the volta GPU and
+    // is only enabled when input and filter data are float16
+    if (dev_ctx.GetComputeCapability() >= 70 &&
+        std::type_index(typeid(T)) ==
+            std::type_index(typeid(platform::float16))) {
+      PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
+      // Currently tensor core is only enabled using this algo
+      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+    } else {
+      PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+          cudnn_conv_desc, CUDNN_DEFAULT_MATH));
+    }
+#endif
+
+    //    std::cout << "The chosen algorithm is " << static_cast<int>(algo)
+    //              << std::endl;
+
     // get workspace size able to allocate
     PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
         cudnn_output_desc, algo, &workspace_size_in_bytes));
+
+    // It is possible for float16 on Volta GPU to allocate more memory than
+    // the limit because the algo is overrided to use tensor core.
+    PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
+                      "workspace_size to be allocated exceeds the limit");
+
+    // if (workspace_size_in_bytes > workspace_size_limit) {
+    // std::cout << "Workspace size is " << workspace_size_in_bytes
+    // << std::endl;
+    // }
+
     // Allocate on GPU memory
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
+
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     for (int i = 0; i < groups; i++) {
