@@ -1,0 +1,75 @@
+digraph G {
+  chapter [label="chapter"]
+
+  subgraph cluster0 {
+    label = "paragraph 0"
+
+    top_rnn0[label="top rnn step 0" shape=box]
+
+    p0 [label="paragraph 0"]
+    p1 [label="paragraph 1"]
+  }
+
+  subgraph cluster1{
+    label = "paragraph 1"
+
+    top_rnn1[label="top rnn step 1" shape=box]
+
+    p2 [label="paragraph 0"]
+    p3 [label="paragraph 1"]
+  }
+
+  subgraph cluster_p0 {
+    label = "sentence 0"
+
+    low_rnn0 [label="low rnn step 0" shape=box]
+    s00 [label="sentence 0"]
+    s01 [label="sentence 1"]
+
+    low_rnn0 -> s00
+    low_rnn0 -> s01
+  }
+
+  subgraph cluster_p1 {
+    label = "sentence 1"
+    low_rnn1 [label="low rnn step 1" shape=box]
+    s10 [label="sentence 0"]
+    s11 [label="sentence 1"]
+    low_rnn1 -> s10
+    low_rnn1 -> s11
+  }
+
+  subgraph cluster_p2 {
+    label = "sentence 1"
+    low_rnn2 [label="low rnn step 0" shape=box]
+    s20 [label="sentence 0"]
+    s21 [label="sentence 1"]
+    low_rnn2 -> s20
+    low_rnn2 -> s21
+  }
+
+  subgraph cluster_p3 {
+    label = "sentence 1"
+    low_rnn3 [label="low rnn step 1" shape=box]
+    s30 [label="sentence 0"]
+    s31 [label="sentence 1"]
+    low_rnn3 -> s30
+    low_rnn3 -> s31
+  }
+
+
+  chapter -> top_rnn0
+  chapter -> top_rnn1
+
+  top_rnn0 -> p0
+  top_rnn0 -> p1
+  top_rnn1 -> p2
+  top_rnn1 -> p3
+
+
+  p0 -> low_rnn0
+  p1 -> low_rnn1
+  p2 -> low_rnn2
+  p3 -> low_rnn3
+
+}

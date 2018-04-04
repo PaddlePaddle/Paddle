@@ -2,7 +2,7 @@
 
 ## Introduction
 
-A Channel is a data structure that allows for synchronous interprocess 
+A Channel is a data structure that allows for synchronous interprocess
 communication via message passing.  It is a fundemental component of CSP
 (communicating sequential processes), and allows for users to pass data
 between threads without having to worry about synchronization.
@@ -18,7 +18,7 @@ Creates a new channel that takes in variables of a specific dtype.
 
 - **fluid.make_channel(dtype, capacity=0)**
   - **dtype**: The data type of variables being sent/received through channel
-  - **capacity**: The capacity of the channel.  A capacity of 0 represents 
+  - **capacity**: The capacity of the channel.  A capacity of 0 represents
     an unbuffered channel.  Capacity > 0 represents a buffered channel
 
 ```
@@ -40,8 +40,8 @@ fluid.channel_close(ch)
 
 ### Send data to a channel
 
-Sends a variable to a channel.  Currently, variables of dtype `LoDTensor`, 
-`LoDRankTable`, `LoDTensorArray`, `SelectedRows`, `ReaderHolder`, and 
+Sends a variable to a channel.  Currently, variables of dtype `LoDTensor`,
+`LoDRankTable`, `LoDTensorArray`, `SelectedRows`, `ReaderHolder`, and
 `ChannelHolder` are supported.
 
 By default, the data of the Variable is moved from the sender to the receiver,
@@ -52,7 +52,7 @@ however the user can optionally copy the data before performing the send.
   - **variable**: The variable to send to the channel
   - **is_copy**: If set to True, channel_send will perform a variable assign
   to copy the source variable to a new variable to be sent.
-  
+
 ```
 ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
 var = fill_constant(shape=[1],dtype=core.VarDesc.VarType.INT32, value=100)
@@ -68,7 +68,7 @@ receiving variable.
   - **channel**: The channel to receive the variable from
   - **return_variable**: The destination variable used to store the data of the
   variable received from the channel
-  
+
 ```
 ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
 var = fill_constant(shape=[1],dtype=core.VarDesc.VarType.INT32, value=-1)
@@ -84,9 +84,9 @@ internal queues, locks, and conditional variables.
 ### QueueMessage
 
 QueueMessage encapsulates the state of the channel send/receive operation to be
-put in the **sendq/recvq**.  It contains a condition variable used to lock the 
+put in the **sendq/recvq**.  It contains a condition variable used to lock the
 thread (when there are no available sends/receives).  In addition, it contains
-a callback function to notify a thread when the QueueMessage is being 
+a callback function to notify a thread when the QueueMessage is being
 processed by the channel.
 
 ### Queues
@@ -108,21 +108,21 @@ channel_recv operation will put a new QueueMessage on the recvq and block the
 current thread under two conditions:
   1. The channel is buffered and there is no data on the buff_
   2. The channel is unbuffered and does not have a sender
-  
+
 ### State diagram
 
 #### Channel Send
 
 <p align="center">
-<img src="./images/channel_send.png"/><br/>
+<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/channel_send.png"/><br/>
 </p>
-  
+
 #### Channel Receive
 
 <p align="center">
-<img src="./images/channel_recv.png"/><br/>
+<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/channel_recv.png"/><br/>
 </p>
-  
+
 ## Limitations and Considerations
 
 ### Variable Copy
@@ -135,5 +135,5 @@ be sent before it is sent.
 
 Please note that this is acheived by adding an **assign** operator and creating
 a temporary variable that is sent in place of the original variable.  Please
-note that **assign** operator has limited support for only certain variables 
+note that **assign** operator has limited support for only certain variables
 datatypes.

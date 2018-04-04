@@ -116,7 +116,7 @@ The classical DS2 network contains 15 layers (from bottom to top):
 - **One** CTC-loss layer
 
 <div align="center">
-<img src="images/ds2_network.png" width=350><br/>
+<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/ds2_network.png" width=350><br/>
 Figure 1. Archetecture of Deep Speech 2 Network.
 </div>
 
@@ -142,7 +142,7 @@ Key ingredients about the layers:
 - **Batch Normalization Layers**:
    - Added to all above layers (except for data and loss layer).
    - Sequence-wise normalization for RNNs: BatchNorm only performed on input-state projection and not state-state projection, for efficiency consideration.
-   
+
 <table>
 <thead>
 <tr>
@@ -208,7 +208,7 @@ TODO by Assignees
 ### Beam Search with CTC and LM
 
 <div align="center">
-<img src="images/beam_search.png" width=600><br/>
+<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/beam_search.png" width=600><br/>
 Figure 2. Algorithm for CTC Beam Search Decoder.
 </div>
 
