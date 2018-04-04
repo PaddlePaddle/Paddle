@@ -13,22 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdint.h>
-#include <sys/stat.h>
 #include <ostream>
-#include <thread>
-
-#include <unistd.h>
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/grpc_server.h"
-#include "paddle/fluid/operators/detail/sendrecvop_utils.h"
-#include "paddle/fluid/operators/detail/simple_block_queue.h"
-#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
@@ -54,20 +45,23 @@ static void CreateTensorFromMessageType(framework::Variable *var,
   }
 }
 
-static void ParallelExecuteBlocks(const std::vector<size_t> &parallel_blkids,
-                                  framework::Executor *executor,
-                                  framework::ProgramDesc *program,
-                                  framework::Scope *scope) {
+static void ParallelExecuteBlocks(
+    const std::vector<size_t> &parallel_blkids, framework::Executor *executor,
+    const std::vector<std::shared_ptr<framework::ExecutorPrepareContext>>
+        &prepared,
+    framework::ProgramDesc *program, framework::Scope *scope) {
   std::vector<std::future<void>> fs;
   for (size_t idx : parallel_blkids) {
-    fs.push_back(framework::Async([&executor, &program, &scope, idx]() {
-      int run_block = idx;  // thread local
-      try {
-        executor->Run(*program, scope, run_block, false, false);
-      } catch (std::exception &e) {
-        LOG(ERROR) << "run sub program error " << e.what();
-      }
-    }));
+    fs.push_back(
+        framework::Async([&executor, &prepared, &program, &scope, idx]() {
+          int run_block = idx;  // thread local
+          try {
+            executor->RunPreparedContext(prepared[run_block].get(), scope,
+                                         false, false);
+          } catch (std::exception &e) {
+            LOG(ERROR) << "run sub program error " << e.what();
+          }
+        }));
   }
   for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
 }
@@ -105,11 +99,23 @@ class ListenAndServOp : public framework::OperatorBase {
 
     auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
     auto *program = block->Program();
-    int num_blocks = program->Size();
+    size_t num_blocks = program->Size();
     PADDLE_ENFORCE_GE(num_blocks, 2,
                       "server program should have at least 2 blocks");
 
     framework::Executor executor(dev_place);
+    std::vector<int> block_list;
+    for (size_t blkid = 1; blkid < num_blocks; ++blkid)
+      block_list.push_back(blkid);
+    auto prepared = executor.Prepare(*program, block_list);
+    prepared.insert(
+        prepared.begin(),
+        std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
+
+    // TODO(qiao) set proper fields for table lookup and update
+    rpc_service_->SetExecutor(&executor);
+    rpc_service_->SetPrefetchBlkdId(0);
+    rpc_service_->SetProgram(program);
 
     // TODO(typhoonzero): change this to a while_op for every cluster-batch.
     bool exit_flag = false;
@@ -157,23 +163,25 @@ class ListenAndServOp : public framework::OperatorBase {
 
       // The optimize blocks which have the same parent ID would run parallel
       // TODO(Yancey1989): need to use ParallelExecutor for future
-      size_t last_parent_blkid = program->Block(1).Parent();
+      int32_t last_parent_blkid = program->Block(1).Parent();
       std::vector<size_t> parallel_blkids;
       parallel_blkids.push_back(1);
       double ts = detail::GetTimestamp();
       for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
         if (program->Block(blkid).Parent() != last_parent_blkid) {
           for (size_t idx : parallel_blkids) VLOG(3) << idx;
-          ParallelExecuteBlocks(parallel_blkids, &executor, program,
+          ParallelExecuteBlocks(parallel_blkids, &executor, prepared, program,
                                 &recv_scope);
           parallel_blkids.clear();
           last_parent_blkid = program->Block(blkid).Parent();
         }
         parallel_blkids.push_back(blkid);
       }
-      ParallelExecuteBlocks(parallel_blkids, &executor, program, &recv_scope);
+      ParallelExecuteBlocks(parallel_blkids, &executor, prepared, program,
+                            &recv_scope);
 
-      VLOG(2) << "run all blocks spent (ms) " << detail::GetTimestamp() - ts;
+      VLOG(3) << "run all blocks spent " << detail::GetTimestamp() - ts
+              << "(ms)";
 
       // Reset the received sparse variables, the sum operator would not
       // sum the input sparse variables which rows is empty at the next
@@ -184,7 +192,8 @@ class ListenAndServOp : public framework::OperatorBase {
         var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
       }
       rpc_service_->SetCond(1);
-      // FIXME(typhoonzero): use another condition to sync wait clients get.
+      // NOTE: does not consider barrier request retry in here, we may use
+      // global barrier id to resolve this.
       rpc_service_->WaitClientGet(fan_in);
       sparse_vars.clear();
     }  // while(true)
