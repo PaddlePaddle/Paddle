@@ -40,13 +40,15 @@ void eltwise_forward(const ExecContext &ctx, mkldnn::algorithm algorithm,
   const T *dst_data = dst->template mutable_data<T>(ctx.GetPlace());
 
   // get memory dim
-  PADDLE_ENFORCE(src->dims().size() == 4,
-                 "Input dim must be with 4, i.e. NCHW");
+  PADDLE_ENFORCE(src->dims().size() == 2 || src->dims().size() == 4,
+                 "Input dim must be with 2 or 4");
   std::vector<int> src_tz = framework::vectorize2int(src->dims());
 
   // create memory description
-  // TODO(kbinias-intel): support more formats
-  auto data_md = platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
+  auto data_md = src_tz.size() == 2
+                 ? platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
+                                         mkldnn::memory::format::nc)
+                 : platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
                                          mkldnn::memory::format::nchw);
 
   // create memory primitives
@@ -91,7 +93,10 @@ void eltwise_grad(const ExecContext &ctx, mkldnn::algorithm algorithm,
   std::vector<int> src_tz = framework::vectorize2int(x->dims());
 
   // create memory description
-  auto data_md = platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
+  auto data_md = src_tz.size() == 2
+                 ? platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
+                                         mkldnn::memory::format::nc)
+                 : platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
                                          mkldnn::memory::format::nchw);
 
   // create memory primitives
