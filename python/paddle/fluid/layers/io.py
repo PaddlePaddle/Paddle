@@ -293,8 +293,40 @@ def open_files(filenames,
                dtypes,
                thread_num,
                buffer_size=None):
+    """
+    Open files
+
+    This layer takes a list of files to read from and returns a Reader Variable. Via the Reader Variable, we can get data from given files.
+
+    Args:
+       filenames(list): The list of file names.
+       shapes(list): List of tuples which declaring data shapes.
+       lod_levels(list): List of ints which declaring data lod_level.
+       dtypes(list): List of strs which declaring data type.
+       thread_num(int): The maximal concurrent prefetch thread number.
+       buffer_size(int): The size of prefetch buffer.
+
+    Returns:
+       Variable: A Reader Variable via which we can get file data.
+
+    Examples:
+       .. code-block:: python
+
+         reader = fluid.layers.open_files(filenames=['./data1.recordio',
+                                                     './data2.recordio'],
+                                          shapes=[(3,224,224), (1)],
+                                          lod_levels=[0, 0],
+                                          dtypes=['float32', 'int64'],
+                                          thread_num=2,
+                                          buffer_size=2)
+
+         # Via the reader, we can use 'read_file' layer to get data:
+         image, label = fluid.layers.read_file(reader)
+    """
     if buffer_size is None:
         buffer_size = thread_num
+    if isinstance(filenames, basestring):
+        filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
     ranks = []
