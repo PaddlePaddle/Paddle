@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <time.h>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -28,7 +29,7 @@ void SetupTensor(paddle::framework::LoDTensor* input,
                  const T lower,
                  const T upper) {
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
-  unsigned int seed = time(NULL);
+  unsigned int seed = reinterpret_cast<std::uintptr_t>(input);
   for (int i = 0; i < input->numel(); ++i) {
     input_ptr[i] = (static_cast<T>(rand_r(&seed)) / static_cast<T>(RAND_MAX)) *
                        (upper - lower) +
