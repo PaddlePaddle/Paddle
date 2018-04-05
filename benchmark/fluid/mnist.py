@@ -23,6 +23,7 @@ import time
 import paddle.v2 as paddle
 import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
+import paddle.fluid.core as core
 
 SEED = 1
 DTYPE = "float32"
@@ -53,8 +54,6 @@ def parse_args():
         help='The device type.')
     parser.add_argument(
         '--infer_only', action='store_true', help='If set, run forward only.')
-    parser.add_argument(
-        '--use_cprof', action='store_true', help='If set, use cProfile.')
     parser.add_argument(
         '--use_nvprof',
         action='store_true',
@@ -119,9 +118,6 @@ def eval_test(exe, batch_acc, batch_size_tensor, inference_program):
 
 
 def run_benchmark(model, args):
-    if args.use_cprof:
-        pr = cProfile.Profile()
-        pr.enable()
     start_time = time.time()
     # Input data
     images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
@@ -220,5 +216,7 @@ if __name__ == '__main__':
     if args.use_nvprof and args.device == 'GPU':
         with profiler.cuda_profiler("cuda_profiler.txt", 'csv') as nvprof:
             run_benchmark(cnn_model, args)
-    else:
+
+    with profiler.profiler(
+            args.device, sorted_key=None, profile_path='.') as cpuprof:
         run_benchmark(cnn_model, args)
