@@ -23,7 +23,7 @@ TEST(Chunk, SaveLoad) {
   ch.Add(std::string("12345", 6));
   ch.Add(std::string("123", 4));
   std::stringstream ss;
-  ch.Write(ss, Compressor::kNoCompress);
+  ch.Write(ss, paddle::recordio::Compressor::kNoCompress);
   ss.seekg(0);
   ch.Parse(ss);
   ASSERT_EQ(ch.NumBytes(), 10U);
@@ -36,9 +36,9 @@ TEST(Chunk, Compressor) {
   ch.Add(std::string("123", 4));
   ch.Add(std::string("123", 4));
   std::stringstream ss;
-  ch.Write(ss, Compressor::kSnappy);
+  ch.Write(ss, paddle::recordio::Compressor::kSnappy);
   std::stringstream ss2;
-  ch.Write(ss2, Compressor::kNoCompress);
+  ch.Write(ss2, paddle::recordio::Compressor::kNoCompress);
   ASSERT_LE(ss.tellp(), ss2.tellp());  // Compress should contain less data;
 
   ch.Clear();
