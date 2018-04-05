@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <unordered_map>
+
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/meta_data.h"
-
-#include <unordered_map>
 
 namespace paddle {
 namespace memory {

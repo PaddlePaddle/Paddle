@@ -49,7 +49,7 @@ void MetadataCache::store(MemoryBlock* block,
   }
 }
 
-void MetadataCache::invalidate(MemoryBlock* block) {
+void MetadataCache::Invalidate(MemoryBlock* block) {
   if (uses_gpu_) {
     cache_.erase(block);
   }
