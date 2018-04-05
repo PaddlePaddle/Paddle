@@ -33,7 +33,6 @@ TEST(to_string, normal) {
 }
 
 TEST(to_string, user_defined) {
-  using UserDefinedClass;
   UserDefinedClass instance;
   ASSERT_EQ(kOutputString, paddle::string::to_string(instance));
 }
