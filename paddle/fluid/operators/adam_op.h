@@ -260,7 +260,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
 
-      using AdamFunctor_ = typename AdamFunctor<T, AdamEigen>::flavour;
+      using Flavour = AdamEigen;
+      using AdamFunctor_ = typename AdamFunctor<T, Flavour>::flavour;
 
       AdamFunctor_ functor(beta1, beta2, epsilon, beta1_pow.template data<T>(),
                            beta2_pow.template data<T>(),
@@ -271,11 +272,15 @@ class AdamOpKernel : public framework::OpKernel<T> {
                            lr.template data<T>(), grad.template data<T>(),
                            param.template data<T>(),
                            param_out.template mutable_data<T>(ctx.GetPlace()));
-      functor(param.numel());
-      //      platform::ForRange<DeviceContext> for_range(
-      //          static_cast<const DeviceContext&>(ctx.device_context()),
-      //          param.numel());
-      //      for_range(functor);
+
+      if (std::is_same<Flavour, AdamPlain>::value) {
+        platform::ForRange<DeviceContext> for_range(
+            static_cast<const DeviceContext&>(ctx.device_context()),
+            param.numel());
+        for_range(functor);
+      } else {
+        functor(param.numel());
+      }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
