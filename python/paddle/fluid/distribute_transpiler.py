@@ -268,6 +268,25 @@ class DistributeTranspiler:
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
+        # process lookup_table_op
+        # 1. check all lookup_table_op is distributed
+        # 2. check all lookup_table_op share the same table.
+        lookup_table_ops = []
+        have_distributed_lookup_table_op = None
+        for op in program.global_block().ops:
+            if op.type == "lookup_table":
+                if have_distributed_lookup_table_op is None:
+                    have_distributed_lookup_table_op = op.attr['is_distributed']
+                # all lookup_table op's attribute is_distributed should be the same
+                assert have_distributed_lookup_table_op == op.attr[
+                    'is_distributed']
+                lookup_table_ops.append(op)
+
+        if have_distributed_lookup_table_op:
+            table_param_name = lookup_table_ops[0].input("W")[0]
+            for lookup_table_op in lookup_table_ops:
+                assert table_param_name == lookup_table_op.input("W")[0]
+
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
         self.origin_program.global_block().delete_ops(self.optimize_ops)
