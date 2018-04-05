@@ -18,10 +18,8 @@
 
 #include "gtest/gtest.h"
 
-using namespace paddle::recordio;
-
 TEST(Chunk, SaveLoad) {
-  Chunk ch;
+  paddle::recordio::Chunk ch;
   ch.Add(std::string("12345", 6));
   ch.Add(std::string("123", 4));
   std::stringstream ss;
@@ -32,7 +30,7 @@ TEST(Chunk, SaveLoad) {
 }
 
 TEST(Chunk, Compressor) {
-  Chunk ch;
+  paddle::recordio::Chunk ch;
   ch.Add(std::string("12345", 6));
   ch.Add(std::string("123", 4));
   ch.Add(std::string("123", 4));
