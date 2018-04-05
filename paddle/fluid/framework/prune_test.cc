@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace f = paddle::framework;
-namespace ops = paddle::operators;
 
 void AddOp(const std::string &type, const f::VariableNameMap &inputs,
            const f::VariableNameMap &outputs, f::AttributeMap attrs,
