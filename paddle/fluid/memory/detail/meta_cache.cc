@@ -23,7 +23,7 @@ namespace detail {
 
 MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 
-Metadata MetadataCache::load(const MemoryBlock* block) {
+Metadata MetadataCache::load(const MemoryBlock* block) const {
   if (uses_gpu_) {
     auto existing_metadata = cache_.find(block);
     PADDLE_ASSERT(existing_metadata->second.check_guards());
@@ -49,7 +49,7 @@ void MetadataCache::store(MemoryBlock* block,
   }
 }
 
-void MetadataCache::Invalidate(MemoryBlock* block) {
+void MetadataCache::invalidate(MemoryBlock* block) {
   if (uses_gpu_) {
     cache_.erase(block);
   }

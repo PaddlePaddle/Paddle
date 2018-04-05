@@ -271,13 +271,13 @@ void BuddyAllocator::CleanIdleFallBackAlloc() {
     MemoryBlock* block = static_cast<MemoryBlock*>(std::get<2>(*pool));
 
     // If no GPU fallback allocator, return
-    if (!system_allocator_->UseGpu() || block->index(cache_) == 0) {
+    if (!system_allocator_->UseGpu() || block->index(&cache_) == 0) {
       return;
     }
 
     VLOG(10) << "Return block " << block << " to fallback allocator.";
 
-    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    system_allocator_->Free(block, max_chunk_size_, block->index(&cache_));
     cache_.invalidate(block);
 
     pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
@@ -313,7 +313,7 @@ void BuddyAllocator::CleanIdleNormalAlloc() {
 
     VLOG(10) << "Return block " << block << " to base allocator.";
 
-    system_allocator_->Free(block, max_chunk_size_, block->index(cache_));
+    system_allocator_->Free(block, max_chunk_size_, block->index(&cache_));
     cache_.invalidate(block);
 
     pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
