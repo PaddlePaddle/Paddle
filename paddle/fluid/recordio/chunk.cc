@@ -19,7 +19,7 @@
 #include <sstream>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "snappystream/include/snappystream.hpp"
+#include "snappy_stream/include/snappystream.hpp"
 #include "zlib/include/zlib.h"
 
 namespace paddle {
