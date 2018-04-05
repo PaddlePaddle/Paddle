@@ -211,7 +211,7 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
   for (size_t level_idx = start_level; level_idx < lod.size(); ++level_idx) {
     PADDLE_ENFORCE_LE(start_idx, end_idx);
     PADDLE_ENFORCE_LT(end_idx, lod[level_idx].size());
-    std::vector<size_t> level_lens;
+    std::vector<int> level_lens;
     for (size_t i = start_idx; i < end_idx; ++i) {
       level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
     }
@@ -231,7 +231,7 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
     for (size_t i = 0; i < lod_length.size(); ++i) {
       lod->emplace_back(1, 0);  // size = 1, value = 0;
     }
-    *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
+    *lod = LoD(lod_length.size(), std::vector<int>({0}));
   }
   for (size_t i = 0; i < lod->size(); ++i) {
     auto &level = (*lod)[i];
@@ -285,7 +285,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     for (uint64_t i = 0; i < lod_level; ++i) {
       uint64_t size;
       is.read(reinterpret_cast<char *>(&size), sizeof(size));
-      std::vector<size_t> tmp(size / sizeof(size_t));
+      std::vector<framework::LoD::value_type::value_type> tmp(
+          size / sizeof(framework::LoD::value_type::value_type));
       is.read(reinterpret_cast<char *>(tmp.data()),
               static_cast<std::streamsize>(size));
       lod[i] = tmp;
@@ -355,7 +356,7 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
 
       LoD my_lod;
       for (auto &l : lod_and_offset.first) {
-        std::vector<size_t> v{0};
+        std::vector<int> v{0};
         for (auto &ll : l) {
           v.push_back(ll + v.back());
         }
