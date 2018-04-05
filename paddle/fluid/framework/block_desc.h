@@ -17,6 +17,7 @@ limitations under the License. */
 #include <deque>
 #include <memory>
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -95,6 +96,8 @@ class BlockDesc {
    * output variable of other ops, we should remain it.
    */
   void RemoveOp(size_t s, size_t e);
+
+  void RemoveVar(const std::string &name) { vars_.erase(name); }
 
   std::vector<OpDesc *> AllOps() const;
 
