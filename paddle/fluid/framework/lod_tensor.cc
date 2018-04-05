@@ -100,8 +100,8 @@ LoD SliceInLevel(const LoD &in, size_t level, size_t elem_begin,
                      in_level.begin() + above_level.back() + 1);
   }
   for (size_t lvl = 0; lvl < res.size(); lvl++) {
-    // to make the first offset equals 0, all the elements minus the first
-    // element
+    // To make the first offset equals 0, we minus all elements by the
+    // first one.
     size_t front = res[lvl].front();
     for (auto &ele : res[lvl]) {
       ele -= front;
