@@ -251,7 +251,7 @@ function(cc_test TARGET_NAME)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags glog)
     add_test(NAME ${TARGET_NAME}
              COMMAND ${TARGET_NAME} ${cc_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endfunction(cc_test)
 
@@ -561,9 +561,9 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python ${py_test_ENVS}
+             COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endfunction()
 
