@@ -150,12 +150,29 @@ void ParallelExecutor::BCastParamsToGPUs(
 #endif
 }
 
-void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
-                           const std::string &fetched_var_name) {
+void ParallelExecutor::Run(
+    const std::vector<std::string> &fetch_tensors,
+    const std::string &fetched_var_name,
+    const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
   platform::RecordBlock b(0);
+  SplitTensorToPlaces(feed_tensors);
   auto fetch_data = member_->executor_->Run(fetch_tensors);
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
       fetch_data;
+}
+
+void ParallelExecutor::SplitTensorToPlaces(
+    const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
+  for (auto it : feed_tensors) {
+    auto lod_tensors = it.second.SplitLoDTensor(member_->places_);
+    for (size_t j = 0; j < member_->places_.size(); ++j) {
+      // TODO(panxy0718): Do I need to delete this var?
+      member_->local_scopes_[j]
+          ->Var(it.first)
+          ->GetMutable<LoDTensor>()
+          ->ShareDataWith(lod_tensors[j]);
+    }
+  }
 }
 
 }  // namespace framework
