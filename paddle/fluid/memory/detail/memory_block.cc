@@ -62,17 +62,17 @@ size_t MemoryBlock::index(const MetadataCache& cache) const {
 
 void MemoryBlock::split(MetadataCache* cache, size_t size) {
   // make sure the split fits
-  PADDLE_ASSERT(total_size(cache) >= size);
+  PADDLE_ASSERT(total_size(*cache) >= size);
 
   // bail out if there is no room for another partition
-  if (total_size(cache) - size <= sizeof(Metadata)) {
+  if (total_size(*cache) - size <= sizeof(Metadata)) {
     return;
   }
 
   // find the position of the split
   void* right_partition = reinterpret_cast<uint8_t*>(this) + size;
 
-  size_t remaining_size = total_size(cache) - size;
+  size_t remaining_size = total_size(*cache) - size;
 
   // Add the new block as a buddy
   auto metadata = cache->load(this);
