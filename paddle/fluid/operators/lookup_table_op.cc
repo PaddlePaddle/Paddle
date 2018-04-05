@@ -93,6 +93,9 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(boolean, default false) "
                   "Sparse update.")
         .SetDefault(false);
+    AddAttr<bool>("is_distributed",
+                  "(boolean, default false) distributed lookup table.")
+        .SetDefault(false);
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "
                      "If the value is -1, it makes no effect to lookup. "

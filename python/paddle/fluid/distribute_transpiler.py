@@ -13,14 +13,13 @@
 # limitations under the License.
 
 from __future__ import print_function
-import framework
-from framework import Program, default_main_program, default_startup_program, Parameter, Variable
-import optimizer
-from layer_helper import LayerHelper
-from distributed_spliter import *
+
 import math
+
+import framework
+from distributed_spliter import *
+from framework import Program, default_main_program, Variable
 from . import core
-import debuger
 
 
 class VarBlock:
@@ -130,6 +129,27 @@ def split_dense_variable(var_list,
     return blocks
 
 
+# TODO
+# 1. replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
+# 2. create inputs and outputs for prefetch_op
+# 3. delete w of lookup_table, delete it's init_op in startup_program
+# 4. create prefetch_block in pserver_program
+# 5. create w in pserver_main_program
+# 6. create init_op for w in pservev_init_program
+# 7. optimize op did not need to change now
+# 8. we only support one table parameter, if there are more than one
+# lookup_table_op with the same table parameter, pserver will
+# only have one lookup_table_op
+
+
+def split_sparse_ids():
+    pass
+
+
+def get_prefetch_outputs():
+    pass
+
+
 class DistributeTranspiler:
     def transpile(self,
                   optimize_ops,
@@ -137,7 +157,7 @@ class DistributeTranspiler:
                   trainer_id,
                   program=None,
                   pservers="127.0.0.1:6174",
-                  trainers=1,
+                  trainer_num=1,
                   split_method=round_robin):
         """
             Transpile the program to distributed data-parallelism programs.
@@ -174,8 +194,8 @@ class DistributeTranspiler:
             :type program: Program
             :param pservers: parameter server endpoints like "m1:6174,m2:6174"
             :type pservers: string
-            :param trainers: total number of workers/trainers in the job
-            :type trainers: int
+            :param trainer_num: total number of workers/trainers in the job
+            :type trainer_num: int
             :param split_method: A function to determin how to split variables
                 to different servers equally.
             :type split_method: function
@@ -183,8 +203,8 @@ class DistributeTranspiler:
         assert (callable(split_method))
         if program is None:
             program = default_main_program()
-        self.program = program
-        self.trainers = trainers
+        self.origin_program = program
+        self.trainer_num = trainer_num
         self.optimize_ops = optimize_ops
         # TODO(typhoonzero): currently trainer_id is fetched from cluster system
         # like Kubernetes, we should port this to use etcd later when developing
@@ -250,10 +270,10 @@ class DistributeTranspiler:
 
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
-        self.program.global_block().delete_ops(self.optimize_ops)
+        self.origin_program.global_block().delete_ops(self.optimize_ops)
         # FIXME(typhoonzero): serialize once will fix error occurs when clone.
-        self.program.__str__()
-        return self.program
+        self.origin_program.__str__()
+        return self.origin_program
 
     def get_pserver_program(self, endpoint):
         """
@@ -284,8 +304,8 @@ class DistributeTranspiler:
                 type=v.type,
                 dtype=v.dtype,
                 shape=v.shape)
-            if self.trainers > 1:
-                for trainer_id in xrange(self.trainers):
+            if self.trainer_num > 1:
+                for trainer_id in xrange(self.trainer_num):
                     var = pserver_program.global_block().create_var(
                         name="%s.trainer_%d" % (orig_var_name, trainer_id),
                         persistable=False,
@@ -382,7 +402,7 @@ class DistributeTranspiler:
             attrs={
                 "OptimizeBlock": optimize_block,
                 "endpoint": endpoint,
-                "Fanin": self.trainers
+                "Fanin": self.trainer_num
             })
         pserver_program.sync_with_cpp()
         return pserver_program
@@ -517,7 +537,7 @@ class DistributeTranspiler:
     def _append_split_op(self, program, gradblocks):
         # Split variables that need to be split and append respective ops
         add_suffix = False
-        if self.trainers > 1:
+        if self.trainer_num > 1:
             add_suffix = True
         var_mapping = self._create_vars_from_blocklist(
             program, gradblocks, add_trainer_suffix=add_suffix)
@@ -608,9 +628,9 @@ class DistributeTranspiler:
                     return
                 merged_var = \
                     pserver_block.vars[self._orig_varname(grad_block.name)]
-                if self.trainers > 1:
+                if self.trainer_num > 1:
                     vars2merge = []
-                    for i in xrange(self.trainers):
+                    for i in xrange(self.trainer_num):
                         per_trainer_name = "%s.trainer_%d" % \
                         (self._orig_varname(grad_block.name), i)
                         vars2merge.append(pserver_block.vars[per_trainer_name])
@@ -624,7 +644,7 @@ class DistributeTranspiler:
                             type="scale",
                             inputs={"X": merged_var},
                             outputs={"Out": merged_var},
-                            attrs={"scale": 1.0 / float(self.trainers)})
+                            attrs={"scale": 1.0 / float(self.trainer_num)})
                 new_inputs[key] = merged_var
             elif key == "Param":
                 # param is already created on global program
@@ -660,7 +680,7 @@ class DistributeTranspiler:
             new_shape = None
             if key in ["Param", "Grad", "LearningRate"]:
                 continue
-            var = self.program.global_block().vars[opt_op.input(key)[0]]
+            var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             # update accumulator variable shape
             param_shape = new_inputs["Param"].shape
             new_shape = self._get_optimizer_input_shape(opt_op.type, key,
@@ -673,8 +693,8 @@ class DistributeTranspiler:
             new_inputs[key] = tmpvar
 
         # change output's ParamOut variable
-        outputs = self._get_output_map_from_op(self.program.global_block().vars,
-                                               opt_op)
+        outputs = self._get_output_map_from_op(
+            self.origin_program.global_block().vars, opt_op)
         outputs["ParamOut"] = new_inputs["Param"]
 
         optimize_block.append_op(
@@ -686,8 +706,8 @@ class DistributeTranspiler:
     def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
         program = optimize_block.program
         # Append the ops for parameters that do not need to be optimized/updated
-        inputs = self._get_input_map_from_op(self.program.global_block().vars,
-                                             opt_op)
+        inputs = self._get_input_map_from_op(
+            self.origin_program.global_block().vars, opt_op)
         for varlist in inputs.itervalues():
             if not isinstance(varlist, list):
                 varlist = [varlist]
@@ -700,8 +720,8 @@ class DistributeTranspiler:
                         dtype=var.dtype,
                         shape=var.shape)
 
-        outputs = self._get_output_map_from_op(self.program.global_block().vars,
-                                               opt_op)
+        outputs = self._get_output_map_from_op(
+            self.origin_program.global_block().vars, opt_op)
 
         for varlist in outputs.itervalues():
             if not isinstance(varlist, list):
@@ -814,7 +834,7 @@ class DistributeTranspiler:
 
         find_ops = []
         # find ops which output is lr var
-        block = self.program.global_block()
+        block = self.origin_program.global_block()
         for op in block.ops:
             if set(op.output_arg_names) & lr_vars:
                 find_ops.append(op)
