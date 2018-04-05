@@ -23,7 +23,11 @@ include (ExternalProject)
 
 SET(SNAPPYSTREAM_SOURCES_DIR ${THIRD_PARTY_PATH}/snappy_stream)
 SET(SNAPPYSTREAM_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy_stream)
-INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install)
+
+# For #include "snappy_stream/include/snappystream.hpp" in PaddlePaddle source code.
+INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) 
+# For #include <snappystream_internal.hpp> in snappy stream source code.
+INCLUDE_DIRECTORIES(${SNAPPYSTREAM_INSTALL_DIR}/include) 
 
 ExternalProject_Add(
         extern_snappystream
