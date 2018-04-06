@@ -20,10 +20,8 @@ limitations under the License. */
 #include "paddle/math/MathUtils.h"
 #include "paddle/testing/TestUtil.h"
 
-using namespace paddle;
-
-void setPoolConfig(TestConfig* config,
-                   PoolConfig* pool,
+void setPoolConfig(paddle::TestConfig* config,
+                   paddle::PoolConfig* pool,
                    const string& poolType) {
   (*config).biasSize = 0;
   (*config).layerConfig.set_type("pool");
@@ -42,21 +40,23 @@ void setPoolConfig(TestConfig* config,
   pool->set_stride(sw);
   pool->set_stride_y(sh);
 
-  int ow = outputSize(pool->img_size(), kw, pw, sw, /* caffeMode */ false);
-  int oh = outputSize(pool->img_size_y(), kh, ph, sh, /* caffeMode */ false);
+  int ow =
+      paddle::outputSize(pool->img_size(), kw, pw, sw, /* caffeMode */ false);
+  int oh =
+      paddle::outputSize(pool->img_size_y(), kh, ph, sh, /* caffeMode */ false);
   pool->set_output_x(ow);
   pool->set_output_y(oh);
 }
 
-LayerPtr doOneUpsampleTest(MatrixPtr& inputMat,
-                           const string& poolType,
-                           bool use_gpu,
-                           real* tempGradData) {
+paddle::LayerPtr doOneUpsampleTest(const paddle::MatrixPtr& inputMat,
+                                   const string& poolType,
+                                   bool use_gpu,
+                                   real* tempGradData) {
   /* prepare maxPoolWithMaskLayer */
-  TestConfig config;
-  config.inputDefs.push_back({INPUT_DATA, "layer_0", 128, 0});
-  LayerInputConfig* input = config.layerConfig.add_inputs();
-  PoolConfig* pool = input->mutable_pool_conf();
+  paddle::TestConfig config;
+  config.inputDefs.push_back({paddle::INPUT_DATA, "layer_0", 128, 0});
+  paddle::LayerInputConfig* input = config.layerConfig.add_inputs();
+  paddle::PoolConfig* pool = input->mutable_pool_conf();
 
   pool->set_img_size(8);
   pool->set_img_size_y(8);
@@ -66,9 +66,9 @@ LayerPtr doOneUpsampleTest(MatrixPtr& inputMat,
 
   config.layerConfig.set_name("MaxPoolWithMask");
 
-  std::vector<DataLayerPtr> dataLayers;
-  LayerMap layerMap;
-  vector<Argument> datas;
+  std::vector<paddle::DataLayerPtr> dataLayers;
+  paddle::LayerMap layerMap;
+  vector<paddle::Argument> datas;
 
   initDataLayer(config,
                 &dataLayers,
@@ -82,20 +82,20 @@ LayerPtr doOneUpsampleTest(MatrixPtr& inputMat,
   dataLayers[0]->getOutputValue()->copyFrom(*inputMat);
 
   FLAGS_use_gpu = use_gpu;
-  std::vector<ParameterPtr> parameters;
-  LayerPtr maxPoolingWithMaskOutputLayer;
+  std::vector<paddle::ParameterPtr> parameters;
+  paddle::LayerPtr maxPoolingWithMaskOutputLayer;
   initTestLayer(config, &layerMap, &parameters, &maxPoolingWithMaskOutputLayer);
-  maxPoolingWithMaskOutputLayer->forward(PASS_GC);
+  maxPoolingWithMaskOutputLayer->forward(paddle::PASS_GC);
 
   /* prepare the upsample layer */
-  LayerConfig upsampleLayerConfig;
+  paddle::LayerConfig upsampleLayerConfig;
   upsampleLayerConfig.set_type("upsample");
-  LayerInputConfig* input1 = upsampleLayerConfig.add_inputs();
+  paddle::LayerInputConfig* input1 = upsampleLayerConfig.add_inputs();
   upsampleLayerConfig.add_inputs();
 
-  UpsampleConfig* upsampleConfig = input1->mutable_upsample_conf();
+  paddle::UpsampleConfig* upsampleConfig = input1->mutable_upsample_conf();
   upsampleConfig->set_scale(2);
-  ImageConfig* imageConfig = upsampleConfig->mutable_image_conf();
+  paddle::ImageConfig* imageConfig = upsampleConfig->mutable_image_conf();
   imageConfig->set_channels(2);
   imageConfig->set_img_size(4);
   imageConfig->set_img_size_y(4);
@@ -103,17 +103,18 @@ LayerPtr doOneUpsampleTest(MatrixPtr& inputMat,
   upsampleLayerConfig.set_name("upsample");
 
   for (size_t i = 0; i < 2; i++) {
-    LayerInputConfig& inputTemp = *(upsampleLayerConfig.mutable_inputs(i));
+    paddle::LayerInputConfig& inputTemp =
+        *(upsampleLayerConfig.mutable_inputs(i));
     inputTemp.set_input_layer_name("MaxPoolWithMask");
   }
 
-  LayerPtr upsampleLayer;
-  ParameterMap parameterMap;
-  upsampleLayer = Layer::create(upsampleLayerConfig);
+  paddle::LayerPtr upsampleLayer;
+  paddle::ParameterMap parameterMap;
+  upsampleLayer = paddle::Layer::create(upsampleLayerConfig);
   layerMap[upsampleLayerConfig.name()] = upsampleLayer;
   upsampleLayer->init(layerMap, parameterMap);
   upsampleLayer->setNeedGradient(true);
-  upsampleLayer->forward(PASS_GC);
+  upsampleLayer->forward(paddle::PASS_GC);
   upsampleLayer->getOutputGrad()->copyFrom(tempGradData, 128);
   upsampleLayer->backward();
 
@@ -122,31 +123,31 @@ LayerPtr doOneUpsampleTest(MatrixPtr& inputMat,
 
 TEST(Layer, maxPoolingWithMaskOutputLayerFwd) {
   bool useGpu = false;
-  MatrixPtr inputMat;
-  MatrixPtr inputGPUMat;
-  MatrixPtr tempGradMat;
+  paddle::MatrixPtr inputMat;
+  paddle::MatrixPtr inputGPUMat;
+  paddle::MatrixPtr tempGradMat;
 
-  inputMat = Matrix::create(1, 128, false, useGpu);
+  inputMat = paddle::Matrix::create(1, 128, false, useGpu);
   inputMat->randomizeUniform();
 
-  tempGradMat = Matrix::create(1, 128, false, useGpu);
+  tempGradMat = paddle::Matrix::create(1, 128, false, useGpu);
   tempGradMat->randomizeUniform();
-  real* data = inputMat->getData();
   real* tempGradData = tempGradMat->getData();
 
-  LayerPtr upsampleLayerCPU =
+  paddle::LayerPtr upsampleLayerCPU =
       doOneUpsampleTest(inputMat, "max-pool-with-mask", useGpu, tempGradData);
 
 #ifdef PADDLE_WITH_CUDA
   useGpu = true;
-  inputGPUMat = Matrix::create(1, 128, false, useGpu);
+  real* data = inputMat->getData();
+  inputGPUMat = paddle::Matrix::create(1, 128, false, useGpu);
   inputGPUMat->copyFrom(data, 128);
-  LayerPtr upsampleLayerGPU = doOneUpsampleTest(
+  paddle::LayerPtr upsampleLayerGPU = doOneUpsampleTest(
       inputGPUMat, "max-pool-with-mask", useGpu, tempGradData);
-  checkMatrixEqual(upsampleLayerCPU->getOutput("").value,
-                   upsampleLayerGPU->getOutput("").value);
+  paddle::checkMatrixEqual(upsampleLayerCPU->getOutput("").value,
+                           upsampleLayerGPU->getOutput("").value);
 
-  checkMatrixEqual(upsampleLayerCPU->getPrev(0)->getOutputGrad(),
-                   upsampleLayerGPU->getPrev(0)->getOutputGrad());
+  paddle::checkMatrixEqual(upsampleLayerCPU->getPrev(0)->getOutputGrad(),
+                           upsampleLayerGPU->getPrev(0)->getOutputGrad());
 #endif
 }
