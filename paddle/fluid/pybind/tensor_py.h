@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include <tuple>
+#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -141,7 +143,7 @@ void PyCPUTensorSetFromArray(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
   self.Resize(framework::make_ddim(dims));
@@ -150,6 +152,8 @@ void PyCPUTensorSetFromArray(
 }
 
 template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
 void PyCPUTensorSetFromArray(
     framework::Tensor &self,
     py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
@@ -157,7 +161,7 @@ void PyCPUTensorSetFromArray(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
   self.Resize(framework::make_ddim(dims));
@@ -174,7 +178,7 @@ void PyCUDATensorSetFromArray(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
   self.Resize(framework::make_ddim(dims));
@@ -188,6 +192,8 @@ void PyCUDATensorSetFromArray(
 }
 
 template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
 void PyCUDATensorSetFromArray(
     framework::Tensor &self,
     py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
@@ -195,7 +201,7 @@ void PyCUDATensorSetFromArray(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
   self.Resize(framework::make_ddim(dims));
@@ -207,6 +213,40 @@ void PyCUDATensorSetFromArray(
   paddle::platform::GpuMemcpyAsync(dst, array.data(),
                                    sizeof(uint16_t) * array.size(),
                                    cudaMemcpyHostToDevice, dev_ctx->stream());
+}
+
+template <typename T>
+void PyCUDAPinnedTensorSetFromArray(
+    framework::Tensor &self,
+    py::array_t<T, py::array::c_style | py::array::forcecast> array,
+    const paddle::platform::CUDAPinnedPlace &place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back(static_cast<int>(array.shape()[i]));
+  }
+
+  self.Resize(framework::make_ddim(dims));
+  auto *dst = self.mutable_data<T>(place);
+  std::memcpy(dst, array.data(), sizeof(T) * array.size());
+}
+
+template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
+void PyCUDAPinnedTensorSetFromArray(
+    framework::Tensor &self,
+    py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
+    const paddle::platform::CUDAPinnedPlace &place) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (size_t i = 0; i < array.ndim(); ++i) {
+    dims.push_back(static_cast<int>(array.shape()[i]));
+  }
+
+  self.Resize(framework::make_ddim(dims));
+  auto *dst = self.mutable_data<platform::float16>(place);
+  std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 #endif
 
