@@ -78,7 +78,7 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
       for (int64_t i = 0; i < batch_size; ++i) {
         PADDLE_ASSERT(label_data[i] >= 0 || label_data[i] < class_num);
         int64_t index = i * class_num + label_data[i];
-        dx_data[index] = -dy_data[i] / x_data[index];
+        dx_data[index] = math::TolerableValue<T>()(-dy_data[i] / x_data[index]);
       }
     }
   }

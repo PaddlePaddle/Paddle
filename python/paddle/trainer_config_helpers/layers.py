@@ -148,6 +148,7 @@ __all__ = [
     'resize_layer',
     'sub_seq_layer',
     'scale_sub_region_layer',
+    'upsample_layer',
     'factorization_machine',
 ]
 
@@ -166,6 +167,7 @@ class LayerType(object):
     SEQUENCE_RESHAPE = 'seqreshape'
     POOLING_MAX = 'max'
     POOLING_AVG = 'average'
+    UPSAMPLE_LAYER = 'upsample'
     FC_LAYER = 'fc'
     COST = 'cost'
     COSINE_SIM_VEC = 'cos_vm'
@@ -2747,17 +2749,17 @@ def img_pool_layer(input,
 
     ..  math::
 
-        w & = 1 + \\frac{ceil(input\_width + 2 * padding - pool\_size)}{stride}
+        w & = 1 + ceil(\\frac{input\_width + 2 * padding - pool\_size}{stride})
 
-        h & = 1 + \\frac{ceil(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        h & = 1 + ceil(\\frac{input\_height + 2 * padding\_y - pool\_size\_y}{stride\_y})
 
     - ceil_mode=False:
 
     ..  math::
 
-        w & = 1 + \\frac{floor(input\_width + 2 * padding - pool\_size)}{stride}
+        w & = 1 + floor(\\frac{input\_width + 2 * padding - pool\_size}{stride})
 
-        h & = 1 + \\frac{floor(input\_height + 2 * padding\_y - pool\_size\_y)}{stride\_y}
+        h & = 1 + floor(\\frac{input\_height + 2 * padding\_y - pool\_size\_y}{stride\_y})
 
     The example usage is:
 
@@ -3012,6 +3014,83 @@ def img_pool3d_layer(input,
         parents=[input],
         num_filters=num_channels,
         size=l.config.size)
+
+
+@wrap_name_default("upsample")
+@layer_support()
+def upsample_layer(input,
+                   name=None,
+                   scale=None,
+                   scale_y=None,
+                   upsample_size=None,
+                   upsample_size_y=None,
+                   pad_out_x=False,
+                   pad_out_y=False,
+                   layer_attr=None):
+    """
+    The DePooling process.
+    Inputs should be a list of length 2. The first input is a layer,
+    and the second input should be the MaxWithMaskPoolingLayer
+
+    The example usage is:
+
+    ..  code-block:: python
+        pool1 = paddle.v2.layer.img_pool(input=input, pool_size=2, stride=2,
+                                        pool_type=paddle.pooling.MaxWithMask())
+        upsample = paddle.v2.layer.upsample(input=[layer1, pool1])
+
+    :param name: The name of this layer. It is optional.
+    :type name: basestring
+    :param input: contains an input layer and a MaxWithMaskPoolingLayer
+    :type input: list | tuple | collections.Sequence
+    :param scale: outputSize =  scale * inputSize
+    :type scale: int | list | tuple | .
+    :param scale_y: scale_y will be equal to scale, if it's value is None, 
+    :type scale: int | None. 
+    :param upsample_size: specify the outputSize.
+    :type upsample_size: int | list | tuple.
+    :param upsample_size_y: specify the y dimension outputSize.
+    :type upsample_size_y: int.
+    :param pad_out_x: specify exact x dimension size. This parameter only works when scale is 2
+    :type pad_out_x: bool.
+    :param pad_out_y: specify exact y dimension size. This parameter only works when scale is 2
+    :type pad_out_y: bool.
+    :param layer_attr: Extra Layer Attribute.
+    :type layer_attr: ExtraLayerAttribute
+    :return: LayerOutput object.
+    :rtype: LayerOutput
+    """
+
+    assert (scale is not None) or (upsample_size is not None), \
+            'scale or upsample_size, there must be one to be designated'
+
+    assert len(input) == 2, 'layer input size must be 2'
+
+    assert input[1].layer_type == LayerType.POOL_LAYER, \
+            'the second input should be the MaxPoolWithMaskLayer'
+
+    scale_y = scale \
+            if scale is not None else scale_y
+    upsample_size_y = upsample_size  \
+            if upsample_size is not None else upsample_size_y
+
+    layer_type = LayerType.UPSAMPLE_LAYER
+
+    layer = Layer(
+        name=name,
+        type=layer_type,
+        inputs=[
+            Input(
+                input[0].name,
+                upsample=Upsample(scale, scale_y, pad_out_x, pad_out_y,
+                                  upsample_size, upsample_size_y)),
+            Input(input[1].name)
+        ],
+        **ExtraLayerAttribute.to_kwargs(layer_attr))
+
+    sz = layer.config.size
+
+    return LayerOutput(name, layer_type=layer_type, parents=input, size=sz)
 
 
 @wrap_name_default("spp")
