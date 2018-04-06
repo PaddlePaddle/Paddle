@@ -20,17 +20,6 @@ from paddle.fluid.op import Operator
 from paddle.fluid.framework import grad_var_name
 
 
-def get_backward_op(scope, op, no_grad_set):
-    backward_op = core.Operator.backward(op, no_grad_set)
-    for input in backward_op.input_vars():
-        var = scope.var(input)
-        var.get_tensor()
-    for output in backward_op.output_vars():
-        var = scope.var(output)
-        var.get_tensor()
-    return backward_op
-
-
 def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
     x_shape = x.shape
     if len(x_shape) == 2:
@@ -504,31 +493,6 @@ class TestBatchNormOpTraining(OpTest):
             self.__assert_close(variance_out_tensor, variance_out,
                                 "variance_out", atol)
             print "op test forward passed: ", str(place), data_layout
-
-            # run backward
-            batch_norm_op_grad = get_backward_op(scope, batch_norm_op, set())
-            set_output_grad(
-                scope,
-                ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
-                place,
-                feed_dict={"y_out": y_grad})
-            batch_norm_op_grad.run(scope, place)
-
-            x_grad_tensor = create_or_get_tensor(scope,
-                                                 grad_var_name("x_val"), None,
-                                                 place)
-            scale_grad_tensor = create_or_get_tensor(scope,
-                                                     grad_var_name("scale_val"),
-                                                     None, place)
-            bias_grad_tensor = create_or_get_tensor(scope,
-                                                    grad_var_name("bias_val"),
-                                                    None, place)
-
-            # check gradient output
-            self.__assert_close(x_grad_tensor, x_grad_ref, "x_grad")
-            self.__assert_close(scale_grad_tensor, scale_grad_ref, "scale_grad")
-            self.__assert_close(bias_grad_tensor, bias_grad_ref, "bias_grad")
-            print "op test backward passed: ", str(place), data_layout
 
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
