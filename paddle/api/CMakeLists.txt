@@ -89,16 +89,17 @@ SWIG_LINK_LIBRARIES(swig_paddle
     ${START_END}
 )
 
-add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/paddle/py_paddle/_swig_paddle.so
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PADDLE_SOURCE_DIR}/paddle/py_paddle
-    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PADDLE_SOURCE_DIR}/paddle/py_paddle
-    COMMAND ${CMAKE_COMMAND} -E touch .timestamp
+add_custom_command(OUTPUT ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle.so
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/py_paddle
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/swig_paddle.py ${PADDLE_BINARY_DIR}/python/py_paddle
+    COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/_swig_paddle.so ${PADDLE_BINARY_DIR}/python/py_paddle
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/.timestamp
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/paddle
     DEPENDS _swig_paddle
 )
 
 # TODO(yuyang18) : make wheel name calculated by cmake
-add_custom_target(python_api_wheel ALL DEPENDS ${PADDLE_SOURCE_DIR}/paddle/py_paddle/_swig_paddle.so)
+add_custom_target(python_api_wheel ALL DEPENDS ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle.so)
 
 if(WITH_TESTING)
     IF(NOT PY_PIP_FOUND)

@@ -144,7 +144,7 @@ def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
     return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
 
 
-def SE_ResNeXt152Small(batch_size=2, use_feed=False):
+def SE_ResNeXt50Small(batch_size=2, use_feed=False):
     assert not use_feed, "SE_ResNeXt doesn't support feed yet"
 
     img = fluid.layers.fill_constant(
@@ -161,9 +161,9 @@ def SE_ResNeXt152Small(batch_size=2, use_feed=False):
     conv = fluid.layers.pool2d(
         input=conv, pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
-    cardinality = 64
+    cardinality = 32
     reduction_ratio = 16
-    depth = [3, 8, 36, 3]
+    depth = [3, 4, 6, 3]
     num_filters = [128, 256, 512, 1024]
 
     for block in range(len(depth)):
@@ -290,7 +290,7 @@ class TestResnet(TestParallelExecutorBase):
         batch_size = 2
         self.check_network_convergence(
             functools.partial(
-                SE_ResNeXt152Small, batch_size=batch_size),
+                SE_ResNeXt50Small, batch_size=batch_size),
             iter=20,
             batch_size=batch_size)
 
