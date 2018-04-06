@@ -17,8 +17,10 @@ def hash_name(varlist, pserver_endpoints):
     """
     hash variable names to several endpoints.
 
-    :param varlist: a list of Variables
-    :return: a map of pserver endpoint -> varname
+    Args:
+        varlist(list): a list of Variables
+
+    Returns(dict): a map of pserver endpoint -> varname
     """
 
     def _hash_block(block_str, total):
@@ -34,9 +36,14 @@ def hash_name(varlist, pserver_endpoints):
 
 def round_robin(varlist, pserver_endpoints):
     """
-    distribute variables to several endpoints.
+    Distribute variables to several endpoints.
+    Args:
+        varlist(list): a list of variables
+        pserver_endpoints(list): a list of pserver endpoints
+
+    Returns(list[int]): the endpoint for each variable
     """
-    assert (len(varlist) > len(pserver_endpoints))
+    assert (len(varlist) >= len(pserver_endpoints))
 
     eplist = []
     pserver_idx = 0
