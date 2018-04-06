@@ -18,9 +18,8 @@ namespace paddle {
 namespace recordio {
 
 class Writer {
-public:
-  Writer(std::ostream* sout,
-         Compressor compressor,
+ public:
+  Writer(std::ostream* sout, Compressor compressor,
          size_t max_num_records_in_chunk = 1000)
       : stream_(*sout),
         max_num_records_in_chunk_(max_num_records_in_chunk),
@@ -32,7 +31,7 @@ public:
 
   ~Writer();
 
-private:
+ private:
   std::ostream& stream_;
   size_t max_num_records_in_chunk_;
   Chunk cur_chunk_;

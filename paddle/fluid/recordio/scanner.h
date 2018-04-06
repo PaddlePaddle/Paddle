@@ -21,7 +21,7 @@ namespace paddle {
 namespace recordio {
 
 class Scanner {
-public:
+ public:
   explicit Scanner(std::unique_ptr<std::istream>&& stream);
 
   explicit Scanner(const std::string& filename);
@@ -32,7 +32,7 @@ public:
 
   bool HasNext() const;
 
-private:
+ private:
   std::unique_ptr<std::istream> stream_;
   Chunk cur_chunk_;
   size_t offset_;
