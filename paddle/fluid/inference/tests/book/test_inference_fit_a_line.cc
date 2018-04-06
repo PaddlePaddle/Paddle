@@ -30,8 +30,8 @@ TEST(inference, fit_a_line) {
   // The second dim of the input tensor should be 13
   // The input data should be >= 0
   int64_t batch_size = 10;
-  SetupTensor<float>(
-      input, {batch_size, 13}, static_cast<float>(0), static_cast<float>(10));
+  SetupTensor<float>(input, {batch_size, 13}, static_cast<float>(0),
+                     static_cast<float>(10));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 

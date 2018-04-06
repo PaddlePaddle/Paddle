@@ -58,8 +58,8 @@ static void ReadStreamByBuf(std::istream& in, size_t limit, Callback callback) {
  * Copy stream in to another stream
  */
 static void PipeStream(std::istream& in, std::ostream& os) {
-  ReadStreamByBuf(
-      in, 0, [&os](const char* buf, size_t len) { os.write(buf, len); });
+  ReadStreamByBuf(in, 0,
+                  [&os](const char* buf, size_t len) { os.write(buf, len); });
 }
 
 /**
@@ -68,8 +68,8 @@ static void PipeStream(std::istream& in, std::ostream& os) {
 static uint32_t Crc32Stream(std::istream& in, size_t limit = 0) {
   uint32_t crc = static_cast<uint32_t>(crc32(0, nullptr, 0));
   ReadStreamByBuf(in, limit, [&crc](const char* buf, size_t len) {
-    crc = static_cast<uint32_t>(crc32(
-        crc, reinterpret_cast<const Bytef*>(buf), static_cast<uInt>(len)));
+    crc = static_cast<uint32_t>(crc32(crc, reinterpret_cast<const Bytef*>(buf),
+                                      static_cast<uInt>(len)));
   });
   return crc;
 }
