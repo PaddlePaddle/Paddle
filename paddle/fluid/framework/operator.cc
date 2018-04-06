@@ -35,6 +35,17 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
+proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
+  if (var->IsType<framework::LoDTensor>()) {
+    return framework::ToDataType(var->Get<framework::LoDTensor>().type());
+  } else if (var->IsType<framework::SelectedRows>()) {
+    return framework::ToDataType(
+        var->Get<framework::SelectedRows>().value().type());
+  } else {
+    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
+  }
+}
+
 static DDim GetDims(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
@@ -517,6 +528,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // do data transform
   Scope& new_scope = scope.NewScope();
 
+  std::vector<std::string> inplace_vars;
   for (auto& var_name_item : this->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       auto* var = scope.FindVar(var_name);
@@ -529,10 +541,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
             auto out_var_names = OutputVars(true);
             if (std::find(out_var_names.begin(), out_var_names.end(),
                           var_name) != out_var_names.end()) {
-              PADDLE_THROW(
-                  "var %s is both input and output, "
-                  "does not support transform",
-                  var_name);
+              inplace_vars.push_back(var_name);
             }
             VLOG(3) << "Transform Variable " << var_name << " from "
                     << kernel_type_for_var << " to " << expected_kernel_key;
@@ -550,6 +559,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
   kernel_iter->second->Compute(
       ExecutionContext(*this, new_scope, *new_dev_ctx));
+
+  for (auto& var_name : inplace_vars) {
+    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
+    auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
+    auto* transformed_tensor = GetTensorFromVar(new_scope.FindVar(var_name));
+    original_tensor->ShareDataWith(*transformed_tensor);
+  }
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {

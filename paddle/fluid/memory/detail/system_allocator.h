@@ -21,8 +21,9 @@ namespace memory {
 namespace detail {
 
 /**
- * \brief SystemAllocator is the parent class of CPUAllocator and GPUAllocator.
- *        A BuddyAllocator object uses a SystemAllocator* pointing to the
+ * \brief SystemAllocator is the parent class of CPUAllocator,
+ *        CUDAPinnedAllocator and GPUAllocator. A BuddyAllocator
+ *        object uses a SystemAllocator* pointing to the
  *        underlying system allocator.
  */
 class SystemAllocator {
@@ -43,6 +44,8 @@ class CPUAllocator : public SystemAllocator {
 #ifdef PADDLE_WITH_CUDA
 class GPUAllocator : public SystemAllocator {
  public:
+  explicit GPUAllocator(int gpu_id) : gpu_id_(gpu_id) {}
+
   virtual void* Alloc(size_t& index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);
   virtual bool UseGpu() const;
@@ -50,6 +53,17 @@ class GPUAllocator : public SystemAllocator {
  private:
   size_t gpu_alloc_size_ = 0;
   size_t fallback_alloc_size_ = 0;
+  int gpu_id_;
+};
+
+class CUDAPinnedAllocator : public SystemAllocator {
+ public:
+  virtual void* Alloc(size_t& index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
+
+ private:
+  size_t cuda_pinnd_alloc_size_ = 0;
 };
 #endif
 

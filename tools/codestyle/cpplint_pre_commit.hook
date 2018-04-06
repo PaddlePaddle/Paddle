@@ -1,0 +1,12 @@
+#!/bin/bash
+
+TOTAL_ERRORS=0
+
+# The trick to remove deleted files: https://stackoverflow.com/a/2413151
+for file in $(git diff --cached --name-status | awk '$1 != "D" {print $2}'); do
+    cpplint $file;
+    TOTAL_ERRORS=$(expr $TOTAL_ERRORS + $?);
+done
+
+exit $TOTAL_ERRORS
+

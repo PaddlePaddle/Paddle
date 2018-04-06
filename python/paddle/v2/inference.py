@@ -15,7 +15,7 @@
 import numpy
 import collections
 import topology
-import minibatch
+import paddle
 import cPickle
 
 __all__ = ['infer', 'Inference']
@@ -80,7 +80,7 @@ class Inference(object):
             for each_sample in input:
                 yield each_sample
 
-        reader = minibatch.batch(__reader_impl__, batch_size=batch_size)
+        reader = paddle.batch(__reader_impl__, batch_size=batch_size)
 
         self.__gradient_machine__.start()
         for data_batch in reader():
