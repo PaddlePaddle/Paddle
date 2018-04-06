@@ -143,7 +143,7 @@ void PyCPUTensorSetFromArray(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
   self.Resize(framework::make_ddim(dims));
@@ -152,6 +152,8 @@ void PyCPUTensorSetFromArray(
 }
 
 template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
 void PyCPUTensorSetFromArray(
     framework::Tensor &self,
     py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
@@ -159,7 +161,7 @@ void PyCPUTensorSetFromArray(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
   self.Resize(framework::make_ddim(dims));
@@ -176,7 +178,7 @@ void PyCUDATensorSetFromArray(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
   self.Resize(framework::make_ddim(dims));
@@ -190,6 +192,8 @@ void PyCUDATensorSetFromArray(
 }
 
 template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
 void PyCUDATensorSetFromArray(
     framework::Tensor &self,
     py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,
@@ -197,7 +201,7 @@ void PyCUDATensorSetFromArray(
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (size_t i = 0; i < array.ndim(); ++i) {
-    dims.push_back((int)array.shape()[i]);
+    dims.push_back(static_cast<int>(array.shape()[i]));
   }
 
   self.Resize(framework::make_ddim(dims));
@@ -228,6 +232,8 @@ void PyCUDAPinnedTensorSetFromArray(
 }
 
 template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
 void PyCUDAPinnedTensorSetFromArray(
     framework::Tensor &self,
     py::array_t<uint16_t, py::array::c_style | py::array::forcecast> array,

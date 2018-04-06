@@ -132,8 +132,7 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
                platform::is_cuda_pinned_place(place)) {
 #ifndef PADDLE_WITH_CUDA
       PADDLE_THROW(
-          "'CUDAPlace' or 'CUDAPinnedPlace' is not supported in CPU only "
-          "device.");
+          "CUDAPlace or CUDAPinnedPlace is not supported in CPU-only mode.");
     }
 #else
       if (platform::is_gpu_place(place)) {
@@ -153,7 +152,7 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
 
 inline void* Tensor::mutable_data(platform::Place place) {
   PADDLE_ENFORCE(this->holder_ != nullptr,
-                 "Cannot invoke mutable data if current hold nothing");
+                 "Cannot invoke mutable data if current hold nothing.");
   return mutable_data(place, holder_->type());
 }
 
