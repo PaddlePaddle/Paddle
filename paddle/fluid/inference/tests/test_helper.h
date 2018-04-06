@@ -19,9 +19,7 @@ limitations under the License. */
 
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor& input,
-                 paddle::framework::DDim dims,
-                 T lower,
-                 T upper) {
+                 paddle::framework::DDim dims, T lower, T upper) {
   srand(time(0));
   T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
   for (int i = 0; i < input.numel(); ++i) {
@@ -33,8 +31,7 @@ void SetupTensor(paddle::framework::LoDTensor& input,
 
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor& input,
-                 paddle::framework::DDim dims,
-                 std::vector<T>& data) {
+                 paddle::framework::DDim dims, std::vector<T>& data) {
   CHECK_EQ(paddle::framework::product(dims), static_cast<int64_t>(data.size()));
   T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
   memcpy(input_ptr, data.data(), input.numel() * sizeof(T));
@@ -42,9 +39,7 @@ void SetupTensor(paddle::framework::LoDTensor& input,
 
 template <typename T>
 void SetupLoDTensor(paddle::framework::LoDTensor& input,
-                    paddle::framework::LoD& lod,
-                    T lower,
-                    T upper) {
+                    paddle::framework::LoD& lod, T lower, T upper) {
   input.set_lod(lod);
   int dim = lod[0][lod[0].size() - 1];
   SetupTensor<T>(input, {dim, 1}, lower, upper);
@@ -52,8 +47,7 @@ void SetupLoDTensor(paddle::framework::LoDTensor& input,
 
 template <typename T>
 void SetupLoDTensor(paddle::framework::LoDTensor& input,
-                    paddle::framework::DDim dims,
-                    paddle::framework::LoD lod,
+                    paddle::framework::DDim dims, paddle::framework::LoD lod,
                     std::vector<T>& data) {
   const size_t level = lod.size() - 1;
   CHECK_EQ(dims[0], static_cast<int64_t>((lod[level]).back()));
@@ -92,8 +86,7 @@ template <typename Place>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
-                   const int repeat = 1,
-                   const bool is_combined = false) {
+                   const int repeat = 1, const bool is_combined = false) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
@@ -132,11 +125,9 @@ void TestInference(const std::string& dirname,
       //  `fluid.io.save_inference_model`.
       std::string prog_filename = "__model_combined__";
       std::string param_filename = "__params_combined__";
-      inference_program =
-          paddle::inference::Load(executor,
-                                  *scope,
-                                  dirname + "/" + prog_filename,
-                                  dirname + "/" + param_filename);
+      inference_program = paddle::inference::Load(
+          executor, *scope, dirname + "/" + prog_filename,
+          dirname + "/" + param_filename);
     } else {
       // Parameters are saved in separate files sited in the specified
       // `dirname`.
