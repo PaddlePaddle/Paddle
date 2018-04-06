@@ -54,5 +54,7 @@ add_library(snappystream STATIC IMPORTED GLOBAL)
 set_property(TARGET snappystream PROPERTY IMPORTED_LOCATION
         "${SNAPPYSTREAM_INSTALL_DIR}/lib/libsnappystream.a")
 
-include_directories(${SNAPPYSTREAM_INCLUDE_DIR})
+include_directories(${SNAPPYSTREAM_INCLUDE_DIR}) # For snappysteam to include its own headers.
+include_directories(${THIRD_PARTY_PATH}/install) # For Paddle to include snappy stream headers.
+
 add_dependencies(snappystream extern_snappystream)
