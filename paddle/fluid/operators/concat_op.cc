@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
+
+#include <string>
 #include <vector>
 
 namespace paddle {
@@ -33,7 +35,7 @@ class ConcatOp : public framework::OperatorWithKernel {
     size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
     const size_t n = ins.size();
 
-    PADDLE_ENFORCE_GT(n, 1, "Input tensors count should > 1.");
+    //    PADDLE_ENFORCE_GT(n, 1, "Input tensors count should > 1.");
 
     auto out_dims = ins[0];
     size_t in_zero_dims_size = out_dims.size();

@@ -317,39 +317,41 @@ class DistributeTranspiler:
                         out_name = op.output("Out")
 
                         # insert split_ids_op
-                        split_ids_op = program.global_block().desc.insert_op(
-                            op_index)
-                        split_ids_op.set_type("split_ids")
-                        split_ids_op.set_input("Ids", ids_name)
-                        split_ids_op.set_output(
-                            "Out",
-                            [var.name for var in self.prefetch_input_vars])
+                        program.global_block().insert_op(
+                            index=op_index,
+                            type="split_ids",
+                            inputs={
+                                'Ids': [
+                                    program.global_block().vars[varname]
+                                    for varname in ids_name
+                                ]
+                            },
+                            outputs={"Out": self.prefetch_input_vars})
 
                         # insert prefetch_op
-                        prefetch_op = program.global_block().desc.insert_op(
-                            op_index + 1)
-                        prefetch_op.set_type("prefetch")
-                        prefetch_op.set_input(
-                            "X",
-                            [var.name for var in self.prefetch_input_vars])
-                        prefetch_op.set_output(
-                            "Out",
-                            [var.name for var in self.prefetch_output_vars])
-                        prefetch_op.set_output("RPCClient",
-                                               [RPC_CLIENT_VAR_NAME])
-                        prefetch_op.set_output("Out", out_name)
-                        prefetch_op.set_attr("epmap", eplist)
+                        program.global_block().insert_op(
+                            index=op_index + 1,
+                            type="prefetch",
+                            inputs={'X': self.prefetch_input_vars},
+                            outputs={
+                                "Out": self.prefetch_output_vars,
+                                "RPCClient": rpc_client_var
+                            },
+                            attrs={"epmap": eplist})
 
                         # insert concat_op
-                        concat_op = program.global_block().desc.insert_op(
-                            op_index + 2)
-                        concat_op.set_type("concat")
-                        concat_op.set_input(
-                            "X",
-                            [var.name for var in self.prefetch_output_vars])
-                        concat_op.set_attr("axis", 0)
+                        program.global_block().insert_op(
+                            index=op_index + 2,
+                            type="concat",
+                            inputs={'X': self.prefetch_output_vars},
+                            outputs={
+                                "Out": [
+                                    program.global_block().vars[varname]
+                                    for varname in out_name
+                                ]
+                            },
+                            attrs={"axis": 0})
 
-                        program.sync_with_cpp()
                         # delete lookup_table_op
                         program.global_block().delete_ops([op])
                         program.sync_with_cpp()
