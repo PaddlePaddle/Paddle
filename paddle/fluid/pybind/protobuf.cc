@@ -128,7 +128,7 @@ void BindProgramDesc(pybind11::module *m) {
       .def("append_backward",
            [](pd::ProgramDesc &program_desc, const pd::VarDesc &target,
               const std::unordered_set<std::string> &no_grad_vars) {
-             ParamGradInfoMap param_grad_map =
+             pd::ParamGradInfoMap param_grad_map =
                  AppendBackward(program_desc, target, no_grad_vars);
              std::unordered_map<
                  std::string, std::tuple<std::string /* grad_var_name */,
