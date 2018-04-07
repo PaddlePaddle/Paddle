@@ -36,25 +36,29 @@ def train(use_cuda=False, is_sparse=False, is_local=False):
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
-            param_attr='shared_w')
+            param_attr='shared_w',
+            is_distributed=True)
         embed_second = fluid.layers.embedding(
             input=words[1],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
-            param_attr='shared_w')
+            param_attr='shared_w',
+            is_distributed=True)
         embed_third = fluid.layers.embedding(
             input=words[2],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
-            param_attr='shared_w')
+            param_attr='shared_w',
+            is_distributed=True)
         embed_forth = fluid.layers.embedding(
             input=words[3],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
-            param_attr='shared_w')
+            param_attr='shared_w',
+            is_distributed=True)
 
         concat_embed = fluid.layers.concat(
             input=[embed_first, embed_second, embed_third, embed_forth], axis=1)
@@ -130,7 +134,9 @@ def train(use_cuda=False, is_sparse=False, is_local=False):
             params_grads,
             trainer_id,
             pservers=pserver_endpoints,
-            trainers=trainers)
+            trainer_num=trainers)
+        with open("program.proto", "w") as f:
+            f.write(str(fluid.default_main_program()))
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,

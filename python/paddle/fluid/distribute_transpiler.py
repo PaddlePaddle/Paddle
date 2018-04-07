@@ -21,6 +21,9 @@ from distributed_spliter import *
 from framework import Program, default_main_program, Variable
 from . import core
 
+LOOKUP_TABLE_TYPE = "lookup_table"
+RPC_CLIENT_VAR_NAME = "RPC_CLIENT_VAR"
+
 
 class VarBlock:
     def __init__(self, varname, offset, size):
@@ -245,7 +248,7 @@ class DistributeTranspiler:
             self.param_grad_ep_mapping[ep]["grads"].append(grad)
 
         rpc_client_var = program.global_block().create_var(
-            name="RPC_CLIENT_VAR",
+            name=RPC_CLIENT_VAR_NAME,
             persistable=True,
             type=core.VarDesc.VarType.RAW)
 
@@ -271,21 +274,89 @@ class DistributeTranspiler:
         # process lookup_table_op
         # 1. check all lookup_table_op is distributed
         # 2. check all lookup_table_op share the same table.
-        lookup_table_ops = []
-        have_distributed_lookup_table_op = None
+        distributed_lookup_table_ops = []
+        # support only one distributed_lookup_table now
+        self.table_name = None
         for op in program.global_block().ops:
-            if op.type == "lookup_table":
-                if have_distributed_lookup_table_op is None:
-                    have_distributed_lookup_table_op = op.attr['is_distributed']
-                # all lookup_table op's attribute is_distributed should be the same
-                assert have_distributed_lookup_table_op == op.attr[
-                    'is_distributed']
-                lookup_table_ops.append(op)
+            if op.type == LOOKUP_TABLE_TYPE:
+                if op.attrs['is_distributed'] is True:
+                    if self.table_name is None:
+                        self.table_name = op.input("W")[0]
+                    if self.table_name != op.input("W")[0]:
+                        raise RuntimeError("all distributed lookup_table_ops"
+                                           " should have only one table")
+                    distributed_lookup_table_ops.append(op)
 
-        if have_distributed_lookup_table_op:
-            table_param_name = lookup_table_ops[0].input("W")[0]
-            for lookup_table_op in lookup_table_ops:
-                assert table_param_name == lookup_table_op.input("W")[0]
+        self.has_distributed_lookup_table = len(
+            distributed_lookup_table_ops) > 0
+        if self.has_distributed_lookup_table:
+
+            def create_var(block, name):
+                return block.create_var(
+                    name=name, type=core.VarDesc.VarType.LOD_TENSOR)
+
+            # replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
+            self.prefetch_input_vars = [
+                create_var(
+                    block=program.global_block(),
+                    name=str(self.table_name + "_prefetch_in_" + str(index)))
+                for index in range(len(pserver_endpoints))
+            ]
+            self.prefetch_output_vars = [
+                create_var(
+                    block=program.global_block(),
+                    name=str(self.table_name + "_prefetch_out_" + str(index)))
+                for index in range(len(pserver_endpoints))
+            ]
+            while True:
+                all_ops = program.global_block().ops
+                for op in all_ops:
+                    if op.type == LOOKUP_TABLE_TYPE:
+                        op_index = list(all_ops).index(op)
+                        ids_name = op.input("Ids")
+                        out_name = op.output("Out")
+
+                        # insert split_ids_op
+                        split_ids_op = program.global_block().desc.insert_op(
+                            op_index)
+                        split_ids_op.set_type("split_ids")
+                        split_ids_op.set_input("Ids", ids_name)
+                        split_ids_op.set_output(
+                            "Out",
+                            [var.name for var in self.prefetch_input_vars])
+
+                        # insert prefetch_op
+                        prefetch_op = program.global_block().desc.insert_op(
+                            op_index + 1)
+                        prefetch_op.set_type("prefetch")
+                        prefetch_op.set_input(
+                            "X",
+                            [var.name for var in self.prefetch_input_vars])
+                        prefetch_op.set_output(
+                            "Out",
+                            [var.name for var in self.prefetch_output_vars])
+                        prefetch_op.set_output("RPCClient",
+                                               [RPC_CLIENT_VAR_NAME])
+                        prefetch_op.set_output("Out", out_name)
+                        prefetch_op.set_attr("epmap", eplist)
+
+                        # insert concat_op
+                        concat_op = program.global_block().desc.insert_op(
+                            op_index + 2)
+                        concat_op.set_type("concat")
+                        concat_op.set_input(
+                            "X",
+                            [var.name for var in self.prefetch_output_vars])
+                        concat_op.set_attr("axis", 0)
+
+                        program.sync_with_cpp()
+                        # delete lookup_table_op
+                        program.global_block().delete_ops([op])
+                        program.sync_with_cpp()
+
+                        continue
+                # if for loop did not break, it means that there is no more lookup_table_op
+                break
 
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program

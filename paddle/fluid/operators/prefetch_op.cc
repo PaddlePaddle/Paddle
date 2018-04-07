@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>
+#include <future>  // NOLINT
 #include <ostream>
 
 #include "paddle/fluid/framework/data_type.h"
@@ -71,7 +71,7 @@ class PrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
               "(RPCClient) The RPC client object which will be"
               "initialized at most once.");
     AddOutput("Out",
-              "(SelectedRows) result "
+              "(LoDTensor) result "
               "to be fetched from parameter server")
         .AsDuplicable();
     AddAttr<std::vector<std::string>>(
