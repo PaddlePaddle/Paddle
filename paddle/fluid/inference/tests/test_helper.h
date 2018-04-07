@@ -30,7 +30,7 @@ void SetupTensor(paddle::framework::LoDTensor* input,
 
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
   for (int i = 0; i < input->numel(); ++i) {
-    input_ptr[i] = static_cast<T>(uniform_dist(*rng) * (upper - lower) + lower);
+    input_ptr[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
   }
 }
 
