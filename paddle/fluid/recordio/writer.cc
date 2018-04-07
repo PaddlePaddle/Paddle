@@ -12,9 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/recordio/writer.h"
+
+#include <string>
+
 #include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace recordio {
+
 void Writer::Write(const std::string& record) {
   cur_chunk_.Add(record);
   if (cur_chunk_.NumRecords() >= max_num_records_in_chunk_) {

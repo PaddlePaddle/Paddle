@@ -19,6 +19,11 @@ import math
 import framework
 from distributed_spliter import *
 from framework import Program, default_main_program, Variable
+from framework import Program, default_main_program, default_startup_program, Parameter, Variable
+import optimizer
+from layer_helper import LayerHelper
+import distributed_splitter as splitter
+import math
 from . import core
 
 LOOKUP_TABLE_TYPE = "lookup_table"
@@ -38,7 +43,7 @@ class VarBlock:
 
 class UnionFind(object):
     """ Union-find data struct.
-    
+
     Union-find is a data struct that keeps track of a set of elements partitioned
     into a number of disjoint (non-overlapping) subsets.
 
@@ -161,7 +166,7 @@ class DistributeTranspiler:
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainer_num=1,
-                  split_method=round_robin):
+                  split_method=splitter.round_robin):
         """
             Transpile the program to distributed data-parallelism programs.
             The main_program will be transformed to use a remote parameter server
@@ -416,7 +421,7 @@ class DistributeTranspiler:
         # If two ops are connected, we could add these two ops
         # into one set.
         ufind = self._create_ufind(self.optimize_ops)
-        # step 4.2 
+        # step 4.2
         # Iterate through the ops and append optimize op which
         # located on current pserver
         opt_op_on_pserver = []
@@ -425,7 +430,7 @@ class DistributeTranspiler:
                 opt_op_on_pserver.append(op)
         # step 4.3
         # Iterate through the ops, and if an op and the optimize ops
-        # which located on current pserver are in one set, then 
+        # which located on current pserver are in one set, then
         # append it into the sub program.
 
         # We try to put optimization program run parallelly, assume
@@ -544,11 +549,7 @@ class DistributeTranspiler:
         pserver_vars = pserver_program.global_block().vars
         created_var_map = dict()
         for _, var in pserver_vars.iteritems():
-            tmpvar = s_prog.global_block().create_var(
-                name=var.name,
-                persistable=var.persistable,
-                dtype=var.dtype,
-                shape=var.shape)
+            tmpvar = s_prog.global_block().clone_variable(var)
             created_var_map[var.name] = tmpvar
 
         # 2. rename op outputs
@@ -844,11 +845,7 @@ class DistributeTranspiler:
                 varlist = [varlist]
 
             for var in varlist:
-                program.global_block().create_var(
-                    name=var.name,
-                    persistable=var.persistable,
-                    dtype=var.dtype,
-                    shape=var.shape)
+                program.global_block().clone_variable(var)
 
         optimize_block.append_op(
             type=opt_op.type,
@@ -896,7 +893,7 @@ class DistributeTranspiler:
 
     def _is_opt_op(self, op):
         # NOTE: It's a HACK implement.
-        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc... 
+        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc...
         if "Param" in op.input_names and \
             "LearningRate" in op.input_names:
             return True

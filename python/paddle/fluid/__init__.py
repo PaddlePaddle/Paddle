@@ -31,7 +31,7 @@ import regularizer
 import average
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
-from core import LoDTensor, CPUPlace, CUDAPlace
+from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace
 from distribute_transpiler import DistributeTranspiler
 from distribute_transpiler_simple import SimpleDistributeTranspiler
 from concurrency import (Go, make_channel, channel_send, channel_recv,
@@ -57,6 +57,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'LoDTensor',
     'CPUPlace',
     'CUDAPlace',
+    'CUDAPinnedPlace',
     'Tensor',
     'ParamAttr',
     'WeightNormParamAttr',

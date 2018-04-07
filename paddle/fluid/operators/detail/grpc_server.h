@@ -14,10 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include <grpc++/grpc++.h>
 #include <string>
+#include <thread>  // NOLINT
 #include <utility>
 
+#include "grpc++/grpc++.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -62,6 +63,8 @@ class AsyncGRPCServer final {
 
   void SetExecutor(framework::Executor *executor) { executor_ = executor; }
 
+  int GetSelectedPort() { return selected_port_; }
+
   const ReceivedMessage Get() { return this->var_recv_queue_.Pop(); }
 
   void Push(const std::string &msg_name) {
@@ -71,7 +74,8 @@ class AsyncGRPCServer final {
   void ShutDown();
 
  protected:
-  void HandleRequest(::grpc::ServerCompletionQueue *cq, std::string cq_name,
+  void HandleRequest(::grpc::ServerCompletionQueue *cq,
+                     const std::string &cq_name,
                      std::function<void()> TryToRegisterNewOne);
   void TryToRegisterNewSendOne();
   void TryToRegisterNewGetOne();
@@ -109,6 +113,7 @@ class AsyncGRPCServer final {
   int prefetch_blk_id_;
   framework::ProgramDesc *program_;
   framework::Executor *executor_;
+  int selected_port_;
 };
 
 };  // namespace detail

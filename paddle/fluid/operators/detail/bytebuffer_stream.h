@@ -19,9 +19,11 @@ limitations under the License. */
 
 #pragma once
 
-#include <grpc++/grpc++.h>
+#include <vector>
+
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
+#include "grpc++/grpc++.h"
 
 namespace grpc {
 // A ZeroCopyInputStream that reads from grpc_byte_buffer
@@ -56,7 +58,7 @@ class GrpcBufferReader final
       *data = GRPC_SLICE_START_PTR(slice_) + GRPC_SLICE_LENGTH(slice_) -
               backup_count_;
       GPR_CODEGEN_ASSERT(backup_count_ <= INT_MAX);
-      *size = (int)backup_count_;
+      *size = static_cast<int>(backup_count_);
       backup_count_ = 0;
       return true;
     }
@@ -68,7 +70,7 @@ class GrpcBufferReader final
     *data = GRPC_SLICE_START_PTR(slice_);
     // On win x64, int is only 32bit
     GPR_CODEGEN_ASSERT(GRPC_SLICE_LENGTH(slice_) <= INT_MAX);
-    byte_count_ += * size = (int)GRPC_SLICE_LENGTH(slice_);
+    byte_count_ += * size = static_cast<int>(GRPC_SLICE_LENGTH(slice_));
     return true;
   }
 

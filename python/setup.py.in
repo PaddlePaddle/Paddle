@@ -58,7 +58,7 @@ def mkl():
             'istaged': ISTAGED,
             'with_mkl': '@WITH_MKL@'})
 
-write_version_py(filename='@PADDLE_SOURCE_DIR@/python/paddle/version.py')
+write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
 
 packages=['paddle',
@@ -109,7 +109,7 @@ package_dir={
     'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
 }
 if '${WITH_FLUID_ONLY}'== 'OFF':
-    package_dir['py_paddle']='${PADDLE_SOURCE_DIR}/paddle/py_paddle'
+    package_dir['py_paddle']='${PADDLE_BINARY_DIR}/python/py_paddle'
     
 
 paddle_rt_lib_dir = 'lib'

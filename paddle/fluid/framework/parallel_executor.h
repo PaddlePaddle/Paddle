@@ -42,9 +42,13 @@ class ParallelExecutor {
                             bool allow_op_delay);
 
   void Run(const std::vector<std::string>& fetch_tensors,
-           const std::string& fetched_var_name = "fetched_var");
+           const std::string& fetched_var_name,
+           const std::unordered_map<std::string, LoDTensor>& feed_tensors);
 
  private:
+  void SplitTensorToPlaces(
+      const std::unordered_map<std::string, LoDTensor>& feed_tensors);
+
   ParallelExecutorPrivate* member_;
 
   void BCastParamsToGPUs(const ProgramDesc& startup_program) const;

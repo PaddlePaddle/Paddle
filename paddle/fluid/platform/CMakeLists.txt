@@ -6,8 +6,8 @@ add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch _
 add_dependencies(profiler_py_proto profiler_py_proto_init)
 
 add_custom_command(TARGET profiler_py_proto POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_SOURCE_DIR}/python/paddle/fluid/proto/profiler
-        COMMAND cp *.py ${PADDLE_SOURCE_DIR}/python/paddle/fluid/proto/profiler
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
+        COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/profiler
         COMMENT "Copy generated python proto into directory paddle/fluid/proto/profiler."
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
