@@ -102,7 +102,7 @@ size_t GpuMaxChunkSize() {
   size_t total = 0;
   size_t available = 0;
 
-  GpuMemoryUsage(available, total);
+  GpuMemoryUsage(&available, &total);
   VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
            << total / 1024 / 1024 << "M";
   size_t reserving = static_cast<size_t>(0.05 * total);
