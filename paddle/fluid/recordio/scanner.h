@@ -16,7 +16,10 @@
 
 #include <fstream>
 #include <memory>
+#include <string>
+
 #include "paddle/fluid/recordio/chunk.h"
+
 namespace paddle {
 namespace recordio {
 
