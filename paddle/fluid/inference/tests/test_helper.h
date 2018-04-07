@@ -11,53 +11,59 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#pragma once
 
-#include <time.h>
+#include <map>
+#include <random>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/profiler.h"
 
 template <typename T>
-void SetupTensor(paddle::framework::LoDTensor& input,
+void SetupTensor(paddle::framework::LoDTensor* input,
                  paddle::framework::DDim dims, T lower, T upper) {
-  srand(time(0));
-  T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
-  for (int i = 0; i < input.numel(); ++i) {
-    input_ptr[i] =
-        (static_cast<T>(rand()) / static_cast<T>(RAND_MAX)) * (upper - lower) +
-        lower;
+  std::mt19937 rng(100);  // An arbitrarily chosen but fixed seed.
+  std::uniform_real_distribution<double> uniform_dist(0, 1);
+
+  T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
+  for (int i = 0; i < input->numel(); ++i) {
+    input_ptr[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
   }
 }
 
 template <typename T>
-void SetupTensor(paddle::framework::LoDTensor& input,
-                 paddle::framework::DDim dims, std::vector<T>& data) {
+void SetupTensor(paddle::framework::LoDTensor* input,
+                 paddle::framework::DDim dims, const std::vector<T>& data) {
   CHECK_EQ(paddle::framework::product(dims), static_cast<int64_t>(data.size()));
-  T* input_ptr = input.mutable_data<T>(dims, paddle::platform::CPUPlace());
-  memcpy(input_ptr, data.data(), input.numel() * sizeof(T));
+  T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
+  memcpy(input_ptr, data.data(), input->numel() * sizeof(T));
 }
 
 template <typename T>
-void SetupLoDTensor(paddle::framework::LoDTensor& input,
-                    paddle::framework::LoD& lod, T lower, T upper) {
-  input.set_lod(lod);
+void SetupLoDTensor(paddle::framework::LoDTensor* input,
+                    const paddle::framework::LoD& lod, T lower, T upper) {
+  input->set_lod(lod);
   int dim = lod[0][lod[0].size() - 1];
   SetupTensor<T>(input, {dim, 1}, lower, upper);
 }
 
 template <typename T>
-void SetupLoDTensor(paddle::framework::LoDTensor& input,
-                    paddle::framework::DDim dims, paddle::framework::LoD lod,
-                    std::vector<T>& data) {
+void SetupLoDTensor(paddle::framework::LoDTensor* input,
+                    paddle::framework::DDim dims,
+                    const paddle::framework::LoD lod,
+                    const std::vector<T>& data) {
   const size_t level = lod.size() - 1;
   CHECK_EQ(dims[0], static_cast<int64_t>((lod[level]).back()));
-  input.set_lod(lod);
+  input->set_lod(lod);
   SetupTensor<T>(input, dims, data);
 }
 
 template <typename T>
-void CheckError(paddle::framework::LoDTensor& output1,
-                paddle::framework::LoDTensor& output2) {
+void CheckError(const paddle::framework::LoDTensor& output1,
+                const paddle::framework::LoDTensor& output2) {
   // Check lod information
   EXPECT_EQ(output1.lod(), output2.lod());
 
@@ -85,7 +91,7 @@ void CheckError(paddle::framework::LoDTensor& output1,
 template <typename Place>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
-                   std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
+                   const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
                    const int repeat = 1, const bool is_combined = false) {
   // 1. Define place, executor, scope
   auto place = Place();
