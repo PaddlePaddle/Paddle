@@ -74,7 +74,7 @@ PYBIND11_PLUGIN(core) {
   // not cause namespace pollution.
   using namespace paddle::framework;  // NOLINT
 
-  BindException(m);
+  BindException(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -478,11 +478,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 
-  BindProgramDesc(m);
-  BindBlockDesc(m);
-  BindVarDsec(m);
-  BindOpDesc(m);
-  BindConstValue(m);
+  BindProgramDesc(&m);
+  BindBlockDesc(&m);
+  BindVarDsec(&m);
+  BindOpDesc(&m);
+  BindConstValue(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -553,7 +553,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run", &ParallelExecutor::Run);
 
-  BindRecordIOWriter(m);
+  BindRecordIOWriter(&m);
   return m.ptr();
 }
 }  // namespace pybind

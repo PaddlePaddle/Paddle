@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-void BindException(pybind11::module& m) {
+void BindException(pybind11::module* m) {
   static pybind11::exception<platform::EnforceNotMet> exc(m, "EnforceNotMet");
   pybind11::register_exception_translator([](std::exception_ptr p) {
     try {
@@ -27,7 +27,8 @@ void BindException(pybind11::module& m) {
     }
   });
 
-  m.def("__unittest_throw_exception__", [] { PADDLE_THROW("test exception"); });
+  m->def("__unittest_throw_exception__",
+         [] { PADDLE_THROW("test exception"); });
 }
 
 }  // namespace pybind
