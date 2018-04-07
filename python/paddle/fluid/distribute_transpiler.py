@@ -214,6 +214,7 @@ class DistributeTranspiler:
         # fluid distributed training with fault-tolerance.
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
+        self.pserver_endpoints = pserver_endpoints
 
         # step1
         param_list = [pg[0] for pg in params_grads]
@@ -411,7 +412,7 @@ class DistributeTranspiler:
         # step3
         optimize_block = pserver_program.create_block(0)
         # step 4
-        # Create a union-find data struct from optimize ops,
+        # Create a union-find data structure from optimize ops,
         # If two ops are connected, we could add these two ops
         # into one set.
         ufind = self._create_ufind(self.optimize_ops)
@@ -486,6 +487,28 @@ class DistributeTranspiler:
         #             __append_optimize_op__(glb_op, optimize_block)
         #             break
 
+        # process distributed lookup_table
+        if self.has_distributed_lookup_table:
+            table_var = pserver_program.global_block().vars[self.table_name]
+            prefetch_block = pserver_program.create_block(optimize_block.idx)
+            pserver_index = self.pserver_endpoints.index(endpoint)
+            trainer_ids = self.prefetch_input_vars[pserver_index]
+            pserver_ids = pserver_program.global_block().create_var(
+                name=trainer_ids.name, type=trainer_ids.type)
+            trainer_out = self.prefetch_output_vars[pserver_index]
+            pserver_out = pserver_program.global_block().create_var(
+                name=trainer_out.name, type=trainer_out.type)
+            prefetch_block.append_op(
+                type="lookup_table",
+                inputs={'Ids': pserver_ids,
+                        "W": table_var},
+                outputs={"Out": pserver_out},
+                attrs={
+                    "is_sparse": True,  # has no effect on lookup_table op
+                    "is_distributed": True,
+                    "padding_idx": -1
+                })
+
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
@@ -496,6 +519,7 @@ class DistributeTranspiler:
                 "endpoint": endpoint,
                 "Fanin": self.trainer_num
             })
+
         pserver_program.sync_with_cpp()
         return pserver_program
 
