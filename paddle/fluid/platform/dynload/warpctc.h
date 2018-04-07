@@ -32,18 +32,18 @@ extern void* warpctc_dso_handle;
  * (for each function) to dynamic load warpctc routine
  * via operator overloading.
  */
-#define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                            \
-  struct DynLoad__##__name {                                         \
-    template <typename... Args>                                      \
-    auto operator()(Args... args) -> decltype(__name(args...)) {     \
-      using warpctcFunc = decltype(__name(args...)) (*)(Args...);    \
-      std::call_once(warpctc_dso_flag,                               \
-                     paddle::platform::dynload::GetWarpCTCDsoHandle, \
-                     &warpctc_dso_handle);                           \
-      void* p_##_name = dlsym(warpctc_dso_handle, #__name);          \
-      return reinterpret_cast<warpctcFunc>(p_##_name)(args...);      \
-    }                                                                \
-  };                                                                 \
+#define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                                      \
+  struct DynLoad__##__name {                                                   \
+    template <typename... Args>                                                \
+    auto operator()(Args... args) -> decltype(__name(args...)) {               \
+      using warpctcFunc = decltype(__name(args...)) (*)(Args...);              \
+      std::call_once(warpctc_dso_flag, []() {                                  \
+        warpctc_dso_handle = paddle::platform::dynload::GetWarpCTCDsoHandle(); \
+      });                                                                      \
+      void* p_##_name = dlsym(warpctc_dso_handle, #__name);                    \
+      return reinterpret_cast<warpctcFunc>(p_##_name)(args...);                \
+    }                                                                          \
+  };                                                                           \
   extern DynLoad__##__name __name
 
 #define DECLARE_DYNAMIC_LOAD_WARPCTC_WRAP(__name) \

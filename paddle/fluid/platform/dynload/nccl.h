@@ -29,18 +29,19 @@ extern std::once_flag nccl_dso_flag;
 extern void* nccl_dso_handle;
 
 #ifdef PADDLE_USE_DSO
-extern void LoadNCCLDSO();
 
-#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                   \
-  struct DynLoad__##__name {                                     \
-    template <typename... Args>                                  \
-    auto operator()(Args... args) -> decltype(__name(args...)) { \
-      using nccl_func = decltype(__name(args...)) (*)(Args...);  \
-      paddle::platform::dynload::LoadNCCLDSO();                  \
-      void* p_##__name = dlsym(nccl_dso_handle, #__name);        \
-      return reinterpret_cast<nccl_func>(p_##__name)(args...);   \
-    }                                                            \
-  };                                                             \
+#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                           \
+  struct DynLoad__##__name {                                             \
+    template <typename... Args>                                          \
+    auto operator()(Args... args) -> decltype(__name(args...)) {         \
+      using nccl_func = decltype(__name(args...)) (*)(Args...);          \
+      stl::call_once(nccl_dso_flag, []() {                               \
+        nccl_dso_handle = paddle::platform::dynload::GetNCCLDsoHandle(); \
+      });                                                                \
+      void* p_##__name = dlsym(nccl_dso_handle, #__name);                \
+      return reinterpret_cast<nccl_func>(p_##__name)(args...);           \
+    }                                                                    \
+  };                                                                     \
   extern DynLoad__##__name __name
 #else
 #define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name) \
