@@ -39,7 +39,8 @@ class ParallelExecutor {
                             const ProgramDesc& startup_program,
                             const ProgramDesc& main_program,
                             const std::string& loss_var_name, Scope* scope,
-                            bool allow_op_delay);
+                            bool allow_op_delay,
+                            bool use_gather_reduce = false);
 
   void Run(const std::vector<std::string>& fetch_tensors,
            const std::string& fetched_var_name,
