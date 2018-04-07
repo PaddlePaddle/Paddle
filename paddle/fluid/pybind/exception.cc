@@ -18,7 +18,7 @@ namespace paddle {
 namespace pybind {
 
 void BindException(pybind11::module* m) {
-  static pybind11::exception<platform::EnforceNotMet> exc(m, "EnforceNotMet");
+  static pybind11::exception<platform::EnforceNotMet> exc(*m, "EnforceNotMet");
   pybind11::register_exception_translator([](std::exception_ptr p) {
     try {
       if (p) std::rethrow_exception(p);
