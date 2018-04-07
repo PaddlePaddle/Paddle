@@ -136,20 +136,17 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
 
 void* GetCublasDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib",
-                                    dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.dylib");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublas.so");
 #endif
 }
 
 void* GetCUDNNDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib",
-                                    dso_handle, false);
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", false);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", dso_handle,
-                                    false);
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false);
 #endif
 }
 
@@ -159,49 +156,41 @@ void* GetCUPTIDsoHandle() {
     cupti_path = FLAGS_cupti_dir;
   }
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(cupti_path, "libcupti.dylib", dso_handle,
-                                    false);
+  return GetDsoHandleFromSearchPath(cupti_path, "libcupti.dylib", false);
 #else
-  return GetDsoHandleFromSearchPath(cupti_path, "libcupti.so", dso_handle,
-                                    false);
+  return GetDsoHandleFromSearchPath(cupti_path, "libcupti.so", false);
 #endif
 }
 
 void* GetCurandDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib",
-                                    dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.dylib");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
 #endif
 }
 
 void* GetWarpCTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib",
-                                    dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.dylib");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so",
-                                    dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_warpctc_dir, "libwarpctc.so");
 #endif
 }
 
 void* GetLapackDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.dylib",
-                                    dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.dylib");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so",
-                                    dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so");
 #endif
 }
 
 void* GetNCCLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib",
-                                    dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so", dso_handle);
+  return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so");
 #endif
 }
 
