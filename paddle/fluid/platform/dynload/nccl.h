@@ -35,7 +35,7 @@ extern void* nccl_dso_handle;
     template <typename... Args>                                          \
     auto operator()(Args... args) -> decltype(__name(args...)) {         \
       using nccl_func = decltype(__name(args...)) (*)(Args...);          \
-      stl::call_once(nccl_dso_flag, []() {                               \
+      std::call_once(nccl_dso_flag, []() {                               \
         nccl_dso_handle = paddle::platform::dynload::GetNCCLDsoHandle(); \
       });                                                                \
       void* p_##__name = dlsym(nccl_dso_handle, #__name);                \
