@@ -17,7 +17,7 @@ function(inference_test TARGET_NAME)
     string(REGEX REPLACE "^_$" "" arg "${arg}")
     cc_test(test_inference_${TARGET_NAME}${arg}
         SRCS test_inference_${TARGET_NAME}.cc
-        DEPS paddle_fluid
+        DEPS ${ARCHIVE_BEGIN} paddle_fluid ${ARCHIVE_END}
         ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.inference.model)
     set_tests_properties(test_inference_${TARGET_NAME}${arg}
         PROPERTIES DEPENDS test_${TARGET_NAME})
