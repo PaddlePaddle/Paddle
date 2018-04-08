@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
 #include "gflags/gflags.h"
+#include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -32,10 +32,10 @@ TEST(inference, rnn_encoder_decoder) {
   paddle::framework::LoDTensor word_data, trg_word;
   paddle::framework::LoD lod{{0, 4, 10}};
 
-  SetupLoDTensor(
-      word_data, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
-  SetupLoDTensor(
-      trg_word, lod, static_cast<int64_t>(0), static_cast<int64_t>(1));
+  SetupLoDTensor(&word_data, lod, static_cast<int64_t>(0),
+                 static_cast<int64_t>(1));
+  SetupLoDTensor(&trg_word, lod, static_cast<int64_t>(0),
+                 static_cast<int64_t>(1));
 
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&word_data);

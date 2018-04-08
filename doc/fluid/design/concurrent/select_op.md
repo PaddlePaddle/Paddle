@@ -254,7 +254,7 @@ only one case will be executed.
 ### select_op flow
 
 <p align="center">
-<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/select_op_workflow.png"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/select_op_workflow.png"/><br/>
 </p>
 
 The select algorithm is inspired by golang's select routine.  Please refer to

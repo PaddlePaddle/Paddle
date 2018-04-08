@@ -27,8 +27,8 @@ template <typename T>
 class MKLDNNMD {
  public:
   explicit MKLDNNMD(const T* in, const T* w, bool bias)
-      : in{paddle::framework::vectorize2int(in->dims())},
-        w{paddle::framework::vectorize2int(w->dims())} {
+      : in(paddle::framework::vectorize2int(in->dims())),
+        w(paddle::framework::vectorize2int(w->dims())) {
     with_bias_ = bias;
   }
 
@@ -78,7 +78,7 @@ class MKLDNNMD {
 class MKLDNNMemory {
  public:
   MKLDNNMemory(MKLDNNMD<Tensor>* t, const mkldnn::engine& e)
-      : md_{t}, engine_{e} {}
+      : md_(t), engine_(e) {}
   virtual ~MKLDNNMemory() = default;
 
   template <typename Output>
