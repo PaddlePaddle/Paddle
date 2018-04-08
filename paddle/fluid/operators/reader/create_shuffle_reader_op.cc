@@ -80,10 +80,14 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    auto* out = detail::Ref(scope.FindVar(Output("Out")))
+                    .GetMutable<framework::ReaderHolder>();
+    if (out->Get() != nullptr) {
+      return;
+    }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    auto& var = detail::Ref(scope.FindVar(Output("Out")));
-    var.GetMutable<framework::ReaderHolder>()->Reset(
+    out->Reset(
         new ShuffleReader(underlying_reader.Get(),
                           static_cast<size_t>(Attr<int>("buffer_size"))));
   }
