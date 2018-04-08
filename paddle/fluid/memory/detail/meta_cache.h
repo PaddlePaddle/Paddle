@@ -14,48 +14,43 @@ limitations under the License. */
 
 #pragma once
 
+#include <unordered_map>
+
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/meta_data.h"
-
-#include <unordered_map>
 
 namespace paddle {
 namespace memory {
 namespace detail {
 
 /**
- *  \brief A cache for accessing memory block meta-data that may be expensive
- *         to access directly.
+ *  A cache for accessing memory block meta-data that may be expensive
+ *  to access directly.
  *
- *  \note  This class exists to unify the metadata format between GPU and CPU
- *         allocations. It should be removed when the CPU can access all GPU
- *         allocations directly via UVM.
+ *  This class unifies the metadata format between GPU and CPU
+ *  allocations. It should be removed when the CPU can access all GPU
+ *  allocations directly via UVM.
  */
 class MetadataCache {
  public:
   explicit MetadataCache(bool uses_gpu);
 
- public:
-  /*! \brief Load the associated metadata for the specified memory block. */
-  Metadata load(const MemoryBlock* memory_block);
+  // Load the associated metadata for the specified memory block.
+  Metadata load(const MemoryBlock* memory_block) const;
 
-  /*! \brief Store the associated metadata for the specified memory block. */
+  // Store the associated metadata for the specified memory block.
   void store(MemoryBlock* memory_block, const Metadata& meta_data);
 
-  /*! \brief Indicate that the specified metadata will no longer be used. */
+  // Indicate that the specified metadata will no longer be used.
   void invalidate(MemoryBlock* memory_block);
 
- public:
   MetadataCache(const MetadataCache&) = delete;
   MetadataCache& operator=(const MetadataCache&) = delete;
 
  private:
-  bool uses_gpu_;
-
- private:
   typedef std::unordered_map<const MemoryBlock*, Metadata> MetadataMap;
 
- private:
+  bool uses_gpu_;
   MetadataMap cache_;
 };
 

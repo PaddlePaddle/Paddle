@@ -14,28 +14,25 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/memory/detail/memory_block.h"
-
 #include <stddef.h>
+
+#include "paddle/fluid/memory/detail/memory_block.h"
 
 namespace paddle {
 namespace memory {
 namespace detail {
 
-class Metadata {
- public:
+struct Metadata {
   Metadata(MemoryBlock::Type t, size_t i, size_t s, size_t ts, MemoryBlock* l,
            MemoryBlock* r);
   Metadata();
 
- public:
   /*! \brief Update the guards when metadata is changed */
   void update_guards();
 
   /*! \brief Check consistency to previous modification */
   bool check_guards() const;
 
- public:
   // TODO(gangliao): compress this
   // clang-format off
   size_t            guard_begin = 0;
