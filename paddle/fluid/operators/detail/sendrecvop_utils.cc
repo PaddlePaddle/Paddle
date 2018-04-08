@@ -32,9 +32,6 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
                            ::grpc::ByteBuffer* msg) {
   using VarMsg = sendrecv::VariableMessage;
-  sendrecv::VariableMessage request;
-  std::string header;
-  request.AppendToString(&header);
   // When using GPU, need to free the copied CPU buffer
   // when the ByteBuffer destroies
   // TODO(typhoonzero): add unref here, if we have dependent
