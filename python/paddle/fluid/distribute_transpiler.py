@@ -17,7 +17,7 @@ import framework
 from framework import Program, default_main_program, default_startup_program, Parameter, Variable
 import optimizer
 from layer_helper import LayerHelper
-from distributed_spliter import *
+import distributed_splitter as splitter
 import math
 from . import core
 import debuger
@@ -36,7 +36,7 @@ class VarBlock:
 
 class UnionFind(object):
     """ Union-find data struct.
-    
+
     Union-find is a data struct that keeps track of a set of elements partitioned
     into a number of disjoint (non-overlapping) subsets.
 
@@ -138,7 +138,7 @@ class DistributeTranspiler:
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
-                  split_method=round_robin):
+                  split_method=splitter.round_robin):
         """
             Transpile the program to distributed data-parallelism programs.
             The main_program will be transformed to use a remote parameter server
@@ -303,7 +303,7 @@ class DistributeTranspiler:
         # If two ops are connected, we could add these two ops
         # into one set.
         ufind = self._create_ufind(self.optimize_ops)
-        # step 4.2 
+        # step 4.2
         # Iterate through the ops and append optimize op which
         # located on current pserver
         opt_op_on_pserver = []
@@ -312,7 +312,7 @@ class DistributeTranspiler:
                 opt_op_on_pserver.append(op)
         # step 4.3
         # Iterate through the ops, and if an op and the optimize ops
-        # which located on current pserver are in one set, then 
+        # which located on current pserver are in one set, then
         # append it into the sub program.
 
         # We try to put optimization program run parallelly, assume
@@ -752,7 +752,7 @@ class DistributeTranspiler:
 
     def _is_opt_op(self, op):
         # NOTE: It's a HACK implement.
-        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc... 
+        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc...
         if "Param" in op.input_names and \
             "LearningRate" in op.input_names:
             return True
