@@ -11,7 +11,7 @@ cc_library(paddle_fluid DEPS ${fluid_modules})
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc
-    DEPS ${ARCHIVE_START} ${GLOB_OP_LIB} ${FLUID_CORE_MODULES} ${ARCHIVE_START})
+    DEPS ARCHIVE_START ${GLOB_OP_LIB} ${FLUID_CORE_MODULES} ARCHIVE_END)
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
