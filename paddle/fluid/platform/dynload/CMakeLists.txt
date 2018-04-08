@@ -5,5 +5,9 @@ configure_file(cupti_lib_path.h.in ${CMAKE_CURRENT_BINARY_DIR}/cupti_lib_path.h)
 if (CUPTI_FOUND)
     list(APPEND CUDA_SRCS cupti.cc)
 endif(CUPTI_FOUND)
-nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
+
+if (WITH_GPU)
+    nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
+endif
+
 cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)

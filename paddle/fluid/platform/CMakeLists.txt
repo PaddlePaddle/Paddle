@@ -21,7 +21,9 @@ cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 cc_library(cpu_info SRCS cpu_info.cc DEPS gflags glog enforce)
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
-nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
+if(WITH_GPU)
+    nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
+endif()
 
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
