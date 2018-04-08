@@ -6,11 +6,33 @@ Here are some initial thoughts. Your comments are welcome!
 
 I think we need only the following few CMake functions to make a project description mean and clean:
 
-| C++ | CUDA C++ | Go |
-|---|---|---|
-| cc_library | nv_library | go_library |
-| cc_binary | nv_binary | go_binary |
-| cc_test | nv_test | go_test |
+<table>
+<thead>
+<tr>
+<th>C++</th>
+<th>CUDA C++</th>
+<th>Go</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cc_library </td>
+<td>nv_library </td>
+<td>go_library </td>
+</tr>
+<tr>
+<td>cc_binary </td>
+<td>nv_binary </td>
+<td>go_binary </td>
+</tr>
+<tr>
+<td> cc_test </td>
+<td> nv_test </td>
+<td> go_test </td>
+</tr>
+</tbody>
+</table>
+
 
 - The `_library` functions generate  .a files from source code.
 - The `_binary` functions generate executable binary files.

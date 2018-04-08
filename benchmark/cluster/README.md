@@ -36,11 +36,41 @@
 - Trainer Count: 100
 - Metrics: mini-batch / sec
 
-| Batch Size | 32 | 64 | 128 | 256 |
-| -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | - | - | - | - |
-| PaddlePaddle v2 | - | - | - | - |
-| TensorFlow | - | - | - | - |
+
+<table>
+<thead>
+<tr>
+<th>Batch Size </th>
+<th> 32</th>
+<th>64</th>
+<th>128 </th>
+<th>256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> PaddlePaddle Fluid</td>
+<td>-</td>
+<td>- </td>
+<td>-  </td>
+<td>- </td>
+</tr>
+<tr>
+<td>PaddlePaddle v2  </td>
+<td>-  </td>
+<td>- </td>
+<td>-  </td>
+<td>- </td>
+</tr>
+<tr>
+<td>TensorFlow </td>
+<td>-  </td>
+<td>- </td>
+<td>-  </td>
+<td>- </td>
+</tr>
+</tbody>
+</table>
 
 ### Measure the Performance for Different PServer Count
 
@@ -48,11 +78,41 @@
 - Batch Size: 64
 - Metrics: mini-batch / sec
 
-| PServer Count | 10 | 20 | 40 | 60 |
-| -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | - | - | - | - |
-| PaddlePaddle v2 | - | - | - | - |
-| TensorFlow | - | - | - | - |
+
+<table>
+<thead>
+<tr>
+<th>PServer Count  </th>
+<th>10</th>
+<th>20</th>
+<th>40 </th>
+<th>60</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> PaddlePaddle Fluid</td>
+<td>-</td>
+<td>- </td>
+<td>-  </td>
+<td>- </td>
+</tr>
+<tr>
+<td>PaddlePaddle v2  </td>
+<td>-  </td>
+<td>- </td>
+<td>-  </td>
+<td>- </td>
+</tr>
+<tr>
+<td>TensorFlow </td>
+<td>-  </td>
+<td>- </td>
+<td>-  </td>
+<td>- </td>
+</tr>
+</tbody>
+</table>
 
 ### Measure Parallel Efficiency By Increasing Trainer Count
 
@@ -67,11 +127,69 @@ The parallel efficiency is:
 
 $E = \div(S, N)$
 
-| Trainer Counter | 1 | 10 | 20 | 30 | 40 | 50 | 60 | 70 | 80 | 90 | 100 |
-| -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- |
-| PaddlePaddle Fluid | - | - | - | - | - | - | - | - | - | - | - |
-| PaddlePaddle v2 | - | - | - | - | - | - | - | - | - | - | - | - |
-| TensorFlow | - | - | - | - | - | - | - | - | - | - | - | - | - |
+<table>
+<thead>
+<tr>
+<th>Trainer Counter  </th>
+<th>1</th>
+<th>10</th>
+<th>20 </th>
+<th>30</th>
+<th>40</th>
+<th>50</th>
+<th>60 </th>
+<th>70</th>
+<th>80</th>
+<th>90</th>
+<th>100 </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> PaddlePaddle Fluid</td>
+<td>-</td>
+<td>- </td>
+<td>- </td>
+<td>- </td>
+<td>-</td>
+<td>- </td>
+<td>- </td>
+<td>- </td>
+<td>-</td>
+<td>- </td>
+<td>- </td>
+</tr>
+<tr>
+<td>PaddlePaddle v2  </td>
+<td>-  </td>
+<td>- </td>
+<td>-  </td>
+<td>- </td>
+<td>-</td>
+<td>- </td>
+<td>- </td>
+<td>- </td>
+<td>-</td>
+<td>- </td>
+<td>- </td>
+</tr>
+<tr>
+<td>TensorFlow </td>
+<td>-  </td>
+<td>- </td>
+<td>-  </td>
+<td>- </td>
+<td>-</td>
+<td>- </td>
+<td>- </td>
+<td>- </td>
+<td>-</td>
+<td>- </td>
+<td>- </td>
+</tr>
+</tbody>
+</table>
+
 
 ## Reproduce the benchmark
 

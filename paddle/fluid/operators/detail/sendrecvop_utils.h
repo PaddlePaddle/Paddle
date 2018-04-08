@@ -51,7 +51,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
-                               framework::Variable*& var);
+                               framework::Variable** var);
 
 inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
   switch (type) {
