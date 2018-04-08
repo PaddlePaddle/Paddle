@@ -43,9 +43,8 @@ class SGDOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("Param")->type()),
-        ctx.GetPlace());
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -53,10 +52,12 @@ class SGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   SGDOpMaker(OpProto* proto, OpAttrChecker* op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("Param", "(Tensor) Input parameter");
+    AddInput("Param", "(Tensor or SelectedRows) Input parameter");
     AddInput("LearningRate", "(Tensor) Learning rate of SGD");
-    AddInput("Grad", "(Tensor) Input gradient");
-    AddOutput("ParamOut", "(Tensor) Output parameter");
+    AddInput("Grad", "(Tensor or SelectedRows) Input gradient");
+    AddOutput("ParamOut",
+              "(Tensor or SelectedRows, same with Param) "
+              "Output parameter, should share the same memory with Param");
     AddComment(R"DOC(
 
 SGD operator
