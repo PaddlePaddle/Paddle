@@ -56,6 +56,10 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
   }
+  if (use_gather_reduce) {
+    ParameterCollection::Init(grad_names_,
+                              static_cast<int>(local_scopes.size()));
+  }
 }
 
 std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
@@ -150,7 +154,9 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
               result.ops_.emplace_back(
                   new AllGatherOpHandle(*local_scopes_[i], p));
               auto *op_handle = result.ops_.back().get();
-
+              op_handle->dev_ctxes_[p] = const_cast<platform::DeviceContext *>(
+                  platform::DeviceContextPool::Instance().Get(p));
+              // why is vars empyt ??????
               if (vars.empty()) {  // This device has no data. continue.
                 continue;
               }

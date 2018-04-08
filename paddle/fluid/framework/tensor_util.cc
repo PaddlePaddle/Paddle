@@ -71,9 +71,44 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(
         dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
-
-// TODO(zcd): CUDAPinnedPlace->CUDAPlace, CUDAPlace->CUDAPinnedPlace
-// TODO(zcd): CUDAPinnedPlace->CPUPlace, CPUPlace->CUDAPinnedPlace
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_gpu_place(dst_place)) {
+    auto src_cuda_pinned_place =
+        boost::get<platform::CUDAPinnedPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
+    auto ctx_place = ctx.GetPlace();
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
+    PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place);
+    memory::Copy(
+        dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size,
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+  } else if (platform::is_gpu_place(src_place) &&  // NOLINT
+             platform::is_cuda_pinned_place(dst_place)) {
+    auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
+    auto dst_cuda_pinned_place =
+        boost::get<platform::CUDAPinnedPlace>(dst_place);
+    auto ctx_place = ctx.GetPlace();
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
+    PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
+    memory::Copy(
+        dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size,
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_cpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
+                 boost::get<platform::CUDAPinnedPlace>(src_place), src_ptr,
+                 size);
+  } else if (platform::is_cpu_place(src_place) &&
+             platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(boost::get<platform::CUDAPinnedPlace>(dst_place), dst_ptr,
+                 boost::get<platform::CPUPlace>(src_place), src_ptr, size);
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(boost::get<platform::CUDAPinnedPlace>(dst_place), dst_ptr,
+                 boost::get<platform::CUDAPinnedPlace>(src_place), src_ptr,
+                 size);
 #endif
   } else {
     PADDLE_THROW("TensorCopy failed.");

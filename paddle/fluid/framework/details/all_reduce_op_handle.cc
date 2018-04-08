@@ -32,6 +32,7 @@ AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
 }
 
 void AllReduceOpHandle::RunImpl() {
+  PADDLE_ENFORCE_EQ(this->inputs_.size(), device_count_);
   auto in_var0 = static_cast<VarHandle *>(this->inputs_[0]);
   auto &var_name = in_var0->name_;
 
@@ -41,53 +42,56 @@ void AllReduceOpHandle::RunImpl() {
     in->generated_op_->Wait(dev_ctxes_[p]);
   }
 
+  platform::Place cuda_pinned_place = platform::CUDAPinnedPlace();
   // sum
-  Variable var;
-  ParameterCollection::Instance().Get(var_name)->Receive<Variable>(&var);
+  Variable *var;
+  ParameterCollection::Instance().Get(var_name)->Receive<Variable *>(&var);
 
   Tensor reducer;
   Tensor temp;
-  if (var.IsType<framework::SelectedRows>()) {
-    // reduce sparse parameter
+  if (var->IsType<framework::SelectedRows>()) {
+    // reduce sparse gradient
 
-  } else if (var.IsType<framework::LoDTensor>()) {
-    auto param = var.Get<LoDTensor>();
+  } else if (var->IsType<framework::LoDTensor>()) {
+    auto param = var->Get<LoDTensor>();
 
-    auto dev_id = static_cast<platform::CUDAPlace>(param.place()).device;
-    auto &p = nccl_ctxs_.DevCtx(dev_id);
+    PADDLE_ENFORCE(platform::is_gpu_place(param.place()));
 
-    reducer.mutable_data(param.dims(), platform::CUDAPinnedPlace());
-    temp.mutable_data(param.dims(), platform::CUDAPinnedPlace());
+    auto dev_id = boost::get<platform::CUDAPlace>(param.place()).device;
+    auto dev_ctx = nccl_ctxs_.DevCtx(dev_id);
 
-    framework::TensorCopy(param, platform::CUDAPinnedPlace(), dev_ctxes_[p],
-                          reducer);
-    dev_ctxes_[p]->Wait();
+    reducer.Resize(param.dims());
+    temp.Resize(param.dims());
+    reducer.mutable_data(cuda_pinned_place, param.type());
+    temp.mutable_data(cuda_pinned_place, param.type());
+
+    framework::TensorCopy(param, cuda_pinned_place, *dev_ctx, &reducer);
+    dev_ctx->Wait();
   } else {
-    PADDLE_THROW("Parameter should be LoDTensor or SelectedRows");
+    PADDLE_THROW("Gradient should be LoDTensor or SelectedRows");
   }
 
   // TODO(zcd): float should be T
   float *reducer_ptr = reducer.data<float>();
   for (int j = 0; j < device_count_ - 1; ++j) {
-    Variable other_var;
-    ParameterCollection::Instance().Get(var_name)->Receive<Variable>(
+    Variable *other_var;
+    ParameterCollection::Instance().Get(var_name)->Receive<Variable *>(
         &other_var);
-    PADDLE_ENFORCE(other_var.Type() == var.Type());
+    PADDLE_ENFORCE(other_var->Type() == var->Type());
 
-    if (var.second->IsType<framework::SelectedRows>()) {
-      // reduce sparse parameter
+    if (var->IsType<framework::SelectedRows>()) {
+      // reduce sparse gradient
 
-    } else if (var.second->IsType<framework::LoDTensor>()) {
-      auto param = other_var.Get<LoDTensor>();
+    } else if (var->IsType<framework::LoDTensor>()) {
+      auto param = other_var->Get<LoDTensor>();
       PADDLE_ENFORCE_EQ(reducer.numel(), param.numel());
 
-      auto dev_id = static_cast<platform::CUDAPlace>(param.place()).device;
-      auto &p = nccl_ctxs_.DevCtx(dev_id);
+      auto dev_id = boost::get<platform::CUDAPlace>(param.place()).device;
+      auto dev_ctx = nccl_ctxs_.DevCtx(dev_id);
 
-      framework::TensorCopy(param, platform::CUDAPinnedPlace(), dev_ctxes_[p],
-                            temp);
+      framework::TensorCopy(param, cuda_pinned_place, *dev_ctx, &temp);
 
-      dev_ctxes_[p]->Wait();
+      dev_ctx->Wait();
       float *temp_ptr = temp.data<float>();
       for (int k = 0; k < reducer.numel(); ++k) {
         reducer_ptr[k] += temp_ptr[k];
@@ -101,18 +105,13 @@ void AllReduceOpHandle::RunImpl() {
     auto *s = local_scopes_[i];
     int dev_id = boost::get<platform::CUDAPlace>(p).device;
     auto var = s->FindVar(var_name);
-    if (var.IsType<framework::SelectedRows>()) {
-      // reduce sparse parameter
+    if (var->IsType<framework::SelectedRows>()) {
+      // reduce sparse gradient
 
-    } else if (var.IsType<framework::LoDTensor>()) {
-      auto &lod_tensor = var->Get<LoDTensor>();
-      void *buffer = const_cast<void *>(lod_tensor.data<void>());
-      if (numel == 0) {
-        numel = static_cast<size_t>(lod_tensor.numel());
-      }
-
+    } else if (var->IsType<framework::LoDTensor>()) {
+      auto lod_tensor = var->GetMutable<LoDTensor>();
       auto dev_ctx = nccl_ctxs_.DevCtx(dev_id);
-      framework::TensorCopy(reducer, p, dev_ctx, lod_tensor);
+      framework::TensorCopy(reducer, p, *dev_ctx, lod_tensor);
     }
   }
 }

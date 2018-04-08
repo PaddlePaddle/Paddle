@@ -16,8 +16,9 @@
 
 #include <map>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
-
 #include "paddle/fluid/framework/channel.h"
 
 namespace paddle {
@@ -26,8 +27,9 @@ namespace details {
 
 class ParameterCollection {
  public:
-  explicit ParameterCollection(const std::vector<std::string> &para_names,
-                               const int device_count);
+  explicit ParameterCollection(
+      const std::unordered_set<std::string> &para_names,
+      const int device_count);
 
   static ParameterCollection &Instance() {
     PADDLE_ENFORCE_NOT_NULL(param_collect,
@@ -36,8 +38,9 @@ class ParameterCollection {
   }
 
   /*! \brief  Create should only called by Init function */
-  static ParameterCollection &Init(const std::vector<std::string> &para_names,
-                                   const int device_count) {
+  static ParameterCollection &Init(
+      const std::unordered_set<std::string> &para_names,
+      const int device_count) {
     if (param_collect == nullptr) {
       param_collect = new ParameterCollection(para_names, device_count);
     }
@@ -51,7 +54,7 @@ class ParameterCollection {
  private:
   static ParameterCollection *param_collect;
   const int device_count_;
-  std::unordered_map<const std::string, std::unique_ptr<ChannelHolder>>
+  std::unordered_map<std::string, std::unique_ptr<ChannelHolder>>
       param_channels_;
   DISABLE_COPY_AND_ASSIGN(ParameterCollection);
 };

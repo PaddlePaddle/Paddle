@@ -23,6 +23,7 @@ AllGatherOpHandle::AllGatherOpHandle(const Scope &local_scope,
     : local_scope_(local_scope), place_(place) {}
 
 void AllGatherOpHandle::RunImpl() {
+  PADDLE_ENFORCE_EQ(this->inputs_.size(), 1);
   auto &var_name = static_cast<VarHandle *>(this->inputs_[0])->name_;
 
   // Wait input done, this Wait is asynchronous operation
@@ -31,7 +32,7 @@ void AllGatherOpHandle::RunImpl() {
   auto var = local_scope_.FindVar(var_name);
   PADDLE_ENFORCE(var);
 
-  ParameterCollection::Instance().Get(var_name)->Send<Variable>(var);
+  ParameterCollection::Instance().Get(var_name)->Send<Variable *>(&var);
 }
 
 std::string AllGatherOpHandle::Name() const { return "all_gather"; }

@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -33,7 +34,6 @@ struct AllReduceOpHandle : public OpHandleBase {
   const std::vector<platform::Place> &places_;
   const platform::NCCLContextMap &nccl_ctxs_;
   const int device_count_;
-  std::thread all_reduce_calls_;
 
   AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,

@@ -25,7 +25,8 @@ class ParallelExecutor(object):
                  loss_name,
                  use_cuda,
                  num_threads=None,
-                 allow_op_delay=False):
+                 allow_op_delay=False,
+                 use_gather_reduce=False):
         self._places = []
         self._act_places = []
         if use_cuda:
@@ -66,7 +67,8 @@ class ParallelExecutor(object):
             main.desc,
             loss_name,
             scope,
-            allow_op_delay)
+            allow_op_delay,
+            use_gather_reduce)
         self.scope = scope
 
     def run(self, fetch_list, feed_dict={}):
