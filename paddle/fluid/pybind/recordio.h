@@ -21,6 +21,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-extern void BindRecordIOWriter(py::module& m);
+void BindRecordIOWriter(py::module* m);
+
 }  // namespace pybind
 }  // namespace paddle
