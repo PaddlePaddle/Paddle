@@ -25,12 +25,3 @@ third_party/
 
 # clion workspace.
 cmake-build-*
-
-# generated while compiling
-paddle/pybind/pybind.h
-CMakeFiles
-cmake_install.cmake
-paddle/.timestamp
-python/paddlepaddle.egg-info/
-paddle/fluid/pybind/pybind.h
-python/paddle/version.py

@@ -9,8 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
 #include "gflags/gflags.h"
+#include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -30,8 +30,8 @@ TEST(inference, fit_a_line) {
   // The second dim of the input tensor should be 13
   // The input data should be >= 0
   int64_t batch_size = 10;
-  SetupTensor<float>(
-      input, {batch_size, 13}, static_cast<float>(0), static_cast<float>(10));
+  SetupTensor<float>(&input, {batch_size, 13}, static_cast<float>(0),
+                     static_cast<float>(10));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 

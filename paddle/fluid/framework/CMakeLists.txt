@@ -7,9 +7,9 @@ cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 
 if(WITH_GPU)
-  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS ddim place paddle_memory device_context framework_proto)
+  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS ddim place memory device_context framework_proto)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS ddim place paddle_memory device_context framework_proto)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS ddim place memory device_context framework_proto)
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -21,9 +21,9 @@ endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
-nv_test(mixed_vector_test SRCS mixed_vector_test.cu DEPS place paddle_memory device_context init)
+nv_test(mixed_vector_test SRCS mixed_vector_test.cu DEPS place memory device_context init)
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio)
-cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor paddle_memory)
+cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor init)
 
 cc_library(reader SRCS reader.cc DEPS lod_tensor ddim)
@@ -74,8 +74,8 @@ py_proto_compile(framework_py_proto SRCS framework.proto)
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
 add_dependencies(framework_py_proto framework_py_proto_init)
 add_custom_command(TARGET framework_py_proto POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_SOURCE_DIR}/python/paddle/fluid/proto
-    COMMAND cp *.py ${PADDLE_SOURCE_DIR}/python/paddle/fluid/proto/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+    COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
     COMMENT "Copy generated python proto into directory paddle/fluid/proto."
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 

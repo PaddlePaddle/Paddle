@@ -68,6 +68,17 @@ class TestSoftmaxCUDNNOp(TestSoftmaxOp):
         self.use_cudnn = True
 
 
+class TestSoftmaxFP16Op(TestSoftmaxOp):
+    def init_kernel_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
+
+
 class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
     def init_kernel_type(self):
         self.use_cudnn = True
