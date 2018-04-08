@@ -352,13 +352,17 @@ void Executor::RunPreparedContext(
     bool create_vars) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
+  PADDLE_ENFORCE(
+      has_feed_operators(global_block, feed_targets, feed_holder_name),
+      "Program in ExecutorPrepareContext should has feed_ops.");
+  PADDLE_ENFORCE(
+      has_fetch_operators(global_block, fetch_targets, fetch_holder_name),
+      "Program in the prepared context should has fetch_ops.");
+
   // map the data of feed_targets to feed_holder
   for (auto* op : global_block.AllOps()) {
     if (op->Type() == kFeedOpType) {
       std::string feed_target_name = op->Output("Out")[0];
-      PADDLE_ENFORCE(feed_targets.find(feed_target_name) != feed_targets.end(),
-                     "Variable %s is not feeded.");
-
       int idx = boost::get<int>(op->GetAttr("col"));
       SetFeedVariable(scope, *feed_targets[feed_target_name], feed_holder_name,
                       idx);
@@ -371,10 +375,6 @@ void Executor::RunPreparedContext(
   for (auto* op : global_block.AllOps()) {
     if (op->Type() == kFetchOpType) {
       std::string fetch_target_name = op->Input("X")[0];
-      PADDLE_ENFORCE(
-          fetch_targets.find(fetch_target_name) != fetch_targets.end(),
-          "Variable %s is not fetched.");
-
       int idx = boost::get<int>(op->GetAttr("col"));
       *fetch_targets[fetch_target_name] =
           GetFetchVariable(*scope, fetch_holder_name, idx);
