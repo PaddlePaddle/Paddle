@@ -26,7 +26,7 @@ void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
   bool freed = false;
   {
     size_t index;
-    void* p = a->Alloc(index, size);
+    void* p = a->Alloc(&index, size);
     if (size > 0) {
       EXPECT_NE(p, nullptr);
     } else {

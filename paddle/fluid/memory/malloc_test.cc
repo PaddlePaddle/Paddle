@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/memory/malloc.h"
 
 #include <unordered_map>
 
@@ -27,7 +27,7 @@ inline bool is_aligned(void const *p) {
 }
 
 size_t align(size_t size, paddle::platform::CPUPlace place) {
-  size += sizeof(paddle::memory::detail::Metadata);
+  size += sizeof(paddle::memory::detail::MemoryBlock::Desc);
   size_t alignment = paddle::platform::CpuMinChunkSize();
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
@@ -85,7 +85,7 @@ TEST(BuddyAllocator, CPUMultAlloc) {
 #ifdef PADDLE_WITH_CUDA
 
 size_t align(size_t size, paddle::platform::CUDAPlace place) {
-  size += sizeof(paddle::memory::detail::Metadata);
+  size += sizeof(paddle::memory::detail::MemoryBlock::Desc);
   size_t alignment = paddle::platform::GpuMinChunkSize();
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
@@ -141,7 +141,7 @@ TEST(BuddyAllocator, GPUMultAlloc) {
 }
 
 size_t align(size_t size, paddle::platform::CUDAPinnedPlace place) {
-  size += sizeof(paddle::memory::detail::Metadata);
+  size += sizeof(paddle::memory::detail::MemoryBlock::Desc);
   size_t alignment = paddle::platform::CUDAPinnedMinChunkSize();
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
