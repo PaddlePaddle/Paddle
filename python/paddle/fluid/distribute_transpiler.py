@@ -16,14 +16,9 @@ from __future__ import print_function
 
 import math
 
-import framework
-from distributed_spliter import *
-from framework import Program, default_main_program, Variable
-from framework import Program, default_main_program, default_startup_program, Parameter, Variable
-import optimizer
-from layer_helper import LayerHelper
 import distributed_splitter as splitter
-import math
+import framework
+from framework import Program, default_main_program, Variable
 from . import core
 
 LOOKUP_TABLE_TYPE = "lookup_table"
@@ -297,23 +292,20 @@ class DistributeTranspiler:
             distributed_lookup_table_ops) > 0
         if self.has_distributed_lookup_table:
 
-            def create_var(block, name):
-                return block.create_var(
-                    name=name, type=core.VarDesc.VarType.LOD_TENSOR)
+            def create_splited_vars(source_var, block, tag):
+                return [
+                    block.create_var(
+                        name=str(self.table_name + tag + str(index)),
+                        type=source_var.type,
+                        shape=source_var.shape,
+                        dtype=source_var.dtype)
+                    for index in range(len(pserver_endpoints))
+                ]
 
             # replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
-            self.prefetch_input_vars = [
-                create_var(
-                    block=program.global_block(),
-                    name=str(self.table_name + "_prefetch_in_" + str(index)))
-                for index in range(len(pserver_endpoints))
-            ]
-            self.prefetch_output_vars = [
-                create_var(
-                    block=program.global_block(),
-                    name=str(self.table_name + "_prefetch_out_" + str(index)))
-                for index in range(len(pserver_endpoints))
-            ]
+            self.prefetch_input_vars = None
+            self.prefetch_output_vars = None
+
             while True:
                 all_ops = program.global_block().ops
                 for op in all_ops:
@@ -321,6 +313,19 @@ class DistributeTranspiler:
                         op_index = list(all_ops).index(op)
                         ids_name = op.input("Ids")
                         out_name = op.output("Out")
+
+                        if self.prefetch_input_vars is None:
+                            ids_var = program.global_block().vars[ids_name[0]]
+                            self.prefetch_input_vars = create_splited_vars(
+                                source_var=ids_var,
+                                block=program.global_block(),
+                                tag="_prefetch_in_")
+                        if self.prefetch_output_vars is None:
+                            out_var = program.global_block().vars[out_name[0]]
+                            self.prefetch_output_vars = create_splited_vars(
+                                source_var=out_var,
+                                block=program.global_block(),
+                                tag="_prefetch_out_")
 
                         # insert split_ids_op
                         program.global_block().insert_op(
@@ -499,12 +504,15 @@ class DistributeTranspiler:
             pserver_index = self.pserver_endpoints.index(endpoint)
             trainer_ids = self.prefetch_input_vars[pserver_index]
             pserver_ids = pserver_program.global_block().create_var(
-                name=trainer_ids.name, type=trainer_ids.type)
+                name=trainer_ids.name,
+                type=trainer_ids.type,
+                shape=trainer_ids.shape,
+                dtype=trainer_ids.dtype)
             trainer_out = self.prefetch_output_vars[pserver_index]
             pserver_out = pserver_program.global_block().create_var(
                 name=trainer_out.name, type=trainer_out.type)
             prefetch_block.append_op(
-                type="lookup_table",
+                type=LOOKUP_TABLE_TYPE,
                 inputs={'Ids': pserver_ids,
                         "W": table_var},
                 outputs={"Out": pserver_out},
