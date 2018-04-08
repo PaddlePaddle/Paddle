@@ -175,13 +175,20 @@ class TestBlockDesc(unittest.TestCase):
         self.assertEqual(var2_re, var2)
 
     def test_add_op(self):
-        program_desc = core.ProgramDesc()
+        program = Program()
+        program_desc = program.desc
         self.assertIsNotNone(program_desc)
         block = program_desc.block(0)
         self.assertIsNotNone(block)
-        op1 = block.append_op()
         op2 = block.append_op()
         op0 = block.prepend_op()
+        op1 = block.insert_op(1)
+        op0.set_type("test")
+        op1.set_type("test")
+        op2.set_type("test")
+
+        program.sync_with_cpp()
+
         all_ops = []
         for idx in xrange(0, block.op_size()):
             all_ops.append(block.op(idx))

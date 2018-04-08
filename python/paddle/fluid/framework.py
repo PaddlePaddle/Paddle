@@ -913,6 +913,15 @@ class Block(object):
                     ops_in_cpp_index += 1
                     ops_in_python_index += 1
 
+        # sync ops inserted from c++ end
+        if len(self.ops) != len(ops_in_cpp) and start_index == 0 and len(
+                self.ops) == end_index:
+            self.ops.clear()
+            for index in range(len(ops_in_cpp)):
+                op_desc = ops_in_cpp[index]
+                op = Operator(self, op_desc)
+                self.ops.append(op)
+
         assert len(self.ops) == len(ops_in_cpp)
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
