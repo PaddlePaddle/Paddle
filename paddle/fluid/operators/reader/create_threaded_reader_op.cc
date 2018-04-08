@@ -26,7 +26,7 @@ class ThreadedReader : public framework::DecoratedReader {
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!unsafe_mode) {
+    if (!unsafe_mode_) {
       if (!reader_->HasNext()) {
         PADDLE_THROW("There is no next data!");
       }
@@ -54,7 +54,7 @@ class ThreadedReader : public framework::DecoratedReader {
     if (thread_buffer.empty() && reader_->HasNext()) {
       reader_->ReadNext(&thread_buffer);
     }
-    return !threda_buffer.empty();
+    return !thread_buffer.empty();
   }
 
   void ReInit() override {
@@ -78,6 +78,7 @@ class ThreadedReader : public framework::DecoratedReader {
   }
 
  private:
+  bool unsafe_mode_;
   mutable std::mutex mutex_;
   mutable std::unordered_map<std::thread::id, std::vector<framework::LoDTensor>>
       thread_buffers_;
@@ -124,7 +125,7 @@ class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
       'HasNext()' returning true only guarantees the safety of 
       invoking 'ReadNext()' in the same thread. Each thread must 
       invoke 'HasNext()' and 'ReadNext()' in pair.
-    )DOC")
+    )DOC");
   }
 };
 
