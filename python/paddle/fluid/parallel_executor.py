@@ -22,10 +22,13 @@ __all__ = ['ParallelExecutor']
 
 class ParallelExecutor(object):
     def __init__(self,
-                 loss_name,
                  use_cuda,
+                 main_program,
+                 startup_program,
+                 loss_name=None,
                  num_threads=None,
-                 allow_op_delay=False):
+                 allow_op_delay=False,
+                 share_vars_from=None):
         self._places = []
         self._act_places = []
         if use_cuda:
@@ -50,9 +53,15 @@ class ParallelExecutor(object):
             else:
                 min(len(self._places) * 2, multiprocessing.cpu_count())
 
-        startup = framework.default_startup_program()
-        main = framework.default_main_program()
+        main = main_program
+        startup = startup_program
         scope = executor.global_scope()
+
+        if startup:
+            exe = executor.Executor(self._act_places[0])
+            exe.run(startup)
+
+        local_scopes = share_vars_from.local_scopes() if share_vars_from else []
 
         self.executor = core.ParallelExecutor(
             num_threads,
@@ -64,8 +73,9 @@ class ParallelExecutor(object):
             ]),
             startup.desc,
             main.desc,
-            loss_name,
+            loss_name if loss_name else '',
             scope,
+            local_scopes,
             allow_op_delay)
         self.scope = scope
 

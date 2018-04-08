@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
-#include "paddle/fluid/platform/profiler.h"
 
 #include <string>
 #include <vector>
@@ -24,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -48,16 +48,22 @@ ParallelExecutor::ParallelExecutor(
     const std::vector<platform::Place> &places,
     const std::unordered_set<std::string> &params,
     const ProgramDesc &startup_program, const ProgramDesc &main_program,
-    const std::string &loss_var_name, Scope *scope, bool allow_op_delay)
+    const std::string &loss_var_name, Scope *scope,
+    const std::vector<Scope *> &local_scopes, bool allow_op_delay)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
-  // Step 1. RunStartupProgram and Bcast the params to devs.
-  Executor exe(places[0]);
-  exe.Run(startup_program, scope, 0);
+  // Step 1. Bcast the params to devs.
   // Create local scopes
-  for (size_t i = 0; i < member_->places_.size(); ++i) {
-    member_->local_scopes_.push_back(&scope->NewScope());
+  if (local_scopes.empty()) {
+    for (size_t i = 0; i < member_->places_.size(); ++i) {
+      member_->local_scopes_.push_back(&scope->NewScope());
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
+    for (size_t i = 0; i < member_->places_.size(); ++i) {
+      member_->local_scopes_.push_back(local_scopes[i]);
+    }
   }
 
 // Bcast Parameters to all GPUs
