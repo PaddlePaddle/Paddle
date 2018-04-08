@@ -195,7 +195,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool() {
   VLOG(10) << "Creating and inserting new block " << p
            << " from system allocator";
 
-  static_cast<MemoryBlock*>(p)->init(cache_, MemoryBlock::FREE_CHUNK, index,
+  static_cast<MemoryBlock*>(p)->init(&cache_, MemoryBlock::FREE_CHUNK, index,
                                      max_chunk_size_, nullptr, nullptr);
 
   // gpu fallback allocation
