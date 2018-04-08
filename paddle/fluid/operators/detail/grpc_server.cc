@@ -138,13 +138,14 @@ class RequestPrefetch final : public RequestBase {
                            framework::Scope* scope,
                            const platform::DeviceContext* dev_ctx,
                            framework::Executor* executor,
-                           framework::ProgramDesc* program, int blkid)
+                           framework::ProgramDesc* program,
+                           framework::ExecutorPrepareContext* prefetch_ctx)
       : RequestBase(service, cq, dev_ctx),
         responder_(&ctx_),
         scope_(scope),
         executor_(executor),
         program_(program),
-        blkid_(blkid) {
+        prefetch_ctx_(prefetch_ctx) {
     request_.reset(new VariableResponse(scope, dev_ctx_));
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
@@ -164,8 +165,7 @@ class RequestPrefetch final : public RequestBase {
     framework::Scope* local_scope = &scope_->NewScope();
     auto* var = local_scope->FindVar(var_name);
     InitializeVariable(var, var_desc->GetType());
-
-    executor_->Run(*program_, local_scope, blkid_, false, false);
+    executor_->RunPreparedContext(prefetch_ctx_, scope_, false, false);
 
     SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
 
@@ -179,6 +179,7 @@ class RequestPrefetch final : public RequestBase {
   framework::Scope* scope_;
   framework::Executor* executor_;
   framework::ProgramDesc* program_;
+  framework::ExecutorPrepareContext* prefetch_ctx_;
   int blkid_;
 };
 
@@ -276,7 +277,7 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
   }
   RequestPrefetch* prefetch =
       new RequestPrefetch(&service_, cq_prefetch_.get(), scope_, dev_ctx_,
-                          executor_, program_, prefetch_blk_id_);
+                          executor_, program_, prefetch_ctx_);
 
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }

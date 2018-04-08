@@ -96,10 +96,11 @@ void StartServer(const std::string& endpoint) {
   framework::Executor exe(place);
   platform::CPUDeviceContext ctx(place);
   auto* block = AppendPrefetchBlcok(&program);
+  auto prepared = exe.Prepare(program, block->ID());
   InitTensorsOnServer(&scope, &place, 10);
 
   rpc_service_->SetProgram(&program);
-  rpc_service_->SetPrefetchBlkdId(block->ID());
+  rpc_service_->SetPrefetchPreparedCtx(prepared.get());
   rpc_service_->SetDevCtx(&ctx);
   rpc_service_->SetScope(&scope);
   rpc_service_->SetExecutor(&exe);
@@ -125,7 +126,6 @@ TEST(PREFETCH, CPU) {
                                out_var_name);
   client.Wait();
 
-  // auto out_var = scope.Var(out_var_name);
   auto var = scope.Var(out_var_name);
   auto value = var->GetMutable<framework::SelectedRows>()->value();
   auto ptr = value.mutable_data<float>(place);

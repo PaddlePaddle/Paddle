@@ -21,7 +21,7 @@ service SendRecvService {
   rpc SendVariable(VariableMessage) returns (VoidMessage) {}
   // Argument VariableMessage for GetVariable should only contain varname.
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
-  // Prefetch variable by Ids
+  // Look up table block execution output variable name.
   rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 }
 
