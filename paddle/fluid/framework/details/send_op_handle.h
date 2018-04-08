@@ -19,6 +19,8 @@
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 
@@ -27,19 +29,18 @@ namespace framework {
 namespace details {
 
 struct SendOpHandle : public OpHandleBase {
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
-  const platform::NCCLContextMap &nccl_ctxs_;
+  std::unique_ptr<OperatorBase> op_;
+  const Scope* local_scope_;
+  const platform::Place& place_;
 
-  SendOpHandle(const std::vector<Scope *> &local_scopes,
-               const std::vector<platform::Place> &places,
-               const platform::NCCLContextMap &ctxs);
+  SendOpHandle(const framework::OpDesc& op_desc, const Scope* local_scope,
+               const platform::Place& place);
 
   std::string Name() const override;
 
   // Delay and buffer nccl_all_reduce together can significantly increase
   // performance. Disable this feature by returning false.
-  bool IsMultiDeviceTransfer() override { return true; };
+  bool IsMultiDeviceTransfer() override { return false; };
 
  protected:
   void RunImpl() override;

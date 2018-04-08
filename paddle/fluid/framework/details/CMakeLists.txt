@@ -5,6 +5,7 @@ cc_library(fetch_op_handle SRCS fetch_op_handle.cc DEPS op_handle_base scope lod
 nv_library(nccl_all_reduce_op_handle SRCS nccl_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
         dynload_cuda)
 cc_library(computation_op_handle SRCS computation_op_handle.cc DEPS framework_proto scope place operator op_registry)
+cc_library(send_op_handle SRCS send_op_handle.cc DEPS framework_proto scope place operator op_registry)
 
 cc_library(ssa_graph SRCS ssa_graph.cc DEPS var_handle op_handle_base)
 cc_library(ssa_graph_builder SRCS ssa_graph_builder.cc DEPS ssa_graph)
