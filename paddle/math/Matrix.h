@@ -859,6 +859,26 @@ public:
     LOG(FATAL) << "Not implemented";
   }
 
+  virtual void upsampleForward(Matrix& input,
+                               Matrix& mask,
+                               size_t imgSizeH,
+                               size_t imgSizeW,
+                               size_t channels,
+                               size_t outputH,
+                               size_t outputW) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
+  virtual void upsampleBackward(Matrix& outputGrad,
+                                Matrix& mask,
+                                size_t imgSizeH,
+                                size_t imgSizeW,
+                                size_t channels,
+                                size_t outputH,
+                                size_t outputW) {
+    LOG(FATAL) << "Not implemeted";
+  }
+
   /**
    * Pooling forward operation, pick out the largest element
    * in the sizeX of value, if the maskMatP is not NULL, it will
@@ -1420,6 +1440,22 @@ public:
 
   void classificationError(Matrix& output, IVector& label, size_t topkSize = 1);
 
+  void upsampleForward(Matrix& input,
+                       Matrix& mask,
+                       size_t imgSizeH,
+                       size_t imgSizeW,
+                       size_t channels,
+                       size_t outputH,
+                       size_t outputW);
+
+  void upsampleBackward(Matrix& outputGrad,
+                        Matrix& mask,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t channels,
+                        size_t outputH,
+                        size_t outputW);
+
   void maxPoolForward(Matrix& inputMat,
                       size_t imgSizeH,
                       size_t imgSizeW,
@@ -1693,6 +1729,22 @@ public:
   void copyByRowIndex(Matrix& b, const IVector& rowIndex);
 
   MatrixPtr clone(size_t height, size_t width, bool useGpu = false);
+
+  void upsampleForward(Matrix& input,
+                       Matrix& mask,
+                       size_t imgSizeH,
+                       size_t imgSizeW,
+                       size_t channels,
+                       size_t outputH,
+                       size_t outputW);
+
+  void upsampleBackward(Matrix& outputGrad,
+                        Matrix& mask,
+                        size_t imgSizeH,
+                        size_t imgSizeW,
+                        size_t channels,
+                        size_t outputH,
+                        size_t outputW);
 
   void maxPoolForward(Matrix& inputMat,
                       size_t imgSizeH,

@@ -10,11 +10,37 @@ Fluid is the answer.  Fluid is similar to PyTorch and TensorFlow Eager Execution
 
 Deep learning infrastructure is one of the fastest evolving technologies. Within four years, there have already been three generations of technologies invented.
 
-| Existed since | model as sequence of layers | model as graph of operators | No model |
-|--|--|--|--|
-| 2013 | Caffe, Theano, Torch, PaddlePaddle | | |
-| 2015 | | TensorFlow, MxNet, Caffe2, ONNX, n-graph | |
-| 2016 | | | PyTorch, TensorFlow Eager Execution, PaddlePaddle Fluid |
+<table>
+<thead>
+<tr>
+<th>Existed since</th>
+<th>model as sequence of layers</th>
+<th>model as graph of operators</th>
+<th>No model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2013 </td>
+<td>Caffe, Theano, Torch, PaddlePaddle </td>
+<td> </td>
+<td> </td>
+</tr>
+<tr>
+<td>2015 </td>
+<td> </td>
+<td>TensorFlow, MxNet, Caffe2, ONNX, n-graph </td>
+<td> </td>
+</tr>
+<tr>
+<td>2016 </td>
+<td> </td>
+<td>   </td>
+<td> PyTorch, TensorFlow Eager Execution, PaddlePaddle Fluid</td>
+</tr>
+</tbody>
+</table>
+
 
 From the above table, we see that the deep learning technology is evolving towards getting rid of the concept of a model.  To understand the reasons behind this direction, a comparison of the *programming paradigms* or the ways to program deep learning applications using these systems, would be helpful. The following section goes over these.
 

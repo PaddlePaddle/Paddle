@@ -279,6 +279,21 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   return std::unique_ptr<ExecutorPrepareContext>(ctx);
 }
 
+std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
+    const ProgramDesc& program, const std::vector<int>& block_ids) {
+  std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
+  for (auto& bid : block_ids) {
+    auto* ctx = new ExecutorPrepareContext(program, bid);
+    PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
+    auto& block = program.Block(bid);
+    for (auto& op_desc : block.AllOps()) {
+      ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
+    }
+    result.push_back(std::shared_ptr<ExecutorPrepareContext>(ctx));
+  }
+  return result;
+}
+
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars) {
   auto& block = ctx->prog_.Block(ctx->block_id_);

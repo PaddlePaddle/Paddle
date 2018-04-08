@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 #include <string>
 #include <vector>
@@ -47,7 +48,7 @@ ParallelExecutor::ParallelExecutor(
     const std::vector<platform::Place> &places,
     const std::unordered_set<std::string> &params,
     const ProgramDesc &startup_program, const ProgramDesc &main_program,
-    const std::string &loss_var_name, Scope *scope)
+    const std::string &loss_var_name, Scope *scope, bool allow_op_delay)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
@@ -82,8 +83,8 @@ ParallelExecutor::ParallelExecutor(
   auto graph = builder.Build(main_program);
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      num_threads, use_event, member_->local_scopes_, places,
-      std::move(graph)));
+      num_threads, use_event, member_->local_scopes_, places, std::move(graph),
+      allow_op_delay));
 
   // Step 3. Create vars in each scope;
   for (auto *scope : member_->local_scopes_) {
@@ -149,11 +150,29 @@ void ParallelExecutor::BCastParamsToGPUs(
 #endif
 }
 
-void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
-                           const std::string &fetched_var_name) {
+void ParallelExecutor::Run(
+    const std::vector<std::string> &fetch_tensors,
+    const std::string &fetched_var_name,
+    const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
+  platform::RecordBlock b(0);
+  SplitTensorToPlaces(feed_tensors);
   auto fetch_data = member_->executor_->Run(fetch_tensors);
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
       fetch_data;
+}
+
+void ParallelExecutor::SplitTensorToPlaces(
+    const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
+  for (auto it : feed_tensors) {
+    auto lod_tensors = it.second.SplitLoDTensor(member_->places_);
+    for (size_t j = 0; j < member_->places_.size(); ++j) {
+      // TODO(panxy0718): Do I need to delete this var?
+      member_->local_scopes_[j]
+          ->Var(it.first)
+          ->GetMutable<LoDTensor>()
+          ->ShareDataWith(lod_tensors[j]);
+    }
+  }
 }
 
 }  // namespace framework

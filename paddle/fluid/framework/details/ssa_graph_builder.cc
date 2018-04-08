@@ -136,6 +136,17 @@ void SSAGraphBuilder::PrintGraphviz(const SSAGraph &graph, std::ostream &sout) {
 
   sout << "}\n";
 }
+
+void SSAGraphBuilder::AddOutputToLeafOps(SSAGraph *graph) {
+  for (auto &op : graph->ops_) {
+    if (!op->outputs_.empty()) {
+      continue;
+    }
+    auto *dummy_leaf = new DummyVarHandle();
+    graph->dep_vars_.emplace(dummy_leaf);
+    op->AddOutput(dummy_leaf);
+  }
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
