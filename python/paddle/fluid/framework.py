@@ -640,6 +640,20 @@ class Operator(object):
         """
         return self.desc.block_attr(name)
 
+    def all_attrs(self):
+        """
+        Get the attribute dict
+        Returns(dict): The Operator's attribute dict
+        """
+        attr_names = self.attr_names
+        attr_map = {}
+        for n in attr_names:
+            if n == 'sub_block':
+                attr_map[n] = self.block_attr(n)
+            else:
+                attr_map[n] = self.attr(n)
+        return attr_map
+
 
 class Block(object):
     def __init__(self, program, idx):
