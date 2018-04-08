@@ -61,12 +61,12 @@ inline size_t hash(const MemoryBlock::Desc& metadata, size_t initial_seed) {
 }  // namespace
 
 void MemoryBlock::Desc::update_guards() {
-  guard_begin = hash(this, 1);
-  guard_end = hash(this, 2);
+  guard_begin = hash(*this, 1);
+  guard_end = hash(*this, 2);
 }
 
 bool MemoryBlock::Desc::check_guards() const {
-  return guard_begin == hash(this, 1) && guard_end == hash(this, 2);
+  return guard_begin == hash(*this, 1) && guard_end == hash(*this, 2);
 }
 
 }  // namespace detail
