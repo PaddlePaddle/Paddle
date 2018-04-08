@@ -18,11 +18,14 @@ import json
 import math
 import time
 import threading
+import logging
 
 import netaddr
 import boto3
 import namesgenerator
 import paramiko
+
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 # You must have aws_access_key_id, aws_secret_access_key, region set in
 # ~/.aws/credentials and ~/.aws/config
@@ -101,7 +104,7 @@ parser.add_argument(
     help="trainer bash file path")
 
 parser.add_argument(
-    '--action', type=str, default="create", help="create|cleanup|status")
+    '--action', type=str, default="serve", help="create|cleanup|serve")
 
 parser.add_argument('--pem_path', type=str, help="private key file")
 
@@ -111,15 +114,25 @@ parser.add_argument(
 parser.add_argument(
     '--docker_image', type=str, default="busybox", help="training docker image")
 
+parser.add_argument(
+    '--master_server_port', type=int, default=5436, help="master server port")
+
+parser.add_argument(
+    '--master_server_ip', type=str, default="", help="master server private ip")
+
 args = parser.parse_args()
 
 ec2client = boto3.client('ec2')
 
+logging.basicConfig(
+    filename='master.log', level=logging.INFO, format='%(asctime)s %(message)s')
+
 
 def create_subnet():
     # if no vpc id provided, list vpcs
+    logging.info("start creating subnet")
     if not args.vpc_id:
-        print("no vpc provided, trying to find the default one")
+        logging.info("no vpc provided, trying to find the default one")
         vpcs_desc = ec2client.describe_vpcs(
             Filters=[{
                 "Name": "isDefault",
@@ -130,11 +143,11 @@ def create_subnet():
         args.vpc_id = vpcs_desc["Vpcs"][0]["VpcId"]
         vpc_cidrBlock = vpcs_desc["Vpcs"][0]["CidrBlock"]
 
-        print("default vpc fount with id %s and CidrBlock %s" %
-              (args.vpc_id, vpc_cidrBlock))
+        logging.info("default vpc fount with id %s and CidrBlock %s" %
+                     (args.vpc_id, vpc_cidrBlock))
 
     if not vpc_cidrBlock:
-        print("trying to find cidrblock for vpc")
+        logging.info("trying to find cidrblock for vpc")
         vpcs_desc = ec2client.describe_vpcs(
             Filters=[{
                 "Name": "vpc-id",
@@ -143,11 +156,11 @@ def create_subnet():
         if len(vpcs_desc["Vpcs"]) == 0:
             raise ValueError('No VPC found')
         vpc_cidrBlock = vpcs_desc["Vpcs"][0]["CidrBlock"]
-        print("cidrblock for vpc is %s" % vpc_cidrBlock)
+        logging.info("cidrblock for vpc is %s" % vpc_cidrBlock)
 
     # list subnets in vpc in order to create a new one
 
-    print("trying to find ip blocks for new subnet")
+    logging.info("trying to find ip blocks for new subnet")
     subnets_desc = ec2client.describe_subnets(
         Filters=[{
             "Name": "vpc-id",
@@ -169,7 +182,7 @@ def create_subnet():
     for ipnetwork in ip_blocks_avaliable.iter_cidrs():
         try:
             subnet_cidr = ipnetwork.subnet(int(cidr_prefix)).next()
-            print("subnet ip block found %s" % (subnet_cidr))
+            logging.info("subnet ip block found %s" % (subnet_cidr))
             break
         except Exception:
             pass
@@ -178,7 +191,7 @@ def create_subnet():
         raise ValueError(
             'No avaliable subnet to fit required nodes in current VPC')
 
-    print("trying to create subnet")
+    logging.info("trying to create subnet")
     subnet_desc = ec2client.create_subnet(
         CidrBlock=str(subnet_cidr),
         VpcId=args.vpc_id,
@@ -191,9 +204,9 @@ def create_subnet():
     time.sleep(1)
     subnet_waiter.wait(SubnetIds=[subnet_id, ])
 
-    print("subnet created")
+    logging.info("subnet created")
 
-    print("adding tags to newly created subnet")
+    logging.info("adding tags to newly created subnet")
     ec2client.create_tags(
         Resources=[subnet_id, ],
         Tags=[{
@@ -249,12 +262,12 @@ def run_instances(image_id, instance_type, count, role, cmd=""):
         instance_ids.append(instance["InstanceId"])
 
     if len(instance_ids) > 0:
-        print(str(len(instance_ids)) + " instance(s) created")
+        logging.info(str(len(instance_ids)) + " instance(s) created")
     else:
-        print("no instance created")
+        logging.info("no instance created")
     #create waiter to make sure it's running
 
-    print("waiting for instance to become accessible")
+    logging.info("waiting for instance to become accessible")
     waiter = ec2client.get_waiter('instance_status_ok')
     waiter.wait(
         Filters=[{
@@ -281,8 +294,8 @@ def create_pservers():
             instance_type=args.pserver_instance_type,
             count=args.pserver_count,
             role="PSERVER", )
-    except Exception, e:
-        print e
+    except Exception:
+        logging.exception("error while trying to create pservers")
         cleanup(args.task_name)
 
 
@@ -293,8 +306,11 @@ def create_trainers(kickoff_cmd, pserver_endpoints_str):
             cmd = kickoff_cmd.format(
                 PSERVER_HOSTS=pserver_endpoints_str,
                 DOCKER_IMAGE=args.docker_image,
-                TRAINER_INDEX=str(i))
-            print(cmd)
+                TRAINER_INDEX=str(i),
+                TASK_NAME=args.task_name,
+                MASTER_ENDPOINT=args.master_server_ip + ":" +
+                str(args.master_server_port))
+            logging.info(cmd)
             responses.append(
                 run_instances(
                     image_id=args.trainer_image_id,
@@ -303,13 +319,14 @@ def create_trainers(kickoff_cmd, pserver_endpoints_str):
                     role="TRAINER",
                     cmd=cmd, )[0])
         return responses
-    except Exception, e:
-        print e
+    except Exception:
+        logging.exception("error while trying to create trainers")
         cleanup(args.task_name)
 
 
 def cleanup(task_name):
     #shutdown all ec2 instances
+    print("going to clean up " + task_name + " instances")
     instances_response = ec2client.describe_instances(Filters=[{
         "Name": "tag:Task_name",
         "Values": [task_name]
@@ -327,7 +344,7 @@ def cleanup(task_name):
             'instance_terminated')
         instance_termination_waiter.wait(InstanceIds=instance_ids)
 
-#delete the subnet created
+    #delete the subnet created
 
     subnet = ec2client.describe_subnets(Filters=[{
         "Name": "tag:Task_name",
@@ -337,6 +354,7 @@ def cleanup(task_name):
     if len(subnet["Subnets"]) > 0:
         ec2client.delete_subnet(SubnetId=subnet["Subnets"][0]["SubnetId"])
     # no subnet delete waiter, just leave it.
+    logging.info("Clearnup done")
     return
 
 
@@ -349,38 +367,47 @@ def kickoff_pserver(host, pserver_endpoints_str):
         cmd = (script_to_str(args.pserver_bash_file)).format(
             PSERVER_HOSTS=pserver_endpoints_str,
             DOCKER_IMAGE=args.docker_image,
-            PSERVER_PORT=args.pserver_port)
-        print(cmd)
+            PSERVER_PORT=args.pserver_port,
+            TASK_NAME=args.task_name,
+            MASTER_ENDPOINT=args.master_server_ip + ":" +
+            str(args.master_server_port))
+        logging.info(cmd)
         stdin, stdout, stderr = ssh_client.exec_command(command=cmd)
         return_code = stdout.channel.recv_exit_status()
-        print(return_code)
+        logging.info(return_code)
         if return_code != 0:
             raise Exception("Error while kicking off pserver training process")
-    except Exception, e:
-        print e
+    except Exception:
+        logging.exception("Error while kicking off pserver training process")
         cleanup(args.task_name)
     finally:
         ssh_client.close()
 
 
-def main():
+def init_args():
+
     if not args.task_name:
         args.task_name = generate_task_name()
-        print("task name generated", args.task_name)
-
-    if not args.subnet_id:
-        print("creating subnet for this task")
-        args.subnet_id = create_subnet()
-        print("subnet %s created" % (args.subnet_id))
+        logging.info("task name generated %s" % (args.task_name))
 
     if not args.pem_path:
         args.pem_path = os.path.expanduser("~") + "/" + args.key_name + ".pem"
     if args.security_group_id:
         args.security_group_ids = (args.security_group_id, )
 
-    print("creating pservers")
+    args.trainers_job_done_count = 0
+
+
+def create_cluster():
+
+    if not args.subnet_id:
+        logging.info("creating subnet for this task")
+        args.subnet_id = create_subnet()
+        logging.info("subnet %s created" % (args.subnet_id))
+
+    logging.info("creating pservers")
     pserver_create_response = create_pservers()
-    print("pserver created, collecting pserver ips")
+    logging.info("pserver created, collecting pserver ips")
 
     pserver_endpoints = []
     for pserver in pserver_create_response:
@@ -389,7 +416,7 @@ def main():
 
     pserver_endpoints_str = ",".join(pserver_endpoints)
 
-    print("kicking off pserver training process")
+    logging.info("kicking off pserver training process")
     pserver_threads = []
     for pserver in pserver_create_response:
         pserver_thread = threading.Thread(
@@ -401,29 +428,114 @@ def main():
     for pserver_thread in pserver_threads:
         pserver_thread.join()
 
-    print("all pserver training process started")
+    logging.info("all pserver training process started")
 
-    print("creating trainers and kicking off trainer training process")
+    logging.info("creating trainers and kicking off trainer training process")
     create_trainers(
         kickoff_cmd=script_to_str(args.trainer_bash_file),
         pserver_endpoints_str=pserver_endpoints_str)
-    print("trainers created")
+    logging.info("trainers created")
+
+
+def start_server(args):
+    class S(BaseHTTPRequestHandler):
+        def _set_headers(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'text/text')
+            self.end_headers()
+
+        def do_HEAD(self):
+            self._set_headers()
+
+        def do_404(self):
+            self.send_response(404)
+            self.send_header('Content-type', 'text/text')
+            self.end_headers()
+            logging.info("Received invalid GET request" + self.path)
+            self.wfile.write("NO ACTION FOUND")
+
+        def do_GET(self):
+            self._set_headers()
+            request_path = self.path
+            if request_path == "/status" or request_path == "/logs":
+                logging.info("Received request to return status")
+                with open("master.log", "r") as logfile:
+                    self.wfile.write(logfile.read().strip())
+            else:
+                self.do_404()
+
+        def do_POST(self):
+
+            request_path = self.path
+
+            if request_path == "/save_data":
+                self._set_headers()
+                logging.info("Received request to save data")
+                self.wfile.write("DATA SAVED!")
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+                if args.task_name:
+                    with open(args.task_name + ".txt", "a") as text_file:
+                        text_file.write(post_data + "\n")
+
+            elif request_path == "/cleanup":
+                self._set_headers()
+                logging.info("Received request to cleanup cluster")
+                cleanup(args.task_name)
+                self.wfile.write("cleanup in progress")
+
+            elif request_path == "/trainer_job_done":
+                self._set_headers()
+                logging.info("Received request to increase job done count")
+                args.trainers_job_done_count += 1
+                self.wfile.write(
+                    str(args.trainers_job_done_count) + " tainers job done")
+                if args.trainers_job_done_count >= args.trainer_count:
+                    logging.info("going to clean up")
+                    cleanup(args.task_name)
+
+            else:
+                self.do_404()
+
+    server_address = ('', args.master_server_port)
+    httpd = HTTPServer(server_address, S)
+    logging.info("HTTP server is starting")
+    httpd.serve_forever()
 
 
 def print_arguments():
-    print('-----------  Configuration Arguments -----------')
+    logging.info('-----------  Configuration Arguments -----------')
     for arg, value in sorted(vars(args).iteritems()):
-        print('%s: %s' % (arg, value))
-    print('------------------------------------------------')
+        logging.info('%s: %s' % (arg, value))
+    logging.info('------------------------------------------------')
 
 
 if __name__ == "__main__":
     print_arguments()
     if args.action == "create":
+        logging.info("going to create cluster")
         if not args.key_name or not args.security_group_id:
             raise ValueError("key_name and security_group_id are required")
-        main()
+        init_args()
+        create_cluster()
     elif args.action == "cleanup":
+        logging.info("going to cleanup cluster")
         if not args.task_name:
             raise ValueError("task_name is required")
         cleanup(args.task_name)
+    elif args.action == "serve":
+        # serve mode
+        if not args.master_server_ip:
+            raise ValueError(
+                "No master server ip set, please run with --action create")
+
+        logging.info("going to start serve and create cluster")
+
+        init_args()
+
+        logging.info("starting server in another thread")
+        server_thread = threading.Thread(target=start_server, args=(args, ))
+        server_thread.start()
+
+        create_cluster()
+        server_thread.join()
