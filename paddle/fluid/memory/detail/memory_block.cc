@@ -21,9 +21,10 @@ namespace detail {
 
 void MemoryBlock::init(MetadataCache* cache, Type t, size_t index, size_t size,
                        void* left_buddy, void* right_buddy) {
-  cache->save(this, Metadata(t, index, size - sizeof(Metadata), size,
-                             static_cast<MemoryBlock*>(left_buddy),
-                             static_cast<MemoryBlock*>(right_buddy)));
+  cache->save(
+      this, MemoryBlock::Desc(t, index, size - sizeof(MemoryBlock::Desc), size,
+                              static_cast<MemoryBlock*>(left_buddy),
+                              static_cast<MemoryBlock*>(right_buddy)));
 }
 
 MemoryBlock::Type MemoryBlock::type(MetadataCache& cache) const {
@@ -63,7 +64,7 @@ void MemoryBlock::split(MetadataCache* cache, size_t size) {
   PADDLE_ASSERT(total_size(*cache) >= size);
 
   // bail out if there is no room for another partition
-  if (total_size(*cache) - size <= sizeof(Metadata)) {
+  if (total_size(*cache) - size <= sizeof(MemoryBlock::Desc)) {
     return;
   }
 
@@ -78,13 +79,13 @@ void MemoryBlock::split(MetadataCache* cache, size_t size) {
   // Write the metadata for the new block
   auto new_block_right_buddy = metadata.right_buddy;
 
-  cache->save(
-      static_cast<MemoryBlock*>(right_partition),
-      Metadata(FREE_CHUNK, index(*cache), remaining_size - sizeof(Metadata),
-               remaining_size, this, new_block_right_buddy));
+  cache->save(static_cast<MemoryBlock*>(right_partition),
+              MemoryBlock::Desc(FREE_CHUNK, index(*cache),
+                                remaining_size - sizeof(MemoryBlock::Desc),
+                                remaining_size, this, new_block_right_buddy));
 
   metadata.right_buddy = static_cast<MemoryBlock*>(right_partition);
-  metadata.size = size - sizeof(Metadata);
+  metadata.size = size - sizeof(MemoryBlock::Desc);
   metadata.total_size = size;
 
   cache->save(this, metadata);
@@ -122,7 +123,8 @@ void MemoryBlock::merge(MetadataCache* cache, MemoryBlock* right_buddy) {
   metadata.total_size += right_buddy->total_size(*cache);
 
   cache->save(this, metadata);
-  cache->save(right_buddy, Metadata(INVALID_CHUNK, 0, 0, 0, nullptr, nullptr));
+  cache->save(right_buddy,
+              MemoryBlock::Desc(INVALID_CHUNK, 0, 0, 0, nullptr, nullptr));
 }
 
 void MemoryBlock::mark_as_free(MetadataCache* cache) {
@@ -139,12 +141,14 @@ void MemoryBlock::set_type(MetadataCache* cache, Type t) {
 }
 
 void* MemoryBlock::data() const {
-  return const_cast<Metadata*>(reinterpret_cast<const Metadata*>(this)) + 1;
+  return const_cast<MemoryBlock::Desc*>(
+             reinterpret_cast<const MemoryBlock::Desc*>(this)) +
+         1;
 }
 
 MemoryBlock* MemoryBlock::metadata() const {
   return const_cast<MemoryBlock*>(reinterpret_cast<const MemoryBlock*>(
-      reinterpret_cast<const Metadata*>(this) - 1));
+      reinterpret_cast<const MemoryBlock::Desc*>(this) - 1));
 }
 
 }  // namespace detail

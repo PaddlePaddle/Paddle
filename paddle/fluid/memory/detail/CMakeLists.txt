@@ -1,4 +1,4 @@
-cc_library(memory_block SRCS memory_block.cc meta_data.cc meta_cache.cc)
+cc_library(memory_block SRCS memory_block.cc memory_block_desc.cc meta_cache.cc)
 
 if(${WITH_GPU})
   nv_library(system_allocator SRCS system_allocator.cc DEPS gflags cpu_info gpu_info)

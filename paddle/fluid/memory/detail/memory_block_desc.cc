@@ -20,8 +20,8 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-Metadata::Metadata(MemoryBlock::Type t, size_t i, size_t s, size_t ts,
-                   MemoryBlock* l, MemoryBlock* r)
+MemoryBlock::Desc::Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts,
+                        MemoryBlock* l, MemoryBlock* r)
     : type(t),
       index(i),
       size(s),
@@ -29,7 +29,7 @@ Metadata::Metadata(MemoryBlock::Type t, size_t i, size_t s, size_t ts,
       left_buddy(l),
       right_buddy(r) {}
 
-Metadata::Metadata()
+MemoryBlock::Desc::Desc()
     : type(MemoryBlock::INVALID_CHUNK),
       index(0),
       size(0),
@@ -45,7 +45,7 @@ inline void hash_combine(std::size_t* seed, const T& v) {
   (*seed) ^= hasher(v) + 0x9e3779b9 + ((*seed) << 6) + ((*seed) >> 2);
 }
 
-inline size_t hash(const Metadata& metadata, size_t initial_seed) {
+inline size_t hash(const MemoryBlock::Desc& metadata, size_t initial_seed) {
   size_t seed = initial_seed;
 
   hash_combine(&seed, static_cast<size_t>(metadata.type));
@@ -60,12 +60,12 @@ inline size_t hash(const Metadata& metadata, size_t initial_seed) {
 
 }  // namespace
 
-void Metadata::update_guards() {
+void MemoryBlock::Desc::update_guards() {
   guard_begin = hash(this, 1);
   guard_end = hash(this, 2);
 }
 
-bool Metadata::check_guards() const {
+bool MemoryBlock::Desc::check_guards() const {
   return guard_begin == hash(this, 1) && guard_end == hash(this, 2);
 }
 
