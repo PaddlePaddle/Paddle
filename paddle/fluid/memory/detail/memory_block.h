@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <cstddef>
+#include <cstdint>
+#include <unordered_map>
 
 namespace paddle {
 namespace memory {
@@ -37,7 +38,7 @@ struct MemoryBlock {
   // MemoryBlock::Desc to the beginning of the block; or, if it is a GPU memory
   // block, the MetadataCache writes the Meatadata to a std::map in
   // the CPU.
-  void init(MemoryBlock::DescCache* cache, Type t, size_t index, size_t size,
+  void init(MetadataCache* cache, Type t, size_t index, size_t size,
             void* left_buddy, void* right_buddy);
 
   // All these accessors returns fields in the MemoryBlock::Desc of the memory

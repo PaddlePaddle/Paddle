@@ -27,7 +27,7 @@ void MemoryBlock::init(MetadataCache* cache, Type t, size_t index, size_t size,
                               static_cast<MemoryBlock*>(right_buddy)));
 }
 
-MemoryBlock::Type MemoryBlock::type(MetadataCache& cache) const {
+MemoryBlock::Type MemoryBlock::type(const MetadataCache& cache) const {
   return cache.load(this).type;
 }
 
