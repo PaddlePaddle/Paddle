@@ -51,7 +51,7 @@ struct ClipFunctor {
   }
 };
 
-template <typename Place, typename T>
+template <typename T>
 class PriorBoxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -106,49 +106,24 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
         int idx = 0;
         for (size_t s = 0; s < min_sizes.size(); ++s) {
           auto min_size = min_sizes[s];
-          // first prior: aspect_ratio = 1, size = min_size
-          box_width = box_height = min_size / 2.;
-          // xmin
-          e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-          // ymin
-          e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-          // xmax
-          e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-          // ymax
-          e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-
-          idx++;
-          if (max_sizes.size() > 0) {
-            auto max_size = max_sizes[s];
-            // second prior: aspect_ratio = 1,
-            // size = sqrt(min_size * max_size)
-            box_width = box_height = sqrt(min_size * max_size) / 2.;
-            // xmin
+          // priors with different aspect ratios
+          for (size_t r = 0; r < aspect_ratios.size(); ++r) {
+            float ar = aspect_ratios[r];
+            box_width = min_size * sqrt(ar) / 2.;
+            box_height = min_size / sqrt(ar) / 2.;
             e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-            // ymin
             e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-            // xmax
             e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-            // ymax
             e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
             idx++;
           }
-
-          // rest of priors
-          for (size_t r = 0; r < aspect_ratios.size(); ++r) {
-            float ar = aspect_ratios[r];
-            if (fabs(ar - 1.) < 1e-6) {
-              continue;
-            }
-            box_width = min_size * sqrt(ar) / 2.;
-            box_height = min_size / sqrt(ar) / 2.;
-            // xmin
+          if (max_sizes.size() > 0) {
+            auto max_size = max_sizes[s];
+            // square prior with size sqrt(minSize * maxSize)
+            box_width = box_height = sqrt(min_size * max_size) / 2.;
             e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-            // ymin
             e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-            // xmax
             e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-            // ymax
             e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
             idx++;
           }
