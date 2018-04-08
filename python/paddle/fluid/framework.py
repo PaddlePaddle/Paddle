@@ -640,6 +640,20 @@ class Operator(object):
         """
         return self.desc.block_attr(name)
 
+    def all_attrs(self):
+        """
+        Get the attribute dict
+        Returns(dict): The Operator's attribute dict
+        """
+        attr_names = self.attr_names
+        attr_map = {}
+        for n in attr_names:
+            if n == 'sub_block':
+                attr_map[n] = self.block_attr(n)
+            else:
+                attr_map[n] = self.attr(n)
+        return attr_map
+
 
 class Block(object):
     def __init__(self, program, idx):
@@ -958,6 +972,13 @@ class Block(object):
         if var.type == core.VarDesc.VarType.STEP_SCOPES:
             ret_var = self.create_var(
                 name=var.name, persistable=var.persistable, type=var.type)
+        elif var.type == core.VarDesc.VarType.SELECTED_ROWS:
+            ret_var = self.create_var(
+                name=var.name,
+                shape=var.shape,
+                dtype=var.dtype,
+                type=var.type,
+                persistable=True)
         else:
             ret_var = self.create_var(
                 name=var.name,
