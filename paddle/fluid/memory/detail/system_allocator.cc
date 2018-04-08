@@ -13,16 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/detail/system_allocator.h"
-#include "paddle/fluid/platform/assert.h"
-#include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 #include <stdlib.h>    // for malloc and free
 #include <sys/mman.h>  // for mlock and munlock
 #include <algorithm>   // for std::max
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 // If use_pinned_memory is true, CPUAllocator calls mlock, which
 // returns pinned and locked memory as staging areas for data exchange
@@ -35,13 +35,13 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-void* CPUAllocator::Alloc(size_t& index, size_t size) {
+void* CPUAllocator::Alloc(size_t* index, size_t size) {
   // According to http://www.cplusplus.com/reference/cstdlib/malloc/,
   // malloc might not return nullptr if size is zero, but the returned
   // pointer shall not be dereferenced -- so we make it nullptr.
   if (size <= 0) return nullptr;
 
-  index = 0;  // unlock memory
+  *index = 0;  // unlock memory
 
   void* p;
 
@@ -56,7 +56,7 @@ void* CPUAllocator::Alloc(size_t& index, size_t size) {
 
   if (p != nullptr) {
     if (FLAGS_use_pinned_memory) {
-      index = 1;
+      *index = 1;
       mlock(p, size);  // lock memory
     }
   }
@@ -75,7 +75,7 @@ bool CPUAllocator::UseGpu() const { return false; }
 
 #ifdef PADDLE_WITH_CUDA
 
-void* GPUAllocator::Alloc(size_t& index, size_t size) {
+void* GPUAllocator::Alloc(size_t* index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
@@ -93,7 +93,7 @@ void* GPUAllocator::Alloc(size_t& index, size_t size) {
   }
 
   if (result == cudaSuccess) {
-    index = 0;
+    *index = 0;
     gpu_alloc_size_ += size;
     return p;
   } else {
@@ -133,7 +133,7 @@ bool GPUAllocator::UseGpu() const { return true; }
 
 // PINNED memory allows direct DMA transfers by the GPU to and from system
 // memory. It’s locked to a physical address.
-void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
+void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 
   // NOTE: here, we use CUDAPinnedMaxAllocSize as the maximum memory size
@@ -154,7 +154,7 @@ void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
   cudaError_t result = cudaMallocHost(&p, size);
 
   if (result == cudaSuccess) {
-    index = 1;  // PINNED memory
+    *index = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     return p;
   } else {

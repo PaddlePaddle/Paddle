@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/detail/meta_cache.h"
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/platform/assert.h"
@@ -23,7 +22,7 @@ namespace detail {
 
 MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 
-Metadata MetadataCache::load(const MemoryBlock* block) {
+Metadata MetadataCache::load(const MemoryBlock* block) const {
   if (uses_gpu_) {
     auto existing_metadata = cache_.find(block);
     PADDLE_ASSERT(existing_metadata->second.check_guards());
@@ -36,8 +35,8 @@ Metadata MetadataCache::load(const MemoryBlock* block) {
   }
 }
 
-void MetadataCache::store(MemoryBlock* block,
-                          const Metadata& original_metadata) {
+void MetadataCache::save(MemoryBlock* block,
+                         const Metadata& original_metadata) {
   auto metadata = original_metadata;
 
   metadata.update_guards();

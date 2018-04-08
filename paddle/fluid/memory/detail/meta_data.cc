@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/detail/meta_data.h"
-
 #include <functional>
+
+#include "paddle/fluid/memory/detail/memory_block.h"
 
 namespace paddle {
 namespace memory {
@@ -37,24 +37,28 @@ Metadata::Metadata()
       left_buddy(nullptr),
       right_buddy(nullptr) {}
 
+namespace {
+
 template <class T>
-inline void hash_combine(std::size_t& seed, const T& v) {
+inline void hash_combine(std::size_t* seed, const T& v) {
   std::hash<T> hasher;
-  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  (*seed) ^= hasher(v) + 0x9e3779b9 + ((*seed) << 6) + ((*seed) >> 2);
 }
 
-inline size_t hash(const Metadata* metadata, size_t initial_seed) {
+inline size_t hash(const Metadata& metadata, size_t initial_seed) {
   size_t seed = initial_seed;
 
-  hash_combine(seed, (size_t)metadata->type);
-  hash_combine(seed, metadata->index);
-  hash_combine(seed, metadata->size);
-  hash_combine(seed, metadata->total_size);
-  hash_combine(seed, metadata->left_buddy);
-  hash_combine(seed, metadata->right_buddy);
+  hash_combine(&seed, static_cast<size_t>(metadata.type));
+  hash_combine(&seed, metadata.index);
+  hash_combine(&seed, metadata.size);
+  hash_combine(&seed, metadata.total_size);
+  hash_combine(&seed, metadata.left_buddy);
+  hash_combine(&seed, metadata.right_buddy);
 
   return seed;
 }
+
+}  // namespace
 
 void Metadata::update_guards() {
   guard_begin = hash(this, 1);
