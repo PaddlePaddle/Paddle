@@ -23,8 +23,8 @@ limitations under the License. */
 
 void ThreadedRunInference(
     const std::unique_ptr<paddle::framework::ProgramDesc>& inference_program,
-    const paddle::framework::Executor& executor,
-    paddle::framework::Scope* scope, const int thread_id,
+    paddle::framework::Executor* executor, paddle::framework::Scope* scope,
+    const int thread_id,
     const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
     const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs) {
   auto copy_program = std::unique_ptr<paddle::framework::ProgramDesc>(
@@ -56,8 +56,8 @@ void ThreadedRunInference(
   }
 
   // 6. Run the inference program
-  executor.Run(*copy_program, scope, feed_targets, fetch_targets,
-               feed_holder_name, fetch_holder_name);
+  executor->Run(*copy_program, scope, feed_targets, fetch_targets,
+                feed_holder_name, fetch_holder_name);
 }
 
 template <typename Place>
@@ -78,8 +78,8 @@ void TestMultiThreadInference(
   std::vector<std::thread*> threads;
   for (int i = 0; i < num_threads; ++i) {
     threads.push_back(new std::thread(
-        ThreadedRunInference, std::ref(inference_program), std::ref(executor),
-        scope, i, std::ref(cpu_feeds[i]), std::ref(cpu_fetchs[i])));
+        ThreadedRunInference, std::ref(inference_program), &executor, scope, i,
+        std::ref(cpu_feeds[i]), std::ref(cpu_fetchs[i])));
   }
   for (int i = 0; i < num_threads; ++i) {
     threads[i]->join();
