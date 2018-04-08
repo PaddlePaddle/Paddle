@@ -107,6 +107,7 @@ package_dir={
     # So that package points to other directory.
     'paddle.fluid.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
     'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
+    'paddle.fluid': '${PADDLE_BINARY_DIR}/python/paddle/fluid',
 }
 if '${WITH_FLUID_ONLY}'== 'OFF':
     package_dir['py_paddle']='${PADDLE_BINARY_DIR}/python/py_paddle'
