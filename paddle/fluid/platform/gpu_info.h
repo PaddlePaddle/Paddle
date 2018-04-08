@@ -23,10 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-//! Environment variable: fraction of GPU memory to use on each device.
-const std::string kEnvFractionGpuMemoryToUse =
-    "PADDLE_FRACTION_GPU_MEMORY_TO_USE";
-
 //! Get the total number of GPU devices in system.
 int GetCUDADeviceCount();
 
@@ -46,7 +42,7 @@ int GetCurrentDeviceId();
 void SetDeviceId(int device_id);
 
 //! Get the memory usage of current GPU device.
-void GpuMemoryUsage(size_t &available, size_t &total);
+void GpuMemoryUsage(size_t *available, size_t *total);
 
 //! Get the maximum allocation size of current GPU device.
 size_t GpuMaxAllocSize();

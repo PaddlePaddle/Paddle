@@ -118,6 +118,25 @@ struct DefaultDeviceContextType<platform::CUDAPlace> {
   using TYPE = CUDADeviceContext;
 };
 
+// Currently, CUDAPinnedDeviceContext is only used to data copying.
+class CUDAPinnedDeviceContext : public DeviceContext {
+ public:
+  CUDAPinnedDeviceContext();
+  explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
+
+  Place GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+ private:
+  CUDAPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+
+template <>
+struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
+  using TYPE = CUDAPinnedDeviceContext;
+};
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN

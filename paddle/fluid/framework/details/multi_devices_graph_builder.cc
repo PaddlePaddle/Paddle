@@ -21,6 +21,9 @@
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #endif
 
+#include <string>
+#include <vector>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -167,6 +170,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     harzaeds need to be handled.
    */
   PolishGraphToSupportDataHazards(&result);
+
+  /*
+   * Only variables should be the leaves of graph.
+   */
+  AddOutputToLeafOps(&result);
 
   if (VLOG_IS_ON(10)) {
     std::ostringstream sout;

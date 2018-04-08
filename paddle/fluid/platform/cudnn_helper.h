@@ -257,9 +257,11 @@ class ScopedConvolutionDescriptor {
     }
 #endif
 
+    cudnnDataType_t compute_type =
+        (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
     PADDLE_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
         desc_, pads.size(), pads.data(), strides.data(), dilations.data(),
-        CUDNN_CROSS_CORRELATION, type));
+        CUDNN_CROSS_CORRELATION, compute_type));
     return desc_;
   }
 
