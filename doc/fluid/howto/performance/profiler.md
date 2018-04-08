@@ -23,7 +23,7 @@ But how to record the time for the mixed C++ and CUDA program?  There many C++ A
 
 The overall flow is shown as the following figure.
 
-<img src="./images/profiler.png" align="center"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/profiler.png" align="center"/><br/>
 
 ### Event
 
@@ -36,10 +36,10 @@ enum EventKind {
   kPopRange};
 ```
 - kMark: only a marker without time range.
-- kPushRange: mark the starting event for time range. 
+- kPushRange: mark the starting event for time range.
 - kPopRange: mark the ending event for time range.
 
-For the CPU code, the events only need to record the current time. For the CUDA code, the [event management functions of CUDA](http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EVENT.html#group__CUDART__EVENT) are used.  For many pieces of code, an event lists are used to record each piece. 
+For the CPU code, the events only need to record the current time. For the CUDA code, the [event management functions of CUDA](http://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EVENT.html#group__CUDART__EVENT) are used.  For many pieces of code, an event lists are used to record each piece.
 
 ```c++
 class Event {
@@ -66,11 +66,11 @@ struct EventList {
 };
 ```
 
-As mentioned above, there is no need to record the timeline when disabling the profiler. So there is a global state to enable or disable the profiler. 
+As mentioned above, there is no need to record the timeline when disabling the profiler. So there is a global state to enable or disable the profiler.
 
 ```c++
 enum ProfilerState {
-  kDisabled, 
+  kDisabled,
   kCPU,
   kCUDA
 };

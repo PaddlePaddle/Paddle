@@ -946,13 +946,20 @@ class Block(object):
             The new  variable cloned from 'var' in current block.
         """
         assert isinstance(var, Variable)
-        return self.create_var(
-            name=var.name,
-            shape=var.shape,
-            dtype=var.dtype,
-            type=var.type,
-            lod_level=var.lod_level,
-            persistable=True)
+        ret_var = None
+        # make STEP_SCOPES var can be safely cloned.
+        if var.type == core.VarDesc.VarType.STEP_SCOPES:
+            ret_var = self.create_var(
+                name=var.name, persistable=var.persistable, type=var.type)
+        else:
+            ret_var = self.create_var(
+                name=var.name,
+                shape=var.shape,
+                dtype=var.dtype,
+                type=var.type,
+                lod_level=var.lod_level,
+                persistable=True)
+        return ret_var
 
 
 class Program(object):

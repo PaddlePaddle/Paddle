@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <stddef.h>  // for size_t
-#include <condition_variable>
+#include <stddef.h>            // for size_t
+#include <condition_variable>  // NOLINT
 #include <typeindex>
 #include "paddle/fluid/platform/enforce.h"
 
@@ -216,7 +216,8 @@ class ChannelHolder {
 
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
-    PlaceholderImpl(size_t buffer_size) : type_(std::type_index(typeid(T))) {
+    explicit PlaceholderImpl(size_t buffer_size)
+        : type_(std::type_index(typeid(T))) {
       channel_.reset(MakeChannel<T>(buffer_size));
     }
 
