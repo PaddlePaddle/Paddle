@@ -57,7 +57,15 @@ class ThreadedReader : public framework::DecoratedReader {
     return !threda_buffer.empty();
   }
 
-  void ReInit() override;
+  void ReInit() override {
+    if (!unsafe_mode_) {
+      PADDLE_THROW(
+          "ThreadedReader::ReInit() is disabled when 'unsafe_mode' is false.");
+    }
+    VLOG(5) << "ThreadedReader::ReInit() is invoked! It might be buggy in "
+               "multi-thread environment.";
+    reader_->ReInit();
+  }
 
   ~ThreadedReader() {
     for (auto& p : thread_buffers_) {
@@ -123,3 +131,8 @@ class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
 }  // namespace reader
 }  // namespace operators
 }  // namespace paddle
+
+namespace reader = paddle::operators::reader;
+REGISTER_FILE_READER_OPERATOR(create_threaded_reader,
+                              reader::CreateThreadedReaderOp,
+                              reader::CreateThreadedReaderOpMaker);
