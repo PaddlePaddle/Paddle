@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
 namespace paddle {
@@ -31,21 +34,28 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          platform::NCCLContextMap *nccl_ctxs);
+                          platform::NCCLContextMap *nccl_ctxs,
+                          bool distributed = false);
 #else
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
-                          const std::vector<Scope *> &local_scopes);
+                          const std::vector<Scope *> &local_scopes,
+                          bool distributed = false);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
+
+ private:
+  void CreateOpHandleIOs(SSAGraph *result, OpDesc *op, const platform::Place &p,
+                         const size_t &i) const;
 
  private:
   std::string loss_var_name_;
   const std::vector<platform::Place> &places_;
   const std::vector<Scope *> &local_scopes_;
   std::unordered_set<std::string> grad_names_;
+  bool distributed_;
 
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;

@@ -18,61 +18,24 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-SendOpHandle::SendOpHandle(const std::vector<Scope *> &local_scopes,
-                           const std::vector<platform::Place> &places,
-                           const platform::NCCLContextMap &ctxs)
-    : local_scopes_(local_scopes), places_(places) {}
+SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
+                           const Scope *local_scope,
+                           const platform::Place &place)
+    : op_(framework::OpRegistry::CreateOp(op_desc)),
+      local_scope_(local_scope),
+      place_(place) {}
 
 void SendOpHandle::RunImpl() {
-  if (inputs_.size() == 1) {
-    return;  // No need to all reduce when GPU count = 1;
-  } else {
-    // Wait input done
-    for (auto *in : inputs_) {
-      auto &p = static_cast<VarHandle *>(in)->place_;
-      in->generated_op_->Wait(dev_ctxes_[p]);
-    }
-
-    auto &var_name = static_cast<VarHandle *>(this->inputs_[0])->name_;
-    int dtype = -1;
-    size_t numel = 0;
-
-    std::vector<std::function<void()>> all_reduce_calls;
-
-    for (size_t i = 0; i < local_scopes_.size(); ++i) {
-      auto &p = places_[i];
-      auto *s = local_scopes_[i];
-      int dev_id = boost::get<platform::CUDAPlace>(p).device;
-
-      auto &lod_tensor = s->FindVar(var_name)->Get<LoDTensor>();
-      void *buffer = const_cast<void *>(lod_tensor.data<void>());
-
-      if (dtype == -1) {
-        dtype = platform::ToNCCLDataType(lod_tensor.type());
-      }
-
-      if (numel == 0) {
-        numel = static_cast<size_t>(lod_tensor.numel());
-      }
-
-      auto &nccl_ctx = nccl_ctxs_.at(dev_id);
-      auto stream = nccl_ctx.stream();
-      auto comm = nccl_ctx.comm_;
-      all_reduce_calls.emplace_back([=] {
-        PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-            buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
-            comm, stream));
-      });
-    }
-
-    platform::NCCLGroupGuard guard;
-    for (auto &call : all_reduce_calls) {
-      call();
-    }
+  // Wait input done
+  for (auto *in : inputs_) {
+    auto &p = static_cast<VarHandle *>(in)->place_;
+    in->generated_op_->Wait(dev_ctxes_[p]);
   }
+
+  op_->Run(*local_scope_, place_);
 }
 
-std::string NCCLAllReduceOpHandle::Name() const { return "nccl_all_reduce"; }
+std::string SendOpHandle::Name() const { return "send"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
