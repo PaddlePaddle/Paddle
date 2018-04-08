@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/detail/memory_block.h"
-#include "paddle/fluid/memory/detail/meta_data.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"

@@ -42,12 +42,12 @@ ENDIF()
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
-cc_library(device_context SRCS device_context.cc DEPS memory buddy_allocator
+cc_library(device_context SRCS device_context.cc DEPS malloc
     place eigen3 ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
-nv_test(transform_test SRCS transform_test.cu DEPS paddle_memory place device_context)
+nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto ${GPU_CTX_DEPS})
 cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
