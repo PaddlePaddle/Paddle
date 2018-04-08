@@ -13,15 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
+
+#include <unordered_map>
+
+#include "gtest/gtest.h"
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/meta_data.h"
-
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
-
-#include <gtest/gtest.h>
-#include <unordered_map>
 
 inline bool is_aligned(void const *p) {
   return 0 == (reinterpret_cast<uintptr_t>(p) & 0x3);

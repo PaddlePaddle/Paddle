@@ -73,7 +73,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),
-        platform::CPUPlace());
+        ctx.device_context());
   }
 };
 
@@ -171,6 +171,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker,
                   paddle::framework::EmptyGradOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    prior_box, ops::PriorBoxOpKernel<paddle::platform::CPUPlace, float>,
-    ops::PriorBoxOpKernel<paddle::platform::CPUPlace, double>);
+REGISTER_OP_CPU_KERNEL(prior_box, ops::PriorBoxOpKernel<float>,
+                       ops::PriorBoxOpKernel<double>);
