@@ -9,5 +9,5 @@ Development
   use_eigen_en.md
   name_convention.md
   support_new_device.md
-  releasing_process.md
+  releasing_process_en.md
   op_markdown_format.md
