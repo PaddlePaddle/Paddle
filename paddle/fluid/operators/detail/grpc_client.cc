@@ -138,7 +138,7 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req);
+    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val);
 
     // var handle
     VarHandle var_h;
