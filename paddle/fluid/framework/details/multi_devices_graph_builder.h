@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #pragma once
-
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
 namespace paddle {
@@ -31,12 +32,14 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          platform::NCCLContextMap *nccl_ctxs);
+                          platform::NCCLContextMap *nccl_ctxs,
+                          const bool use_gather_reduce);
 #else
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
-                          const std::vector<Scope *> &local_scopes);
+                          const std::vector<Scope *> &local_scopes,
+                          const bool use_gather_reduce);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
@@ -46,10 +49,10 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   const std::vector<platform::Place> &places_;
   const std::vector<Scope *> &local_scopes_;
   std::unordered_set<std::string> grad_names_;
-
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
+  const bool use_gather_reduce_;
 };
 }  // namespace details
 }  // namespace framework

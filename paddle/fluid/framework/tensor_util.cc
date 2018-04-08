@@ -11,8 +11,10 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-
 #include "paddle/fluid/framework/tensor_util.h"
+#include <algorithm>
+#include <limits>
+#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -35,10 +37,9 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
-  }
 #ifdef PADDLE_WITH_CUDA
-  else if (platform::is_gpu_place(src_place) &&  // NOLINT
-           platform::is_cpu_place(dst_place)) {
+  } else if (platform::is_gpu_place(src_place) &&  // NOLINT
+             platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
     auto ctx_place = ctx.GetPlace();
@@ -70,8 +71,48 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(
         dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
-  }
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_gpu_place(dst_place)) {
+    auto src_cuda_pinned_place =
+        boost::get<platform::CUDAPinnedPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
+    auto ctx_place = ctx.GetPlace();
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
+    PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place);
+    memory::Copy(
+        dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size,
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+  } else if (platform::is_gpu_place(src_place) &&  // NOLINT
+             platform::is_cuda_pinned_place(dst_place)) {
+    auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
+    auto dst_cuda_pinned_place =
+        boost::get<platform::CUDAPinnedPlace>(dst_place);
+    auto ctx_place = ctx.GetPlace();
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
+    PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
+    memory::Copy(
+        dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size,
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_cpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
+                 boost::get<platform::CUDAPinnedPlace>(src_place), src_ptr,
+                 size);
+  } else if (platform::is_cpu_place(src_place) &&
+             platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(boost::get<platform::CUDAPinnedPlace>(dst_place), dst_ptr,
+                 boost::get<platform::CPUPlace>(src_place), src_ptr, size);
+  } else if (platform::is_cuda_pinned_place(src_place) &&
+             platform::is_cuda_pinned_place(dst_place)) {
+    memory::Copy(boost::get<platform::CUDAPinnedPlace>(dst_place), dst_ptr,
+                 boost::get<platform::CUDAPinnedPlace>(src_place), src_ptr,
+                 size);
 #endif
+  } else {
+    PADDLE_THROW("TensorCopy failed.");
+  }
 }
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,

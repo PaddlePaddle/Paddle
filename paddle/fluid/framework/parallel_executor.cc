@@ -11,12 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/platform/profiler.h"
-
-#include <string>
-#include <vector>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -48,7 +47,8 @@ ParallelExecutor::ParallelExecutor(
     const std::vector<platform::Place> &places,
     const std::unordered_set<std::string> &params,
     const ProgramDesc &startup_program, const ProgramDesc &main_program,
-    const std::string &loss_var_name, Scope *scope, bool allow_op_delay)
+    const std::string &loss_var_name, Scope *scope, bool allow_op_delay,
+    bool use_gather_reduce)
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
 
@@ -73,12 +73,13 @@ ParallelExecutor::ParallelExecutor(
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
-  details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_,
-                                           member_->nccl_ctxs_.get());
+  details::MultiDevSSAGraphBuilder builder(
+      member_->places_, loss_var_name, params, member_->local_scopes_,
+      member_->nccl_ctxs_.get(), use_gather_reduce);
 #else
   details::MultiDevSSAGraphBuilder builder(member_->places_, loss_var_name,
-                                           params, member_->local_scopes_);
+                                           params, member_->local_scopes_,
+                                           use_gather_reduce);
 #endif
   auto graph = builder.Build(main_program);
 
@@ -165,6 +166,7 @@ void ParallelExecutor::SplitTensorToPlaces(
     const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
   for (auto it : feed_tensors) {
     auto lod_tensors = it.second.SplitLoDTensor(member_->places_);
+    // TODO(zcd): the size of lod_tensors may not equal to places_.size().
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?
       member_->local_scopes_[j]

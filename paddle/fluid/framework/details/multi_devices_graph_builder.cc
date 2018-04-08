@@ -12,17 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/details/all_gather_op_handle.h"
+#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/scope.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #endif
-
-#include <string>
-#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -34,23 +36,29 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
     const std::vector<Scope *> &local_scopes,
-    platform::NCCLContextMap *nccl_ctxs)
+    platform::NCCLContextMap *nccl_ctxs, const bool use_gather_reduce)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
-      nccl_ctxs_(nccl_ctxs) {
+      nccl_ctxs_(nccl_ctxs),
+      use_gather_reduce_(use_gather_reduce) {
 #else
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes)
+    const std::vector<Scope *> &local_scopes, const bool use_gather_reduce)
     : loss_var_name_(loss_var_name),
       places_(places),
-      local_scopes_(local_scopes) {
+      local_scopes_(local_scopes),
+      use_gather_reduce_(use_gather_reduce) {
 #endif
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
+  }
+  if (use_gather_reduce) {
+    ParameterCollection::Init(grad_names_,
+                              static_cast<int>(local_scopes.size()));
   }
 }
 
@@ -136,26 +144,77 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
                                                      // Insert NCCL AllReduce Op
           og_has_been_broadcast.insert(og);
 #ifdef PADDLE_WITH_CUDA
-          result.ops_.emplace_back(
-              new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
-          auto *op_handle = result.ops_.back().get();
+          //   use_gather_reduce should be a parameter.
+          if (use_gather_reduce_) {
+            // Gather
+            for (size_t i = 0; i < places_.size(); ++i) {
+              auto &p = places_[i];
+              auto &vars = result.vars_[i][og];
 
-          for (size_t i = 0; i < places_.size(); ++i) {
-            auto &p = places_[i];
-            auto &vars = result.vars_[i][og];
+              result.ops_.emplace_back(
+                  new AllGatherOpHandle(*local_scopes_[i], p));
+              auto *op_handle = result.ops_.back().get();
+              op_handle->dev_ctxes_[p] = const_cast<platform::DeviceContext *>(
+                  platform::DeviceContextPool::Instance().Get(p));
+              // why is vars empyt ??????
+              if (vars.empty()) {  // This device has no data. continue.
+                continue;
+              }
+              auto *prev_grad = &vars[vars.size() - 1];
+              op_handle->AddInput(prev_grad);
 
-            if (vars.empty()) {  // This device has no data. continue.
-              continue;
+              // add aux var
+              auto &var = vars[vars.size()];
+              var.place_ = p;
+              var.name_ = og;
+              var.version_ = vars.size() - 1;
+              op_handle->AddOutput(&var);
             }
-            auto *prev_grad = &vars[vars.size() - 1];
-            op_handle->AddInput(prev_grad);
 
-            auto &var = vars[vars.size()];
-            var.place_ = p;
-            var.name_ = og;
-            var.version_ = vars.size() - 1;
+            // Reduce
+            result.ops_.emplace_back(new AllReduceOpHandle(
+                local_scopes_, places_, *nccl_ctxs_, places_.size()));
+            auto *op_handle = result.ops_.back().get();
 
-            op_handle->AddOutput(&var);
+            for (size_t i = 0; i < places_.size(); ++i) {
+              auto &p = places_[i];
+              auto &vars = result.vars_[i][og];
+
+              if (vars.empty()) {  // This device has no data. continue.
+                continue;
+              }
+              auto *prev_grad = &vars[vars.size() - 1];
+              op_handle->AddInput(prev_grad);
+
+              auto &var = vars[vars.size()];
+              var.place_ = p;
+              var.name_ = og;
+              var.version_ = vars.size() - 1;
+
+              op_handle->AddOutput(&var);
+            }
+          } else {
+            result.ops_.emplace_back(
+                new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
+            auto *op_handle = result.ops_.back().get();
+
+            for (size_t i = 0; i < places_.size(); ++i) {
+              auto &p = places_[i];
+              auto &vars = result.vars_[i][og];
+
+              if (vars.empty()) {  // This device has no data. continue.
+                continue;
+              }
+              auto *prev_grad = &vars[vars.size() - 1];
+              op_handle->AddInput(prev_grad);
+
+              auto &var = vars[vars.size()];
+              var.place_ = p;
+              var.name_ = og;
+              var.version_ = vars.size() - 1;
+
+              op_handle->AddOutput(&var);
+            }
           }
 #else
           PADDLE_ENFORCE("Not implemented");
