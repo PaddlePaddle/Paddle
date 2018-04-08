@@ -544,14 +544,13 @@ All parameter, weight, gradient are variables in Paddle.
            [](ParallelExecutor &self, size_t num_threads, bool use_event,
               const std::vector<platform::Place> &places,
               const std::unordered_set<std::string> &params,
-              const ProgramDesc &startup_program,
+              const std::unordered_set<std::string> &vars,
               const ProgramDesc &main_program, const std::string &loss_var_name,
               Scope *scope, std::vector<Scope *> &local_scopes,
               bool allow_op_delay) {
-             new (&self)
-                 ParallelExecutor(num_threads, use_event, places, params,
-                                  startup_program, main_program, loss_var_name,
-                                  scope, local_scopes, allow_op_delay);
+             new (&self) ParallelExecutor(
+                 num_threads, use_event, places, params, vars, main_program,
+                 loss_var_name, scope, local_scopes, allow_op_delay);
            })
       .def("local_scopes",
            [](ParallelExecutor &self) -> std::vector<Scope *> * {

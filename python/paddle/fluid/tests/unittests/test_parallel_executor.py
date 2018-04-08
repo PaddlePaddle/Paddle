@@ -207,6 +207,10 @@ class TestParallelExecutorBase(unittest.TestCase):
             if memory_opt:
                 fluid.memory_optimize(main)
 
+            place = fluid.CUDAPlace(0)
+            startup_exe = fluid.Executor(place)
+            startup_exe.run(startup)
+
             exe = fluid.ParallelExecutor(True, loss_name=loss.name)
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
@@ -470,24 +474,18 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             image = numpy.random.normal(size=(batch_size,
                                               784)).astype('float32')
             label = numpy.random.randint(0, 10, (batch_size, 1), dtype="int64")
+
             place = fluid.CUDAPlace(0)
-            im_t = fluid.LoDTensor()
-            im_t.set(image, place)
-            lbl_t = fluid.LoDTensor()
-            lbl_t.set(label, place)
-            feed_dict = {'image': im_t, 'label': lbl_t}
+            exe = fluid.Executor(place)
+            exe.run(startup)
+            feed_dict = {'image': image, 'label': label}
 
             train_exe = fluid.ParallelExecutor(
-                loss_name=loss.name,
-                use_cuda=True,
-                main_program=main,
-                startup_program=startup)
+                use_cuda=True, loss_name=loss.name, main_program=main)
 
             test_exe = fluid.ParallelExecutor(
                 use_cuda=True,
                 main_program=test_program,
-                startup_program=startup,
-                run_startup=False,
                 share_vars_from=train_exe)
 
             for i in xrange(5):
