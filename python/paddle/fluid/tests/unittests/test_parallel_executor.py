@@ -207,7 +207,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             if memory_opt:
                 fluid.memory_optimize(main)
 
-            exe = fluid.ParallelExecutor(loss_name=loss.name, use_cuda=True)
+            exe = fluid.ParallelExecutor(True, loss_name=loss.name)
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
@@ -453,3 +453,47 @@ class TestTransformer(TestParallelExecutorBase):
     @unittest.skip("transformer is buggy in multi gpu")
     def test_main(self):
         self.check_network_convergence(transformer)
+
+
+class ParallelExecutorTestingDuringTraining(unittest.TestCase):
+    def test_parallel_testing(self):
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            loss = simple_fc_net(True)
+            test_program = main.clone(for_test=True)
+
+            opt = fluid.optimizer.SGD(learning_rate=0.0001)
+            opt.minimize(loss)
+
+            batch_size = 32
+            image = numpy.random.normal(size=(batch_size,
+                                              784)).astype('float32')
+            label = numpy.random.randint(0, 10, (batch_size, 1), dtype="int64")
+            place = fluid.CUDAPlace(0)
+            im_t = fluid.LoDTensor()
+            im_t.set(image, place)
+            lbl_t = fluid.LoDTensor()
+            lbl_t.set(label, place)
+            feed_dict = {'image': im_t, 'label': lbl_t}
+
+            train_exe = fluid.ParallelExecutor(
+                loss_name=loss.name,
+                use_cuda=True,
+                main_program=main,
+                startup_program=startup)
+
+            test_exe = fluid.ParallelExecutor(
+                use_cuda=True,
+                main_program=test_program,
+                startup_program=startup,
+                run_startup=False,
+                share_vars_from=train_exe)
+
+            for i in xrange(5):
+                test_loss, = test_exe.run([loss.name], feed_dict=feed_dict)
+                test_loss = numpy.array(test_loss)
+
+                train_loss, = train_exe.run([loss.name], feed_dict=feed_dict)
+                train_loss = numpy.array(train_loss)
+                self.assertTrue(numpy.allclose(train_loss, test_loss))

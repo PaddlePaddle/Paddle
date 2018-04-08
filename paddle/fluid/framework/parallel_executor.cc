@@ -43,6 +43,10 @@ class ParallelExecutorPrivate {
 #endif
 };
 
+std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
+  return member_->local_scopes_;
+}
+
 ParallelExecutor::ParallelExecutor(
     size_t num_threads, bool use_event,
     const std::vector<platform::Place> &places,
