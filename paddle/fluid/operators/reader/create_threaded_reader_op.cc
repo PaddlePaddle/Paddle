@@ -124,7 +124,7 @@ class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
       can enable them by setting 'unsafe_mode' true. In this case, 
       'HasNext()' returning true only guarantees the safety of 
       invoking 'ReadNext()' in the same thread. Each thread must 
-      invoke 'HasNext()' and 'ReadNext()' in pair.
+      invoke 'HasNext()' and 'ReadNext()' in pairs.
     )DOC");
   }
 };
