@@ -21,8 +21,7 @@ from ..executor import global_scope
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
-    'open_files', 'read_file', 'create_shuffle_reader',
-    'create_double_buffer_reader'
+    'open_files', 'read_file', 'shuffle', 'double_buffer'
 ]
 
 
