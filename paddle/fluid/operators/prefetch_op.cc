@@ -50,8 +50,8 @@ class PrefetchOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
-        VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << "to get "
-                << outs[i] << "back";
+        VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
+                << outs[i] << " back";
         rpc_client->AsyncPrefetchVariable(epmap[i], ctx, scope, ins[i],
                                           outs[i]);
       } else {

@@ -533,7 +533,8 @@ class DistributeTranspiler:
             attrs={
                 "OptimizeBlock": optimize_block,
                 "endpoint": endpoint,
-                "Fanin": self.trainer_num
+                "Fanin": self.trainer_num,
+                "PrefetchBlock": prefetch_block
             })
 
         pserver_program.sync_with_cpp()

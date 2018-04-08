@@ -161,6 +161,7 @@ class RequestPrefetch final : public RequestBase {
     ::grpc::ByteBuffer reply;
 
     std::string var_name = request_->OutVarname();
+    VLOG(3) << "prefetch var " << var_name;
     auto var_desc = program_->Block(0).FindVar(var_name);
     framework::Scope* local_scope = &scope_->NewScope();
     auto* var = local_scope->FindVar(var_name);

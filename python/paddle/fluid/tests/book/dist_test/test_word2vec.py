@@ -31,34 +31,35 @@ def train(use_cuda=False, is_sparse=False, is_local=False):
     IS_SPARSE = is_sparse
 
     def __network__(words):
+        id_distributed = True
         embed_first = fluid.layers.embedding(
             input=words[0],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
-            is_distributed=True)
+            is_distributed=id_distributed)
         embed_second = fluid.layers.embedding(
             input=words[1],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
-            is_distributed=True)
+            is_distributed=id_distributed)
         embed_third = fluid.layers.embedding(
             input=words[2],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
-            is_distributed=True)
+            is_distributed=id_distributed)
         embed_forth = fluid.layers.embedding(
             input=words[3],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
-            is_distributed=True)
+            is_distributed=id_distributed)
 
         concat_embed = fluid.layers.concat(
             input=[embed_first, embed_second, embed_third, embed_forth], axis=1)
@@ -99,14 +100,16 @@ def train(use_cuda=False, is_sparse=False, is_local=False):
     def train_loop(main_program):
         exe.run(fluid.default_startup_program())
 
+        TRAINING_BATCHES = 5
         batch_num = 0
         for pass_id in range(PASS_NUM):
             for data in train_reader():
                 avg_cost_np = exe.run(main_program,
                                       feed=feeder.feed(data),
                                       fetch_list=[avg_cost])
-                if batch_num == 1:
+                if batch_num == TRAINING_BATCHES:
                     return
+                #print("batch_id=" + str(batch_num) + ", cost=" + str(avg_cost_np[0]))
                 if avg_cost_np[0] < 5.0:
                     return
                 if math.isnan(float(avg_cost_np[0])):
@@ -148,7 +151,10 @@ def train(use_cuda=False, is_sparse=False, is_local=False):
             exe.run(pserver_startup)
             exe.run(pserver_prog)
         elif training_role == "TRAINER":
-            train_loop(t.get_trainer_program())
+            trainer_program = t.get_trainer_program()
+            with open("trainer.proto", "w") as f:
+                f.write(str(trainer_program))
+            train_loop(trainer_program)
 
 
 class W2VTest(unittest.TestCase):
