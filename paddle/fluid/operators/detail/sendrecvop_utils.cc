@@ -30,7 +30,8 @@ namespace detail {
 
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
-                           ::grpc::ByteBuffer* msg) {
+                           ::grpc::ByteBuffer* msg,
+                           const std::string& out_name) {
   using VarMsg = sendrecv::VariableMessage;
   sendrecv::VariableMessage request;
   std::string header;
@@ -52,6 +53,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     e.WriteUint64(VarMsg::kTypeFieldNumber, 1);
   }
 
+  if (!out_name.empty()) {
+    e.WriteString(VarMsg::kOutVarnameFieldNumber, out_name);
+  }
   switch (framework::ToVarType(var->Type())) {
     case framework::proto::VarType_Type_LOD_TENSOR: {
       auto tensor = var->Get<framework::LoDTensor>();

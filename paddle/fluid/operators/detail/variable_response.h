@@ -55,6 +55,7 @@ class VariableResponse {
   int Parse(const ::grpc::ByteBuffer& byte_buffer);
 
   inline std::string Varname() { return meta_.varname(); }
+  inline std::string OutVarname() { return meta_.out_varname(); }
 
   // should call parse first.
   framework::Variable* GetVar() { return scope_->FindVar(meta_.varname()); }
