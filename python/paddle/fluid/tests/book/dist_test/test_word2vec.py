@@ -139,8 +139,12 @@ def train(use_cuda=False, is_sparse=False, is_local=False):
             f.write(str(fluid.default_main_program()))
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
+            with open("pserver.proto", "w") as f:
+                f.write(str(pserver_prog))
             pserver_startup = t.get_startup_program(current_endpoint,
                                                     pserver_prog)
+            with open("startup.proto", "w") as f:
+                f.write(str(pserver_startup))
             exe.run(pserver_startup)
             exe.run(pserver_prog)
         elif training_role == "TRAINER":

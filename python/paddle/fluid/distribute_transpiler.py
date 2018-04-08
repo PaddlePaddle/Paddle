@@ -510,7 +510,10 @@ class DistributeTranspiler:
                 dtype=trainer_ids.dtype)
             trainer_out = self.prefetch_output_vars[pserver_index]
             pserver_out = pserver_program.global_block().create_var(
-                name=trainer_out.name, type=trainer_out.type)
+                name=trainer_out.name,
+                type=trainer_out.type,
+                shape=trainer_out.shape,
+                dtype=trainer_out.dtype)
             prefetch_block.append_op(
                 type=LOOKUP_TABLE_TYPE,
                 inputs={'Ids': pserver_ids,
