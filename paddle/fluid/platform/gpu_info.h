@@ -23,9 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-//! Environment variable: fraction of GPU memory to use on each device.
-const char kEnvFractionGpuMemoryToUse[] = "PADDLE_FRACTION_GPU_MEMORY_TO_USE";
-
 //! Get the total number of GPU devices in system.
 int GetCUDADeviceCount();
 
