@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/string/printf.h"
@@ -34,6 +35,7 @@ namespace m = paddle::operators::math;
 
 // global for simplicity.
 std::unique_ptr<f::OperatorBase> listen_and_serv_op;
+int selected_port;
 
 void InitTensorsInScope(f::Scope &scope, p::CPUPlace &place) {
   p::CPUDeviceContext ctx(place);
@@ -128,14 +130,16 @@ void StartServerNet(bool is_sparse) {
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
 
   f::AttributeMap attrs;
-  attrs.insert({"endpoint", std::string("127.0.0.1:6174")});
+  attrs.insert({"endpoint", std::string("127.0.0.1:0")});
   attrs.insert({"Fanin", 1});
   attrs.insert({"ParamList", std::vector<std::string>({"Out"})});
   attrs.insert({"GradList", std::vector<std::string>({"x1"})});
   attrs.insert({"OptimizeBlock", optimize_block});
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
+  LOG(INFO) << "selected port before run " << selected_port;
   listen_and_serv_op->Run(scope, place);
+  LOG(INFO) << "server exit";
 }
 
 TEST(SendRecvOp, CPUDense) {
@@ -149,12 +153,19 @@ TEST(SendRecvOp, CPUDense) {
   scope.Var("RPC_CLIENT_VAR");
 
   f::AttributeMap attrs;
-  attrs.insert({"endpoints", std::vector<std::string>({"127.0.0.1:6174"})});
-  attrs.insert({"epmap", std::vector<std::string>({"127.0.0.1:6174"})});
+  selected_port = static_cast<paddle::operators::ListenAndServOp *>(
+                      listen_and_serv_op.get())
+                      ->GetSelectedPort();
+  LOG(INFO) << "selected port " << selected_port;
+  std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
+  attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
+  attrs.insert({"epmap", std::vector<std::string>({endpoint})});
   auto send_op = f::OpRegistry::CreateOp(
       "send", {{"X", {"x1"}}},
       {{"Out", {"Out"}}, {"RPCClient", {"RPC_CLIENT_VAR"}}}, attrs);
+  LOG(INFO) << "before run " << endpoint;
   send_op->Run(scope, place);
+  LOG(INFO) << "end run";
 
   auto in_var = scope.Var("x1");
   auto tensor = in_var->GetMutable<f::LoDTensor>();
@@ -167,6 +178,7 @@ TEST(SendRecvOp, CPUDense) {
   for (int64_t i = 0; i < target->numel(); ++i) {
     EXPECT_EQ(expected[i] * 2, actual[i]);
   }
+  LOG(INFO) << "before stop";
   listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset(nullptr);
@@ -182,8 +194,13 @@ TEST(SendRecvOp, CPUSparse) {
   InitSelectedRowsInScope(scope, place);
   scope.Var("RPC_CLIENT_VAR");
   f::AttributeMap attrs;
-  attrs.insert({"endpoints", std::vector<std::string>({"127.0.0.1:6174"})});
-  attrs.insert({"epmap", std::vector<std::string>({"127.0.0.1:6174"})});
+  selected_port = static_cast<paddle::operators::ListenAndServOp *>(
+                      listen_and_serv_op.get())
+                      ->GetSelectedPort();
+  LOG(INFO) << "selected port " << selected_port;
+  std::string endpoint = paddle::string::Sprintf("127.0.0.1:%d", selected_port);
+  attrs.insert({"endpoints", std::vector<std::string>({endpoint})});
+  attrs.insert({"epmap", std::vector<std::string>({endpoint})});
   auto send_op = f::OpRegistry::CreateOp(
       "send", {{"X", {"x1"}}},
       {{"Out", {"Out"}}, {"RPCClient", {"RPC_CLIENT_VAR"}}}, attrs);

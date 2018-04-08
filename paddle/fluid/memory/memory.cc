@@ -95,7 +95,7 @@ void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
     int cur_dev = platform::GetCurrentDeviceId();
     platform::SetDeviceId(place.device);
     size_t avail, total;
-    platform::GpuMemoryUsage(avail, total);
+    platform::GpuMemoryUsage(&avail, &total);
     LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
                  << place.device << ", available " << avail << " bytes";
     LOG(WARNING) << "total " << total;

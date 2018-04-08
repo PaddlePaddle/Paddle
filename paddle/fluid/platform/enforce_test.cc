@@ -96,7 +96,6 @@ TEST(ENFORCE_GT, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_GT(1, 2UL);
-
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(
@@ -115,7 +114,6 @@ TEST(ENFORCE_GE, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_GE(1, 2UL);
-
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(
@@ -135,7 +133,6 @@ TEST(ENFORCE_LE, FAIL) {
   bool caught_exception = false;
   try {
     PADDLE_ENFORCE_GT(1, 2UL);
-
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(
@@ -171,7 +168,6 @@ TEST(ENFORCE_NOT_NULL, FAIL) {
   try {
     int* a = nullptr;
     PADDLE_ENFORCE_NOT_NULL(a);
-
   } catch (paddle::platform::EnforceNotMet error) {
     caught_exception = true;
     EXPECT_TRUE(HasPrefix(StringPiece(error.what()), "a should not be null"));
