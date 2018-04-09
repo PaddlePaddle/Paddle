@@ -22,7 +22,10 @@
 
 #include <functional>
 #include "ThreadPool.h"  // ThreadPool in thrird party
+
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
+
+#include "paddle/fluid/framework/details/fetch_op_handle.h"
 
 namespace paddle {
 namespace framework {
@@ -33,6 +36,8 @@ namespace details {
 template <typename T>
 class BlockingQueue {
  public:
+  BlockingQueue() {}
+
   void Push(const T &item) {
     {
       std::lock_guard<std::mutex> g(mutex_);
@@ -70,6 +75,9 @@ class BlockingQueue {
   std::deque<T> q_;
 };
 
+class OpHandleBase;
+class VarHandleBase;
+
 class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
   ThreadedSSAGraphExecutor(size_t num_threads, bool use_event,
@@ -85,10 +93,40 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ~ThreadedSSAGraphExecutor() {}
 
  private:
+  struct StoredContext {
+    std::unordered_map<OpHandleBase *, size_t> pending_ops_;
+    std::unordered_set<VarHandleBase *> pending_vars_;
+    std::unordered_set<OpHandleBase *> ready_ops_;
+    std::vector<VarHandleBase *> ready_vars_;
+
+    std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops_;
+    std::vector<LoDTensor> fetched_tensors_;
+    std::vector<std::unique_ptr<VarHandleBase>> fetch_dependencies_;
+  };
+
+  class RunContext {
+   public:
+    explicit RunContext(StoredContext *stored_context);
+
+    std::unordered_map<OpHandleBase *, size_t> pending_ops_;
+    std::unordered_set<VarHandleBase *> pending_vars_;
+    std::unordered_set<OpHandleBase *> ready_ops_;
+    std::vector<VarHandleBase *> ready_vars_;
+
+    std::vector<LoDTensor> FetchedResult() const;
+
+    ~RunContext();
+
+   private:
+    StoredContext *stored_context_;
+  };
+
   void RunOp(BlockingQueue<VarHandleBase *> *ready_var_q,
              details::OpHandleBase *op);
 
   void RunDelayedOps(const std::unordered_set<OpHandleBase *> &delayed_ops);
+
+  RunContext PrepareOrGetContext(const std::vector<std::string> &fetch_tensors);
 
  private:
   std::unique_ptr<::ThreadPool> pool_;
@@ -99,6 +137,22 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
   bool allow_op_delay_;
+  struct FetchNameHash {
+    size_t operator()(const std::vector<std::string> &names) const {
+      std::hash<std::string> s_hash;
+      std::hash<size_t> i_hash;
+
+      size_t res = 0;
+      for (auto &item : names) {
+        res += s_hash(item);
+      }
+
+      return i_hash(res);
+    }
+  };
+
+  std::unordered_map<std::vector<std::string>, StoredContext, FetchNameHash>
+      contexts_;
 
   size_t computation_count_{0};
   size_t max_async_computation{100};

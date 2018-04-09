@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 
+#include <string>
+#include <vector>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -21,12 +24,6 @@ namespace details {
 FetchOpHandle::FetchOpHandle(FeedFetchList *data, size_t offset,
                              std::vector<Scope *> *local_scopes)
     : data_(data), offset_(offset), local_scopes_(local_scopes) {}
-
-FetchOpHandle::~FetchOpHandle() {
-  for (auto *input_var : inputs_) {
-    input_var->pending_ops_.erase(this);
-  }
-}
 
 void FetchOpHandle::Wait(platform::DeviceContext *waited_dev) {
   PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");
@@ -73,6 +70,18 @@ void FetchOpHandle::RunImpl() {
 }
 
 std::string FetchOpHandle::Name() const { return "Fetch"; }
+
+void FetchOpHandle::RemoveInputs() {
+  for (auto *input_var : inputs_) {
+    input_var->pending_ops_.erase(this);
+  }
+}
+
+void FetchOpHandle::InsertInputs() {
+  for (auto *input_var : inputs_) {
+    input_var->pending_ops_.emplace(this);
+  }
+}
 
 }  // namespace details
 }  // namespace framework

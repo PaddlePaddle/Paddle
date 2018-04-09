@@ -26,11 +26,9 @@ namespace framework {
 namespace details {
 
 struct SSAGraph {
-  std::vector<
-      std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
-      vars_;
-  // aux variables to represent dependency. Useful to resolve data hazard.
-  std::unordered_set<std::unique_ptr<VarHandleBase>> dep_vars_;
+  // NOTE: even we use vector here, the order of vars and ops are not important.
+  // It should be a set. However, vector is faster than set when iteration.
+  std::vector<std::unique_ptr<VarHandleBase>> vars_;
   std::vector<std::unique_ptr<OpHandleBase>> ops_;
 };
 

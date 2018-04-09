@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/scope.h"
@@ -32,11 +35,13 @@ struct FetchOpHandle : public OpHandleBase {
   FetchOpHandle(FeedFetchList *data, size_t offset,
                 std::vector<Scope *> *local_scopes);
 
-  ~FetchOpHandle();
-
   void Wait(platform::DeviceContext *waited_dev) override;
 
   void WaitAndMergeCPUTensors() const;
+
+  void RemoveInputs();
+
+  void InsertInputs();
 
   std::string Name() const override;
 
