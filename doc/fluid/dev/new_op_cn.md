@@ -26,13 +26,32 @@
 
 依据是否包含kernel，可以将Op分为两种：包含Kernel的Op和不包含kernel的Op，前者Op的定义继承自`OperatorWithKernel`，后者继承自`OperatorBase`。本教程主要介绍带Kernel的Op如何写，简单总结Op需要包含的内容如下：
 
-
- 内容            | 定义位置
---------------  | :----------------------
-OpProtoMake定义  | `.cc`文件，Backward Op不需要定义OpProtoMake
-Op定义           | `.cc`文件
-Kernel实现       | CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU 实现在`.cc`文件中，CUDA 实现在`.cu`文件中。
-注册Op           | Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，CUDA实现在`.cu`文件中
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>定义位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpProtoMake定义 </td>
+<td>`.cc`文件，Backward Op不需要定义OpProtoMake </td>
+</tr>
+<tr>
+<td>Op定义 </td>
+<td> `.cc`文件</td>
+</tr>
+<tr>
+<td>Kernel实现 </td>
+<td> CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU 实现在`.cc`文件中，CUDA 实现在`.cu`文件中。</td>
+</tr>
+<tr>
+<td>注册Op </td>
+<td> Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，CUDA实现在`.cu`文件中</td>
+</tr>
+</tbody>
+</table>
 
 
 实现新的op都添加至目录[paddle/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators)下，文件命名以`*_op.h`（如有） 、 `*_op.cc` 、`*_op.cu`（如有）结尾。**系统会根据文件名自动构建op和其对应的Python扩展。**

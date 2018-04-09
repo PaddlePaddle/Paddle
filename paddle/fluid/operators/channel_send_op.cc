@@ -23,20 +23,9 @@ limitations under the License. */
 
 static constexpr char Channel[] = "Channel";
 static constexpr char X[] = "X";
-static constexpr char Status[] = "Status";
-static constexpr char copy[] = "copy";
 
 namespace paddle {
 namespace operators {
-
-void SetSendStatus(const platform::Place &dev_place,
-                   framework::Variable &status_var, bool status) {
-  auto cpu = platform::CPUPlace();
-  auto status_tensor =
-      status_var.GetMutable<framework::LoDTensor>()->mutable_data<bool>({1},
-                                                                        cpu);
-  status_tensor[0] = status;
-}
 
 class ChannelSendOp : public framework::OperatorBase {
  public:
@@ -51,9 +40,6 @@ class ChannelSendOp : public framework::OperatorBase {
                    "Input(Channel) of ChannelSendOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(X),
                    "Input(X) of ChannelSendOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(Status),
-                   "Output(Status) of ChannelSendOp should not be null.");
-    ctx->SetOutputDim("Status", {1});
   }
 
  private:
@@ -65,10 +51,7 @@ class ChannelSendOp : public framework::OperatorBase {
     auto input_var = scope.FindVar(Input(X));
 
     // Send the input data through the channel.
-    bool ok = concurrency::ChannelSend(ch, input_var);
-
-    // Set the status output of the `ChannelSend` call.
-    SetSendStatus(dev_place, *scope.FindVar(Output(Status)), ok);
+    concurrency::ChannelSend(ch, input_var);
   }
 };
 
@@ -82,12 +65,6 @@ class ChannelSendOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddInput(X, "(Variable) The value which gets sent by the channel.")
         .AsDuplicable();
-    AddOutput(Status,
-              "(Tensor) An LoD Tensor that returns a boolean status of the"
-              "result of the send operation.")
-        .AsDuplicable();
-    AddAttr<bool>(copy, "(bool, default false) Should copy before send")
-        .SetDefault(false);
     AddComment(R"DOC(
 )DOC");
   }

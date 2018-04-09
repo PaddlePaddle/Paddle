@@ -73,7 +73,10 @@ __all__ = [
     'smooth_l1',
     'one_hot',
     'autoincreased_step_counter',
+    'reshape',
     'lod_reset',
+    'lrn',
+    'pad',
 ]
 
 
@@ -82,6 +85,7 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
+       use_mkldnn=False,
        act=None,
        name=None):
     """
@@ -129,6 +133,8 @@ def fc(input,
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
             of this layer. If it is set to None, no bias will be added to the output units.
         act (str, default None): Activation to be applied to the output of this layer.
+        use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
+            library is installed. Default: False
         name (str, default None): The name of this layer.
 
     Returns:
@@ -149,35 +155,64 @@ def fc(input,
     dtype = helper.input_dtype()
 
     mul_results = []
-    for input_var, param_attr in helper.iter_inputs_and_params():
-        input_shape = input_var.shape
+    if use_mkldnn:
+        tmp = helper.create_tmp_variable(dtype)
+        input_shape = input.shape
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
 
         w = helper.create_parameter(
-            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-        tmp = helper.create_tmp_variable(dtype)
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            is_bias=False)
+        if bias_attr is None or bias_attr is False:
+            bias_attr = False
+        else:
+            bias_attr = True
         helper.append_op(
-            type="mul",
-            inputs={"X": input_var,
-                    "Y": w},
+            type="fc",
+            inputs={"Input": input,
+                    "W": w},
             outputs={"Out": tmp},
-            attrs={"x_num_col_dims": num_flatten_dims,
-                   "y_num_col_dims": 1})
-        mul_results.append(tmp)
-
-    # sum
-    if len(mul_results) == 1:
-        pre_bias = mul_results[0]
+            attrs={"use_mkldnn": use_mkldnn,
+                   "bias_attr": bias_attr})
+        return helper.append_activation(tmp)
     else:
-        pre_bias = helper.create_tmp_variable(dtype)
-        helper.append_op(
-            type="sum", inputs={"X": mul_results}, outputs={"Out": pre_bias})
-    # add bias
-    pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
-    # add activation
-    return helper.append_activation(pre_activation)
+        for input_var, param_attr in helper.iter_inputs_and_params():
+            input_shape = input_var.shape
+            param_shape = [
+                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
+            ] + [size]
+
+            w = helper.create_parameter(
+                attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False)
+            tmp = helper.create_tmp_variable(dtype)
+            helper.append_op(
+                type="mul",
+                inputs={"X": input_var,
+                        "Y": w},
+                outputs={"Out": tmp},
+                attrs={
+                    "x_num_col_dims": num_flatten_dims,
+                    "y_num_col_dims": 1,
+                })
+            mul_results.append(tmp)
+
+        if len(mul_results) == 1:
+            pre_bias = mul_results[0]
+        else:
+            pre_bias = helper.create_tmp_variable(dtype)
+            helper.append_op(
+                type="sum",
+                inputs={"X": mul_results},
+                outputs={"Out": pre_bias})
+        # add bias
+        pre_activation = helper.append_bias_op(
+            pre_bias, dim_start=num_flatten_dims)
+        # add activation
+        return helper.append_activation(pre_activation)
 
 
 def embedding(input,
@@ -1478,6 +1513,7 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
+               in_place=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None):
@@ -1533,7 +1569,7 @@ def batch_norm(input,
     saved_mean = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
 
-    batch_norm_out = helper.create_tmp_variable(dtype)
+    batch_norm_out = input if in_place else helper.create_tmp_variable(dtype)
 
     helper.append_op(
         type="batch_norm",
@@ -3259,6 +3295,8 @@ def one_hot(input, depth):
          The one-hot tensor or LodTensor, same as input.
 
     Examples:
+        .. code-block:: python
+
         X is a LoDTensor:
           X.lod = [[0, 1, 4]]
           X.shape = [4, 1]
@@ -3311,6 +3349,102 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         counter.stop_gradient = True
 
     return counter
+
+
+def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
+    """
+    Gives a new shape to the input Tensor without changing its data.
+
+    The target shape can be given by :attr:`shape` or :attr:`actual_shape`.
+    :attr:`shape` is a list of integer while :attr:`actual_shape` is a tensor
+    variable. :attr:`actual_shape` has a higher priority than :attr:`shape`
+    if it is provided, while :attr:`shape` still should be set correctly to
+    gurantee shape inference in compile-time.
+
+    Some tricks exist when specifying the target shape.
+
+    1. -1 means the value of this dimension is inferred from the total element
+    number of x and remaining dimensions. Thus one and only one dimension can
+    be set -1.
+
+    2. 0 means the actual dimension value is going to be copied from the
+    corresponding dimension of x. The indice of 0s in shape can not exceed
+    Rank(X).
+
+    Here are some examples to explain it.
+
+    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    is [6, 8], the reshape operator will transform x into a 2-D tensor with 
+    shape [6, 8] and leaving x's data unchanged.
+
+    2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    specified is [2, 3, -1, 2], the reshape operator will transform x into a
+    4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this
+    case, one dimension of the target shape is set to -1, the value of this 
+    dimension is inferred from the total element number of x and remaining 
+    dimensions.
+
+    3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
+    is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor
+    with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case,
+    besides -1, 0 means the actual dimension value is going to be copied from
+    the corresponding dimension of x.
+
+    Args:
+        input(variable): The input tensor.
+        shape(list): The new shape. At most one dimension of the new shape can
+                     be -1.
+        actual_shape(variable): An optional input. If provided, reshape
+                                according to this given shape rather than
+                                :attr:`shape` specifying shape. That is to
+                                say :attr:`actual_shape` has a higher priority
+                                than :attr:`shape`.
+        act (str): The non-linear activation to be applied to output variable.
+        inplace(bool): If this flag is set true, a new output tensor is created
+                       whose data is copied from input x, otherwise the output
+                       shares data with input without copying.
+
+    Returns(variable): The output tensor.
+
+    Examples:
+        .. code-block:: python
+
+            data = fluid.layers.data(
+                name='data', shape=[2, 4, 6], dtype='float32')
+            reshaped = fluid.layers.reshape(
+                x=data, shape=[-1, 0, 3, 2], act='tanh', inplace=True)
+    """
+
+    if not (isinstance(shape, list) or isinstance(shape, tuple)):
+        raise ValueError("Input shape must be a python lsit or tuple.")
+
+    # Validate the shape
+    unk_dim_idx = -1
+    for dim_idx, dim_size in enumerate(shape):
+        if dim_size == -1:
+            assert unk_dim_idx == -1, (
+                "Only one dimension in shape can be unknown.")
+            unk_dim_idx = dim_idx
+        elif dim_size == 0:
+            assert dim_idx < len(x.shape), (
+                "The indice of 0s in shape can not exceed Rank(X).")
+        else:
+            assert dim_size > 0, (
+                "Each dimension size given in shape must not be negtive "
+                "except one unknown dimension.")
+
+    helper = LayerHelper("reshape", **locals())
+    reshaped = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type="reshape",
+        inputs={"X": x,
+                "Shape": actual_shape}
+        if isinstance(actual_shape, Variable) else {"X": x},
+        attrs={"shape": shape,
+               "inplace": inplace},
+        outputs={"Out": reshaped})
+
+    return helper.append_activation(reshaped)
 
 
 def lod_reset(x, y=None, target_lod=None):
@@ -3405,4 +3539,133 @@ def lod_reset(x, y=None, target_lod=None):
     else:
         raise ValueError("y and target_lod should not be both None.")
 
+    return out
+
+
+def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
+    """
+    Local Response Normalization Layer. This layer performs a type of
+    "lateral inhibition" by normalizing over local input regions.
+
+    The formula is as follows:
+
+    .. math::
+
+        Output(i, x, y) = Input(i, x, y) / \left(
+        k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
+        (Input(j, x, y))^2 \right)^{\beta}
+
+    In the above equation:
+
+    * :math:`n`: The number of channels to sum over.
+    * :math:`k`: The offset (avoid being divided by 0).
+    * :math:`alpha`: The scaling parameter.
+    * :math:`beta`: The exponent parameter.
+
+    Refer to `ImageNet Classification with Deep Convolutional Neural Networks
+    <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+
+    Args:
+        input (Variable): The input tensor of this layer, and the dimension of input tensor must be 4.
+        n (int, default 5): The number of channels to sum over.
+        k (float, default 1.0): An offset (usually positive to avoid dividing by 0).
+        alpha (float, default 1e-4): The scaling parameter.
+        beta (float, default 0.75): The exponent.
+        name (str, default None): A name for this operation.
+
+    Raises:
+        ValueError: If rank of the input tensor is not 4.
+
+    Returns:
+        A tensor variable storing the transformation result.
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name="data", shape=[3, 112, 112], dtype="float32")
+          lrn = fluid.layers.lrn(input=data)
+    """
+    helper = LayerHelper('lrn', **locals())
+    dtype = helper.input_dtype()
+    input_shape = input.shape
+    dims = len(input_shape)
+
+    if dims != 4:
+        raise ValueError(
+            "dims of input must be 4(not %d), and it's order must be NCHW" %
+            (dims))
+
+    mid_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    lrn_out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="lrn",
+        inputs={"X": input},
+        outputs={
+            "Out": lrn_out,
+            "MidOut": mid_out,
+        },
+        attrs={"n": n,
+               "k": k,
+               "alpha": alpha,
+               "beta": beta})
+
+    return lrn_out
+
+
+def pad(x, paddings, pad_value=0., name=None):
+    """
+    Pads a tensor with a constant value given by :attr:`pad_value`, and the
+    padded width is specified by :attr:`paddings`. 
+
+    Specifically, the number of values padded before the contents of :attr:`x`
+    in dimension :attr:`i` is indicated by :attr:`paddings[i]`, and the number
+    of values padded after the contents of :attr:`x` in dimension :attr:`i` is
+    indicated by :attr:`paddings[i+1]`.
+
+    See below for an example.
+
+    .. code-block:: text
+
+        Given:
+            x = [[1, 2], [3, 4]]
+
+            paddings = [0, 1, 1, 2]
+
+            pad_value = 0
+
+        Return:
+
+            out = [[0, 1, 2, 0, 0]
+                   [0, 3, 4, 0, 0]
+                   [0, 0, 0, 0, 0]]
+
+    Args:
+        x (Variable): The input tensor variable.
+        paddings (list): A list of integers. Its elements specify the padded
+                         width before and after for each dimension in turn.
+                         The length of :attr:paddings must be 
+                         :math:`rank(x) \\times 2`.
+        pad_value (float): The constant value used to pad.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The padded tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a rank 2 tensor variable.
+            out = fluid.layers.pad(
+                x=x, paddings=[0, 1, 1, 2], pad_value=0.)
+    """
+    helper = LayerHelper('pad', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='pad',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'paddings': paddings,
+               'pad_value': float(pad_value)})
     return out

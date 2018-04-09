@@ -97,8 +97,11 @@ class TestConv2dOp(OpTest):
         }
         self.outputs = {'Output': output}
 
+    def testcudnn(self):
+        return core.is_compiled_with_cuda() and self.use_cudnn
+
     def test_check_output(self):
-        if self.use_cudnn:
+        if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
         else:
@@ -107,7 +110,7 @@ class TestConv2dOp(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        if self.use_cudnn:
+        if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place,
@@ -121,7 +124,7 @@ class TestConv2dOp(OpTest):
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
-        if self.use_cudnn:
+        if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, ['Input'],
@@ -138,7 +141,7 @@ class TestConv2dOp(OpTest):
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
-        if self.use_cudnn:
+        if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, ['Filter'],

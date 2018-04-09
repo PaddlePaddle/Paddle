@@ -46,7 +46,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
-static void CreateTensor(Variable* var, proto::VarType::Type var_type) {
+void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
@@ -91,6 +91,43 @@ static void CheckTensorNANOrInf(const std::string& name,
                  "Tensor %s contains Inf", name);
   PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
                  "Tensor %s contains NAN", name);
+}
+
+void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
+                               int block_id) {
+  auto& global_block = pdesc.Block(block_id);
+
+  const Scope* ancestor_scope = scope;
+  while (ancestor_scope->parent()) {
+    ancestor_scope = ancestor_scope->parent();
+  }
+
+  if (ancestor_scope != scope) {
+    for (auto& var : global_block.AllVars()) {
+      if (var->Name() == framework::kEmptyVarName) {
+        continue;
+      }
+
+      if (var->Persistable()) {
+        auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
+        InitializeVariable(ptr, var->GetType());
+        VLOG(3) << "Create Variable " << var->Name()
+                << " global, which pointer is " << ptr;
+      } else {
+        auto* ptr = scope->Var(var->Name());
+        InitializeVariable(ptr, var->GetType());
+        VLOG(3) << "Create Variable " << var->Name()
+                << " locally, which pointer is " << ptr;
+      }
+    }
+  } else {
+    for (auto& var : global_block.AllVars()) {
+      auto* ptr = scope->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
+              << ptr;
+    }
+  }
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
@@ -184,7 +221,7 @@ static bool has_fetch_operators(
 void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>& feed_targets,
                    std::map<std::string, LoDTensor*>& fetch_targets,
-                   const std::string& feed_holder_name,
+                   bool create_vars, const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
   bool has_feed_ops =
@@ -255,7 +292,7 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
     }
   }
 
-  Run(*copy_program, scope, 0, true, true);
+  Run(*copy_program, scope, 0, create_vars, create_vars);
 
   // obtain the data of fetch_targets from fetch_holder
   for (auto* op : global_block->AllOps()) {
@@ -279,40 +316,30 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   return std::unique_ptr<ExecutorPrepareContext>(ctx);
 }
 
+std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
+    const ProgramDesc& program, const std::vector<int>& block_ids) {
+  std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
+  for (auto& bid : block_ids) {
+    auto* ctx = new ExecutorPrepareContext(program, bid);
+    PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
+    auto& block = program.Block(bid);
+    for (auto& op_desc : block.AllOps()) {
+      ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
+    }
+    result.push_back(std::shared_ptr<ExecutorPrepareContext>(ctx));
+  }
+  return result;
+}
+
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                                   bool create_local_scope, bool create_vars) {
-  auto& block = ctx->prog_.Block(ctx->block_id_);
-
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
       local_scope = &scope->NewScope();
-      for (auto& var : block.AllVars()) {
-        if (var->Name() == framework::kEmptyVarName) {
-          continue;
-        }
-
-        if (var->Persistable()) {
-          auto* ptr = scope->Var(var->Name());
-          CreateTensor(ptr, var->GetType());
-          VLOG(3) << "Create Variable " << var->Name()
-                  << " global, which pointer is " << ptr;
-        } else {
-          auto* ptr = local_scope->Var(var->Name());
-          CreateTensor(ptr, var->GetType());
-          VLOG(3) << "Create Variable " << var->Name()
-                  << " locally, which pointer is " << ptr;
-        }
-      }
-    } else {
-      for (auto& var : block.AllVars()) {
-        auto* ptr = local_scope->Var(var->Name());
-        CreateTensor(ptr, var->GetType());
-        VLOG(3) << "Create variable " << var->Name() << ", which pointer is "
-                << ptr;
-      }
-    }  // if (create_local_scope)
-  }    // if (create_vars)
+    }
+    CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
+  }
 
   for (auto& op : ctx->ops_) {
     VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);

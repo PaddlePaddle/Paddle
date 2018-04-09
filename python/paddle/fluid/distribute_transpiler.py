@@ -17,9 +17,10 @@ import framework
 from framework import Program, default_main_program, default_startup_program, Parameter, Variable
 import optimizer
 from layer_helper import LayerHelper
-from distributed_spliter import *
+import distributed_splitter as splitter
 import math
 from . import core
+import debuger
 
 
 class VarBlock:
@@ -35,7 +36,7 @@ class VarBlock:
 
 class UnionFind(object):
     """ Union-find data struct.
-    
+
     Union-find is a data struct that keeps track of a set of elements partitioned
     into a number of disjoint (non-overlapping) subsets.
 
@@ -137,7 +138,7 @@ class DistributeTranspiler:
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
-                  split_method=round_robin):
+                  split_method=splitter.round_robin):
         """
             Transpile the program to distributed data-parallelism programs.
             The main_program will be transformed to use a remote parameter server
@@ -275,20 +276,26 @@ class DistributeTranspiler:
             suff_idx = v.name.find(".trainer_")
             if suff_idx >= 0:
                 orig_var_name = v.name[:suff_idx]
-            pserver_program.global_block().create_var(
+            else:
+                orig_var_name = v.name
+            single_trainer_var = pserver_program.global_block().create_var(
                 name=orig_var_name,
                 persistable=True,
                 type=v.type,
                 dtype=v.dtype,
                 shape=v.shape)
-            for trainer_id in xrange(self.trainers):
-                var = pserver_program.global_block().create_var(
-                    name="%s.trainer_%d" % (orig_var_name, trainer_id),
-                    persistable=False,
-                    type=v.type,
-                    dtype=v.dtype,
-                    shape=v.shape)
-                recv_inputs.append(var)
+            if self.trainers > 1:
+                for trainer_id in xrange(self.trainers):
+                    var = pserver_program.global_block().create_var(
+                        name="%s.trainer_%d" % (orig_var_name, trainer_id),
+                        persistable=False,
+                        type=v.type,
+                        dtype=v.dtype,
+                        shape=v.shape)
+                    recv_inputs.append(var)
+            else:
+                recv_inputs.append(single_trainer_var)
+
         # step3
         optimize_block = pserver_program.create_block(0)
         # step 4
@@ -296,7 +303,7 @@ class DistributeTranspiler:
         # If two ops are connected, we could add these two ops
         # into one set.
         ufind = self._create_ufind(self.optimize_ops)
-        # step 4.2 
+        # step 4.2
         # Iterate through the ops and append optimize op which
         # located on current pserver
         opt_op_on_pserver = []
@@ -305,7 +312,7 @@ class DistributeTranspiler:
                 opt_op_on_pserver.append(op)
         # step 4.3
         # Iterate through the ops, and if an op and the optimize ops
-        # which located on current pserver are in one set, then 
+        # which located on current pserver are in one set, then
         # append it into the sub program.
 
         # We try to put optimization program run parallelly, assume
@@ -336,15 +343,24 @@ class DistributeTranspiler:
             else:
                 self._append_pserver_non_opt_ops(block, op)
 
+        append_block = optimize_block
+        # append lr decay ops to the child block if exits
+        lr_ops = self._get_lr_ops()
+        if len(lr_ops) > 0:
+            for _, op in enumerate(lr_ops):
+                self._append_pserver_non_opt_ops(append_block, op)
+
+            append_block = pserver_program.create_block(append_block.idx)
+
         # append op to the current block
-        per_opt_block = optimize_block
+        per_opt_block = append_block
         for _, opt_op in enumerate(opt_op_on_pserver):
             for _, op in enumerate(self.optimize_ops):
                 # optimizer is connected to itself
                 if ufind.is_connected(op, opt_op) and \
                     op not in global_ops:
                     __append_optimize_op__(op, per_opt_block)
-            per_opt_block = pserver_program.create_block(0)
+            per_opt_block = pserver_program.create_block(append_block.idx)
 
         # append global ops
         for glb_op in global_ops:
@@ -392,11 +408,7 @@ class DistributeTranspiler:
         pserver_vars = pserver_program.global_block().vars
         created_var_map = dict()
         for _, var in pserver_vars.iteritems():
-            tmpvar = s_prog.global_block().create_var(
-                name=var.name,
-                persistable=var.persistable,
-                dtype=var.dtype,
-                shape=var.shape)
+            tmpvar = s_prog.global_block().clone_variable(var)
             created_var_map[var.name] = tmpvar
 
         # 2. rename op outputs
@@ -500,8 +512,11 @@ class DistributeTranspiler:
 
     def _append_split_op(self, program, gradblocks):
         # Split variables that need to be split and append respective ops
+        add_suffix = False
+        if self.trainers > 1:
+            add_suffix = True
         var_mapping = self._create_vars_from_blocklist(
-            program, gradblocks, add_trainer_suffix=True)
+            program, gradblocks, add_trainer_suffix=add_suffix)
         for varname, splited_vars in var_mapping.iteritems():
             # variable that don't need to split have empty splited_vars
             if len(splited_vars) <= 1:
@@ -563,6 +578,8 @@ class DistributeTranspiler:
         orig_var_name = ""
         if suff_idx >= 0:
             orig_var_name = varname[:suff_idx]
+        else:
+            orig_var_name = varname
         return orig_var_name
 
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
@@ -577,7 +594,8 @@ class DistributeTranspiler:
                 grad_block = None
                 for g in self.param_grad_ep_mapping[endpoint]["grads"]:
                     if same_or_split_var(
-                            self._orig_varname(g.name), opt_op.input(key)[0]):
+                            self._orig_varname(g.name),
+                            self._orig_varname(opt_op.input(key)[0])):
                         grad_block = g
                         break
                 if not grad_block:
@@ -686,11 +704,7 @@ class DistributeTranspiler:
                 varlist = [varlist]
 
             for var in varlist:
-                program.global_block().create_var(
-                    name=var.name,
-                    persistable=var.persistable,
-                    dtype=var.dtype,
-                    shape=var.shape)
+                program.global_block().clone_variable(var)
 
         optimize_block.append_op(
             type=opt_op.type,
@@ -738,7 +752,7 @@ class DistributeTranspiler:
 
     def _is_opt_op(self, op):
         # NOTE: It's a HACK implement.
-        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc... 
+        # optimize op: SGDOptimize, MomentumOptimizer, AdamOptimizer and etc...
         if "Param" in op.input_names and \
             "LearningRate" in op.input_names:
             return True
@@ -748,7 +762,7 @@ class DistributeTranspiler:
         param_names = [
             p.name for p in self.param_grad_ep_mapping[endpoint]["params"]
         ]
-        if op.input("Param") in param_names:
+        if op.input("Param")[0] in param_names:
             return True
         else:
             for n in param_names:
@@ -781,3 +795,33 @@ class DistributeTranspiler:
             else:
                 iomap[key] = vars
         return iomap
+
+    def _get_lr_ops(self):
+        lr_ops = []
+        # find learning rate variables by optimize op
+        lr_vars = set()
+        for op in self.optimize_ops:
+            if self._is_opt_op(op):
+                lr_vars.add(op.input("LearningRate")[0])
+
+        find_ops = []
+        # find ops which output is lr var
+        block = self.program.global_block()
+        for op in block.ops:
+            if set(op.output_arg_names) & lr_vars:
+                find_ops.append(op)
+        # make a union find struct by the ops in default_main_program
+        ufind = UnionFind(block.ops)
+        for op1 in block.ops:
+            for op2 in block.ops:
+                # NOTE: we need to skip all optimize ops, since it is connected
+                # with forward/backward ops and lr ops, we only need the lr ops.
+                if op1 != op2 and self._is_op_connected(op1, op2) and \
+                    not self._is_opt_op(op1) and not self._is_opt_op(op2):
+                    ufind.union(op1, op2)
+        # find all ops which is related with lr var
+        for op1 in block.ops:
+            for op2 in find_ops:
+                if ufind.is_connected(op1, op2):
+                    lr_ops.append(op1)
+        return lr_ops

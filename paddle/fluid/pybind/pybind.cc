@@ -11,11 +11,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <Python.h>
+#include <algorithm>
+#include <map>
+#include <mutex>  // NOLINT // for call_once
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "paddle/fluid/pybind/protobuf.h"
 
-#include <mutex>  // for call_once
-#include <unordered_map>
 #include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
@@ -25,13 +31,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/operators/cond_op.h"
 #include "paddle/fluid/operators/net_op.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -68,7 +74,7 @@ PYBIND11_PLUGIN(core) {
   // not cause namespace pollution.
   using namespace paddle::framework;  // NOLINT
 
-  BindException(m);
+  BindException(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -99,6 +105,14 @@ PYBIND11_PLUGIN(core) {
            [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<int>(place);
            })
+      .def("alloc_int",
+           [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
+             self.mutable_data<int>(place);
+           })
+      .def("alloc_float",
+           [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
+             self.mutable_data<float>(place);
+           })
       .def("set", PyCPUTensorSetFromArray<float>)
       .def("set", PyCPUTensorSetFromArray<int>)
       .def("set", PyCPUTensorSetFromArray<double>)
@@ -112,6 +126,12 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDATensorSetFromArray<int64_t>)
       .def("set", PyCUDATensorSetFromArray<bool>)
       .def("set", PyCUDATensorSetFromArray<uint16_t>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<float>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<int>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<double>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<bool>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
       .def("set_float_element", TensorSetElement<float>)
@@ -316,7 +336,17 @@ All parameter, weight, gradient are variables in Paddle.
 #else
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
-                  });
+                  })
+          .def_static("create",
+                [](paddle::platform::CUDAPinnedPlace& place)
+                        -> paddle::platform::DeviceContext* {
+#ifndef PADDLE_WITH_CUDA
+                  PADDLE_THROW(
+                        "CUDAPinnedPlace is not supported in CPU device.");
+#else
+                  return new paddle::platform::CUDAPinnedDeviceContext(place);
+#endif
+                });;
 // clang-format on
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
@@ -329,6 +359,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<>())
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
+  py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace")
+      .def(py::init<>())
+      .def("__str__", string::to_string<const platform::CUDAPinnedPlace &>);
+
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
       .def("set_place",
@@ -338,7 +372,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_place",
            [](platform::Place &self, const platform::CUDAPlace &gpu_place) {
              self = gpu_place;
-           });
+           })
+      .def("set_place", [](platform::Place &self,
+                           const platform::CUDAPinnedPlace &cuda_pinned_place) {
+        self = cuda_pinned_place;
+      });
 
   py::class_<OperatorBase>(m, "Operator")
       .def_static("create",
@@ -362,6 +400,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CUDAPlace &place) { self.Run(scope, place); })
+      .def("run",
+           [](OperatorBase &self, const Scope &scope,
+              const platform::CUDAPinnedPlace &place) {
+             self.Run(scope, place);
+           })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })
       .def("outputs",
@@ -435,11 +478,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 
-  BindProgramDesc(m);
-  BindBlockDesc(m);
-  BindVarDsec(m);
-  BindOpDesc(m);
-  BindConstValue(m);
+  BindProgramDesc(&m);
+  BindBlockDesc(&m);
+  BindVarDsec(&m);
+  BindOpDesc(&m);
+  BindConstValue(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -496,7 +539,28 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("reset_profiler", platform::ResetProfiler);
 
-  BindRecordIOWriter(m);
+  py::class_<ParallelExecutor>(m, "ParallelExecutor")
+      .def("__init__",
+           [](ParallelExecutor &self, size_t num_threads, bool use_event,
+              const std::vector<platform::Place> &places,
+              const std::unordered_set<std::string> &params,
+              const std::unordered_set<std::string> &bcast_vars,
+              const ProgramDesc &main_program, const std::string &loss_var_name,
+              Scope *scope, std::vector<Scope *> &local_scopes,
+              bool allow_op_delay) {
+             new (&self)
+                 ParallelExecutor(num_threads, use_event, places, params,
+                                  bcast_vars, main_program, loss_var_name,
+                                  scope, local_scopes, allow_op_delay);
+           })
+      .def("local_scopes",
+           [](ParallelExecutor &self) -> std::vector<Scope *> * {
+             return &self.GetLocalScopes();
+           },
+           py::return_value_policy::reference)
+      .def("run", &ParallelExecutor::Run);
+
+  BindRecordIOWriter(&m);
   return m.ptr();
 }
 }  // namespace pybind

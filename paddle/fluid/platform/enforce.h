@@ -16,35 +16,35 @@ limitations under the License. */
 
 #include <dlfcn.h>     // for dladdr
 #include <execinfo.h>  // for backtrace
+
+#ifdef __GNUC__
+#include <cxxabi.h>  // for __cxa_demangle
+#endif               // __GNUC__
+
+#ifdef PADDLE_WITH_CUDA
+#include <cublas_v2.h>
+#include <cudnn.h>
+#include <curand.h>
+#include <thrust/system/cuda/error.h>
+#include <thrust/system_error.h>
+#endif  // PADDLE_WITH_CUDA
+
 #include <iomanip>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 
+#include "glog/logging.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
 
-#ifdef __GNUC__
-#include <cxxabi.h>  // for __cxa_demangle
-#endif
-
-#include <glog/logging.h>
-
 #ifdef PADDLE_WITH_CUDA
-
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
-
-#include <cublas_v2.h>
-#include <cudnn.h>
-#include <curand.h>
-#include <thrust/system/cuda/error.h>
-#include <thrust/system_error.h>
-
 #endif
 
 namespace paddle {
@@ -185,7 +185,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
   }
 }
 
-#endif  // PADDLE_ONLY_CPU
+#endif  // PADDLE_WITH_CUDA
 
 template <typename T>
 inline void throw_on_error(T e) {

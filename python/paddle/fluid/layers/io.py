@@ -22,7 +22,7 @@ from ..executor import global_scope
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'open_recordio_file',
     'open_files', 'read_file', 'create_shuffle_reader',
-    'create_double_buffer_reader'
+    'create_double_buffer_reader', 'create_multi_pass_reader'
 ]
 
 
@@ -113,9 +113,9 @@ class ListenAndServ(object):
     which can receive variables from clients and run a block.
     """
 
-    def __init__(self, endpoint, fan_in=1, optimizer_mode=True):
+    def __init__(self, endpoint, inputs, fan_in=1, optimizer_mode=True):
         self.helper = LayerHelper("listen_and_serv")
-        self.inputs = []
+        self.inputs = inputs
         self.outputs = []
         self.endpoint = endpoint
         self.fan_in = fan_in
@@ -160,18 +160,13 @@ class ListenAndServ(object):
         current_block = main_program.current_block()
         parent_block = self.parent_block()
 
-        params, grads = self.get_params_and_grads()
-        param_names = [p.name for p in params]
-        grad_names = [g.name for g in grads]
         parent_block.append_op(
             type='listen_and_serv',
-            inputs={},
+            inputs={"X": self.inputs},
             outputs={},
             attrs={
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
-                'ParamList': param_names,
-                'GradList': grad_names,
                 'OptimizeBlock': current_block
             })
 
@@ -196,10 +191,14 @@ def Send(endpoints, send_vars, get_vars):
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Send", **locals())
+    rpc_client_var = default_main_program().global_block().create_var(
+        name="RPC_CLIENT_VAR", persistable=True, type=core.VarDesc.VarType.RAW)
+
     helper.append_op(
         type="send",
         inputs={"X": send_vars},
-        outputs={"Out": get_vars},
+        outputs={"Out": get_vars,
+                 "RPCClient": rpc_client_var},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
 
@@ -256,7 +255,32 @@ def _copy_reader_var_(block, var):
     new_var.desc.set_shapes(var.desc.shapes())
     new_var.desc.set_dtypes(var.desc.dtypes())
     new_var.persistable = True
-    return monkey_patch_reader_methods(new_var)
+    return new_var
+
+
+def _copy_reader_create_op_(block, op):
+    input_param_names = op.input_names
+    new_input_map = {}
+    for param_name in input_param_names:
+        new_input_map[param_name] = []
+        arg_names = op.input(param_name)
+        for arg_name in arg_names:
+            new_input_map[param_name].append(block.var(arg_name))
+
+    output_param_names = op.output_names
+    new_output_map = {}
+    for param_name in output_param_names:
+        new_output_map[param_name] = []
+        arg_names = op.output(param_name)
+        for arg_name in arg_names:
+            new_output_map[param_name].append(block.var(arg_name))
+
+    new_op = block.append_op(
+        type=op.type,
+        inputs=new_input_map,
+        outputs=new_output_map,
+        attrs=op.all_attrs())
+    return new_op
 
 
 def open_recordio_file(filename, shapes, lod_levels, dtypes):
@@ -284,8 +308,9 @@ def open_recordio_file(filename, shapes, lod_levels, dtypes):
 
     startup_var.desc.set_dtypes(dtypes)
     startup_var.persistable = True
-    return _copy_reader_var_(default_main_program().current_block(),
-                             startup_var)
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
+    return monkey_patch_reader_methods(main_prog_var)
 
 
 def open_files(filenames, thread_num, shapes, lod_levels, dtypes):
@@ -314,22 +339,25 @@ def open_files(filenames, thread_num, shapes, lod_levels, dtypes):
 
     startup_var.desc.set_dtypes(dtypes)
     startup_var.persistable = True
-    return _copy_reader_var_(default_main_program().current_block(),
-                             startup_var)
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
+    return monkey_patch_reader_methods(main_prog_var)
 
 
 def __create_decorated_reader__(op_type, reader, attrs):
     var_name = unique_name(op_type)
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=var_name)
-    startup_blk.append_op(
+    startop_op = startup_blk.append_op(
         type=op_type,
         inputs={'UnderlyingReader': reader},
         outputs={'Out': [startup_var]},
         attrs=attrs)
     startup_var.persistable = True
-    return _copy_reader_var_(default_main_program().current_block(),
-                             startup_var)
+    main_prog_block = default_main_program().current_block()
+    main_prog_var = _copy_reader_var_(main_prog_block, startup_var)
+    _copy_reader_create_op_(main_prog_block, startop_op)
+    return monkey_patch_reader_methods(main_prog_var)
 
 
 def create_shuffle_reader(reader, buffer_size):
@@ -343,6 +371,11 @@ def create_double_buffer_reader(reader, place=None):
         attrs['place'] = str(place).upper()
     return __create_decorated_reader__('create_double_buffer_reader', reader,
                                        attrs)
+
+
+def create_multi_pass_reader(reader, pass_num):
+    return __create_decorated_reader__('create_multi_pass_reader', reader,
+                                       {'pass_num': int(pass_num)})
 
 
 def read_file(file_obj):
