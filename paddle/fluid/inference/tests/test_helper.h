@@ -88,7 +88,7 @@ void CheckError(const paddle::framework::LoDTensor& output1,
   EXPECT_EQ(count, 0U) << "There are " << count << " different elements.";
 }
 
-template <typename Place>
+template <typename Place, bool CreateVars = true>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
@@ -166,8 +166,16 @@ void TestInference(const std::string& dirname,
 
   // 6. Run the inference program
   {
+    if (!CreateVars) {
+      // If users don't want to create and destroy variables every time they
+      // run, they need to set `create_vars` to false and manually call
+      // `CreateVariables` before running.
+      executor.CreateVariables(*inference_program, scope, 0);
+    }
+
     // Ignore the profiling results of the first run
-    executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+    executor.Run(*inference_program, scope, feed_targets, fetch_targets,
+                 CreateVars);
 
     // Enable the profiler
     paddle::platform::EnableProfiler(state);
@@ -178,7 +186,8 @@ void TestInference(const std::string& dirname,
           "run_inference",
           paddle::platform::DeviceContextPool::Instance().Get(place));
 
-      executor.Run(*inference_program, scope, feed_targets, fetch_targets);
+      executor.Run(*inference_program, scope, feed_targets, fetch_targets,
+                   CreateVars);
     }
 
     // Disable the profiler and print the timing information
