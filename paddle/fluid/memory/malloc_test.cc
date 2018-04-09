@@ -82,7 +82,7 @@ TEST(BuddyAllocator, CPUMultAlloc) {
   }
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 
 size_t align(size_t size, paddle::platform::CUDAPlace place) {
   size += sizeof(paddle::memory::detail::MemoryBlock::Desc);

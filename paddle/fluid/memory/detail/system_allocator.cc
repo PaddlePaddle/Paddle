@@ -187,6 +187,110 @@ bool CUDAPinnedAllocator::UseGpu() const { return false; }
 
 #endif
 
+#ifdef PADDLE_WITH_HIP
+
+void* GPUAllocator::Alloc(size_t& index, size_t size) {
+  // CUDA documentation doesn't explain if hipMalloc returns nullptr
+  // if size is 0.  We just make sure it does.
+  if (size <= 0) return nullptr;
+  void* p;
+  int prev_id;
+  hipGetDevice(&prev_id);
+  if (prev_id != gpu_id_) {
+    hipSetDevice(gpu_id_);
+  }
+
+  hipError_t result = hipMalloc(&p, size);
+
+  if (prev_id != gpu_id_) {
+    hipSetDevice(prev_id);
+  }
+
+  if (result == hipSuccess) {
+    index = 0;
+    gpu_alloc_size_ += size;
+    return p;
+  } else {
+    LOG(WARNING)
+        << "Cannot malloc " << size / 1024.0 / 1024.0
+        << " MB GPU memory. Please shrink FLAGS_fraction_of_gpu_memory_to_use "
+           "environment variable to a lower value. Current value is "
+        << FLAGS_fraction_of_gpu_memory_to_use;
+    return nullptr;
+  }
+}
+
+void GPUAllocator::Free(void* p, size_t size, size_t index) {
+  hipError_t err;
+
+  if (index == 0) {
+    PADDLE_ASSERT(gpu_alloc_size_ >= size);
+    gpu_alloc_size_ -= size;
+    err = hipFree(p);
+  } else {
+    PADDLE_ASSERT(fallback_alloc_size_ >= size);
+    fallback_alloc_size_ -= size;
+    err = hipHostFree(p);
+  }
+
+  if (err != hipSuccess) {
+    PADDLE_ENFORCE(err, "hipFree failed in GPUAllocator::Free.");
+  }
+}
+
+bool GPUAllocator::UseGpu() const { return true; }
+
+// PINNED memory allows direct DMA transfers by the GPU to and from system
+// memory. It’s locked to a physical address.
+void* CUDAPinnedAllocator::Alloc(size_t& index, size_t size) {
+  if (size <= 0) return nullptr;
+
+  // NOTE: here, we use CUDAPinnedMaxAllocSize as the maximum memory size
+  // of host pinned allocation. Allocates too much would reduce
+  // the amount of memory available to the underlying system for paging.
+  size_t usable =
+      paddle::platform::CUDAPinnedMaxAllocSize() - cuda_pinnd_alloc_size_;
+
+  if (size > usable) {
+    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
+                 << " MB pinned memory."
+                 << ", available " << usable / 1024.0 / 1024.0 << " MB";
+    return nullptr;
+  }
+
+  void* p;
+  // PINNED memory is visible to all HIP contexts.
+  hipError_t result = hipHostMalloc(&p, size);
+
+  if (result == hipSuccess) {
+    index = 1;  // PINNED memory
+    cuda_pinnd_alloc_size_ += size;
+    return p;
+  } else {
+    LOG(WARNING) << "hipMallocHost failed.";
+    return nullptr;
+  }
+
+  return nullptr;
+}
+
+void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
+  hipError_t err;
+  PADDLE_ASSERT(index == 1);
+
+  PADDLE_ASSERT(cuda_pinnd_alloc_size_ >= size);
+  cuda_pinnd_alloc_size_ -= size;
+  err = hipHostFree(p);
+
+  if (err != hipSuccess) {
+    PADDLE_ENFORCE(err, "hipFreeHost failed in GPUPinnedAllocator::Free.");
+  }
+}
+
+bool CUDAPinnedAllocator::UseGpu() const { return false; }
+
+#endif
+
 }  // namespace detail
 }  // namespace memory
 }  // namespace paddle
