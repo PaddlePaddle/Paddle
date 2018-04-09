@@ -191,25 +191,29 @@ def main():
                 fetch_list=[avg_cost, batch_acc, batch_size_tensor])
             accuracy.add(value=acc, weight=weight)
             iters += 1
-            num_samples += len(data)
+            num_samples += len(y_data)
             print(
                 "Pass = %d, Iter = %d, Loss = %f, Accuracy = %f" %
                 (pass_id, iters, loss, acc)
             )  # The accuracy is the accumulation of batches, but not the current batch.
 
-        pass_train_acc = accuracy.eval()
+        # pass_train_acc = accuracy.eval()
         train_losses.append(loss)
         train_accs.append(acc)
+        print("Pass: %d, Loss: %f, Train Accuray: %f\n" %
+              (pass_id, np.mean(train_losses), np.mean(train_accs)))
+        train_elapsed = time.time() - start_time
+        examples_per_sec = num_samples / train_elapsed
+        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
+              (num_samples, train_elapsed, examples_per_sec))
         # evaluation
         if args.with_test:
             pass_test_acc = test(exe)
-        train_elapsed = time.time() - start_time
-        print("Pass: %d, Loss: %f, Train Accuray: %f\n" %
-              (pass_id, np.mean(train_losses), np.mean(train_accs)))
+        exit(0)
 
 
 def print_arguments():
-    print('-----------  Configuration Arguments -----------')
+    print('----------- vgg Configuration Arguments -----------')
     for arg, value in sorted(vars(args).iteritems()):
         print('%s: %s' % (arg, value))
     print('------------------------------------------------')
