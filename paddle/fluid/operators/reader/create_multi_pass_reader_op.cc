@@ -62,12 +62,15 @@ class CreateMultiPassReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    auto* out = detail::Ref(scope.FindVar(Output("Out")))
+                    .GetMutable<framework::ReaderHolder>();
+    if (out->Get() != nullptr) {
+      return;
+    }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    auto& out = detail::Ref(scope.FindVar(Output("Out")));
     int pass_num = Attr<int>("pass_num");
-    out.GetMutable<framework::ReaderHolder>()->Reset(
-        new MultiPassReader(underlying_reader.Get(), pass_num));
+    out->Reset(new MultiPassReader(underlying_reader.Get(), pass_num));
   }
 };
 

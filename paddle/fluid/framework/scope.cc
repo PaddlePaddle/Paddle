@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 
 #include <memory>  // for unique_ptr
-#include <mutex>   // for call_once
 #include <set>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
@@ -39,6 +38,7 @@ Scope::~Scope() {
 }
 
 Scope& Scope::NewScope() const {
+  std::unique_lock<std::mutex> lock(mutex_);
   kids_.push_back(new Scope(this));
   return *kids_.back();
 }
@@ -92,6 +92,7 @@ std::vector<std::string> Scope::LocalVarNames() const {
 }
 
 void Scope::DeleteScope(Scope* scope) {
+  std::unique_lock<std::mutex> lock(mutex_);
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
   this->kids_.erase(it);
@@ -103,7 +104,7 @@ void Scope::DeleteScope(Scope* scope) {
   }
 }
 
-void Scope::EraseVars(std::vector<std::string>& var_names) {
+void Scope::EraseVars(const std::vector<std::string>& var_names) {
   std::set<std::string> var_set(var_names.begin(), var_names.end());
   for (auto it = vars_.begin(); it != vars_.end();) {
     if (var_set.find(it->first) != var_set.end()) {
