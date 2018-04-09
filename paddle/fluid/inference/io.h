@@ -24,8 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-void LoadPersistables(framework::Executor& executor,
-                      framework::Scope& scope,
+void LoadPersistables(framework::Executor& executor, framework::Scope& scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
                       const std::string& param_filename);

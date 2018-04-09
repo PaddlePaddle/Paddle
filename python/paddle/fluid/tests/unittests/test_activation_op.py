@@ -535,9 +535,37 @@ class TestSwish(OpTest):
 
 
 #--------------------test MKLDNN--------------------
-class TestMKLDNNRelu(TestRelu):
+class TestMKLDNNReluDim2(TestRelu):
     def setUp(self):
-        super(TestMKLDNNRelu, self).setUp()
+        super(TestMKLDNNReluDim2, self).setUp()
+
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNTanhDim2(TestTanh):
+    def setUp(self):
+        super(TestMKLDNNTanhDim2, self).setUp()
+
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNSqrtDim2(TestSqrt):
+    def setUp(self):
+        super(TestMKLDNNSqrtDim2, self).setUp()
+
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNAbsDim2(TestAbs):
+    def setUp(self):
+        super(TestMKLDNNAbsDim2, self).setUp()
+
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNReluDim4(TestRelu):
+    def setUp(self):
+        super(TestMKLDNNReluDim4, self).setUp()
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
         # The same reason with TestAbs
@@ -549,9 +577,9 @@ class TestMKLDNNRelu(TestRelu):
         self.attrs = {"use_mkldnn": True}
 
 
-class TestMKLDNNTanh(TestTanh):
+class TestMKLDNNTanhDim4(TestTanh):
     def setUp(self):
-        super(TestMKLDNNTanh, self).setUp()
+        super(TestMKLDNNTanhDim4, self).setUp()
 
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
@@ -560,9 +588,9 @@ class TestMKLDNNTanh(TestTanh):
         self.attrs = {"use_mkldnn": True}
 
 
-class TestMKLDNNSqrt(TestSqrt):
+class TestMKLDNNSqrtDim4(TestSqrt):
     def setUp(self):
-        super(TestMKLDNNSqrt, self).setUp()
+        super(TestMKLDNNSqrtDim4, self).setUp()
 
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
@@ -571,9 +599,9 @@ class TestMKLDNNSqrt(TestSqrt):
         self.attrs = {"use_mkldnn": True}
 
 
-class TestMKLDNNAbs(TestAbs):
+class TestMKLDNNAbsDim4(TestAbs):
     def setUp(self):
-        super(TestMKLDNNAbs, self).setUp()
+        super(TestMKLDNNAbsDim4, self).setUp()
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
         # The same reason with TestAbs
