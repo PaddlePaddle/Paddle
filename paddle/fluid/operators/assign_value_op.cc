@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/assign_value_op.h"
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
