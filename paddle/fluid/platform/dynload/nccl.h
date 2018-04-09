@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/call_once.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
