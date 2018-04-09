@@ -22,6 +22,8 @@ import numpy as np
     wrappers of Python functions.
 """
 
+__all__ = ["WeightedAverage"]
+
 
 def _is_number_(var):
     return isinstance(var, int) or isinstance(var, float) or (isinstance(
@@ -34,6 +36,9 @@ def _is_number_or_matrix_(var):
 
 class WeightedAverage(object):
     def __init__(self):
+        warnings.warn(
+            "The %s is deprecated, please use fluid.metrics.Accuracy instead." %
+            (self.__class__.__name__), DeprecationWarning)
         self.reset()
 
     def reset(self):
