@@ -276,8 +276,7 @@ ThreadedSSAGraphExecutor::RunContext::~RunContext() {
   }
 
   for (auto &tensor : stored_context_->fetched_tensors_) {
-    LoDTensor t;
-    tensor.ShareDataWith(tensor);  // Empty tensor;
+    tensor.Clear();
   }
 }
 

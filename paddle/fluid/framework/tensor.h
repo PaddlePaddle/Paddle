@@ -129,6 +129,8 @@ class Tensor {
 
   inline void set_layout(const DataLayout layout) { layout_ = layout; }
 
+  void Clear() { holder_.reset(); }
+
  private:
   /**
    * @note    Placeholder hides type T, so it doesn't appear as a template
