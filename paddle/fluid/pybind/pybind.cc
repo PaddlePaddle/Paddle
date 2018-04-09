@@ -46,7 +46,7 @@ limitations under the License. */
 
 #include "paddle/fluid/string/to_string.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/cuda_profiler.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -58,7 +58,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 namespace paddle {
 namespace pybind {
 bool IsCompiledWithCUDA() {
-#ifndef PADDLE_WITH_CUDA
+#if !(defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   return false;
 #else
   return true;
@@ -118,7 +118,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<bool>)
       .def("set", PyCPUTensorSetFromArray<uint16_t>)
       .def("set", PyCPUTensorSetFromArray<uint8_t>)
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
       .def("set", PyCUDATensorSetFromArray<double>)
@@ -183,7 +183,7 @@ PYBIND11_PLUGIN(core) {
       .def("height", &SelectedRows::height)
       .def("set_rows",
            [](SelectedRows &self, std::vector<int64_t> rows) {
-#ifndef PADDLE_WITH_CUDA
+#if !(defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
              self.set_rows(rows);
 #else
         Vector<int64_t> new_rows(rows);
@@ -191,7 +191,7 @@ PYBIND11_PLUGIN(core) {
 #endif
            })
       .def("rows", [](SelectedRows &self) {
-#ifndef PADDLE_WITH_CUDA
+#if !(defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
         return self.rows();
 #else
          auto rows = self.rows();
@@ -233,7 +233,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();
@@ -326,7 +326,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_static("create",
                   [](paddle::platform::CUDAPlace& place)
                       -> paddle::platform::DeviceContext* {
-#ifndef PADDLE_WITH_CUDA
+#if !(defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
                     PADDLE_THROW("CUDAPlace is not supported in CPU device.");
 #else
                     return new paddle::platform::CUDADeviceContext(place);
@@ -343,7 +343,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                 });;
 // clang-format on
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace")
@@ -428,6 +428,10 @@ All parameter, weight, gradient are variables in Paddle.
     // Only GPUs with Compute Capability >= 53 support float16
     return platform::GetCUDAComputeCapability(place.device) >= 53;
   });
+#elif defined(PADDLE_WITH_HIP)
+  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
+    return false;
+  });
 #endif
 
   m.def("set_feed_variable", framework::SetFeedVariable);
@@ -469,7 +473,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](std::string op) -> bool { return operators::IsInplace(op); });
 
   m.def("op_support_gpu", OpSupportGPU);
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
 
   m.def("nvprof_init", platform::CudaProfilerInit);

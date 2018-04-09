@@ -22,6 +22,13 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #endif
 
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/dynload/hipblas.h"
+#include "paddle/fluid/platform/dynload/miopen.h"
+#include "paddle/fluid/platform/gpu_info.h"
+#define EIGEN_USE_GPU
+#endif
+
 #ifdef PADDLE_WITH_MKLDNN
 #include <mkldnn.hpp>
 #endif
@@ -115,7 +122,80 @@ class CUDADeviceContext : public DeviceContext {
   cudaStream_t stream_;
   cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
+  int compute_capability;
+  int multi_process;
+  int max_threads_per_mp;
+};
 
+template <>
+struct DefaultDeviceContextType<platform::CUDAPlace> {
+  using TYPE = CUDADeviceContext;
+};
+
+// Currently, CUDAPinnedDeviceContext is only used to data copying.
+class CUDAPinnedDeviceContext : public DeviceContext {
+ public:
+  CUDAPinnedDeviceContext();
+  explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
+
+  Place GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+ private:
+  CUDAPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+
+template <>
+struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
+  using TYPE = CUDAPinnedDeviceContext;
+};
+#endif
+
+#ifdef PADDLE_WITH_HIP
+
+class EigenHipStreamDevice;
+
+class CUDADeviceContext : public DeviceContext {
+ public:
+  explicit CUDADeviceContext(CUDAPlace place);
+  virtual ~CUDADeviceContext();
+
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+
+  /*! \brief  Return place in the device context. */
+  Place GetPlace() const override;
+
+  /*! \brief  Return compute capability in the device context. */
+  int GetComputeCapability() const;
+
+  /*! \brief  Return the max physical thread count in the device context */
+  int GetMaxPhysicalThreadCount() const;
+
+  /*! \brief  Return eigen device in the device context. */
+  Eigen::GpuDevice* eigen_device() const;
+
+  /*! \brief  Return hipblas handle in the device context. */
+  hipblasHandle_t hipblas_handle() const;
+
+  /*! \brief  Return miopen handle in the device context. */
+  miopenHandle_t miopen_handle() const;
+
+  /*! \brief  Return cuda stream in the device context. */
+  hipStream_t stream() const;
+
+ private:
+  CUDAPlace place_;
+
+  std::unique_ptr<Eigen::GpuDevice> eigen_device_;
+  std::unique_ptr<EigenHipStreamDevice> eigen_stream_;
+
+  mutable std::mutex mutex_;
+  hipStream_t stream_;
+  miopenHandle_t miopen_handle_;
+  hipblasHandle_t hipblas_handle_;
   int compute_capability;
   int multi_process;
   int max_threads_per_mp;

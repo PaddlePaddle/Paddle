@@ -22,6 +22,7 @@ cc_library(cpu_info SRCS cpu_info.cc DEPS gflags glog enforce)
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
 nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
+hip_library(gpu_info SRCS gpu_info_hip.cc DEPS gflags glog enforce)
 
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
@@ -30,6 +31,8 @@ add_subdirectory(dynload)
 
 IF(WITH_GPU)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
+ELSEIF(WITH_AMD_GPU)
+    set(GPU_CTX_DEPS dynload_hip dynamic_loader)
 ELSE()
     set(GPU_CTX_DEPS)
 ENDIF()

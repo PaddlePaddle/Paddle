@@ -12,21 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/fluid/platform/dynload/rccl.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-void* GetCublasDsoHandle();
-void* GetCUDNNDsoHandle();
-void* GetCUPTIDsoHandle();
-void* GetCurandDsoHandle();
-void* GetWarpCTCDsoHandle();
-void* GetLapackDsoHandle();
-void* GetNCCLDsoHandle();
-void* GetRCCLDsoHandle();
-void* GetTensorRtDsoHandle();
+std::once_flag rccl_dso_flag;
+void *rccl_dso_handle;
+
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
+
+RCCL_RAND_ROUTINE_EACH(DEFINE_WRAP);
+
+void LoadRCCLDSO() {
+  platform::call_once(rccl_dso_flag,
+                      [] { GetRCCLDsoHandle(&rccl_dso_handle); });
+}
 
 }  // namespace dynload
 }  // namespace platform

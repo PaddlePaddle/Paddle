@@ -11,43 +11,38 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #pragma once
 
 #include <dlfcn.h>
-#ifdef PADDLE_WITH_HIP
 #include <rccl.h>
-#else
-#include <nccl.h>
-#endif
-
-#include <mutex>  // NOLINT
-
+#include <mutex>
+#include "paddle/fluid/platform/call_once.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-extern std::once_flag nccl_dso_flag;
-extern void* nccl_dso_handle;
+extern std::once_flag rccl_dso_flag;
+extern void* rccl_dso_handle;
 
 #ifdef PADDLE_USE_DSO
+extern void LoadRCCLDSO();
 
-#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                           \
-  struct DynLoad__##__name {                                             \
-    template <typename... Args>                                          \
-    auto operator()(Args... args) -> decltype(__name(args...)) {         \
-      using nccl_func = decltype(&::__name);                             \
-      std::call_once(nccl_dso_flag, []() {                               \
-        nccl_dso_handle = paddle::platform::dynload::GetNCCLDsoHandle(); \
-      });                                                                \
-      void* p_##__name = dlsym(nccl_dso_handle, #__name);                \
-      return reinterpret_cast<nccl_func>(p_##__name)(args...);           \
-    }                                                                    \
-  };                                                                     \
+#define DECLARE_DYNAMIC_LOAD_RCCL_WRAP(__name)                   \
+  struct DynLoad__##__name {                                     \
+    template <typename... Args>                                  \
+    auto operator()(Args... args) -> decltype(__name(args...)) { \
+      using rccl_func = decltype(__name(args...)) (*)(Args...);  \
+      paddle::platform::dynload::LoadRCCLDSO();                  \
+      void* p_##__name = dlsym(rccl_dso_handle, #__name);        \
+      return reinterpret_cast<rccl_func>(p_##__name)(args...);   \
+    }                                                            \
+  };                                                             \
   extern DynLoad__##__name __name
 #else
-#define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name) \
+#define DECLARE_DYNAMIC_LOAD_RCCL_WRAP(__name) \
   struct DynLoad__##__name {                   \
     template <typename... Args>                \
     rcclResult_t operator()(Args... args) {    \
@@ -57,7 +52,7 @@ extern void* nccl_dso_handle;
   extern DynLoad__##__name __name
 #endif
 
-#define NCCL_RAND_ROUTINE_EACH(__macro) \
+#define RCCL_RAND_ROUTINE_EACH(__macro) \
   __macro(rcclCommInitAll);             \
   __macro(rcclGetUniqueId);             \
   __macro(rcclCommInitRank);            \
@@ -68,12 +63,10 @@ extern void* nccl_dso_handle;
   __macro(rcclAllReduce);               \
   __macro(rcclBcast);                   \
   __macro(rcclAllGather);               \
-  __macro(rcclGroupStart);              \
-  __macro(rcclGroupEnd);                \
   __macro(rcclReduce);                  \
   __macro(rcclGetErrorString);
 
-NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+RCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 
 }  // namespace dynload
 }  // namespace platform

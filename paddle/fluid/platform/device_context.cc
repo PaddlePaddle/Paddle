@@ -50,7 +50,7 @@ DeviceContextPool::DeviceContextPool(
           p, PtrType(new CPUDeviceContext(boost::get<CPUPlace>(p))));
 #endif
     } else if (platform::is_gpu_place(p)) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       device_contexts_.emplace(
           p, PtrType(new CUDADeviceContext(boost::get<CUDAPlace>(p))));
 #else
@@ -59,7 +59,7 @@ DeviceContextPool::DeviceContextPool(
           "option");
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       device_contexts_.emplace(
           p,
           PtrType(new CUDAPinnedDeviceContext(boost::get<CUDAPinnedPlace>(p))));
@@ -199,6 +199,136 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
+
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext(CUDAPinnedPlace place)
+    : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
+#endif
+
+#ifdef PADDLE_WITH_HIP
+
+class EigenHipStreamDevice : public Eigen::StreamInterface {
+ public:
+  EigenHipStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
+    Eigen::initializeDeviceProp();
+  }
+  ~EigenHipStreamDevice() override {}
+
+  void Reinitialize(const hipStream_t* cuda_stream, CUDAPlace place) {
+    stream_ = cuda_stream;
+    place_ = place;
+    device_prop_ = &Eigen::m_deviceProperties[place.device];
+  }
+
+  const hipStream_t& stream() const override { return *stream_; }
+
+  const hipDeviceProp_t& deviceProperties() const override {
+    return *device_prop_;
+  }
+
+  void* allocate(size_t num_bytes) const override {
+    return paddle::memory::Alloc(place_, num_bytes);
+  }
+
+  void deallocate(void* buffer) const override {
+    paddle::memory::Free(place_, buffer);
+  }
+
+  void* scratchpad() const override {
+    if (scratch_ == NULL) {
+      scratch_ = allocate(Eigen::kHipScratchSize + sizeof(unsigned int));
+    }
+    return scratch_;
+  }
+
+  unsigned int* semaphore() const override {
+    if (semaphore_ == NULL) {
+      char* scratch =
+          static_cast<char*>(scratchpad()) + Eigen::kHipScratchSize;
+      semaphore_ = reinterpret_cast<unsigned int*>(scratch);
+      PADDLE_ENFORCE(
+          hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
+    }
+    return semaphore_;
+  }
+
+ private:
+  CUDAPlace place_;
+  const hipStream_t* stream_;         // not owned;
+  const hipDeviceProp_t* device_prop_;  // not owned;
+  mutable void* scratch_;
+  mutable unsigned int* semaphore_;
+};
+
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
+  SetDeviceId(place_.device);
+  compute_capability = GetCUDAComputeCapability(place_.device);
+  multi_process = GetCUDAMultiProcessors(place_.device);
+  max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  PADDLE_ENFORCE(hipStreamCreate(&stream_));
+  eigen_stream_.reset(new EigenHipStreamDevice());
+  eigen_stream_->Reinitialize(&stream_, place);
+  eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
+  PADDLE_ENFORCE(dynload::hipblasCreate(&hipblas_handle_));
+  PADDLE_ENFORCE(dynload::hipblasSetStream(hipblas_handle_, stream_));
+  if (dynload::HasMIOpen()) {
+    PADDLE_ENFORCE(dynload::miopenCreate(&miopen_handle_));
+    PADDLE_ENFORCE(dynload::miopenSetStream(miopen_handle_, stream_));
+  } else {
+    miopen_handle_ = nullptr;
+  }
+}
+
+CUDADeviceContext::~CUDADeviceContext() {
+  SetDeviceId(place_.device);
+  Wait();
+  PADDLE_ENFORCE(dynload::hipblasDestroy(hipblas_handle_));
+  if (miopen_handle_ != nullptr) {
+    PADDLE_ENFORCE(dynload::miopenDestroy(miopen_handle_));
+  }
+  eigen_stream_.reset();
+  eigen_device_.reset();
+  PADDLE_ENFORCE(hipStreamDestroy(stream_));
+}
+
+Place CUDADeviceContext::GetPlace() const { return place_; }
+
+void CUDADeviceContext::Wait() const {
+  std::lock_guard<std::mutex> guard(mutex_);
+  PADDLE_ENFORCE(hipStreamSynchronize(stream_));
+  PADDLE_ENFORCE(hipGetLastError());
+}
+
+int CUDADeviceContext::GetComputeCapability() const {
+  return compute_capability;
+}
+
+int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
+  return multi_process * max_threads_per_mp;
+}
+
+Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+hipblasHandle_t CUDADeviceContext::hipblas_handle() const {
+  return hipblas_handle_;
+}
+
+miopenHandle_t CUDADeviceContext::miopen_handle() const { return miopen_handle_; }
+
+hipStream_t CUDADeviceContext::stream() const { return stream_; }
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
