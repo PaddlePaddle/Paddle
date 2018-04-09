@@ -192,7 +192,7 @@ class OpKernelRegistrar : public Registrar {
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
 
-#ifndef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)
 #else
 #define USE_OP_KERNEL(op_type)        \

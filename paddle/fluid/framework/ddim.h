@@ -17,7 +17,11 @@ limitations under the License. */
 #include <initializer_list>
 #include <stdexcept>
 #include <vector>
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/framework/dim_hip.h"
+#else
 #include "paddle/fluid/framework/dim.h"
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
 

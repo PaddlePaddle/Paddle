@@ -20,7 +20,11 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/rccl_helper.h"
+#else
 #include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {

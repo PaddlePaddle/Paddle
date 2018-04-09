@@ -38,7 +38,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
@@ -251,7 +251,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
     PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
                    "Index overflow when writing tensor");
     if (platform::is_gpu_place(tensor.place())) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
       auto& gpu_dev_ctx =
@@ -317,7 +317,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     void* buf;
     auto ctx = platform::CPUDeviceContext();
     if (platform::is_gpu_place(dev_ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       Tensor cpu_tensor;
       cpu_tensor.Resize(framework::make_ddim(dims));
       framework::VisitDataType(

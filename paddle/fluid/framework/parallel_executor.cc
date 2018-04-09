@@ -22,6 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/rccl_helper.h"
+#endif
+
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -39,7 +43,7 @@ class ParallelExecutorPrivate {
   Scope *global_scope_;
   std::unique_ptr<details::SSAGraphExecutor> executor_;
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
@@ -79,7 +83,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
 // Bcast Parameters to all GPUs
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
   ncclUniqueId *nccl_id = nullptr;
   if (nccl_id_var != nullptr) {
@@ -96,7 +100,7 @@ ParallelExecutor::ParallelExecutor(
 
 // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   details::MultiDevSSAGraphBuilder builder(
       member_->places_, loss_var_name, params, member_->local_scopes_,
       member_->nccl_ctxs_.get(), build_strategy);
@@ -119,7 +123,7 @@ ParallelExecutor::ParallelExecutor(
 
 void ParallelExecutor::BCastParamsToGPUs(
     const std::unordered_set<std::string> &vars) const {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   auto *main_scope = member_->local_scopes_[0];
 
   for (auto &var : vars) {
@@ -132,7 +136,6 @@ void ParallelExecutor::BCastParamsToGPUs(
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
       size_t numel = main_tensor.numel();
-      ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
       platform::NCCLGroupGuard guard;
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
@@ -146,8 +149,15 @@ void ParallelExecutor::BCastParamsToGPUs(
           buffer = t->mutable_data(place, main_tensor.type());
         }
         auto &nccl_ctx = member_->nccl_ctxs_->at(place);
+#ifdef PADDLE_WITH_HIP
+        rcclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
+        platform::dynload::rcclBcast(buffer, numel, data_type, 0,
+                                     nccl_ctx.comm_, nccl_ctx.stream());
+#else
+        ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
         platform::dynload::ncclBcast(buffer, numel, data_type, 0,
                                      nccl_ctx.comm_, nccl_ctx.stream());
+#endif
       }
     } else {
       platform::CPUPlace cpu;

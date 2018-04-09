@@ -287,7 +287,7 @@ class ExecutionContext {
     return device_context_;
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   const inline platform::CUDADeviceContext& cuda_device_context() const {
     PADDLE_ENFORCE(platform::is_gpu_place(device_context_.GetPlace()));
     return *reinterpret_cast<const platform::CUDADeviceContext*>(

@@ -62,7 +62,7 @@ void FetchOpHandle::RunImpl() {
 
     auto &t = var->Get<framework::LoDTensor>();
     if (platform::is_gpu_place(t.place())) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       TensorCopySync(t, cpu, &tensors_[i]);
 #endif
     } else {

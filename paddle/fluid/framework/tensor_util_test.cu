@@ -12,6 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -51,7 +52,7 @@ TEST(TensorContainsNAN, GPU) {
   {
     Tensor tensor;
     float* buf = tensor.mutable_data<float>({3}, gpu);
-    FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    hipLaunchKernelGGL((FillNAN), dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
     cuda_ctx->Wait();
     ASSERT_TRUE(TensorContainsNAN(tensor));
   }
@@ -59,7 +60,7 @@ TEST(TensorContainsNAN, GPU) {
     Tensor tensor;
     paddle::platform::float16* buf =
         tensor.mutable_data<paddle::platform::float16>({3}, gpu);
-    FillNAN<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    hipLaunchKernelGGL((FillNAN), dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
     cuda_ctx->Wait();
     ASSERT_TRUE(TensorContainsNAN(tensor));
   }
@@ -72,7 +73,7 @@ TEST(TensorContainsInf, GPU) {
   {
     Tensor tensor;
     float* buf = tensor.mutable_data<float>({3}, gpu);
-    FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    hipLaunchKernelGGL((FillInf), dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
     cuda_ctx->Wait();
     ASSERT_TRUE(TensorContainsInf(tensor));
   }
@@ -80,7 +81,7 @@ TEST(TensorContainsInf, GPU) {
     Tensor tensor;
     paddle::platform::float16* buf =
         tensor.mutable_data<paddle::platform::float16>({3}, gpu);
-    FillInf<<<1, 1, 0, cuda_ctx->stream()>>>(buf);
+    hipLaunchKernelGGL((FillInf), dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
     cuda_ctx->Wait();
     ASSERT_TRUE(TensorContainsInf(tensor));
   }

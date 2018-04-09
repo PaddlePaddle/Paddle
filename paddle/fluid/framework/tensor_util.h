@@ -68,7 +68,7 @@ void TensorFromVector(const std::vector<T>& src,
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
                  src_ptr, size);
   }
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(
         boost::get<platform::CUDAPlace>(dst_place), dst_ptr, src_place, src_ptr,
@@ -104,7 +104,7 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
     memory::Copy(dst_place, dst_ptr,
                  boost::get<platform::CPUPlace>(src.place()), src_ptr, size);
   }
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(
         dst_place, dst_ptr, boost::get<platform::CUDAPlace>(src.place()),

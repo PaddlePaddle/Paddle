@@ -31,7 +31,7 @@ namespace details {
 
 class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  public:
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
@@ -58,7 +58,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   const std::vector<Scope *> &local_scopes_;
   std::unordered_set<std::string> grad_names_;
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
 

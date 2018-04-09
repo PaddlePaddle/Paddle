@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cuda.h>
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 #include <stdio.h>
 
 #include "gtest/gtest.h"
@@ -38,8 +37,8 @@ TEST(LoD, data) {
 
   auto& v = lod[0];
   paddle::platform::CUDAPlace gpu(0);
-  test<<<1, 1>>>(v.CUDAMutableData(gpu), v.size());
-  cudaDeviceSynchronize();
+  hipLaunchKernelGGL((test), dim3(1), dim3(1), 0, 0, v.CUDAMutableData(gpu), v.size());
+  hipDeviceSynchronize();
   for (size_t i = 0; i < v.size(); ++i) {
     EXPECT_EQ(v[i], i * 2);
   }
@@ -63,8 +62,8 @@ TEST(LoDTensor, LoDInGPU) {
 
   auto lod = lod_tensor.lod();
 
-  test<<<1, 8>>>(lod[0].CUDAMutableData(place), lod[0].size());
-  cudaDeviceSynchronize();
+  hipLaunchKernelGGL((test), dim3(1), dim3(8), 0, 0, lod[0].CUDAMutableData(place), lod[0].size());
+  hipDeviceSynchronize();
 
   for (size_t i = 0; i < src_lod[0].size(); ++i) {
     EXPECT_EQ(lod[0].data()[i], src_lod[0].data()[i] * 2);
