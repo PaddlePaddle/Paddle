@@ -29,11 +29,14 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = ctx.Output<framework::LoDTensor>("Out");
     } else if (out_var->IsType<framework::SelectedRows>()) {
+      auto shape = ctx.Attr<std::vector<int>>("shape");
       tensor = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+      tensor->Resize(framework::make_ddim(shape));
     } else {
       PADDLE_THROW("Only support LoDTensor and SelectedRows.");
     }
     T* data = tensor->mutable_data<T>(ctx.GetPlace());
+    data[0] = static_cast<T>(1000);
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
@@ -44,7 +47,6 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
     int64_t size = tensor->numel();
-    VLOG(3) << "size = " << size;
     for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
@@ -64,7 +66,6 @@ class UniformRandomOp : public framework::OperatorWithKernel {
         "uniform_random's min must less then max");
     auto& shape = ctx->Attrs().Get<std::vector<int>>("shape");
     std::vector<int64_t> temp;
-    VLOG(3) << "shape.size() = " << shape.size();
     temp.reserve(shape.size());
     for (auto dim : shape) {
       temp.push_back(static_cast<int64_t>(dim));
