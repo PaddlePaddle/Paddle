@@ -17,7 +17,8 @@ import numpy as np
 import contextlib
 
 __all__ = [
-    'ConstantInitializer', 'UniformInitializer', 'NormalInitializer', 'XavierInitializer', 'Constant', 'Uniform', 'Normal', 'Xavier', 'force_init_on_cpu','init_on_cpu'
+    'Constant', 'Uniform', 'Normal', 'Xavier', 'force_init_on_cpu',
+    'init_on_cpu', 'ConstantInitializer', 'UniformInitializer', 'NormalInitializer', 'XavierInitializer'
 ]
 
 _force_init_on_cpu_ = False
