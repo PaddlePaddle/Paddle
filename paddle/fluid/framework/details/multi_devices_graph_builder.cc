@@ -59,7 +59,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   auto graph = new Context();
   Context &result = *graph;
   std::unordered_set<std::string> og_has_been_broadcast;
-  result.vars_.resize(places_.size());
+
+  // We cannot invoke resize. It is a bug of GCC 4.8
+  result.vars_ = std::vector<
+      std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
+      places_.size());
 
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
