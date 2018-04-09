@@ -22,7 +22,7 @@ import math
 import sys
 
 
-def train(use_cuda=False, is_sparse=False, is_local=False):
+def train(use_cuda=False, is_sparse=True, is_local=False):
     PASS_NUM = 100
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256

@@ -216,6 +216,25 @@ class DistributeTranspiler:
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints
 
+        # process lookup_table_op
+        # 1. check all lookup_table_op is distributed
+        # 2. check all lookup_table_op share the same table.
+        distributed_lookup_table_ops = []
+        # support only one distributed_lookup_table now
+        self.table_name = None
+        for op in program.global_block().ops:
+            if op.type == LOOKUP_TABLE_TYPE:
+                if op.attrs['is_distributed'] is True:
+                    if self.table_name is None:
+                        self.table_name = op.input("W")[0]
+                    if self.table_name != op.input("W")[0]:
+                        raise RuntimeError("all distributed lookup_table_ops"
+                                           " should have only one table")
+                    distributed_lookup_table_ops.append(op)
+
+        self.has_distributed_lookup_table = len(
+            distributed_lookup_table_ops) > 0
+
         # step1
         param_list = [pg[0] for pg in params_grads]
         grad_list = [pg[1] for pg in params_grads]
@@ -272,24 +291,6 @@ class DistributeTranspiler:
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
-        # process lookup_table_op
-        # 1. check all lookup_table_op is distributed
-        # 2. check all lookup_table_op share the same table.
-        distributed_lookup_table_ops = []
-        # support only one distributed_lookup_table now
-        self.table_name = None
-        for op in program.global_block().ops:
-            if op.type == LOOKUP_TABLE_TYPE:
-                if op.attrs['is_distributed'] is True:
-                    if self.table_name is None:
-                        self.table_name = op.input("W")[0]
-                    if self.table_name != op.input("W")[0]:
-                        raise RuntimeError("all distributed lookup_table_ops"
-                                           " should have only one table")
-                    distributed_lookup_table_ops.append(op)
-
-        self.has_distributed_lookup_table = len(
-            distributed_lookup_table_ops) > 0
         if self.has_distributed_lookup_table:
 
             def create_splited_vars(source_var, block, tag):
