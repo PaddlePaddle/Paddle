@@ -11,8 +11,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-#include <cuda_runtime.h>
-
+#include <hip/hip_runtime.h>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/mixed_vector.h"
@@ -47,7 +46,7 @@ static __global__ void multiply_10(int* ptr) {
   }
 }
 
-cudaStream_t GetCUDAStream(paddle::platform::CUDAPlace place) {
+hipStream_t GetCUDAStream(paddle::platform::CUDAPlace place) {
   return reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
              paddle::platform::DeviceContextPool::Instance().Get(place))
       ->stream();
@@ -61,7 +60,7 @@ TEST(mixed_vector, GPU_VECTOR) {
   ASSERT_EQ(tmp.size(), 10UL);
   paddle::platform::CUDAPlace gpu(0);
 
-  multiply_10<<<1, 1, 0, GetCUDAStream(gpu)>>>(tmp.MutableData(gpu));
+  hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu), tmp.MutableData(gpu));
 
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(tmp[i], i * 10);
@@ -82,11 +81,11 @@ TEST(mixed_vector, MultiGPU) {
   ASSERT_EQ(tmp.size(), 10UL);
   paddle::platform::CUDAPlace gpu0(0);
   paddle::platform::SetDeviceId(0);
-  multiply_10<<<1, 1, 0, GetCUDAStream(gpu0)>>>(tmp.MutableData(gpu0));
+  hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu0), tmp.MutableData(gpu0));
   paddle::platform::CUDAPlace gpu1(1);
   auto* gpu1_ptr = tmp.MutableData(gpu1);
   paddle::platform::SetDeviceId(1);
-  multiply_10<<<1, 1, 0, GetCUDAStream(gpu1)>>>(gpu1_ptr);
+  hipLaunchKernelGGL(multiply_10, dim3(1), dim3(1), 0, GetCUDAStream(gpu1), gpu1_ptr);
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(tmp[i], i * 100);
   }

@@ -59,7 +59,7 @@ void FetchOpHandle::RunImpl() {
     auto &scope = scopes[i];
     auto &t = scope->FindVar(var_name)->Get<framework::LoDTensor>();
     if (platform::is_gpu_place(var->place_)) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       TensorCopy(t, cpu, *dev_ctxes_[t.place()], &tensors_[i]);
       dev_ctxes_[t.place()]->Wait();
 #endif

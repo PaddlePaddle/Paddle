@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "hip/hip_runtime.h"
 #include <thrust/device_vector.h>
 #include <sstream>
 
@@ -34,7 +35,7 @@ TEST(Dim, Equality) {
 
   // construct a Dim on the GPU
   thrust::device_vector<paddle::framework::Dim<2>> t(2);
-  test<<<1, 1>>>(thrust::raw_pointer_cast(t.data()));
+  hipLaunchKernelGGL((test), dim3(1), dim3(1), 0, 0, thrust::raw_pointer_cast(t.data()));
   a = t[0];
   EXPECT_EQ(paddle::framework::get<0>(a), 5);
   EXPECT_EQ(paddle::framework::get<1>(a), 6);
@@ -61,7 +62,7 @@ TEST(Dim, Equality) {
 
   // dynamic access on GPU
   thrust::device_vector<int64_t> r(1);
-  dyn_idx_gpu<<<1, 1>>>(thrust::raw_pointer_cast(r.data()));
+  hipLaunchKernelGGL((dyn_idx_gpu), dim3(1), dim3(1), 0, 0, thrust::raw_pointer_cast(r.data()));
   int64_t res = r[0];
   EXPECT_EQ(res, 6);
 

@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/scope.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #endif
 
@@ -28,7 +28,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
@@ -97,7 +97,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       if (is_forwarding) {
         if (var_names.size() == 1 && var_names[0] == loss_var_name_) {
 // Insert ScaleCost OpHandle
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
           auto *communication_dev_ctx = nccl_ctxs_->DevCtx(p);
 #else
           auto *communication_dev_ctx =
@@ -135,7 +135,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
             og_has_been_broadcast.count(og) == 0) {  // is param grad
                                                      // Insert NCCL AllReduce Op
           og_has_been_broadcast.insert(og);
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
           result.ops_.emplace_back(
               new NCCLAllReduceOpHandle(local_scopes_, places_, *nccl_ctxs_));
           auto *op_handle = result.ops_.back().get();

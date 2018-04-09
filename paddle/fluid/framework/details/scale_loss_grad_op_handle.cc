@@ -36,7 +36,7 @@ void ScaleLossGradOpHandle::RunImpl() {
   if (platform::is_cpu_place(place_)) {
     *tmp = coeff_;
   } else {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     auto stream =
         static_cast<platform::CUDADeviceContext *>(this->dev_ctxes_[place_])
             ->stream();

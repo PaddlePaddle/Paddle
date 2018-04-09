@@ -63,8 +63,8 @@ void NCCLAllReduceOpHandle::RunImpl() {
       auto stream = nccl_ctx.stream();
       auto comm = nccl_ctx.comm_;
       all_reduce_calls.emplace_back([=] {
-        PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
-            buffer, buffer, numel, static_cast<ncclDataType_t>(dtype), ncclSum,
+        PADDLE_ENFORCE(platform::dynload::rcclAllReduce(
+            buffer, buffer, numel, static_cast<rcclDataType_t>(dtype), rcclSum,
             comm, stream));
       });
     }

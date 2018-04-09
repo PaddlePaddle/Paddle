@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #endif

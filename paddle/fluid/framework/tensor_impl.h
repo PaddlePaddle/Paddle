@@ -129,7 +129,7 @@ inline void* Tensor::mutable_data(platform::Place place, std::type_index type) {
       holder_.reset(new PlaceholderImpl<platform::CPUPlace>(
           boost::get<platform::CPUPlace>(place), size, type));
     } else if (platform::is_gpu_place(place)) {
-#ifndef PADDLE_WITH_CUDA
+#if !(defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
     }
 #else

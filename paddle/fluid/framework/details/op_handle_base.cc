@@ -36,6 +36,10 @@ OpHandleBase::~OpHandleBase() {
   for (auto &ev : events_) {
     PADDLE_ENFORCE(cudaEventDestroy(ev.second));
   }
+#elif defined(PADDLE_WITH_HIP)
+  for (auto &ev : events_) {
+    PADDLE_ENFORCE(hipEventDestroy(ev.second));
+  }
 #endif
 }
 
@@ -47,6 +51,15 @@ void OpHandleBase::Run(bool use_event) {
       PADDLE_ENFORCE(cudaSetDevice(dev_id));
       PADDLE_ENFORCE(
           cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
+    }
+  }
+#elif defined(PADDLE_WITH_HIP)
+  if (events_.empty() && use_event) {
+    for (auto &p : dev_ctxes_) {
+      int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
+      PADDLE_ENFORCE(hipSetDevice(dev_id));
+      PADDLE_ENFORCE(
+          hipEventCreateWithFlags(&events_[dev_id], hipEventDisableTiming));
     }
   }
 #else
@@ -64,6 +77,15 @@ void OpHandleBase::Run(bool use_event) {
       PADDLE_ENFORCE(cudaEventRecord(events_.at(dev_id), stream));
     }
   }
+#elif defined(PADDLE_WITH_HIP)
+  if (use_event) {
+    for (auto &p : dev_ctxes_) {
+      int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
+      auto stream =
+          static_cast<platform::CUDADeviceContext *>(p.second)->stream();
+      PADDLE_ENFORCE(hipEventRecord(events_.at(dev_id), stream));
+    }
+  }
 #endif
 }
 
@@ -78,6 +100,18 @@ void OpHandleBase::Wait(platform::DeviceContext *waited_dev) {
         static_cast<platform::CUDADeviceContext *>(waited_dev)->stream();
     for (auto &ev : events_) {
       PADDLE_ENFORCE(cudaStreamWaitEvent(stream, ev.second, 0));
+    }
+  }
+#elif defined(PADDLE_WITH_HIP)
+  if (platform::is_cpu_place(waited_dev->GetPlace()) || events_.empty()) {
+    for (auto &dev_ctx : dev_ctxes_) {
+      dev_ctx.second->Wait();
+    }
+  } else {
+    auto stream =
+        static_cast<platform::CUDADeviceContext *>(waited_dev)->stream();
+    for (auto &ev : events_) {
+      PADDLE_ENFORCE(hipStreamWaitEvent(stream, ev.second, 0));
     }
   }
 #else
