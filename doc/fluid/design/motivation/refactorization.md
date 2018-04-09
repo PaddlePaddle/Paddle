@@ -36,11 +36,37 @@ At compile time, the Python program generates a protobuf message representation 
 
 At runtime, the C++ program realizes the graph and runs it.
 
-| | Representation (protobuf messages) | Realization (C++ class objects) |
-|---|---|---|
-|Data|[VarDesc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L107)|[Variable](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/variable.h#L24)|
-|Operation|[OpDesc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L35)|[Operator](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L64)|
-|Block|BlockDesc|Block|
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Representation (protobuf messages)</th>
+<th>Realization (C++ class objects) </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data</td>
+<td>
+<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L107">VarDesc</a></td>
+<td>
+<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/variable.h#L24">Variable</a></td>
+</tr>
+<tr>
+<td>Operation </td>
+<td>
+<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/framework.proto#L35">OpDesc</a></td>
+<td>
+<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/operator.h#L64">Operator</a></td>
+</tr>
+<tr>
+<td>Block </td>
+<td>BlockDesc </td>
+<td>Block </td>
+
+</tbody>
+</table>
+
 
 The word *graph* is interchangeable with *block* in this document.  A graph consists of computation steps and local variables similar to a C++/Java program block, or a pair of parentheses(`{` and `}`).
 

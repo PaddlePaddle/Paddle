@@ -41,8 +41,7 @@ bool IsPersistable(const framework::VarDesc* var) {
   return false;
 }
 
-void LoadPersistables(framework::Executor& executor,
-                      framework::Scope& scope,
+void LoadPersistables(framework::Executor& executor, framework::Scope& scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
                       const std::string& param_filename) {
@@ -108,10 +107,8 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
 }
 
 std::unique_ptr<framework::ProgramDesc> Load(
-    framework::Executor& executor,
-    framework::Scope& scope,
-    const std::string& prog_filename,
-    const std::string& param_filename) {
+    framework::Executor& executor, framework::Scope& scope,
+    const std::string& prog_filename, const std::string& param_filename) {
   std::string model_filename = prog_filename;
   std::string program_desc_str;
   ReadBinaryFile(model_filename, program_desc_str);

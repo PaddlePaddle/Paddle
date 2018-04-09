@@ -21,6 +21,8 @@ service SendRecvService {
   rpc SendVariable(VariableMessage) returns (VoidMessage) {}
   // Argument VariableMessage for GetVariable should only contain varname.
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
+  // pre-fetch variable by given variable name and Ids
+  rpc PrefetchVariable(VariableMessage) returns (VariableMessage) {}
 }
 
 // VariableMessage is serialized paddle variable message.
@@ -65,6 +67,8 @@ message VariableMessage {
   bytes serialized = 8;
   // selected_rows data
   bytes rows = 9;
+  // Look up table block execution output variable name.
+  string out_varname = 10;
 }
 
 message VoidMessage {}

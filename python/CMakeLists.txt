@@ -47,14 +47,16 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 
-add_custom_command(OUTPUT ${PADDLE_SOURCE_DIR}/python/paddle/fluid/core.so
-        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PADDLE_SOURCE_DIR}/python/paddle/fluid/core.so
+add_custom_command(OUTPUT ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so
+        COMMAND cmake -E copy $<TARGET_FILE:paddle_pybind> ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so
         DEPENDS paddle_pybind)
-add_custom_target(copy_paddle_pybind ALL DEPENDS ${PADDLE_SOURCE_DIR}/python/paddle/fluid/core.so)
+add_custom_target(copy_paddle_pybind ALL DEPENDS ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so)
 
 
 add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND touch stub.cc
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python/paddle
+    COMMAND cp -r ${PADDLE_SOURCE_DIR}/paddle/py_paddle ${PADDLE_BINARY_DIR}/python/
     COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
     COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${PADDLE_PYTHON_BUILD_DIR}/lib-python
@@ -73,13 +75,15 @@ add_custom_target(paddle_python ALL DEPENDS ${paddle_python_deps})
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
 if (WITH_TESTING)
+  add_subdirectory(paddle/reader/tests)
+  add_subdirectory(paddle/dataset/tests)
   if(NOT WITH_FLUID_ONLY)
     add_subdirectory(paddle/trainer_config_helpers/tests)
     if (WITH_SWIG_PY)
       # enable v2 API unittest only when paddle swig api is compiled
       add_subdirectory(paddle/v2/tests)
-      add_subdirectory(paddle/v2/reader/tests)
       add_subdirectory(paddle/v2/plot/tests)
+      add_subdirectory(paddle/v2/reader/tests)
     endif()
   endif()
   add_subdirectory(paddle/fluid/tests)

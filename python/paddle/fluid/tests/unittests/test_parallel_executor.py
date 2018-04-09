@@ -16,18 +16,22 @@ import numpy
 import unittest
 
 import paddle.fluid as fluid
-import paddle.v2 as paddle
-import paddle.v2.dataset.mnist as mnist
-import paddle.v2.dataset.wmt16 as wmt16
+import paddle
+import paddle.dataset.mnist as mnist
+import paddle.dataset.wmt16 as wmt16
 
 
-def simple_fc_net():
-    reader = fluid.layers.open_recordio_file(
-        filename='./mnist.recordio',
-        shapes=[[-1, 784], [-1, 1]],
-        lod_levels=[0, 0],
-        dtypes=['float32', 'int64'])
-    img, label = fluid.layers.read_file(reader)
+def simple_fc_net(use_feed):
+    if use_feed:
+        img = fluid.layers.data(name='image', shape=[784], dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    else:
+        reader = fluid.layers.open_recordio_file(
+            filename='./mnist.recordio',
+            shapes=[[-1, 784], [-1, 1]],
+            lod_levels=[0, 0],
+            dtypes=['float32', 'int64'])
+        img, label = fluid.layers.read_file(reader)
     hidden = img
     for _ in xrange(4):
         hidden = fluid.layers.fc(
@@ -42,13 +46,18 @@ def simple_fc_net():
     return loss
 
 
-def fc_with_batchnorm():
-    reader = fluid.layers.open_recordio_file(
-        filename='./mnist.recordio',
-        shapes=[[-1, 784], [-1, 1]],
-        lod_levels=[0, 0],
-        dtypes=['float32', 'int64'])
-    img, label = fluid.layers.read_file(reader)
+def fc_with_batchnorm(use_feed):
+    if use_feed:
+        img = fluid.layers.data(name='image', shape=[784], dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    else:
+        reader = fluid.layers.open_recordio_file(
+            filename='./mnist.recordio',
+            shapes=[[-1, 784], [-1, 1]],
+            lod_levels=[0, 0],
+            dtypes=['float32', 'int64'])
+        img, label = fluid.layers.read_file(reader)
+
     hidden = img
     for _ in xrange(1):
         hidden = fluid.layers.fc(
@@ -135,24 +144,26 @@ def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
     return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
 
 
-def SE_ResNeXt152(batch_size=4):
+def SE_ResNeXt50Small(batch_size=2, use_feed=False):
+    assert not use_feed, "SE_ResNeXt doesn't support feed yet"
+
     img = fluid.layers.fill_constant(
         shape=[batch_size, 3, 224, 224], dtype='float32', value=0.0)
     label = fluid.layers.fill_constant(
         shape=[batch_size, 1], dtype='int64', value=0.0)
 
     conv = conv_bn_layer(
-        input=img, num_filters=64, filter_size=3, stride=2, act='relu')
+        input=img, num_filters=16, filter_size=3, stride=2, act='relu')
     conv = conv_bn_layer(
-        input=conv, num_filters=64, filter_size=3, stride=1, act='relu')
+        input=conv, num_filters=16, filter_size=3, stride=1, act='relu')
     conv = conv_bn_layer(
-        input=conv, num_filters=128, filter_size=3, stride=1, act='relu')
+        input=conv, num_filters=16, filter_size=3, stride=1, act='relu')
     conv = fluid.layers.pool2d(
         input=conv, pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
-    cardinality = 64
+    cardinality = 32
     reduction_ratio = 16
-    depth = [3, 8, 36, 3]
+    depth = [3, 4, 6, 3]
     num_filters = [128, 256, 512, 1024]
 
     for block in range(len(depth)):
@@ -184,27 +195,33 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   method,
                                   memory_opt=True,
                                   iter=10,
-                                  batch_size=None):
+                                  batch_size=None,
+                                  allow_op_delay=False,
+                                  feed_dict={}):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            loss = method()
+            loss = method(use_feed=len(feed_dict) > 0)
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
             if memory_opt:
                 fluid.memory_optimize(main)
 
-            exe = fluid.ParallelExecutor(loss_name=loss.name, use_cuda=True)
+            place = fluid.CUDAPlace(0)
+            startup_exe = fluid.Executor(place)
+            startup_exe.run(startup)
+
+            exe = fluid.ParallelExecutor(True, loss_name=loss.name)
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
-            first_loss, = exe.run([loss.name])
+            first_loss, = exe.run([loss.name], feed_dict=feed_dict)
             first_loss = numpy.array(first_loss)
 
             for i in xrange(iter):
-                exe.run([])
+                exe.run([], feed_dict=feed_dict)
 
-            last_loss, = exe.run([loss.name])
+            last_loss, = exe.run([loss.name], feed_dict=feed_dict)
             end = time.time()
 
             if batch_size is not None:
@@ -222,7 +239,7 @@ class TestMNIST(TestParallelExecutorBase):
     def setUpClass(cls):
         # Convert mnist to recordio file
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            reader = paddle.batch(mnist.train(), batch_size=32)
+            reader = paddle.batch(mnist.train(), batch_size=4)
             feeder = fluid.DataFeeder(
                 feed_list=[  # order is image and label
                     fluid.layers.data(
@@ -236,9 +253,21 @@ class TestMNIST(TestParallelExecutorBase):
 
     def test_simple_fc(self):
         self.check_network_convergence(simple_fc_net)
+        self.check_network_convergence(simple_fc_net, allow_op_delay=True)
+
+        img = numpy.zeros(shape=[32, 784], dtype='float32')
+        label = numpy.ones(shape=[32, 1], dtype='int64')
+        self.check_network_convergence(
+            simple_fc_net, feed_dict={"image": img,
+                                      "label": label})
 
     def test_batchnorm_fc(self):
         self.check_network_convergence(fc_with_batchnorm)
+        img = numpy.zeros(shape=[32, 784], dtype='float32')
+        label = numpy.ones(shape=[32, 1], dtype='int64')
+        self.check_network_convergence(
+            fc_with_batchnorm, feed_dict={"image": img,
+                                          "label": label})
 
 
 class TestResnet(TestParallelExecutorBase):
@@ -262,10 +291,10 @@ class TestResnet(TestParallelExecutorBase):
 
     def test_resnet(self):
         import functools
-        batch_size = 4
+        batch_size = 2
         self.check_network_convergence(
             functools.partial(
-                SE_ResNeXt152, batch_size=batch_size),
+                SE_ResNeXt50Small, batch_size=batch_size),
             iter=20,
             batch_size=batch_size)
 
@@ -394,7 +423,8 @@ def prepare_batch_input(insts, src_pad_idx, trg_pad_idx, n_head):
 import transformer_model
 
 
-def transformer():
+def transformer(use_feed):
+    assert not use_feed, "transfomer doesn't support feed yet"
     return transformer_model.transformer(
         ModelHyperParams.src_vocab_size + 1,
         ModelHyperParams.trg_vocab_size + 1, ModelHyperParams.max_length + 1,
@@ -427,3 +457,41 @@ class TestTransformer(TestParallelExecutorBase):
     @unittest.skip("transformer is buggy in multi gpu")
     def test_main(self):
         self.check_network_convergence(transformer)
+
+
+class ParallelExecutorTestingDuringTraining(unittest.TestCase):
+    def test_parallel_testing(self):
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            loss = simple_fc_net(True)
+            test_program = main.clone(for_test=True)
+
+            opt = fluid.optimizer.SGD(learning_rate=0.0001)
+            opt.minimize(loss)
+
+            batch_size = 32
+            image = numpy.random.normal(size=(batch_size,
+                                              784)).astype('float32')
+            label = numpy.random.randint(0, 10, (batch_size, 1), dtype="int64")
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(startup)
+            feed_dict = {'image': image, 'label': label}
+
+            train_exe = fluid.ParallelExecutor(
+                use_cuda=True, loss_name=loss.name, main_program=main)
+
+            test_exe = fluid.ParallelExecutor(
+                use_cuda=True,
+                main_program=test_program,
+                share_vars_from=train_exe)
+
+            for i in xrange(5):
+                test_loss, = test_exe.run([loss.name], feed_dict=feed_dict)
+                test_loss = numpy.array(test_loss)
+
+                train_loss, = train_exe.run([loss.name], feed_dict=feed_dict)
+                train_loss = numpy.array(train_loss)
+                self.assertTrue(numpy.allclose(train_loss, test_loss))
