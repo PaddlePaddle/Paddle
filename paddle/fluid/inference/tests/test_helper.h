@@ -25,7 +25,8 @@ limitations under the License. */
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor* input,
                  paddle::framework::DDim dims, T lower, T upper) {
-  std::mt19937 rng(100);  // An arbitrarily chosen but fixed seed.
+  static unsigned int seed = 100;
+  std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
