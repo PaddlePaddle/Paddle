@@ -283,14 +283,6 @@ class DistributeTranspiler:
                 orig_var_name = v.name[:suff_idx]
             else:
                 orig_var_name = v.name
-            #TODO(panyx0718): Should this be put in the else block below? It's
-            # only used there and it's called single_trainer_var.
-            single_trainer_var = pserver_program.global_block().create_var(
-                name=orig_var_name,
-                persistable=True,
-                type=v.type,
-                dtype=v.dtype,
-                shape=v.shape)
             if self.trainers > 1:
                 for trainer_id in xrange(self.trainers):
                     var = pserver_program.global_block().create_var(
@@ -301,6 +293,12 @@ class DistributeTranspiler:
                         shape=v.shape)
                     recv_inputs.append(var)
             else:
+                single_trainer_var = pserver_program.global_block().create_var(
+                    name=orig_var_name,
+                    persistable=True,
+                    type=v.type,
+                    dtype=v.dtype,
+                    shape=v.shape)
                 recv_inputs.append(single_trainer_var)
 
         # step3
@@ -825,8 +823,6 @@ class DistributeTranspiler:
         # make a union find struct by the ops in default_main_program
         ufind = UnionFind(block.ops)
 
-        # TODO(panyx0718): If lr_ops connects with other training
-        # ops, could they be considered as lr_ops?
         for op1 in block.ops:
             for op2 in block.ops:
                 # NOTE: we need to skip all optimize ops, since it is connected
