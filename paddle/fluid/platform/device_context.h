@@ -2,17 +2,20 @@
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
+
+ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cublas.h"
@@ -137,6 +140,45 @@ template <>
 struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
   using TYPE = CUDAPinnedDeviceContext;
 };
+
+class ContextMap {
+ public:
+  explicit ContextMap(const std::vector<platform::Place>& places) {
+    order_.reserve(places.size());
+    for (auto& p : places) {
+      auto dev = boost::get<CUDAPlace>(p);
+      int dev_id = dev.device;
+      order_.emplace_back(dev_id);
+      contexts_[dev_id].reset(new CUDADeviceContext(dev));
+    }
+    PADDLE_ENFORCE_EQ(
+        order_.size(), contexts_.size(),
+        "Context Map does not support contain two or more same device");
+  }
+
+  DeviceContext* DevCtx(int dev_id) const { return at(dev_id); }
+
+  DeviceContext* DevCtx(platform::Place p) const {
+    return DevCtx(boost::get<CUDAPlace>(p).device);
+  }
+
+  DeviceContext* at(platform::Place p) const {
+    return this->at(boost::get<CUDAPlace>(p).device);
+  }
+
+  DeviceContext* at(int dev_id) const { return contexts_.at(dev_id).get(); }
+
+  void WaitAll() {
+    for (auto& p : contexts_) {
+      p.second->Wait();
+    }
+  }
+
+ private:
+  std::unordered_map<int, std::unique_ptr<DeviceContext>> contexts_;
+  std::vector<int> order_;
+};
+
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
