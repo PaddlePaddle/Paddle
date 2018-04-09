@@ -1,11 +1,11 @@
-install and compile
+install and Compile
 ==========
 
 .. _install_steps:
 
-PaddlePaddle provides various ways of installation for many different users
+PaddlePaddle provides various methods of installation for many different users
 
-focus on deep learning model development
+Focus on Deep Learning Model Development
 -----------------
 
 PaddlePaddle provides lots of packages of python wheel , that pip can install:
@@ -13,44 +13,44 @@ PaddlePaddle provides lots of packages of python wheel , that pip can install:
 .. toctree::
 	:maxdepth: 1
 
-	pip_install_cn.rst
+	pip_install_en.rst
 
-this is the convenient way to install it , please choose the right installation package with mochine configure and system。
+This is the most convenient way of installation. Please choose the right installation package with machine configure and system.
 
-follow the bottom frame
+Follow the Bottom Frame
 ----------
 
-PaddlePaddle provides the installation ways of Docker, please follow the tutorial:
+PaddlePaddle also supports installation using Docker. Please refer to the tutorial below:
 
 .. toctree::
 	:maxdepth: 1
 
-	docker_install_cn.rst
+	docker_install_en.rst
 
-we recommend running PaddlePaddle in docker , this way has more superiority ：
+We recommend running PaddlePaddle in Docker. This method has the following advantages：
 
-- don't need the third dependent of installing 
-- easy to shared runtime environment and the problem recurrented
+- Does not require installation of third-party dependencies. 
+- Easy to share runtime environment. 
 
-we provides compile and install method of PaddlePaddle from resouce code ， for users with customized binary file：
+Lastly, users can also compile and install PaddlePaddle from source code. The instructions are below:
 
 .. toctree::
     :maxdepth: 1
 
-    build_from_source_cn.rst
+    build_from_source_en.rst
 
 .. warning::
 
-	what need to be attation to , this way of installation involves to download、 compile and install the third depentent , The whole process of installing need more time。
+	One caveat with this approach is that developers will have to download, compile and install all third-party dependencies. Thus this process of installation is more time consuming.
 
 
 FAQ
 -----------
 
-if you have any problem on the process of installation , please trying the bottom page to find the answer：
+For any problems during installation, please refer to the page below for answers:
 
 :ref:`常见问题解答 <install_faq>`
 
-if the problem hasn't been solved , so welcome to come the paddlepaddle community to feedback：
+If the problem still persists, you are welcome to seek assistance from the PaddlePaddle community：
 
 `创建issue <https://github.com/PaddlePaddle/Paddle/issues/new>`_
