@@ -25,7 +25,7 @@ namespace dynload {
 
 extern std::once_flag cudnn_dso_flag;
 extern void* cudnn_dso_handle;
-extern bool HasCUDNN();
+extern bool HasMIOpen();
 
 inline const char* miopenGetErrorString(miopenStatus_t status) {
   switch (status) {

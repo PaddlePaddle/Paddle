@@ -21,7 +21,8 @@ limitations under the License. */
 
 #include <algorithm>
 #include <type_traits>
-#ifdef __NVCC__
+#ifdef __HIPCC__
+#include <thrust/system/cuda/detail/par.h>
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
 #include "paddle/fluid/platform/details/device_ptr_cast.h"
@@ -61,7 +62,7 @@ struct Transform<platform::CPUDeviceContext> {
   }
 };
 
-#ifdef __NVCC__
+#ifdef __HIPCC__
 template <>
 struct Transform<platform::CUDADeviceContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>

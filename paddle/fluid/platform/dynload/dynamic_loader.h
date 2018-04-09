@@ -67,6 +67,7 @@ void GetLapackDsoHandle(void** dso_handle);
  *
  */
 void GetNCCLDsoHandle(void** dso_handle);
+void GetRCCLDsoHandle(void** dso_handle);
 
 }  // namespace dynload
 }  // namespace platform
