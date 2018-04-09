@@ -22,6 +22,7 @@ from framework import Program, default_main_program, Variable
 from . import core
 
 LOOKUP_TABLE_TYPE = "lookup_table"
+LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
 RPC_CLIENT_VAR_NAME = "RPC_CLIENT_VAR"
 
 
@@ -37,9 +38,9 @@ class VarBlock:
 
 
 class UnionFind(object):
-    """ Union-find data struct.
+    """ Union-find data structure.
 
-    Union-find is a data struct that keeps track of a set of elements partitioned
+    Union-find is a data structure that keeps track of a set of elements partitioned
     into a number of disjoint (non-overlapping) subsets.
 
     Reference:
@@ -145,14 +146,6 @@ def split_dense_variable(var_list,
 # only have one lookup_table_op
 
 
-def split_sparse_ids():
-    pass
-
-
-def get_prefetch_outputs():
-    pass
-
-
 class DistributeTranspiler:
     def transpile(self,
                   optimize_ops,
@@ -231,6 +224,9 @@ class DistributeTranspiler:
                         raise RuntimeError("all distributed lookup_table_ops"
                                            " should have only one table")
                     distributed_lookup_table_ops.append(op)
+                else:
+                    if self.table_name is not None:
+                        assert op.input("W")[0] != self.table_name
 
         self.has_distributed_lookup_table = len(
             distributed_lookup_table_ops) > 0
@@ -238,6 +234,28 @@ class DistributeTranspiler:
         # step1
         param_list = [pg[0] for pg in params_grads]
         grad_list = [pg[1] for pg in params_grads]
+
+        if self.has_distributed_lookup_table:
+            param_list = [
+                param for param in param_list if param.name != self.table_name
+            ]
+            grad_list = [
+                grad for grad in grad_list
+                if grad.name != framework.grad_var_name(self.table_name)
+            ]
+            self.table_param_grad = [
+                param_grad for param_grad in params_grads
+                if param_grad[0].name == self.table_name
+            ]
+            self.table_param_list = self.create_splited_vars(
+                source_var=self.table_param_grad[0],
+                block=program.global_block(),
+                tag="_")
+            self.table_grad_list = self.create_splited_vars(
+                source_var=self.table_param_grad[1],
+                block=program.global_block(),
+                tag="_")
+
         grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
         param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
         # step2
@@ -293,21 +311,12 @@ class DistributeTranspiler:
 
         if self.has_distributed_lookup_table:
 
-            def create_splited_vars(source_var, block, tag):
-                return [
-                    block.create_var(
-                        name=str(self.table_name + tag + str(index)),
-                        type=source_var.type,
-                        shape=source_var.shape,
-                        dtype=source_var.dtype)
-                    for index in range(len(pserver_endpoints))
-                ]
-
-            # replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
+            # 1. replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
             self.prefetch_input_vars = None
             self.prefetch_output_vars = None
 
             while True:
+                should_break = True
                 all_ops = program.global_block().ops
                 for op in all_ops:
                     if op.type == LOOKUP_TABLE_TYPE:
@@ -317,13 +326,13 @@ class DistributeTranspiler:
 
                         if self.prefetch_input_vars is None:
                             ids_var = program.global_block().vars[ids_name[0]]
-                            self.prefetch_input_vars = create_splited_vars(
+                            self.prefetch_input_vars = self.create_splited_vars(
                                 source_var=ids_var,
                                 block=program.global_block(),
                                 tag="_prefetch_in_")
                         if self.prefetch_output_vars is None:
                             out_var = program.global_block().vars[out_name[0]]
-                            self.prefetch_output_vars = create_splited_vars(
+                            self.prefetch_output_vars = self.create_splited_vars(
                                 source_var=out_var,
                                 block=program.global_block(),
                                 tag="_prefetch_out_")
@@ -368,9 +377,38 @@ class DistributeTranspiler:
                         program.global_block().delete_ops([op])
                         program.sync_with_cpp()
 
-                        continue
+                        should_break = False
+                        break
+                    should_break = True
                 # if for loop did not break, it means that there is no more lookup_table_op
-                break
+                if should_break:
+                    break
+                else:
+                    continue
+
+            # 2. add split_ids_op and send_vars_op to send gradient to pservers
+            # there should only be one table_name
+            all_ops = program.global_block().ops
+            table_grad_name = framework.grad_var_name(self.table_name)
+            for op in all_ops:
+                if table_grad_name in op.output_arg_names:
+                    op_index = list(all_ops).index(op)
+                    # insert split_ids_op
+                    program.global_block().insert_op(
+                        index=op_index + 1,
+                        type="split_ids",
+                        inputs={
+                            'Ids':
+                            [program.global_block().vars[table_grad_name]]
+                        },
+                        outputs={"Out": self.table_grad_list})
+                    program.global_block().insert_op(
+                        index=op_index + 2,
+                        type="send_vars",
+                        inputs={'X': self.table_grad_list},
+                        outputs={"RPCClient": rpc_client_var},
+                        attrs={"sync_send": True})
+                    break
 
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
@@ -653,6 +691,16 @@ class DistributeTranspiler:
                 var_mapping[varname].append(var)
             program.global_block().sync_with_cpp()
         return var_mapping
+
+    def create_splited_vars(self, source_var, block, tag):
+        return [
+            block.create_var(
+                name=str(source_var.name + tag + str(index)),
+                type=source_var.type,
+                shape=source_var.shape,
+                dtype=source_var.dtype)
+            for index in range(len(self.pserver_endpoints))
+        ]
 
     def _clone_var(self, block, var):
         assert isinstance(var, Variable)

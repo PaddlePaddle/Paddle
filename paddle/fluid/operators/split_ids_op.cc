@@ -48,11 +48,11 @@ class SplitIdsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutputs("Out"), "SplitIdsOp must has output Out.");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
-    PADDLE_ENFORCE_EQ(ids_var_type, framework::proto::VarType::LOD_TENSOR);
-
-    auto ids_dims = ctx->GetInputDim("Ids");
-    PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
-    PADDLE_ENFORCE_EQ(ids_dims[1], 1);
+    if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
+      auto ids_dims = ctx->GetInputDim("Ids");
+      PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
+      PADDLE_ENFORCE_EQ(ids_dims[1], 1);
+    }
   }
 };
 
