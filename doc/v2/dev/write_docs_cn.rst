@@ -81,13 +81,13 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 
 注：上述命令把当前目录（源码根目录）映射为 container 里的 :code:`/paddle` 目录。
 
-编译完成后，进入 ``paddle/build/doc/v2`` 目录，该目录下生成了 ``cn/html/`` 、 ``en/html`` 以及 ``api/en/html`` 共三个子目录，分别进入这些目录下，执行以下命令：
+编译完成后，会产生 ``doc/v2`` 和 ``doc/fluid`` 两个目录，在这两个目录下分别都生成 ``cn/html/`` 、 ``en/html`` 、 ``api/en/html`` 共三个子目录，分别进入这些目录下，执行以下命令：
 
 .. code-block:: bash
 
    python -m SimpleHTTPServer 8088
 
-在浏览器中输入http://localhost:8088就可以看到编译生成的中/英文的文档页面和英文的API页面。
+在浏览器中输入 http://localhost:8088 就可以看到编译生成的 ``v2`` 和 ``fluid`` 两种版本的中/英文的文档页面和英文的API页面。
 
 如果不想使用Docker，也可以使用以下命令直接构建PaddlePaddle文档，即
 
@@ -107,13 +107,13 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 
 其中$processors代表启动和CPU核一样多的进程来并行编译，可以根据本机的CPU核数设置相应的值。
 
-编译完成后，会产生 ``doc/v2`` 和 ``doc/fluid`` 两个目录，如果选择构建文档则会在这两个目录下分别都生成 ``cn/html/`` 、 ``en/html`` 两个子目录，选择构建API则会在这两个目录下分别生成 ``api/en/html`` 目录，分别进入这些子目录下，执行以下命令：
+编译完成后，同样会产生 ``doc/v2`` 和 ``doc/fluid`` 两个目录，如果选择构建文档则会在这两个目录下分别都生成 ``cn/html/`` 、 ``en/html`` 两个子目录，选择构建API则会在这两个目录下分别生成 ``api/en/html`` 目录，分别进入这些子目录下，执行以下命令：
 
 .. code-block:: bash
 
    python -m SimpleHTTPServer 8088
 
-在浏览器中输入 http://localhost:8088 就可以看到编译生成的 ``v2`` 和 ``fluid`` 两种版本的中/英文的文档页面和英文的API页面,下图为生成的 ``v2`` 英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
+在浏览器中输入 http://localhost:8088 就可以看到编译生成的 ``v2`` 和 ``fluid`` 两种版本的中/英文的文档页面和英文的API页面。下图为生成的 ``v2`` 英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
 
 ..  image:: src/doc_en.png
     :align: center
