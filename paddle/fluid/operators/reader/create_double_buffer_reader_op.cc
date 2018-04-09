@@ -109,7 +109,9 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
 
     auto place_str = Attr<std::string>("place");
     platform::Place place;
-    if (place_str == "CPU") {
+    if (place_str == "AUTO") {
+      place = dev_place;
+    } else if (place_str == "CPU") {
       place = platform::CPUPlace();
     } else {
       std::istringstream sin(place_str);
@@ -140,8 +142,9 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
       enum_range.insert(string::Sprintf("CUDA:%d", i));
     }
     enum_range.insert("CPU");
-    AddAttr<std::string>("place", "The double buffer place, default is CPU")
-        .SetDefault("CPU")
+    enum_range.insert("AUTO");
+    AddAttr<std::string>("place", "The double buffer place")
+        .SetDefault("AUTO")
         .InEnum({enum_range});
   }
 };
