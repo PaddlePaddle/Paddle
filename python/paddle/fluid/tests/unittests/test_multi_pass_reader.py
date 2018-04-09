@@ -44,7 +44,7 @@ class TestMultipleReader(unittest.TestCase):
                 shapes=[(-1, 784), (-1, 1)],
                 lod_levels=[0, 0],
                 dtypes=['float32', 'int64'])
-            data_file = fluid.layers.create_multi_pass_reader(
+            data_file = fluid.layers.io.multi_pass(
                 reader=data_file, pass_num=self.pass_num)
             img, label = fluid.layers.read_file(data_file)
 
