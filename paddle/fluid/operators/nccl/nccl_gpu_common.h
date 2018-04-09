@@ -23,7 +23,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/dynload/rccl.h"
+#else
 #include "paddle/fluid/platform/dynload/nccl.h"
+#endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -38,7 +42,7 @@ struct Communicator {
 
   void InitAll(const std::vector<int>& gpus);
 
-  const std::vector<ncclComm_t>& comms() const;
+  const std::vector<rcclComm_t>& comms() const;
 };
 
 }  // namespace platform

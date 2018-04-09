@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include <string>
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
@@ -140,38 +141,38 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(lod.size(), 1);
     if (pooltype == "MAX") {
-      sequence_pool_kernel<
-          T, MaxPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_kernel<
+          T, MaxPoolFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(),
           MaxPoolFunctor<T>(), input.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), index->data<int>());
     } else if (pooltype == "AVERAGE") {
-      sequence_pool_kernel<
-          T, AvgPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_kernel<
+          T, AvgPoolFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(),
           AvgPoolFunctor<T>(), input.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "SUM") {
-      sequence_pool_kernel<
-          T, SumPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_kernel<
+          T, SumPoolFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(),
           SumPoolFunctor<T>(), input.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "SQRT") {
-      sequence_pool_kernel<
-          T, SqrtPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_kernel<
+          T, SqrtPoolFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(),
           SqrtPoolFunctor<T>(), input.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "LAST") {
-      sequence_pool_kernel<
-          T, LastPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_kernel<
+          T, LastPoolFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(),
           LastPoolFunctor<T>(), input.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "FIRST") {
-      sequence_pool_kernel<
-          T, FirstPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_kernel<
+          T, FirstPoolFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(),
           FirstPoolFunctor<T>(), input.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           output->mutable_data<T>(context.GetPlace()), nullptr);
@@ -302,38 +303,38 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(lod.size(), 1);
     if (pooltype == "MAX") {
-      sequence_pool_grad_kernel<
-          T, MaxPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_grad_kernel<
+          T, MaxPoolGradFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(), 
           MaxPoolGradFunctor<T>(), out_grad.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), index->data<int>());
     } else if (pooltype == "AVERAGE") {
-      sequence_pool_grad_kernel<
-          T, AvgPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_grad_kernel<
+          T, AvgPoolGradFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(), 
           AvgPoolGradFunctor<T>(), out_grad.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "SUM") {
-      sequence_pool_grad_kernel<
-          T, SumPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_grad_kernel<
+          T, SumPoolGradFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(), 
           SumPoolGradFunctor<T>(), out_grad.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "SQRT") {
-      sequence_pool_grad_kernel<
-          T, SqrtPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_grad_kernel<
+          T, SqrtPoolGradFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(), 
           SqrtPoolGradFunctor<T>(), out_grad.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "LAST") {
-      sequence_pool_grad_kernel<
-          T, LastPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_grad_kernel<
+          T, LastPoolGradFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(), 
           LastPoolGradFunctor<T>(), out_grad.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);
     } else if (pooltype == "FIRST") {
-      sequence_pool_grad_kernel<
-          T, FirstPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
+      hipLaunchKernelGGL((sequence_pool_grad_kernel<
+          T, FirstPoolGradFunctor<T>>), dim3(grid), dim3(threads), 0, context.stream(), 
           FirstPoolGradFunctor<T>(), out_grad.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
           in_grad->mutable_data<T>(context.GetPlace()), nullptr);

@@ -85,7 +85,7 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
       memory::Copy(cpu_place, dst + i * dst_after, cpu_place,
                    src + i * src_after, sizeof(T) * size);
     } else {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       auto& gpu_place = boost::get<platform::CUDAPlace>(place);
       auto& cuda_ctx =
           reinterpret_cast<const platform::CUDADeviceContext&>(ctx);

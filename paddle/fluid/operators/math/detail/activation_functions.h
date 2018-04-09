@@ -128,22 +128,66 @@ static DEVICE Active<double>::ActGrad kActGradDouble[] = {
 
 namespace forward {
 inline DEVICE float activation(float a, int index) {
-  return kActFloat[index](a);
+  switch(index) {
+    case 0:
+      return kActFloat[0](a);
+    case 1:
+      return kActFloat[1](a);
+    case 2:
+      return kActFloat[2](a);
+    case 3:
+      return kActFloat[3](a);
+    default:
+      return 0.0f;
+  }
 }
 
 inline DEVICE double activation(double a, int index) {
-  return kActDouble[index](a);
+  switch(index) {
+    case 0:
+      return kActDouble[0](a);
+    case 1:
+      return kActDouble[1](a);
+    case 2:
+      return kActDouble[2](a);
+    case 3:
+      return kActDouble[3](a);
+    default:
+      return 0.0f;
+  }
 }
 
 }  // namespace forward
 
 namespace backward {
 inline DEVICE float activation(float a, float b, int index) {
-  return kActGradFloat[index](a, b);
+  switch(index) {
+    case 0:
+      return kActGradFloat[0](a, b);
+    case 1:
+      return kActGradFloat[1](a, b);
+    case 2:
+      return kActGradFloat[2](a, b);
+    case 3:
+      return kActGradFloat[3](a, b);
+    default:
+      return 0.0f;
+  }
 }
 
 inline DEVICE double activation(double a, double b, int index) {
-  return kActGradDouble[index](a, b);
+  switch(index) {
+    case 0:
+      return kActGradDouble[0](a, b);
+    case 1:
+      return kActGradDouble[1](a, b);
+    case 2:
+      return kActGradDouble[2](a, b);
+    case 3:
+      return kActGradDouble[3](a, b);
+    default:
+      return 0.0f;
+  }
 }
 }  // namespace backward
 

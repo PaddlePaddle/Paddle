@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include <algorithm>
 #include "paddle/fluid/operators/math/sequence_padding.h"
 
@@ -120,13 +121,13 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     const T* seq_data = seq.data<T>();
     T* padding_data = padding->data<T>();
     if (norm_by_times) {
-      SequencePaddingKernel<T, 1, 1><<<grid, threads, 0, context.stream()>>>(
-          padding_data, const_cast<T*>(seq_data),
+      hipLaunchKernelGGL((SequencePaddingKernel<T, 1, 1>), dim3(grid), dim3(threads), 0,
+          context.stream(), padding_data, const_cast<T*>(seq_data),
           abs_offset_lod[level].CUDAData(context.GetPlace()), sequence_width,
           max_sequence_length, num_sequences);
     } else {
-      SequencePaddingKernel<T, 0, 1><<<grid, threads, 0, context.stream()>>>(
-          padding_data, const_cast<T*>(seq_data),
+      hipLaunchKernelGGL((SequencePaddingKernel<T, 0, 1>), dim3(grid), dim3(threads), 0,
+          context.stream(), padding_data, const_cast<T*>(seq_data),
           abs_offset_lod[level].CUDAData(context.GetPlace()), sequence_width,
           max_sequence_length, num_sequences);
     }
@@ -195,13 +196,13 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     const T* padding_data = padding.data<T>();
     T* seq_data = seq->data<T>();
     if (norm_by_times) {
-      SequencePaddingKernel<T, 1, 0><<<grid, threads, 0, context.stream()>>>(
-          const_cast<T*>(padding_data), seq_data,
+      hipLaunchKernelGGL((SequencePaddingKernel<T, 1, 0>), dim3(grid), dim3(threads), 0,
+          context.stream(), const_cast<T*>(padding_data), seq_data,
           abs_offset_lod[level].CUDAData(context.GetPlace()), sequence_width,
           max_sequence_length, num_sequences);
     } else {
-      SequencePaddingKernel<T, 0, 0><<<grid, threads, 0, context.stream()>>>(
-          const_cast<T*>(padding_data), seq_data,
+      hipLaunchKernelGGL((SequencePaddingKernel<T, 0, 0>), dim3(grid), dim3(threads), 0,
+          context.stream(), const_cast<T*>(padding_data), seq_data,
           abs_offset_lod[level].CUDAData(context.GetPlace()), sequence_width,
           max_sequence_length, num_sequences);
     }

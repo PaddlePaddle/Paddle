@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/operators/math/vol2col.h"
@@ -119,7 +120,8 @@ class Vol2ColFunctor<platform::CUDADeviceContext, T> {
 
     const int threads = 1024;
     const int blocks = (num_outputs + 1024 - 1) / 1024;
-    vol2col<T><<<blocks, threads, 0, context.stream()>>>(
+    hipLaunchKernelGGL((vol2col<T>), dim3(blocks), dim3(threads), 0,
+                     context.stream(),
         num_outputs, vol.data<T>(), input_depth, input_height, input_width,
         dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
         filter_width, strides[0], strides[1], strides[2], paddings[0],
@@ -245,7 +247,8 @@ class Col2VolFunctor<platform::CUDADeviceContext, T> {
     const int threads = 1024;
     const int blocks = (num_kernels + 1024 - 1) / 1024;
 
-    col2vol<T><<<blocks, threads, 0, context.stream()>>>(
+    hipLaunchKernelGGL((col2vol<T>), dim3(blocks), dim3(threads), 0,
+                     context.stream(),
         num_kernels, col.data<T>(), input_depth, input_height, input_width,
         dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
         filter_width, strides[0], strides[1], strides[2], paddings[0],

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lookup_table_op.h"
@@ -107,14 +108,14 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     dim3 grids(8, 1);
 
     if (padding_idx == -1)
-      LookupTable<
+      hipLaunchKernelGGL((LookupTable<
           T, 128, 8, 8,
-          false><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+          false>), dim3(grids), dim3(threads), 0, context.cuda_device_context().stream(),
           output, table, ids, N, K, D, padding_idx);
     else
-      LookupTable<
+      hipLaunchKernelGGL((LookupTable<
           T, 128, 8, 8,
-          true><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
+          true>), dim3(grids), dim3(threads), 0, context.cuda_device_context().stream(),
           output, table, ids, N, K, D, padding_idx);
   }
 };
@@ -177,7 +178,9 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       dim3 threads(128, 8);
       dim3 grids(8, 1);
-      LookupTableGrad<T, 128, 8, 8><<<grids, threads, 0, dev_ctx.stream()>>>(
+      hipLaunchKernelGGL((LookupTableGrad<
+          T, 128, 8,
+          8>), dim3(grids), dim3(threads), 0, dev_ctx.stream(),
           d_table, d_output, ids, N, K, D);
     }
   }

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/math/cos_sim_functor.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -52,7 +53,7 @@ struct CosSimDyFunctor<platform::CUDADeviceContext, T> {
     const int block_size = 512;
     dim3 threads(block_size, 1);
     dim3 grid(1, (rows + block_size - 1) / block_size);
-    CosSimDyKernel<T><<<grid, threads, 0, ctx.stream()>>>(
+    hipLaunchKernelGGL((CosSimDyKernel<T>), dim3(grid), dim3(threads), 0, ctx.stream(), 
         x_norm, y_norm, x, y, z, dz, rows, cols, dy);
   }
 };

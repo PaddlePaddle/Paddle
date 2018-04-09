@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/pool_op.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/miopen_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -25,7 +25,7 @@ using ScopedPoolingDescriptor = platform::ScopedPoolingDescriptor;
 using DataLayout = platform::DataLayout;
 using PoolingMode = platform::PoolingMode;
 template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
+using ScalingParamType = typename platform::MIOpenDataType<T>::ScalingParamType;
 
 template <typename T>
 class PoolCUDNNOpKernel : public framework::OpKernel<T> {
@@ -63,9 +63,9 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       layout = DataLayout::kNCDHW;
     }
 
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
-    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize2int(output->dims()));
 
     PoolingMode pooling_mode;
@@ -75,15 +75,25 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
       pooling_mode = PoolingMode::kAverage;
     }
 
-    cudnnPoolingDescriptor_t cudnn_pool_desc =
+    miopenPoolingDescriptor_t cudnn_pool_desc =
         pool_desc.descriptor(pooling_mode, ksize, paddings, strides);
 
     // ------------------- cudnn pool algorithm ---------------------
-    auto handle = ctx.cuda_device_context().cudnn_handle();
+    auto handle = ctx.cuda_device_context().miopen_handle();
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
-    PADDLE_ENFORCE(platform::dynload::cudnnPoolingForward(
+    void* cudnn_workspace = nullptr;
+    size_t workspace_size_in_bytes;  // final workspace to allocate.
+    PADDLE_ENFORCE(platform::dynload::miopenPoolingGetWorkSpaceSize(
+        cudnn_output_desc, &workspace_size_in_bytes));
+    // Allocate on GPU memory
+    platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
+
+    PADDLE_ENFORCE(platform::dynload::miopenPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc, input_data, &beta,
-        cudnn_output_desc, output_data));
+        cudnn_output_desc, output_data, false, cudnn_workspace, workspace_size_in_bytes));
+
+    paddle::memory::Free(gpu, cudnn_workspace);
   }
 };
 
@@ -128,9 +138,9 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       layout = DataLayout::kNCDHW;
     }
 
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
-    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize2int(output->dims()));
 
     PoolingMode pooling_mode;
@@ -140,20 +150,29 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       pooling_mode = PoolingMode::kAverage;
     }
 
-    cudnnPoolingDescriptor_t cudnn_pool_desc =
+    miopenPoolingDescriptor_t cudnn_pool_desc =
         pool_desc.descriptor(pooling_mode, ksize, paddings, strides);
 
     // ------------------- cudnn pool algorithm ---------------------
-    auto handle = ctx.cuda_device_context().cudnn_handle();
+    auto handle = ctx.cuda_device_context().miopen_handle();
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     if (input_grad) {
       T *input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
+      void* cudnn_workspace = nullptr;
+      size_t workspace_size_in_bytes;  // final workspace to allocate.
+      PADDLE_ENFORCE(platform::dynload::miopenPoolingGetWorkSpaceSize(
+          cudnn_output_desc, &workspace_size_in_bytes));
+      // Allocate on GPU memory
+      platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+      cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
 
-      PADDLE_ENFORCE(platform::dynload::cudnnPoolingBackward(
+      PADDLE_ENFORCE(platform::dynload::miopenPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
           cudnn_output_desc, output_grad_data, cudnn_input_desc, input_data,
-          &beta, cudnn_input_desc, input_grad_data));
+          &beta, cudnn_input_desc, input_grad_data, cudnn_workspace));
+
+      paddle::memory::Free(gpu, cudnn_workspace);
     }
   }
 };
@@ -165,17 +184,11 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_KERNEL(pool2d, CUDNN, plat::CUDAPlace,
-                   ops::PoolCUDNNOpKernel<float>,
-                   ops::PoolCUDNNOpKernel<double>,
-                   ops::PoolCUDNNOpKernel<plat::float16>);
+                   ops::PoolCUDNNOpKernel<float>);
 REGISTER_OP_KERNEL(pool2d_grad, CUDNN, plat::CUDAPlace,
-                   ops::PoolCUDNNGradOpKernel<float>,
-                   ops::PoolCUDNNGradOpKernel<double>);
+                   ops::PoolCUDNNGradOpKernel<float>);
 
 REGISTER_OP_KERNEL(pool3d, CUDNN, plat::CUDAPlace,
-                   ops::PoolCUDNNOpKernel<float>,
-                   ops::PoolCUDNNOpKernel<double>,
-                   ops::PoolCUDNNOpKernel<plat::float16>);
+                   ops::PoolCUDNNOpKernel<float>);
 REGISTER_OP_KERNEL(pool3d_grad, CUDNN, plat::CUDAPlace,
-                   ops::PoolCUDNNGradOpKernel<float>,
-                   ops::PoolCUDNNGradOpKernel<double>);
+                   ops::PoolCUDNNGradOpKernel<float>);

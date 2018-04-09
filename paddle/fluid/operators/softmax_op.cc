@@ -20,6 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_HIP
+#include "paddle/fluid/platform/miopen_helper.h"
+#endif
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -51,6 +55,11 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+#ifdef PADDLE_WITH_HIP
+    if (platform::CanMIOpenBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
@@ -144,6 +153,11 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #ifdef PADDLE_WITH_CUDA
     if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
+#endif
+#ifdef PADDLE_WITH_HIP
+    if (platform::CanMIOpenBeUsed(ctx)) {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif

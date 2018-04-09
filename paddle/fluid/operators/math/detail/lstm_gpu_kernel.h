@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -203,13 +204,13 @@ void gpu_lstm_forward(const platform::DeviceContext& context, Op op,
   auto stream =
       reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
   if (batch_size == 1) {
-    KeLstmForward<T, Op,
-                  /* is_batch= */ false><<<grid, threads, 0, stream>>>(
+    hipLaunchKernelGGL((KeLstmForward<T, Op,
+                  /* is_batch= */ false>), dim3(grid), dim3(threads), 0, stream,
         op, value, frame_size, batch_size, active_node, active_gate,
         active_state);
   } else {
-    KeLstmForward<T, Op,
-                  /* is_batch= */ true><<<grid, threads, 0, stream>>>(
+    hipLaunchKernelGGL((KeLstmForward<T, Op,
+                  /* is_batch= */ true>), dim3(grid), dim3(threads), 0, stream,
         op, value, frame_size, batch_size, active_node, active_gate,
         active_state);
   }
@@ -237,13 +238,13 @@ void gpu_lstm_backward(const platform::DeviceContext& context, Op op,
   auto stream =
       reinterpret_cast<const platform::CUDADeviceContext&>(context).stream();
   if (batch_size == 1) {
-    KeLstmBackward<T, Op,
-                   /* is_batch= */ false><<<grid, threads, 0, stream>>>(
+    hipLaunchKernelGGL((KeLstmBackward<T, Op,
+                   /* is_batch= */ false>), dim3(grid), dim3(threads), 0, stream,
         op, value, grad, frame_size, batch_size, active_node, active_gate,
         active_state);
   } else {
-    KeLstmBackward<T, Op,
-                   /* is_batch= */ true><<<grid, threads, 0, stream>>>(
+    hipLaunchKernelGGL((KeLstmBackward<T, Op,
+                   /* is_batch= */ true>), dim3(grid), dim3(threads), 0, stream,
         op, value, grad, frame_size, batch_size, active_node, active_gate,
         active_state);
   }

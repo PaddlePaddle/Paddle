@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -70,13 +71,13 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
                       ? 512
                       : pow(2, static_cast<int>(std::log2(class_num)));
 
-      SoftCrossEntropyKernel<T><<<batch_size, block, 0, ctx.stream()>>>(
+      hipLaunchKernelGGL((SoftCrossEntropyKernel<T>), dim3(batch_size), dim3(block), 0, ctx.stream(),
           loss_data, prob_data, label_data, class_num);
     } else {
       const int64_t* label_data = labels->data<int64_t>();
       int block = 512;
       int grid = (batch_size + block - 1) / block;
-      CrossEntropyKernel<T><<<grid, block, 0, ctx.stream()>>>(
+      hipLaunchKernelGGL((CrossEntropyKernel<T>), dim3(grid), dim3(block), 0, ctx.stream(),
           loss_data, prob_data, label_data, batch_size, class_num);
     }
   }

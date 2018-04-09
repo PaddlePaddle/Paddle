@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/momentum_op.h"
 
@@ -66,7 +67,7 @@ class MomentumOpCUDAKernel : public framework::OpKernel<T> {
 
     int block = 512;
     int grid = (param->numel() + block - 1) / block;
-    MomentumKernel<T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+    hipLaunchKernelGGL((MomentumKernel<T>), dim3(grid), dim3(block), 0, ctx.cuda_device_context().stream(), 
         p, g, v, lr, mu, param->numel(), use_nesterov, p_out, v_out);
   }
 };

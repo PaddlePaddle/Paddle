@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/assert.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/miopen_helper.h"
 #include "paddle/fluid/platform/float16.h"
 
 DEFINE_bool(cudnn_algo_use_autotune, true,
@@ -34,7 +34,7 @@ using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
 template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
+using ScalingParamType = typename platform::MIOpenDataType<T>::ScalingParamType;
 
 static constexpr size_t kCONV_CUDNN_WORKSPACE_LIMIT_BYTES =
     static_cast<size_t>(1024) * 1024 * 1024;
@@ -70,23 +70,14 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
       layout = DataLayout::kNCDHW;
     }
 
-    cudnnConvolutionDescriptor_t cudnn_conv_desc =
+    miopenConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
-#if CUDNN_VERSION_MIN(7, 0, 1)
-    // cudnn 7 can support groups, no need to do it mannually
-    // FIXME(typhoonzero): find a better way to disable groups
-    // rather than setting it to 1.
-    PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionGroupCount(
-        cudnn_conv_desc, groups));
-    groups = 1;
-#endif
-
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()), groups);
-    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize2int(output->dims()), groups);
-    cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()), groups);
 
     int input_channels = input->dims()[1];
@@ -125,51 +116,35 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
       workspace_size_limit = user_workspace_size * 1024 * 1024;
     }
     // ------------------- cudnn conv algorithm ---------------------
-    cudnnConvolutionFwdAlgo_t algo;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
-
-    PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
-        handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-        cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-        workspace_size_limit, &algo));
-
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    // Tensor core is supported since the volta GPU and
-    // is only enabled when input and filter data are float16
-    if (dev_ctx.GetComputeCapability() >= 70 &&
-        std::type_index(typeid(T)) ==
-            std::type_index(typeid(platform::float16))) {
-      PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
-      // Currently tensor core is only enabled using this algo
-      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-    } else {
-      PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          cudnn_conv_desc, CUDNN_DEFAULT_MATH));
-    }
-#endif
+    auto handle = dev_ctx.miopen_handle();
 
     // get workspace size able to allocate
-    PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+    PADDLE_ENFORCE(platform::dynload::miopenConvolutionForwardGetWorkSpaceSize(
         handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-        cudnn_output_desc, algo, &workspace_size_in_bytes));
-    // It is possible for float16 on Volta GPU to allocate more memory than
-    // the limit because the algo is overrided to use tensor core.
-    PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
-                      "workspace_size to be allocated exceeds the limit");
-
+        cudnn_output_desc, &workspace_size_in_bytes));
+    PADDLE_ENFORCE_GT(workspace_size_limit, workspace_size_in_bytes,
+        "Required workspace size should be smaller than limit.");
     // Allocate on GPU memory
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
-    // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
+    miopenConvAlgoPerf_t perfRes;
+    int algoCount = 0;
     for (int i = 0; i < groups; i++) {
-      PADDLE_ENFORCE(platform::dynload::cudnnConvolutionForward(
+      // ------------------- cudnn conv algorithm ---------------------
+      PADDLE_ENFORCE(platform::dynload::miopenFindConvolutionForwardAlgorithm(
+          handle, cudnn_input_desc, input_data + i * group_offset_in,
+          cudnn_filter_desc, filter_data + i * group_offset_filter,
+	  cudnn_conv_desc, cudnn_output_desc, output_data + i * group_offset_out,
+          1, &algoCount, &perfRes, cudnn_workspace, workspace_size_in_bytes, false));
+      // ------------------- cudnn conv forward ---------------------
+      PADDLE_ENFORCE(platform::dynload::miopenConvolutionForward(
           handle, &alpha, cudnn_input_desc, input_data + i * group_offset_in,
           cudnn_filter_desc, filter_data + i * group_offset_filter,
-          cudnn_conv_desc, algo, cudnn_workspace, workspace_size_in_bytes,
-          &beta, cudnn_output_desc, output_data + i * group_offset_out));
+          cudnn_conv_desc, perfRes.fwd_algo,
+          &beta, cudnn_output_desc, output_data + i * group_offset_out,
+          cudnn_workspace, workspace_size_in_bytes));
     }
     // Release the cudnn workspace
     paddle::memory::Free(gpu, cudnn_workspace);
@@ -211,10 +186,10 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       layout = DataLayout::kNCDHW;
     }
 
-    cudnnConvolutionDescriptor_t cudnn_conv_desc =
+    miopenConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
-#if CUDNN_VERSION_MIN(7, 0, 1)
+#if 0
     // cudnn 7 can support groups, no need to do it mannually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
@@ -223,12 +198,12 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     groups = 1;
 #endif
 
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()), groups);
-    cudnnTensorDescriptor_t cudnn_output_grad_desc =
+    miopenTensorDescriptor_t cudnn_output_grad_desc =
         output_grad_desc.descriptor<T>(
             layout, framework::vectorize2int(output_grad->dims()), groups);
-    cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()), groups);
 
     int input_channels = input->dims()[1];
@@ -261,8 +236,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                            output_grad_width * output_grad_depth;
     int group_offset_filter = filter->numel() / groups;
     // ------------------- cudnn backward algorithm ---------------------
-    cudnnConvolutionBwdDataAlgo_t data_algo;
-    cudnnConvolutionBwdFilterAlgo_t filter_algo;
     size_t workspace_size_in_bytes = 0, tmp_size = 0;
     size_t workspace_size_limit = kCONV_CUDNN_WORKSPACE_LIMIT_BYTES;
     if (user_workspace_size > 0) {
@@ -270,50 +243,24 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
+    auto handle = dev_ctx.miopen_handle();
     if (input_grad) {
-      if (FLAGS_cudnn_algo_use_autotune) {
-        PADDLE_ENFORCE(
-            platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
-                handle, cudnn_filter_desc,
-                // dyDesc: Handle to the previously initialized input
-                // differential
-                // tensor descriptor.
-                cudnn_output_grad_desc, cudnn_conv_desc,
-                // dxDesc: Handle to the previously initialized output tensor
-                // descriptor.
-                cudnn_input_desc,
-                CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
-                workspace_size_limit, &data_algo));
-      } else {
-        data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
-      }
-
       PADDLE_ENFORCE(
-          platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
-              handle, cudnn_filter_desc, cudnn_output_grad_desc,
-              cudnn_conv_desc, cudnn_input_desc, data_algo, &tmp_size));
+          platform::dynload::miopenConvolutionBackwardDataGetWorkSpaceSize(
+              handle, cudnn_output_grad_desc, cudnn_filter_desc,
+              cudnn_conv_desc, cudnn_input_desc, &tmp_size));
       workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
     }
 
     if (filter_grad) {
-      if (FLAGS_cudnn_algo_use_autotune) {
-        PADDLE_ENFORCE(
-            platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
-                handle, cudnn_input_desc, cudnn_output_grad_desc,
-                cudnn_conv_desc, cudnn_filter_desc,
-                CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
-                workspace_size_limit, &filter_algo));
-      } else {
-        filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
-      }
-
       PADDLE_ENFORCE(
-          platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
-              handle, cudnn_input_desc, cudnn_output_grad_desc, cudnn_conv_desc,
-              cudnn_filter_desc, filter_algo, &tmp_size));
+          platform::dynload::miopenConvolutionBackwardWeightsGetWorkSpaceSize(
+              handle, cudnn_output_grad_desc, cudnn_input_desc, cudnn_conv_desc,
+              cudnn_filter_desc, &tmp_size));
       workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
     }
+    PADDLE_ENFORCE_GT(workspace_size_limit, workspace_size_in_bytes,
+        "Required workspace size should be smaller than limit.");
     // ------------------- cudnn conv workspace ---------------------
     // Already on GPU
     void* cudnn_workspace = nullptr;
@@ -321,17 +268,27 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv backward data ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
+    miopenConvAlgoPerf_t perfRes;
+    int algoCount = 0;
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
 
       for (int i = 0; i < groups; i++) {
-        PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
-            handle, &alpha, cudnn_filter_desc,
-            filter_data + i * group_offset_filter, cudnn_output_grad_desc,
-            output_grad_data + i * group_offset_out, cudnn_conv_desc, data_algo,
-            cudnn_workspace, workspace_size_in_bytes, &beta, cudnn_input_desc,
-            input_grad_data + i * group_offset_in));
+        PADDLE_ENFORCE(platform::dynload::miopenFindConvolutionBackwardDataAlgorithm(
+            handle,
+            cudnn_output_grad_desc, output_grad_data + i * group_offset_out,
+            cudnn_filter_desc, filter_data + i * group_offset_filter,
+            cudnn_conv_desc,
+            cudnn_input_desc, input_grad_data + i * group_offset_in,
+            1, &algoCount, &perfRes, cudnn_workspace, workspace_size_in_bytes, false));
+        PADDLE_ENFORCE(platform::dynload::miopenConvolutionBackwardData(
+            handle, &alpha,
+            cudnn_output_grad_desc, output_grad_data + i * group_offset_out,
+            cudnn_filter_desc, filter_data + i * group_offset_filter,
+            cudnn_conv_desc, perfRes.bwd_data_algo, &beta,
+            cudnn_input_desc, input_grad_data + i * group_offset_in,
+            cudnn_workspace, workspace_size_in_bytes));
       }
     }
     // ------------------- cudnn conv backward filter ---------------------
@@ -339,12 +296,21 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset filter_grad.
       for (int i = 0; i < groups; i++) {
-        PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
-            handle, &alpha, cudnn_input_desc, input_data + i * group_offset_in,
+        PADDLE_ENFORCE(platform::dynload::miopenFindConvolutionBackwardWeightsAlgorithm(
+            handle,
             cudnn_output_grad_desc, output_grad_data + i * group_offset_out,
-            cudnn_conv_desc, filter_algo, cudnn_workspace,
-            workspace_size_in_bytes, &beta, cudnn_filter_desc,
-            filter_grad_data + i * group_offset_filter));
+            cudnn_input_desc, input_data + i * group_offset_in,
+            cudnn_conv_desc,
+            cudnn_filter_desc, filter_grad_data + i * group_offset_filter,
+            1, &algoCount, &perfRes,
+            cudnn_workspace, workspace_size_in_bytes, false));
+        PADDLE_ENFORCE(platform::dynload::miopenConvolutionBackwardWeights(
+            handle, &alpha,
+            cudnn_output_grad_desc, output_grad_data + i * group_offset_out,
+            cudnn_input_desc, input_data + i * group_offset_in,
+            cudnn_conv_desc, perfRes.bwd_weights_algo, &beta,
+            cudnn_filter_desc, filter_grad_data + i * group_offset_filter,
+            cudnn_workspace, workspace_size_in_bytes));
       }
     }
     // Release the cudnn workspace
@@ -357,17 +323,11 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
 namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(conv2d, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNConvOpKernel<float>,
-                   paddle::operators::CUDNNConvOpKernel<double>,
-                   paddle::operators::CUDNNConvOpKernel<plat::float16>);
+                   paddle::operators::CUDNNConvOpKernel<float>);
 REGISTER_OP_KERNEL(conv2d_grad, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNConvGradOpKernel<float>,
-                   paddle::operators::CUDNNConvGradOpKernel<double>);
+                   paddle::operators::CUDNNConvGradOpKernel<float>);
 
 REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNConvOpKernel<float>,
-                   paddle::operators::CUDNNConvOpKernel<double>,
-                   paddle::operators::CUDNNConvOpKernel<plat::float16>);
+                   paddle::operators::CUDNNConvOpKernel<float>);
 REGISTER_OP_KERNEL(conv3d_grad, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNConvGradOpKernel<float>,
-                   paddle::operators::CUDNNConvGradOpKernel<double>);
+                   paddle::operators::CUDNNConvGradOpKernel<float>);

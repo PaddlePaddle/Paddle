@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/assert.h"
@@ -150,7 +151,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - (*beam)) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-INFINITY, -1);
+          topk[k].set(-FP_INFINITE, -1);
         }
       }
       if (!(*is_empty)) {
@@ -181,7 +182,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - *beam) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-INFINITY, -1);
+          topk[k].set(-FP_INFINITE, -1);
         }
       }
       if (!(*is_empty)) {
@@ -273,7 +274,7 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
   bool firststep = true;
 
   for (int k = 0; k < MaxLength; k++) {
-    topk[k].set(-INFINITY, -1);
+    topk[k].set(-FP_INFINITE, -1);
   }
   while (k) {
     ThreadGetTopK<T, MaxLength, BlockSize>(topk, &beam, k,
@@ -313,10 +314,8 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     dim3 threads(256, 1);
     dim3 grid(input_height, 1);
 
-    KeMatrixTopK<T, 5, 256><<<
-        grid, threads, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                              ctx.device_context())
-                              .stream()>>>(
+    hipLaunchKernelGGL((KeMatrixTopK<T, 5, 256>),
+        dim3(grid), dim3(threads), 0, reinterpret_cast<const platform::CUDADeviceContext&>(ctx.device_context()).stream(),
         output_data, output->dims()[1], indices_data, input_data, input_width,
         input_width, static_cast<int>(k));
   }

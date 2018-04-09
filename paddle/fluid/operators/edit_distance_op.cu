@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/edit_distance_op.h"
@@ -124,11 +125,9 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
         auto x1 = x1_t->data<int64_t>() + hyp_lod[num];
         auto x2 = x2_t->data<int64_t>() + ref_lod[num];
 
-        FillFirstColumn<T><<<1 + m / PADDLE_CUDA_NUM_THREADS,
-                             PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, m, n);
+        hipLaunchKernelGGL((FillFirstColumn<T>), dim3(1 + m / PADDLE_CUDA_NUM_THREADS), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream, dist, m, n);
 
-        FillFirstRow<T><<<1 + n / PADDLE_CUDA_NUM_THREADS,
-                          PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, n);
+        hipLaunchKernelGGL((FillFirstRow<T>), dim3(1 + n / PADDLE_CUDA_NUM_THREADS), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream, dist, n);
         // Compute the elements of distance matrix in the anti-diagonal diretion
         for (int64_t slice = 2; slice < m + n + 1; ++slice) {
           int z_m = slice < m + 1 ? 0 : slice - m;
@@ -137,11 +136,10 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
                                                // anti-diagonal line to update
           // the start index at which computes from
           int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
-          Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
-                           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, x1, x2,
+          hipLaunchKernelGGL((Levenshtein<T>), dim3(1 + (size - 1) / PADDLE_CUDA_NUM_THREADS), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream, dist, x1, x2,
                                                                  m, n, start);
         }
-        SetOutput<T><<<1, 1, 0, stream>>>(out + num, dist, m, n, normalized);
+        hipLaunchKernelGGL((SetOutput<T>), dim3(1), dim3(1), 0, stream, out + num, dist, m, n, normalized);
       }
     }
   }

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include <stdio.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -69,7 +70,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
 
     auto stream = ctx.cuda_device_context().stream();
-    MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
+    hipLaunchKernelGGL((MergeAndDelCudaKernel<T>), dim3(1), dim3(1), 0, stream, 
         num_tokens, tokens, num_seq,
         input_lod[level].CUDAMutableData(ctx.GetPlace()), blank, merge_repeated,
         dev_out_lod0_ptr, output_data);

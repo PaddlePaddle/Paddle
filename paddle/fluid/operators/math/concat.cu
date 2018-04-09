@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/mixed_vector.h"
@@ -184,11 +185,11 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     dim3 grid_size = dim3(grid_cols, grid_rows, 1);
 
     if (sameShape) {
-      KernelConcat<<<grid_size, block_size, 0, context.stream()>>>(
+      hipLaunchKernelGGL((KernelConcat), dim3(grid_size), dim3(block_size), 0, context.stream(),
           dev_ins_data, in_col, out_row, out_col, output->data<T>());
     } else {
       const int* dev_ins_col_data = inputs_col.CUDAData(context.GetPlace());
-      KernelConcat<<<grid_size, block_size, 0, context.stream()>>>(
+      hipLaunchKernelGGL((KernelConcat), dim3(grid_size), dim3(block_size), 0, context.stream(),
           dev_ins_data, dev_ins_col_data, static_cast<int>(inputs_col.size()),
           out_row, out_col, output->data<T>());
     }
@@ -254,11 +255,11 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
     dim3 grid_size = dim3(grid_cols, grid_rows, 1);
 
     if (sameShape) {
-      KernelConcatGrad<<<grid_size, block_size, 0, context.stream()>>>(
+      hipLaunchKernelGGL((KernelConcatGrad), dim3(grid_size), dim3(block_size), 0, context.stream(),
           input.data<T>(), in_row, in_col, out_col, dev_out_gpu_data);
     } else {
       const int* dev_outs_col_data = outputs_cols.CUDAData(context.GetPlace());
-      KernelConcatGrad<<<grid_size, block_size, 0, context.stream()>>>(
+      hipLaunchKernelGGL((KernelConcatGrad), dim3(grid_size), dim3(block_size), 0, context.stream(),
           input.data<T>(), in_row, in_col, dev_outs_col_data,
           static_cast<int>(outputs_cols.size()), dev_out_gpu_data);
     }

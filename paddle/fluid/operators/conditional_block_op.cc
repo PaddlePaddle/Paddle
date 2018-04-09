@@ -56,7 +56,7 @@ class ConditionalOp : public framework::OperatorBase {
     }
     bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
       framework::LoDTensor cpu_tensor;
       framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
       platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();

@@ -74,7 +74,7 @@ class SumKernel : public framework::OpKernel<T> {
         // If is in_place, we store the input[0] to in0
         auto &in_sel0 = in_vars[0]->Get<SelectedRows>();
         auto &rows = in_sel0.rows();
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
         std::vector<int64_t> rows_in_cpu;
         rows_in_cpu.reserve(rows.size());
         for (auto item : rows) {

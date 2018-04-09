@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "hip/hip_runtime.h"
 #include <type_traits>
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/gru_compute.h"

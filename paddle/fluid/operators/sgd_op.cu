@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/sgd_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -73,7 +74,8 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       int block = 512;
       int grid = (param->numel() + block - 1) / block;
 
-      SGDKernel<T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
+      hipLaunchKernelGGL((SGDKernel<T>),
+          dim3(grid), dim3(block), 0, ctx.cuda_device_context().stream(),
           grad_data, param_data, learning_rate->data<T>(), param->numel(),
           param_out_data);
 
@@ -100,8 +102,8 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       const int block_size = 256;
       dim3 threads(block_size, 1);
       dim3 grid(1, in_rows.size());
-      SparseSGDFunctorKernel<
-          T, 256><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+      hipLaunchKernelGGL((SparseSGDFunctorKernel<T, 256>),
+          dim3(grid), dim3(threads), 0, ctx.cuda_device_context().stream(),
           in_data, in_rows.CUDAData(ctx.GetPlace()), learning_rate->data<T>(),
           out_data, in_row_numel);
 

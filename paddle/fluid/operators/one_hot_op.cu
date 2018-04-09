@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/one_hot_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -48,9 +49,9 @@ struct OneHotOpCUDAFunctor {
     auto stream = ctx_.stream();
     math::set_constant(ctx_, out_, 0.0);
 
-    FillOutputKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                           PADDLE_CUDA_NUM_THREADS,
-                       PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+    hipLaunchKernelGGL((FillOutputKernel), dim3((numel + PADDLE_CUDA_NUM_THREADS - 1) /
+                           PADDLE_CUDA_NUM_THREADS),
+                       dim3(PADDLE_CUDA_NUM_THREADS), 0, stream,
         p_in_data, p_out_data, numel, depth_);
   }
 };

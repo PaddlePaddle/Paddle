@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/detection/target_assign_op.h"
 
 namespace paddle {
@@ -44,7 +45,7 @@ struct NegTargetAssignFunctor<platform::CUDADeviceContext, T, WT> {
                   WT* out_wt) {
     const int block_size = 256;
     const int grid_size = N;
-    NegTargetAssignKernel<T, WT><<<grid_size, block_size, 0, ctx.stream()>>>(
+    hipLaunchKernelGGL((NegTargetAssignKernel<T, WT>), dim3(grid_size), dim3(block_size), 0, ctx.stream(),
         neg_indices, lod, N, M, K, mismatch_value, out, out_wt);
   }
 };

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #define EIGEN_USE_GPU
 
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
@@ -99,16 +100,20 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     if (context.Attr<bool>("soft_label")) {
       int grid = (batch_size * class_num + block - 1) / block;
       const T* label_data = labels->data<T>();
-      SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+      hipLaunchKernelGGL((SoftCrossEntropyGradientKernel<T>),
+          dim3(grid), dim3(block), 0, stream,
           logit_grad_data, loss_grad_data, label_data, batch_size, class_num);
     } else {
       int grid = (batch_size + block - 1) / block;
       const int64_t* label_data = labels->data<int64_t>();
-      CrossEntropyGrad<T><<<grid, block, 0, stream>>>(
+      hipLaunchKernelGGL((CrossEntropyGrad<T>),
+          dim3(grid), dim3(block), 0, stream,
           logit_grad_data, label_data, batch_size, class_num);
       int num = batch_size * class_num;
       grid = (num + block - 1) / block;
-      Scale<T><<<grid, block, 0, stream>>>(logit_grad_data, loss_grad_data, num,
+      hipLaunchKernelGGL((Scale<T>),
+          dim3(grid), dim3(block), 0, stream,
+          logit_grad_data, loss_grad_data, num,
                                            class_num);
     }
   }

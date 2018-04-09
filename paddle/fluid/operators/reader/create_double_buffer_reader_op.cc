@@ -38,7 +38,7 @@ class DoubleBufferReader : public framework::DecoratedReader {
       : DecoratedReader(reader), place_(target_place) {
     cpu_tensor_cache_.resize(kCacheSize);
     gpu_tensor_cache_.resize(kCacheSize);
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     if (platform::is_gpu_place(place_)) {
       for (size_t i = 0; i < kCacheSize; ++i) {
         ctxs_.emplace_back(new platform::CUDADeviceContext(

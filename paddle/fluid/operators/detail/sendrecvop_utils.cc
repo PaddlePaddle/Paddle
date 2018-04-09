@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 #include <nccl.h>
 #endif
 #include <sys/time.h>
@@ -56,7 +56,7 @@ void GetTensorPayload(framework::Variable* var,
     }
   }
   if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
     platform::CUDAPinnedPlace cuda_pinned;
     auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
@@ -90,7 +90,7 @@ void GetSelectedRowsPayload(framework::Variable* var,
 
   auto* tensor = slr->mutable_value();
   if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     platform::CUDAPinnedPlace cuda_pinned;
     auto& gpu_dev_ctx = static_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor->numel() * framework::SizeOfType(tensor->type());
@@ -139,7 +139,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   } else if (var->IsType<framework::SelectedRows>()) {
     request.set_type(::sendrecv::SELECTED_ROWS);
     GetSelectedRowsPayload(var, ctx, &request, &payload, &payload_size);
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   } else if (var->IsType<ncclUniqueId>()) {
     request.set_type(::sendrecv::NCCL_ID);
 #endif
@@ -149,7 +149,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     // GPU data is copied to CPU buffer when sending,
     // free the buffer when possible.
     destroy_callback = [](void* backing) {
@@ -167,7 +167,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   e.WriteRawBytes(std::string(header.data(), header.size()));
 // NCCLID is copied directly to the message, return bytebuffer
 // with only one slice if serializing NCCLID.
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   if (var->IsType<ncclUniqueId>()) {
     e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                               NCCL_UNIQUE_ID_BYTES);

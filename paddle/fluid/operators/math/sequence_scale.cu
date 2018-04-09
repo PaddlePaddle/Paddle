@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/math/sequence_scale.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -44,8 +45,8 @@ class ScaleLoDTensorFunctor<platform::CUDADeviceContext, T> {
     framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
     T* seq_data = seq->mutable_data<T>(context.GetPlace());
 
-    SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS><<<
-        num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
+    hipLaunchKernelGGL((SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS>),
+        dim3(num_seq), dim3(PADDLE_CUDA_NUM_THREADS), 0, context.stream(),
         seq_data, abs_offset_lod[level].CUDAMutableData(context.GetPlace()),
         scales, seq_width);
   }

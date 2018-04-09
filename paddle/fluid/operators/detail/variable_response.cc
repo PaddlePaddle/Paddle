@@ -60,7 +60,7 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
   int total_written = 0;
 
   if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     auto& gpu_dev_ctx =
         static_cast<const platform::CUDADeviceContext&>(dev_ctx);
     platform::CPUPlace cpu;

@@ -93,7 +93,7 @@ struct RowwiseAdd<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(output->dims(), in_dims);
     int blocks = 512;
     int grids = (input.numel() + blocks - 1) / blocks;
-    RowwiseAddKernel<T><<<grids, blocks, 0, context.stream()>>>(
+    hipLaunchKernelGGL((RowwiseAddKernel<T>), dim3(grids), dim3(blocks), 0, context.stream(),
         input.data<T>(), vector.data<T>(), output->data<T>(),
         static_cast<int>(in_dims[1]), static_cast<int>(input.numel()));
   }

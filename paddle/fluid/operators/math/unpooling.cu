@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/math/unpooling.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -83,9 +84,11 @@ class Unpool2dMaxFunctor<platform::CUDADeviceContext, T> {
     T* output_data = output->mutable_data<T>(context.GetPlace());
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool2dMax<T><<<grid, threads, 0, context.stream()>>>(
-        input.numel(), input_data, indices_data, input_height, input_width,
-        output_channels, output_data, output_height, output_width);
+    hipLaunchKernelGGL((KernelUnpool2dMax<
+        T>), dim3(grid), dim3(threads), 0,
+                 context.stream(), input.numel(), input_data, indices_data,
+                              input_height, input_width, output_channels,
+                              output_data, output_height, output_width);
   }
 };
 /*
@@ -113,10 +116,12 @@ class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, T> {
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
     int threads = 1024;
     int grid = (input.numel() + threads - 1) / threads;
-    KernelUnpool2dMaxGrad<T><<<grid, threads, 0, context.stream()>>>(
-        input.numel(), input_data, indices_data, input_height, input_width,
-        output_channels, output_data, output_grad_data, output_height,
-        output_width, input_grad_data);
+    hipLaunchKernelGGL((KernelUnpool2dMaxGrad<
+        T>), dim3(grid), dim3(threads), 0,
+                 context.stream(), input.numel(), input_data, indices_data,
+                              input_height, input_width, output_channels,
+                              output_data, output_grad_data, output_height,
+                              output_width, input_grad_data);
   }
 };
 template class Unpool2dMaxGradFunctor<platform::CUDADeviceContext, float>;

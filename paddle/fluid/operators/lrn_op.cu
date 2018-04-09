@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/lrn_op.h"
 
 namespace paddle {
@@ -70,12 +71,12 @@ void CrossMapNormal(const framework::ExecutionContext& ctx, const T* inputs,
   int grid_size = (img_size + block_size - 1) / block_size;
 
   auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  KeCMRNormFillScale<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+  hipLaunchKernelGGL((KeCMRNormFillScale<T>), dim3(grid_size), dim3(block_size), 0, dev_ctx.stream(), 
       img_size, inputs, mid, C, H, W, n, k, alpha);
 
   int input_size = N * H * W * C;
   grid_size = (input_size + block_size - 1) / block_size;
-  KeCMRNormOutput<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+  hipLaunchKernelGGL((KeCMRNormOutput<T>), dim3(grid_size), dim3(block_size), 0, dev_ctx.stream(), 
       input_size, inputs, mid, -beta, outputs);
 }
 
@@ -148,7 +149,7 @@ void CrossMapNormalGrad(const framework::ExecutionContext& ctx, const T* x,
   int grid_size = (img_size + block_size - 1) / block_size;
 
   auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  KeCMRNormDiff<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+  hipLaunchKernelGGL((KeCMRNormDiff<T>), dim3(grid_size), dim3(block_size), 0, dev_ctx.stream(), 
       img_size, x, out, mid, x_g, out_g, C, H, W, n, -beta,
       2.0f * alpha * beta);
 }

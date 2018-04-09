@@ -27,8 +27,8 @@ struct TolerableValue {
     PADDLE_ASSERT(std::is_floating_point<T>::value);
     const T kApproInf = 1e20;
 
-    if (x == INFINITY) return kApproInf;
-    if (x == -INFINITY) return -kApproInf;
+    if (x == FP_INFINITE) return kApproInf;
+    if (x == -FP_INFINITE) return -kApproInf;
     return x;
   }
 };

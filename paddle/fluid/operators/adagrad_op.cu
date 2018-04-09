@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/adagrad_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -98,10 +99,10 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid2(1, merge_rows.size());
-    SparseAdagradFunctorKernel<
-        T, 256><<<grid2, threads, 0,
+    hipLaunchKernelGGL((SparseAdagradFunctorKernel<
+        T, 256>), dim3(grid2), dim3(threads), 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(
+                      .stream(),
         grad_merge_data, merge_rows.CUDAMutableData(context.GetPlace()), lr,
         param_data, moment_data, grad_width, epsilon);
   }

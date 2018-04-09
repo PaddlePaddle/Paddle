@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/detection/prior_box_op.h"
 
 namespace paddle {
@@ -146,7 +147,7 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
       max_data = max.data<T>();
     }
 
-    GenPriorBox<T><<<grid, block, 0, stream>>>(
+    hipLaunchKernelGGL((GenPriorBox<T>), dim3(grid), dim3(block), 0, stream,
         boxes->data<T>(), r.data<T>(), height, width, im_height, im_width,
         aspect_ratios.size(), offset, step_width, step_height, min.data<T>(),
         max_data, min_num, clip);
@@ -154,7 +155,7 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     framework::Tensor v;
     framework::TensorFromVector(variances, ctx.device_context(), &v);
     grid = (box_num * 4 + block - 1) / block;
-    SetVariance<T><<<grid, block, 0, stream>>>(vars->data<T>(), v.data<T>(),
+    hipLaunchKernelGGL((SetVariance<T>), dim3(grid), dim3(block), 0, stream, vars->data<T>(), v.data<T>(),
                                                variances.size(), box_num * 4);
   }
 };  // namespace operators

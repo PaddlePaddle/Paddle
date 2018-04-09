@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/transform.h"
 
-#ifdef __NVCC__
-#include <cuda.h>
+#ifdef __HCC__
 #include <thrust/iterator/iterator_adaptor.h>
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -152,7 +151,7 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext> {
   int64_t post_;
 };
 
-#ifdef __NVCC__
+#ifdef __HCC__
 template <typename T>
 class RowwiseTransformIterator<T, platform::CUDADeviceContext>
     : public thrust::iterator_adaptor<

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/math/maxouting.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -98,9 +99,10 @@ class MaxOutFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxOut<T><<<grid, threads, 0, context.stream()>>>(
-        nthreads, input_data, input_channels, input_height, input_width, groups,
-        output_data);
+    hipLaunchKernelGGL((KernelMaxOut<
+        T>), dim3(grid), dim3(threads), 0,
+                 context.stream(), nthreads, input_data, input_channels,
+                              input_height, input_width, groups, output_data);
   }
 };
 /*
@@ -130,9 +132,11 @@ class MaxOutGradFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelMaxoutGrad<T><<<grid, threads, 0, context.stream()>>>(
-        nthreads, input_data, output_data, output_grad_data, input_grad_data,
-        input_channels, input_height, input_width, groups);
+    hipLaunchKernelGGL((KernelMaxoutGrad<
+        T>), dim3(grid), dim3(threads), 0,
+                 context.stream(), nthreads, input_data, output_data,
+                              output_grad_data, input_grad_data, input_channels,
+                              input_height, input_width, groups);
   }
 };
 
