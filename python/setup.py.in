@@ -58,11 +58,13 @@ def mkl():
             'istaged': ISTAGED,
             'with_mkl': '@WITH_MKL@'})
 
-write_version_py(filename='@PADDLE_SOURCE_DIR@/python/paddle/version.py')
+write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
 
 packages=['paddle',
           'paddle.utils',
+          'paddle.dataset',
+          'paddle.reader',
           'paddle.fluid',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
@@ -73,10 +75,10 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
                'paddle.trainer',
                'paddle.trainer_config_helpers',
                'paddle.v2',
-               'paddle.v2.dataset',
-               'paddle.v2.reader',
                'paddle.v2.master',
                'paddle.v2.plot',
+               'paddle.v2.reader',
+               'paddle.v2.dataset',
                'py_paddle']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -105,9 +107,10 @@ package_dir={
     # So that package points to other directory.
     'paddle.fluid.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
     'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
+    'paddle.fluid': '${PADDLE_BINARY_DIR}/python/paddle/fluid',
 }
 if '${WITH_FLUID_ONLY}'== 'OFF':
-    package_dir['py_paddle']='${PADDLE_SOURCE_DIR}/paddle/py_paddle'
+    package_dir['py_paddle']='${PADDLE_BINARY_DIR}/python/py_paddle'
     
 
 paddle_rt_lib_dir = 'lib'
