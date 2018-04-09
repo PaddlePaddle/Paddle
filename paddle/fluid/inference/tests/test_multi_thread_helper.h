@@ -56,7 +56,7 @@ void ThreadedRunInference(
   }
 
   // 6. Run the inference program
-  executor->Run(*copy_program, scope, feed_targets, fetch_targets,
+  executor->Run(*copy_program, scope, feed_targets, fetch_targets, true,
                 feed_holder_name, fetch_holder_name);
 }
 
