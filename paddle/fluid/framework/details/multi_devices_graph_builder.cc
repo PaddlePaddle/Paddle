@@ -147,15 +147,16 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
             if (vars.empty()) {  // This device has no data. continue.
               continue;
             }
-            auto *prev_grad = &vars[vars.size() - 1];
-            op_handle->AddInput(prev_grad);
+            auto &prev_grad = vars[vars.size() - 1];
+            op_handle->AddInput(prev_grad.get());
 
-            auto &var = vars[vars.size()];
-            var.place_ = p;
-            var.name_ = og;
-            var.version_ = vars.size() - 1;
+            vars.emplace_back(new VarHandle);
+            auto &var = vars.back();
+            var->place_ = p;
+            var->name_ = og;
+            var->version_ = vars.size() - 1;
 
-            op_handle->AddOutput(&var);
+            op_handle->AddOutput(var.get());
           }
 #else
           PADDLE_ENFORCE("Not implemented");
