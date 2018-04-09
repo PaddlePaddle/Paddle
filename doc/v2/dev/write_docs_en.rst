@@ -84,13 +84,13 @@ Build PaddlePaddle's documentation with Docker，you need to install Docker firs
 
 Note: The above commands maps the current directory (source root directory) to the :code:`/paddle` directory in the container.
 
-After compiling, you could enter the ``paddle/build/doc/v2`` directory, where three subdirectories ``cn/html/``, ``en/html`` and ``api/en/html`` are generated. Please enter these directories respectively and execute the following commands:
+After compiling, there should be two generated directories: ``doc/v2`` and ``doc/fluid``, where three subdirectories ``cn/html/``, ``en/html`` and ``api/en/html`` are generated. Please enter these directories respectively and execute the following commands:
 
 .. code-block:: bash
 
    python -m SimpleHTTPServer 8088
 
-Use a web browser and navigate to http://localhost:8000, you could see the compiled Chinese/English documents page and the English APIs page.
+Use a web browser and navigate to http://localhost:8000, you could see the compiled  ``v2`` 's and ``fluid`` 's Chinese/English documents page and English APIs page.
 
 If you do not wish to use Docker, you can also use the following commands to directly build the PaddlePaddle documentation.
 
@@ -111,7 +111,7 @@ If you do not wish to use Docker, you can also use the following commands to dir
 
 $processors indicates that as many processes as the CPU cores are started to compile in parallel. It should be set according to the number of CPU cores of your machine.
 
-After the compilation is complete, there should be two generated directories: ``doc/v2`` and ``doc/fluid`` . If you chose to build documents, two subdirectories ``cn/html/`` and ``en/html``  will be generated in both two directories. If you chose to build APIs，a subdirectory ``api/en/html`` will be generated. Please enter these directories respectively and execute the following commands:
+After compiling, there also should be two generated directories: ``doc/v2`` and ``doc/fluid`` . If you chose to build documents, two subdirectories ``cn/html/`` and ``en/html``  will be generated in both two directories. If you chose to build APIs，a subdirectory ``api/en/html`` will be generated. Please enter these directories respectively and execute the following commands:
 
 .. code-block:: bash
 
