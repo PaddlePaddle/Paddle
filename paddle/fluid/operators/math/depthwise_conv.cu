@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/platform/cuda_helper.h"
 
@@ -200,7 +201,7 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelDepthwiseConv<T><<<grid, threads, 0, context.stream()>>>(
+    hipLaunchKernelGGL((KernelDepthwiseConv<T>), dim3(grid), dim3(threads), 0, context.stream(), 
         nthreads, input_data, filter_data, batch_size, output_channels,
         output_height, output_width, input_channels, input_height, input_width,
         output_channels / input_channels, ksize_height, ksize_width,
@@ -242,7 +243,7 @@ class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelDepthwiseConvInputGrad<T><<<grid, threads, 0, context.stream()>>>(
+    hipLaunchKernelGGL((KernelDepthwiseConvInputGrad<T>), dim3(grid), dim3(threads), 0, context.stream(), 
         nthreads, output_grad_data, filter_data, batch_size, output_channels,
         output_height, output_width, input_channels, input_height, input_width,
         output_channels / input_channels, ksize_height, ksize_width,
@@ -284,7 +285,7 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    KernelDepthwiseConvFilterGrad<T><<<grid, threads, 0, context.stream()>>>(
+    hipLaunchKernelGGL((KernelDepthwiseConvFilterGrad<T>), dim3(grid), dim3(threads), 0, context.stream(), 
         nthreads, output_grad_data, input_data, batch_size, output_channels,
         output_height, output_width, input_channels, input_height, input_width,
         output_channels / input_channels, ksize_height, ksize_width,

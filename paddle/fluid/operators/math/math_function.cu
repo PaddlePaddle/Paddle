@@ -24,20 +24,21 @@ namespace math {
 
 using float16 = paddle::platform::float16;
 
+#if 0
 template <>
 void gemm<platform::CUDADeviceContext, float16>(
     const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float16 alpha, const float16* A, const float16* B, const float16 beta,
     float16* C) {
-  // Note that cublas follows fortran order, so the order is different from
+  // Note that hipblas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
-  cublasOperation_t cuTransA =
-      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  hipblasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  hipblasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
 
   const half h_alpha = static_cast<const half>(alpha);
   const half h_beta = static_cast<const half>(beta);
@@ -47,11 +48,12 @@ void gemm<platform::CUDADeviceContext, float16>(
 
   // TODO(kexinzhao): add processing code for compute capability < 53 case
   PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
-                    "cublas Hgemm requires GPU compute capability >= 53");
-  PADDLE_ENFORCE(platform::dynload::cublasHgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
+                    "hipblas Hgemm requuires GPU compute capability >= 53");
+  PADDLE_ENFORCE(platform::dynload::hipblasHgemm(
+      context.hipblas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
       h_A, lda, &h_beta, h_C, N));
 }
+#endif
 
 template <>
 void gemm<platform::CUDADeviceContext, float>(
@@ -59,18 +61,18 @@ void gemm<platform::CUDADeviceContext, float>(
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float alpha, const float* A, const float* B, const float beta,
     float* C) {
-  // Note that cublas follows fortran order, so the order is different from
+  // Note that hipblas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
-  cublasOperation_t cuTransA =
-      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  hipblasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  hipblasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
 
-  PADDLE_ENFORCE(platform::dynload::cublasSgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
-      lda, &beta, C, N));
+  PADDLE_ENFORCE(platform::dynload::hipblasSgemm(
+          context.hipblas_handle(),
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, N));
 }
 
 template <>
@@ -79,29 +81,30 @@ void gemm<platform::CUDADeviceContext, double>(
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const double alpha, const double* A, const double* B, const double beta,
     double* C) {
-  // Note that cublas follows fortran order, so the order is different from
+  // Note that hipblas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
-  cublasOperation_t cuTransA =
-      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  PADDLE_ENFORCE(platform::dynload::cublasDgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
-      lda, &beta, C, N));
+  hipblasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  hipblasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  PADDLE_ENFORCE(platform::dynload::hipblasDgemm(
+          context.hipblas_handle(),
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, N));
 }
 
+#if 0
 template <>
 void gemm<platform::CUDADeviceContext, float16>(
     const platform::CUDADeviceContext& context, const bool transA,
     const bool transB, const int M, const int N, const int K,
     const float16 alpha, const float16* A, const int lda, const float16* B,
     const int ldb, const float16 beta, float16* C, const int ldc) {
-  // Note that cublas follows fortran order, so the order is different from
+  // Note that hipblas follows fortran order, so the order is different from
   // the cblas convention.
-  cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
+  hipblasOperation_t cuTransA = transA == false ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  hipblasOperation_t cuTransB = transB == false ? HIPBLAS_OP_N : HIPBLAS_OP_T;
 
   const half h_alpha = static_cast<const half>(alpha);
   const half h_beta = static_cast<const half>(beta);
@@ -111,11 +114,12 @@ void gemm<platform::CUDADeviceContext, float16>(
 
   // TODO(kexinzhao): add processing code for compute capability < 53 case
   PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
-                    "cublas Hgemm requires GPU compute capability >= 53");
-  PADDLE_ENFORCE(platform::dynload::cublasHgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
+                    "hipblas Hgemm requires GPU compute capability >= 53");
+  PADDLE_ENFORCE(platform::dynload::hipblasHgemm(
+      context.hipblas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
       h_A, lda, &h_beta, h_C, ldc));
 }
+#endif
 
 template <>
 void gemm<platform::CUDADeviceContext, float>(
@@ -123,13 +127,13 @@ void gemm<platform::CUDADeviceContext, float>(
     const bool transB, const int M, const int N, const int K, const float alpha,
     const float* A, const int lda, const float* B, const int ldb,
     const float beta, float* C, const int ldc) {
-  // Note that cublas follows fortran order, so the order is different from
+  // Note that hipblas follows fortran order, so the order is different from
   // the cblas convention.
-  cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  PADDLE_ENFORCE(platform::dynload::cublasSgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
-      lda, &beta, C, ldc));
+  hipblasOperation_t cuTransA = transA == false ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  hipblasOperation_t cuTransB = transB == false ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  PADDLE_ENFORCE(platform::dynload::hipblasSgemm(
+          context.hipblas_handle(),
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
 }
 
 template <>
@@ -138,15 +142,16 @@ void gemm<platform::CUDADeviceContext, double>(
     const bool transB, const int M, const int N, const int K,
     const double alpha, const double* A, const int lda, const double* B,
     const int ldb, const double beta, double* C, const int ldc) {
-  // Note that cublas follows fortran order, so the order is different from
+  // Note that hipblas follows fortran order, so the order is different from
   // the cblas convention.
-  cublasOperation_t cuTransA = transA == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB = transB == false ? CUBLAS_OP_N : CUBLAS_OP_T;
-  PADDLE_ENFORCE(platform::dynload::cublasDgemm(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A,
-      lda, &beta, C, ldc));
+  hipblasOperation_t cuTransA = transA == false ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  hipblasOperation_t cuTransB = transB == false ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  PADDLE_ENFORCE(platform::dynload::hipblasDgemm(
+          context.hipblas_handle(),
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, A, lda, &beta, C, ldc));
 }
 
+#if 0
 template <>
 void matmul<platform::CUDADeviceContext, float16>(
     const platform::CUDADeviceContext& context,
@@ -175,6 +180,7 @@ void matmul<platform::CUDADeviceContext, float16>(
       context, transA, transB, M, N, K, alpha, matrix_a.data<float16>(),
       matrix_b.data<float16>(), beta, matrix_out->data<float16>());
 }
+#endif
 
 template <>
 void matmul<platform::CUDADeviceContext, float>(
@@ -234,21 +240,22 @@ void matmul<platform::CUDADeviceContext, double>(
       matrix_b.data<double>(), beta, matrix_out->data<double>());
 }
 
+#if 0
 template <>
 void batched_gemm<platform::CUDADeviceContext, float16>(
     const platform::CUDADeviceContext& context, const CBLAS_TRANSPOSE transA,
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float16 alpha, const float16* A, const float16* B, const float16 beta,
     float16* C, const int batchCount, const int strideA, const int strideB) {
-  // Note that cublas follows fortran order, so the order is different from
+  // Note that hipblas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
-  cublasOperation_t cuTransA =
-      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  hipblasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  hipblasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
   const int strideC = M * N;
 
   const half h_alpha = static_cast<const half>(alpha);
@@ -259,11 +266,12 @@ void batched_gemm<platform::CUDADeviceContext, float16>(
 
   // TODO(kexinzhao): add processing code for compute capability < 53 case
   PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
-                    "cublas Hgemm requires GPU compute capability >= 53");
-  PADDLE_ENFORCE(platform::dynload::cublasHgemmStridedBatched(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
+                    "hipblas Hgemm requires GPU compute capability >= 53");
+  PADDLE_ENFORCE(platform::dynload::hipblasHgemmStridedBatched(
+      context.hipblas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
       strideB, h_A, lda, strideA, &h_beta, h_C, ldc, strideC, batchCount));
 }
+#endif
 
 template <>
 void batched_gemm<platform::CUDADeviceContext, float>(
@@ -271,20 +279,21 @@ void batched_gemm<platform::CUDADeviceContext, float>(
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float alpha, const float* A, const float* B, const float beta,
     float* C, const int batchCount, const int strideA, const int strideB) {
-  // Note that cublas follows fortran order, so the order is different from
+  // Note that hipblas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
-  cublasOperation_t cuTransA =
-      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  hipblasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  hipblasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
   const int strideC = M * N;
 
-  PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
-      strideB, A, lda, strideA, &beta, C, ldc, strideC, batchCount));
+  PADDLE_ENFORCE(platform::dynload::hipblasSgemmStridedBatched(
+          context.hipblas_handle(),
+      cuTransB, cuTransA, N, M, K, &alpha, B, ldb, strideB, A, lda, strideA,
+      &beta, C, ldc, strideC, batchCount));
 }
 
 template <>
@@ -293,19 +302,19 @@ void batched_gemm<platform::CUDADeviceContext, double>(
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const double alpha, const double* A, const double* B, const double beta,
     double* C, const int batchCount, const int strideA, const int strideB) {
-  // Note that cublas follows fortran order, so the order is different from
+  // Note that hipblas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
-  cublasOperation_t cuTransA =
-      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  cublasOperation_t cuTransB =
-      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  hipblasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
+  hipblasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? HIPBLAS_OP_N : HIPBLAS_OP_T;
   const int strideC = M * N;
 
-  PADDLE_ENFORCE(platform::dynload::cublasDgemmStridedBatched(
-      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
+  PADDLE_ENFORCE(platform::dynload::hipblasDgemmStridedBatched(
+      context.hipblas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
       strideB, A, lda, strideA, &beta, C, ldc, strideC, batchCount));
 }
 
@@ -314,9 +323,9 @@ void gemv<platform::CUDADeviceContext, float>(
     const platform::CUDADeviceContext& context, const bool trans_a, const int M,
     const int N, const float alpha, const float* A, const float* B,
     const float beta, float* C) {
-  cublasOperation_t cuTransA = (trans_a == false) ? CUBLAS_OP_T : CUBLAS_OP_N;
+  hipblasOperation_t cuTransA = (trans_a == false) ? HIPBLAS_OP_T : HIPBLAS_OP_N;
 
-  PADDLE_ENFORCE(platform::dynload::cublasSgemv(context.cublas_handle(),
+  PADDLE_ENFORCE(platform::dynload::hipblasSgemv(context.hipblas_handle(),
                                                 cuTransA, N, M, &alpha, A, N, B,
                                                 1, &beta, C, 1));
 }
@@ -326,8 +335,8 @@ void gemv<platform::CUDADeviceContext, double>(
     const platform::CUDADeviceContext& context, const bool trans_a, const int M,
     const int N, const double alpha, const double* A, const double* B,
     const double beta, double* C) {
-  cublasOperation_t cuTransA = (trans_a == false) ? CUBLAS_OP_T : CUBLAS_OP_N;
-  PADDLE_ENFORCE(platform::dynload::cublasDgemv(context.cublas_handle(),
+  hipblasOperation_t cuTransA = (trans_a == false) ? HIPBLAS_OP_T : HIPBLAS_OP_N;
+  PADDLE_ENFORCE(platform::dynload::hipblasDgemv(context.hipblas_handle(),
                                                 cuTransA, N, M, &alpha, A, N, B,
                                                 1, &beta, C, 1));
 }
@@ -336,7 +345,7 @@ template <>
 void axpy<platform::CUDADeviceContext, float>(
     const platform::CUDADeviceContext& context, const int n, const float alpha,
     const float* x, float* y) {
-  PADDLE_ENFORCE(platform::dynload::cublasSaxpy(context.cublas_handle(), n,
+  PADDLE_ENFORCE(platform::dynload::hipblasSaxpy(context.hipblas_handle(), n,
                                                 &alpha, x, 1, y, 1));
 }
 
@@ -344,7 +353,7 @@ template <>
 void axpy<platform::CUDADeviceContext, double>(
     const platform::CUDADeviceContext& context, const int n, const double alpha,
     const double* x, double* y) {
-  PADDLE_ENFORCE(platform::dynload::cublasDaxpy(context.cublas_handle(), n,
+  PADDLE_ENFORCE(platform::dynload::hipblasDaxpy(context.hipblas_handle(), n,
                                                 &alpha, x, 1, y, 1));
 }
 
@@ -414,7 +423,7 @@ struct RowwiseAdd<platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(output->dims(), in_dims);
     int blocks = 512;
     int grids = (input.numel() + blocks - 1) / blocks;
-    RowwiseAddKernel<T><<<grids, blocks, 0, context.stream()>>>(
+    hipLaunchKernelGGL((RowwiseAddKernel<T>), dim3(grids), dim3(blocks), 0, context.stream(),
         input.data<T>(), vector.data<T>(), output->data<T>(),
         static_cast<int>(in_dims[1]), static_cast<int>(input.numel()));
   }

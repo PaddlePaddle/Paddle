@@ -22,7 +22,7 @@ namespace operators {
 
 template <typename T>
 struct PowFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return std::pow(a, b); }
+  inline HOSTDEVICE T operator()(T a, T b) const { return pow(a, b); }
 };
 
 template <typename DeviceContext, typename T>

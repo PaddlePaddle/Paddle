@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 
 namespace paddle {
@@ -39,6 +40,12 @@ __device__ __forceinline__ T sum_single_warp(T val) {
   return val;
 }
 
+//XXX: Commented out since __shfl_down doesn't support double.
+template <>
+__device__ __forceinline__ double sum_single_warp<double>(double val) {
+  return val;
+}
+
 // CUDA do not support dynamic arrary in template
 // https://stackoverflow.com/questions/20497209
 template <typename T>
@@ -50,7 +57,7 @@ struct SharedMemory {
 template <>
 struct SharedMemory<float> {
   __device__ float* GetPointer() {
-    extern __shared__ float s_float[];
+    HIP_DYNAMIC_SHARED( float, s_float)
     return s_float;
   }
 };
@@ -58,7 +65,7 @@ struct SharedMemory<float> {
 template <>
 struct SharedMemory<double> {
   __device__ double* GetPointer() {
-    extern __shared__ double s_double[];
+    HIP_DYNAMIC_SHARED( double, s_double)
     return s_double;
   }
 };
@@ -75,7 +82,7 @@ __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
   int next_idx = blockIdx.x * class_num + tid;
   while (cur_idx < class_num) {
     d_sum[tid] +=
-        math::TolerableValue<T>()(std::log(X[next_idx])) * label[next_idx];
+        math::TolerableValue<T>()(log(X[next_idx])) * label[next_idx];
     next_idx += blockDim.x;
     cur_idx += blockDim.x;
   }
@@ -110,15 +117,13 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
       const T* label_data = labels->data<T>();
       int block = class_num > 512 ? 512 : pow(2, int(std::log2(class_num)));
 
-      SoftCrossEntropyKernel<T><<<
-          batch_size, block, block * sizeof(T),
-          reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+      hipLaunchKernelGGL((SoftCrossEntropyKernel<T>), dim3(batch_size), dim3(block), block * sizeof(T), reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream(), 
           loss_data, prob_data, label_data, class_num);
     } else {
       const int64_t* label_data = labels->data<int64_t>();
       int block = 512;
       int grid = (batch_size + block - 1) / block;
-      CrossEntropyKernel<T><<<grid, block, 0, ctx.stream()>>>(
+      hipLaunchKernelGGL((CrossEntropyKernel<T>), dim3(grid), dim3(block), 0, ctx.stream(), 
           loss_data, prob_data, label_data, batch_size, class_num);
     }
   }

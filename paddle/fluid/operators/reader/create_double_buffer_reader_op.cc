@@ -52,7 +52,7 @@ class DoubleBufferReader : public framework::DecoratedReader {
   explicit DoubleBufferReader(
       ReaderBase* reader, platform::Place target_place = platform::CPUPlace())
       : DecoratedReader(reader), place_(target_place) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
     for (size_t i = 0; i < kCacheSize; ++i) {
       if (platform::is_gpu_place(place_)) {
         ctxs_.emplace_back(new platform::CUDADeviceContext(

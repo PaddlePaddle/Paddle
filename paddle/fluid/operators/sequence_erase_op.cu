@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include "paddle/fluid/operators/sequence_erase_op.h"
@@ -78,8 +79,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     thrust::device_vector<size_t> num_erased(in_len + 1, 0);
     size_t* num_erased_ptr = thrust::raw_pointer_cast(num_erased.data());
     auto stream = ctx.cuda_device_context().stream();
-    LabelErasedIdx<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
-                     PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+    hipLaunchKernelGGL((LabelErasedIdx<T>), dim3((in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream,
         in_dat, in_len, dev_tokens_ptr, tokens.size(), num_erased_ptr);
     thrust::inclusive_scan(num_erased.begin() + 1, num_erased.end(),
                            num_erased.begin() + 1);
@@ -92,8 +92,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     // Calc output LoD
     thrust::device_vector<size_t> dev_out_lod(lod_len);
     size_t* dev_out_lod_ptr = thrust::raw_pointer_cast(dev_out_lod.data());
-    GetOutLod<<<(lod_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
-                PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+    hipLaunchKernelGGL((GetOutLod), dim3((lod_len - 1) / PADDLE_CUDA_NUM_THREADS + 1), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream,
         num_erased_ptr, dev_in_lod_ptr, lod_len, dev_out_lod_ptr);
     // Set LoD for output
     std::vector<size_t> out_lod0(dev_out_lod.begin(), dev_out_lod.end());
@@ -104,8 +103,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     // Set output
     out->Resize({static_cast<int64_t>(out_lod0.back()), 1});
     auto out_dat = out->mutable_data<T>(ctx.GetPlace());
-    SetOutput<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
-                PADDLE_CUDA_NUM_THREADS, 0, stream>>>(in_dat, in_len,
+    hipLaunchKernelGGL((SetOutput<T>), dim3((in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1), dim3(PADDLE_CUDA_NUM_THREADS), 0, stream, in_dat, in_len,
                                                       num_erased_ptr, out_dat);
   }
 };

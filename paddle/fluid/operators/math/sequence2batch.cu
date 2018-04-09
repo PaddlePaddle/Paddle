@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/math/sequence2batch.h"
 
@@ -61,9 +62,8 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(128, 8);
     dim3 grid(8, 1);
     auto stream = context.stream();
-    CopyMatrixRowsKernel<T, 128, 8, 8><<<grid, threads, 0, stream>>>(
-        src_data, dst_data, index_lod.CUDAData(context.GetPlace()), height,
-        width, is_src_index);
+    hipLaunchKernelGGL((CopyMatrixRowsKernel<T, 128, 8, 8>), dim3(grid), dim3(threads), 0, stream, 
+        src_data, dst_data, index_lod.CUDAData(context.GetPlace()), height, width, is_src_index);
   }
 };
 

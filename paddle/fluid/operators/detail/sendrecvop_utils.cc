@@ -76,7 +76,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         }
       }
       if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
         PADDLE_ENFORCE(platform::is_gpu_place(tensor.place()));
         platform::CPUPlace cpu;
         auto& gpu_dev_ctx =
@@ -113,7 +113,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       e.WriteUint64(VarMsg::kSlrHeightFieldNumber, slr->height());
       auto* tensor = slr->mutable_value();
       if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
         platform::CPUPlace cpu;
         auto& gpu_dev_ctx =
             static_cast<const platform::CUDADeviceContext&>(ctx);

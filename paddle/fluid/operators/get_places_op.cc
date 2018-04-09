@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/place.h"
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 
 static size_t CUDADevCount() {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   return platform::GetCUDADeviceCount();
 #else
   return 0UL;

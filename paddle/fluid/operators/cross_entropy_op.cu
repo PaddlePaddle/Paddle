@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "hip/hip_runtime.h"
 #include "paddle/fluid/operators/cross_entropy_op.h"
 
 namespace paddle {
@@ -87,14 +88,14 @@ class CrossEntropyGradientOpCUDAKernel : public framework::OpKernel<T> {
 
     if (ctx.Attr<bool>("soft_label")) {
       auto* label_data = label->data<T>();
-      SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+      hipLaunchKernelGGL((SoftCrossEntropyGradientKernel<T>), dim3(grid), dim3(block), 0, stream, 
           dx_data, dy_data, x_data, label_data, batch_size, class_num);
     } else {
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       functor(dev_ctx, dx, 0);
       auto* label_data = label->data<int64_t>();
       grid = (batch_size + block - 1) / block;
-      CrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+      hipLaunchKernelGGL((CrossEntropyGradientKernel<T>), dim3(grid), dim3(block), 0, stream, 
           dx_data, dy_data, x_data, label_data, batch_size, class_num);
     }
   }

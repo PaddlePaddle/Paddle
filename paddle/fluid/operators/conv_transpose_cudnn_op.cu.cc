@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/conv_transpose_op.h"
 #include "paddle/fluid/platform/assert.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/miopen_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -36,6 +36,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
+#if 0
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -63,15 +64,15 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     }
 
     // (N, M, H, W) or (N, M, D, H, W)
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
     // (N, C, O_h, O_w) or (N, C, O_d, O_h, O_w)
-    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize2int(output->dims()));
     // (M, C, K_h, K_w) or (M, C, K_d, K_h, K_w)
-    cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()));
-    cudnnConvolutionDescriptor_t cudnn_conv_desc =
+    miopenConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
     // ------------------- cudnn conv workspace ---------------------
@@ -112,6 +113,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 
     // Release the cudnn workspace
     paddle::memory::Free(gpu, cudnn_workspace);
+#endif
   }
 };
 
@@ -121,6 +123,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
+#if 0
     auto input = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
@@ -144,16 +147,16 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     DataLayout layout = DataLayout::kNCHW;
 
     // Input: (N, M, H, W) or (N, M, D, H, W)
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
         layout, framework::vectorize2int(input->dims()));
     // Output: (N, C, O_h, O_w) or (N, C, O_d, O_h, O_w)
-    cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         layout, framework::vectorize2int(output_grad->dims()));
     // Filter (M, C, K_h, K_w) or (M, C, K_d K_h, K_w)
-    cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
+    miopenTensorDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
         layout, framework::vectorize2int(filter->dims()));
 
-    cudnnConvolutionDescriptor_t cudnn_conv_desc =
+    miopenConvolutionDescriptor_t cudnn_conv_desc =
         conv_desc.descriptor<T>(paddings, strides, dilations);
 
     // ------------------- cudnn backward algorithm ---------------------
@@ -228,6 +231,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     }
     // Release the cudnn workspace
     paddle::memory::Free(gpu, cudnn_workspace);
+#endif
   }
 };
 
@@ -237,15 +241,15 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(conv2d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
-                   ops::CUDNNConvTransposeOpKernel<float>,
-                   ops::CUDNNConvTransposeOpKernel<double>);
+                   ops::CUDNNConvTransposeOpKernel<float>
+                   /*,ops::CUDNNConvTransposeOpKernel<double>*/);
 REGISTER_OP_KERNEL(conv2d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
-                   ops::CUDNNConvTransposeGradOpKernel<float>,
-                   ops::CUDNNConvTransposeGradOpKernel<double>);
+                   ops::CUDNNConvTransposeGradOpKernel<float>
+                   /*,ops::CUDNNConvTransposeGradOpKernel<double>*/);
 
 REGISTER_OP_KERNEL(conv3d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
-                   ops::CUDNNConvTransposeOpKernel<float>,
-                   ops::CUDNNConvTransposeOpKernel<double>);
+                   ops::CUDNNConvTransposeOpKernel<float>
+                   /*,ops::CUDNNConvTransposeOpKernel<double>*/);
 REGISTER_OP_KERNEL(conv3d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
-                   ops::CUDNNConvTransposeGradOpKernel<float>,
-                   ops::CUDNNConvTransposeGradOpKernel<double>);
+                   ops::CUDNNConvTransposeGradOpKernel<float>
+                   /*,ops::CUDNNConvTransposeGradOpKernel<double>*/);
