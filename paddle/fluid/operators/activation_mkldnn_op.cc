@@ -13,8 +13,8 @@
    limitations under the License. */
 
 #include "mkldnn.hpp"
-#include "mkldnn_activation_op.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/mkldnn_activation_op.h"
 
 namespace paddle {
 namespace operators {
@@ -50,8 +50,10 @@ void eltwise_forward(const ExecContext &ctx, mkldnn::algorithm algorithm,
                                          mkldnn::memory::format::nchw);
 
   // create memory primitives
-  auto src_memory = mkldnn::memory({data_md, mkldnn_engine}, (void *)src_data);
-  auto dst_memory = mkldnn::memory({data_md, mkldnn_engine}, (void *)dst_data);
+  auto src_memory =
+      mkldnn::memory({data_md, mkldnn_engine}, static_cast<void *>(src_data));
+  auto dst_memory =
+      mkldnn::memory({data_md, mkldnn_engine}, static_cast<void *>(dst_data));
 
   auto forward_desc = mkldnn::eltwise_forward::desc(
       mkldnn::prop_kind::forward_training, algorithm, data_md, alpha, beta);
@@ -95,11 +97,12 @@ void eltwise_grad(const ExecContext &ctx, mkldnn::algorithm algorithm,
                                          mkldnn::memory::format::nchw);
 
   // create memory primitives
-  auto src_memory = mkldnn::memory({data_md, mkldnn_engine}, (void *)src);
+  auto src_memory =
+      mkldnn::memory({data_md, mkldnn_engine}, static_cast<void *>(src));
   auto diff_src_memory =
-      mkldnn::memory({data_md, mkldnn_engine}, (void *)diff_src);
+      mkldnn::memory({data_md, mkldnn_engine}, static_cast<void *>(diff_src));
   auto diff_dst_memory =
-      mkldnn::memory({data_md, mkldnn_engine}, (void *)diff_dst);
+      mkldnn::memory({data_md, mkldnn_engine}, static_cast<void *>(diff_dst));
 
   auto backward_desc =
       mkldnn::eltwise_backward::desc(algorithm, data_md, data_md, alpha, beta);
