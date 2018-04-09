@@ -54,3 +54,4 @@ if you have any problem on the process of installation , please trying the botto
 if the problem hasn't been solved , so welcome to come the paddlepaddle community to feedback：
 
 `创建issue <https://github.com/PaddlePaddle/Paddle/issues/new>`_
+
