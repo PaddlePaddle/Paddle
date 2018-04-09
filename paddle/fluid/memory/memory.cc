@@ -56,7 +56,7 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
   return GetCPUBuddyAllocator()->Used();
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
 
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
   static BuddyAllocator** as = NULL;
@@ -151,7 +151,7 @@ size_t Usage::operator()(const platform::CPUPlace& cpu) const {
 }
 
 size_t Usage::operator()(const platform::CUDAPlace& gpu) const {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   return Used(gpu);
 #else
   PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
@@ -159,7 +159,7 @@ size_t Usage::operator()(const platform::CUDAPlace& gpu) const {
 }
 
 size_t Usage::operator()(const platform::CUDAPinnedPlace& cuda_pinned) const {
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP))
   return Used(cuda_pinned);
 #else
   PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");

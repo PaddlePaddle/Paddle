@@ -1,5 +1,7 @@
 if(${WITH_GPU})
   nv_library(system_allocator SRCS system_allocator.cc DEPS gflags cpu_info gpu_info)
+elseif (WITH_AMD_GPU)
+  hip_library(system_allocator SRCS system_allocator.cc DEPS gflags cpu_info gpu_info)
 else(${WITH_GPU})
   cc_library(system_allocator SRCS system_allocator.cc DEPS gflags cpu_info)
 endif(${WITH_GPU})
