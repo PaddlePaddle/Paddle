@@ -22,6 +22,7 @@ import sys
 import numpy
 import unittest
 import os
+import numpy as np
 
 
 def resnet_cifar10(input, depth=32):
@@ -224,6 +225,20 @@ def infer(use_cuda, save_dirname=None):
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
+
+        # Use inference_transpiler to speedup
+        t = fluid.InferenceTranspiler()
+        inference_transpiler_program = t.transpile(inference_program,
+                                                   inference_scope, place)
+        transpiler_results = exe.run(inference_transpiler_program,
+                                     feed={feed_target_names[0]: tensor_img},
+                                     fetch_list=fetch_targets)
+
+        assert len(results[0]) == len(transpiler_results[0])
+        for i in range(len(results[0])):
+            np.testing.assert_almost_equal(results[0][i],
+                                           transpiler_results[0][i])
+
         print("infer results: ", results[0])
 
 
