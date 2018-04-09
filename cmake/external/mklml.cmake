@@ -28,7 +28,7 @@ INCLUDE(ExternalProject)
 
 SET(MKLML_PROJECT       "extern_mklml")
 SET(MKLML_VER           "mklml_lnx_2018.0.1.20171007")
-SET(MKLML_URL           "https://github.com/01org/mkl-dnn/releases/download/v0.11/${MKLML_VER}.tgz")
+SET(MKLML_URL           "http://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.tgz")
 SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
 SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
 SET(MKLML_DST_DIR       "mklml")

@@ -15,7 +15,6 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/memory/detail/memory_block.h"
-#include "paddle/fluid/memory/detail/meta_data.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 
