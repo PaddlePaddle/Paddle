@@ -350,7 +350,7 @@ def open_recordio_file(filename,
         main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
 
     if for_parallel:
-        main_prog_var = for_parallel(reader=main_prog_var)
+        main_prog_var = parallel(reader=main_prog_var)
 
     return monkey_patch_reader_methods(main_prog_var)
 
@@ -435,7 +435,7 @@ def open_files(filenames,
             reader=main_prog_reader, pass_num=pass_num)
 
     if for_parallel:
-        main_prog_reader = for_parallel(reader=main_prog_reader)
+        main_prog_reader = parallel(reader=main_prog_reader)
 
     return monkey_patch_reader_methods(main_prog_reader)
 
@@ -474,7 +474,7 @@ def multi_pass(reader, pass_num):
                                        {'pass_num': int(pass_num)})
 
 
-def for_parallel(reader):
+def parallel(reader):
     return __create_decorated_reader__('create_threaded_reader', reader)
 
 
