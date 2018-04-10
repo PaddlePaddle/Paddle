@@ -27,8 +27,8 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
       auto it_old = name_pair.second.rbegin();
       ++it_old;
       for (; it_old != name_pair.second.rend(); it_new = it_old, ++it_old) {
-        auto *write_op = it_new->second.generated_op_;
-        auto &read_ops = it_old->second.pending_ops_;
+        auto *write_op = (*it_new)->generated_op_;
+        auto &read_ops = (*it_old)->pending_ops_;
 
         for (auto *read_op : read_ops) {
           // Manually add a dependency var from read_op to write_op;
@@ -54,14 +54,15 @@ VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
   auto &var_holder = var_holders[each_var_name];
   VarHandle *var = nullptr;
   if (var_holder.empty()) {
+    var_holder.emplace_back(new VarHandle);
     auto &init_var = var_holder[0];
-    init_var.place_ = place;
-    init_var.name_ = each_var_name;
-    init_var.generated_op_ = nullptr;
-    init_var.version_ = 0;
-    var = &init_var;
+    init_var->place_ = place;
+    init_var->name_ = each_var_name;
+    init_var->generated_op_ = nullptr;
+    init_var->version_ = 0;
+    var = init_var.get();
   } else {
-    var = &var_holder.rbegin()->second;
+    var = var_holder.rbegin()->get();
   }
   return var;
 }
@@ -72,11 +73,12 @@ void SSAGraphBuilder::CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
                                      size_t place_offset) {
   auto &vars = graph->vars_[place_offset][each_var_name];
   size_t version = vars.size();
-  auto &var = vars[version];
-  var.version_ = version;
-  var.name_ = each_var_name;
-  var.place_ = place;
-  op_handle->AddOutput(&var);
+  vars.emplace_back(new VarHandle());
+  auto &var = vars.back();
+  var->version_ = version;
+  var->name_ = each_var_name;
+  var->place_ = place;
+  op_handle->AddOutput(var.get());
 }
 
 template <typename Callback>
@@ -84,7 +86,7 @@ void IterAllVar(const SSAGraph &graph, Callback callback) {
   for (auto &each : graph.vars_) {
     for (auto &pair1 : each) {
       for (auto &pair2 : pair1.second) {
-        callback(pair2.second);
+        callback(*pair2);
       }
     }
   }

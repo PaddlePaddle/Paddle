@@ -85,6 +85,8 @@ def __bootstrap__():
     import core
     import os
 
+    in_test = 'unittest' in sys.modules
+
     try:
         num_threads = int(os.getenv('OMP_NUM_THREADS', '1'))
     except ValueError:
@@ -109,8 +111,11 @@ def __bootstrap__():
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
-    core.init_devices()
+    # don't init_p2p when in unittest to save time.
+    core.init_devices(not in_test)
 
 
+# TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
+# Consider paddle.init(args) or paddle.main(args)
 layers.monkey_patch_variable()
 __bootstrap__()
