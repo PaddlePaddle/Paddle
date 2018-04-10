@@ -37,7 +37,7 @@ depth = 8
 mix_hidden_lr = 1e-3
 
 IS_SPARSE = True
-PASS_NUM = 10
+PASS_NUM = 100
 BATCH_SIZE = 10
 
 embedding_name = 'emb'
@@ -234,7 +234,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
                         print("second per batch: " + str((time.time(
                         ) - start_time) / batch_id))
                     # Set the threshold low to speed up the CI test
-                    if float(pass_precision) > 0.05:
+                    if float(pass_precision) > 0.01:
                         if save_dirname is not None:
                             # TODO(liuyiqun): Change the target to crf_decode
                             fluid.io.save_inference_model(save_dirname, [
