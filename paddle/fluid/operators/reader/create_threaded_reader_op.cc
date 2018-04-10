@@ -111,7 +111,7 @@ class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
                   "When 'unsafe_mode' is false, invoking 'HasNext()' or "
                   "'ReInit()' is not allowed to avoid unexpected bugs in "
                   "multi-thread environment.")
-        .SetDefault(false);
+        .SetDefault(true);
     AddComment(R"DOC(
       CreateThreadedReader Operator
 
@@ -134,6 +134,6 @@ class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
 }  // namespace paddle
 
 namespace reader = paddle::operators::reader;
-REGISTER_FILE_READER_OPERATOR(create_threaded_reader,
-                              reader::CreateThreadedReaderOp,
-                              reader::CreateThreadedReaderOpMaker);
+REGISTER_DECORATED_READER_OPERATOR(create_threaded_reader,
+                                   reader::CreateThreadedReaderOp,
+                                   reader::CreateThreadedReaderOpMaker);
