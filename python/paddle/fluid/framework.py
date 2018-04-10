@@ -818,6 +818,11 @@ class Block(object):
         del self.vars[name]
         self.sync_with_cpp()
 
+    def remove_var(self, name):
+        self.sync_with_cpp()
+        self.desc.remove_var(name)
+        del self.vars[name]
+
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
@@ -838,6 +843,11 @@ class Block(object):
         self.ops.insert(index, op)
         return op
 
+    def remove_op(self, index):
+        self.sync_with_cpp()
+        self.desc.remove_op(index, index + 1)
+        del self.ops[index]
+
     def delete_ops(self, ops):
         # remove from cpp
         # FIXME(typhoonzero): remove only the first occurrence.
@@ -846,6 +856,7 @@ class Block(object):
             end = list(self.ops).index(ops[-1])
         except Exception, e:
             raise e
+
         self.desc.remove_op(start, end + 1)
 
     def slice_ops(self, start, end):
@@ -919,15 +930,6 @@ class Block(object):
                 else:
                     ops_in_cpp_index += 1
                     ops_in_python_index += 1
-
-        # sync ops inserted from c++ end
-        if len(self.ops) != len(ops_in_cpp) and start_index == 0 and len(
-                self.ops) == end_index:
-            del self.ops[:]
-            for index in range(len(ops_in_cpp)):
-                op_desc = ops_in_cpp[index]
-                op = Operator(self, op_desc)
-                self.ops.append(op)
 
         assert len(self.ops) == len(ops_in_cpp)
         for index in range(len(self.ops)):
