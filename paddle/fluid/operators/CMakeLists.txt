@@ -92,7 +92,7 @@ function(op_library TARGET)
         nv_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${mkldnn_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     elseif (WITH_AMD_GPU)
-        hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cu_srcs} ${miopen_hip_cc_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
+        hip_library(${TARGET} SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${mkldnn_cc_srcs} ${cu_srcs} DEPS ${op_library_DEPS}
                 ${op_common_deps})
     else()
         cc_library(${TARGET} SRCS ${cc_srcs} ${mkldnn_cc_srcs} DEPS ${op_library_DEPS}
@@ -147,8 +147,8 @@ function(op_library TARGET)
     endif()
 
     # pybind USE_OP_DEVICE_KERNEL for MIOPEN
-    if (WITH_AMD_GPU AND ${miopen_hip_cc_srcs_len} GREATER 0)
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, MIOPEN);\n")
+    if (WITH_AMD_GPU AND ${cudnn_cu_cc_srcs_len} GREATER 0)
+        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, CUDNN);\n")
     endif()
 
     # pybind USE_OP_DEVICE_KERNEL for MKLDNN
