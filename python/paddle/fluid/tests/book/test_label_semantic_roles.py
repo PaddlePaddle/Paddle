@@ -70,8 +70,8 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
         fluid.layers.embedding(
             size=[word_dict_len, word_dim],
             input=x,
-            param_attr=fluid.ParamAttr(name=embedding_name, trainable=False))
-        for x in word_input
+            param_attr=fluid.ParamAttr(
+                name=embedding_name, trainable=False)) for x in word_input
     ]
     emb_layers.append(predicate_embedding)
     emb_layers.append(mark_embedding)
@@ -164,7 +164,8 @@ def train(use_cuda, save_dirname=None, is_local=True):
     crf_cost = fluid.layers.linear_chain_crf(
         input=feature_out,
         label=target,
-        param_attr=fluid.ParamAttr(name='crfw', learning_rate=mix_hidden_lr))
+        param_attr=fluid.ParamAttr(
+            name='crfw', learning_rate=mix_hidden_lr))
     avg_cost = fluid.layers.mean(crf_cost)
 
     # TODO(qiao)
@@ -189,7 +190,8 @@ def train(use_cuda, save_dirname=None, is_local=True):
         num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
 
     train_data = paddle.batch(
-        paddle.reader.shuffle(paddle.dataset.conll05.test(), buf_size=8192),
+        paddle.reader.shuffle(
+            paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -222,25 +224,24 @@ def train(use_cuda, save_dirname=None, is_local=True):
                     exe)
 
                 if batch_id % 10 == 0:
-                    print(
-                        "avg_cost:" + str(cost) + " precision:" +
-                        str(precision) + " recall:" + str(recall) +
-                        " f1_score:" + str(f1_score) + " pass_precision:" + str(
-                            pass_precision) + " pass_recall:" + str(pass_recall)
-                        + " pass_f1_score:" + str(pass_f1_score))
+                    print("avg_cost:" + str(cost) + " precision:" + str(
+                        precision) + " recall:" + str(recall) + " f1_score:" +
+                          str(f1_score) + " pass_precision:" + str(
+                              pass_precision) + " pass_recall:" + str(
+                                  pass_recall) + " pass_f1_score:" + str(
+                                      pass_f1_score))
                     if batch_id != 0:
-                        print("second per batch: " + str(
-                            (time.time() - start_time) / batch_id))
+                        print("second per batch: " + str((time.time(
+                        ) - start_time) / batch_id))
                     # Set the threshold low to speed up the CI test
                     if float(pass_precision) > 0.05:
                         if save_dirname is not None:
                             # TODO(liuyiqun): Change the target to crf_decode
-                            fluid.io.save_inference_model(
-                                save_dirname, [
-                                    'word_data', 'verb_data', 'ctx_n2_data',
-                                    'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
-                                    'ctx_p2_data', 'mark_data'
-                                ], [feature_out], exe)
+                            fluid.io.save_inference_model(save_dirname, [
+                                'word_data', 'verb_data', 'ctx_n2_data',
+                                'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
+                                'ctx_p2_data', 'mark_data'
+                            ], [feature_out], exe)
                         return
 
                 batch_id = batch_id + 1
@@ -320,20 +321,19 @@ def infer(use_cuda, save_dirname=None):
         assert feed_target_names[6] == 'ctx_p2_data'
         assert feed_target_names[7] == 'mark_data'
 
-        results = exe.run(
-            inference_program,
-            feed={
-                feed_target_names[0]: word,
-                feed_target_names[1]: pred,
-                feed_target_names[2]: ctx_n2,
-                feed_target_names[3]: ctx_n1,
-                feed_target_names[4]: ctx_0,
-                feed_target_names[5]: ctx_p1,
-                feed_target_names[6]: ctx_p2,
-                feed_target_names[7]: mark
-            },
-            fetch_list=fetch_targets,
-            return_numpy=False)
+        results = exe.run(inference_program,
+                          feed={
+                              feed_target_names[0]: word,
+                              feed_target_names[1]: pred,
+                              feed_target_names[2]: ctx_n2,
+                              feed_target_names[3]: ctx_n1,
+                              feed_target_names[4]: ctx_0,
+                              feed_target_names[5]: ctx_p1,
+                              feed_target_names[6]: ctx_p2,
+                              feed_target_names[7]: mark
+                          },
+                          fetch_list=fetch_targets,
+                          return_numpy=False)
         print(results[0].lod())
         np_data = np.array(results[0])
         print("Inference Shape: ", np_data.shape)
