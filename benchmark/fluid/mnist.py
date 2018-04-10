@@ -139,9 +139,6 @@ def run_benchmark(model, args):
 
     # inference program
     inference_program = fluid.default_main_program().clone()
-    with fluid.program_guard(inference_program):
-        inference_program = fluid.io.get_inference_program(
-            target_vars=[batch_acc, batch_size_tensor])
 
     # Optimization
     opt = fluid.optimizer.AdamOptimizer(
@@ -161,7 +158,7 @@ def run_benchmark(model, args):
     train_reader = paddle.batch(
         paddle.dataset.mnist.train(), batch_size=args.batch_size)
 
-    accuracy = fluid.average.WeightedAverage()
+    accuracy = fluid.metrics.Accuracy()
     iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in range(args.pass_num):
         accuracy.reset()
@@ -184,7 +181,7 @@ def run_benchmark(model, args):
                       "label": y_data},
                 fetch_list=[avg_cost, batch_acc, batch_size_tensor]
             )  # The accuracy is the accumulation of batches, but not the current batch.
-            accuracy.add(value=outs[1], weight=outs[2])
+            accuracy.update(value=outs[1], weight=outs[2])
             iters += 1
             num_samples += len(y_data)
             loss = np.array(outs[0])
