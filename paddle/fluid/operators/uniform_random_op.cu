@@ -43,18 +43,7 @@ template <typename T>
 class GPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    framework::Tensor* tensor(nullptr);
-    auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = ctx.Output<framework::LoDTensor>("Out");
-    } else if (out_var->IsType<framework::SelectedRows>()) {
-      auto shape = ctx.Attr<std::vector<int>>("shape");
-      tensor = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
-      tensor->Resize(framework::make_ddim(shape));
-    } else {
-      PADDLE_THROW("Only support LoDTensor and SelectedRows.");
-    }
-
+    auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     if (seed == 0) {
