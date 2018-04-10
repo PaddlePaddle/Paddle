@@ -246,15 +246,17 @@ class DistributeTranspiler:
             self.table_param_grad = [
                 param_grad for param_grad in params_grads
                 if param_grad[0].name == self.table_name
+            ][0]
+            table_grad_var = self.table_param_grad[1]
+            self.table_grad_list = [
+                program.global_block().create_var(
+                    name="%s.trainer_%d.pserver_%d" %
+                    (table_grad_var.name, trainer_id, index),
+                    type=table_grad_var.type,
+                    shape=table_grad_var.shape,
+                    dtype=table_grad_var.dtype)
+                for index in range(len(self.pserver_endpoints))
             ]
-            self.table_param_list = self.create_splited_vars(
-                source_var=self.table_param_grad[0],
-                block=program.global_block(),
-                tag="_")
-            self.table_grad_list = self.create_splited_vars(
-                source_var=self.table_param_grad[1],
-                block=program.global_block(),
-                tag="_")
 
         grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
         param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
@@ -538,9 +540,71 @@ class DistributeTranspiler:
 
         # process distributed lookup_table
         if self.has_distributed_lookup_table:
+            pserver_index = self.pserver_endpoints.index(endpoint)
+
+            def _clone_var(block, var, persistable=True):
+                assert isinstance(var, Variable)
+                return block.create_var(
+                    name=var.name,
+                    shape=var.shape,
+                    dtype=var.dtype,
+                    type=var.type,
+                    persistable=persistable)
+
+            # STEP: create table optimize block
+            # create table param and grad var in pserver program
+            param_var = _clone_var(
+                pserver_program.global_block(),
+                self.origin_program.global_block().vars[self.table_name])
+            grad_var = _clone_var(
+                pserver_program.global_block(),
+                self.origin_program.global_block().vars[framework.grad_var_name(
+                    self.table_name)],
+                persistable=False)
+
+            # create grad vars in pserver program
+            table_grad_var = self.table_param_grad[1]
+            table_grad_list = [
+                pserver_program.global_block().create_var(
+                    name="%s.trainer_%d.pserver_%d" %
+                    (table_grad_var.name, index, pserver_index),
+                    type=table_grad_var.type,
+                    shape=table_grad_var.shape,
+                    dtype=table_grad_var.dtype)
+                for index in range(self.trainer_num)
+            ]
+
+            # create table optimize block in pserver program
+            table_opt_op = [
+                op for op in self.optimize_ops
+                if op.input("Param")[0] == self.table_name
+            ][0]
+            table_opt_block = pserver_program.create_block(append_block.idx)
+            assert table_opt_op.type == "sgd"
+
+            # append sum op for table_grad_list
+            table_opt_block.append_op(
+                type="sum",
+                inputs={"X": table_grad_list},
+                outputs={"Out": [grad_var]})
+
+            lr_var = pserver_program.global_block().vars[table_opt_op.input(
+                "LearningRate")[0]]
+            inputs = {
+                "Param": [param_var],
+                "Grad": [grad_var],
+                "LearningRate": [lr_var]
+            }
+            outputs = {"ParamOut": [param_var]}
+            table_opt_block.append_op(
+                type=table_opt_op.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=table_opt_op.attrs)
+
+            # STEP: create prefetch block
             table_var = pserver_program.global_block().vars[self.table_name]
             prefetch_block = pserver_program.create_block(optimize_block.idx)
-            pserver_index = self.pserver_endpoints.index(endpoint)
             trainer_ids = self.prefetch_input_vars[pserver_index]
             pserver_ids = pserver_program.global_block().create_var(
                 name=trainer_ids.name,
@@ -702,7 +766,7 @@ class DistributeTranspiler:
             for index in range(len(self.pserver_endpoints))
         ]
 
-    def _clone_var(self, block, var):
+    def _clone_var(self, block, var, persistable=True):
         assert isinstance(var, Variable)
         return block.create_var(
             name=var.name,
@@ -710,7 +774,7 @@ class DistributeTranspiler:
             dtype=var.dtype,
             type=var.type,
             lod_level=var.lod_level,
-            persistable=True)
+            persistable=persistable)
 
     def _append_split_op(self, program, gradblocks):
         # Split variables that need to be split and append respective ops
@@ -972,7 +1036,6 @@ class DistributeTranspiler:
                 if same_or_split_var(n, param) and n != param:
                     return True
             return False
-        return False
 
     def _get_input_map_from_op(self, varmap, op):
         iomap = dict()
