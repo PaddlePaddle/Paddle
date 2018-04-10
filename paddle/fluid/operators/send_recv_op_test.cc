@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <unistd.h>
 #include <string>
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -37,7 +37,7 @@ namespace m = paddle::operators::math;
 std::unique_ptr<f::OperatorBase> listen_and_serv_op;
 int selected_port;
 
-void InitTensorsInScope(f::Scope &scope, p::CPUPlace &place) {
+void InitTensorsInScope(const f::Scope &scope, const p::CPUPlace &place) {
   p::CPUDeviceContext ctx(place);
   for (int i = 0; i < 2; ++i) {
     auto var_name = paddle::string::Sprintf("x%d", i);
@@ -56,7 +56,7 @@ void InitTensorsInScope(f::Scope &scope, p::CPUPlace &place) {
   out_tensor->mutable_data<float>(place);  // allocate
 }
 
-void InitSelectedRowsInScope(f::Scope &scope, p::CPUPlace &place) {
+void InitSelectedRowsInScope(const f::Scope &scope, const p::CPUPlace &place) {
   p::CPUDeviceContext ctx(place);
   int64_t height = 10;
   int64_t row_numel = 10;
