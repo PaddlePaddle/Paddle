@@ -14,6 +14,8 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
+#include <vector>
+
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
@@ -95,6 +97,7 @@ template class SoftmaxCUDNNFunctor<double>;
 template class SoftmaxGradCUDNNFunctor<float>;
 template class SoftmaxGradCUDNNFunctor<double>;
 
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;

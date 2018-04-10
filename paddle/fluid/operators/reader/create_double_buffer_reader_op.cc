@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <thread>
+#include <thread>  // NOLINT
+
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
@@ -98,10 +99,13 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
-                                        ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
+    if (out->Get() != nullptr) {
+      return;
+    }
+    const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
+                                        ->Get<framework::ReaderHolder>();
 
     auto place_str = Attr<std::string>("place");
     platform::Place place;
