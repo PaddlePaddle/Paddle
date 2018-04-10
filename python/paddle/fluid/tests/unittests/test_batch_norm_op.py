@@ -348,6 +348,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     })
                 block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
+                # generate backward op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
                     bn_op.desc, set(), [])
                 grad_op_desc = grad_op_desc_list[0]
