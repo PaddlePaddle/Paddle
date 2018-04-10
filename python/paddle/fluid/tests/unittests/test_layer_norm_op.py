@@ -129,12 +129,12 @@ class TestLayerNormdOp(unittest.TestCase):
             bias = np.random.random_sample(scale_shape).astype(np.float32)
             y_grad = np.random.random_sample(x_shape).astype(np.float32)
 
-            # run forward
+            # reference forward & backward
             y, mean, variance = _reference_layer_norm_naive(
                 x, scale, bias, epsilon, begin_norm_axis)
-            # get gradient
             x_grad, scale_grad, bias_grad = _reference_layer_norm_grad(
                 x, y_grad, scale, mean, variance, begin_norm_axis)
+
             var_dict = locals()
             var_dict['y@GRAD'] = y_grad
             var_names = [
