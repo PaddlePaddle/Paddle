@@ -2,7 +2,7 @@
 
 ### Download & Install 
 
-  Download the latest C-API development package from CI system and install, you can find the required version in the table below:
+  Download the latest C-API development package from CI system and install. You can find the required version in the table below:
 <table>
 <thead>
 <tr>
@@ -38,7 +38,7 @@
 
 ### From source
 
-  User also can compile the C-API library from PaddlePaddle source code,  just compiling with the following compilation options:
+  Users can also compile the C-API library from PaddlePaddle source code by compiling with the following compilation options:
   
 <table>
 <thead>
@@ -73,7 +73,7 @@
 <td>ON/OFF</td>
 </tr></tbody></table>
 
-It is best to set up with recommended values to avoid link with unnecessary libraries. Set other compilation options as you need.
+It is best to set up with recommended values to avoid linking with unnecessary libraries. Set other compilation options as you need.
 
 Pull the latest following code snippet from github, and configure compilation options(replace PADDLE_ROOT with the installation path of the PaddlePaddle C-API inference library):
 
@@ -94,7 +94,7 @@ cmake -DCMAKE_INSTALL_PREFIX=$PADDLE_ROOT \
       ..
 ```
 
-After run the above code to generate Makefile , run: `make && make install`.  After successfully compiled, the dependencies are required by C-API(includes: (1)PaddlePaddle inference library and header files; (2) Third-party libraries and header files) will be stored in the `PADDLE_ROOT` directory.
+After running the above code to generate Makefile , run: `make && make install`.  After successful compilation, the dependencies required by C-API(includes: (1)PaddlePaddle inference library and header files; (2) Third-party libraries and header files) will be stored in the `PADDLE_ROOT` directory.
 
 If the compilation is successful, see the following directory structure under `PADDLE_ROOT`(includes PaddlePaddle header files and libraries, and third-party libraries and header files(determined by the link methods if necessary)):
 
@@ -155,12 +155,12 @@ If the compilation is successful, see the following directory structure under `P
 
 ### Linking Description:
 
-There are three kinds of link methods:
+There are three kinds of linking methods:
 
 1. Linking with dynamic library `libpaddle_capi_shared.so`（This way is much more convenient and easier, **Without special requirements, it is recommended**）, refer to the following：
-    1. Compiling with CPU version and using `OpenBLAS`; only need link one library named `libpaddle_capi_shared.so` to develop prediction program through C-API.
-    1. Compiling with CPU version and using `MKL` lib, you need link MKL library directly to develop prediction program through PaddlePaddle C-API, due to `MKL` has its own dynamic library.
-    1. Compiling with GPU version, CUDA library will be loaded dynamic on prediction program run-time, and also set CUDA library to  `LD_LIBRARY_PATH` environment variable.
+    1. Compiling with CPU version and using `OpenBLAS`; only need to link one library named `libpaddle_capi_shared.so` to develop prediction program through C-API.
+    1. Compiling with CPU version and using `MKL` lib, you need to link MKL library directly to develop prediction program through PaddlePaddle C-API, due to `MKL` has its own dynamic library.
+    1. Compiling with GPU version, CUDA library will be loaded dynamically on prediction program run-time, and also set CUDA library to  `LD_LIBRARY_PATH` environment variable.
 
 2. Linking with static library `libpaddle_capi_whole.a`，refer to the following：
     1. Specify `-Wl,--whole-archive` linking options.
@@ -172,4 +172,4 @@ There are three kinds of link methods:
     1. This linking methods is mainly used for mobile prediction.
     1. Split `libpaddle_capi_whole.a` into two static linking library at least to reduce the size of linking libraries.
     1. Specify `-Wl,--whole-archive -lpaddle_capi_layers`  and  `-Wl,--no-whole-archive -lpaddle_capi_engine` for linking.
-    1. The dependencies of third-party need explicitly link same as method 2 above. 
+    1. The third-party dependencies need explicitly link same as method 2 above. 
