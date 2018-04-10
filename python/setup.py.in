@@ -102,7 +102,7 @@ if '${WITH_FLUID_ONLY}'== 'OFF':
     package_data['py_paddle']=['*.py','_swig_paddle.so']
 
 package_dir={
-    '': '${CMAKE_CURRENT_SOURCE_DIR}',
+    '': '${PADDLE_BINARY_DIR}/python',
     # The paddle.fluid.proto will be generated while compiling.
     # So that package points to other directory.
     'paddle.fluid.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
