@@ -181,12 +181,18 @@ def train(use_cuda, save_dirname=None, is_local=True):
     # add dependency track and move this config before optimizer
     crf_decode = fluid.layers.crf_decoding(
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
-
-    chunk_evaluator = fluid.evaluator.ChunkEvaluator(
+    chunk_metrics = fluid.layers.chunk_eval(
         input=crf_decode,
         label=target,
         chunk_scheme="IOB",
         num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
+
+    # chunk_evaluator = fluid.evaluator.ChunkEvaluator(
+    #     input=crf_decode,
+    #     label=target,
+    #     chunk_scheme="IOB",
+    #     num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
+    chunk_evaluator = fluid.metrics.ChunkEvalutor()
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
@@ -213,14 +219,15 @@ def train(use_cuda, save_dirname=None, is_local=True):
         start_time = time.time()
         batch_id = 0
         for pass_id in xrange(PASS_NUM):
-            chunk_evaluator.reset(exe)
+            chunk_evaluator.reset()
             for data in train_data():
                 cost, precision, recall, f1_score = exe.run(
                     main_program,
                     feed=feeder.feed(data),
-                    fetch_list=[avg_cost] + chunk_evaluator.metrics)
+                    fetch_list=[avg_cost] + list(chunk_metrics))
+                chunk_evaluator.update(*chunk_metrics)
                 pass_precision, pass_recall, pass_f1_score = chunk_evaluator.eval(
-                    exe)
+                )
 
                 if batch_id % 10 == 0:
                     print("avg_cost:" + str(cost) + " precision:" + str(
