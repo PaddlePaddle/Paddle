@@ -62,9 +62,9 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
                                               softmax_md, 1 /*dim: C*/);
     // create memory primitives
     auto softmax_src_memory =
-        memory({softmax_md, mkldnn_engine}, static_cast<void*>(input_data));
+        memory({softmax_md, mkldnn_engine}, const_cast<void*>(input_data));
     auto softmax_dst_memory =
-        memory({softmax_md, mkldnn_engine}, static_cast<void*>(output_data));
+        memory({softmax_md, mkldnn_engine}, const_cast<void*>(output_data));
     auto softmax_prim_desc =
         softmax_forward::primitive_desc(softmax_desc, mkldnn_engine);
     auto softmax = softmax_forward(softmax_prim_desc, softmax_src_memory,
