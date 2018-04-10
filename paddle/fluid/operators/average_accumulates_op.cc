@@ -19,15 +19,15 @@ namespace operators {
 
 template <>
 void GetAccumulators<paddle::platform::CPUDeviceContext>(
-    const framework::ExecutionContext& ctx, int64_t& num_updates_,
-    int64_t& num_accumulates_, int64_t& old_num_accumulates_) {
+    const framework::ExecutionContext& ctx, int64_t* num_updates_,
+    int64_t* num_accumulates_, int64_t* old_num_accumulates_) {
   auto* in_old_num_accumulates = ctx.Input<Tensor>("in_old_num_accumulates");
   auto* in_num_accumulates = ctx.Input<Tensor>("in_num_accumulates");
   auto* in_num_updates = ctx.Input<Tensor>("in_num_updates");
 
-  old_num_accumulates_ = in_old_num_accumulates->data<int64_t>()[0];
-  num_accumulates_ = in_num_accumulates->data<int64_t>()[0];
-  num_updates_ = in_num_updates->data<int64_t>()[0];
+  *old_num_accumulates_ = in_old_num_accumulates->data<int64_t>()[0];
+  *num_accumulates_ = in_num_accumulates->data<int64_t>()[0];
+  *num_updates_ = in_num_updates->data<int64_t>()[0];
 }
 
 template <>

@@ -105,6 +105,8 @@ def split_dense_variable(var_list,
         the parameter server side can gain better performance. By default
         minimum block size is 1024. The max block size is used to prevent
         very large blocks that may cause send error.
+        :return: A list of VarBlocks. Each VarBlock specifies a shard of
+           the var.
     """
     blocks = []
     for var in var_list:
@@ -231,7 +233,8 @@ class DistributeTranspiler:
         self.has_distributed_lookup_table = len(
             distributed_lookup_table_ops) > 0
 
-        # step1
+        # step1: For large parameters and gradients, split them into smaller
+        # blocks.
         param_list = [pg[0] for pg in params_grads]
         grad_list = [pg[1] for pg in params_grads]
 
@@ -260,17 +263,18 @@ class DistributeTranspiler:
 
         grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
         param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
-        # step2
+        # step2: Create new vars for the parameters and gradients blocks and
+        # add ops to do the split.
         grad_var_mapping = self._append_split_op(program, grad_blocks)
-        # step3
+        param_var_mapping = self._create_vars_from_blocklist(program,
+                                                             param_blocks)
+        # step3: Add gradients as send op inputs and parameters as send
+        # op outputs.
         send_inputs = []
         send_outputs = []
         for b in grad_blocks:  # append by order
             varname, block_id, _ = b.split(":")
             send_inputs.append(grad_var_mapping[varname][int(block_id)])
-
-        param_var_mapping = self._create_vars_from_blocklist(program,
-                                                             param_blocks)
         for b in param_blocks:
             varname, block_id, _ = b.split(":")
             send_outputs.append(param_var_mapping[varname][int(block_id)])
@@ -300,7 +304,7 @@ class DistributeTranspiler:
                      "RPCClient": rpc_client_var},
             attrs={"endpoints": pserver_endpoints,
                    "epmap": eplist})
-        # step4
+        # step4: Concat the parameters splits together after recv.
         for varname, splited_var in param_var_mapping.iteritems():
             if len(splited_var) <= 1:
                 continue
@@ -422,13 +426,14 @@ class DistributeTranspiler:
     def get_pserver_program(self, endpoint):
         """
         Get pserver side program using the endpoint.
+        TODO(panyx0718): Revisit this assumption. what if #blocks > #pservers.
         NOTE: assume blocks of the same variable is not distributed
         on the same pserver, only change param/grad varnames for
         trainers to fetch.
         """
         # step1
         pserver_program = Program()
-        # step2
+        # step2: Create vars to receive vars at parameter servers.
         recv_inputs = []
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
             self._clone_var(pserver_program.global_block(), v)
@@ -437,19 +442,23 @@ class DistributeTranspiler:
             # we don't need to create them when grad arrives.
             # change client side var name to origin name by
             # removing ".trainer_%d" suffix
+
             suff_idx = v.name.find(".trainer_")
             if suff_idx >= 0:
                 orig_var_name = v.name[:suff_idx]
             else:
                 orig_var_name = v.name
-            single_trainer_var = pserver_program.global_block().create_var(
-                name=orig_var_name,
-                persistable=True,
-                type=v.type,
-                dtype=v.dtype,
-                shape=v.shape)
-            if self.trainer_num > 1:
-                for trainer_id in xrange(self.trainer_num):
+            # NOTE: single_trainer_var must be created for multi-trainer
+            # case to merge grads from multiple trainers
+            single_trainer_var = \
+                pserver_program.global_block().create_var(
+                    name=orig_var_name,
+                    persistable=True,
+                    type=v.type,
+                    dtype=v.dtype,
+                    shape=v.shape)
+            if self.trainers > 1:
+                for trainer_id in xrange(self.trainers):
                     var = pserver_program.global_block().create_var(
                         name="%s.trainer_%d" % (orig_var_name, trainer_id),
                         persistable=False,
@@ -508,7 +517,7 @@ class DistributeTranspiler:
                 self._append_pserver_non_opt_ops(block, op)
 
         append_block = optimize_block
-        # append lr decay ops to the child block if exits
+        # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
         if len(lr_ops) > 0:
             for _, op in enumerate(lr_ops):
@@ -704,8 +713,10 @@ class DistributeTranspiler:
                                     block_list,
                                     add_trainer_suffix=False):
         """
+        Create vars for each split.
         NOTE: only grads need to be named for different trainers, use
               add_trainer_suffix to rename the grad vars.
+        :return: A dict mapping from original var name to each var split.
         """
         block_map = dict()
         var_mapping = dict()
@@ -882,6 +893,7 @@ class DistributeTranspiler:
                         type="sum",
                         inputs={"X": vars2merge},
                         outputs={"Out": merged_var})
+                    # TODO(panyx0718): What if it's SELECTED_ROWS.
                     if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
                         optimize_block.append_op(
                             type="scale",
@@ -905,7 +917,7 @@ class DistributeTranspiler:
                     shape=param_block.shape)
                 new_inputs[key] = tmpvar
             elif key == "LearningRate":
-                # leraning rate variable has already be created by non-optimize op,
+                # learning rate variable has already be created by non-optimize op,
                 # don't create it once again.
                 lr_varname = opt_op.input(key)[0]
                 if pserver_block.vars.has_key(lr_varname):
@@ -1039,6 +1051,7 @@ class DistributeTranspiler:
             return False
 
     def _get_input_map_from_op(self, varmap, op):
+        """Returns a dict from op input name to the vars in varmap."""
         iomap = dict()
         for key in op.input_names:
             vars = []
@@ -1051,6 +1064,7 @@ class DistributeTranspiler:
         return iomap
 
     def _get_output_map_from_op(self, varmap, op):
+        """Returns a dict from op output name to the vars in varmap."""
         iomap = dict()
         for key in op.output_names:
             vars = []
@@ -1078,6 +1092,7 @@ class DistributeTranspiler:
                 find_ops.append(op)
         # make a union find struct by the ops in default_main_program
         ufind = UnionFind(block.ops)
+
         for op1 in block.ops:
             for op2 in block.ops:
                 # NOTE: we need to skip all optimize ops, since it is connected
