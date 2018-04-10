@@ -280,6 +280,7 @@ class DetectionMAP(MetricBase):
     def eval(self):
         if self.weight == 0:
             raise ValueError(
-                "There is no data in DetectionMAP Metrics. Please check layers.detection_map output has added to DetectionMAP."
+                "There is no data in DetectionMAP Metrics. "
+                "Please check layers.detection_map output has added to DetectionMAP."
             )
         return self.value / self.weight
