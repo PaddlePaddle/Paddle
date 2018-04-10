@@ -236,13 +236,9 @@ def monkey_patch_reader_methods(reader):
         var = scope.find_var(reader.name)
         return var.get_reader()
 
-    def eof():
-        return not __get_reader__().has_next()
-
     def reset():
         return __get_reader__().reset()
 
-    reader.eof = eof
     reader.reset = reset
     reader.stop_gradient = True
     reader.persistable = True
@@ -299,8 +295,7 @@ def open_recordio_file(filename,
        shapes(list): List of tuples which declaring data shapes.
        lod_levels(list): List of ints which declaring data lod_level.
        dtypes(list): List of strs which declaring data type.
-       pass_num(int): Number of passes to run. After completing the
-            given number of passes, 'has_next()' will return False.
+       pass_num(int): Number of passes to run.
        for_parallel(Bool): Set it as True if you are going to run
             subsequent operators in parallel.
 
@@ -377,8 +372,7 @@ def open_files(filenames,
        dtypes(list): List of strs which declaring data type.
        thread_num(int): The maximal concurrent prefetch thread number.
        buffer_size(int): The size of prefetch buffer.
-       pass_num(int): Number of passes to run. After completing the 
-            given number of passes, 'has_next()' will return False.
+       pass_num(int): Number of passes to run.
        for_parallel(Bool): Set it as True if you are going to run 
             subsequent operators in parallel.
 

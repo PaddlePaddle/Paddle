@@ -30,12 +30,12 @@ class MultiFileReader : public framework::ReaderBase {
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
-  bool HasNext() const override;
   void ReInit() override;
 
   ~MultiFileReader() { EndScheduler(); }
 
  private:
+  bool HasNext();
   void StartNewScheduler();
   void EndScheduler();
   void ScheduleThreadFunc();
@@ -52,21 +52,21 @@ class MultiFileReader : public framework::ReaderBase {
 };
 
 void MultiFileReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  if (!HasNext()) {
-    PADDLE_THROW("There is no next data!");
+  out->clear();
+  if (HasNext()) {
+    buffer_->Receive(out);
   }
-  buffer_->Receive(out);
-}
-
-bool MultiFileReader::HasNext() const {
-  while (!buffer_->IsClosed() && !buffer_->CanReceive()) {
-  }
-  return buffer_->CanReceive();
 }
 
 void MultiFileReader::ReInit() {
   EndScheduler();
   StartNewScheduler();
+}
+
+bool MultiFileReader::HasNext() {
+  while (!buffer_->IsClosed() && !buffer_->CanReceive()) {
+  }
+  return buffer_->CanReceive();
 }
 
 void MultiFileReader::StartNewScheduler() {
@@ -140,9 +140,12 @@ void MultiFileReader::PrefetchThreadFunc(std::string file_name,
   VLOG(5) << "The prefetch thread of file '" << file_name << "' starts.";
   std::unique_ptr<framework::ReaderBase> reader =
       CreateReaderByFileName(file_name, dims_);
-  while (reader->HasNext()) {
+  while (true) {
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
+    if (ins.empty()) {
+      break;
+    }
     try {
       buffer_->Send(&ins);
     } catch (paddle::platform::EnforceNotMet e) {

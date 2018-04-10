@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <mutex>
-#include <thread>
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 #include "paddle/fluid/recordio/scanner.h"
 
@@ -35,17 +33,15 @@ class RecordIOFileReader : public framework::FileReader {
     LOG(INFO) << "Creating file reader" << filename;
   }
 
-  bool HasNext() const override { return scanner_.HasNext(); }
-
   void ReInit() override { scanner_.Reset(); }
 
  protected:
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     if (ThreadSafe) {
       std::lock_guard<std::mutex> guard(*mutex_);
-      *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
     } else {
-      *out = framework::ReadFromRecordIO(scanner_, dev_ctx_);
+      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
     }
   }
 
@@ -66,7 +62,7 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
     const auto& ranks = Attr<std::vector<int>>("ranks");
     PADDLE_ENFORCE(!shape_concat.empty() && !ranks.empty());
     PADDLE_ENFORCE_EQ(std::accumulate(ranks.begin(), ranks.end(), 0),
-                      int(shape_concat.size()),
+                      static_cast<int>(shape_concat.size()),
                       "The accumulate of all ranks should be equal to the "
                       "shape concat's length.");
     std::string filename = Attr<std::string>("filename");
