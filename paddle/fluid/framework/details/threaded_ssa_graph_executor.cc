@@ -69,7 +69,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   for (auto &var_map : graph_->vars_) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
-        InsertPendingVar(version_pair.second);
+        InsertPendingVar(*version_pair);
       }
     }
   }
@@ -95,7 +95,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     for (auto &var_map : graph_->vars_) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
-        fetched_vars[fetch_var_name].push_back(&it->second.rbegin()->second);
+        fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
       }
     }
   }
