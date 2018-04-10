@@ -26,7 +26,13 @@ import numpy as np
 
 
 def resnet_cifar10(input, depth=32):
-    def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
+    def conv_bn_layer(input,
+                      ch_out,
+                      filter_size,
+                      stride,
+                      padding,
+                      act='relu',
+                      bias_attr=False):
         tmp = fluid.layers.conv2d(
             input=input,
             filter_size=filter_size,
@@ -34,7 +40,7 @@ def resnet_cifar10(input, depth=32):
             stride=stride,
             padding=padding,
             act=None,
-            bias_attr=False)
+            bias_attr=bias_attr)
         return fluid.layers.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
@@ -45,7 +51,7 @@ def resnet_cifar10(input, depth=32):
 
     def basicblock(input, ch_in, ch_out, stride):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
-        tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None)
+        tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
         return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
 
