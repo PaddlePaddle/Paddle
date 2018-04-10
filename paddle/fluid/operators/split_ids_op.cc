@@ -48,8 +48,8 @@ class SplitIdsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutputs("Out"), "SplitIdsOp must has output Out.");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
+    auto ids_dims = ctx->GetInputDim("Ids");
     if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
-      auto ids_dims = ctx->GetInputDim("Ids");
       PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
       PADDLE_ENFORCE_EQ(ids_dims[1], 1);
     }
@@ -60,8 +60,9 @@ class SplitIdsOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(const framework::OpDesc &op_desc,
                   framework::BlockDesc *block) const override {
+    auto *input_var = block->Var(op_desc.Input("Ids")[0]);
     for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(framework::proto::VarType::LOD_TENSOR);
+      block->Var(out_var)->SetType(input_var->GetType());
     }
   }
 };
@@ -73,4 +74,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(split_ids, ops::SplitIdsOp, ops::SplitIdsOpMaker,
                   ops::SplitIdsOpInferVarType);
 REGISTER_OP_CPU_KERNEL(
-    split_ids, ops::SplitIdsOpKernel<paddle::platform::CPUPlace, int64_t>);
+    split_ids, ops::SplitIdsOpKernel<paddle::platform::CPUPlace, int64_t>,
+    ops::SplitIdsOpKernel<paddle::platform::CPUPlace, float>);

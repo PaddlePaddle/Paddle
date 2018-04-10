@@ -580,6 +580,7 @@ class DistributeTranspiler:
                 if op.input("Param")[0] == self.table_name
             ][0]
             table_opt_block = pserver_program.create_block(append_block.idx)
+            # only support sgd now
             assert table_opt_op.type == "sgd"
 
             # append sum op for table_grad_list
