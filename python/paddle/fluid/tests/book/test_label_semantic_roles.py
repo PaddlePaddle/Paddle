@@ -77,7 +77,7 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
     emb_layers.append(mark_embedding)
 
     hidden_0_layers = [
-        fluid.layers.fc(input=emb, size=hidden_dim) for emb in emb_layers
+        fluid.layers.fc(input=emb, size=hidden_dim, act='tanh') for emb in emb_layers
     ]
 
     hidden_0 = fluid.layers.sums(input=hidden_0_layers)
@@ -94,8 +94,8 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
 
     for i in range(1, depth):
         mix_hidden = fluid.layers.sums(input=[
-            fluid.layers.fc(input=input_tmp[0], size=hidden_dim),
-            fluid.layers.fc(input=input_tmp[1], size=hidden_dim)
+            fluid.layers.fc(input=input_tmp[0], size=hidden_dim, act='tanh'),
+            fluid.layers.fc(input=input_tmp[1], size=hidden_dim, act='tanh')
         ])
 
         lstm = fluid.layers.dynamic_lstm(
@@ -109,8 +109,8 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
         input_tmp = [mix_hidden, lstm]
 
     feature_out = fluid.layers.sums(input=[
-        fluid.layers.fc(input=input_tmp[0], size=label_dict_len),
-        fluid.layers.fc(input=input_tmp[1], size=label_dict_len)
+        fluid.layers.fc(input=input_tmp[0], size=label_dict_len, act='tanh'),
+        fluid.layers.fc(input=input_tmp[1], size=label_dict_len, act='tanh')
     ])
 
     return feature_out
@@ -171,7 +171,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
     # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(
         learning_rate=fluid.layers.exponential_decay(
-            learning_rate=0.0001,
+            learning_rate=0.01,
             decay_steps=100000,
             decay_rate=0.5,
             staircase=True))
