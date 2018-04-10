@@ -1,4 +1,4 @@
-# Kubernetes Distributed Training
+# Distributed Training on Kubernetes
 
 We introduced how to create a PaddlePaddle Job with a single node on Kuberentes in the
 previous document.
