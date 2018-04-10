@@ -413,7 +413,8 @@ class DistributeTranspiler:
                         type="send_vars",
                         inputs={'X': self.table_grad_list},
                         outputs={"RPCClient": rpc_client_var},
-                        attrs={"sync_send": True})
+                        attrs={"sync_send": True,
+                               "epmap": pserver_endpoints})
                     break
 
     def get_trainer_program(self):

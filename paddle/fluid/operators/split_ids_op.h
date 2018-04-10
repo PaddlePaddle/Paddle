@@ -62,17 +62,18 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
       auto &ids_dims = ids_selected_rows->value().dims();
       PADDLE_ENFORCE_EQ(ids_dims[0], ids_selected_rows->rows().size(), "");
       const T *ids = ids_selected_rows->value().data<T>();
-      const auto &rows = ids_selected_rows->rows();
+      const auto &ids_rows = ids_selected_rows->rows();
       auto outs = ctx.MultiOutput<framework::SelectedRows>("Out");
       const size_t shard_num = outs.size();
       // get rows for outputs
-      for (auto &id : rows) {
+      for (auto &id : ids_rows) {
         size_t shard_id = static_cast<size_t>(id) % shard_num;
         outs[shard_id]->mutable_rows()->push_back(id);
       }
 
       int64_t row_width = ids_dims[1];
       for (auto &out : outs) {
+        out->set_height(ids_selected_rows->height());
         framework::DDim ddim = framework::make_ddim(
             {static_cast<int64_t>(out->rows().size()), row_width});
         T *output = out->mutable_value()->mutable_data<T>(ddim, place);

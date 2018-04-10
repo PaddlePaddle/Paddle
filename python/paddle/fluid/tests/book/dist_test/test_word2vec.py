@@ -23,7 +23,7 @@ import sys
 
 
 def train(use_cuda=False, is_sparse=True, is_local=False):
-    PASS_NUM = 100
+    PASS_NUM = 1000
     EMBED_SIZE = 32
     HIDDEN_SIZE = 256
     N = 5
@@ -107,9 +107,11 @@ def train(use_cuda=False, is_sparse=True, is_local=False):
                 avg_cost_np = exe.run(main_program,
                                       feed=feeder.feed(data),
                                       fetch_list=[avg_cost])
-                if batch_num == TRAINING_BATCHES:
-                    return
-                #print("batch_id=" + str(batch_num) + ", cost=" + str(avg_cost_np[0]))
+                #if batch_num == TRAINING_BATCHES:
+                #    return
+                if batch_num % 10 == 0:
+                    print("pass_id=" + str(pass_id) + ", batch_id=" + str(
+                        batch_num) + ", cost=" + str(avg_cost_np[0]))
                 if avg_cost_np[0] < 5.0:
                     return
                 if math.isnan(float(avg_cost_np[0])):

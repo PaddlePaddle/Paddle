@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-export GLOG_v=3
-export GLOG_logtostderr=1
+#export GLOG_v=3
+#export GLOG_logtostderr=1
 
 source test_word2vec.env
 

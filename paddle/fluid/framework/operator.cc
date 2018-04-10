@@ -55,7 +55,7 @@ static DDim GetDims(const Scope& scope, const std::string& name) {
   if (var->IsType<LoDTensor>()) {
     return var->Get<LoDTensor>().dims();
   } else if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().GetCompleteDims();
+    return var->Get<SelectedRows>().value().dims();
   } else {
     return DDim({-1});
   }
