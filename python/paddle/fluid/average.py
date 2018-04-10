@@ -38,7 +38,7 @@ class WeightedAverage(object):
     def __init__(self):
         warnings.warn(
             "The %s is deprecated, please use fluid.metrics.Accuracy instead." %
-            (self.__class__.__name__), DeprecationWarning)
+            (self.__class__.__name__), Warning)
         self.reset()
 
     def reset(self):
