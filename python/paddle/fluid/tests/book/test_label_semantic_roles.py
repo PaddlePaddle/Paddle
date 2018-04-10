@@ -187,13 +187,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
         chunk_scheme="IOB",
         num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
 
-    # chunk_evaluator = fluid.evaluator.ChunkEvaluator(
-    #     input=crf_decode,
-    #     label=target,
-    #     chunk_scheme="IOB",
-    #     num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
     chunk_evaluator = fluid.metrics.ChunkEvalutor()
-
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.conll05.test(), buf_size=8192),
