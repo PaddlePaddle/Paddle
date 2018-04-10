@@ -18,6 +18,7 @@ The metrics are accomplished via Python natively.
 """
 import numpy as np
 import copy
+import warnings
 
 __all__ = [
     'MetricBase',
@@ -284,3 +285,82 @@ class DetectionMAP(MetricBase):
                 "Please check layers.detection_map output has added to DetectionMAP."
             )
         return self.value / self.weight
+
+
+class Auc(MetricBase):
+    """
+    Auc Metrics which adapts to binary classification.
+    Need to note that auc metrics compute the value via Python natively.
+    If you concern the speed, please use the fluid.layers.auc instead.
+
+    The `auc` function creates four local variables, `true_positives`,
+      `true_negatives`, `false_positives` and `false_negatives` that are used to
+      compute the AUC. To discretize the AUC curve, a linearly spaced set of
+      thresholds is used to compute pairs of recall and precision values. The area
+      under the ROC-curve is therefore computed using the height of the recall
+      values by the false positive rate, while the area under the PR-curve is the
+      computed using the height of the precision values by the recall.
+
+    Args:
+        name: metric name
+        curve: Specifies the name of the curve to be computed, 'ROC' [default] or
+          'PR' for the Precision-Recall-curve.
+        num_thresholds: The number of thresholds to use when discretizing the roc
+            curve.
+
+    "NOTE: only implement the ROC curve type via Python now."
+    """
+
+    def __init__(self, name, curve='ROC', num_thresholds=200):
+        super(MetricBase, self).__init__(name, curve, num_thresholds)
+        self._curve = curve
+        self._num_thresholds = num_thresholds
+        self._epsilon = 1e-6
+        self.tp_list = np.ndarray((num_thresholds, ))
+        self.fn_list = np.ndarray((num_thresholds, ))
+        self.tn_list = np.ndarray((num_thresholds, ))
+        self.fp_list = np.ndarray((num_thresholds, ))
+
+    def update(self, labels, predictions, axis=1):
+        if not _is_numpy_(labels):
+            raise ValueError("The 'labels' must be a numpy ndarray.")
+        if not _is_numpy_(predictions):
+            raise ValueError("The 'predictions' must be a numpy ndarray.")
+
+        kepsilon = 1e-7  # to account for floating point imprecisions
+        thresholds = [(i + 1) * 1.0 / (num_thresholds - 1)
+                      for i in range(num_thresholds - 2)]
+        thresholds = [0.0 - kepsilon] + thresholds + [1.0 + kepsilon]
+
+        # caculate TP, FN, TN, FP count
+        for idx_thresh, thresh in enumerate(thresholds):
+            tp, fn, tn, fp = 0, 0, 0, 0
+            for i, lbl in enumerate(labels):
+                if lbl:
+                    if predictions[i, 0] >= thresh:
+                        tp += 1
+                    else:
+                        fn += 1
+                else:
+                    if predictions[i, 0] >= thresh:
+                        fp += 1
+                    else:
+                        tn += 1
+            tp_list[idx_thresh] += tp
+            fn_list[idx_thresh] += fn
+            tn_list[idx_thresh] += tn
+            fp_list[idx_thresh] += fp
+
+    def eval(self):
+        epsilon = self._epsilon
+        num_thresholds = self._num_thresholds
+        tpr = (tp_list.astype("float32") + epsilon) / (
+            tp_list + fn_list + epsilon)
+        fpr = fp_list.astype("float32") / (fp_list + tn_list + epsilon)
+        rec = (tp_list.astype("float32") + epsilon) / (
+            tp_list + fp_list + epsilon)
+
+        x = fpr[:num_thresholds - 1] - fpr[1:]
+        y = (tpr[:num_thresholds - 1] + tpr[1:]) / 2.0
+        auc_value = np.sum(x * y)
+        return auc_value

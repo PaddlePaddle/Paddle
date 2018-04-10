@@ -55,3 +55,31 @@ def accuracy(input, label, k=1, correct=None, total=None):
             "Total": [total],
         })
     return acc_out
+
+
+def auc(input, label, curve='ROC', num_thresholds=200):
+    helper = LayerHelper("auc", **locals())
+    topk_out = helper.create_tmp_variable(dtype=input.dtype)
+    topk_indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [topk_out],
+                 "Indices": [topk_indices]},
+        attrs={"k": k})
+    auc_out = helper.create_tmp_variable(dtype="float32")
+    if correct is None:
+        correct = helper.create_tmp_variable(dtype="int64")
+    if total is None:
+        total = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="accuracy",
+        inputs={
+            "Out": [topk_out],
+            "Indices": [topk_indices],
+            "Label": [label]
+        },
+        attrs={"curve": curve,
+               "num_thresholds": num_thresholds},
+        outputs={"AUC": [auc_out], })
+    return auc_out
