@@ -1,11 +1,8 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,9 +12,11 @@ limitations under the License. */
 #pragma once
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/platform/float16.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -338,9 +337,23 @@ struct Sine {
   HOSTDEVICE T operator()(const T& val) const { return sin(val); }
 };
 
+template <>
+struct Sine<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(sin(static_cast<float>(val)));
+  }
+};
+
 template <typename T>
 struct Cosine {
   HOSTDEVICE T operator()(const T& val) const { return cos(val); }
+};
+
+template <>
+struct Cosine<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(cos(static_cast<float>(val)));
+  }
 };
 
 // cosine'(x) = -sin(x)
@@ -826,6 +839,7 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
   __macro(logsigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);     \
   __macro(exp, ExpFunctor, ExpGradFunctor);                          \
+  __macro(relu, ReluFunctor, ReluGradFunctor);                       \
   __macro(tanh, TanhFunctor, TanhGradFunctor);                       \
   __macro(softshrink, SoftShrinkFunctor, SoftShrinkGradFunctor);     \
   __macro(sqrt, SqrtFunctor, SqrtGradFunctor);                       \
