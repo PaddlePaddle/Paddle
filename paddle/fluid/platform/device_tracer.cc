@@ -11,15 +11,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/platform/device_tracer.h"
-#include <google/protobuf/text_format.h>
+
+#include <deque>
 #include <fstream>
 #include <map>
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <numeric>
-#include <thread>
+#include <string>
+#include <thread>  // NOLINT
+#include <vector>
+
 #include "glog/logging.h"
+#include "google/protobuf/text_format.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/string/printf.h"
 
@@ -123,7 +127,7 @@ void DisableActivity() {
 
 void CUPTIAPI bufferRequested(uint8_t **buffer, size_t *size,
                               size_t *maxNumRecords) {
-  uint8_t *buf = (uint8_t *)malloc(kBufSize + kAlignSize);
+  uint8_t *buf = reinterpret_cast<uint8_t *>(malloc(kBufSize + kAlignSize));
   *size = kBufSize;
   *buffer = ALIGN_BUFFER(buf, kAlignSize);
   *maxNumRecords = 0;
