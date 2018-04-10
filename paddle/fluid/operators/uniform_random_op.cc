@@ -24,8 +24,19 @@ template <typename T>
 class CPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* tensor = ctx.Output<framework::Tensor>("Out");
+    framework::Tensor* tensor(nullptr);
+    auto out_var = ctx.OutputVar("Out");
+    if (out_var->IsType<framework::LoDTensor>()) {
+      tensor = ctx.Output<framework::LoDTensor>("Out");
+    } else if (out_var->IsType<framework::SelectedRows>()) {
+      auto shape = ctx.Attr<std::vector<int>>("shape");
+      tensor = ctx.Output<framework::SelectedRows>("Out")->mutable_value();
+      tensor->Resize(framework::make_ddim(shape));
+    } else {
+      PADDLE_THROW("Only support LoDTensor and SelectedRows.");
+    }
     T* data = tensor->mutable_data<T>(ctx.GetPlace());
+    data[0] = static_cast<T>(1000);
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
