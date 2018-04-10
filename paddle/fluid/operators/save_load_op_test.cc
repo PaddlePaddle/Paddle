@@ -61,3 +61,35 @@ TEST(SaveLoadOp, CPU) {
     }
   }
 }
+
+TEST(SaveLoadFP16Op, CPU) {
+  paddle::framework::Scope scope;
+  paddle::platform::CPUPlace place;
+
+  auto var = scope.Var("test_var");
+  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  tensor->Resize({3, 10});
+
+  float* expect = tensor->mutable_data<float>(place);
+  for (int64_t i = 0; i < tensor->numel(); ++i) {
+    expect[i] = static_cast<float>(i);
+  }
+
+  paddle::framework::AttributeMap attrs;
+  attrs.insert({"file_path", std::string("tensor.save")});
+  attrs.insert({"save_as_fp16_dtype", true});
+
+  auto save_op = paddle::framework::OpRegistry::CreateOp(
+      "save", {{"X", {"test_var"}}}, {}, attrs);
+  save_op->Run(scope, place);
+
+  auto load_var = scope.Var("out_var");
+  auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
+  auto load_op = paddle::framework::OpRegistry::CreateOp(
+      "load", {}, {{"Out", {"out_var"}}}, attrs);
+  load_op->Run(scope, place);
+  paddle::platform::float16* actual = target->data<paddle::platform::float16>();
+  for (int64_t i = 0; i < tensor->numel(); ++i) {
+    EXPECT_EQ(expect[i], static_cast<float>(actual[i]));
+  }
+}
