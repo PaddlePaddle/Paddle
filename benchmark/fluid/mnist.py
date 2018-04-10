@@ -36,6 +36,12 @@ def parse_args():
     parser.add_argument(
         '--batch_size', type=int, default=128, help='The minibatch size.')
     parser.add_argument(
+        '--skip_batch_num',
+        type=int,
+        default=5,
+        help='The first num of minibatch num to skip, for better performance test'
+    )
+    parser.add_argument(
         '--iterations', type=int, default=35, help='The number of minibatches.')
     parser.add_argument(
         '--pass_num', type=int, default=5, help='The number of passes.')
@@ -53,17 +59,12 @@ def parse_args():
         '--use_nvprof',
         action='store_true',
         help='If set, use nvprof for CUDA.')
+    parser.add_argument(
+        '--with_test',
+        action='store_true',
+        help='If set, test the testset during training.')
     args = parser.parse_args()
     return args
-
-
-def print_arguments(args):
-    vars(args)['use_nvprof'] = (vars(args)['use_nvprof'] and
-                                vars(args)['device'] == 'GPU')
-    print('-----------  Configuration Arguments -----------')
-    for arg, value in sorted(vars(args).iteritems()):
-        print('%s: %s' % (arg, value))
-    print('------------------------------------------------')
 
 
 def cnn_model(data):
@@ -161,16 +162,22 @@ def run_benchmark(model, args):
         paddle.dataset.mnist.train(), batch_size=args.batch_size)
 
     accuracy = fluid.average.WeightedAverage()
+    iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in range(args.pass_num):
         accuracy.reset()
-        pass_start = time.time()
+        train_accs = []
+        train_losses = []
         for batch_id, data in enumerate(train_reader()):
+            if iters == args.skip_batch_num:
+                start_time = time.time()
+                num_samples = 0
+            if iters == args.iterations:
+                break
             img_data = np.array(
                 map(lambda x: x[0].reshape([1, 28, 28]), data)).astype(DTYPE)
             y_data = np.array(map(lambda x: x[1], data)).astype("int64")
             y_data = y_data.reshape([len(y_data), 1])
 
-            start = time.time()
             outs = exe.run(
                 fluid.default_main_program(),
                 feed={"pixel": img_data,
@@ -178,21 +185,36 @@ def run_benchmark(model, args):
                 fetch_list=[avg_cost, batch_acc, batch_size_tensor]
             )  # The accuracy is the accumulation of batches, but not the current batch.
             accuracy.add(value=outs[1], weight=outs[2])
-            end = time.time()
+            iters += 1
+            num_samples += len(y_data)
             loss = np.array(outs[0])
             acc = np.array(outs[1])
-            print("pass=%d, batch=%d, loss=%f, error=%f, elapse=%f" %
-                  (pass_id, batch_id, loss, 1 - acc, (end - start) / 1000))
+            train_losses.append(loss)
+            train_accs.append(acc)
+            print("Pass: %d, Iter: %d, Loss: %f, Accuracy: %f" %
+                  (pass_id, iters, loss, acc))
 
-        pass_end = time.time()
+        print("Pass: %d, Loss: %f, Train Accuray: %f\n" %
+              (pass_id, np.mean(train_losses), np.mean(train_accs)))
+        train_elapsed = time.time() - start_time
+        examples_per_sec = num_samples / train_elapsed
 
-        train_avg_acc = accuracy.eval()
-        test_avg_acc = eval_test(exe, batch_acc, batch_size_tensor,
-                                 inference_program)
+        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
+              (num_samples, train_elapsed, examples_per_sec))
+        # evaluation
+        if args.with_test:
+            test_avg_acc = eval_test(exe, batch_acc, batch_size_tensor,
+                                     inference_program)
+        exit(0)
 
-        print("pass=%d, train_avg_acc=%f, test_avg_acc=%f, elapse=%f" %
-              (pass_id, train_avg_acc, test_avg_acc,
-               (pass_end - pass_start) / 1000))
+
+def print_arguments(args):
+    vars(args)['use_nvprof'] = (vars(args)['use_nvprof'] and
+                                vars(args)['device'] == 'GPU')
+    print('----------- mnist Configuration Arguments -----------')
+    for arg, value in sorted(vars(args).iteritems()):
+        print('%s: %s' % (arg, value))
+    print('------------------------------------------------')
 
 
 if __name__ == '__main__':

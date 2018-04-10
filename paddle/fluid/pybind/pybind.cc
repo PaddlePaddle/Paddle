@@ -72,7 +72,7 @@ PYBIND11_PLUGIN(core) {
   // not cause namespace pollution.
   using namespace paddle::framework;  // NOLINT
 
-  BindException(m);
+  BindException(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
@@ -422,7 +422,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
-  m.def("init_devices", &framework::InitDevices);
+  m.def("init_devices",
+        [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
 #ifdef PADDLE_WITH_CUDA
@@ -435,11 +436,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 
-  BindProgramDesc(m);
-  BindBlockDesc(m);
-  BindVarDsec(m);
-  BindOpDesc(m);
-  BindConstValue(m);
+  BindProgramDesc(&m);
+  BindBlockDesc(&m);
+  BindVarDsec(&m);
+  BindOpDesc(&m);
+  BindConstValue(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -501,16 +502,23 @@ All parameter, weight, gradient are variables in Paddle.
            [](ParallelExecutor &self, size_t num_threads, bool use_event,
               const std::vector<platform::Place> &places,
               const std::unordered_set<std::string> &params,
-              const ProgramDesc &startup_program,
+              const std::unordered_set<std::string> &bcast_vars,
               const ProgramDesc &main_program, const std::string &loss_var_name,
-              Scope *scope, bool allow_op_delay) {
-             new (&self) ParallelExecutor(num_threads, use_event, places,
-                                          params, startup_program, main_program,
-                                          loss_var_name, scope, allow_op_delay);
+              Scope *scope, std::vector<Scope *> &local_scopes,
+              bool allow_op_delay) {
+             new (&self)
+                 ParallelExecutor(num_threads, use_event, places, params,
+                                  bcast_vars, main_program, loss_var_name,
+                                  scope, local_scopes, allow_op_delay);
            })
+      .def("local_scopes",
+           [](ParallelExecutor &self) -> std::vector<Scope *> * {
+             return &self.GetLocalScopes();
+           },
+           py::return_value_policy::reference)
       .def("run", &ParallelExecutor::Run);
 
-  BindRecordIOWriter(m);
+  BindRecordIOWriter(&m);
   return m.ptr();
 }
 }  // namespace pybind

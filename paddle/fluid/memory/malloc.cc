@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/memory/malloc.h"
 
 #include "glog/logging.h"
 
@@ -95,7 +95,7 @@ void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
     int cur_dev = platform::GetCurrentDeviceId();
     platform::SetDeviceId(place.device);
     size_t avail, total;
-    platform::GpuMemoryUsage(avail, total);
+    platform::GpuMemoryUsage(&avail, &total);
     LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
                  << place.device << ", available " << avail << " bytes";
     LOG(WARNING) << "total " << total;

@@ -15,8 +15,8 @@
 import unittest
 
 import paddle.fluid as fluid
-import paddle
-import paddle.dataset.mnist as mnist
+import paddle.v2 as paddle
+import paddle.v2.dataset.mnist as mnist
 
 
 class TestRecordIO(unittest.TestCase):
