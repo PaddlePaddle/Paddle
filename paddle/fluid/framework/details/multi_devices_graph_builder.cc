@@ -59,7 +59,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   auto graph = new SSAGraph();
   SSAGraph &result = *graph;
   std::unordered_set<std::string> og_has_been_broadcast;
-  result.vars_.resize(places_.size());
+
+  // We cannot invoke resize. It is a bug of GCC 4.8
+  result.vars_ = std::vector<
+      std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
+      places_.size());
 
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
@@ -147,15 +151,16 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
             if (vars.empty()) {  // This device has no data. continue.
               continue;
             }
-            auto *prev_grad = &vars[vars.size() - 1];
-            op_handle->AddInput(prev_grad);
+            auto &prev_grad = vars[vars.size() - 1];
+            op_handle->AddInput(prev_grad.get());
 
-            auto &var = vars[vars.size()];
-            var.place_ = p;
-            var.name_ = og;
-            var.version_ = vars.size() - 1;
+            vars.emplace_back(new VarHandle);
+            auto &var = vars.back();
+            var->place_ = p;
+            var->name_ = og;
+            var->version_ = vars.size() - 1;
 
-            op_handle->AddOutput(&var);
+            op_handle->AddOutput(var.get());
           }
 #else
           PADDLE_ENFORCE("Not implemented");
