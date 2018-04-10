@@ -277,9 +277,9 @@ I1116 09:10:18.019836    50 ParameterClient2.cpp:122] pserver 5 192.168.129.71:7
 
 ### Using Environment Variables
 
-Usually we use the environment varialbes to configurate the PaddlePaddle Job which running on
+Usually we use the environment varialbes to configurate the PaddlePaddle Job which runs in
 Kubernetes, `start_paddle.py` provides a start up script to convert the environment variable
-to the start up argument of PaddlePaddle process:
+to the start up arguments of PaddlePaddle process:
 
 ```bash
 API = "/api/v1/namespaces/"
