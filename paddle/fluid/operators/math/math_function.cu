@@ -43,7 +43,7 @@ void gemm<platform::CUDADeviceContext, float16>(
   PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
                     "cublas fp16 gemm requires GPU compute capability >= 53");
 
-#if CUDA_VERSION >= 8500
+#if CUDA_VERSION >= 8000
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
 
