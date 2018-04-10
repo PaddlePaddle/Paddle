@@ -101,7 +101,9 @@ class ParallelExecutor(object):
 
         self.persistable_vars = [
             v.name
-            for v in filter(lambda var: var.persistable, main.list_vars())
+            for v in filter(lambda var: \
+                var.persistable and var.type != core.VarDesc.VarType.RAW,
+                main.list_vars())
         ]
 
         self.executor = core.ParallelExecutor(

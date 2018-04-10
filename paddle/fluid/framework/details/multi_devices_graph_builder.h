@@ -46,7 +46,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 
  private:
   void CreateOpHandleIOs(SSAGraph *result, OpDesc *op, const platform::Place &p,
-                         const size_t &i) const;
+                         const size_t &i, bool create_output = true) const;
 
  private:
   std::string loss_var_name_;
