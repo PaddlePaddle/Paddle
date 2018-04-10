@@ -554,6 +554,7 @@ All parameter, weight, gradient are variables in Paddle.
                                   bcast_vars, main_program, loss_var_name,
                                   scope, local_scopes, allow_op_delay);
            })
+      .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
       .def("local_scopes",
            [](ParallelExecutor &self) -> std::vector<Scope *> * {
              return &self.GetLocalScopes();
