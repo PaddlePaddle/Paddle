@@ -87,7 +87,8 @@ class ParallelExecutor(object):
                 # performance. Worth tunning for other models in the future.
                 num_threads = len(self._places)
             else:
-                min(len(self._places) * 2, multiprocessing.cpu_count())
+                num_threads = min(
+                    len(self._places) * 2, multiprocessing.cpu_count())
 
         main = main_program
         main = main if main else framework.default_main_program()

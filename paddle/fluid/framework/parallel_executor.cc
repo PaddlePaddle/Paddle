@@ -174,6 +174,11 @@ void ParallelExecutor::SplitTensorToPlaces(
     const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
   for (auto it : feed_tensors) {
     auto lod_tensors = it.second.SplitLoDTensor(member_->places_);
+    PADDLE_ENFORCE_EQ(
+        member_->places_.size(), lod_tensors.size(),
+        "The number of samples of current batch is less than the count of "
+        "devices, currently, it is not allowed. (%d vs %d)",
+        member_->places_.size(), lod_tensors.size());
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?
       member_->local_scopes_[j]
