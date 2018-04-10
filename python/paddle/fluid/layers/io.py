@@ -350,7 +350,7 @@ def open_recordio_file(filename,
         main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
 
     if for_parallel:
-        main_prog_var = for_parallel(reader=main_prog_var)
+        main_prog_var = parallelize(reader=main_prog_var)
 
     return monkey_patch_reader_methods(main_prog_var)
 
@@ -435,12 +435,12 @@ def open_files(filenames,
             reader=main_prog_reader, pass_num=pass_num)
 
     if for_parallel:
-        main_prog_reader = for_parallel(reader=main_prog_reader)
+        main_prog_reader = parallelize(reader=main_prog_reader)
 
     return monkey_patch_reader_methods(main_prog_reader)
 
 
-def __create_unshared_decorated_reader__(op_type, reader, attrs={}):
+def __create_shared_decorated_reader__(op_type, reader, attrs):
     var_name = unique_name(op_type)
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=var_name)
@@ -456,7 +456,7 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs={}):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def __create_shared_decorated_reader__(op_type, reader, attrs={}):
+def __create_unshared_decorated_reader__(op_type, reader, attrs):
     new_reader_name = unique_name(op_type)
     main_blk = default_main_program().current_block()
     new_reader = main_blk.create_var(name=new_reader_name)
@@ -488,8 +488,9 @@ def multi_pass(reader, pass_num):
         'create_multi_pass_reader', reader, {'pass_num': int(pass_num)})
 
 
-def for_parallel(reader):
-    return __create_shared_decorated_reader__('create_threaded_reader', reader)
+def parallelize(reader):
+    return __create_shared_decorated_reader__('create_threaded_reader', reader,
+                                              {})
 
 
 def read_file(file_obj):
