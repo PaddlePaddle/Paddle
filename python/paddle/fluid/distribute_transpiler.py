@@ -457,8 +457,8 @@ class DistributeTranspiler:
                     type=v.type,
                     dtype=v.dtype,
                     shape=v.shape)
-            if self.trainers > 1:
-                for trainer_id in xrange(self.trainers):
+            if self.trainer_num > 1:
+                for trainer_id in xrange(self.trainer_num):
                     var = pserver_program.global_block().create_var(
                         name="%s.trainer_%d" % (orig_var_name, trainer_id),
                         persistable=False,
