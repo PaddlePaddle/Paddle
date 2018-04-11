@@ -266,12 +266,14 @@ ThreadedSSAGraphExecutor::RunContext::RunContext(
   ready_vars_ = stored_context->ready_vars_;
 
   for (auto &fetch_op : stored_context->fetch_ops_) {
+    VLOG(10) << "Insert Input " << &fetch_op;
     fetch_op->InsertInputs();
   }
 }
 
 ThreadedSSAGraphExecutor::RunContext::~RunContext() {
   for (auto &fetch_op : stored_context_->fetch_ops_) {
+    VLOG(10) << "Erase Input " << &fetch_op;
     fetch_op->RemoveInputs();
   }
 
