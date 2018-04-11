@@ -66,7 +66,6 @@ class TestRecordIO(unittest.TestCase):
             # train a pass
             batch_id = 0
             while True:
-                ex = None
                 try:
                     tmp, = exe.run(fetch_list=[avg_loss])
                 except fluid.core.EnforceNotMet as ex:
