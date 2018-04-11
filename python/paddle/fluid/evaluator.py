@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 import numpy as np
 
 import layers
@@ -59,6 +60,9 @@ class Evaluator(object):
     """
 
     def __init__(self, name, **kwargs):
+        warnings.warn(
+            "The %s is deprecated, because maintain a modified program inside evaluator cause bug easily, please use fluid.metrics.%s instead."
+            % (self.__class__.__name__, self.__class__.__name__), Warning)
         self.states = []
         self.metrics = []
         self.helper = LayerHelper(name, **kwargs)
