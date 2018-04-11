@@ -17,6 +17,10 @@
 
 #include "paddle/fluid/platform/device_context.h"
 
+namespace paddle {
+namespace framework {
+namespace details {
+
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
@@ -25,7 +29,7 @@ const f::DDim kDims = {20, 20};
 
 class BroadcastTester : public ::testing::Test {
  public:
-  void InitCtx(bool use_gpu) {
+  void InitCtxOnGpu(bool use_gpu) {
     if (use_gpu) {
 #ifdef PADDLE_WITH_CUDA
       int count = p::GetCUDADeviceCount();
@@ -200,23 +204,27 @@ class BroadcastTester : public ::testing::Test {
 };
 
 TEST_F(BroadcastTester, TestCPUBroadcastTestLodTensor) {
-  InitCtx(false);
+  InitCtxOnGpu(false);
   TestBroadcastLodTensor();
 }
 
 TEST_F(BroadcastTester, TestCPUBroadcastTestSelectedRows) {
-  InitCtx(false);
+  InitCtxOnGpu(false);
   TestBroadcastSelectedRows();
 }
 
 #ifdef PADDLE_WITH_CUDA
 TEST_F(BroadcastTester, TestGPUBroadcastTestLodTensor) {
-  InitCtx(true);
+  InitCtxOnGpu(true);
   TestBroadcastLodTensor();
 }
 
 TEST_F(BroadcastTester, TestGPUBroadcastTestSelectedRows) {
-  InitCtx(true);
+  InitCtxOnGpu(true);
   TestBroadcastSelectedRows();
 }
 #endif
+
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle

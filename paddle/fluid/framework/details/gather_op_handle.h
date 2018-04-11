@@ -28,10 +28,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-/*
- * Broadcast the input to all scope.
- *
- */
 struct GatherOpHandle : public OpHandleBase {
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
