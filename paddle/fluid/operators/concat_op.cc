@@ -35,7 +35,7 @@ class ConcatOp : public framework::OperatorWithKernel {
     size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
     const size_t n = ins.size();
 
-    PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 1.");
+    PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
     if (n == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }
