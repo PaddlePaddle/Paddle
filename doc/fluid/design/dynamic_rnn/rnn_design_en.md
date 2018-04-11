@@ -4,19 +4,15 @@ For the learning of variable length sequences, the existing mainstream framework
 Different-length sequences in a mini-batch will be padded with zeros and transformed to same length.
 
 The existing RNN implementations of the PaddlePaddle is `RecurrentLayerGroup`, 
-which add the support of the variable length sequence without padding. 
-This doc will design fluid's RNN based on the idea of this module.
+which supports the variable length sequences without padding. 
+This doc will design fluid's RNN based on this idea.
 
 ## Multi-layer sequence data format `LODTensor`
-At present, Paddle will store data in one mini-batch in one-dimensional memory.
+At present, Paddle will store data in one mini-batch in one-dimensional array.
 
 `Argument.sequenceStartPositions` is used to store information for each sentence.
 
-
-
-In Paddle, ʻArgument.subSequenceStartPositions` is used to store 2 levels of sequence information, while higher dimensional sequences can not directly support them.
-
-
+In Paddle, `Argument.subSequenceStartPositions` is used to store 2 levels of sequence information, while higher dimensional sequences can not be supported.
 
 In order to support the storage of `N-level` sequences, we define sequence information as the following data structure.
 
@@ -90,10 +86,10 @@ The framework needs to support the following features to implement the passing o
      - Do not modify the contents of `lod_start_pos` as a consumer
      - Modify producer of `lod_start_pos` as producer
      - Conventions consumer only needs to copy `shared_ptr` passed over
-       - producer needs to create its own independent memory to store its own independent modifications and expose `shared_ptr` to subsequent consumer
+     - producer needs to create its own independent memory to store its own independent modifications and expose `shared_ptr` to subsequent consumer
      - Since the transfer process is implemented by copying `shared_ptr`, the framework only needs to pass `lod_start_pos` once.
 
-2. Op is transparent enough to not sense `lod_start_pos`
+2. Op is transparent enough not to sense `lod_start_pos`
 3. Producer Op that needs to modify `lod_start_pos` can update its `lod_start_pos` data when `Run`
 
 ## sorted by length
@@ -113,7 +109,7 @@ xxx
 xx
 ```
 
-After `SegmentInputs`, there will be 4 time steps each, the input of each time step is as follows (vertical arrangement)
+After `SegmentInputs`, there will be 4 time steps, the input of each time step is as follows (vertical arrangement)
 
 ```
 0    1    2    3
