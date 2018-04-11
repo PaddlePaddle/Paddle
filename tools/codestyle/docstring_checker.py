@@ -38,6 +38,7 @@ class Docstring(object):
         self.d['Args'] = []
         self.d['Examples'] = []
         self.d['Returns'] = []
+        self.d['Raises'] = []
         self.args = {}  #arg_name->arg_type
 
     def get_level(self, string, indent='    '):
@@ -50,7 +51,7 @@ class Docstring(object):
         return level
 
     def parse(self, doc):
-        """Parse get sections from doc
+        """parse gets sections from doc
         Such as Args, Returns, Raises, Examples s
         Args:
             doc (string): is the astroid node doc string.
@@ -171,7 +172,7 @@ class DocstringChecker(BaseChecker):
 
     def check_doc_string(self, node):
         self.missing_doc_string(node)
-        self.one_line_one_one_line(node)
+        self.one_line(node)
         self.has_period(node)
         self.indent_style(node)
 
@@ -185,7 +186,7 @@ class DocstringChecker(BaseChecker):
 
     # FIXME(gongwb): give the docstring line-no
     def indent_style(self, node, indent=4):
-        """Check doc string indent style
+        """indent_style checks docstring's indent style
         Args:
             node (astroid.node): The visiting node.
             indent (int): The default indent of style
@@ -206,8 +207,8 @@ class DocstringChecker(BaseChecker):
 
         return True
 
-    def one_line_one_one_line(self, node):
-        """One line docs (len < 40) are on one line
+    def one_line(self, node):
+        """one_line checks if docstring (len < 40) is on one line.
         Args:
             node (astroid.node): The node visiting.
         Returns:
@@ -300,7 +301,7 @@ class DocstringChecker(BaseChecker):
         return True
 
     def all_args_in_doc(self, node, doc):
-        """all_args_in_doc check if arguments are mentioned in doc
+        """all_args_in_doc checks if arguments are mentioned in doc
         Args:
             node (astroid.node): the node is visiting.
             doc (Docstring): Docstring object
