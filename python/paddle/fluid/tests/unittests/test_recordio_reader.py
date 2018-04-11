@@ -65,8 +65,14 @@ class TestRecordIO(unittest.TestCase):
 
             # train a pass
             batch_id = 0
-            while not data_file.eof():
-                tmp, = exe.run(fetch_list=[avg_loss])
+            while True:
+                ex = None
+                try:
+                    tmp, = exe.run(fetch_list=[avg_loss])
+                except fluid.core.EnforceNotMet as ex:
+                    self.assertIn("There is no next data.", ex.message)
+                    break
+
                 avg_loss_np.append(tmp)
                 batch_id += 1
             data_file.reset()
