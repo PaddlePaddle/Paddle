@@ -17,7 +17,7 @@ PaddlePaddle支持使用pip快速安装，目前支持CentOS 6以上, Ubuntu 14.
 
      pip install paddlepaddle-gpu
 
-更详细的安装和编译方法参考：:ref:`install_steps` 。
+更详细的安装和编译方法参考： `安装与编译 <http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/build_and_install/index_cn.html>`_  。
 
 快速使用
 --------

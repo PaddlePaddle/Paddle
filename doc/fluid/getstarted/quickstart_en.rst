@@ -18,7 +18,7 @@ If you need to install GPU version (cuda7.5_cudnn5_avx_openblas), run:
 
      pip install paddlepaddle-gpu
 
-For more details about installation and build: :ref:`install_steps` .
+For more details about installation and build: `install and Compile <http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/build_and_install/index_en.html>`_ .
 
 Quick Use
 ---------
