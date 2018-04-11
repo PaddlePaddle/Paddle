@@ -17,7 +17,7 @@
 namespace paddle {
 namespace framework {
 namespace details {
-void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
+void SSAGraphBuilder::PolishGraphToSupportDataHazards(Context *graph) {
   for (auto &var_map : graph->vars_) {
     for (auto &name_pair : var_map) {
       if (name_pair.second.size() <= 1) {
@@ -40,7 +40,7 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
           auto *dep_var = new DummyVarHandle();
           read_op->AddOutput(dep_var);
           write_op->AddInput(dep_var);
-          graph->dep_vars_.emplace(dep_var);
+          graph->dep_vars_.emplace_back(dep_var);
         }
       }
     }
@@ -48,7 +48,7 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
 }
 
 VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
-    SSAGraph *graph, const std::string &each_var_name,
+    Context *graph, const std::string &each_var_name,
     const platform::Place &place, size_t place_offset) {
   auto &var_holders = graph->vars_[place_offset];
   auto &var_holder = var_holders[each_var_name];
@@ -67,7 +67,7 @@ VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
   return var;
 }
 
-void SSAGraphBuilder::CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
+void SSAGraphBuilder::CreateOpOutput(Context *graph, OpHandleBase *op_handle,
                                      const std::string &each_var_name,
                                      const platform::Place &place,
                                      size_t place_offset) {
@@ -82,7 +82,8 @@ void SSAGraphBuilder::CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
 }
 
 template <typename Callback>
-void IterAllVar(const SSAGraph &graph, Callback callback) {
+static void IterAllVar(const SSAGraphBuilder::Context &graph,
+                       Callback callback) {
   for (auto &each : graph.vars_) {
     for (auto &pair1 : each) {
       for (auto &pair2 : pair1.second) {
@@ -96,7 +97,7 @@ void IterAllVar(const SSAGraph &graph, Callback callback) {
   }
 }
 
-void SSAGraphBuilder::PrintGraphviz(const SSAGraph &graph, std::ostream &sout) {
+void SSAGraphBuilder::PrintGraphviz(const Context &graph, std::ostream &sout) {
   size_t var_id = 0;
   std::unordered_map<const VarHandleBase *, size_t> vars;
 
@@ -139,15 +140,38 @@ void SSAGraphBuilder::PrintGraphviz(const SSAGraph &graph, std::ostream &sout) {
   sout << "}\n";
 }
 
-void SSAGraphBuilder::AddOutputToLeafOps(SSAGraph *graph) {
+void SSAGraphBuilder::AddOutputToLeafOps(Context *graph) {
   for (auto &op : graph->ops_) {
     if (!op->outputs_.empty()) {
       continue;
     }
     auto *dummy_leaf = new DummyVarHandle();
-    graph->dep_vars_.emplace(dummy_leaf);
+    graph->dep_vars_.emplace_back(dummy_leaf);
     op->AddOutput(dummy_leaf);
   }
+}
+
+std::unique_ptr<SSAGraph> SSAGraphBuilder::ContextToSSAGraph(
+    std::unique_ptr<Context> &&graph) {
+  SSAGraph *result = new SSAGraph();
+
+  for (auto &op : graph->ops_) {
+    result->ops_.emplace_back(std::move(op));
+  }
+
+  for (auto &vars : graph->vars_) {
+    for (auto &versioned_var : vars) {
+      for (auto &v : versioned_var.second) {
+        result->vars_.emplace_back(v.release());
+      }
+    }
+  }
+
+  for (auto &var : graph->dep_vars_) {
+    result->vars_.emplace_back(std::move(var));
+  }
+
+  return std::unique_ptr<SSAGraph>(result);
 }
 }  // namespace details
 }  // namespace framework

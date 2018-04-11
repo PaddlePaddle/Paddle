@@ -56,8 +56,8 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
 
 std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     const ProgramDesc &program) const {
-  auto graph = new SSAGraph();
-  SSAGraph &result = *graph;
+  auto graph = new Context();
+  Context &result = *graph;
   std::unordered_set<std::string> og_has_been_broadcast;
 
   // We cannot invoke resize. It is a bug of GCC 4.8
@@ -187,7 +187,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     VLOG(10) << sout.str();
   }
 
-  return std::unique_ptr<SSAGraph>(graph);
+  return ContextToSSAGraph(std::unique_ptr<Context>(graph));
 }  // namespace details
 }  // namespace details
 }  // namespace framework
