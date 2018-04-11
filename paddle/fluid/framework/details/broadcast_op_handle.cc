@@ -18,7 +18,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-Tensor *GetTensorFromVar(Variable *in_var) {
+static Tensor *GetTensorFromVar(Variable *in_var) {
   if (in_var->IsType<LoDTensor>()) {
     return in_var->GetMutable<LoDTensor>();
   } else if (in_var->IsType<SelectedRows>()) {
@@ -52,29 +52,34 @@ void BroadcastOpHandle::RunImpl() {
     auto &out_p = out_handle->place_;
 
     auto out_scope_idx = out_handle->scope_idx_;
-    PADDLE_ENFORCE_LT(out_scope_idx, local_scopes_.size(), "");
+    PADDLE_ENFORCE_LT(out_scope_idx, local_scopes_.size(),
+                      "%s is not the the local_scopes ", out_handle->name_);
     auto *s = local_scopes_[out_scope_idx];
     auto out_var = s->FindVar(out_handle->name_);
 
-    PADDLE_ENFORCE_EQ(out_var->Type(), in_var->Type(), "");
+    PADDLE_ENFORCE_EQ(
+        out_var->Type(), in_var->Type(),
+        "The type of input and output is not equal. (%s_%d vs %s_%d)",
+        out_handle->name_, out_handle->scope_idx_, in_var_handle->name_,
+        in_var_handle->scope_idx_);
 
     if (in_var->IsType<framework::SelectedRows>()) {
-      auto in_sr = in_var->GetMutable<framework::SelectedRows>();
-      auto out = out_var->GetMutable<framework::SelectedRows>();
-      if (in_sr == out) continue;
-      out->set_height(in_sr->height());
-      out->set_rows(in_sr->rows());
-      out->mutable_value()->Resize(in_sr->value().dims());
-      out->mutable_value()->mutable_data(out_p, in_sr->value().type());
+      auto &in_sr = in_var->Get<framework::SelectedRows>();
+      auto out_sr = out_var->GetMutable<framework::SelectedRows>();
+      if (&in_sr == out_sr) continue;
+      out_sr->set_height(in_sr.height());
+      out_sr->set_rows(in_sr.rows());
+      out_sr->mutable_value()->Resize(in_sr.value().dims());
+      out_sr->mutable_value()->mutable_data(out_p, in_sr.value().type());
     } else if (in_var->IsType<framework::LoDTensor>()) {
-      auto in_lod = in_var->GetMutable<framework::LoDTensor>();
-      auto out = out_var->GetMutable<framework::LoDTensor>();
-      if (in_lod == out) continue;
-      out->set_lod(in_lod->lod());
-      out->Resize(in_lod->dims());
-      out->mutable_data(out_p, in_lod->type());
+      auto in_lod = in_var->Get<framework::LoDTensor>();
+      auto out_lod = out_var->GetMutable<framework::LoDTensor>();
+      if (&in_lod == out_lod) continue;
+      out_lod->set_lod(in_lod.lod());
+      out_lod->Resize(in_lod.dims());
+      out_lod->mutable_data(out_p, in_lod.type());
     } else {
-      PADDLE_THROW("Var should be LoDTensor or SelectedRows");
+      PADDLE_THROW("Var should be LoDTensor or SelectedRows.");
     }
 
     Tensor *out_tensor = GetTensorFromVar(out_var);
