@@ -455,7 +455,7 @@ class DistributeTranspiler:
             assert prefetch_block is not None
         else:
             assert prefetch_block is None
-            prefetch_block = optimize_block
+            prefetch_block = pserver_program.global_block()
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
