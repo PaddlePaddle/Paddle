@@ -49,6 +49,13 @@ parser.add_argument(
     default=16,
     help="The sequence number of a mini-batch data. (default: %(default)d)")
 parser.add_argument(
+    '--skip_batch_num',
+    type=int,
+    default=5,
+    help='The first num of minibatch num to skip, for better performance test')
+parser.add_argument(
+    '--iterations', type=int, default=80, help='The number of minibatches.')
+parser.add_argument(
     "--dict_size",
     type=int,
     default=30000,
@@ -72,16 +79,21 @@ parser.add_argument(
     default=3,
     help="The width for beam searching. (default: %(default)d)")
 parser.add_argument(
-    "--use_gpu",
-    type=distutils.util.strtobool,
-    default=True,
-    help="Whether to use gpu. (default: %(default)d)")
+    '--device',
+    type=str,
+    default='GPU',
+    choices=['CPU', 'GPU'],
+    help="The device type.")
 parser.add_argument(
     "--max_length",
     type=int,
     default=250,
     help="The maximum length of sequence when doing generation. "
     "(default: %(default)d)")
+parser.add_argument(
+    '--with_test',
+    action='store_true',
+    help='If set, test the testset during training.')
 
 
 def lstm_step(x_t, hidden_t_prev, cell_t_prev, size):
@@ -281,7 +293,7 @@ def train():
             paddle.dataset.wmt14.test(args.dict_size), buf_size=1000),
         batch_size=args.batch_size)
 
-    place = core.CUDAPlace(0) if args.use_gpu else core.CPUPlace()
+    place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
     exe = Executor(place)
     exe.run(framework.default_startup_program())
 
@@ -307,14 +319,20 @@ def train():
 
         return total_loss / count
 
+    iters, num_samples, start_time = 0, 0, time.time()
     for pass_id in xrange(args.pass_num):
-        pass_start_time = time.time()
-        words_seen = 0
+        train_accs = []
+        train_losses = []
         for batch_id, data in enumerate(train_batch_generator()):
+            if iters == args.skip_batch_num:
+                start_time = time.time()
+                num_samples = 0
+            if iters == args.iterations:
+                break
             src_seq, word_num = to_lodtensor(map(lambda x: x[0], data), place)
-            words_seen += word_num
+            num_samples += word_num
             trg_seq, word_num = to_lodtensor(map(lambda x: x[1], data), place)
-            words_seen += word_num
+            num_samples += word_num
             lbl_seq, _ = to_lodtensor(map(lambda x: x[2], data), place)
 
             fetch_outs = exe.run(framework.default_main_program(),
@@ -325,24 +343,36 @@ def train():
                                  },
                                  fetch_list=[avg_cost])
 
-            avg_cost_val = np.array(fetch_outs[0])
-            print('pass_id=%d, batch_id=%d, train_loss: %f' %
-                  (pass_id, batch_id, avg_cost_val))
+            iters += 1
+            loss = np.array(fetch_outs[0])
+            print(
+                "Pass = %d, Iter = %d, Loss = %f" % (pass_id, iters, loss)
+            )  # The accuracy is the accumulation of batches, but not the current batch.
 
-        pass_end_time = time.time()
-        test_loss = do_validation()
-        time_consumed = pass_end_time - pass_start_time
-        words_per_sec = words_seen / time_consumed
-        print("pass_id=%d, test_loss: %f, words/s: %f, sec/pass: %f" %
-              (pass_id, test_loss, words_per_sec, time_consumed))
+        train_elapsed = time.time() - start_time
+        examples_per_sec = num_samples / train_elapsed
+        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
+              (num_samples, train_elapsed, examples_per_sec))
+        # evaluation
+        if args.with_test:
+            test_loss = do_validation()
+        exit(0)
 
 
 def infer():
     pass
 
 
+def print_arguments(args):
+    print('----------- seq2seq Configuration Arguments -----------')
+    for arg, value in sorted(vars(args).iteritems()):
+        print('%s: %s' % (arg, value))
+    print('------------------------------------------------')
+
+
 if __name__ == '__main__':
     args = parser.parse_args()
+    print_arguments(args)
     if args.infer_only:
         infer()
     else:

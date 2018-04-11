@@ -21,67 +21,27 @@ namespace reader {
 
 class ThreadedReader : public framework::DecoratedReader {
  public:
-  ThreadedReader(ReaderBase* reader, bool unsafe_mode)
-      : DecoratedReader(reader), unsafe_mode_(unsafe_mode) {}
+  ThreadedReader(ReaderBase* reader, bool safe_mode)
+      : DecoratedReader(reader), safe_mode_(safe_mode) {}
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!unsafe_mode_) {
-      if (!reader_->HasNext()) {
-        PADDLE_THROW("There is no next data!");
-      }
-      reader_->ReadNext(out);
-    } else {
-      auto& thread_buffer = thread_buffers_[std::this_thread::get_id()];
-      if (thread_buffer.empty()) {
-        PADDLE_THROW(
-            "thread_buffer is empty! HasNext() must be invoked before "
-            "ReadNext() in the same thread.");
-      }
-      *out = thread_buffer;
-      thread_buffer.clear();
-    }
-  }
-
-  bool HasNext() const override {
-    if (!unsafe_mode_) {
-      PADDLE_THROW(
-          "ThreadedReader::HasNext() is disabled when 'unsafe_mode' is false.");
-    }
-    std::thread::id thread_id = std::this_thread::get_id();
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto& thread_buffer = thread_buffers_[thread_id];
-    if (thread_buffer.empty() && reader_->HasNext()) {
-      reader_->ReadNext(&thread_buffer);
-    }
-    return !thread_buffer.empty();
+    reader_->ReadNext(out);
   }
 
   void ReInit() override {
-    if (!unsafe_mode_) {
+    if (safe_mode_) {
       PADDLE_THROW(
-          "ThreadedReader::ReInit() is disabled when 'unsafe_mode' is false.");
+          "ThreadedReader::ReInit() is disabled when 'safe_mode' is true.");
     }
     VLOG(5) << "ThreadedReader::ReInit() is invoked! It might be buggy in "
                "multi-thread environment.";
     reader_->ReInit();
   }
 
-  ~ThreadedReader() {
-    for (auto& p : thread_buffers_) {
-      if (!p.second.empty()) {
-        PADDLE_THROW(
-            "Find an unused data batch in ThreadedReader! Maybe one thread "
-            "invokes 'HasNext()' without subsequent 'ReadNext()'.");
-      }
-    }
-  }
-
  private:
-  bool unsafe_mode_;
-  mutable std::mutex mutex_;
-  mutable std::unordered_map<std::thread::id, std::vector<framework::LoDTensor>>
-      thread_buffers_;
+  bool safe_mode_;
+  std::mutex mutex_;
 };
 
 class CreateThreadedReaderOp : public framework::OperatorBase {
@@ -98,8 +58,8 @@ class CreateThreadedReaderOp : public framework::OperatorBase {
     }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    bool unsafe_mode = Attr<bool>("unsafe_mode");
-    out->Reset(new ThreadedReader(underlying_reader.Get(), unsafe_mode));
+    bool safe_mode = Attr<bool>("safe_mode");
+    out->Reset(new ThreadedReader(underlying_reader.Get(), safe_mode));
   }
 };
 
@@ -107,24 +67,19 @@ class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
  public:
   CreateThreadedReaderOpMaker(OpProto* op_proto, OpAttrChecker* op_checker)
       : DecoratedReaderMakerBase(op_proto, op_checker) {
-    AddAttr<bool>("unsafe_mode",
-                  "When 'unsafe_mode' is false, invoking 'HasNext()' or "
-                  "'ReInit()' is not allowed to avoid unexpected bugs in "
-                  "multi-thread environment.")
-        .SetDefault(false);
+    AddAttr<bool>("safe_mode",
+                  "When 'safe_mode' is true, 'ReInit()' is disabled to avoid "
+                  "unexpected bugs in multi-thread environment.")
+        .SetDefault(true);
     AddComment(R"DOC(
       CreateThreadedReader Operator
 
       This operator creates a threaded reader. A threaded reader's 
       'ReadNext()' can be invoked by several threads at the same 
       time. 
-      When the attribute 'unsafe_mode' is false, the threaded reader's 
-      'HasNext()' and 'ReInit()' will be disabled to avoid unexpected 
-      bugs in multi-thread environment. If you really need them, you 
-      can enable them by setting 'unsafe_mode' true. In this case, 
-      'HasNext()' returning true only guarantees the safety of 
-      invoking 'ReadNext()' in the same thread. Each thread must 
-      invoke 'HasNext()' and 'ReadNext()' in pairs.
+      When the attribute 'safe_mode' is true, the threaded reader's 
+      'ReInit()' is disabled to avoid unexpected bugs in multi-thread 
+      environment.
     )DOC");
   }
 };
@@ -134,6 +89,6 @@ class CreateThreadedReaderOpMaker : public DecoratedReaderMakerBase {
 }  // namespace paddle
 
 namespace reader = paddle::operators::reader;
-REGISTER_FILE_READER_OPERATOR(create_threaded_reader,
-                              reader::CreateThreadedReaderOp,
-                              reader::CreateThreadedReaderOpMaker);
+REGISTER_DECORATED_READER_OPERATOR(create_threaded_reader,
+                                   reader::CreateThreadedReaderOp,
+                                   reader::CreateThreadedReaderOpMaker);

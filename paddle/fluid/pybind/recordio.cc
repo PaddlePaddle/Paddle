@@ -39,7 +39,7 @@ class RecordIOWriter {
   void CompleteAppendTensor() {
     auto& ctx =
         *platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-    framework::WriteToRecordIO(writer_, tensors_, ctx);
+    framework::WriteToRecordIO(&writer_, tensors_, ctx);
     tensors_.clear();
   }
 

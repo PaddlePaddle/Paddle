@@ -25,22 +25,12 @@ class MultiPassReader : public framework::DecoratedReader {
       : DecoratedReader(reader), pass_num_(pass_num), pass_count_(0) {}
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    if (!HasNext()) {
-      PADDLE_THROW("There is no next data!");
-    }
     reader_->ReadNext(out);
-  }
-
-  bool HasNext() const override {
-    if (reader_->HasNext()) {
-      return true;
-    } else {
+    if (out->empty()) {
       ++pass_count_;
-      if (pass_count_ >= pass_num_) {
-        return false;
-      } else {
+      if (pass_count_ < pass_num_) {
         reader_->ReInit();
-        return true;
+        reader_->ReadNext(out);
       }
     }
   }

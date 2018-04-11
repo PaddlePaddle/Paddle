@@ -19,18 +19,18 @@ namespace paddle {
 namespace operators {
 template <>
 void GetAccumulators<paddle::platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx, int64_t& num_updates_,
-    int64_t& num_accumulates_, int64_t& old_num_accumulates_) {
+    const framework::ExecutionContext& ctx, int64_t* num_updates_,
+    int64_t* num_accumulates_, int64_t* old_num_accumulates_) {
   auto* in_old_num_accumulates = ctx.Input<Tensor>("in_old_num_accumulates");
   auto* in_num_accumulates = ctx.Input<Tensor>("in_num_accumulates");
   auto* in_num_updates = ctx.Input<Tensor>("in_num_updates");
   auto stream = ctx.cuda_device_context().stream();
-  memory::Copy(platform::CPUPlace(), &old_num_accumulates_,
+  memory::Copy(platform::CPUPlace(), old_num_accumulates_,
                platform::CUDAPlace(), in_old_num_accumulates->data<int64_t>(),
                sizeof(int64_t), stream);
-  memory::Copy(platform::CPUPlace(), &num_accumulates_, platform::CUDAPlace(),
+  memory::Copy(platform::CPUPlace(), num_accumulates_, platform::CUDAPlace(),
                in_num_accumulates->data<int64_t>(), sizeof(int64_t), stream);
-  memory::Copy(platform::CPUPlace(), &num_updates_, platform::CUDAPlace(),
+  memory::Copy(platform::CPUPlace(), num_updates_, platform::CUDAPlace(),
                in_num_updates->data<int64_t>(), sizeof(int64_t), stream);
 }
 

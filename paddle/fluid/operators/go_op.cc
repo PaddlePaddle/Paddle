@@ -56,11 +56,11 @@ class GoOp : public framework::OperatorBase {
 
     // TODO(varunarora): Consider moving this root scope lookup to scope.h.
     const framework::Scope *root_scope = &scope;
-    const framework::Scope *parent_scope = &(root_scope->parent());
+    const framework::Scope *parent_scope = root_scope->parent();
 
     while (parent_scope != nullptr) {
       root_scope = parent_scope;
-      parent_scope = &(parent_scope->parent());
+      parent_scope = parent_scope->parent();
     }
 
     framework::BlockDesc *block = Attr<framework::BlockDesc *>(kBlock);
