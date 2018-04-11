@@ -77,7 +77,7 @@ TEST(SaveLoadFP16Op, CPU) {
 
   paddle::framework::AttributeMap attrs;
   attrs.insert({"file_path", std::string("tensor.save")});
-  attrs.insert({"save_as_fp16_dtype", true});
+  attrs.insert({"save_as_fp16", true});
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "save", {{"X", {"test_var"}}}, {}, attrs);

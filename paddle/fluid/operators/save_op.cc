@@ -69,7 +69,7 @@ class SaveOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto overwrite = Attr<bool>("overwrite");
-    auto save_as_fp16 = Attr<bool>("save_as_fp16_dtype");
+    auto save_as_fp16 = Attr<bool>("save_as_fp16");
 
     if (FileExists(filename) && !overwrite) {
       PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
@@ -128,7 +128,7 @@ This operator will serialize and write a tensor variable to file on disk.
                   "(boolean, default true)"
                   "Overwrite the output file if exist")
         .SetDefault(true);
-    AddAttr<bool>("save_as_fp16_dtype",
+    AddAttr<bool>("save_as_fp16",
                   "(boolean, default false)"
                   "If true, the tensor will be converted to float16 data "
                   "type and then saved. Otherwise, the tensor will be "
