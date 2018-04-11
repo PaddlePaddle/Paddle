@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 
 #include <string>
-#include <utility>
+#include <tuple>
 #include <vector>
 
 #ifdef PADDLE_WITH_CUDA
@@ -43,7 +43,7 @@ class ParallelExecutorPrivate {
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
-  std::vector<std::pair<std::string, proto::VarType::Type, bool>> var_types_;
+  std::vector<std::tuple<std::string, proto::VarType::Type, bool>> var_types_;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
