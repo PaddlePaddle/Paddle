@@ -416,6 +416,20 @@ int VariableResponse::Parse(Source* source) {
         }
         break;
       }
+      case sendrecv::VariableMessage::kOutVarnameFieldNumber: {
+        uint32_t length;
+        if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
+          return tag;
+        }
+
+        std::string temp;
+        if (!input.ReadString(&temp, length)) {
+          return tag;
+        }
+
+        meta_.set_out_varname(temp);
+        break;
+      }
 
       default: {
         // Unknown tag, return unknown error.

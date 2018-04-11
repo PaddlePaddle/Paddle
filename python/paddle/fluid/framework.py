@@ -659,7 +659,7 @@ class Block(object):
     def __init__(self, program, idx):
         self.desc = program.desc.block(idx)
         self.vars = dict()  # var_name --> var
-        self.ops = collections.deque()  # operator list
+        self.ops = list()  # operator list
         self.program = program
         self.removed_vars = dict()
 
@@ -818,6 +818,11 @@ class Block(object):
         del self.vars[name]
         self.sync_with_cpp()
 
+    def remove_var(self, name):
+        self.sync_with_cpp()
+        self.desc.remove_var(name)
+        del self.vars[name]
+
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
@@ -831,6 +836,18 @@ class Block(object):
         self.ops.append(op)
         return op
 
+    def insert_op(self, index, *args, **kwargs):
+        self.sync_with_cpp()
+        op_desc = self.desc.insert_op(index)
+        op = Operator(block=self, desc=op_desc, *args, **kwargs)
+        self.ops.insert(index, op)
+        return op
+
+    def remove_op(self, index):
+        self.sync_with_cpp()
+        self.desc.remove_op(index, index + 1)
+        del self.ops[index]
+
     def delete_ops(self, ops):
         # remove from cpp
         # FIXME(typhoonzero): remove only the first occurrence.
@@ -839,15 +856,16 @@ class Block(object):
             end = list(self.ops).index(ops[-1])
         except Exception, e:
             raise e
+
         self.desc.remove_op(start, end + 1)
 
     def slice_ops(self, start, end):
-        return list(self.ops)[start:end]
+        return self.ops[start:end]
 
     def prepend_op(self, *args, **kwargs):
         op_desc = self.desc.prepend_op()
         op = Operator(self, op_desc, *args, **kwargs)
-        self.ops.appendleft(op)
+        self.ops.insert(0, op)
         return op
 
     def sync_with_cpp(self):
@@ -892,7 +910,7 @@ class Block(object):
         for index in range((start_index - 1 - 1), -1, -1):
             op_desc = ops_in_cpp[index]
             op = Operator(self, op_desc)
-            self.ops.appendleft(op)
+            self.ops.insert(0, op)
 
         # sync ops append to the end of cpp_ops
         for index in range((end_index + 1), len(ops_in_cpp)):
@@ -965,6 +983,13 @@ class Block(object):
         if var.type == core.VarDesc.VarType.STEP_SCOPES:
             ret_var = self.create_var(
                 name=var.name, persistable=var.persistable, type=var.type)
+        elif var.type == core.VarDesc.VarType.SELECTED_ROWS:
+            ret_var = self.create_var(
+                name=var.name,
+                shape=var.shape,
+                dtype=var.dtype,
+                type=var.type,
+                persistable=True)
         else:
             ret_var = self.create_var(
                 name=var.name,

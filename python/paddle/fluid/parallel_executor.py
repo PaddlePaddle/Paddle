@@ -22,10 +22,49 @@ __all__ = ['ParallelExecutor']
 
 class ParallelExecutor(object):
     def __init__(self,
-                 loss_name,
                  use_cuda,
+                 loss_name=None,
+                 main_program=None,
                  num_threads=None,
-                 allow_op_delay=False):
+                 allow_op_delay=False,
+                 share_vars_from=None):
+        """
+        ParallelExecutor can run program in parallel.
+
+        Args:
+            use_cuda(bool): Whether to use CUDA or not.
+            loss_name(str, default None): The loss name must set in training.
+            main_program(Program, default None): The program that need to run,
+                if not provided, then default_main_program will be used.
+            num_threads(int, default None): How many threads are used for
+                training.
+            allow_op_delay(bool, default False): Whether to delay and buffer
+                some operators together for scheduling or not, which may
+                improve performance in some cases, defalut False.
+            share_vars_from(ParallelExecutor, default None): If provied,
+                it will share variables from the specified ParallelExecutor.
+
+        Returns:
+            A ParallelExecutor object.
+
+        Raises:
+            TypeError: If share_vars_from is provided, but not ParallelExecutor
+                object.
+
+        Examples:
+            .. code-block:: python
+
+              train_exe = fluid.ParallelExecutor(
+                  use_cuda=True, loss_name=loss.name)
+              test_exe = fluid.ParallelExecutor(
+                  use_cuda=True,
+                  main_program=test_program,
+                  share_vars_from=train_exe)
+
+              train_loss, = train_exe.run([loss.name], feed_dict=feed_dict)
+              test_loss, = test_exe.run([loss.name], feed_dict=feed_dict)
+        """
+
         self._places = []
         self._act_places = []
         if use_cuda:
@@ -48,11 +87,25 @@ class ParallelExecutor(object):
                 # performance. Worth tunning for other models in the future.
                 num_threads = len(self._places)
             else:
-                min(len(self._places) * 2, multiprocessing.cpu_count())
+                num_threads = min(
+                    len(self._places) * 2, multiprocessing.cpu_count())
 
-        startup = framework.default_startup_program()
-        main = framework.default_main_program()
+        main = main_program
+        main = main if main else framework.default_main_program()
         scope = executor.global_scope()
+
+        if share_vars_from and not isinstance(share_vars_from,
+                                              ParallelExecutor):
+            raise TypeError("share_vars_from must be ParallelExecutor.")
+        local_scopes = share_vars_from.executor.local_scopes(
+        ) if share_vars_from else []
+
+        self.persistable_vars = [
+            v.name
+            for v in filter(lambda var: \
+                var.persistable and var.type != core.VarDesc.VarType.RAW,
+                main.list_vars())
+        ]
 
         self.executor = core.ParallelExecutor(
             num_threads,
@@ -62,10 +115,11 @@ class ParallelExecutor(object):
                 p.name for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            startup.desc,
+            set(self.persistable_vars),
             main.desc,
-            loss_name,
+            loss_name if loss_name else '',
             scope,
+            local_scopes,
             allow_op_delay)
         self.scope = scope
 
@@ -91,3 +145,6 @@ class ParallelExecutor(object):
         self.executor.run(fetch_list, fetch_var_name, feed_tensor_dict)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
         return [arr[i] for i in range(len(arr))]
+
+    def bcast_params(self):
+        self.executor.bcast_params(set(self.persistable_vars))

@@ -26,11 +26,14 @@ def simple_fc_net(use_feed):
         img = fluid.layers.data(name='image', shape=[784], dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     else:
-        reader = fluid.layers.open_recordio_file(
-            filename='./mnist.recordio',
+        reader = fluid.layers.open_files(
+            filenames=['./mnist.recordio'],
             shapes=[[-1, 784], [-1, 1]],
             lod_levels=[0, 0],
-            dtypes=['float32', 'int64'])
+            dtypes=['float32', 'int64'],
+            thread_num=1,
+            for_parallel=True)
+        reader = fluid.layers.io.double_buffer(reader)
         img, label = fluid.layers.read_file(reader)
     hidden = img
     for _ in xrange(4):
@@ -51,11 +54,14 @@ def fc_with_batchnorm(use_feed):
         img = fluid.layers.data(name='image', shape=[784], dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     else:
-        reader = fluid.layers.open_recordio_file(
-            filename='./mnist.recordio',
+        reader = fluid.layers.open_files(
+            filenames=['mnist.recordio'],
             shapes=[[-1, 784], [-1, 1]],
             lod_levels=[0, 0],
-            dtypes=['float32', 'int64'])
+            dtypes=['float32', 'int64'],
+            thread_num=1,
+            for_parallel=True)
+        reader = fluid.layers.io.double_buffer(reader)
         img, label = fluid.layers.read_file(reader)
 
     hidden = img
@@ -207,7 +213,11 @@ class TestParallelExecutorBase(unittest.TestCase):
             if memory_opt:
                 fluid.memory_optimize(main)
 
-            exe = fluid.ParallelExecutor(loss_name=loss.name, use_cuda=True)
+            place = fluid.CUDAPlace(0)
+            startup_exe = fluid.Executor(place)
+            startup_exe.run(startup)
+
+            exe = fluid.ParallelExecutor(True, loss_name=loss.name)
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
@@ -453,3 +463,41 @@ class TestTransformer(TestParallelExecutorBase):
     @unittest.skip("transformer is buggy in multi gpu")
     def test_main(self):
         self.check_network_convergence(transformer)
+
+
+class ParallelExecutorTestingDuringTraining(unittest.TestCase):
+    def test_parallel_testing(self):
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            loss = simple_fc_net(True)
+            test_program = main.clone(for_test=True)
+
+            opt = fluid.optimizer.SGD(learning_rate=0.0001)
+            opt.minimize(loss)
+
+            batch_size = 32
+            image = numpy.random.normal(size=(batch_size,
+                                              784)).astype('float32')
+            label = numpy.random.randint(0, 10, (batch_size, 1), dtype="int64")
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(startup)
+            feed_dict = {'image': image, 'label': label}
+
+            train_exe = fluid.ParallelExecutor(
+                use_cuda=True, loss_name=loss.name, main_program=main)
+
+            test_exe = fluid.ParallelExecutor(
+                use_cuda=True,
+                main_program=test_program,
+                share_vars_from=train_exe)
+
+            for i in xrange(5):
+                test_loss, = test_exe.run([loss.name], feed_dict=feed_dict)
+                test_loss = numpy.array(test_loss)
+
+                train_loss, = train_exe.run([loss.name], feed_dict=feed_dict)
+                train_loss = numpy.array(train_loss)
+                self.assertTrue(numpy.allclose(train_loss, test_loss))

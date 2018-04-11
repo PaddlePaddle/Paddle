@@ -65,9 +65,8 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 }
 
 void ProcGetResponse(const VarHandle& var_h,
-                     // const sendrecv::VariableMessage& ret_msg) {
                      const ::grpc::ByteBuffer& ret_msg) {
-  framework::Variable* outvar = NULL;
+  framework::Variable* outvar = nullptr;
   DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar);
 }
 
@@ -138,7 +137,7 @@ bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req);
+    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val);
 
     // var handle
     VarHandle var_h;
