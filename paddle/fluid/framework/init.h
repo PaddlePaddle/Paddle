@@ -24,7 +24,7 @@ void InitGflags(std::vector<std::string> &argv);
 
 void InitGLOG(const std::string &prog_name);
 
-void InitDevices();
+void InitDevices(bool init_p2p);
 
 }  // namespace framework
 }  // namespace paddle

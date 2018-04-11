@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detail/grpc_server.h"
 
+#include <limits>
+#include <string>
+
 using ::grpc::ServerAsyncResponseWriter;
 
 namespace paddle {
@@ -135,37 +138,48 @@ class RequestPrefetch final : public RequestBase {
                            framework::Scope* scope,
                            const platform::DeviceContext* dev_ctx,
                            framework::Executor* executor,
-                           framework::ProgramDesc* program, int blkid)
+                           framework::ProgramDesc* program,
+                           framework::ExecutorPrepareContext* prefetch_ctx)
       : RequestBase(service, cq, dev_ctx),
         responder_(&ctx_),
         scope_(scope),
         executor_(executor),
         program_(program),
-        blkid_(blkid) {
+        prefetch_ctx_(prefetch_ctx) {
+    request_.reset(new VariableResponse(scope, dev_ctx_));
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
-    service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
-                                cq_, this);
+    service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
+                                cq_, cq_, this);
   }
 
   virtual ~RequestPrefetch() {}
 
-  virtual std::string GetReqName() { return request_.varname(); }
+  virtual std::string GetReqName() { return request_->Varname(); }
 
   virtual void Process() {
     // prefetch process...
     ::grpc::ByteBuffer reply;
-    // TODO(Yancey1989): execute the Block which containers prefetch ops
+
+    std::string var_name = request_->OutVarname();
+    auto var_desc = program_->Block(0).FindVar(var_name);
+    framework::Scope* local_scope = &scope_->NewScope();
+    auto* var = local_scope->FindVar(var_name);
+    InitializeVariable(var, var_desc->GetType());
+    executor_->RunPreparedContext(prefetch_ctx_, scope_, false, false);
+
+    SerializeToByteBuffer(var_name, var, *dev_ctx_, &reply);
 
     responder_.Finish(reply, ::grpc::Status::OK, this);
     status_ = FINISH;
   }
 
  protected:
-  sendrecv::VariableMessage request_;
+  std::shared_ptr<VariableResponse> request_;
   ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
   framework::Scope* scope_;
   framework::Executor* executor_;
   framework::ProgramDesc* program_;
+  framework::ExecutorPrepareContext* prefetch_ctx_;
   int blkid_;
 };
 
@@ -181,7 +195,8 @@ void AsyncGRPCServer::WaitClientGet(int count) {
 
 void AsyncGRPCServer::RunSyncUpdate() {
   ::grpc::ServerBuilder builder;
-  builder.AddListeningPort(address_, ::grpc::InsecureServerCredentials());
+  builder.AddListeningPort(address_, ::grpc::InsecureServerCredentials(),
+                           &selected_port_);
   builder.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   builder.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());
   builder.RegisterService(&service_);
@@ -191,7 +206,8 @@ void AsyncGRPCServer::RunSyncUpdate() {
   cq_prefetch_ = builder.AddCompletionQueue();
 
   server_ = builder.BuildAndStart();
-  LOG(INFO) << "Server listening on " << address_ << std::endl;
+  LOG(INFO) << "Server listening on " << address_
+            << " selected port: " << selected_port_;
 
   std::function<void()> send_register =
       std::bind(&AsyncGRPCServer::TryToRegisterNewSendOne, this);
@@ -221,6 +237,7 @@ void AsyncGRPCServer::ShutdownQueue() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   cq_send_->Shutdown();
   cq_get_->Shutdown();
+  cq_prefetch_->Shutdown();
 }
 
 // This URL explains why shutdown is complicate:
@@ -233,6 +250,7 @@ void AsyncGRPCServer::ShutDown() {
 void AsyncGRPCServer::TryToRegisterNewSendOne() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
+    VLOG(3) << "shutdown, do not TryToRegisterNewSendOne";
     return;
   }
   RequestSend* send = new RequestSend(&service_, cq_send_.get(), scope_,
@@ -243,6 +261,7 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
 void AsyncGRPCServer::TryToRegisterNewGetOne() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
+    VLOG(3) << "shutdown, do not TryToRegisterNewGetOne";
     return;
   }
   RequestGet* get = new RequestGet(&service_, cq_get_.get(), scope_, dev_ctx_,
@@ -253,42 +272,46 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
 void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
+    VLOG(3) << "shutdown, do not TryToRegisterNewPrefetchOne";
     return;
   }
   RequestPrefetch* prefetch =
       new RequestPrefetch(&service_, cq_prefetch_.get(), scope_, dev_ctx_,
-                          executor_, program_, prefetch_blk_id_);
+                          executor_, program_, prefetch_ctx_);
 
   VLOG(4) << "Create RequestPrefetch status:" << prefetch->Status();
 }
 
 // FIXME(typhoonzero): change cq_name to enum.
 void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
-                                    std::string cq_name,
+                                    const std::string& cq_name,
                                     std::function<void()> TryToRegisterNewOne) {
   TryToRegisterNewOne();
 
   void* tag = NULL;
   bool ok = false;
+
   while (true) {
+    VLOG(3) << "HandleRequest for " << cq_name << " while in";
     if (!cq->Next(&tag, &ok)) {
       LOG(INFO) << cq_name << " CompletionQueue shutdown!";
       break;
     }
+    VLOG(3) << "HandleRequest for " << cq_name << " while after Next";
 
     PADDLE_ENFORCE(tag);
     // FIXME(typhoonzero): de-couple the barriers with recv_op
     if (!is_shut_down_ && cq_name == "cq_get") WaitCond(1);
     if (!is_shut_down_ && cq_name == "cq_send") WaitCond(0);
 
-    RequestBase* base = (RequestBase*)tag;
+    RequestBase* base = reinterpret_cast<RequestBase*>(tag);
     // reference:
     // https://github.com/tensorflow/tensorflow/issues/5596
     // https://groups.google.com/forum/#!topic/grpc-io/xftlRy-IQwM
     // https://groups.google.com/forum/#!topic/grpc-io/ywATt88Ef_I
     if (!ok) {
-      LOG(WARNING) << cq_name << " recv no regular event:argument name"
-                   << base->GetReqName();
+      LOG(WARNING) << cq_name << " recv no regular event:argument name["
+                   << base->GetReqName() << "]";
       TryToRegisterNewOne();
       delete base;
       continue;
