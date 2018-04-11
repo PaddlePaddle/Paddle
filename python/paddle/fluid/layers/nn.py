@@ -1518,9 +1518,6 @@ def batch_norm(input,
     bias = helper.create_parameter(
         attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
 
-    if do_model_average_for_mean_and_var:
-        do_model_average_for_mean_and_var = None
-
     mean = helper.create_parameter(
         attr=ParamAttr(
             name=moving_mean_name,
