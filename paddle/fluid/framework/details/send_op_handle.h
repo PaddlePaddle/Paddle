@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace framework {
