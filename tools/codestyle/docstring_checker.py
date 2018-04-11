@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""DocstringChecker is used to check python doc string's style."""
 
 import six
 import astroid
@@ -25,9 +26,15 @@ def register(linter):
 
 
 class Docstring(object):
+    """Docstring class holds the parsed doc string elements.
+    """
+
     def __init__(self):
         from collections import defaultdict
         self.d = defaultdict(list)  #name->[]
+        self.clear()
+
+    def clear(self):
         self.d['Args'] = []
         self.d['Examples'] = []
         self.d['Returns'] = []
@@ -43,6 +50,15 @@ class Docstring(object):
         return level
 
     def parse(self, doc):
+        """Parse get sections from doc
+        Such as Args, Returns, Raises, Examples s
+        Args:
+            doc (string): is the astroid node doc string.
+        Returns:
+            True if doc is parsed successfully.
+        """
+        self.clear()
+
         lines = doc.splitlines()
         state = ("others", -1)
         for l in lines:
@@ -91,6 +107,9 @@ class Docstring(object):
 
 
 class DocstringChecker(BaseChecker):
+    """DosstringChecker is pylint checker to
+    check docstring style.
+    """
     __implements__ = (IAstroidChecker, )
 
     POSITIONAL_MESSAGE_ID = 'str-used-on-positional-format-argument'
@@ -122,6 +141,13 @@ class DocstringChecker(BaseChecker):
     options = ()
 
     def visit_functiondef(self, node):
+        """visit_functiondef checks Function node docstring style.
+        Args:
+            node (astroid.node): The visiting node.
+        Returns:
+            True if successful other wise False.
+        """
+
         self.check_doc_string(node)
 
         if node.tolineno - node.fromlineno <= 10:
@@ -159,7 +185,13 @@ class DocstringChecker(BaseChecker):
 
     # FIXME(gongwb): give the docstring line-no
     def indent_style(self, node, indent=4):
-        """check doc string indent style"""
+        """Check doc string indent style
+        Args:
+            node (astroid.node): The visiting node.
+            indent (int): The default indent of style
+        Returns:
+            True if successful other wise False.
+        """
         if node.doc is None:
             return True
 
@@ -175,7 +207,12 @@ class DocstringChecker(BaseChecker):
         return True
 
     def one_line_one_one_line(self, node):
-        """One line docs (len < 40) are on one line"""
+        """One line docs (len < 40) are on one line
+        Args:
+            node (astroid.node): The node visiting.
+        Returns:
+            True if successful otherwise False.
+        """
 
         doc = node.doc
         if doc is None:
@@ -192,7 +229,12 @@ class DocstringChecker(BaseChecker):
         return True
 
     def has_period(self, node):
-        """Doc ends in a period"""
+        """has_period checks if one line doc end-with '.' .
+        Args:
+            node (astroid.node): the node is visiting.
+        Returns:
+            True if successful otherwise False.
+        """
         if node.doc is None:
             return True
 
@@ -206,6 +248,14 @@ class DocstringChecker(BaseChecker):
         return True
 
     def with_raises(self, node, doc):
+        """with_raises checks if one line doc end-with '.' .
+        Args:
+            node (astroid.node): the node is visiting.
+            doc (Docstring): Docstring object.
+        Returns:
+            True if successful otherwise False.
+        """
+
         find = False
         for t in node.body:
             if not isinstance(t, astroid.Raise):
@@ -224,6 +274,14 @@ class DocstringChecker(BaseChecker):
         return True
 
     def with_returns(self, node, doc):
+        """with_returns checks if docstring comments what are returned .
+        Args:
+            node (astroid.node): the node is visiting.
+            doc (Docstring): Docstring object.
+        Returns:
+            True if successful otherwise False.
+        """
+
         find = False
         for t in node.body:
             if not isinstance(t, astroid.Return):
@@ -242,7 +300,13 @@ class DocstringChecker(BaseChecker):
         return True
 
     def all_args_in_doc(self, node, doc):
-        """All function arguments are mentioned in doc"""
+        """all_args_in_doc check if arguments are mentioned in doc
+        Args:
+            node (astroid.node): the node is visiting.
+            doc (Docstring): Docstring object
+        Returns:
+            True if successful otherwise False.
+        """
         args = []
         for arg in node.args.get_children():
             if (not isinstance(arg, astroid.AssignName)) \
@@ -255,13 +319,13 @@ class DocstringChecker(BaseChecker):
 
         parsed_args = doc.args
         if len(args) > 0 and len(parsed_args) <= 0:
-            print("debug:parsed args: ", parsed_args)
+            print "debug:parsed args: ", parsed_args
             self.add_message('W9003', node=node, line=node.fromlineno)
             return False
 
         for t in args:
             if t not in parsed_args:
-                print(t, " with (type) not in ", parsed_args)
+                print t, " with (type) not in ", parsed_args
                 self.add_message('W9003', node=node, line=node.fromlineno)
                 return False
 
