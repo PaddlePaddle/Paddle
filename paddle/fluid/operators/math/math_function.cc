@@ -278,6 +278,7 @@ void axpy<platform::CPUDeviceContext, double>(
   cblas_daxpy(n, alpha, x, 1, y, 1);
 }
 
+template struct SetConstant<platform::CPUDeviceContext, platform::float16>;
 template struct SetConstant<platform::CPUDeviceContext, float>;
 template struct SetConstant<platform::CPUDeviceContext, double>;
 template struct SetConstant<platform::CPUDeviceContext, int>;
@@ -315,6 +316,14 @@ struct TensorSetConstantCPU {
 
 template <>
 void set_constant_with_place<platform::CPUPlace>(
+    const platform::DeviceContext& context, framework::Tensor* tensor,
+    float value) {
+  framework::VisitDataType(framework::ToDataType(tensor->type()),
+                           TensorSetConstantCPU(tensor, value));
+}
+
+template <>
+void set_constant_with_place<platform::CUDAPinnedPlace>(
     const platform::DeviceContext& context, framework::Tensor* tensor,
     float value) {
   framework::VisitDataType(framework::ToDataType(tensor->type()),

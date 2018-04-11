@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lrn_op.h"
+#include <string>
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -116,6 +120,26 @@ struct LRNGradFunctor<platform::CPUDeviceContext, T> {
 template struct LRNGradFunctor<platform::CPUDeviceContext, float>;
 template struct LRNGradFunctor<platform::CPUDeviceContext, double>;
 
+namespace {
+framework::OpKernelType GetExpectedLRNKernel(
+    const framework::ExecutionContext& ctx) {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_MKLDNN
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+  }
+#endif
+
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
+      layout_, library_);
+}
+}  // namespace
+
 class LRNOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -132,8 +156,13 @@ class LRNOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp should be 4.");
 
     ctx->SetOutputDim("Out", x_dim);
-    ctx->SetOutputDim("MidOut", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("MidOut", x_dim);
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetExpectedLRNKernel(ctx);
   }
 };
 
@@ -176,6 +205,20 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
                "beta is the power number.")
         .SetDefault(0.75)
         .GreaterThan(0.0);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout");
+    AddAttr<bool>("is_test",
+                  "Turns on memory optimization that optimizes away "
+                  "unnecessary memory allocations. Used by MKLDNN.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Local Response Normalization Operator.
@@ -223,8 +266,12 @@ class LRNOpGrad : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   }
-};
 
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetExpectedLRNKernel(ctx);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 

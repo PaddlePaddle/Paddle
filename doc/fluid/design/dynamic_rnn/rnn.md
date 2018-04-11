@@ -5,7 +5,7 @@ This document describes the RNN (Recurrent Neural Network) operator and how it i
 ## RNN Algorithm Implementation
 
 <p align="center">
-<img src="./images/rnn.jpg"/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/rnn.jpg"/>
 </p>
 
 The above diagram shows an RNN unrolled into a full network.
@@ -22,7 +22,7 @@ There are several important concepts here:
 There could be local variables defined in each step-net.  PaddlePaddle runtime realizes these variables in *step-scopes* which are created for each step.
 
 <p align="center">
-<img src="./images/rnn.png"/><br/>
+<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/rnn.png"/><br/>
 Figure 2 illustrates the RNN's data flow
 </p>
 
@@ -49,7 +49,7 @@ or copy the memory value of the previous step to the current ex-memory variable.
 
 ### Usage in Python
 
-For more information on Block, please refer to the [design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/block.md).
+For more information on Block, please refer to the [design doc](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/block.md).
 
 We can define an RNN's step-net using a Block:
 
@@ -93,7 +93,7 @@ For example, we could have a 2-level RNN, where the top level corresponds to par
 The following figure illustrates feeding in text into the lower level, one sentence at a step, and the feeding in step outputs to the top level. The final top level output is about the whole text.
 
 <p align="center">
-<img src="./images/2_level_rnn.png"/>
+<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/2_level_rnn.png"/>
 </p>
 
 ```python
@@ -149,5 +149,5 @@ If the `output_all_steps` is set to False, it will only output the final time st
 
 
 <p align="center">
-<img src="images/rnn_2level_data.png"/>
+<img src="https://github.com/PaddlePaddle/Paddle/tree/develop/doc/fluid/images/rnn_2level_data.png"/>
 </p>

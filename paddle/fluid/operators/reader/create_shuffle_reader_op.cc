@@ -30,35 +30,33 @@ class ShuffleReader : public framework::DecoratedReader {
       std::random_device device;
       seed_ = device();
     }
-    ReadIntoBuffers();
+    ReloadBuffer();
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    if (!HasNext()) {
-      PADDLE_THROW("There is no next data!");
-    }
+    out->clear();
     if (iteration_pos_ >= buffer_.size()) {
       VLOG(10) << "Resetting shuffle buffer";
-      ReadIntoBuffers();
+      ReloadBuffer();
+      if (buffer_.empty()) {
+        return;
+      }
     }
     *out = buffer_[iteration_pos_++];
   }
 
-  bool HasNext() const override {
-    return iteration_pos_ < buffer_.size() || reader_->HasNext();
-  }
-
  private:
-  void ReadIntoBuffers() {
+  void ReloadBuffer() {
     buffer_.clear();
     buffer_.reserve(buffer_size_);
     iteration_pos_ = 0;
     for (size_t i = 0; i < buffer_size_; ++i) {
-      if (!reader_->HasNext()) {
+      std::vector<framework::LoDTensor> ins;
+      reader_->ReadNext(&ins);
+      if (ins.empty()) {
         break;
       }
-      buffer_.emplace_back();
-      reader_->ReadNext(&buffer_.back());
+      buffer_.emplace_back(ins);
     }
     std::mt19937 g(seed_);
     std::shuffle(buffer_.begin(), buffer_.end(), g);
@@ -80,10 +78,14 @@ class CreateShuffleReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
+    auto* out = detail::Ref(scope.FindVar(Output("Out")))
+                    .GetMutable<framework::ReaderHolder>();
+    if (out->Get() != nullptr) {
+      return;
+    }
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
-    auto& var = detail::Ref(scope.FindVar(Output("Out")));
-    var.GetMutable<framework::ReaderHolder>()->Reset(
+    out->Reset(
         new ShuffleReader(underlying_reader.Get(),
                           static_cast<size_t>(Attr<int>("buffer_size"))));
   }

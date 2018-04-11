@@ -65,8 +65,13 @@ class TestRecordIO(unittest.TestCase):
 
             # train a pass
             batch_id = 0
-            while not data_file.eof():
-                tmp, = exe.run(fetch_list=[avg_loss])
+            while True:
+                try:
+                    tmp, = exe.run(fetch_list=[avg_loss])
+                except fluid.core.EnforceNotMet as ex:
+                    self.assertIn("There is no next data.", ex.message)
+                    break
+
                 avg_loss_np.append(tmp)
                 batch_id += 1
             data_file.reset()
@@ -74,8 +79,8 @@ class TestRecordIO(unittest.TestCase):
             self.assertLess(avg_loss_np[-1], avg_loss_np[0])
 
     def test_shuffle_reader(self):
-        self.test_main(decorator_callback=lambda reader: fluid.layers.create_shuffle_reader(reader, buffer_size=200))
+        self.test_main(decorator_callback=lambda reader: fluid.layers.io.shuffle(reader, buffer_size=200))
 
     def test_double_buffer_reader(self):
-        self.test_main(decorator_callback=lambda reader: fluid.layers.create_double_buffer_reader(reader,
+        self.test_main(decorator_callback=lambda reader: fluid.layers.io.double_buffer(reader,
                                                                                                   place='cuda:0' if fluid.core.is_compiled_with_cuda() else 'cpu'))
