@@ -29,17 +29,17 @@ namespace framework {
 namespace details {
 
 /*
- * BroadCast the input to all scope.
+ * Broadcast the input to all scope.
  *
  */
-struct BCastOpHandle : public OpHandleBase {
+struct BroadcastOpHandle : public OpHandleBase {
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
   const platform::ContextMap &ctxs_;
 
-  BCastOpHandle(const std::vector<Scope *> &local_scopes,
-                const std::vector<platform::Place> &places,
-                const platform::ContextMap &ctxs);
+  BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
+                    const std::vector<platform::Place> &places,
+                    const platform::ContextMap &ctxs);
 
   std::string Name() const override;
 

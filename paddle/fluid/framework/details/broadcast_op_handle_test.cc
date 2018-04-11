@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/broad_cast_op_handle.h"
+#include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/platform/device_context.h"
@@ -23,12 +23,12 @@ namespace p = paddle::platform;
 // test data amount
 const f::DDim kDims = {20, 20};
 
-class BroadCastTester : public ::testing::Test {
+class BroadcastTester : public ::testing::Test {
  public:
   void SetUp() override {
     int count = p::GetCUDADeviceCount();
     if (count <= 1) {
-      LOG(WARNING) << "Cannot test multi-gpu BroadCast, because the CUDA "
+      LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
                       "device count is "
                    << count;
       exit(0);
@@ -40,7 +40,7 @@ class BroadCastTester : public ::testing::Test {
   }
 
   template <class T>
-  void BroadCastInitOp(int gpu_id = 0) {
+  void BroadcastInitOp(int gpu_id = 0) {
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scope_.push_back(&g_scope_.NewScope());
       auto* out_var = local_scope_[j]->Var("out");
@@ -50,7 +50,7 @@ class BroadCastTester : public ::testing::Test {
     in_var->GetMutable<T>();
 
     bc_op_handle_ =
-        new f::details::BCastOpHandle(local_scope_, gpu_list_, *ctxs_);
+        new f::details::BroadcastOpHandle(local_scope_, gpu_list_, *ctxs_);
 
     f::details::VarHandle* in_var_handle = new f::details::VarHandle();
     in_var_handle->place_ = gpu_list_[gpu_id];
@@ -68,7 +68,7 @@ class BroadCastTester : public ::testing::Test {
       bc_op_handle_->AddOutput(out_var_handle);
     }
   }
-  void BroadCastDestroy() {
+  void BroadcastDestroy() {
     delete ctxs_;
     for (auto in : bc_op_handle_->inputs_) {
       delete in;
@@ -84,12 +84,12 @@ class BroadCastTester : public ::testing::Test {
   p::ContextMap* ctxs_;
   std::vector<f::Scope*> local_scope_;
   std::vector<p::Place> gpu_list_;
-  f::details::BCastOpHandle* bc_op_handle_;
+  f::details::BroadcastOpHandle* bc_op_handle_;
 };
 
-TEST_F(BroadCastTester, BroadCastTestLodTensor) {
+TEST_F(BroadcastTester, BroadcastTestLodTensor) {
   int gpu_id = 0;
-  BroadCastInitOp<f::LoDTensor>(gpu_id);
+  BroadcastInitOp<f::LoDTensor>(gpu_id);
 
   auto in_var = local_scope_[gpu_id]->Var("input");
   auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
@@ -122,12 +122,12 @@ TEST_F(BroadCastTester, BroadCastTestLodTensor) {
     }
   }
 
-  BroadCastDestroy();
+  BroadcastDestroy();
 }
 
-TEST_F(BroadCastTester, BroadCastTestSelectedRows) {
+TEST_F(BroadcastTester, BroadcastTestSelectedRows) {
   int gpu_id = 0;
-  BroadCastInitOp<f::SelectedRows>(gpu_id);
+  BroadcastInitOp<f::SelectedRows>(gpu_id);
 
   auto in_var = local_scope_[gpu_id]->Var("input");
   auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
@@ -170,5 +170,5 @@ TEST_F(BroadCastTester, BroadCastTestSelectedRows) {
     }
   }
 
-  BroadCastDestroy();
+  BroadcastDestroy();
 }

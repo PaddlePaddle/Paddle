@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/broad_cast_op_handle.h"
+#include "paddle/fluid/framework/details/broadcast_op_handle.h"
 
 namespace paddle {
 namespace framework {
@@ -28,16 +28,16 @@ Tensor *GetTensorFromVar(Variable *in_var) {
   }
   return nullptr;
 }
-BCastOpHandle::BCastOpHandle(const std::vector<Scope *> &local_scopes,
-                             const std::vector<platform::Place> &places,
-                             const platform::ContextMap &ctxs)
+BroadcastOpHandle::BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
+                                     const std::vector<platform::Place> &places,
+                                     const platform::ContextMap &ctxs)
     : local_scopes_(local_scopes), places_(places), ctxs_(ctxs) {
   for (auto &p : places_) {
     this->dev_ctxes_[p] = ctxs_.DevCtx(p);
   }
 }
 
-void BCastOpHandle::RunImpl() {
+void BroadcastOpHandle::RunImpl() {
   PADDLE_ENFORCE_EQ(this->inputs_.size(), 1);
   PADDLE_ENFORCE_EQ(this->outputs_.size(), places_.size());
 
@@ -97,7 +97,7 @@ void BCastOpHandle::RunImpl() {
   }
 }
 
-std::string BCastOpHandle::Name() const { return "broadcast"; }
+std::string BroadcastOpHandle::Name() const { return "broadcast"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
