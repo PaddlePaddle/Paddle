@@ -135,19 +135,6 @@ def split_dense_variable(var_list,
     return blocks
 
 
-# TODO
-# 1. replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
-# 2. create inputs and outputs for prefetch_op
-# 3. delete w of lookup_table, delete it's init_op in startup_program
-# 4. create prefetch_block in pserver_program
-# 5. create w in pserver_main_program
-# 6. create init_op for w in pservev_init_program
-# 7. optimize op did not need to change now
-# 8. we only support one table parameter, if there are more than one
-# lookup_table_op with the same table parameter, pserver will
-# only have one lookup_table_op
-
-
 class DistributeTranspiler:
     def transpile(self,
                   optimize_ops,
@@ -155,7 +142,7 @@ class DistributeTranspiler:
                   trainer_id,
                   program=None,
                   pservers="127.0.0.1:6174",
-                  trainer_num=1,
+                  trainers=1,
                   split_method=splitter.round_robin):
         """
             Transpile the program to distributed data-parallelism programs.
@@ -192,8 +179,8 @@ class DistributeTranspiler:
             :type program: Program
             :param pservers: parameter server endpoints like "m1:6174,m2:6174"
             :type pservers: string
-            :param trainer_num: total number of workers/trainers in the job
-            :type trainer_num: int
+            :param trainers: total number of workers/trainers in the job
+            :type trainers: int
             :param split_method: A function to determin how to split variables
                 to different servers equally.
             :type split_method: function
@@ -202,7 +189,7 @@ class DistributeTranspiler:
         if program is None:
             program = default_main_program()
         self.origin_program = program
-        self.trainer_num = trainer_num
+        self.trainer_num = trainers
         self.optimize_ops = optimize_ops
         # TODO(typhoonzero): currently trainer_id is fetched from cluster system
         # like Kubernetes, we should port this to use etcd later when developing
