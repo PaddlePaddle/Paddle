@@ -181,10 +181,10 @@ void ParallelExecutor::SplitTensorToPlaces(
         member_->places_.size(), lod_tensors.size());
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?
-      member_->local_scopes_[j]
-          ->Var(it.first)
-          ->GetMutable<LoDTensor>()
-          ->ShareDataWith(lod_tensors[j]);
+      auto t =
+          member_->local_scopes_[j]->Var(it.first)->GetMutable<LoDTensor>();
+      t->ShareDataWith(lod_tensors[j]);
+      t->set_lod(lod_tensors[j].lod());
     }
   }
 }
