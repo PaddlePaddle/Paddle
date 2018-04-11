@@ -12,28 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/details/send_op_handle.h"
 
 namespace paddle {
 namespace framework {
-ReaderBase::~ReaderBase() {}
+namespace details {
 
-FileReader::FileReader(const std::vector<DDim> &dims) : dims_(dims) {}
+SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
+                           const Scope *local_scope,
+                           const platform::Place &place)
+    : op_(framework::OpRegistry::CreateOp(op_desc)),
+      local_scope_(local_scope),
+      place_(place) {}
 
-void FileReader::ReadNext(std::vector<LoDTensor> *out) {
-  ReadNextImpl(out);
-  if (out->empty()) {
-    return;
-  }
-  for (size_t i = 0; i < dims_.size(); ++i) {
-    auto &actual = out->at(i).dims();
-    auto &expect = dims_[i];
-
-    PADDLE_ENFORCE_EQ(actual.size(), expect.size());
-    for (int j = 0; j < actual.size(); ++j) {
-      //      PADDLE_ENFORCE(actual[i] == expect[i] || expect[i] == -1);
+void SendOpHandle::RunImpl() {
+  // Wait input done
+  for (auto *in : inputs_) {
+    auto &p = static_cast<VarHandle *>(in)->place_;
+    if (in->DebugString() == "dummy") {  // HACK
+      continue;
     }
+    in->generated_op_->Wait(dev_ctxes_[p]);
   }
+  op_->Run(*local_scope_, place_);
 }
+
+std::string SendOpHandle::Name() const { return "send"; }
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle
