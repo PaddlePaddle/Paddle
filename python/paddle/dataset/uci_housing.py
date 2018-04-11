@@ -19,7 +19,11 @@ https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ and
 parse training set and test set into paddle reader creators.
 """
 
+import os
+
 import numpy as np
+import tempfile
+import tarfile
 import os
 import paddle.dataset.common
 
@@ -34,8 +38,9 @@ feature_names = [
 
 UCI_TRAIN_DATA = None
 UCI_TEST_DATA = None
-URL_MODEL = 'https://github.com/PaddlePaddle/book/raw/develop/01.fit_a_line/fit_a_line.tar'
-MD5_MODEL = '52fc3da8ef3937822fcdd87ee05c0c9b'
+
+FLUID_URL_MODEL = 'https://github.com/PaddlePaddle/book/raw/develop/01.fit_a_line/fluid/fit_a_line.fluid.tar'
+FLUID_MD5_MODEL = '6e6dd637ccd5993961f68bfbde46090b'
 
 
 def feature_range(maximums, minimums):
@@ -112,6 +117,33 @@ def test():
 
     return reader
 
+def fluid_model():
+    parameter_tar = paddle.dataset.common.download(FLUID_URL_MODEL, 'uci_housing', FLUID_MD5_MODEL, 'fit_a_line.fluid.tar')
+
+    tar = tarfile.TarFile(parameter_tar, mode='r')
+    dirpath = tempfile.mkdtemp()
+    tar.extractall(path=dirpath)
+
+    return dirpath
+
+def predict_reader():
+    """
+    UCI_HOUSING test set creator.
+
+    It returns a reader creator, each sample in the reader is features after
+    normalization and price number.
+
+    :return: Test reader creator
+    :rtype: callable
+    """
+    global UCI_TEST_DATA
+    load_data(paddle.dataset.common.download(URL, 'uci_housing', MD5))
+
+    def reader():
+        for d in UCI_TEST_DATA:
+            yield (d[:-1],)
+
+    return reader
 
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)
