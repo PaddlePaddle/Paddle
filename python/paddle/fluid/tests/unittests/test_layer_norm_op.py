@@ -69,48 +69,6 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
     return grad_x, d_scale, d_bias
 
 
-def get_backward_op(scope, op, no_grad_set):
-    backward_op = core.Operator.backward(op, no_grad_set)
-    for input in backward_op.input_vars():
-        var = scope.var(input)
-        var.get_tensor()
-    for output in backward_op.output_vars():
-        var = scope.var(output)
-        var.get_tensor()
-    return backward_op
-
-
-def create_or_get_tensor(scope, var_name, var, place):
-    tensor = scope.var(var_name).get_tensor()
-    if var is not None:
-        assert isinstance(var, np.ndarray)
-        tensor.set_lod([[]])
-        tensor.set_dims(var.shape)
-        tensor.set(var, place)
-    return tensor
-
-
-def set_output_grad(scope, outputs, place, feed_dict=None):
-    def __set_tensor__(name, data=None):
-        out_tensor = scope.find_var(name).get_tensor()
-        grad_tensor = scope.var(grad_var_name(name)).get_tensor()
-        out_dtype = out_tensor.dtype()
-        if data is None:
-            if out_dtype == core.VarDesc.VarType.FP64:
-                data = np.ones(out_tensor.shape(), dtype=np.float64)
-            elif out_dtype == core.VarDesc.VarType.FP32:
-                data = np.ones(out_tensor.shape(), dtype=np.float32)
-            else:
-                raise ValueError("Not supported data type " + str(out_dtype))
-        grad_tensor.set(data, place)
-
-    for output in outputs:
-        data = None
-        if output in feed_dict:
-            data = feed_dict[output]
-        __set_tensor__(output, data)
-
-
 class TestLayerNormdOp(unittest.TestCase):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
