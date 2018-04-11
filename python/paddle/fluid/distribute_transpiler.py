@@ -536,6 +536,7 @@ class DistributeTranspiler:
         #             break
 
         # process distributed lookup_table
+        prefetch_block = None
         if self.has_distributed_lookup_table:
             pserver_index = self.pserver_endpoints.index(endpoint)
 
@@ -625,6 +626,14 @@ class DistributeTranspiler:
                     "is_distributed": True,
                     "padding_idx": -1
                 })
+
+        # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
+        # not be executed, so it's safe to use optimize_block to hold the place
+        if self.has_distributed_lookup_table:
+            assert prefetch_block is not None
+        else:
+            assert prefetch_block is None
+            prefetch_block = optimize_block
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
