@@ -26,11 +26,14 @@ def simple_fc_net(use_feed):
         img = fluid.layers.data(name='image', shape=[784], dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     else:
-        reader = fluid.layers.open_recordio_file(
-            filename='./mnist.recordio',
+        reader = fluid.layers.open_files(
+            filenames=['./mnist.recordio'],
             shapes=[[-1, 784], [-1, 1]],
             lod_levels=[0, 0],
-            dtypes=['float32', 'int64'])
+            dtypes=['float32', 'int64'],
+            thread_num=1,
+            for_parallel=True)
+        reader = fluid.layers.io.double_buffer(reader)
         img, label = fluid.layers.read_file(reader)
     hidden = img
     for _ in xrange(4):
@@ -51,11 +54,14 @@ def fc_with_batchnorm(use_feed):
         img = fluid.layers.data(name='image', shape=[784], dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     else:
-        reader = fluid.layers.open_recordio_file(
-            filename='./mnist.recordio',
+        reader = fluid.layers.open_files(
+            filenames=['mnist.recordio'],
             shapes=[[-1, 784], [-1, 1]],
             lod_levels=[0, 0],
-            dtypes=['float32', 'int64'])
+            dtypes=['float32', 'int64'],
+            thread_num=1,
+            for_parallel=True)
+        reader = fluid.layers.io.double_buffer(reader)
         img, label = fluid.layers.read_file(reader)
 
     hidden = img
