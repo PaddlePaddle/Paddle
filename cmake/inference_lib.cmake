@@ -92,20 +92,22 @@ elseif (WITH_MKLML)
     )
 endif()
 
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappy")
-copy(snappy_lib
-  SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
-  DSTS ${dst_dir} ${dst_dir}/lib)
+if(NOT MOBILE_INFERENCE AND NOT RPI)
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappy")
+  copy(snappy_lib
+    SRCS ${SNAPPY_INCLUDE_DIR} ${SNAPPY_LIBRARIES}
+    DSTS ${dst_dir} ${dst_dir}/lib)
 
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappystream")
-copy(snappystream_lib
-  SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
-  DSTS ${dst_dir} ${dst_dir}/lib)
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/snappystream")
+  copy(snappystream_lib
+    SRCS ${SNAPPYSTREAM_INCLUDE_DIR} ${SNAPPYSTREAM_LIBRARIES}
+    DSTS ${dst_dir} ${dst_dir}/lib)
 
-set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/zlib")
-copy(zlib_lib
-  SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
-  DSTS ${dst_dir} ${dst_dir}/lib)
+  set(dst_dir "${CMAKE_INSTALL_PREFIX}/third_party/install/zlib")
+  copy(zlib_lib
+    SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
+    DSTS ${dst_dir} ${dst_dir}/lib)
+endif()
 
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
