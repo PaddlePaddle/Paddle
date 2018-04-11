@@ -13,7 +13,7 @@
    limitations under the License. */
 
 #pragma once
-
+#include <vector>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"

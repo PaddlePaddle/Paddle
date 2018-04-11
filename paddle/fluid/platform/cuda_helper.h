@@ -33,22 +33,26 @@ constexpr int PADDLE_CUDA_NUM_THREADS = 512;
 USE_CUDA_ATOMIC(Add, float);
 USE_CUDA_ATOMIC(Add, int);
 USE_CUDA_ATOMIC(Add, unsigned int);
-USE_CUDA_ATOMIC(Add, unsigned long long int);
+// CUDA API uses unsigned long long int, we cannot use uint64_t here.
+// It because unsigned long long int is not necessarily uint64_t
+USE_CUDA_ATOMIC(Add, unsigned long long int);  // NOLINT
 
 CUDA_ATOMIC_WRAPPER(Add, int64_t) {
-  static_assert(sizeof(int64_t) == sizeof(long long int),
+  // Here, we check long long int must be int64_t.
+  static_assert(sizeof(int64_t) == sizeof(long long int),  // NOLINT
                 "long long should be int64");
-  return CudaAtomicAdd(reinterpret_cast<unsigned long long int*>(address),
-                       static_cast<unsigned long long int>(val));
+  return CudaAtomicAdd(
+      reinterpret_cast<unsigned long long int*>(address),  // NOLINT
+      static_cast<unsigned long long int>(val));           // NOLINT
 }
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
 USE_CUDA_ATOMIC(Add, double);
 #else
 CUDA_ATOMIC_WRAPPER(Add, double) {
-  unsigned long long int* address_as_ull =
-      reinterpret_cast<unsigned long long int*>(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  unsigned long long int* address_as_ull =                 // NOLINT
+      reinterpret_cast<unsigned long long int*>(address);  // NOLINT
+  unsigned long long int old = *address_as_ull, assumed;   // NOLINT
 
   do {
     assumed = old;
