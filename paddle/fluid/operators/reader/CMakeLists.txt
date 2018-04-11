@@ -22,5 +22,6 @@ reader_library(create_batch_reader_op SRCS create_batch_reader_op.cc)
 reader_library(create_recordio_file_reader_op SRCS create_recordio_file_reader_op.cc)
 reader_library(create_double_buffer_reader_op SRCS create_double_buffer_reader_op.cc)
 reader_library(create_multi_pass_reader_op SRCS create_multi_pass_reader_op.cc)
+reader_library(create_threaded_reader_op SRCS create_threaded_reader_op.cc)
 # Export local libraries to parent
 set(READER_LIBRARY ${LOCAL_READER_LIBS} PARENT_SCOPE)

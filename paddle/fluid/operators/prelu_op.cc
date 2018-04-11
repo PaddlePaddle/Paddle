@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/prelu_op.h"
 #include <string>
-#include "paddle/fluid/operators/net_op.h"
 
 namespace paddle {
 namespace operators {

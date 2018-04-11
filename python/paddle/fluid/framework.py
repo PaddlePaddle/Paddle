@@ -818,6 +818,11 @@ class Block(object):
         del self.vars[name]
         self.sync_with_cpp()
 
+    def remove_var(self, name):
+        self.sync_with_cpp()
+        self.desc.remove_var(name)
+        del self.vars[name]
+
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
@@ -838,6 +843,11 @@ class Block(object):
         self.ops.insert(index, op)
         return op
 
+    def remove_op(self, index):
+        self.sync_with_cpp()
+        self.desc.remove_op(index, index + 1)
+        del self.ops[index]
+
     def delete_ops(self, ops):
         # remove from cpp
         # FIXME(typhoonzero): remove only the first occurrence.
@@ -846,6 +856,7 @@ class Block(object):
             end = list(self.ops).index(ops[-1])
         except Exception, e:
             raise e
+
         self.desc.remove_op(start, end + 1)
 
     def slice_ops(self, start, end):
@@ -1107,24 +1118,6 @@ class Program(object):
 
     def current_block(self):
         return self.blocks[self.current_block_idx]
-
-    def append_backward(self, target, no_grad_set=None):
-        """
-        return map(param_name -> (grad_name, block_index, op_index))
-        """
-        assert isinstance(target, Variable)
-        if no_grad_set is None:
-            no_grad_set = set()
-        try:
-            param_to_grad_info = self.desc.append_backward(target.desc,
-                                                           no_grad_set)
-        except Exception as e:
-            raise core.EnforceNotMet(
-                str(e) + "\nCurrent protobuf is\n{0}".format(
-                    self.to_string(False)))
-
-        self.sync_with_cpp()
-        return param_to_grad_info
 
     def create_block(self, parent_idx=None):
         new_block_idx = len(self.blocks)
