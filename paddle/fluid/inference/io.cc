@@ -17,6 +17,8 @@ limitations under the License. */
 #include <fstream>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/pybind/pybind.h"
 
 namespace paddle {
 namespace inference {
