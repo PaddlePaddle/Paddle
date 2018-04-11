@@ -88,7 +88,7 @@ parser.add_argument(
     '--pserver_count', type=int, default=1, help="Pserver count")
 
 parser.add_argument(
-    '--action', type=str, default="serve", help="create|cleanup|status")
+    '--action', type=str, default="create", help="create|cleanup|status")
 
 parser.add_argument('--pem_path', type=str, help="private key file")
 
@@ -355,7 +355,8 @@ def status():
 
 
 def get_master_web_url(path):
-    return "http://" + args.master_server_public_ip + ":" + args.master_server_port + path
+    return "http://" + args.master_server_public_ip + ":" + str(
+        args.master_server_port) + path
 
 
 if __name__ == "__main__":
