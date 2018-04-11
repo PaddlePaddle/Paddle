@@ -66,6 +66,7 @@ class ReadOp : public framework::OperatorBase {
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
+    PADDLE_ENFORCE(!ins.empty(), "There is no next data.");
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
     for (size_t i = 0; i < ins.size(); ++i) {
       auto* out =
