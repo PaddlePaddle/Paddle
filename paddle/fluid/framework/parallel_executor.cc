@@ -177,8 +177,8 @@ void ParallelExecutor::Run(
         InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
                            std::get<1>(name_type_pair));
       } else {
-        InitializeVariable(local_scope.Var(name_type_pair.first),
-                           name_type_pair.second);
+        InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
+                           std::get<1>(name_type_pair));
       }
     }
   }
