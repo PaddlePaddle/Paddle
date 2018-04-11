@@ -467,7 +467,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
             loss = simple_fc_net(True)
             test_program = main.clone(for_test=True)
 
-            opt = fluid.optimizer.SGD(learning_rate=0.0001)
+            opt = fluid.optimizer.SGD(learning_rate=0.001)
             opt.minimize(loss)
 
             batch_size = 32
@@ -494,4 +494,8 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
 
                 train_loss, = train_exe.run([loss.name], feed_dict=feed_dict)
                 train_loss = numpy.array(train_loss)
-                self.assertTrue(numpy.allclose(train_loss, test_loss))
+                self.assertTrue(
+                    numpy.allclose(
+                        train_loss, test_loss, atol=1e-8),
+                    "Train loss: " + str(train_loss) + "\n Test loss:" +
+                    str(test_loss))
