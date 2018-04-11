@@ -54,7 +54,11 @@ void FetchOpHandle::RunImpl() {
 
   for (size_t i = 0; i < scopes.size(); ++i) {
     auto &scope = scopes[i];
-    auto &t = scope->FindVar(var_name)->Get<framework::LoDTensor>();
+    auto &t = scope->Var("@TMP_SCOPE@")
+                  ->Get<Scope *>()
+                  ->FindVar(var_name)
+                  ->Get<framework::LoDTensor>();
+    VLOG(10) << t.memory_size();
     if (platform::is_gpu_place(var->place_)) {
 #ifdef PADDLE_WITH_CUDA
       TensorCopy(t, cpu, *dev_ctxes_[t.place()], &tensors_[i]);
