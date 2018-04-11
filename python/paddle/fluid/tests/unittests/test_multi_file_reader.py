@@ -61,8 +61,12 @@ class TestMultipleReader(unittest.TestCase):
             exe.run(fluid.default_startup_program())
 
             batch_count = 0
-            while not data_files.eof():
-                img_val, = exe.run(fetch_list=[img])
+            while True:
+                try:
+                    img_val, = exe.run(fetch_list=[img])
+                except fluid.core.EnforceNotMet as ex:
+                    self.assertIn("There is no next data.", ex.message)
+                    break
                 batch_count += 1
                 self.assertLessEqual(img_val.shape[0], self.batch_size)
             data_files.reset()
