@@ -1,24 +1,24 @@
 # Design for GAN
 
-GAN (General Adversarial Net [https://arxiv.org/abs/1406.2661]) is an important model for unsupervised learning and widely used in many areas. 
+GAN (General Adversarial Net [https://arxiv.org/abs/1406.2661]) is an important model for unsupervised learning and widely used in many areas.
 
 It applies several important concepts in machine learning system design, including building and running subgraphs, dependency tracing, different optimizers in one executor and so forth.
 
 In our GAN design, we wrap it as a user-friendly easily customized python API to design different models. We take the conditional DC-GAN (Unsupervised Representation Learning with Deep Convolutional Generative Adversarial Networks [https://arxiv.org/abs/1511.06434]) as an example due to its good performance on image generation.
 
 <p align="center">
-<img src="./test.dot.png" width = "35%" align="center"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/test.dot.png" width = "35%" align="center"/><br/>
 Figure 1. The overall running logic of GAN. The black solid arrows indicate the forward pass; the green dashed arrows indicate the backward pass of generator training; the red dashed arrows indicate the backward pass of the discriminator training. The BP pass of the green (red) arrow should only update the parameters in the green (red) boxes. The diamonds indicate the data providers. d\_loss and g\_loss marked in red and green are the two targets we would like to run.
 </p>
 
 The operators, layers and functions required/optional to build a GAN demo is summarized in https://github.com/PaddlePaddle/Paddle/issues/4563.
 
 <p align="center">
-<img src="./dcgan.png" width = "90%" align="center"/><br/>
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/dcgan.png" width = "90%" align="center"/><br/>
 Figure 2. Photo borrowed from the original DC-GAN paper.
 </p>
 
-## The Conditional-GAN might be a class. 
+## The Conditional-GAN might be a class.
 This design we adopt the popular open source design in https://github.com/carpedm20/DCGAN-tensorflow and https://github.com/rajathkmp/DCGAN. It contains following data structure:
 
 - DCGAN(object): which contains everything required to build a GAN model. It provides following member functions methods as API:
@@ -29,7 +29,7 @@ This design we adopt the popular open source design in https://github.com/carped
 Returns a generated image.
 
 - discriminator(image):
-Given an image, decide if it is from a real source or a fake one. 
+Given an image, decide if it is from a real source or a fake one.
 Returns a 0/1 binary label.
 
 - build_model(self):
@@ -47,7 +47,7 @@ To be more detailed, we introduce our design of DCGAN as following:
 ```python
 class DCGAN(object):
   def __init__(self, y_dim=None):
-  
+
     # hyper parameters  
     self.y_dim = y_dim # conditional gan or not
     self.batch_size = 100
@@ -82,18 +82,18 @@ class DCGAN(object):
     # input z: the random noise
     # input y: input data label (optional)
     # output G_im: generated fake images
-    
+
     if not self.y_dim:
       z = pd.layer.concat(1, [z, y])
-      
+
     G_h0 = pd.layer.fc(z, self.G_w0, self.G_b0)
     G_h0_bn = pd.layer.batch_norm(G_h0)
     G_h0_relu = pd.layer.relu(G_h0_bn)
-    
+
     G_h1 = pd.layer.deconv(G_h0_relu, self.G_w1, self.G_b1)
     G_h1_bn = pd.layer.batch_norm(G_h1)
     G_h1_relu = pd.layer.relu(G_h1_bn)
-    
+
     G_h2 = pd.layer.deconv(G_h1_relu, self.G_W2, self.G_b2))
     G_im = pd.layer.tanh(G_im)
     return G_im
@@ -111,11 +111,11 @@ class DCGAN(object):
     D_h0 = pd.layer.conv2d(image, w=self.D_w0, b=self.D_b0)
     D_h0_bn = pd.layer.batchnorm(h0)
     D_h0_relu = pd.layer.lrelu(h0_bn)
-    
+
     D_h1 = pd.layer.conv2d(D_h0_relu, w=self.D_w1, b=self.D_b1)
     D_h1_bn = pd.layer.batchnorm(D_h1)
     D_h1_relu = pd.layer.lrelu(D_h1_bn)
-    
+
     D_h2 = pd.layer.fc(D_h1_relu, w=self.D_w2, b=self.D_b2)
     return D_h2
 ```
@@ -123,7 +123,7 @@ class DCGAN(object):
 ### Class member function: Build the model
 - Define data readers as placeholders to hold the data;
 - Build generator and discriminators;
-- Define two training losses for discriminator and generator, respectively. 
+- Define two training losses for discriminator and generator, respectively.
 If we have execution dependency engine to back-trace all tensors, the module building our GAN model will be like this:
 ```python
 class DCGAN(object):
@@ -133,7 +133,7 @@ class DCGAN(object):
     self.images = pd.data(pd.float32, [self.batch_size, self.im_size, self.im_size])
     self.faked_images = pd.data(pd.float32, [self.batch_size, self.im_size, self.im_size])
     self.z = pd.data(tf.float32, [None, self.z_size])
-    
+
     # step 1: generate images by generator, classify real/fake images with discriminator
     if self.y_dim: # if conditional GAN, includes label
         self.G = self.generator(self.z, self.y)
@@ -147,12 +147,12 @@ class DCGAN(object):
         # generate fake images
         self.sampled = self.sampler(self.z)
         self.D_f = self.discriminator(self.images)
-    
+
     # step 2: define the two losses
     self.d_loss_real = pd.reduce_mean(pd.cross_entropy(self.D_t, np.ones(self.batch_size))
     self.d_loss_fake = pd.reduce_mean(pd.cross_entropy(self.D_f, np.zeros(self.batch_size))
     self.d_loss = self.d_loss_real + self.d_loss_fake
-    
+
     self.g_loss = pd.reduce_mean(pd.cross_entropy(self.D_f, np.ones(self.batch_szie))
 ```
 
@@ -176,7 +176,7 @@ class DCGAN(object):
         self.G = self.generator(self.z)
         self.D_g = self.discriminator(self.G, self.y)
       self.g_loss = pd.reduce_mean(pd.cross_entropy(self.D_g, np.ones(self.batch_szie))
-    
+
     with pd.default_block().d_block():
       if self.y_dim: # if conditional GAN, includes label
         self.D_t = self.discriminator(self.images, self.y)
@@ -217,7 +217,7 @@ if __name__ == "__main__":
 
     # load mnist data
     data_X, data_y = self.load_mnist()
-    
+
     # Two subgraphs required!!!
     with pd.block().d_block():
       d_optim = pd.train.Adam(lr = .001, beta= .1)
@@ -228,7 +228,7 @@ if __name__ == "__main__":
 
     # executor
     sess = pd.executor()
-    
+
     # training
     for epoch in xrange(10000):
       for batch_id in range(N / batch_size):
@@ -239,7 +239,7 @@ if __name__ == "__main__":
         batch_z = np.random.uniform(-1., 1., [batch_size, z_dim])
 
         if batch_id % 2 == 0:
-          sess.run(d_step, 
+          sess.run(d_step,
                    feed_dict = {dcgan.images: batch_im,
                                 dcgan.y: batch_label,
                                 dcgan.z: batch_z})

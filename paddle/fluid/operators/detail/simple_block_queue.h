@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <condition_variable>
+#include <condition_variable>  // NOLINT
 #include <deque>
-#include <mutex>
+#include <mutex>  // NOLINT
 
 namespace paddle {
 namespace operators {
