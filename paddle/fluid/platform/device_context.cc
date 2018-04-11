@@ -8,10 +8,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/platform/device_context.h"
+
+#include <string>
 #include <unordered_set>
+#include <vector>
+
 #include "paddle/fluid/memory/memory.h"
+
 namespace paddle {
 namespace platform {
 
@@ -49,6 +53,16 @@ DeviceContextPool::DeviceContextPool(
 #ifdef PADDLE_WITH_CUDA
       device_contexts_.emplace(
           p, PtrType(new CUDADeviceContext(boost::get<CUDAPlace>(p))));
+#else
+      PADDLE_THROW(
+          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
+          "option");
+#endif
+    } else if (platform::is_cuda_pinned_place(p)) {
+#ifdef PADDLE_WITH_CUDA
+      device_contexts_.emplace(
+          p,
+          PtrType(new CUDAPinnedDeviceContext(boost::get<CUDAPinnedPlace>(p))));
 #else
       PADDLE_THROW(
           "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
@@ -186,6 +200,20 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+CUDAPinnedDeviceContext::CUDAPinnedDeviceContext(CUDAPinnedPlace place)
+    : place_(place) {
+  eigen_device_.reset(new Eigen::DefaultDevice());
+}
+
+Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN

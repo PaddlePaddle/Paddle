@@ -21,21 +21,22 @@ namespace memory {
 namespace detail {
 
 /**
- * \brief SystemAllocator is the parent class of CPUAllocator and GPUAllocator.
- *        A BuddyAllocator object uses a SystemAllocator* pointing to the
+ * \brief SystemAllocator is the parent class of CPUAllocator,
+ *        CUDAPinnedAllocator and GPUAllocator. A BuddyAllocator
+ *        object uses a SystemAllocator* pointing to the
  *        underlying system allocator.
  */
 class SystemAllocator {
  public:
   virtual ~SystemAllocator() {}
-  virtual void* Alloc(size_t& index, size_t size) = 0;
+  virtual void* Alloc(size_t* index, size_t size) = 0;
   virtual void Free(void* p, size_t size, size_t index) = 0;
   virtual bool UseGpu() const = 0;
 };
 
 class CPUAllocator : public SystemAllocator {
  public:
-  virtual void* Alloc(size_t& index, size_t size);
+  virtual void* Alloc(size_t* index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);
   virtual bool UseGpu() const;
 };
@@ -45,7 +46,7 @@ class GPUAllocator : public SystemAllocator {
  public:
   explicit GPUAllocator(int gpu_id) : gpu_id_(gpu_id) {}
 
-  virtual void* Alloc(size_t& index, size_t size);
+  virtual void* Alloc(size_t* index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);
   virtual bool UseGpu() const;
 
@@ -57,14 +58,12 @@ class GPUAllocator : public SystemAllocator {
 
 class CUDAPinnedAllocator : public SystemAllocator {
  public:
-  virtual void* Alloc(size_t& index, size_t size);
+  virtual void* Alloc(size_t* index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);
   virtual bool UseGpu() const;
 
  private:
-  size_t gpu_alloc_size_ =
-      0;  // TODO(zcd): how to define the upper limit of CUDAPinnedMemory?
-  size_t fallback_alloc_size_ = 0;
+  size_t cuda_pinnd_alloc_size_ = 0;
 };
 #endif
 
