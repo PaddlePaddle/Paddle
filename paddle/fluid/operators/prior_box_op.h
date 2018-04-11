@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/transform.h"
@@ -22,23 +24,23 @@ namespace operators {
 
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                bool flip,
-                               std::vector<float>& output_aspect_ratior) {
+                               std::vector<float>* output_aspect_ratior) {
   constexpr float epsilon = 1e-6;
-  output_aspect_ratior.clear();
-  output_aspect_ratior.push_back(1.0f);
+  output_aspect_ratior->clear();
+  output_aspect_ratior->push_back(1.0f);
   for (size_t i = 0; i < input_aspect_ratior.size(); ++i) {
     float ar = input_aspect_ratior[i];
     bool already_exist = false;
-    for (size_t j = 0; j < output_aspect_ratior.size(); ++j) {
+    for (size_t j = 0; j < output_aspect_ratior->size(); ++j) {
       if (fabs(ar - output_aspect_ratior[j]) < epsilon) {
         already_exist = true;
         break;
       }
     }
     if (!already_exist) {
-      output_aspect_ratior.push_back(ar);
+      output_aspect_ratior->push_back(ar);
       if (flip) {
-        output_aspect_ratior.push_back(1.0f / ar);
+        output_aspect_ratior->push_back(1.0f / ar);
       }
     }
   }
