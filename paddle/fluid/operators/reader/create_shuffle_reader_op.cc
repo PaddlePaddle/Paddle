@@ -30,35 +30,33 @@ class ShuffleReader : public framework::DecoratedReader {
       std::random_device device;
       seed_ = device();
     }
-    ReadIntoBuffers();
+    ReloadBuffer();
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    if (!HasNext()) {
-      PADDLE_THROW("There is no next data!");
-    }
+    out->clear();
     if (iteration_pos_ >= buffer_.size()) {
       VLOG(10) << "Resetting shuffle buffer";
-      ReadIntoBuffers();
+      ReloadBuffer();
+      if (buffer_.empty()) {
+        return;
+      }
     }
     *out = buffer_[iteration_pos_++];
   }
 
-  bool HasNext() const override {
-    return iteration_pos_ < buffer_.size() || reader_->HasNext();
-  }
-
  private:
-  void ReadIntoBuffers() {
+  void ReloadBuffer() {
     buffer_.clear();
     buffer_.reserve(buffer_size_);
     iteration_pos_ = 0;
     for (size_t i = 0; i < buffer_size_; ++i) {
-      if (!reader_->HasNext()) {
+      std::vector<framework::LoDTensor> ins;
+      reader_->ReadNext(&ins);
+      if (ins.empty()) {
         break;
       }
-      buffer_.emplace_back();
-      reader_->ReadNext(&buffer_.back());
+      buffer_.emplace_back(ins);
     }
     std::mt19937 g(seed_);
     std::shuffle(buffer_.begin(), buffer_.end(), g);

@@ -245,7 +245,6 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference);
 
   py::class_<framework::ReaderHolder>(m, "Reader", "")
-      .def("has_next", &framework::ReaderHolder::HasNext)
       .def("reset", &framework::ReaderHolder::ReInit);
 
   py::class_<Scope>(m, "Scope", "")
@@ -511,6 +510,7 @@ All parameter, weight, gradient are variables in Paddle.
                                   bcast_vars, main_program, loss_var_name,
                                   scope, local_scopes, allow_op_delay);
            })
+      .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
       .def("local_scopes",
            [](ParallelExecutor &self) -> std::vector<Scope *> * {
              return &self.GetLocalScopes();
