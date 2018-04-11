@@ -24,7 +24,7 @@ namespace recordio {
 
 // A Chunk contains the Header and optionally compressed records.
 class Chunk {
-public:
+ public:
   Chunk() : num_bytes_(0) {}
   void Add(const std::string& buf) {
     num_bytes_ += buf.size();
@@ -46,7 +46,7 @@ public:
 
   bool Empty() const { return records_.empty(); }
 
-private:
+ private:
   std::vector<std::string> records_;
   // sum of record lengths in bytes.
   size_t num_bytes_;

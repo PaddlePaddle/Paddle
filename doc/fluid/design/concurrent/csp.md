@@ -13,14 +13,41 @@ Most DL systems, including TensorFlow, Caffe2, and MxNet, can asynchronously exe
 
 There were many concurrent programming models, implemented in various forms:
 
-| concurrent programming model | implementation |
-|-----|-----|
-| mutex | types and functions in standard libraries |
-| semaphore | types and functions in standard libraries |
-| communicating sequential processes (CSP) | Go programming language |
-| actor model | Erlang programming language |
-| message passing | MPI |
-| bulk synchronous parallel (BSP) | Pregel distributed programming framework |
+<table>
+<thead>
+<tr>
+<th>concurrent programming model</th>
+<th>implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mutex </td>
+<td>types and functions in standard libraries </td>
+</tr>
+<tr>
+<td>semaphore </td>
+<td> types and functions in standard libraries </td>
+</tr>
+<tr>
+<td> communicating sequential processes (CSP)  </td>
+<td> Go programming language </td>
+</tr>
+<tr>
+<td> actor model  </td>
+<td> Erlang programming language </td>
+</tr>
+<tr>
+<td> message passing  </td>
+<td> MPI </td>
+</tr>
+<tr>
+<td> bulk synchronous parallel (BSP)   </td>
+<td> Pregel distributed programming framework </td>
+</tr>
+</tbody>
+</table>
+
 
 Since Fluid was designed to be a programming language, we would like to implement CSP in Fluid.
 
@@ -118,9 +145,9 @@ There are four types of actions with a channel:
    ```go
    close(ch)
    ```
-   
+
    Please be aware that a closed channel is not a nil channel, which is `var ch chan int`.
-   
+
 There are some [axioms with channels](https://dave.cheney.net/2014/03/19/channel-axioms):
 
 1. A send to a nil channel blocks forever
