@@ -43,7 +43,7 @@ class ParallelExecutorPrivate {
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
-  std::vector<std::pair<std::string, proto::VarType::Type>> var_types_;
+  std::vector<std::pair<std::string, proto::VarType::Type, bool>> var_types_;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
@@ -101,7 +101,8 @@ ParallelExecutor::ParallelExecutor(
 
   // Step 3. Create vars in each scope;
   for (auto *var : main_program.Block(0).AllVars()) {
-    member_->var_types_.emplace_back(var->Name(), var->GetType());
+    member_->var_types_.emplace_back(var->Name(), var->GetType(),
+                                     var->Persistable());
   }
 }
 
@@ -166,16 +167,19 @@ void ParallelExecutor::Run(
     Scope &local_scope = scope->NewScope();
     *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
         &local_scope;
-  }
 
-  for (auto *scope : member_->local_scopes_) {
     for (auto &name_type_pair : member_->var_types_) {
-      if (scope->FindVar(name_type_pair.first) != nullptr) {
+      if (scope->FindVar(std::get<0>(name_type_pair)) != nullptr) {
         continue;
       }
 
-      InitializeVariable(scope->Var(name_type_pair.first),
-                         name_type_pair.second);
+      if (std::get<2>(name_type_pair)) {  // Persistable
+        InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
+                           std::get<1>(name_type_pair));
+      } else {
+        InitializeVariable(local_scope.Var(name_type_pair.first),
+                           name_type_pair.second);
+      }
     }
   }
 
