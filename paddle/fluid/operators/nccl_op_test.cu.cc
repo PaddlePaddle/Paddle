@@ -15,8 +15,8 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <memory>
-#include <mutex>
-#include <thread>
+#include <mutex>   // NOLINT
+#include <thread>  // NOLINT
 #include <vector>
 
 #include "paddle/fluid/framework/init.h"
@@ -43,7 +43,7 @@ const f::DDim kDims = {20, 20};
 // nccl op common tester, init communicator.
 class NCCLTester : public ::testing::Test {
  public:
-  virtual void SetUp() override {
+  void SetUp() override {
     int count = p::GetCUDADeviceCount();
     if (count <= 1) {
       LOG(WARNING)
@@ -64,7 +64,7 @@ class NCCLTester : public ::testing::Test {
     NCCLInitOp();
   }
 
-  virtual void TearDown() override {
+  void TearDown() override {
     for (auto &device_context : dev_ctxs_) {
       delete device_context;
     }

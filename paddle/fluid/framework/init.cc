@@ -64,7 +64,7 @@ void InitP2P(int count) {
 #endif
 }
 
-void InitDevices() {
+void InitDevices(bool init_p2p) {
   /*Init all avaiable devices by default */
 
   std::vector<platform::Place> places;
@@ -85,7 +85,9 @@ void InitDevices() {
   for (int i = 0; i < count; ++i) {
     places.emplace_back(platform::CUDAPlace(i));
   }
-  InitP2P(count);
+  if (init_p2p) {
+    InitP2P(count);
+  }
   platform::DeviceContextPool::Init(places);
 }
 

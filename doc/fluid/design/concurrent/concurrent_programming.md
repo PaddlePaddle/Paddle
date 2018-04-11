@@ -23,21 +23,25 @@ The following table compares concepts in Fluid and Go
 <td>user-defined functions </td>
 <td>
 <a href="https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/fluid">layers</a></td>
+<td></td>
 </tr>
 <tr>
 <td>control-flow and built-in functions </td>
 <td>
 <a href="https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators">intrinsics/operators</a></td>
+<td></td>
 </tr>
 <tr>
 <td>goroutines, channels </td>
 <td>
 <a href="https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/framework/thread_pool.h">class ThreadPool</a></td>
+<td></td>
 </tr>
 <tr>
 <td>runtime </td>
 <td>
 <a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/executor.h">class Executor</a></td>
+<td></td>
 </tr>
 </tbody>
 </table>

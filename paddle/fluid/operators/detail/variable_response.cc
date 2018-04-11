@@ -112,7 +112,8 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
 
 bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
-    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
@@ -148,7 +149,8 @@ inline framework::DDim GetDims(
 
 bool VariableResponse::CopySelectRowsTensorData(
     ::google::protobuf::io::CodedInputStream* input,
-    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
   slr->set_height(meta_.slr_height());
@@ -412,6 +414,20 @@ int VariableResponse::Parse(Source* source) {
         if (!CopySelectRowsData(&input, *dev_ctx_, length)) {
           return tag;
         }
+        break;
+      }
+      case sendrecv::VariableMessage::kOutVarnameFieldNumber: {
+        uint32_t length;
+        if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
+          return tag;
+        }
+
+        std::string temp;
+        if (!input.ReadString(&temp, length)) {
+          return tag;
+        }
+
+        meta_.set_out_varname(temp);
         break;
       }
 

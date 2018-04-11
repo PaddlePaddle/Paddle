@@ -33,22 +33,26 @@ constexpr int PADDLE_CUDA_NUM_THREADS = 512;
 USE_CUDA_ATOMIC(Add, float);
 USE_CUDA_ATOMIC(Add, int);
 USE_CUDA_ATOMIC(Add, unsigned int);
-USE_CUDA_ATOMIC(Add, unsigned long long int);
+// CUDA API uses unsigned long long int, we cannot use uint64_t here.
+// It because unsigned long long int is not necessarily uint64_t
+USE_CUDA_ATOMIC(Add, unsigned long long int);  // NOLINT
 
 CUDA_ATOMIC_WRAPPER(Add, int64_t) {
-  static_assert(sizeof(int64_t) == sizeof(long long int),
+  // Here, we check long long int must be int64_t.
+  static_assert(sizeof(int64_t) == sizeof(long long int),  // NOLINT
                 "long long should be int64");
-  return CudaAtomicAdd(reinterpret_cast<unsigned long long int*>(address),
-                       static_cast<unsigned long long int>(val));
+  return CudaAtomicAdd(
+      reinterpret_cast<unsigned long long int*>(address),  // NOLINT
+      static_cast<unsigned long long int>(val));           // NOLINT
 }
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
 USE_CUDA_ATOMIC(Add, double);
 #else
 CUDA_ATOMIC_WRAPPER(Add, double) {
-  unsigned long long int* address_as_ull =
-      reinterpret_cast<unsigned long long int*>(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  unsigned long long int* address_as_ull =                 // NOLINT
+      reinterpret_cast<unsigned long long int*>(address);  // NOLINT
+  unsigned long long int old = *address_as_ull, assumed;   // NOLINT
 
   do {
     assumed = old;
@@ -61,54 +65,6 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
   return __longlong_as_double(old);
 }
 #endif
-
-// __shfl_down has been deprecated as of CUDA 9.0.
-#if CUDA_VERSION < 9000
-template <typename T>
-__forceinline__ __device__ T __shfl_down_sync(unsigned, T val, int delta) {
-  return __shfl_down(val, delta);
-}
-#define CREATE_SHFL_MASK(mask, predicate) mask = 0u;
-#else
-#define FULL_WARP_MASK 0xFFFFFFFF
-#define CREATE_SHFL_MASK(mask, predicate) \
-  mask = __ballot_sync(FULL_WARP_MASK, (predicate))
-#endif
-
-template <typename T>
-__device__ T reduceSum(T val, int tid, int len) {
-  // TODO(zcd): The warp size should be taken from the
-  // parameters of the GPU but not specified as 32 simply.
-  // To make the reduceSum more efficiently,
-  // I use Warp-Level Parallelism and assume the Warp size
-  // is 32 which may be different for different GPU,
-  // but most card's warp size is 32.
-  __shared__ T shm[32];
-  const int warpSize = 32;
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, tid < len);
-
-  for (int offset = warpSize / 2; offset > 0; offset /= 2)
-    val += __shfl_down_sync(mask, val, offset);
-
-  if (tid < warpSize) shm[tid] = 0;
-
-  __syncthreads();
-
-  if (tid % warpSize == 0) {
-    shm[tid / warpSize] = val;
-  }
-
-  CREATE_SHFL_MASK(mask, tid < warpSize);
-
-  if (tid < warpSize) {
-    val = shm[tid];
-    for (int offset = warpSize / 2; offset > 0; offset /= 2)
-      val += __shfl_down_sync(mask, val, offset);
-  }
-
-  return val;
-}
 
 }  // namespace platform
 }  // namespace paddle
