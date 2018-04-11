@@ -63,13 +63,14 @@ class DoubleBufferReader : public framework::DecoratedReader {
     StartPrefetcher();
   }
 
-  bool HasNext() const override;
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
   void ReInit() override;
 
   ~DoubleBufferReader() { EndPrefetcher(); }
 
  private:
+  bool HasNext() const;
+
   void StartPrefetcher() {
     channel_ = framework::MakeChannel<Item>(kChannelSize);
     prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
@@ -109,7 +110,9 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
 
     auto place_str = Attr<std::string>("place");
     platform::Place place;
-    if (place_str == "CPU") {
+    if (place_str == "AUTO") {
+      place = dev_place;
+    } else if (place_str == "CPU") {
       place = platform::CPUPlace();
     } else {
       std::istringstream sin(place_str);
@@ -140,28 +143,22 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
       enum_range.insert(string::Sprintf("CUDA:%d", i));
     }
     enum_range.insert("CPU");
-    AddAttr<std::string>("place", "The double buffer place, default is CPU")
-        .SetDefault("CPU")
+    enum_range.insert("AUTO");
+    AddAttr<std::string>("place", "The double buffer place")
+        .SetDefault("AUTO")
         .InEnum({enum_range});
   }
 };
 
-bool DoubleBufferReader::HasNext() const {
-  while (!channel_->IsClosed() && !channel_->CanReceive()) {
-  }
-  return channel_->CanReceive();
-}
-
 void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  if (!HasNext()) {
-    PADDLE_THROW("There is no next data!");
-  }
-
-  Item batch;
-  channel_->Receive(&batch);
-  *out = batch.payloads_;
-  if (batch.ctx_) {
-    batch.ctx_->Wait();
+  out->clear();
+  if (HasNext()) {
+    Item batch;
+    channel_->Receive(&batch);
+    *out = batch.payloads_;
+    if (batch.ctx_) {
+      batch.ctx_->Wait();
+    }
   }
 }
 
@@ -171,16 +168,26 @@ void DoubleBufferReader::ReInit() {
   StartPrefetcher();
 }
 
+bool DoubleBufferReader::HasNext() const {
+  while (!channel_->IsClosed() && !channel_->CanReceive()) {
+  }
+  return channel_->CanReceive();
+}
+
 void DoubleBufferReader::PrefetchThreadFunc() {
   VLOG(5) << "A new prefetch thread starts.";
   std::vector<std::vector<framework::LoDTensor>> cpu_tensor_cache(kCacheSize);
   std::vector<std::vector<framework::LoDTensor>> gpu_tensor_cache(kCacheSize);
   size_t cached_tensor_id = 0;
 
-  while (reader_->HasNext()) {
+  while (true) {
     Item batch;
     auto& cpu_batch = cpu_tensor_cache[cached_tensor_id];
     reader_->ReadNext(&cpu_batch);
+    if (cpu_batch.empty()) {
+      // The underlying reader have no next data.
+      break;
+    }
     if (platform::is_gpu_place(place_)) {
       auto& gpu_batch = gpu_tensor_cache[cached_tensor_id];
       auto* gpu_ctx = ctxs_[cached_tensor_id].get();

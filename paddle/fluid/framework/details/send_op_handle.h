@@ -14,24 +14,35 @@
 
 #pragma once
 
-#include <map>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/details/var_handle.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-struct SSAGraph {
-  std::vector<
-      std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
-      vars_;
-  // aux variables to represent dependency. Useful to resolve data hazard.
-  std::unordered_set<std::unique_ptr<VarHandleBase>> dep_vars_;
-  std::vector<std::unique_ptr<OpHandleBase>> ops_;
+struct SendOpHandle : public OpHandleBase {
+  std::unique_ptr<OperatorBase> op_;
+  const Scope* local_scope_;
+  const platform::Place& place_;
+
+  SendOpHandle(const framework::OpDesc& op_desc, const Scope* local_scope,
+               const platform::Place& place);
+
+  std::string Name() const override;
+
+  // Delay and buffer nccl_all_reduce together can significantly increase
+  // performance. Disable this feature by returning false.
+  bool IsMultiDeviceTransfer() override { return false; };
+
+ protected:
+  void RunImpl() override;
 };
 
 }  // namespace details

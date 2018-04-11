@@ -87,7 +87,8 @@ class ParallelExecutor(object):
                 # performance. Worth tunning for other models in the future.
                 num_threads = len(self._places)
             else:
-                min(len(self._places) * 2, multiprocessing.cpu_count())
+                num_threads = min(
+                    len(self._places) * 2, multiprocessing.cpu_count())
 
         main = main_program
         main = main if main else framework.default_main_program()
@@ -99,9 +100,11 @@ class ParallelExecutor(object):
         local_scopes = share_vars_from.executor.local_scopes(
         ) if share_vars_from else []
 
-        persistable_vars = [
+        self.persistable_vars = [
             v.name
-            for v in filter(lambda var: var.persistable, main.list_vars())
+            for v in filter(lambda var: \
+                var.persistable and var.type != core.VarDesc.VarType.RAW,
+                main.list_vars())
         ]
 
         self.executor = core.ParallelExecutor(
@@ -112,7 +115,7 @@ class ParallelExecutor(object):
                 p.name for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(persistable_vars),
+            set(self.persistable_vars),
             main.desc,
             loss_name if loss_name else '',
             scope,
@@ -142,3 +145,6 @@ class ParallelExecutor(object):
         self.executor.run(fetch_list, fetch_var_name, feed_tensor_dict)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
         return [arr[i] for i in range(len(arr))]
+
+    def bcast_params(self):
+        self.executor.bcast_params(set(self.persistable_vars))

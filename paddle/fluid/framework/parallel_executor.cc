@@ -115,14 +115,12 @@ void ParallelExecutor::BCastParamsToGPUs(
 
   for (auto &var : vars) {
     auto *main_var = main_scope->FindVar(var);
-    if (!main_var->IsType<LoDTensor>()) {
+    if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
       continue;
     }
 
     auto &main_tensor = main_var->Get<LoDTensor>();
-
     auto &dims = main_tensor.dims();
-
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
@@ -174,12 +172,17 @@ void ParallelExecutor::SplitTensorToPlaces(
     const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
   for (auto it : feed_tensors) {
     auto lod_tensors = it.second.SplitLoDTensor(member_->places_);
+    PADDLE_ENFORCE_EQ(
+        member_->places_.size(), lod_tensors.size(),
+        "The number of samples of current batch is less than the count of "
+        "devices, currently, it is not allowed. (%d vs %d)",
+        member_->places_.size(), lod_tensors.size());
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?
-      member_->local_scopes_[j]
-          ->Var(it.first)
-          ->GetMutable<LoDTensor>()
-          ->ShareDataWith(lod_tensors[j]);
+      auto t =
+          member_->local_scopes_[j]->Var(it.first)->GetMutable<LoDTensor>();
+      t->ShareDataWith(lod_tensors[j]);
+      t->set_lod(lod_tensors[j].lod());
     }
   }
 }
