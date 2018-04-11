@@ -18,23 +18,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static Tensor *GetTensorFromVar(Variable *in_var) {
-  if (in_var->IsType<LoDTensor>()) {
-    return in_var->GetMutable<LoDTensor>();
-  } else if (in_var->IsType<SelectedRows>()) {
-    return in_var->GetMutable<SelectedRows>()->mutable_value();
-  } else {
-    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
-  }
-  return nullptr;
-}
 BroadcastOpHandle::BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places)
     : local_scopes_(local_scopes), places_(places) {}
 
 void BroadcastOpHandle::RunImpl() {
-  PADDLE_ENFORCE_EQ(this->inputs_.size(), 1);
-  PADDLE_ENFORCE_EQ(this->outputs_.size(), places_.size());
+  PADDLE_ENFORCE_EQ(this->inputs_.size(), 1,
+                    "The number of input should be one.");
+  PADDLE_ENFORCE_EQ(
+      this->outputs_.size(), places_.size(),
+      "The number of output should equal to the number of places.");
 
   // Wait input done, this Wait is asynchronous operation
   auto in_var_handle = static_cast<VarHandle *>(this->inputs_[0]);
@@ -43,7 +36,9 @@ void BroadcastOpHandle::RunImpl() {
     inputs_[0]->generated_op_->Wait(dev_ctxes_[in_place]);
 
   auto in_scope_idx = in_var_handle->scope_idx_;
-  PADDLE_ENFORCE_LT(in_scope_idx, local_scopes_.size(), "");
+  PADDLE_ENFORCE_LT(in_scope_idx, local_scopes_.size(),
+                    "The input(%s) is not in the local_scopes.",
+                    in_var_handle->name_);
   auto in_var = local_scopes_[in_scope_idx]->FindVar(in_var_handle->name_);
 
   Tensor *in_tensor = GetTensorFromVar(in_var);
@@ -56,12 +51,8 @@ void BroadcastOpHandle::RunImpl() {
                       "%s is not the the local_scopes ", out_handle->name_);
     auto *s = local_scopes_[out_scope_idx];
     auto out_var = s->FindVar(out_handle->name_);
-
-    PADDLE_ENFORCE_EQ(
-        out_var->Type(), in_var->Type(),
-        "The type of input and output is not equal. (%s_%d vs %s_%d)",
-        out_handle->name_, out_handle->scope_idx_, in_var_handle->name_,
-        in_var_handle->scope_idx_);
+    PADDLE_ENFORCE_EQ(out_p.which(), in_place.which(),
+                      "The place of input and output should be the same.");
 
     if (in_var->IsType<framework::SelectedRows>()) {
       auto &in_sr = in_var->Get<framework::SelectedRows>();

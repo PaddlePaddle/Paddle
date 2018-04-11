@@ -17,6 +17,9 @@
 
 #include "paddle/fluid/platform/device_context.h"
 
+namespace paddle {
+namespace framework {
+namespace details {
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
@@ -25,7 +28,7 @@ const f::DDim kDims = {20, 20};
 
 class GatherTester : public ::testing::Test {
  public:
-  void InitCtx(bool use_gpu) {
+  void InitCtxOnGpu(bool use_gpu) {
     if (use_gpu) {
 #ifdef PADDLE_WITH_CUDA
       int count = p::GetCUDADeviceCount();
@@ -103,45 +106,7 @@ class GatherTester : public ::testing::Test {
     }
   }
 
-  void TestGatherLodTensor() {
-    //    int input_scope_idx = 0;
-    //    InitGatherOp<f::LoDTensor>(input_scope_idx);
-    //
-    //    auto in_var = local_scope_[input_scope_idx]->Var("input");
-    //    auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
-    //    in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
-    //
-    //    std::vector<float> send_vector(f::product(kDims), input_scope_idx +
-    //    12);
-    //    for (size_t k = 0; k < send_vector.size(); ++k) {
-    //      send_vector[k] = k;
-    //    }
-    //    f::LoD lod{{0, 10, 20}};
-    //    paddle::framework::TensorFromVector<float>(
-    //        send_vector, *(ctxs_[input_scope_idx]), in_lod_tensor);
-    //    in_lod_tensor->set_lod(lod);
-    //
-    //    gather_op_handle_->Run(false);
-    //
-    //    WaitAll();
-    //
-    //    p::CPUPlace cpu_place;
-    //    for (size_t j = 0; j < gpu_list_.size(); ++j) {
-    //      auto out_var = local_scope_[j]->Var("out");
-    //      auto out_tensor = out_var->Get<f::LoDTensor>();
-    //      PADDLE_ENFORCE_EQ(out_tensor.lod(), lod, "lod is not equal.");
-    //
-    //      f::Tensor result_tensor;
-    //      f::TensorCopy(out_tensor, cpu_place, *(ctxs_[j]), &result_tensor);
-    //      float* ct = result_tensor.mutable_data<float>(cpu_place);
-    //
-    //      for (int64_t j = 0; j < f::product(kDims); ++j) {
-    //        ASSERT_NEAR(ct[j], send_vector[j], 1e-5);
-    //      }
-    //    }
-    //
-    //    GatherOpDestroy();
-  }
+  void TestGatherLodTensor() {}
 
   void TestGatherSelectedRows() {
     int output_scope_idx = 0;
@@ -205,23 +170,26 @@ class GatherTester : public ::testing::Test {
 };
 
 // TEST_F(GatherTester, TestCPUGatherTestLodTensor) {
-//  InitCtx(false);
+//  InitCtxOnGpu(false);
 //  TestGatherLodTensor();
 //}
 
 TEST_F(GatherTester, TestCPUGatherTestSelectedRows) {
-  InitCtx(false);
+  InitCtxOnGpu(false);
   TestGatherSelectedRows();
 }
 
 #ifdef PADDLE_WITH_CUDA
 // TEST_F(GatherTester, TestGPUGatherTestLodTensor) {
-//  InitCtx(true);
+//  InitCtxOnGpu(true);
 //  TestGatherLodTensor();
 //}
 
 TEST_F(GatherTester, TestGPUGatherTestSelectedRows) {
-  InitCtx(true);
+  InitCtxOnGpu(true);
   TestGatherSelectedRows();
 }
 #endif
+}  // namespace details
+}  // namespace framework
+}  // namespace paddle

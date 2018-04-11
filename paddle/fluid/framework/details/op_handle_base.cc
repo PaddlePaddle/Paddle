@@ -17,6 +17,21 @@
 namespace paddle {
 namespace framework {
 namespace details {
+
+// GetTensorFromVar is used in broadcast_op handle and gather_op handle, so it
+// should be placed in a commonplace. I don't find an appropriate place, so I
+// temporarily place it in op_handle_base.
+Tensor *GetTensorFromVar(Variable *in_var) {
+  if (in_var->IsType<LoDTensor>()) {
+    return in_var->GetMutable<LoDTensor>();
+  } else if (in_var->IsType<SelectedRows>()) {
+    return in_var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
+  }
+  return nullptr;
+}
+
 std::string OpHandleBase::DebugString() const {
   std::stringstream ss;
   ss << "(";
