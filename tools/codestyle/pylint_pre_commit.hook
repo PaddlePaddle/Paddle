@@ -8,7 +8,6 @@ export PYATHONPATH=$PYATHONPATH:$DIR
 
 # The trick to remove deleted files: https://stackoverflow.com/a/2413151
 for file in $(git diff --cached --name-status | awk '$1 != "D" {print $2}'); do
-    echo $file
     pylint --disable=all --load-plugins=docstring_checker \
     --enable=doc-string-one-line,doc-string-end-with,doc-string-with-all-args,doc-string-triple-quotes,doc-string-missing,doc-string-indent-error,doc-string-with-returns,doc-string-with-raises $file;
     TOTAL_ERRORS=$(expr $TOTAL_ERRORS + $?);
