@@ -38,9 +38,11 @@ class SumOp : public framework::OperatorWithKernel {
     }
 
     auto x_dims = ctx->GetInputsDim("X");
-    // TODO(qiao) maybe the check need to add back in the future.
-    // size_t N = x_dims.size();
-    // PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
+    size_t N = x_dims.size();
+    PADDLE_ENFORCE_GT(N, 0, "Input tensors count should > 0.");
+    if (N == 1) {
+      VLOG(3) << "Warning: sum have only one input, may waste memory";
+    }
 
     framework::DDim in_dim({0});
     for (auto& x_dim : x_dims) {
