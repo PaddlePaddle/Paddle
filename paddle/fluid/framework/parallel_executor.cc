@@ -115,14 +115,12 @@ void ParallelExecutor::BCastParamsToGPUs(
 
   for (auto &var : vars) {
     auto *main_var = main_scope->FindVar(var);
-    if (!main_var->IsType<LoDTensor>()) {
+    if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
       continue;
     }
 
     auto &main_tensor = main_var->Get<LoDTensor>();
-
     auto &dims = main_tensor.dims();
-
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
       size_t numel = main_tensor.numel();
       ncclDataType_t data_type = platform::ToNCCLDataType(main_tensor.type());
