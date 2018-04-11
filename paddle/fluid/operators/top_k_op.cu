@@ -153,7 +153,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         }
       }
       if (!(*is_empty)) {
-        GetTopK<T, BlockSize>(topk + MaxLength - *beam, src, tid, dim, max,
+        GetTopK<T, BlockSize>(topk + MaxLength - *beam, src, tid, dim, *max,
                               length);
       }
     }
