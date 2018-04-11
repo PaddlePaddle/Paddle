@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#define EIGEN_USE_GPU
 #include <algorithm>
 #include "paddle/fluid/operators/sequence_expand_op.h"
 #include "paddle/fluid/platform/cuda_helper.h"
@@ -78,7 +77,7 @@ __global__ void sequence_expand_grad_kernel(
 
 void GetOutputOffset(const framework::Vector<size_t>& x_lod,
                      const framework::Vector<size_t>& ref_lod,
-                     framework::Vector<size_t>& out_offset) {
+                     framework::Vector<size_t>* out_offset) {
   size_t offset = 0;
   int lod_size = static_cast<int>(x_lod.size());
   for (int i = 0; i < static_cast<int>(x_lod.size()); ++i) {
@@ -98,7 +97,7 @@ struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
       LoDTensor* out) {
     int x_item_length = x.numel() / x.dims()[0];
     framework::Vector<size_t> out_offset(x_lod.size());
-    GetOutputOffset(x_lod, ref_lod, out_offset);
+    GetOutputOffset(x_lod, ref_lod, &out_offset);
 
     int thread_x = std::min(32, std::max(static_cast<int>(ref_lod.size()), 16));
     int thread_y = 16;
@@ -124,7 +123,7 @@ struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
                   LoDTensor* dx) {
     int x_item_length = framework::product(dx->dims()) / dx->dims()[0];
     framework::Vector<size_t> out_offset(x_lod.size());
-    GetOutputOffset(x_lod, ref_lod, out_offset);
+    GetOutputOffset(x_lod, ref_lod, &out_offset);
 
     int thread_x = std::min(32, std::max(static_cast<int>(ref_lod.size()), 16));
     int thread_y = 16;
