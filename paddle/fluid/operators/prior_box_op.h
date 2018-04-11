@@ -32,7 +32,7 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
     float ar = input_aspect_ratior[i];
     bool already_exist = false;
     for (size_t j = 0; j < output_aspect_ratior->size(); ++j) {
-      if (fabs(ar - output_aspect_ratior[j]) < epsilon) {
+      if (fabs(ar - output_aspect_ratior->at(j)) < epsilon) {
         already_exist = true;
         break;
       }
@@ -70,7 +70,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto clip = ctx.Attr<bool>("clip");
 
     std::vector<float> aspect_ratios;
-    ExpandAspectRatios(input_aspect_ratio, flip, aspect_ratios);
+    ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
 
     T step_w = static_cast<T>(ctx.Attr<float>("step_w"));
     T step_h = static_cast<T>(ctx.Attr<float>("step_h"));
