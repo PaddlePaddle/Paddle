@@ -38,6 +38,7 @@ class SumOp : public framework::OperatorWithKernel {
     }
 
     auto x_dims = ctx->GetInputsDim("X");
+    // TODO(qiao) maybe the check need to add back in the future.
     // size_t N = x_dims.size();
     // PADDLE_ENFORCE_GT(N, 1, "Input tensors count should > 1.");
 
