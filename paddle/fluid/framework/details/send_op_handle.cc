@@ -19,18 +19,22 @@ namespace framework {
 namespace details {
 
 SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
-                           const Scope *local_scope)
+                           const Scope *local_scope,
+                           const platform::Place &place)
     : op_(framework::OpRegistry::CreateOp(op_desc)),
-      local_scope_(local_scope) {}
+      local_scope_(local_scope),
+      place_(place) {}
 
 void SendOpHandle::RunImpl() {
   // Wait input done
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place_;
+    if (in->DebugString() == "dummy") {  // HACK
+      continue;
+    }
     in->generated_op_->Wait(dev_ctxes_[p]);
   }
-  platform::CPUPlace cpu;
-  op_->Run(*local_scope_, cpu);
+  op_->Run(*local_scope_, place_);
 }
 
 std::string SendOpHandle::Name() const { return "send"; }
