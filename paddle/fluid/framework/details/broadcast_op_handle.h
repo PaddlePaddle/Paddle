@@ -35,11 +35,10 @@ namespace details {
 struct BroadcastOpHandle : public OpHandleBase {
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
-  const platform::ContextMap &ctxs_;
+  //  const platform::ContextMap &ctxs_;
 
   BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places,
-                    const platform::ContextMap &ctxs);
+                    const std::vector<platform::Place> &places);
 
   std::string Name() const override;
 
