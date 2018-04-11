@@ -7,16 +7,12 @@ if(WITH_GPU)
         dynload_cuda)
     nv_library(broadcast_op_handle SRCS broadcast_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory)
 endif()
-
 cc_library(computation_op_handle SRCS computation_op_handle.cc DEPS framework_proto scope place operator op_registry)
-
 cc_library(ssa_graph SRCS ssa_graph.cc DEPS var_handle op_handle_base)
 cc_library(ssa_graph_builder SRCS ssa_graph_builder.cc DEPS ssa_graph)
 
 if(WITH_GPU)
     set(multi_devices_graph_builder_deps nccl_all_reduce_op_handle)
-    nv_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope lod_tensor ddim memory
-            device_context broadcast_op_handle)
 else()
     set(multi_devices_graph_builder_deps)
 endif()
@@ -25,3 +21,6 @@ cc_library(multi_devices_graph_builder SRCS multi_devices_graph_builder.cc DEPS 
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ssa_graph framework_proto)
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
         simple_threadpool device_context)
+
+cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope lod_tensor ddim memory
+        device_context broadcast_op_handle)
