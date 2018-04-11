@@ -126,6 +126,7 @@ void StartServerNet(bool is_sparse) {
   f::ProgramDesc program;
   const auto &root_block = program.Block(0);
   auto *optimize_block = program.AppendBlock(root_block);
+  auto *prefetch_block = program.AppendBlock(root_block);
   // X for server side tensors, RX for received tensers, must be of same shape.
   AddOp("sum", {{"X", {"x0", "x1"}}}, {{"Out", {"Out"}}}, {}, optimize_block);
 
@@ -135,7 +136,7 @@ void StartServerNet(bool is_sparse) {
   attrs.insert({"ParamList", std::vector<std::string>({"Out"})});
   attrs.insert({"GradList", std::vector<std::string>({"x1"})});
   attrs.insert({"OptimizeBlock", optimize_block});
-  attrs.insert({"PrefetchBlock", optimize_block});
+  attrs.insert({"PrefetchBlock", prefetch_block});
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
   LOG(INFO) << "selected port before run " << selected_port;
