@@ -27,6 +27,7 @@ __all__ = [
     'ChunkEvaluator',
     'EditDistance',
     'DetectionMAP',
+    'Auc',
 ]
 
 
@@ -181,8 +182,19 @@ class ChunkEvalutor(MetricBase):
         self.num_label_chunks = 0
         self.num_correct_chunks = 0
 
-    def update(self, precision, recall, f1_score, num_infer_chunks,
-               num_label_chunks, num_correct_chunks):
+    def update(self, num_infer_chunks, num_label_chunks, num_correct_chunks):
+        if not _is_number_or_matrix_(num_infer_chunks):
+            raise ValueError(
+                "The 'num_infer_chunks' must be a number(int, float) or a numpy ndarray."
+            )
+        if not _is_number_or_matrix_(num_label_chunks):
+            raise ValueError(
+                "The 'num_label_chunks' must be a number(int, float) or a numpy ndarray."
+            )
+        if not _is_number_or_matrix_(num_correct_chunks):
+            raise ValueError(
+                "The 'num_correct_chunks' must be a number(int, float) or a numpy ndarray."
+            )
         self.num_infer_chunks += num_infer_chunks
         self.num_label_chunks += num_label_chunks
         self.num_correct_chunks += num_correct_chunks

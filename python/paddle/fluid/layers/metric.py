@@ -15,12 +15,13 @@
 All layers just related to metric.
 """
 
+import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
 
-__all__ = ['accuracy']
+__all__ = ['accuracy', 'auc']
 
 
 def accuracy(input, label, k=1, correct=None, total=None):
@@ -58,6 +59,12 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
 
 def auc(input, label, curve='ROC', num_thresholds=200):
+    warnings.warn(
+        "This interface not recommended, fluid.layers.auc compute the auc at every minibatch, \
+        but can not aggregate them and get the pass AUC, because pass \
+        auc can not be averaged with weighted from the minibatch auc value. \
+        Please use fluid.metrics.Auc, it can compute the auc value via Python natively, \
+        which can get every minibatch and every pass auc value.", Warning)
     helper = LayerHelper("auc", **locals())
     topk_out = helper.create_tmp_variable(dtype=input.dtype)
     topk_indices = helper.create_tmp_variable(dtype="int64")
