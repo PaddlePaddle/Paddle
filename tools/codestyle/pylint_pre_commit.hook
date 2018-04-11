@@ -4,7 +4,7 @@ TOTAL_ERRORS=0
 
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-export PYATHONPATH=$PYATHONPATH:$DIR
+export PYTHONPATH=$DIR:$PYTHONPATH
 
 # The trick to remove deleted files: https://stackoverflow.com/a/2413151
 for file in $(git diff --cached --name-status | awk '$1 != "D" {print $2}'); do
