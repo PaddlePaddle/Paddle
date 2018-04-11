@@ -81,7 +81,7 @@ void GetOutputOffset(const framework::Vector<size_t>& x_lod,
   size_t offset = 0;
   int lod_size = static_cast<int>(x_lod.size());
   for (int i = 0; i < static_cast<int>(x_lod.size()); ++i) {
-    out_offset[i] = offset;
+    (*out_offset)[i] = offset;
     if (i < lod_size - 1) {
       offset += (ref_lod[i + 1] - ref_lod[i]) * (x_lod[i + 1] - x_lod[i]);
     }
