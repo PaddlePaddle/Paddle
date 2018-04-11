@@ -853,7 +853,8 @@ class ModelAverage(Optimizer):
         self.params_grads = [] if params_grads is None else params_grads
         params = {}
         for param, grad in self.params_grads:
-            params[param.name] = (param, grad)
+            if param.do_model_average != False:
+                params[param.name] = (param, grad)
         for param in framework.default_main_program().global_block(
         ).all_parameters():
             if param.name not in params and param.do_model_average != False:
