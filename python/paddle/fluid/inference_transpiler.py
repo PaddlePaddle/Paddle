@@ -93,7 +93,10 @@ class InferenceTranspiler:
 
         self._adjust_input()
         self._remove_unused_var()
-        return program
+        # TODO(luotao): use clone() method to flush the program.desc in force, 
+        # since some large program.desc will not be flushed immediately. 
+        # And a better solution will be considered later.
+        return program.clone()
 
     # ====================== private transpiler functions =====================
     def _insert_bias_op(self, index, current_op, bn_op):
