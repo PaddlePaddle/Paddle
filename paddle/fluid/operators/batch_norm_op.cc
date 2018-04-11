@@ -68,10 +68,9 @@ class BatchNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "Input X must have 2 to 5 dimensions.");
 
-    const int64_t C = (data_layout == DataLayout::kNCHW ||
-                               data_layout == DataLayout::kAnyLayout
-                           ? x_dims[1]
-                           : x_dims[x_dims.size() - 1]);
+    const int64_t C =
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], C);
@@ -124,11 +123,10 @@ class BatchNormOp : public framework::OperatorWithKernel {
     }
 #endif
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    // TODO(tpatejko): Batch normalization unit tests set data_layout
-    // explicitely, but kernel has layout set to kAnyLayout,
-    // when it's added to op registrar.
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
+    // TODO(tpatejko): op registrar cannot find a batch norm kernel
+    // when data format is different than Any.
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                    library_);
   }
 };
@@ -145,7 +143,7 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
                          "'epsilon' should be between 0.0 and 0.001.");
         });
-    AddAttr<std::string>("data_layout", "").SetDefault("AnyLayout");
+    AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddInput("X", "The input tensor");
     AddInput("Scale",
              "Scale is a 1-dimensional tensor of size C "
@@ -209,10 +207,9 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
-    const int C = (data_layout == DataLayout::kNCHW ||
-                           data_layout == DataLayout::kAnyLayout
-                       ? x_dims[1]
-                       : x_dims[x_dims.size() - 1]);
+    const int C =
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
 
     const int sample_size = x->numel() / N / C;
 
@@ -239,7 +236,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       saved_variance_e.setZero();
 
       switch (data_layout) {
-        case DataLayout::kAnyLayout:
         case DataLayout::kNCHW: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
@@ -309,7 +305,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         bias_arr - mean_arr * inv_std * scale_arr;
 
     switch (data_layout) {
-      case DataLayout::kAnyLayout:
       case DataLayout::kNCHW: {
         EigenArrayMap<T> y_arr(y->mutable_data<T>(ctx.GetPlace()), sample_size,
                                N * C);
@@ -355,10 +350,9 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     const auto x_dims = ctx->GetInputDim("X");
     const DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));
-    const int C = (data_layout == DataLayout::kNCHW ||
-                           data_layout == DataLayout::kAnyLayout
-                       ? x_dims[1]
-                       : x_dims[x_dims.size() - 1]);
+    const int C =
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
@@ -395,13 +389,12 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     }
 #endif
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    // TODO(tpatejko): Batch normalization unit tests set data_layout
-    // explicitely, but kernel has layout set to kAnyLayout,
-    // when it's added to op registrar.
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+    // TODO(tpatejko): op registrar cannot find a batch norm kernel
+    // when data format is different than Any.
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout_, library_);
+        layout, library_);
   }
 };
 
@@ -426,10 +419,9 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
                    "The Input dim size should be between 2 and 5");
     const int N = x_dims[0];
-    const int C = (data_layout == DataLayout::kNCHW ||
-                           data_layout == DataLayout::kAnyLayout
-                       ? x_dims[1]
-                       : x_dims[x_dims.size() - 1]);
+    const int C =
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
 
     const int sample_size = x->numel() / N / C;
 
@@ -465,7 +457,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / (N * sample_size);
 
     switch (data_layout) {
-      case DataLayout::kAnyLayout:
       case DataLayout::kNCHW: {
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
