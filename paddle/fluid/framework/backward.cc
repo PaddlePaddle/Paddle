@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/backward.h"
-#include "paddle/fluid/operators/net_op.h"
 
 #include <deque>
 #include <list>
@@ -22,7 +21,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/net_op.h"
 
 namespace paddle {
 namespace framework {
@@ -60,12 +58,7 @@ static inline std::unique_ptr<OperatorBase> CreateGradOp(
   if (grad_ops.size() == 1) {
     return std::move(grad_ops[0]);
   } else {
-    auto net_op = new operators::NetOp();
-    for (auto& grad_op : grad_ops) {
-      net_op->AppendOp(std::move(grad_op));
-    }
-    net_op->CompleteAddOp();
-    return std::unique_ptr<OperatorBase>(net_op);
+    PADDLE_THROW("Unexpected Branch");
   }
 }
 
@@ -91,10 +84,7 @@ static bool AllInSet(
 }
 
 static std::unique_ptr<OperatorBase> NOP() {
-  auto net_op = new operators::NetOp();
-  net_op->SetType("@NOP@");
-  net_op->CompleteAddOp();
-  return std::unique_ptr<OperatorBase>(net_op);
+  PADDLE_THROW("Unexpected Branch");
 }
 
 //  Get backward operator from a forward operator, a recursive implementation.
@@ -136,110 +126,7 @@ static std::unique_ptr<OperatorBase> BackwardRecursive(
   }
 
   // Returned gradient network
-  auto net = std::unique_ptr<operators::NetOp>(new operators::NetOp());
-
-  if (forwardOp.IsNetOp()) {
-    // Because forwardOp is a net op, it can static_cast.
-    auto& forwardNet = static_cast<const operators::NetOp&>(forwardOp);
-
-    // Map from output gradient variable name to operator's indices in
-    // backward net's ops_. That operator generates that variable.
-    std::unordered_map<std::string, std::vector<size_t>> dup_output_ops;
-
-    size_t local_op_id = 0;
-    // reversely travel forwardNet and collect all duplicate outputs.
-    for (auto it = forwardNet.ops_.rbegin(); it != forwardNet.ops_.rend();
-         ++it, ++local_op_id) {
-      auto& fwd = *it;
-      auto bwd = BackwardRecursive(*fwd, no_grad_names, grad_to_var, uniq_id);
-      ForEachVarName(bwd->Outputs(),
-                     [&dup_output_ops, local_op_id](const std::string& out) {
-                       dup_output_ops[out].emplace_back(local_op_id);
-                       return false;
-                     });
-      net->AppendOp(std::move(bwd));
-    }
-    // Get unique ID for this method.
-    auto uid = uniq_id++;
-    // TODO(dzh): more comment
-    // multiple operators which have the same output (y for example) may
-    // overwrite the same y variable when backward, special operations are token
-    // to handle this case. For each duplicate output, rename it to an alias
-    // (original name with a offset), append an `add` op for its operator,
-    // and finally sum all the alias variable to the final output variable y.
-    using Pos = std::pair<size_t, std::unique_ptr<OperatorBase>>;
-    std::list<Pos> insert_position;
-    for (auto& dup_output_op : dup_output_ops) {
-      const std::string& name = dup_output_op.first;
-      // duplicate @Empty@ don't need to be added
-      if (name == kEmptyVarName) continue;
-
-      auto& dup_op = dup_output_op.second;
-      // no duplicate output
-      if (dup_op.size() == 1) continue;
-
-      // process the duplicate outputs
-      std::vector<std::string> dup_outputs;
-      for (size_t i = 0; i < dup_op.size(); ++i) {
-        // rename each duplicate output to an alias
-        auto op_offset = dup_op[i];
-        dup_outputs.push_back(name + "@RENAME@" + std::to_string(uid) + "@" +
-                              std::to_string(i));
-        net->ops_[op_offset]->Rename(name, dup_outputs.back());
-      }
-      // collect all the offset for each alias,
-      // insert a sum operator to add all aliases to output
-      insert_position.push_back(
-          {dup_op.back(),
-           OpRegistry::CreateOp("sum", {{"X", dup_outputs}}, {{"Out", {name}}},
-                                AttributeMap{})});
-    }
-
-    // make sure the inserted `sum` ops follow the BFS order.
-    insert_position.sort(
-        [](const Pos& l, const Pos& r) { return l.first > r.first; });
-
-    for (auto& pos : insert_position) {
-      net->InsertOp(pos.first + 1, std::move(pos.second));
-    }
-  } else {
-    std::unique_ptr<OperatorBase> grad_op(
-        CreateGradOp(forwardOp, no_grad_names, grad_to_var));
-
-    ForEachVarName(grad_op->Inputs(), [&no_grad_names, &net, &grad_op](
-                                          const std::string& grad_input) {
-      if (no_grad_names.count(grad_input)) {
-        // +1 for \0
-        std::string prefix = grad_input.substr(
-            0, grad_input.size() - sizeof(kGradVarSuffix) / sizeof(char) + 1);
-        grad_op->Rename(grad_input, prefix + kZeroVarSuffix);
-
-        // If part of input gradient of that operator is not calculated, fill
-        // zero variables to that input gradient.
-        net->AppendOp(OpRegistry::CreateOp("fill_zeros_like", {{"X", {prefix}}},
-                                           {{"Out", {grad_input}}},
-                                           AttributeMap{}));
-      }
-      return false;
-    });
-
-    ForEachVarName(grad_op->Outputs(),
-                   [&no_grad_names, &grad_op](const std::string& grad_output) {
-                     if (no_grad_names.count(grad_output)) {
-                       grad_op->Rename(grad_output, kEmptyVarName);
-                     }
-                     return false;
-                   });
-
-    if (net->ops_.empty()) {  // Current no aux op is added to network
-      return grad_op;
-    }
-    net->AppendOp(std::move(grad_op));
-  }
-  net->SetType("@GENERATED_BACKWARD@");
-  net->CompleteAddOp();
-  return std::unique_ptr<OperatorBase>(
-      static_cast<OperatorBase*>(net.release()));
+  PADDLE_THROW("Unexpected Branch");
 }
 
 // See header for comments

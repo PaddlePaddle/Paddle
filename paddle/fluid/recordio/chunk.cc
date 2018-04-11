@@ -14,13 +14,13 @@
 
 #include "paddle/fluid/recordio/chunk.h"
 
+#include <zlib.h>
 #include <algorithm>
 #include <memory>
 #include <sstream>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "snappy_stream/include/snappystream.hpp"
-#include "zlib/include/zlib.h"
+#include "snappystream.hpp"
 
 namespace paddle {
 namespace recordio {

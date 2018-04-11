@@ -20,8 +20,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/pybind/protobuf.h"
-
 #include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
@@ -31,18 +29,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/cond_op.h"
-#include "paddle/fluid/operators/net_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/exception.h"
-#include "paddle/fluid/pybind/pybind.h"
+#include "paddle/fluid/pybind/protobuf.h"
+#include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/recordio.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 
@@ -239,11 +237,6 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference)
 #endif
-      .def("get_net",
-           [](Variable &self) -> operators::NetOp * {
-             return self.GetMutable<operators::NetOp>();
-           },
-           py::return_value_policy::reference)
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
              PADDLE_ENFORCE(self.IsType<framework::ReaderHolder>());
@@ -419,42 +412,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("no_intermediate_outputs",
            [](const OperatorBase &op) { return op.OutputVars(false); })
       .def("support_gpu", &OperatorBase::SupportGPU);
-
-  py::class_<operators::NetOp, OperatorBase>(m, "Net")
-      .def_static("create",
-                  []() -> operators::NetOp * {
-                    auto *retv = new operators::NetOp;
-                    retv->SetType("plain_net");
-                    return retv;
-                  })
-      .def("append_op", [](operators::NetOp &self,
-                           const OperatorBase &op) { self.AppendOp(op); })
-      .def("complete_add_op", &operators::NetOp::CompleteAddOp)
-      .def("complete_add_op", [](std::shared_ptr<operators::NetOp> &self) {
-        self->CompleteAddOp();
-      });
-
-  // cond_op
-  py::class_<operators::CondOp, OperatorBase>(m, "CondOp")
-      .def_static("create",
-                  [](py::bytes protobin) -> operators::CondOp * {
-                    proto::OpDesc desc;
-                    PADDLE_ENFORCE(desc.ParsePartialFromString(protobin),
-                                   "Cannot parse user input to OpDesc");
-                    PADDLE_ENFORCE(desc.IsInitialized(),
-                                   "User OpDesc is not initialized, reason %s",
-                                   desc.InitializationErrorString());
-                    auto cond_op = OpRegistry::CreateOp(desc);
-                    return static_cast<operators::CondOp *>(cond_op.release());
-                  })
-      .def("set_truenet",
-           [](operators::CondOp &self, const operators::NetOp &net) -> void {
-             self.set_truenet(net.Clone());
-           })
-      .def("set_falsenet",
-           [](operators::CondOp &self, const operators::NetOp &net) -> void {
-             self.set_falsenet(net.Clone());
-           });
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
