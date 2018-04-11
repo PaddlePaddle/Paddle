@@ -1,11 +1,8 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,9 +10,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <utility>
+#include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/platform/float16.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -324,6 +329,68 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.floor();
+  }
+};
+
+template <typename T>
+struct Sine {
+  HOSTDEVICE T operator()(const T& val) const { return sin(val); }
+};
+
+template <>
+struct Sine<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(sin(static_cast<float>(val)));
+  }
+};
+
+template <typename T>
+struct Cosine {
+  HOSTDEVICE T operator()(const T& val) const { return cos(val); }
+};
+
+template <>
+struct Cosine<platform::float16> {
+  HOSTDEVICE platform::float16 operator()(const platform::float16& val) const {
+    return platform::float16(cos(static_cast<float>(val)));
+  }
+};
+
+// cosine'(x) = -sin(x)
+template <typename T>
+struct CosGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = -dout * x.unaryExpr(Sine<T>());
+  }
+};
+
+// cosine(x) = cos(x)
+template <typename T>
+struct CosFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Cosine<T>());
+  }
+};
+
+// sine'(x) = cos(x)
+template <typename T>
+struct SinGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * x.unaryExpr(Cosine<T>());
+  }
+};
+
+// sine(x) = sin(x)
+template <typename T>
+struct SinFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Sine<T>());
   }
 };
 
@@ -779,6 +846,8 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(abs, AbsFunctor, AbsGradFunctor);                          \
   __macro(ceil, CeilFunctor, ZeroGradFunctor);                       \
   __macro(floor, FloorFunctor, ZeroGradFunctor);                     \
+  __macro(cos, CosFunctor, CosGradFunctor);                          \
+  __macro(sin, SinFunctor, SinGradFunctor);                          \
   __macro(round, RoundFunctor, ZeroGradFunctor);                     \
   __macro(reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);     \
   __macro(log, LogFunctor, LogGradFunctor);                          \

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 
+#include <vector>
+
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
@@ -89,11 +91,13 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       XGrad->mutable_data<T>(context.GetPlace())));
 }
 
+template class SoftmaxCUDNNFunctor<platform::float16>;
 template class SoftmaxCUDNNFunctor<float>;
 template class SoftmaxCUDNNFunctor<double>;
 template class SoftmaxGradCUDNNFunctor<float>;
 template class SoftmaxGradCUDNNFunctor<double>;
 
+template class SoftmaxFunctor<platform::CUDADeviceContext, platform::float16>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, float>;
 template class SoftmaxFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext, float>;

@@ -86,7 +86,8 @@ class CudnnDataType<float16> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_HALF;
   // The scaling param type is float for HALF and FLOAT tensors
-  typedef const float ScalingParamType;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
   static ScalingParamType* kOne() {
     static ScalingParamType v = 1.0;
     return &v;
@@ -101,7 +102,8 @@ template <>
 class CudnnDataType<float> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_FLOAT;
-  typedef const float ScalingParamType;
+  using ScalingParamType = const float;
+  using BatchNormParamType = float;
   static ScalingParamType* kOne() {
     static ScalingParamType v = 1.0;
     return &v;
@@ -116,7 +118,8 @@ template <>
 class CudnnDataType<double> {
  public:
   static const cudnnDataType_t type = CUDNN_DATA_DOUBLE;
-  typedef const double ScalingParamType;
+  using ScalingParamType = const double;
+  using BatchNormParamType = double;
   static ScalingParamType* kOne() {
     static ScalingParamType v = 1.0;
     return &v;
@@ -254,9 +257,11 @@ class ScopedConvolutionDescriptor {
     }
 #endif
 
+    cudnnDataType_t compute_type =
+        (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
     PADDLE_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
         desc_, pads.size(), pads.data(), strides.data(), dilations.data(),
-        CUDNN_CROSS_CORRELATION, type));
+        CUDNN_CROSS_CORRELATION, compute_type));
     return desc_;
   }
 

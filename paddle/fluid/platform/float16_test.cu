@@ -36,19 +36,19 @@ limitations under the License. */
     half *in1, *in2, *out;                                    \
     half *d_in1, *d_in2, *d_out;                              \
     int size = sizeof(half);                                  \
-    cudaMalloc((void**)&d_in1, size);                         \
-    cudaMalloc((void**)&d_in2, size);                         \
-    cudaMalloc((void**)&d_out, size);                         \
-    in1 = (half*)malloc(size);                                \
-    in2 = (half*)malloc(size);                                \
-    out = (half*)malloc(size);                                \
+    cudaMalloc(reinterpret_cast<void**>(&d_in1), size);       \
+    cudaMalloc(reinterpret_cast<void**>(&d_in2), size);       \
+    cudaMalloc(reinterpret_cast<void**>(&d_out), size);       \
+    in1 = reinterpret_cast<half*>(malloc(size));              \
+    in2 = reinterpret_cast<half*>(malloc(size));              \
+    out = reinterpret_cast<half*>(malloc(size));              \
     in1[0] = half(float16(v_in1));                            \
     in2[0] = half(float16(v_in2));                            \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
     cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);     \
     op_type<<<1, 1>>>(d_in1, d_in2, d_out);                   \
     cudaMemcpy(out, d_out, size, cudaMemcpyDeviceToHost);     \
-    EXPECT_EQ(float(float16(out[0])), v_out);                 \
+    EXPECT_EQ(static_cast<float>(float16(out[0])), v_out);    \
     free(in1);                                                \
     free(in2);                                                \
     free(out);                                                \
@@ -63,17 +63,17 @@ limitations under the License. */
     half *in1, *in2;                                          \
     half *d_in1, *d_in2;                                      \
     int size = sizeof(half);                                  \
-    cudaMalloc((void**)&d_in1, size);                         \
-    cudaMalloc((void**)&d_in2, size);                         \
-    in1 = (half*)malloc(size);                                \
-    in2 = (half*)malloc(size);                                \
+    cudaMalloc(reinterpret_cast<void**>(&d_in1), size);       \
+    cudaMalloc(reinterpret_cast<void**>(&d_in2), size);       \
+    in1 = reinterpret_cast<half*>(malloc(size));              \
+    in2 = reinterpret_cast<half*>(malloc(size));              \
     in1[0] = half(float16(v_in1));                            \
     in2[0] = half(float16(v_in2));                            \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);     \
     cudaMemcpy(d_in2, in2, size, cudaMemcpyHostToDevice);     \
     op_type<<<1, 1>>>(d_in1, d_in2);                          \
     cudaMemcpy(in1, d_in1, size, cudaMemcpyDeviceToHost);     \
-    EXPECT_EQ(float(float16(in1[0])), v_out);                 \
+    EXPECT_EQ(static_cast<float>(float16(in1[0])), v_out);    \
     free(in1);                                                \
     free(in2);                                                \
     cudaFree(d_in1);                                          \
@@ -87,12 +87,12 @@ limitations under the License. */
     half *d_in1, *d_in2;                                     \
     bool *out, *d_out;                                       \
     int size = sizeof(half);                                 \
-    cudaMalloc((void**)&d_in1, size);                        \
-    cudaMalloc((void**)&d_in2, size);                        \
-    cudaMalloc((void**)&d_out, 1);                           \
-    in1 = (half*)malloc(size);                               \
-    in2 = (half*)malloc(size);                               \
-    out = (bool*)malloc(1);                                  \
+    cudaMalloc(reinterpret_cast<void**>(&d_in1), size);      \
+    cudaMalloc(reinterpret_cast<void**>(&d_in2), size);      \
+    cudaMalloc(reinterpret_cast<void**>(&d_out), 1);         \
+    in1 = reinterpret_cast<half*>(malloc(size));             \
+    in2 = reinterpret_cast<half*>(malloc(size));             \
+    out = reinterpret_cast<bool*>(malloc(1));                \
     in1[0] = half(float16(v_in1));                           \
     in2[0] = half(float16(v_in2));                           \
     cudaMemcpy(d_in1, in1, size, cudaMemcpyHostToDevice);    \
@@ -130,13 +130,13 @@ void TestNeg(float v_in, float v_out) {
   LOG(INFO) << "Test Neg on GPU!";
   half *in, *d_in;
   int size = sizeof(half);
-  cudaMalloc((void**)&d_in, size);
-  in = (half*)malloc(size);
+  cudaMalloc(reinterpret_cast<void**>(&d_in), size);
+  in = reinterpret_cast<half*>(malloc(size));
   in[0] = half(float16(v_in));
   cudaMemcpy(d_in, in, size, cudaMemcpyHostToDevice);
   Neg<<<1, 1>>>(d_in);
   cudaMemcpy(in, d_in, size, cudaMemcpyDeviceToHost);
-  EXPECT_EQ(float(float16(in[0])), v_out);
+  EXPECT_EQ(static_cast<float>(float16(in[0])), v_out);
   free(in);
   cudaFree(d_in);
 }

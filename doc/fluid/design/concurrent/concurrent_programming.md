@@ -10,12 +10,42 @@ The answer relies on the fact that a `ProgramDesc` is similar to an abstract syn
 
 The following table compares concepts in Fluid and Go
 
-| Go | Fluid |
-|----|-------|
-|user-defined functions | [layers](https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/fluid) |
-| control-flow and built-in functions | [intrinsics/operators](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators) |
-| goroutines, channels | [class ThreadPool](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/framework/thread_pool.h) |
-| runtime | [class Executor](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/executor.h) |
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Go</th>
+<th>Fluid</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>user-defined functions </td>
+<td>
+<a href="https://github.com/PaddlePaddle/Paddle/tree/develop/python/paddle/fluid">layers</a></td>
+<td></td>
+</tr>
+<tr>
+<td>control-flow and built-in functions </td>
+<td>
+<a href="https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/operators">intrinsics/operators</a></td>
+<td></td>
+</tr>
+<tr>
+<td>goroutines, channels </td>
+<td>
+<a href="https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/framework/thread_pool.h">class ThreadPool</a></td>
+<td></td>
+</tr>
+<tr>
+<td>runtime </td>
+<td>
+<a href="https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/executor.h">class Executor</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
 
 ## An Example Concurrent Program
 
@@ -77,11 +107,11 @@ message ProgramDesc {
       read(output = X)
       kube_get_workers_addrs(output = L)
       Y = tensor_array(len(L))
-      parallel_for(input = X, output = Y, 
+      parallel_for(input = X, output = Y,
                    attrs = {L, block_id(1)}) # referring to block 1
     ]
   }
-  
+
   block[1] = Block {
     parent = 0,
     vars = [x, y, index],
@@ -102,7 +132,7 @@ func main() {  //// block 0
   X = fluid.read(...)
   L = fluid.k8s.get_worker_addrs()
   Y = fluid.tensor_array(len(L))
-  fluid.parallel_for(X, L, 
+  fluid.parallel_for(X, L,
                      func(index int) {  //// block 1
                        x = X[index]
                        fluid.send(L[index], x)
@@ -116,7 +146,7 @@ An explanation of the above program:
 
 - `fluid.k8s` is a package that provides access to Kubernetes API.  
 - `fluid.k8s.get_worker_addrs` returns the list of IP and ports of all pods of the current job except for the current one (the master pod).  
-- `fluid.tensor_array` creates a [tensor array](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor_array.h).  `fluid.parallel_for` creates a `ParallelFor` intrinsic, which, when executed, 
+- `fluid.tensor_array` creates a [tensor array](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/framework/lod_tensor_array.h).  `fluid.parallel_for` creates a `ParallelFor` intrinsic, which, when executed,
 
   1. creates `len(L)` scopes, each for the concurrent running of the sub-block (block 1 in this case), and initializes a variable named "index" in the scope to an integer value in the range `[0, len(L)-1]`, and
   2. creates `len(L)` threads by calling into the `ThreadPool` singleton, each thread  
