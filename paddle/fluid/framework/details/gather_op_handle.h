@@ -32,12 +32,12 @@ namespace details {
  * Broadcast the input to all scope.
  *
  */
-struct BroadcastOpHandle : public OpHandleBase {
+struct GatherOpHandle : public OpHandleBase {
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
 
-  BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places);
+  GatherOpHandle(const std::vector<Scope *> &local_scopes,
+                 const std::vector<platform::Place> &places);
 
   std::string Name() const override;
 

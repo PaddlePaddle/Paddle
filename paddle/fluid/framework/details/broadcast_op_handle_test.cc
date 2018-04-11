@@ -84,7 +84,7 @@ class BroadcastTester : public ::testing::Test {
       bc_op_handle_->AddOutput(out_var_handle);
     }
   }
-  void BroadcastDestroy() {
+  void BroadcastOpDestroy() {
     for (auto in : bc_op_handle_->inputs_) {
       delete in;
     }
@@ -139,7 +139,7 @@ class BroadcastTester : public ::testing::Test {
       }
     }
 
-    BroadcastDestroy();
+    BroadcastOpDestroy();
   }
 
   void TestBroadcastSelectedRows() {
@@ -188,7 +188,7 @@ class BroadcastTester : public ::testing::Test {
       }
     }
 
-    BroadcastDestroy();
+    BroadcastOpDestroy();
   }
 
  public:
