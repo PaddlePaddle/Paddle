@@ -12,8 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "grpc_client.h"
+#include "paddle/fluid/operators/detail/grpc_client.h"
+
 #include <sys/time.h>
+
+#include <limits>
+
 #include "paddle/fluid/framework/threadpool.h"
 
 namespace paddle {
@@ -52,7 +56,7 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/SendVariable", req, &cq_);
     call->StartCall();
-    call->Finish(&s->reply_, &s->status_, (void*)s);
+    call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   });
 
   req_count_++;
@@ -61,17 +65,15 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 }
 
 void ProcGetResponse(const VarHandle& var_h,
-                     // const sendrecv::VariableMessage& ret_msg) {
                      const ::grpc::ByteBuffer& ret_msg) {
-  framework::Variable* outvar = NULL;
-  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, outvar);
+  framework::Variable* outvar = nullptr;
+  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar);
 }
 
 template <typename T>
 void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   ::grpc::Slice slice(proto.ByteSizeLong());
-  proto.SerializeWithCachedSizesToArray(
-      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(slice.begin())));
+  proto.SerializeWithCachedSizesToArray(const_cast<uint8_t*>(slice.begin()));
   ::grpc::ByteBuffer tmp(&slice, 1);
   result->Swap(&tmp);
 }
@@ -88,10 +90,13 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
   const auto ch = GetChannel(ep_val);
 
   framework::Async([var_name_val, ep_val, p_scope, p_ctx, time_out, ch, this] {
+    // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
+    ::grpc::ByteBuffer buf;
+    RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 
-    // varhandle
+    // var handle
     VarHandle var_h;
     var_h.ep = ep_val;
     var_h.scope = p_scope;
@@ -103,17 +108,57 @@ bool RPCClient::AsyncGetVariable(const std::string& ep,
     s->Prepare(var_h, time_out);
     s->response_call_back_ = ProcGetResponse;
 
-    ::grpc::ByteBuffer buf;
-    RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
-
     auto call = s->stub_g_.PrepareUnaryCall(
         s->context_.get(), "/sendrecv.SendRecvService/GetVariable", buf, &cq_);
     call->StartCall();
-    call->Finish(&s->reply_, &s->status_, (void*)s);
+    call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   });
 
   req_count_++;
 
+  return true;
+}
+
+bool RPCClient::AsyncPrefetchVariable(const std::string& ep,
+                                      const platform::DeviceContext& ctx,
+                                      const framework::Scope& scope,
+                                      const std::string& in_var_name,
+                                      const std::string& out_var_name,
+                                      int64_t time_out) {
+  const platform::DeviceContext* p_ctx = &ctx;
+  const std::string ep_val = ep;
+  const std::string in_var_name_val = in_var_name;
+  const std::string out_var_name_val = out_var_name;
+  const framework::Scope* p_scope = &scope;
+  const auto ch = GetChannel(ep_val);
+
+  framework::Async([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
+                    time_out, ch, this] {
+    auto* var = p_scope->FindVar(in_var_name_val);
+
+    ::grpc::ByteBuffer req;
+    SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req, out_var_name_val);
+
+    // var handle
+    VarHandle var_h;
+    var_h.ep = ep_val;
+    var_h.scope = p_scope;
+    var_h.name = out_var_name_val;
+    var_h.ctx = p_ctx;
+
+    // stub context
+    GetProcessor* s = new GetProcessor(ch);
+    s->Prepare(var_h, time_out);
+    s->response_call_back_ = ProcGetResponse;
+
+    auto call = s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
+        &cq_);
+    call->StartCall();
+    call->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
+  });
+
+  req_count_++;
   return true;
 }
 
@@ -126,7 +171,7 @@ void RPCClient::AsyncSendBatchBarrier(const std::string& ep, int64_t time_out) {
   sendrecv::VariableMessage req;
   req.set_varname(BATCH_BARRIER_MESSAGE);
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, (void*)s);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 }
 
@@ -138,7 +183,7 @@ void RPCClient::AsyncSendFetchBarrier(const std::string& ep, int64_t time_out) {
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, (void*)s);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 }
 
@@ -204,7 +249,6 @@ std::shared_ptr<grpc::Channel> RPCClient::GetChannel(const std::string& ep) {
   }
 
   grpc::ChannelArguments args;
-  args.SetInt("grpc.testing.fixed_reconnect_backoff_ms", 5000);
   args.SetCompressionAlgorithm(GRPC_COMPRESS_NONE);
   args.SetMaxSendMessageSize(std::numeric_limits<int>::max());
   args.SetMaxReceiveMessageSize(std::numeric_limits<int>::max());

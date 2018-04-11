@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
+
 #include <sys/time.h>
-#include <thread>
+#include <thread>  // NOLINT
+
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -28,11 +30,9 @@ namespace detail {
 
 void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                            const platform::DeviceContext& ctx,
-                           ::grpc::ByteBuffer* msg) {
+                           ::grpc::ByteBuffer* msg,
+                           const std::string& out_name) {
   using VarMsg = sendrecv::VariableMessage;
-  sendrecv::VariableMessage request;
-  std::string header;
-  request.AppendToString(&header);
   // When using GPU, need to free the copied CPU buffer
   // when the ByteBuffer destroies
   // TODO(typhoonzero): add unref here, if we have dependent
@@ -42,7 +42,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   void* buf = malloc(1024);
   void* payload = nullptr;
   size_t payload_size;
-  ProtoEncodeHelper e((char*)buf, 1024);
+  ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
   e.WriteString(VarMsg::kVarnameFieldNumber, name);
   if (var->IsType<framework::LoDTensor>()) {
     e.WriteUint64(VarMsg::kTypeFieldNumber, 0);
@@ -50,6 +50,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     e.WriteUint64(VarMsg::kTypeFieldNumber, 1);
   }
 
+  if (!out_name.empty()) {
+    e.WriteString(VarMsg::kOutVarnameFieldNumber, out_name);
+  }
   switch (framework::ToVarType(var->Type())) {
     case framework::proto::VarType_Type_LOD_TENSOR: {
       auto tensor = var->Get<framework::LoDTensor>();
@@ -108,6 +111,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         e.WriteUint64(VarMsg::kDimsFieldNumber, dim);
       }
       e.WriteUint64(VarMsg::kLodLevelFieldNumber, 0);
+      e.WriteUint64(VarMsg::kSlrHeightFieldNumber, slr->height());
       auto* tensor = slr->mutable_value();
       if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
@@ -151,10 +155,10 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       framework::proto::VarType_Type_SELECTED_ROWS) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
 
-    ProtoEncodeHelper e2((char*)buf, 128);
+    ProtoEncodeHelper e2(static_cast<char*>(buf), 128);
     // NOTE: rows is of type int64_t
     size_t rows_memory_size =
-        slr->rows().capacity() * framework::SizeOfType(typeid(int64_t));
+        slr->rows().size() * framework::SizeOfType(typeid(int64_t));
     e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
     slices[2] = ::grpc::Slice(e2.size());
     memcpy(const_cast<uint8_t*>(slices[2].begin()), e2.data(), e2.size());
@@ -180,10 +184,10 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
                                const platform::DeviceContext& ctx,
                                const framework::Scope* scope,
-                               framework::Variable*& var) {
+                               framework::Variable** var) {
   operators::detail::VariableResponse resp(scope, &ctx);
   PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
-  var = resp.GetVar();
+  *var = resp.GetVar();
 }
 
 }  // namespace detail

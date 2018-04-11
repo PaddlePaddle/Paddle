@@ -65,39 +65,55 @@ PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好D
 不使用PaddlePaddle.org工具
 --------------------------
 
-使用Docker构建PaddlePaddle的文档，需要在系统里先安装好Docker工具包。Docker安装请参考 `Docker的官网 <https://docs.docker.com/>`_ 。安装好Docker之后可以使用源码目录下的脚本构建文档，即
-
-[TBD]
-
-如果不想使用Docker，也可以使用以下命令直接构建PaddlePaddle文档，即
+使用Docker构建PaddlePaddle的文档，需要在系统里先安装好Docker工具包。Docker安装请参考 `Docker的官网 <https://docs.docker.com/>`_ 。该方法与 `从源码编译PaddlePaddle <http://paddlepaddle.org/docs/develop/documentation/zh/build_and_install/build_from_source_cn.html>`_ 相似，通过从源码中构建可用于编译PaddlePaddle文档的Docker镜像并运行，在进入Docker容器后使用源码中的脚本构建PaddlePaddle文档，具体步骤如下：
 
 .. code-block:: bash
 
-   mkdir paddle
-   cd paddle
    git clone https://github.com/PaddlePaddle/Paddle.git
-   mkdir -p build
-   cd build
-   cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
+   cd Paddle
 
-   # 如果只需要构建使用文档，则执行以下命令
-   make -j $processors gen_proto_py
-   make -j $processors paddle_docs paddle_docs_cn
+   # 从源码中构建可用于编译PaddlePaddle文档的Docker镜像
+   docker build -t paddle:dev .
+   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" -e "WITH_DOC=ON" paddle:dev /bin/bash
 
-   # 如果只需要构建API，则执行以下命令
-   make -j $processors gen_proto_py framework_py_proto
-   make -j $processors copy_paddle_pybind
-   make -j $processors paddle_api_docs
+   # 进入Docker容器后使用build.sh脚本构建PaddlePaddle文档
+   bash -x /paddle/paddle/scripts/docker/build.sh
 
-其中$processors代表启动和CPU核一样多的进程来并行编译，可以根据本机的CPU核数设置相应的值。
+注：上述命令把当前目录（源码根目录）映射为 container 里的 :code:`/paddle` 目录。
 
-编译完成后，进入 ``doc/v2`` 目录，如果选择构建文档则会在该目录下生成 ``cn/html/`` 、 ``en/html`` 两个子目录，选择构建API则会生成 ``api/en/html`` 目录，分别进入这些目录下，执行以下命令：
+编译完成后，会产生 ``doc/v2`` 和 ``doc/fluid`` 两个目录，在这两个目录下分别都生成 ``cn/html/`` 、 ``en/html`` 、 ``api/en/html`` 共三个子目录，分别进入这些目录下，执行以下命令：
 
 .. code-block:: bash
 
    python -m SimpleHTTPServer 8088
 
-在浏览器中输入 http://localhost:8088 就可以看到编译生成的中/英文的文档页面和英文的API页面,下图为生成的英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
+在浏览器中输入 http://localhost:8088 就可以看到编译生成的 ``v2`` 和 ``fluid`` 两种版本的中/英文的文档页面和英文的API页面。
+
+如果不想使用Docker，也可以使用以下命令直接构建PaddlePaddle文档，即
+
+.. code-block:: bash
+
+   git clone https://github.com/PaddlePaddle/Paddle.git
+   cd Paddle
+   mkdir -p build
+   cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
+
+   # 如果只需要构建使用文档，则执行以下命令
+   make -j $processors paddle_docs
+
+   # 如果只需要构建API，则执行以下命令
+   make -j $processors paddle_apis
+
+其中$processors代表启动和CPU核一样多的进程来并行编译，可以根据本机的CPU核数设置相应的值。
+
+编译完成后，同样会产生 ``doc/v2`` 和 ``doc/fluid`` 两个目录，如果选择构建文档则会在这两个目录下分别都生成 ``cn/html/`` 、 ``en/html`` 两个子目录，选择构建API则会在这两个目录下分别生成 ``api/en/html`` 目录，分别进入这些子目录下，执行以下命令：
+
+.. code-block:: bash
+
+   python -m SimpleHTTPServer 8088
+
+在浏览器中输入 http://localhost:8088 就可以看到编译生成的 ``v2`` 和 ``fluid`` 两种版本的中/英文的文档页面和英文的API页面。下图为生成的 ``v2`` 英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
 
 ..  image:: src/doc_en.png
     :align: center

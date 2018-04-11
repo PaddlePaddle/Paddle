@@ -15,26 +15,26 @@ The signature of the operator.
 
 Each section mentioned above has been covered in further detail in the rest of the document.
 
-# PaddlePaddle Operator Name
+## PaddlePaddle Operator Name
 This should be in all small letters, in case of multiple words, we separate them with an underscore. For example:
 `array to lod tensor` should be written as `array_to_lod_tensor`.
 
 This naming convention should be standard across all PaddlePaddle operators.
 
-# Standard Operator Name
+## Standard Operator Name
 This is the standard name of the operator as used in the community. The general standard is usually:
 - Standard abbreviations like `SGD` are written in all capital letters.
 - Operator names that have multiple words inside a single word use `camelCase` (capitalize word boundaries inside of a word).
 - Keep numbers inside a word as is, with no boundary delimiters.
 - Follow the name of the operator with the keyword: `Activation Operator.`
 
-# Operator description
+## Operator description
 This section should contain the description of what the operator does, including the operation performed, the literature from where it comes and was introduced first, and other important details. The relevant paper/article including the hyperlink should be cited in this section.
 
-# LaTeX equation
+## LaTeX equation
 This section should contain an overall equation of the update or operation that the operator performs. The variables used in the equation should follow the naming convention of operators as described [here](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/name_convention.md). Two words in the same word should be separated by an underscore (`_`).
 
-# The signature
+## The signature
 This section describes the signature of the operator. A list of Inputs and Outputs, each of which have a small description of what the variable represents and the type of variable. The variable names follow the `CamelCase` naming convention. The proposed format for this is:
 `Section :
 VariableName : (VariableType) VariableDescription

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "piece.h"
+#include "paddle/fluid/string/piece.h"
 
 #include <string.h>
 
