@@ -112,7 +112,7 @@ information. However, the output only shares the LoD information with input $X$.
     std::size_t len_to = std::strlen(to.c_str());
     for (std::size_t pos = src->find(from); pos != std::string::npos;
          pos = src->find(from, pos + len_to)) {
-      src.replace(pos, len_from, to);
+      src->replace(pos, len_from, to);
     }
   }
 
