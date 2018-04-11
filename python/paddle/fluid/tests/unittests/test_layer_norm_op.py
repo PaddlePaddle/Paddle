@@ -16,7 +16,6 @@ import numpy as np
 
 from operator import mul
 import paddle.fluid.core as core
-from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 
 np.random.random(123)
