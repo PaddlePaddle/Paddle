@@ -1119,24 +1119,6 @@ class Program(object):
     def current_block(self):
         return self.blocks[self.current_block_idx]
 
-    def append_backward(self, target, no_grad_set=None):
-        """
-        return map(param_name -> (grad_name, block_index, op_index))
-        """
-        assert isinstance(target, Variable)
-        if no_grad_set is None:
-            no_grad_set = set()
-        try:
-            param_to_grad_info = self.desc.append_backward(target.desc,
-                                                           no_grad_set)
-        except Exception as e:
-            raise core.EnforceNotMet(
-                str(e) + "\nCurrent protobuf is\n{0}".format(
-                    self.to_string(False)))
-
-        self.sync_with_cpp()
-        return param_to_grad_info
-
     def create_block(self, parent_idx=None):
         new_block_idx = len(self.blocks)
         parent = self.current_block() if parent_idx is None else self.block(
