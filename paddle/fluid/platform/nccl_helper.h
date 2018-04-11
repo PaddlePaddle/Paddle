@@ -14,8 +14,9 @@
 
 #pragma once
 
-#include <thread>
+#include <thread>  // NOLINT
 #include <typeindex>
+#include <vector>
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -29,6 +30,8 @@ inline ncclDataType_t ToNCCLDataType(std::type_index type) {
     return ncclDouble;
   } else if (type == typeid(int)) {  // NOLINT
     return ncclInt;
+  } else if (type == typeid(int64_t)) {  // NOLINT
+    return ncclInt64;
   } else {
     PADDLE_THROW("Not supported");
   }
@@ -66,23 +69,23 @@ struct NCCLContext {
     return boost::get<platform::CUDAPlace>(ctx_->GetPlace()).device;
   }
 
-  static void InitNCCLContext(std::unordered_map<int, NCCLContext> &contexts,
+  static void InitNCCLContext(std::unordered_map<int, NCCLContext> *contexts,
                               const std::vector<platform::Place> &places) {
     std::vector<ncclComm_t> comms;
     std::vector<int> devs;
-    comms.resize(contexts.size());
-    devs.reserve(contexts.size());
+    comms.resize(contexts->size());
+    devs.reserve(contexts->size());
 
     for (auto &p : places) {
       devs.push_back(boost::get<platform::CUDAPlace>(p).device);
     }
 
     PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
-        &comms[0], static_cast<int>(contexts.size()), &devs[0]));
+        &comms[0], static_cast<int>(contexts->size()), &devs[0]));
 
     int i = 0;
     for (auto &dev_id : devs) {
-      contexts.at(dev_id).comm_ = comms[i++];
+      contexts->at(dev_id).comm_ = comms[i++];
     }
   }
 };
@@ -91,7 +94,7 @@ struct NCCLContextMap {
   std::unordered_map<int, NCCLContext> contexts_;
   std::vector<int> order_;
 
-  NCCLContextMap(const std::vector<platform::Place> &places) {
+  explicit NCCLContextMap(const std::vector<platform::Place> &places) {
     order_.reserve(places.size());
     for (auto &p : places) {
       int dev_id = boost::get<CUDAPlace>(p).device;
