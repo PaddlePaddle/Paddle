@@ -78,7 +78,7 @@ if(NOT CMAKE_CROSSCOMPILING)
     /usr/lib/reference/
   )
 else()
-  # Diable the finding of reference cblas under host's system path
+  # Disable the finding of reference cblas under host's system path
   set(REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS ${REFERENCE_CBLAS_ROOT}/include)
   set(REFERENCE_CBLAS_LIB_SEARCH_PATHS ${REFERENCE_CBLAS_ROOT}/lib)
 endif()

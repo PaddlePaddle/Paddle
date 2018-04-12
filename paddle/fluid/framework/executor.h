@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
