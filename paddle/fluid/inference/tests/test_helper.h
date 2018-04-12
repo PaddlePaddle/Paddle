@@ -195,7 +195,7 @@ void TestInference(const std::string& dirname,
           paddle::platform::DeviceContextPool::Instance().Get(place));
 
       if (PrepareContext) {
-        // Note: if you changed the inference_program, you need to call
+        // Note: if you change the inference_program, you need to call
         // executor.Prepare() again to get a new ExecutorPrepareContext.
         executor.RunPreparedContext(ctx.get(), scope, feed_targets,
                                     fetch_targets, CreateVars);

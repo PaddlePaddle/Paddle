@@ -83,8 +83,8 @@ static void CheckTensorNANOrInf(const std::string& name,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&
-      tensor.type().hash_code() != typeid(double).hash_code()) {
+  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
+      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
@@ -145,12 +145,13 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 // Return true if the block has feed operators and holder of matching info.
 static bool has_feed_operators(
     const BlockDesc& block,
-    std::map<std::string, const LoDTensor*>& feed_targets,
+    const std::map<std::string, const LoDTensor*>& feed_targets,
     const std::string& feed_holder_name) {
   size_t feed_count = 0;
   for (auto* op : block.AllOps()) {
     if (op->Type() == kFeedOpType) {
       feed_count++;
+      // The input variable's name of feed_op should be feed_holder_name.
       PADDLE_ENFORCE_EQ(op->Input("X")[0], feed_holder_name,
                         "Input to feed op should be '%s'", feed_holder_name);
       std::string feed_target_name = op->Output("Out")[0];
@@ -167,7 +168,7 @@ static bool has_feed_operators(
         "The number of feed operators should match 'feed_targets'");
 
     if (!feed_holder_name.empty()) {
-      // When feed operator are present, so should be feed_holder
+      // When feed operator are present, so should be feed_holder.
       auto var = block.FindVar(feed_holder_name);
       PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
                               feed_holder_name);
@@ -187,12 +188,14 @@ static bool has_feed_operators(
 // and fetch_holder_name. Raise exception when any mismatch is found.
 // Return true if the block has fetch operators and holder of matching info.
 static bool has_fetch_operators(
-    const BlockDesc& block, std::map<std::string, LoDTensor*>& fetch_targets,
+    const BlockDesc& block,
+    const std::map<std::string, LoDTensor*>& fetch_targets,
     const std::string& fetch_holder_name) {
   size_t fetch_count = 0;
   for (auto* op : block.AllOps()) {
     if (op->Type() == kFetchOpType) {
       fetch_count++;
+      // The output variable's name of fetch_op should be fetch_holder_name.
       PADDLE_ENFORCE_EQ(op->Output("Out")[0], fetch_holder_name,
                         "Output of fetch op should be '%s'", fetch_holder_name);
       std::string fetch_target_name = op->Input("X")[0];
@@ -209,7 +212,7 @@ static bool has_fetch_operators(
         "The number of fetch operators should match 'fetch_targets'");
 
     if (!fetch_holder_name.empty()) {
-      // When fetch operator are present, so should be fetch_holder
+      // When fetch operator are present, so should be fetch_holder.
       auto var = block.FindVar(fetch_holder_name);
       PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
                               fetch_holder_name);
@@ -287,8 +290,8 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   }
 
   auto ctx = Prepare(*copy_program, 0);
-  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets,
-                     feed_holder_name, fetch_holder_name, create_vars);
+  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets, create_vars,
+                     feed_holder_name, fetch_holder_name);
 }
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
