@@ -57,15 +57,12 @@ class BroadcastTester : public ::testing::Test {
     }
   }
 
-  template <class T>
   void BroadcastInitOp(int input_scope_idx) {
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scope_.push_back(&g_scope_.NewScope());
-      auto* out_var = local_scope_[j]->Var("out");
-      out_var->GetMutable<T>();
+      local_scope_[j]->Var("out");
     }
-    auto* in_var = local_scope_[input_scope_idx]->Var("input");
-    in_var->GetMutable<T>();
+    local_scope_[input_scope_idx]->Var("input");
 
     bc_op_handle_ = new f::details::BroadcastOpHandle(local_scope_, gpu_list_);
 
@@ -84,7 +81,6 @@ class BroadcastTester : public ::testing::Test {
       out_var_handle->name_ = "out";
       out_var_handle->version_ = 2;
       out_var_handle->scope_idx_ = j;
-      out_var_handle->generated_op_ = bc_op_handle_;
       bc_op_handle_->AddOutput(out_var_handle);
     }
   }
@@ -109,7 +105,7 @@ class BroadcastTester : public ::testing::Test {
 
   void TestBroadcastLodTensor() {
     int input_scope_idx = 0;
-    BroadcastInitOp<f::LoDTensor>(input_scope_idx);
+    BroadcastInitOp(input_scope_idx);
 
     auto in_var = local_scope_[input_scope_idx]->Var("input");
     auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
@@ -148,7 +144,7 @@ class BroadcastTester : public ::testing::Test {
 
   void TestBroadcastSelectedRows() {
     int input_scope_idx = 0;
-    BroadcastInitOp<f::SelectedRows>(input_scope_idx);
+    BroadcastInitOp(input_scope_idx);
 
     auto in_var = local_scope_[input_scope_idx]->Var("input");
     auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();

@@ -32,6 +32,8 @@ namespace details {
 // temporarily place it in op_handle.
 Tensor *GetTensorFromVar(Variable *in_var);
 
+constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
+
 class OpHandleBase {
  private:
   DISABLE_COPY_AND_ASSIGN(OpHandleBase);

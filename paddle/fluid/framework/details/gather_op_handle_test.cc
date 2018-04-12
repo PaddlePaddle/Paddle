@@ -56,15 +56,12 @@ class GatherTester : public ::testing::Test {
     }
   }
 
-  template <class T>
   void InitGatherOp(int input_scope_idx) {
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scope_.push_back(&g_scope_.NewScope());
-      auto* out_var = local_scope_[j]->Var("input");
-      out_var->GetMutable<T>();
+      local_scope_[j]->Var("input");
     }
-    auto* in_var = local_scope_[input_scope_idx]->Var("out");
-    in_var->GetMutable<T>();
+    local_scope_[input_scope_idx]->Var("out");
 
     gather_op_handle_ = new f::details::GatherOpHandle(local_scope_, gpu_list_);
 
@@ -106,11 +103,9 @@ class GatherTester : public ::testing::Test {
     }
   }
 
-  void TestGatherLodTensor() {}
-
   void TestGatherSelectedRows() {
     int output_scope_idx = 0;
-    InitGatherOp<f::SelectedRows>(output_scope_idx);
+    InitGatherOp(output_scope_idx);
 
     int height = kDims[0] * 2;
     std::vector<int64_t> rows{0, 1, 2, 3, 3, 0, 14, 7, 3, 1,
@@ -169,21 +164,12 @@ class GatherTester : public ::testing::Test {
   f::details::GatherOpHandle* gather_op_handle_;
 };
 
-// TEST_F(GatherTester, TestCPUGatherTestLodTensor) {
-//  InitCtxOnGpu(false);
-//  TestGatherLodTensor();
-//}
-
 TEST_F(GatherTester, TestCPUGatherTestSelectedRows) {
   InitCtxOnGpu(false);
   TestGatherSelectedRows();
 }
 
 #ifdef PADDLE_WITH_CUDA
-// TEST_F(GatherTester, TestGPUGatherTestLodTensor) {
-//  InitCtxOnGpu(true);
-//  TestGatherLodTensor();
-//}
 
 TEST_F(GatherTester, TestGPUGatherTestSelectedRows) {
   InitCtxOnGpu(true);
