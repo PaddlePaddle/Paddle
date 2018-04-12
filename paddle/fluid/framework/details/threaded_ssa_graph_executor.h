@@ -99,9 +99,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::unique_ptr<platform::EnforceNotMet> exception_;
   std::atomic<int> running_ops_;
   bool allow_op_delay_;
-
-  size_t computation_count_{0};
-  size_t max_async_computation{100};
 };
 
 }  // namespace details

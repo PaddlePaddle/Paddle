@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <ostream>
+#include <string>
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -27,6 +28,7 @@ namespace paddle {
 namespace operators {
 
 constexpr char kOptimizeBlock[] = "OptimizeBlock";
+constexpr char kPrefetchBlock[] = "PrefetchBlock";
 
 void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service);
 
