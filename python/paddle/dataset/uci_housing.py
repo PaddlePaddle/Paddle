@@ -117,14 +117,17 @@ def test():
 
     return reader
 
+
 def fluid_model():
-    parameter_tar = paddle.dataset.common.download(FLUID_URL_MODEL, 'uci_housing', FLUID_MD5_MODEL, 'fit_a_line.fluid.tar')
+    parameter_tar = paddle.dataset.common.download(
+        FLUID_URL_MODEL, 'uci_housing', FLUID_MD5_MODEL, 'fit_a_line.fluid.tar')
 
     tar = tarfile.TarFile(parameter_tar, mode='r')
     dirpath = tempfile.mkdtemp()
     tar.extractall(path=dirpath)
 
     return dirpath
+
 
 def predict_reader():
     """
@@ -135,11 +138,12 @@ def predict_reader():
     """
     global UCI_TEST_DATA
     load_data(paddle.dataset.common.download(URL, 'uci_housing', MD5))
-    return (UCI_TEST_DATA[0][:-1],)
+    return (UCI_TEST_DATA[0][:-1], )
 
 
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)
+
 
 def convert(path):
     """
