@@ -137,6 +137,7 @@ def predict_reader():
     load_data(paddle.dataset.common.download(URL, 'uci_housing', MD5))
     return (UCI_TEST_DATA[0][:-1],)
 
+
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)
 
