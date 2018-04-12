@@ -14,17 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
+#include <type_traits>
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/place.h"
 
-#include <algorithm>
-#include <type_traits>
 #ifdef __NVCC__
-#include <thrust/execution_policy.h>
-#include <thrust/transform.h>
-#include "paddle/fluid/platform/details/device_ptr_cast.h"
+#include "thrust/execution_policy.h"
+#include "thrust/transform.h"
 #endif
 
 namespace paddle {
