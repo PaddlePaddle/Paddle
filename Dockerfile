@@ -30,8 +30,7 @@ RUN apt-get update && \
     automake locales clang-format swig doxygen cmake  \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
-    net-tools libtool && \
-    apt-get clean -y
+    net-tools libtool && apt-get clean -y
 
 # Install Go and glide
 RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
