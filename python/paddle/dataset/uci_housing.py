@@ -128,22 +128,14 @@ def fluid_model():
 
 def predict_reader():
     """
-    UCI_HOUSING test set creator.
+    It returns just one tuple data to do inference.
 
-    It returns a reader creator, each sample in the reader is features after
-    normalization and price number.
-
-    :return: Test reader creator
-    :rtype: callable
+    :return: one tuple data
+    :rtype: tuple 
     """
     global UCI_TEST_DATA
     load_data(paddle.dataset.common.download(URL, 'uci_housing', MD5))
-
-    def reader():
-        for d in UCI_TEST_DATA:
-            yield (d[:-1],)
-
-    return reader
+    return (UCI_TEST_DATA[0][:-1],)
 
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)

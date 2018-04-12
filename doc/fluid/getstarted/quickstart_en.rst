@@ -18,7 +18,7 @@ If you need to install GPU version (cuda7.5_cudnn5_avx_openblas), run:
 
      pip install paddlepaddle-gpu
 
-For more details about installation and build: `install and Compile <http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/build_and_install/index_en.html>`_ .
+For more details about installation and build: :ref:`install_steps` .
 
 Quick Use
 ---------
@@ -28,33 +28,22 @@ code:
 
 
   .. code-block:: python
-     import paddle
+
+     import paddle.dataset.uci_housing as uci_housing
      import paddle.fluid as fluid
-     
-     
-     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-     place = fluid.CPUPlace()
-     exe = fluid.Executor(place=place)
-     feeder = fluid.DataFeeder(place=place, feed_list=[x])
-     
+  
      with fluid.scope_guard(fluid.core.Scope()):
-         parameter_model = paddle.dataset.uci_housing.fluid_model()
-     
+         # initialize executor with cpu
+         exe = fluid.Executor(place=fluid.CPUPlace())
+         # load inference model 
          [inference_program, feed_target_names,fetch_targets] =  \
-             fluid.io.load_inference_model(parameter_model, exe)
-     
-         predict_reader = paddle.batch(paddle.dataset.uci_housing.predict_reader(), batch_size=20)
-     
-         results = []
-         for data in predict_reader():
-             result = exe.run(inference_program,
-                               feed=feeder.feed(data),
-                               fetch_list=fetch_targets)
-             results.append(result)
-     
-         for res in results:
-             for i in xrange(len(res[0])):
-                 print 'Predicted price: ${:,.2f}'.format(res[0][i][0] * 1000)
+             fluid.io.load_inference_model(uci_housing.fluid_model(), exe)
+         # run inference
+         result = exe.run(inference_program, 
+                          feed={feed_target_names[0]: uci_housing.predict_reader()}, 
+                          fetch_list=fetch_targets)
+         # print predicted price is $12,273.97 
+         print 'Predicted price: ${:,.2f}'.format(result[0][0][0] * 1000)
 
 Run :code:`python housing.py` and voila! It should print out a list of predictions
 for the test housing data.
