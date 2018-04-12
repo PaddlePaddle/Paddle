@@ -195,14 +195,7 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
-      if("${cc_library_DEPS}" MATCHES "ARCHIVE_START")
-        # Support linking flags: --whole-archive (Linux) / -force_load (MacOS).
-        # WARNING: Please don't use ARCHIVE_START&ARCHIVE_END if TARGET_NAME will be linked by other libraries.
-        target_circle_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
-        list(REMOVE_ITEM cc_library_DEPS ARCHIVE_START ARCHIVE_END)
-      else()
-        target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
-      endif()
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()
     
@@ -243,11 +236,7 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    # Support linking flags: --whole-archive (Linux) / -force_load (MacOS)
-    target_circle_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
-    if("${cc_test_DEPS}" MATCHES "ARCHIVE_START")
-      list(REMOVE_ITEM cc_test_DEPS ARCHIVE_START ARCHIVE_END)
-    endif()
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
     add_test(NAME ${TARGET_NAME}
              COMMAND ${TARGET_NAME} ${cc_test_ARGS}
