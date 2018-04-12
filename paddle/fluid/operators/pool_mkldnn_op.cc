@@ -82,10 +82,12 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // save pool_workspace_memory to be referred in backward path
     dev_ctx.SetBlob(key_pool_workspace_memory, workspace_memory);
 
-    auto src_memory = mkldnn::memory({src_md, mkldnn_engine},
-                                     reinterpret_cast<void*>(input_data));
-    auto dst_memory = mkldnn::memory({dst_md, mkldnn_engine},
-                                     reinterpret_cast<void*>(output_data));
+    auto src_memory =
+        mkldnn::memory({src_md, mkldnn_engine},
+                       static_cast<void*>(const_cast<T*>(input_data)));
+    auto dst_memory =
+        mkldnn::memory({dst_md, mkldnn_engine},
+                       static_cast<void*>(const_cast<T*>(output_data)));
 
     auto pool_prim = mkldnn::pooling_forward(*pool_pd, src_memory, dst_memory,
                                              *workspace_memory);
@@ -194,10 +196,12 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto pool_bwd_pd = mkldnn::pooling_backward::primitive_desc(
         pool_bwd_desc, mkldnn_engine, *pool_pd);
 
-    auto diff_src_memory = mkldnn::memory(
-        {diff_src_md, mkldnn_engine}, reinterpret_cast<void*>(in_x_grad_data));
-    auto diff_dst_memory = mkldnn::memory(
-        {diff_dst_md, mkldnn_engine}, reinterpret_cast<void*>(out_grad_data));
+    auto diff_src_memory =
+        mkldnn::memory({diff_src_md, mkldnn_engine},
+                       static_cast<void*>(const_cast<T*>(in_x_grad_data)));
+    auto diff_dst_memory =
+        mkldnn::memory({diff_dst_md, mkldnn_engine},
+                       static_cast<void*>(const_cast<T*>(out_grad_data)));
 
     auto bwd_prim = mkldnn::pooling_backward(
         pool_bwd_pd, diff_dst_memory, *workspace_memory, diff_src_memory);
