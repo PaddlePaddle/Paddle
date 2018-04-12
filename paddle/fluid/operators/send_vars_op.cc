@@ -36,7 +36,7 @@ class SendVarsOp : public framework::OperatorBase {
     auto ins = Inputs("X");
 
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    int sync_send = Attr<int>("sync_sent");
+    int sync_send = Attr<int>("sync_send");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
