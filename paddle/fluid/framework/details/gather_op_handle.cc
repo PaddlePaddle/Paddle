@@ -28,6 +28,12 @@ void GatherOpHandle::RunImpl() {
       "The number of inputs should be equal to the number of place.");
   PADDLE_ENFORCE_EQ(this->outputs_.size(), 1,
                     "The number of output should be one.");
+  auto in_0_handle = static_cast<VarHandle *>(inputs_[0]);
+  auto pre_in_var =
+      local_scopes_[in_0_handle->scope_idx_]->FindVar(in_0_handle->name_);
+  PADDLE_ENFORCE(pre_in_var->IsType<framework::SelectedRows>(),
+                 "Currently, gather_op only can gather SelectedRows.");
+  auto pre_place = in_0_handle->place_;
 
   // Wait input done, this Wait is asynchronous operation
   for (auto *in : inputs_) {
@@ -36,10 +42,6 @@ void GatherOpHandle::RunImpl() {
       in->generated_op_->Wait(dev_ctxes_[p]);
     }
   }
-  auto in_0_handle = static_cast<VarHandle *>(inputs_[0]);
-  auto pre_in_var =
-      local_scopes_[in_0_handle->scope_idx_]->FindVar(in_0_handle->name_);
-  auto pre_place = in_0_handle->place_;
 
   std::vector<int64_t> out_rows;
   std::vector<Tensor *> in_tensors;
@@ -110,9 +112,9 @@ void GatherOpHandle::RunImpl() {
       s = e;
     }
   } else if (pre_in_var->IsType<framework::LoDTensor>()) {
-    // gather LoDTensor ???
+    PADDLE_THROW("Currently, Var only can be SelectedRows.");
   } else {
-    PADDLE_THROW("Var should be LoDTensor or SelectedRows.");
+    PADDLE_THROW("Var should be SelectedRows.");
   }
 }
 

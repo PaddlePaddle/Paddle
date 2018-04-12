@@ -18,11 +18,14 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace inference {
+
+void Init(bool init_p2p);
 
 void LoadPersistables(framework::Executor& executor, framework::Scope& scope,
                       const framework::ProgramDesc& main_program,

@@ -48,7 +48,7 @@ void BroadcastOpHandle::RunImpl() {
 
     auto out_scope_idx = out_handle->scope_idx_;
     PADDLE_ENFORCE_LT(out_scope_idx, local_scopes_.size(),
-                      "%s is not the the local_scopes ", out_handle->name_);
+                      "%s is not in the local_scopes ", out_handle->name_);
     auto *s = local_scopes_[out_scope_idx];
     auto out_var = s->FindVar(out_handle->name_);
     PADDLE_ENFORCE_EQ(out_p.which(), in_place.which(),
