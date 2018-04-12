@@ -131,7 +131,9 @@ def train(net_type, save_dirname):
     test_reader = paddle.batch(
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
 
-    place = fluid.CUDAPlace(0)
+    place = fluid.CPUPlace()
+    if fluid.core.is_compiled_with_cuda():
+        place = fluid.CUDAPlace(0)
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
 
@@ -172,6 +174,10 @@ def train(net_type, save_dirname):
 
 
 def infer(save_dirname):
+    # float16 inference is currently only supported on CUDA GPU
+    if not fluid.core.is_compiled_with_cuda():
+        return
+
     place = fluid.CUDAPlace(0)
     exe = fluid.Executor(place)
 
@@ -191,9 +197,9 @@ def infer(save_dirname):
         tensor_img = np.random.rand(batch_size, 3, 32, 32).astype(np.float16)
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
-        # Use np_dtype_to_fluid_dtype to change the data type of tensor_img so that 
-        # it can be successfully binded to fluid float16 data type, which can invoke 
-        # the float16 inference mode to run.
+        # Use np_dtype_to_fluid_dtype to bind tensor_img of numpy float16 data type 
+        # with fluid float16 data type so that it will invoke the inference to run  
+        # in float16 mode.
         results = exe.run(inference_program,
                           feed={
                               feed_target_names[0]:
@@ -204,10 +210,6 @@ def infer(save_dirname):
 
 
 def main(net_type):
-    # float16 mode is currently supported only on cuda GPU
-    if not fluid.core.is_compiled_with_cuda():
-        return
-
     # Directory for saving the trained model
     save_dirname = "float16_image_classification_" + net_type + ".inference.model"
 
