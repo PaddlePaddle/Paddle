@@ -254,6 +254,8 @@ op_library(parallel_do_op DEPS executor)
 
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)
+elseif (WITH_AMD_GPU)
+    op_library(conv_op DEPS vol2col depthwise_conv im2col)
 else()
     op_library(conv_op DEPS vol2col im2col)
 endif()
