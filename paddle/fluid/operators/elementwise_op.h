@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
@@ -106,18 +107,18 @@ information. However, the output only shares the LoD information with input $X$.
  protected:
   std::string comment_;
 
-  void Replace(std::string& src, std::string from, std::string to) {
+  void Replace(std::string* src, std::string from, std::string to) {
     std::size_t len_from = std::strlen(from.c_str());
     std::size_t len_to = std::strlen(to.c_str());
-    for (std::size_t pos = src.find(from); pos != std::string::npos;
-         pos = src.find(from, pos + len_to)) {
-      src.replace(pos, len_from, to);
+    for (std::size_t pos = src->find(from); pos != std::string::npos;
+         pos = src->find(from, pos + len_to)) {
+      src->replace(pos, len_from, to);
     }
   }
 
   void SetComment(std::string name, std::string equation) {
-    Replace(comment_, "{name}", name);
-    Replace(comment_, "{equation}", equation);
+    Replace(&comment_, "{name}", name);
+    Replace(&comment_, "{equation}", equation);
   }
 };
 
