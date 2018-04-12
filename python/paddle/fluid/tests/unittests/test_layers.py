@@ -32,7 +32,6 @@ class TestBook(unittest.TestCase):
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = layers.mean(cost)
             self.assertIsNotNone(avg_cost)
-            program.append_backward(avg_cost)
 
         print(str(program))
 
@@ -93,8 +92,6 @@ class TestBook(unittest.TestCase):
             predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
             cost = layers.cross_entropy(input=predict, label=label)
             avg_cost = layers.mean(cost)
-
-            program.append_backward(avg_cost)
 
         print(str(program))
 
