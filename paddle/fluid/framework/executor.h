@@ -73,9 +73,9 @@ class Executor {
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           std::map<std::string, const LoDTensor*>& feed_targets,
                           std::map<std::string, LoDTensor*>& fetch_targets,
+                          bool create_vars = true,
                           const std::string& feed_holder_name = "feed",
-                          const std::string& fetch_holder_name = "fetch",
-                          bool create_vars = true);
+                          const std::string& fetch_holder_name = "fetch");
 
  private:
   const platform::Place place_;
