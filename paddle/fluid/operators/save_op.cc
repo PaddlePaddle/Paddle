@@ -106,7 +106,6 @@ class SaveOp : public framework::OperatorBase {
       auto out_kernel_type = framework::OpKernelType(out_dtype, place);
       framework::LoDTensor out;
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-      std::cout << "var " << iname << " is converted to float16" << std::endl;
       framework::SerializeToStream(fout, out, dev_ctx);
     } else {
       framework::SerializeToStream(fout, tensor, dev_ctx);

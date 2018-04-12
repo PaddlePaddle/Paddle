@@ -198,8 +198,8 @@ def infer(save_dirname):
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
         # Use np_dtype_to_fluid_dtype to bind tensor_img of numpy float16 data type 
-        # with fluid float16 data type so that it will invoke the inference to run  
-        # in float16 mode.
+        # with fluid float16 data type so that it will invoke the inference engine
+        # to run in float16 mode.
         results = exe.run(inference_program,
                           feed={
                               feed_target_names[0]:

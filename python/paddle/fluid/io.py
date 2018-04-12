@@ -63,7 +63,22 @@ def _clone_var_in_block_(block, var):
         persistable=True)
 
 
-def _get_no_coversion_var_names_(program):
+def _get_no_fp16_coversion_var_names_(program):
+    """
+    Get the set of input variable names that shouldn't be converted to float16.
+
+    When we want to save the trained parameters for float16 inference, most 
+    parameters need to be firstly converted to float16 and then saved by the 
+    save op. However, there are some parameters that shouldn't be converted to 
+    float16 because the corresponding operator requires float32 parameters even
+    in float16 mode (when the input data is of float16 data type). Currently,
+    the only operator that has this exclusion is the batch norm op.
+
+    :param program: program to get the variable names
+    :type program: Program
+    :return: set of input variable names 
+    :type var_names: set
+    """
     op_names = {'batch_norm'}
     var_names = set()
     for block in program.blocks:
@@ -117,8 +132,9 @@ def save_vars(executor,
 
         # Get the names of variables that shouldn't be converted to float16 in 
         # float16 saving mode, right now it is limited to batch norm input weights.
-        no_conversion_var_names = _get_no_coversion_var_names_(main_program)
-        print no_conversion_var_names
+        no_conversion_var_names = _get_no_fp16_coversion_var_names_(
+            main_program)
+
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
             if each_var.type == core.VarDesc.VarType.RAW:
@@ -127,7 +143,6 @@ def save_vars(executor,
             new_var = _clone_var_in_block_(save_block, each_var)
             # Determine if a variable needed to be converted to float16 before saving    
             save_as_fp16 = use_float16 and new_var.name not in no_conversion_var_names
-            print new_var.name, use_float16, save_as_fp16
 
             if filename is None:
                 save_block.append_op(
