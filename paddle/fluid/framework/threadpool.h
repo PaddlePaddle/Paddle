@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include <condition_variable>
+#include <condition_variable>  // NOLINT
 #include <functional>
-#include <future>
-#include <mutex>
+#include <future>  // NOLINT
+#include <mutex>   // NOLINT
 #include <queue>
-#include <thread>
+#include <thread>  // NOLINT
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -137,7 +137,7 @@ class ThreadPool {
 
 class MultiStreamThreadPool : ThreadPool {
  public:
-  static MultiStreamThreadPool* GetInstanceIO();
+  static ThreadPool* GetInstanceIO();
   static void InitIO();
 
  private:
