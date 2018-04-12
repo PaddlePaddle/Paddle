@@ -218,6 +218,7 @@ def fc(input,
 def embedding(input,
               size,
               is_sparse=False,
+              is_distributed=False,
               padding_idx=None,
               param_attr=None,
               dtype='float32'):
@@ -268,8 +269,11 @@ def embedding(input,
         inputs={'Ids': input,
                 'W': w},
         outputs={'Out': tmp},
-        attrs={'is_sparse': is_sparse,
-               'padding_idx': padding_idx})
+        attrs={
+            'is_sparse': is_sparse,
+            'is_distributed': is_distributed,
+            'padding_idx': padding_idx
+        })
     return tmp
 
 
