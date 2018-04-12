@@ -141,7 +141,6 @@ def predict_reader():
 def fetch():
     paddle.dataset.common.download(URL, 'uci_housing', MD5)
 
-
 def convert(path):
     """
     Converts dataset to recordio format
