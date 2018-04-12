@@ -342,8 +342,8 @@ def create():
         raise Exception("Error while kicking off master")
 
     logging.info(
-        "master sercer finished init process, visit %s to check master log" %
-        (get_master_web_url("/logs")))
+        "master server finished init process, visit %s to check master log" %
+        (get_master_web_url("/status")))
 
 
 def cleanup():
@@ -351,7 +351,7 @@ def cleanup():
 
 
 def status():
-    print requests.post(get_master_web_url("/logs")).text
+    print requests.post(get_master_web_url("/status")).text
 
 
 def get_master_web_url(path):
