@@ -19,8 +19,11 @@ limitations under the License. */
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_int32(batch_size, 1, "Batch size of input data");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times");
+DEFINE_bool(use_float16, false, "Running inference in float16 mode or not");
 
 TEST(inference, image_classification) {
+  using float16 = paddle::platform::float16;
+
   if (FLAGS_dirname.empty() || FLAGS_batch_size < 1 || FLAGS_repeat < 1) {
     LOG(FATAL) << "Usage: ./example --dirname=path/to/your/model "
                   "--batch_size=1 --repeat=1";
@@ -35,20 +38,28 @@ TEST(inference, image_classification) {
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
-  SetupTensor<float>(&input, {FLAGS_batch_size, 3, 32, 32},
-                     static_cast<float>(0), static_cast<float>(1));
+  if (!FLAGS_use_float16) {
+    SetupTensor<float>(&input, {FLAGS_batch_size, 3, 32, 32},
+                       static_cast<float>(0), static_cast<float>(1));
+  } else {
+    SetupTensor<float16>(&input, {FLAGS_batch_size, 3, 32, 32},
+                         static_cast<float16>(0), static_cast<float16>(1));
+  }
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
+  // float16 inference is currently not supported on CPU
   paddle::framework::LoDTensor output1;
-  std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
-  cpu_fetchs1.push_back(&output1);
+  if (!FLAGS_use_float16) {
+    std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+    cpu_fetchs1.push_back(&output1);
 
-  // Run inference on CPU
-  LOG(INFO) << "--- CPU Runs: ---";
-  TestInference<paddle::platform::CPUPlace, false>(dirname, cpu_feeds,
-                                                   cpu_fetchs1, FLAGS_repeat);
-  LOG(INFO) << output1.dims();
+    // Run inference on CPU
+    LOG(INFO) << "--- CPU Runs: ---";
+    TestInference<paddle::platform::CPUPlace, false>(dirname, cpu_feeds,
+                                                     cpu_fetchs1, FLAGS_repeat);
+    LOG(INFO) << output1.dims();
+  }
 
 #ifdef PADDLE_WITH_CUDA
   paddle::framework::LoDTensor output2;
@@ -61,6 +72,8 @@ TEST(inference, image_classification) {
                                                     cpu_fetchs2, FLAGS_repeat);
   LOG(INFO) << output2.dims();
 
-  CheckError<float>(output1, output2);
+  if (!FLAGS_use_float16) {
+    CheckError<float>(output1, output2);
+  }
 #endif
 }

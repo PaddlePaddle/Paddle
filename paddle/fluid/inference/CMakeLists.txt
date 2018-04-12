@@ -21,5 +21,4 @@ endif()
 
 if(WITH_TESTING)
   add_subdirectory(tests/book)
-  add_subdirectory(tests/book_float16)
 endif()
