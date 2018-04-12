@@ -19,6 +19,9 @@ import astroid
 from pylint.checkers import BaseChecker, utils
 from pylint.interfaces import IAstroidChecker
 
+from collections import defaultdict
+import re
+
 
 def register(linter):
     """Register checkers."""
@@ -30,7 +33,6 @@ class Docstring(object):
     """
 
     def __init__(self):
-        from collections import defaultdict
         self.d = defaultdict(list)  #name->[]
         self.clear()
 
@@ -97,7 +99,6 @@ class Docstring(object):
         return self.d['Examples']
 
     def _arg_with_type(self):
-        import re
 
         for t in self.d['Args']:
             m = re.search('([A-Za-z0-9_-]+)\s{0,4}(\(.+\))\s{0,4}:', t)
@@ -128,7 +129,7 @@ class DocstringChecker(BaseChecker):
         'W9003': ('All args with their types must be mentioned in doc string',
                   symbol + "-with-all-args",
                   'Used when not all arguments are in the doc string '),
-        'W9005': ('Missing docstring or docstring is too shorter',
+        'W9005': ('Missing docstring or docstring is too short',
                   symbol + "-missing", 'Add docstring longer >=10'),
         'W9006': ('Docstring indent error, use 4 space for indent',
                   symbol + "-indent-error", 'Use 4 space for indent'),
