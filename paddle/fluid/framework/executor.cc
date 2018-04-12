@@ -359,9 +359,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx, Scope* scope,
     std::map<std::string, const LoDTensor*>& feed_targets,
-    std::map<std::string, LoDTensor*>& fetch_targets,
-    const std::string& feed_holder_name, const std::string& fetch_holder_name,
-    bool create_vars) {
+    std::map<std::string, LoDTensor*>& fetch_targets, bool create_vars,
+    const std::string& feed_holder_name, const std::string& fetch_holder_name) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
   PADDLE_ENFORCE(
