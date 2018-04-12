@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 
+#include <string>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -33,7 +35,7 @@ void ComputationOpHandle::RunImpl() {
     }
   }
 
-  op_->Run(*scope_->FindVar("@TMP_SCOPE@")->Get<Scope *>(), place_);
+  op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
 }
 
 std::string ComputationOpHandle::Name() const { return op_->Type(); }
