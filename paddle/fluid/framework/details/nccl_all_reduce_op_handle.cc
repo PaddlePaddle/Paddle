@@ -116,6 +116,19 @@ void NCCLAllReduceOpHandle::RunImpl() {
       // Reduce All Tensor to trg in CPU
       ReduceLoDTensor func(lod_tensors, &trg);
       VisitDataType(ToDataType(lod_tensors[0].type()), func);
+
+      for (size_t i = 0; i < local_scopes_.size(); ++i) {
+        auto &scope = local_scopes_[i];
+        auto &p = places_[i];
+        auto *var = scope->FindVar(var_name);
+        auto *dev_ctx = dev_ctxes_[p];
+
+        RunAndRecordEvent(p, [&trg, var, dev_ctx, p] {
+          auto &tensor_gpu = *var->GetMutable<framework::LoDTensor>();
+          auto &tensor_cpu = trg;
+          TensorCopy(tensor_cpu, p, *dev_ctx, &tensor_gpu);
+        });
+      }
     }
   }
 }
