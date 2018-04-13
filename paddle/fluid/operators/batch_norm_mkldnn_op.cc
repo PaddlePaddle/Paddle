@@ -74,6 +74,11 @@ template <typename T>
 class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    auto data_layout_str = ctx.Attr<std::string>("data_layout");
+    auto data_layout = framework::StringToDataLayout(data_layout_str);
+    PADDLE_ENFORCE(data_layout == framework::DataLayout::kNCHW,
+                   "MKLDNN batch normalization handles only NCHW data layout");
+
     const float epsilon = ctx.Attr<float>("epsilon");
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -129,6 +134,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         bn_fwd_types::op_prim{batch_norm_fwd_desc, mkldnn_engine};
 
     const unsigned int ic = dims[1];
+
     // MKLDNN requires a single piece of memory for scale and shift/bias data
     const size_t scaleshift_size = 2 * ic;
     std::vector<T> scaleshift_data;
@@ -211,6 +217,11 @@ template <typename T>
 class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
+    auto data_layout_str = ctx.Attr<std::string>("data_layout");
+    auto data_layout = framework::StringToDataLayout(data_layout_str);
+    PADDLE_ENFORCE(data_layout == framework::DataLayout::kNCHW,
+                   "MKLDNN batch normalization handles only NCHW data layout");
+
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     auto mkldnn_engine = dev_ctx.GetEngine();
 
@@ -270,6 +281,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                    cast_const_to_void(diff_y->data<T>())};
 
     const unsigned int ic = dims[1];
+
     const size_t scaleshift_size = 2 * ic;
 
     std::vector<T> scaleshift_data;
