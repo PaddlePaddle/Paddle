@@ -14,17 +14,18 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
+#include <type_traits>
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/place.h"
 
-#include <algorithm>
-#include <type_traits>
 #ifdef __NVCC__
-#include <thrust/execution_policy.h>
-#include <thrust/transform.h>
-#include "paddle/fluid/platform/details/device_ptr_cast.h"
+#include "thrust/device_ptr.h"
+#include "thrust/execution_policy.h"
+#include "thrust/transform.h"
 #endif
 
 namespace paddle {
@@ -33,30 +34,28 @@ namespace platform {
 // Transform on host or device. It provides the same API in std library.
 template <typename DeviceContext>
 struct Transform {
-  template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const DeviceContext& context, InputIter first, InputIter last,
-                  OutputIter result, UnaryOperation op);
+  template <typename Input, typename Output, typename UnaryOperation>
+  void operator()(const DeviceContext& context, const Input* first,
+                  const Input* last, Output* result, UnaryOperation op);
 
-  template <typename InputIter1, typename InputIter2, typename OutputIter,
-            typename BinaryOperation>
-  void operator()(const DeviceContext& context, InputIter1 first1,
-                  InputIter1 last1, InputIter2 first2, OutputIter result,
+  template <typename Input, typename Output, typename BinaryOperation>
+  void operator()(const DeviceContext& context, const Input* first1,
+                  const Input* last1, const Input* first2, Output* result,
                   BinaryOperation op);
 };
 
 template <>
 struct Transform<platform::CPUDeviceContext> {
-  template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const platform::CPUDeviceContext& context, InputIter first,
-                  InputIter last, OutputIter result, UnaryOperation op) {
+  template <typename Input, typename Output, typename UnaryOperation>
+  void operator()(const platform::CPUDeviceContext& context, const Input* first,
+                  const Input* last, Output* result, UnaryOperation op) {
     std::transform(first, last, result, op);
   }
 
-  template <typename InputIter1, typename InputIter2, typename OutputIter,
-            typename BinaryOperation>
-  void operator()(const platform::CPUDeviceContext& context, InputIter1 first1,
-                  InputIter1 last1, InputIter2 first2, OutputIter result,
-                  BinaryOperation op) {
+  template <typename Input, typename Output, typename BinaryOperation>
+  void operator()(const platform::CPUDeviceContext& context,
+                  const Input* first1, const Input* last1, const Input* first2,
+                  Output* result, BinaryOperation op) {
     std::transform(first1, last1, first2, result, op);
   }
 };
@@ -64,27 +63,29 @@ struct Transform<platform::CPUDeviceContext> {
 #ifdef __NVCC__
 template <>
 struct Transform<platform::CUDADeviceContext> {
-  template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const platform::CUDADeviceContext& context, InputIter first,
-                  InputIter last, OutputIter result, UnaryOperation op) {
+  template <typename Input, typename Output, typename UnaryOperation>
+  void operator()(const platform::CUDADeviceContext& context,
+                  const Input* first, const Input* last, Output* result,
+                  UnaryOperation op) {
     auto place = context.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
     thrust::transform(thrust::cuda::par.on(context.stream()),
-                      details::DevPtrCast(first), details::DevPtrCast(last),
-                      details::DevPtrCast(result), op);
+                      thrust::device_pointer_cast(first),
+                      thrust::device_pointer_cast(last),
+                      thrust::device_pointer_cast(result), op);
   }
 
-  template <typename InputIter1, typename InputIter2, typename OutputIter,
-            typename BinaryOperation>
-  void operator()(const platform::CUDADeviceContext& context, InputIter1 first1,
-                  InputIter1 last1, InputIter2 first2, OutputIter result,
-                  BinaryOperation op) {
+  template <typename Input, typename Output, typename BinaryOperation>
+  void operator()(const platform::CUDADeviceContext& context,
+                  const Input* first1, const Input* last1, const Input* first2,
+                  Output* result, BinaryOperation op) {
     auto place = context.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
     thrust::transform(thrust::cuda::par.on(context.stream()),
-                      details::DevPtrCast(first1), details::DevPtrCast(last1),
-                      details::DevPtrCast(first2), details::DevPtrCast(result),
-                      op);
+                      thrust::device_pointer_cast(first1),
+                      thrust::device_pointer_cast(last1),
+                      thrust::device_pointer_cast(first2),
+                      thrust::device_pointer_cast(result), op);
   }
 };
 #endif
