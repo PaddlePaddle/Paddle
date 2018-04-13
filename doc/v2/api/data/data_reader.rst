@@ -6,7 +6,43 @@ Data Reader Interface
 DataTypes
 =========
 
-..  automodule:: paddle.v2.data_type
+..  autofunction:: paddle.v2.data_type.dense_array
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.integer_value
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.integer_value_sequence
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.integer_value_sub_sequence
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.sparse_binary_vector
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.sparse_binary_vector_sequence
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.sparse_binary_vector_sub_sequence
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.sparse_float_vector
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.sparse_float_vector_sequence
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.sparse_float_vector_sub_sequence
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.sparse_non_value_slot
+    :noindex:
+
+..  autofunction:: paddle.v2.data_type.sparse_value_slot
+    :noindex:
+
+..  autoclass:: paddle.v2.data_type.InputType
     :members:
     :noindex:
 
