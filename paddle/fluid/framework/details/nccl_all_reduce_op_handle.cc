@@ -69,10 +69,12 @@ void NCCLAllReduceOpHandle::RunImpl() {
       });
     }
 
-    platform::NCCLGroupGuard guard;
-    for (auto &call : all_reduce_calls) {
-      call();
-    }
+    this->RunAndRecordEvent([&] {
+      platform::NCCLGroupGuard guard;
+      for (auto &call : all_reduce_calls) {
+        call();
+      }
+    });
   }
 }
 
