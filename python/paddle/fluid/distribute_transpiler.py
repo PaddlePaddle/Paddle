@@ -1115,4 +1115,6 @@ class DistributeTranspiler:
             for op2 in find_ops:
                 if ufind.is_connected(op1, op2):
                     lr_ops.append(op1)
+                    # we only need to append op for once
+                    break
         return lr_ops
