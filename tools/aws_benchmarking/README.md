@@ -50,7 +50,10 @@ Training nodes will run your `ENTRYPOINT` script with the following environment 
  - `TASK_NAME`: unique name to identify this training process.
  - `TRAINING_ROLE`: current node's role in this training process, either "PSERVER" or "TRAINER"
  - `PSERVER_HOSTS`: comma separated value of pserver end points, I.E. "192.168.1.2:5436,192.168.1.3:5436"
- - `TRAINER_INDEX`: an integer to identify the index of current trainer
+ - `PSERVERS`: same as above
+ - `TRAINERS`: trainer count
+ - `SERVER_ENDPOINT`: current server end point if the node role is a pserver
+ - `TRAINER_INDEX`: an integer to identify the index of current trainer if the node role is a trainer.
 
  Now we have a working distributed training script which takes advantage of node environment variables and docker file to generate the training image. Run the following command:
 
@@ -73,11 +76,15 @@ Training nodes will run your `ENTRYPOINT` script with the following environment 
 Now let's start the training process:
 
 ```bash
-docker run -i -v $HOME/.aws:/root/.aws -v <full path to your pem file>:/<key pare name>.pem \
+docker run -i -v $HOME/.aws:/root/.aws -v <full path to your pem file>:/root/<key pare name>.pem \
 putcn/paddle_aws_client \
 --action create \
 --key_name <your key pare name> \
---security_group_id <your security group id>
+--security_group_id <your security group id> \
+--pserver_image_id <your pserver image id> \
+--trainer_image_id <your trainer images id> \
+--pserver_count 2 \
+--trainer_count 2
 ```
 
 Now just wait until you see this:
@@ -91,7 +98,7 @@ That means you can turn off your laptop and your cluster is creating instances, 
 To access the master log:
 
 ```bash
-docker run -i -v $HOME/.aws:/root/.aws -v <full path to your pem file>:/<key pare name>.pem \
+docker run -i -v $HOME/.aws:/root/.aws \
 putcn/paddle_aws_client \
 --action status \
 --master_server_public_ip <master ip> \
@@ -101,7 +108,7 @@ putcn/paddle_aws_client \
 To tear down the training setup:
 
 ```bash
-docker run -i -v $HOME/.aws:/root/.aws -v <full path to your pem file>:/<key pare name>.pem \
+docker run -i -v $HOME/.aws:/root/.aws \
 putcn/paddle_aws_client \
 --action cleanup \
 --master_server_public_ip <master ip> \
@@ -111,7 +118,7 @@ putcn/paddle_aws_client \
 To retrieve training logs
 TBD
 
-### Tech details
+### Tech details
 
 *What to expect in this step*
 
