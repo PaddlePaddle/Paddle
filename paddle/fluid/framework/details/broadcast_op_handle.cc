@@ -18,45 +18,74 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+Tensor *GetTensorFromVar(Variable *in_var) {
+  if (in_var->IsType<LoDTensor>()) {
+    return in_var->GetMutable<LoDTensor>();
+  } else if (in_var->IsType<SelectedRows>()) {
+    return in_var->GetMutable<SelectedRows>()->mutable_value();
+  } else {
+    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
+  }
+  return nullptr;
+}
+
 BroadcastOpHandle::BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places)
     : local_scopes_(local_scopes), places_(places) {}
 
 void BroadcastOpHandle::RunImpl() {
-  PADDLE_ENFORCE_EQ(this->inputs_.size(), 1,
+  // the input may have dummy var.
+  std::vector<VarHandle *> in_var_handle;
+  for (auto *in : inputs_) {
+    auto *out_handle = dynamic_cast<VarHandle *>(in);
+    if (out_handle) {
+      in_var_handle.push_back(out_handle);
+    }
+  }
+  PADDLE_ENFORCE_EQ(in_var_handle.size(), 1,
                     "The number of input should be one.");
-  PADDLE_ENFORCE_EQ(
-      this->outputs_.size(), places_.size(),
-      "The number of output should equal to the number of places.");
 
-  // Wait input done, this Wait is asynchronous operation
-  auto in_var_handle = static_cast<VarHandle *>(this->inputs_[0]);
-  auto &in_place = in_var_handle->place_;
-  if (inputs_[0]->generated_op_) {
-    inputs_[0]->generated_op_->Wait(dev_ctxes_[in_place]);
-    for (auto *out : outputs_) {
-      auto out_handle = static_cast<VarHandle *>(out);
-      auto &out_p = out_handle->place_;
-      inputs_[0]->generated_op_->Wait(dev_ctxes_[out_p]);
+  // the output may have dummy var.
+  std::vector<VarHandle *> out_var_handles;
+  for (auto *out : outputs_) {
+    auto *out_handle = dynamic_cast<VarHandle *>(out);
+    if (out_handle) {
+      out_var_handles.push_back(out_handle);
     }
   }
 
-  auto in_scope_idx = in_var_handle->scope_idx_;
+  PADDLE_ENFORCE_EQ(
+      out_var_handles.size(), places_.size(),
+      "The number of output should equal to the number of places.");
+
+  // Wait input done, this Wait is asynchronous operation
+  auto &in_place = in_var_handle[0]->place_;
+  if (in_var_handle[0]->generated_op_) {
+    in_var_handle[0]->generated_op_->Wait(dev_ctxes_[in_place]);
+    for (auto *out : out_var_handles) {
+      auto &out_p = out->place_;
+      if (platform::is_same_place(in_place, out_p)) continue;
+      in_var_handle[0]->generated_op_->Wait(dev_ctxes_[out_p]);
+    }
+  }
+
+  //
+  auto in_scope_idx = in_var_handle[0]->scope_idx_;
   PADDLE_ENFORCE_LT(in_scope_idx, local_scopes_.size(),
                     "The input(%s) is not in the local_scopes.",
-                    in_var_handle->name_);
-  auto in_var = local_scopes_[in_scope_idx]->FindVar(in_var_handle->name_);
-
+                    in_var_handle[0]->name_);
+  auto in_var = local_scopes_[in_scope_idx]->FindVar(in_var_handle[0]->name_);
   Tensor *in_tensor = GetTensorFromVar(in_var);
-  for (auto *out : outputs_) {
-    auto out_handle = static_cast<VarHandle *>(out);
-    auto &out_p = out_handle->place_;
 
-    auto out_scope_idx = out_handle->scope_idx_;
+  for (auto *out : out_var_handles) {
+    auto &out_p = out->place_;
+
+    auto out_scope_idx = out->scope_idx_;
     PADDLE_ENFORCE_LT(out_scope_idx, local_scopes_.size(),
-                      "%s is not in the local_scopes ", out_handle->name_);
+                      "%s is not in the local_scopes ", out->name_);
+
     auto *s = local_scopes_[out_scope_idx];
-    auto out_var = s->FindVar(out_handle->name_);
+    auto out_var = s->FindVar(out->name_);
     PADDLE_ENFORCE_EQ(out_p.which(), in_place.which(),
                       "The place of input and output should be the same.");
 
@@ -89,7 +118,7 @@ void BroadcastOpHandle::RunImpl() {
       auto dst_gpu_place = boost::get<platform::CUDAPlace>(out_p);
       void *dst_ptr = out_tensor->mutable_data(out_p);
       void *src_ptr = in_tensor->data<void>();
-      int64_t size = in_tensor->numel();
+      int64_t size = in_tensor->numel() * SizeOfType(in_tensor->type());
       memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
           reinterpret_cast<platform::CUDADeviceContext *>(dev_ctxes_[out_p])
