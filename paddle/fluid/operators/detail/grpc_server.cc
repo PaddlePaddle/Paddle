@@ -217,10 +217,10 @@ void AsyncGRPCServer::RunSyncUpdate() {
   std::function<void()> prefetch_register =
       std::bind(&AsyncGRPCServer::TryToRegisterNewPrefetchOne, this);
 
+  // TODO(wuyi): Run these "HandleRequest" in thread pool
   t_send_.reset(
       new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
                                 cq_send_.get(), "cq_send", send_register)));
-
   t_get_.reset(
       new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
                                 cq_get_.get(), "cq_get", get_register)));
