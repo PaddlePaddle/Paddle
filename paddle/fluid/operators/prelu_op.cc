@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/prelu_op.h"
-#include "paddle/fluid/operators/net_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {

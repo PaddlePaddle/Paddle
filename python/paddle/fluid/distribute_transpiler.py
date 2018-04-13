@@ -13,14 +13,17 @@
 # limitations under the License.
 
 from __future__ import print_function
-import framework
-from framework import Program, default_main_program, default_startup_program, Parameter, Variable
-import optimizer
-from layer_helper import LayerHelper
-import distributed_splitter as splitter
+
 import math
+
+import distributed_splitter as splitter
+import framework
+from framework import Program, default_main_program, Variable
 from . import core
-import debuger
+
+LOOKUP_TABLE_TYPE = "lookup_table"
+LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
+RPC_CLIENT_VAR_NAME = "RPC_CLIENT_VAR"
 
 
 class VarBlock:
@@ -35,9 +38,9 @@ class VarBlock:
 
 
 class UnionFind(object):
-    """ Union-find data struct.
+    """ Union-find data structure.
 
-    Union-find is a data struct that keeps track of a set of elements partitioned
+    Union-find is a data structure that keeps track of a set of elements partitioned
     into a number of disjoint (non-overlapping) subsets.
 
     Reference:
@@ -185,19 +188,66 @@ class DistributeTranspiler:
         assert (callable(split_method))
         if program is None:
             program = default_main_program()
-        self.program = program
-        self.trainers = trainers
+        self.origin_program = program
+        self.trainer_num = trainers
         self.optimize_ops = optimize_ops
         # TODO(typhoonzero): currently trainer_id is fetched from cluster system
         # like Kubernetes, we should port this to use etcd later when developing
         # fluid distributed training with fault-tolerance.
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
+        self.pserver_endpoints = pserver_endpoints
+
+        # process lookup_table_op
+        # 1. check all lookup_table_op is distributed
+        # 2. check all lookup_table_op share the same table.
+        distributed_lookup_table_ops = []
+        # support only one distributed_lookup_table now
+        self.table_name = None
+        for op in program.global_block().ops:
+            if op.type == LOOKUP_TABLE_TYPE:
+                if op.attrs['is_distributed'] is True:
+                    if self.table_name is None:
+                        self.table_name = op.input("W")[0]
+                    if self.table_name != op.input("W")[0]:
+                        raise RuntimeError("all distributed lookup_table_ops"
+                                           " should have only one table")
+                    distributed_lookup_table_ops.append(op)
+                else:
+                    if self.table_name is not None:
+                        assert op.input("W")[0] != self.table_name
+
+        self.has_distributed_lookup_table = len(
+            distributed_lookup_table_ops) > 0
 
         # step1: For large parameters and gradients, split them into smaller
         # blocks.
         param_list = [pg[0] for pg in params_grads]
         grad_list = [pg[1] for pg in params_grads]
+
+        if self.has_distributed_lookup_table:
+            param_list = [
+                param for param in param_list if param.name != self.table_name
+            ]
+            grad_list = [
+                grad for grad in grad_list
+                if grad.name != framework.grad_var_name(self.table_name)
+            ]
+            self.table_param_grad = [
+                param_grad for param_grad in params_grads
+                if param_grad[0].name == self.table_name
+            ][0]
+            table_grad_var = self.table_param_grad[1]
+            self.table_grad_list = [
+                program.global_block().create_var(
+                    name="%s.trainer_%d.pserver_%d" %
+                    (table_grad_var.name, trainer_id, index),
+                    type=table_grad_var.type,
+                    shape=table_grad_var.shape,
+                    dtype=table_grad_var.dtype)
+                for index in range(len(self.pserver_endpoints))
+            ]
+
         grad_blocks = split_dense_variable(grad_list, len(pserver_endpoints))
         param_blocks = split_dense_variable(param_list, len(pserver_endpoints))
         # step2: Create new vars for the parameters and gradients blocks and
@@ -229,7 +279,7 @@ class DistributeTranspiler:
             self.param_grad_ep_mapping[ep]["grads"].append(grad)
 
         rpc_client_var = program.global_block().create_var(
-            name="RPC_CLIENT_VAR",
+            name=RPC_CLIENT_VAR_NAME,
             persistable=True,
             type=core.VarDesc.VarType.RAW)
 
@@ -252,12 +302,19 @@ class DistributeTranspiler:
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
+        if self.has_distributed_lookup_table:
+            self._replace_lookup_table_op_with_prefetch(program, rpc_client_var,
+                                                        eplist)
+            self._split_table_grad_and_add_send_vars(program, rpc_client_var,
+                                                     pserver_endpoints)
+
     def get_trainer_program(self):
         # remove optimize ops and add a send op to main_program
-        self.program.global_block().delete_ops(self.optimize_ops)
+        self.origin_program.global_block().delete_ops(self.optimize_ops)
+        self.origin_program.sync_with_cpp()
         # FIXME(typhoonzero): serialize once will fix error occurs when clone.
-        self.program.__str__()
-        return self.program
+        self.origin_program.__str__()
+        return self.origin_program
 
     def get_pserver_program(self, endpoint):
         """
@@ -293,8 +350,8 @@ class DistributeTranspiler:
                     type=v.type,
                     dtype=v.dtype,
                     shape=v.shape)
-            if self.trainers > 1:
-                for trainer_id in xrange(self.trainers):
+            if self.trainer_num > 1:
+                for trainer_id in xrange(self.trainer_num):
                     var = pserver_program.global_block().create_var(
                         name="%s.trainer_%d" % (orig_var_name, trainer_id),
                         persistable=False,
@@ -308,7 +365,7 @@ class DistributeTranspiler:
         # step3
         optimize_block = pserver_program.create_block(0)
         # step 4
-        # Create a union-find data struct from optimize ops,
+        # Create a union-find data structure from optimize ops,
         # If two ops are connected, we could add these two ops
         # into one set.
         ufind = self._create_ufind(self.optimize_ops)
@@ -383,6 +440,23 @@ class DistributeTranspiler:
         #             __append_optimize_op__(glb_op, optimize_block)
         #             break
 
+        # process distributed lookup_table
+        prefetch_block = None
+        if self.has_distributed_lookup_table:
+            pserver_index = self.pserver_endpoints.index(endpoint)
+            self._create_table_optimize_block(pserver_index, pserver_program,
+                                              append_block)
+            prefetch_block = self._create_prefetch_block(
+                pserver_index, pserver_program, optimize_block)
+
+        # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
+        # not be executed, so it's safe to use optimize_block to hold the place
+        if self.has_distributed_lookup_table:
+            assert prefetch_block is not None
+        else:
+            assert prefetch_block is None
+            prefetch_block = pserver_program.global_block()
+
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
             type="listen_and_serv",
@@ -391,8 +465,10 @@ class DistributeTranspiler:
             attrs={
                 "OptimizeBlock": optimize_block,
                 "endpoint": endpoint,
-                "Fanin": self.trainers
+                "Fanin": self.trainer_num,
+                "PrefetchBlock": prefetch_block
             })
+
         pserver_program.sync_with_cpp()
         return pserver_program
 
@@ -449,6 +525,197 @@ class DistributeTranspiler:
                     outputs=new_outputs,
                     attrs=op.attrs)
         return s_prog
+
+    # transpiler function for dis lookup_table
+    def _replace_lookup_table_op_with_prefetch(self, program, rpc_client_var,
+                                               eplist):
+        # 1. replace lookup_table_op with split_ids_op -> prefetch_op -> sum_op
+        self.prefetch_input_vars = None
+        self.prefetch_output_vars = None
+
+        continue_search_lookup_table_op = True
+        while continue_search_lookup_table_op:
+            continue_search_lookup_table_op = False
+            all_ops = program.global_block().ops
+            for op in all_ops:
+                if op.type == LOOKUP_TABLE_TYPE:
+                    continue_search_lookup_table_op = True
+
+                    op_index = list(all_ops).index(op)
+                    ids_name = op.input("Ids")
+                    out_name = op.output("Out")
+
+                    if self.prefetch_input_vars is None:
+                        ids_var = program.global_block().vars[ids_name[0]]
+                        self.prefetch_input_vars = self.create_splited_vars(
+                            source_var=ids_var,
+                            block=program.global_block(),
+                            tag="_prefetch_in_")
+                    if self.prefetch_output_vars is None:
+                        out_var = program.global_block().vars[out_name[0]]
+                        self.prefetch_output_vars = self.create_splited_vars(
+                            source_var=out_var,
+                            block=program.global_block(),
+                            tag="_prefetch_out_")
+
+                    # insert split_ids_op
+                    program.global_block().insert_op(
+                        index=op_index,
+                        type="split_ids",
+                        inputs={
+                            'Ids': [
+                                program.global_block().vars[varname]
+                                for varname in ids_name
+                            ]
+                        },
+                        outputs={"Out": self.prefetch_input_vars})
+
+                    # insert prefetch_op
+                    program.global_block().insert_op(
+                        index=op_index + 1,
+                        type="prefetch",
+                        inputs={'X': self.prefetch_input_vars},
+                        outputs={
+                            "Out": self.prefetch_output_vars,
+                            "RPCClient": rpc_client_var
+                        },
+                        attrs={"epmap": eplist})
+
+                    # insert concat_op
+                    program.global_block().insert_op(
+                        index=op_index + 2,
+                        type="concat",
+                        inputs={'X': self.prefetch_output_vars},
+                        outputs={
+                            "Out": [
+                                program.global_block().vars[varname]
+                                for varname in out_name
+                            ]
+                        },
+                        attrs={"axis": 0})
+
+                    # delete lookup_table_op
+                    program.global_block().delete_ops([op])
+                    program.sync_with_cpp()
+                    # break for loop
+                    break
+
+    def _split_table_grad_and_add_send_vars(self, program, rpc_client_var,
+                                            pserver_endpoints):
+        # 2. add split_ids_op and send_vars_op to send gradient to pservers
+        # there should only be one table_name
+        all_ops = program.global_block().ops
+        table_grad_name = framework.grad_var_name(self.table_name)
+        for op in all_ops:
+            if table_grad_name in op.output_arg_names:
+                op_index = list(all_ops).index(op)
+                # insert split_ids_op
+                program.global_block().insert_op(
+                    index=op_index + 1,
+                    type="split_ids",
+                    inputs={
+                        'Ids': [program.global_block().vars[table_grad_name]]
+                    },
+                    outputs={"Out": self.table_grad_list})
+                program.global_block().insert_op(
+                    index=op_index + 2,
+                    type="send_vars",
+                    inputs={'X': self.table_grad_list},
+                    outputs={"RPCClient": rpc_client_var},
+                    attrs={"sync_send": True,
+                           "epmap": pserver_endpoints})
+                break
+
+    def _create_prefetch_block(self, pserver_index, pserver_program,
+                               optimize_block):
+        # STEP: create prefetch block
+        table_var = pserver_program.global_block().vars[self.table_name]
+        prefetch_block = pserver_program.create_block(optimize_block.idx)
+        trainer_ids = self.prefetch_input_vars[pserver_index]
+        pserver_ids = pserver_program.global_block().create_var(
+            name=trainer_ids.name,
+            type=trainer_ids.type,
+            shape=trainer_ids.shape,
+            dtype=trainer_ids.dtype)
+        trainer_out = self.prefetch_output_vars[pserver_index]
+        pserver_out = pserver_program.global_block().create_var(
+            name=trainer_out.name,
+            type=trainer_out.type,
+            shape=trainer_out.shape,
+            dtype=trainer_out.dtype)
+        prefetch_block.append_op(
+            type=LOOKUP_TABLE_TYPE,
+            inputs={'Ids': pserver_ids,
+                    "W": table_var},
+            outputs={"Out": pserver_out},
+            attrs={
+                "is_sparse": True,  # has no effect on lookup_table op
+                "is_distributed": True,
+                "padding_idx": -1
+            })
+        return prefetch_block
+
+    def _create_table_optimize_block(self, pserver_index, pserver_program,
+                                     append_block):
+        def _clone_var(block, var, persistable=True):
+            assert isinstance(var, Variable)
+            return block.create_var(
+                name=var.name,
+                shape=var.shape,
+                dtype=var.dtype,
+                type=var.type,
+                persistable=persistable)
+
+        # STEP: create table optimize block
+        # create table param and grad var in pserver program
+        param_var = _clone_var(
+            pserver_program.global_block(),
+            self.origin_program.global_block().vars[self.table_name])
+        grad_var = _clone_var(
+            pserver_program.global_block(),
+            self.origin_program.global_block().vars[framework.grad_var_name(
+                self.table_name)],
+            persistable=False)
+
+        # create grad vars in pserver program
+        table_grad_var = self.table_param_grad[1]
+        table_grad_list = [
+            pserver_program.global_block().create_var(
+                name="%s.trainer_%d.pserver_%d" %
+                (table_grad_var.name, index, pserver_index),
+                type=table_grad_var.type,
+                shape=table_grad_var.shape,
+                dtype=table_grad_var.dtype) for index in range(self.trainer_num)
+        ]
+
+        # create table optimize block in pserver program
+        table_opt_op = [
+            op for op in self.optimize_ops
+            if op.input("Param")[0] == self.table_name
+        ][0]
+        table_opt_block = pserver_program.create_block(append_block.idx)
+        # only support sgd now
+        assert table_opt_op.type == "sgd"
+
+        # append sum op for table_grad_list
+        table_opt_block.append_op(
+            type="sum",
+            inputs={"X": table_grad_list},
+            outputs={"Out": [grad_var]})
+
+        lr_var = pserver_program.global_block().vars[table_opt_op.input(
+            "LearningRate")[0]]
+        inputs = {
+            "Param": [param_var],
+            "Grad": [grad_var],
+            "LearningRate": [lr_var]
+        }
+        outputs = {"ParamOut": [param_var]}
+        table_opt_block.append_op(
+            type=table_opt_op.type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=table_opt_op.attrs)
 
     # ====================== private transpiler functions =====================
     def _create_vars_from_blocklist(self,
@@ -511,7 +778,17 @@ class DistributeTranspiler:
             program.global_block().sync_with_cpp()
         return var_mapping
 
-    def _clone_var(self, block, var):
+    def create_splited_vars(self, source_var, block, tag):
+        return [
+            block.create_var(
+                name=str(source_var.name + tag + str(index)),
+                type=source_var.type,
+                shape=source_var.shape,
+                dtype=source_var.dtype)
+            for index in range(len(self.pserver_endpoints))
+        ]
+
+    def _clone_var(self, block, var, persistable=True):
         assert isinstance(var, Variable)
         return block.create_var(
             name=var.name,
@@ -519,12 +796,12 @@ class DistributeTranspiler:
             dtype=var.dtype,
             type=var.type,
             lod_level=var.lod_level,
-            persistable=True)
+            persistable=persistable)
 
     def _append_split_op(self, program, gradblocks):
         # Split variables that need to be split and append respective ops
         add_suffix = False
-        if self.trainers > 1:
+        if self.trainer_num > 1:
             add_suffix = True
         var_mapping = self._create_vars_from_blocklist(
             program, gradblocks, add_trainer_suffix=add_suffix)
@@ -615,9 +892,9 @@ class DistributeTranspiler:
                     return
                 merged_var = \
                     pserver_block.vars[self._orig_varname(grad_block.name)]
-                if self.trainers > 1:
+                if self.trainer_num > 1:
                     vars2merge = []
-                    for i in xrange(self.trainers):
+                    for i in xrange(self.trainer_num):
                         per_trainer_name = "%s.trainer_%d" % \
                         (self._orig_varname(grad_block.name), i)
                         vars2merge.append(pserver_block.vars[per_trainer_name])
@@ -632,7 +909,7 @@ class DistributeTranspiler:
                             type="scale",
                             inputs={"X": merged_var},
                             outputs={"Out": merged_var},
-                            attrs={"scale": 1.0 / float(self.trainers)})
+                            attrs={"scale": 1.0 / float(self.trainer_num)})
                 new_inputs[key] = merged_var
             elif key == "Param":
                 # param is already created on global program
@@ -668,7 +945,7 @@ class DistributeTranspiler:
             new_shape = None
             if key in ["Param", "Grad", "LearningRate"]:
                 continue
-            var = self.program.global_block().vars[opt_op.input(key)[0]]
+            var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             # update accumulator variable shape
             param_shape = new_inputs["Param"].shape
             new_shape = self._get_optimizer_input_shape(opt_op.type, key,
@@ -681,8 +958,8 @@ class DistributeTranspiler:
             new_inputs[key] = tmpvar
 
         # change output's ParamOut variable
-        outputs = self._get_output_map_from_op(self.program.global_block().vars,
-                                               opt_op)
+        outputs = self._get_output_map_from_op(
+            self.origin_program.global_block().vars, opt_op)
         outputs["ParamOut"] = new_inputs["Param"]
 
         optimize_block.append_op(
@@ -694,8 +971,8 @@ class DistributeTranspiler:
     def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
         program = optimize_block.program
         # Append the ops for parameters that do not need to be optimized/updated
-        inputs = self._get_input_map_from_op(self.program.global_block().vars,
-                                             opt_op)
+        inputs = self._get_input_map_from_op(
+            self.origin_program.global_block().vars, opt_op)
         for varlist in inputs.itervalues():
             if not isinstance(varlist, list):
                 varlist = [varlist]
@@ -708,8 +985,8 @@ class DistributeTranspiler:
                         dtype=var.dtype,
                         shape=var.shape)
 
-        outputs = self._get_output_map_from_op(self.program.global_block().vars,
-                                               opt_op)
+        outputs = self._get_output_map_from_op(
+            self.origin_program.global_block().vars, opt_op)
 
         for varlist in outputs.itervalues():
             if not isinstance(varlist, list):
@@ -782,7 +1059,6 @@ class DistributeTranspiler:
                 if same_or_split_var(n, param) and n != param:
                     return True
             return False
-        return False
 
     def _get_input_map_from_op(self, varmap, op):
         """Returns a dict from op input name to the vars in varmap."""
@@ -820,7 +1096,7 @@ class DistributeTranspiler:
 
         find_ops = []
         # find ops which output is lr var
-        block = self.program.global_block()
+        block = self.origin_program.global_block()
         for op in block.ops:
             if set(op.output_arg_names) & lr_vars:
                 find_ops.append(op)

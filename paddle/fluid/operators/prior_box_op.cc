@@ -45,7 +45,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     bool flip = ctx->Attrs().Get<bool>("flip");
 
     std::vector<float> aspect_ratios_vec;
-    ExpandAspectRatios(aspect_ratios, flip, aspect_ratios_vec);
+    ExpandAspectRatios(aspect_ratios, flip, &aspect_ratios_vec);
 
     size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
     if (max_sizes.size() > 0) {
