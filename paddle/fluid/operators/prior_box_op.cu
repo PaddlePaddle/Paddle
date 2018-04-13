@@ -96,7 +96,7 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     auto clip = ctx.Attr<bool>("clip");
 
     std::vector<float> aspect_ratios;
-    ExpandAspectRatios(input_aspect_ratio, flip, aspect_ratios);
+    ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
 
     T step_w = static_cast<T>(ctx.Attr<float>("step_w"));
     T step_h = static_cast<T>(ctx.Attr<float>("step_h"));
