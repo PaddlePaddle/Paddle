@@ -21,7 +21,20 @@ from . import core
 class InferenceTranspiler:
     def transpile(self, program, scope, place):
         '''
-        Transpile the program to a inference program by fused batch normalization.
+        Transpile the program. Support only fuse batch normalization now.
+
+        :param program: program to transpile 
+        :type program: Program
+        :param scope: inference scope 
+        :type scope: Scope
+        :param place: inference place 
+        :type place: Place
+        '''
+        self.fuse_batch_norm(program, scope, place)
+
+    def fuse_batch_norm(self, program, scope, place):
+        '''
+        Transpile the program by fused batch normalization.
  
         The batch normalization followed the convolution or fully connected layer 
         can be integrated with them. Doing so will give us a forward acceleration, 
@@ -57,8 +70,6 @@ class InferenceTranspiler:
         :type scope: Scope
         :param place: inference place 
         :type place: Place
-        :return: program by fused batch normalization
-        :rtype: Program
         '''
         self.scope = scope
         self.place = place
@@ -96,7 +107,7 @@ class InferenceTranspiler:
         # TODO(luotao): use clone() method to flush the program.desc in force, 
         # since some large program.desc will not be flushed immediately. 
         # And a better solution will be considered later.
-        return program.clone()
+        program = program.clone()
 
     # ====================== private transpiler functions =====================
     def _insert_bias_op(self, index, current_op, bn_op):
@@ -142,11 +153,25 @@ class InferenceTranspiler:
         :type with_bias: Int
         '''
 
-        def _load_tensor(param_name):
-            return self.scope.find_var(param_name[0]).get_tensor()
+        def _update_param(op, old_param_name, new_param):
+            # For the sake of remaining the original variables the same as before,
+            # create new variables in scope to store the new parameters.
+            old_param_name = old_param_name[0]
+            old_var = self.block.vars[old_param_name]
+            new_param_name = old_param_name + '_fuse_bn'
+            new_var = self.block.create_parameter(
+                name=new_param_name.encode('ascii'),
+                type=old_var.type,
+                dtype=old_var.dtype,
+                shape=old_var.shape)
+            op.rename_input(old_param_name, new_param_name)
+            self.scope.var(new_param_name)
+
+            tensor = self.scope.find_var(new_param_name).get_tensor()
+            tensor.set(np.array(new_param), self.place)
 
         def _load_param(param_name):
-            return np.array(_load_tensor(param_name))
+            return np.array(self.scope.find_var(param_name[0]).get_tensor())
 
         bias_bn = _load_param(bn_op.input("Bias"))  #Bias
         scale_bn = _load_param(bn_op.input("Scale"))  #Scale
@@ -155,8 +180,6 @@ class InferenceTranspiler:
 
         # TODO(luotao1): consider only conv2d now. fc would be delt later.
         current_param = _load_param(current_op.input("Filter"))
-        current_tensor = _load_tensor(current_op.input("Filter"))
-
         std_bn = np.float32(np.sqrt(np.add(var_bn, 1e-5)))
         tmp = np.float32(np.divide(scale_bn, std_bn))
 
@@ -167,8 +190,6 @@ class InferenceTranspiler:
             bias = np.zeros(bias_bn.shape)
         bias = np.float32(
             np.add(np.multiply(np.subtract(bias, mean_bn), tmp), bias_bn))
-        bias_tensor = _load_tensor(bias_op.input("Y"))
-        bias_tensor.set(bias, self.place)
 
         # re-compute weight of conv2d
         tmp = tmp.reshape(tmp.shape[0], -1)
@@ -176,8 +197,9 @@ class InferenceTranspiler:
         dst_param = np.float32(np.multiply(dst_param, tmp))
         dst_param = dst_param.reshape(current_param.shape)
 
-        # set the updated parameters
-        current_tensor.set(np.array(dst_param), self.place)
+        # update parameters
+        _update_param(current_op, current_op.input("Filter"), dst_param)
+        _update_param(bias_op, bias_op.input("Y"), bias)
 
         # collect the renamed input
         self.input_map[bn_op.output("Y")[0]] = bias_op.output("Out")[0]
