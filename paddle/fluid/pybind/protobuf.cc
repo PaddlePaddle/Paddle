@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
-#include "paddle/fluid/framework/backward.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -125,23 +124,6 @@ void BindProgramDesc(pybind11::module *m) {
            })
       .def("append_block", &pd::ProgramDesc::AppendBlock,
            pybind11::return_value_policy::reference)
-      .def("append_backward",
-           [](pd::ProgramDesc &program_desc, const pd::VarDesc &target,
-              const std::unordered_set<std::string> &no_grad_vars) {
-             pd::ParamGradInfoMap param_grad_map =
-                 AppendBackward(program_desc, target, no_grad_vars);
-             std::unordered_map<
-                 std::string, std::tuple<std::string /* grad_var_name */,
-                                         int /* block_idx */, int /* op_idx */>>
-                 retv;
-             for (auto it = param_grad_map.begin(); it != param_grad_map.end();
-                  ++it) {
-               const auto &grad_info = it->second;
-               retv[it->first] = std::make_tuple(
-                   grad_info.name_, grad_info.block_idx_, grad_info.op_idx_);
-             }
-             return retv;
-           })
       .def("block", &pd::ProgramDesc::MutableBlock,
            pybind11::return_value_policy::reference)
       .def("num_blocks", &pd::ProgramDesc::Size)

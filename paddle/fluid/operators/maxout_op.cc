@@ -13,6 +13,8 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/maxout_op.h"
+#include <vector>
+
 namespace paddle {
 namespace operators {
 

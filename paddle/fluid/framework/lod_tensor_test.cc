@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/lod_tensor.h"
-
-#include "paddle/fluid/recordio/scanner.h"
-#include "paddle/fluid/recordio/writer.h"
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <memory>
 #include <vector>
+
+#include "paddle/fluid/framework/lod_tensor.h"
+
+#include "paddle/fluid/recordio/scanner.h"
+#include "paddle/fluid/recordio/writer.h"
 
 namespace paddle {
 namespace framework {
@@ -240,8 +240,8 @@ TEST(LoDTensor, RecordIO) {
       *platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
   {
     recordio::Writer writer(stream, recordio::Compressor::kSnappy);
-    WriteToRecordIO(writer, {tensor, tensor}, ctx);
-    WriteToRecordIO(writer, {tensor, tensor}, ctx);
+    WriteToRecordIO(&writer, {tensor, tensor}, ctx);
+    WriteToRecordIO(&writer, {tensor, tensor}, ctx);
     writer.Flush();
   }
 
@@ -254,11 +254,11 @@ TEST(LoDTensor, RecordIO) {
   {
     std::unique_ptr<std::istream> stream_ptr(stream);
     recordio::Scanner scanner(std::move(stream_ptr));
-    auto tensors = ReadFromRecordIO(scanner, ctx);
+    auto tensors = ReadFromRecordIO(&scanner, ctx);
     ASSERT_EQ(tensors.size(), 2);
     assert_tensor_ok(tensors[0]);
     assert_tensor_ok(tensors[1]);
-    tensors = ReadFromRecordIO(scanner, ctx);
+    tensors = ReadFromRecordIO(&scanner, ctx);
     ASSERT_EQ(tensors.size(), 2);
     assert_tensor_ok(tensors[0]);
     assert_tensor_ok(tensors[1]);

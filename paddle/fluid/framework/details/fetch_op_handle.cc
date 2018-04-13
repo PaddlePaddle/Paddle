@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 
+#include <string>
+#include <vector>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -57,7 +60,10 @@ void FetchOpHandle::RunImpl() {
 
   for (size_t i = 0; i < scopes.size(); ++i) {
     auto &scope = scopes[i];
-    auto &t = scope->FindVar(var_name)->Get<framework::LoDTensor>();
+    auto &t = scope->FindVar(kLocalExecScopeName)
+                  ->Get<Scope *>()
+                  ->FindVar(var_name)
+                  ->Get<framework::LoDTensor>();
     if (platform::is_gpu_place(var->place_)) {
 #ifdef PADDLE_WITH_CUDA
       TensorCopy(t, cpu, *dev_ctxes_[t.place()], &tensors_[i]);

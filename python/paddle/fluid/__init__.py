@@ -29,6 +29,7 @@ import optimizer
 import backward
 import regularizer
 import average
+import metrics
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace
