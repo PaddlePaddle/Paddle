@@ -62,9 +62,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       framework::Vector<T> cpu_mask(size);
       for (size_t i = 0; i < size; ++i) {
         if (dist(engine) < dropout_prob) {
-          cpu_mask[i] = 0;
+          cpu_mask[i] = static_cast<T>(0);
         } else {
-          cpu_mask[i] = 1;
+          cpu_mask[i] = static_cast<T>(1);
         }
       }
 
