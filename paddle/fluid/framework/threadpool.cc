@@ -95,15 +95,15 @@ void ThreadPool::TaskLoop() {
   }
 }
 
-std::unique_ptr<ThreadPool> MultiStreamThreadPool::io_threadpool_(nullptr);
-std::once_flag MultiStreamThreadPool::io_init_flag_;
+std::unique_ptr<ThreadPool> ThreadPoolIO::io_threadpool_(nullptr);
+std::once_flag ThreadPoolIO::io_init_flag_;
 
-ThreadPool* MultiStreamThreadPool::GetInstanceIO() {
-  std::call_once(io_init_flag_, &MultiStreamThreadPool::InitIO);
+ThreadPool* ThreadPoolIO::GetInstanceIO() {
+  std::call_once(io_init_flag_, &ThreadPoolIO::InitIO);
   return io_threadpool_.get();
 }
 
-void MultiStreamThreadPool::InitIO() {
+void ThreadPoolIO::InitIO() {
   if (io_threadpool_.get() == nullptr) {
     // TODO(typhoonzero1986): make this configurable
     io_threadpool_.reset(new ThreadPool(FLAGS_io_threadpool_size));
