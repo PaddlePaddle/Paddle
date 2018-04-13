@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include <string>
 #include "paddle/fluid/framework/data_layout.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
