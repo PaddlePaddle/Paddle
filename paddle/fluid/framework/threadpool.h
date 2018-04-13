@@ -135,7 +135,7 @@ class ThreadPool {
   std::condition_variable completed_;
 };
 
-class MultiStreamThreadPool : ThreadPool {
+class ThreadPoolIO : ThreadPool {
  public:
   static ThreadPool* GetInstanceIO();
   static void InitIO();
@@ -156,7 +156,7 @@ std::future<void> Async(Callback callback) {
 
 template <typename Callback>
 std::future<void> AsyncIO(Callback callback) {
-  return MultiStreamThreadPool::GetInstanceIO()->Run(callback);
+  return ThreadPoolIO::GetInstanceIO()->Run(callback);
 }
 
 }  // namespace framework
