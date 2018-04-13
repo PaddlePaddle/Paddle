@@ -13,46 +13,33 @@ function(inference_test TARGET_NAME)
   else()
     list(APPEND arg_list "_")
   endif()
+
+  set(use_float16 "")
+  if(${TARGET_NAME} MATCHES "^float16")
+    if(${TARGET_NAME} MATCHES "image_classification")
+      set(use_float16 "--use_float16=true")
+    endif()
+    set(book_dir "book_float16")    
+  else()
+    set(book_dir "book")    
+  endif()
+  set(SOURCE_NAME "")
+  string(REGEX REPLACE "^float16_" "" SOURCE_NAME "${TARGET_NAME}")
+
   foreach(arg ${arg_list})
     string(REGEX REPLACE "^_$" "" arg "${arg}")
     cc_test(test_inference_${TARGET_NAME}${arg}
-        SRCS test_inference_${TARGET_NAME}.cc
+        SRCS test_inference_${SOURCE_NAME}.cc
         DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
-        ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.inference.model --use_float16=false)
+        ARGS --dirname=${PYTHON_TESTS_DIR}/${book_dir}/${TARGET_NAME}${arg}.inference.model ${use_float16})
     set_tests_properties(test_inference_${TARGET_NAME}${arg}
         PROPERTIES DEPENDS test_${TARGET_NAME})
   endforeach()
 endfunction(inference_test)
 
-function(inference_float16_test TARGET_NAME)
-  set(options "")
-  set(oneValueArgs "")
-  set(multiValueArgs ARGS)
-  cmake_parse_arguments(inference_float16_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-  set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
-  set(arg_list "")
-  if(inference_float16_test_ARGS)
-    foreach(arg ${inference_float16_test_ARGS})
-      list(APPEND arg_list "_${arg}")
-    endforeach()
-  else()
-    list(APPEND arg_list "_")
-  endif()
-  foreach(arg ${arg_list})
-    string(REGEX REPLACE "^_$" "" arg "${arg}")
-    cc_test(test_inference_float16_${TARGET_NAME}${arg}
-        SRCS test_inference_${TARGET_NAME}.cc
-        DEPS ARCHIVE_START paddle_fluid ARCHIVE_END
-        ARGS --dirname=${PYTHON_TESTS_DIR}/book_float16/float16_${TARGET_NAME}${arg}.inference.model --use_float16=true)
-    set_tests_properties(test_inference_float16_${TARGET_NAME}${arg}
-        PROPERTIES DEPENDS test_float16_${TARGET_NAME})
-  endforeach()
-endfunction(inference_float16_test)
-
 inference_test(fit_a_line)
 inference_test(image_classification ARGS vgg resnet)
-inference_float16_test(image_classification ARGS vgg resnet)
+inference_test(float16_image_classification ARGS vgg resnet)
 inference_test(label_semantic_roles)
 inference_test(recognize_digits ARGS mlp conv)
 inference_test(recommender_system)
