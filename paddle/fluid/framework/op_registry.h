@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <string>
+#include <tuple>
 #include <type_traits>
 #include <typeinfo>
 #include <unordered_map>
@@ -166,10 +168,6 @@ class OpKernelRegistrar : public Registrar {
   };                                                                          \
   REGISTER_OPERATOR(op_type, op_class, _GradOpDescMaker_##grad_op_type##_,    \
                     op_maker_class);
-
-#define REGISTER_OP_WITH_KERNEL(op_type, ...)                         \
-  REGISTER_OPERATOR(op_type, ::paddle::framework::OperatorWithKernel, \
-                    ##__VA_ARGS__)
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
   REGISTER_OPERATOR(op_type, op_class, op_maker_class)
