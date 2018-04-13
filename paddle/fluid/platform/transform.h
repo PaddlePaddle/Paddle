@@ -34,27 +34,28 @@ namespace platform {
 // Transform on host or device. It provides the same API in std library.
 template <typename DeviceContext>
 struct Transform {
-  template <typename T, typename UnaryOperation>
-  void operator()(const DeviceContext& context, const T* first, const T* last,
-                  T* result, UnaryOperation op);
+  template <typename Input, typename Output, typename UnaryOperation>
+  void operator()(const DeviceContext& context, const Input* first,
+                  const Input* last, Output* result, UnaryOperation op);
 
-  template <typename T, typename BinaryOperation>
-  void operator()(const DeviceContext& context, const T* first1, const T* last1,
-                  const T* first2, T* result, BinaryOperation op);
+  template <typename Input, typename Output, typename BinaryOperation>
+  void operator()(const DeviceContext& context, const Input* first1,
+                  const Input* last1, const Input* first2, Output* result,
+                  BinaryOperation op);
 };
 
 template <>
 struct Transform<platform::CPUDeviceContext> {
-  template <typename T, typename UnaryOperation>
-  void operator()(const platform::CPUDeviceContext& context, const T* first,
-                  const T* last, T* result, UnaryOperation op) {
+  template <typename Input, typename Output, typename UnaryOperation>
+  void operator()(const platform::CPUDeviceContext& context, const Input* first,
+                  const Input* last, Output* result, UnaryOperation op) {
     std::transform(first, last, result, op);
   }
 
-  template <typename T, typename BinaryOperation>
-  void operator()(const platform::CPUDeviceContext& context, const T* first1,
-                  const T* last1, const T* first2, T* result,
-                  BinaryOperation op) {
+  template <typename Input, typename Output, typename BinaryOperation>
+  void operator()(const platform::CPUDeviceContext& context,
+                  const Input* first1, const Input* last1, const Input* first2,
+                  Output* result, BinaryOperation op) {
     std::transform(first1, last1, first2, result, op);
   }
 };
@@ -62,9 +63,10 @@ struct Transform<platform::CPUDeviceContext> {
 #ifdef __NVCC__
 template <>
 struct Transform<platform::CUDADeviceContext> {
-  template <typename T, typename UnaryOperation>
-  void operator()(const platform::CUDADeviceContext& context, const T* first,
-                  const T* last, T* result, UnaryOperation op) {
+  template <typename Input, typename Output, typename UnaryOperation>
+  void operator()(const platform::CUDADeviceContext& context,
+                  const Input* first, const Input* last, Output* result,
+                  UnaryOperation op) {
     auto place = context.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
     thrust::transform(thrust::cuda::par.on(context.stream()),
@@ -73,10 +75,10 @@ struct Transform<platform::CUDADeviceContext> {
                       thrust::device_pointer_cast(result), op);
   }
 
-  template <typename T, typename BinaryOperation>
-  void operator()(const platform::CUDADeviceContext& context, const T* first1,
-                  const T* last1, const T* first2, T* result,
-                  BinaryOperation op) {
+  template <typename Input, typename Output, typename BinaryOperation>
+  void operator()(const platform::CUDADeviceContext& context,
+                  const Input* first1, const Input* last1, const Input* first2,
+                  Output* result, BinaryOperation op) {
     auto place = context.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
     thrust::transform(thrust::cuda::par.on(context.stream()),
