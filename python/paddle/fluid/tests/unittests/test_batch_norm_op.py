@@ -280,268 +280,123 @@ class TestBatchNormOpTraining(unittest.TestCase):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.allclose(np.array(tensor), np_array, atol=atol)
 
-    def test_forward_backward(self):
-        def test_with_place(place, data_layout, shape):
-            # attr
-            epsilon = 0.00001
-            momentum = 0.9
-            if data_layout == "NCHW":
-                n, c, h, w = shape[0], shape[1], shape[2], shape[3]
-            else:
-                n, h, w, c = shape[0], shape[1], shape[2], shape[3]
-            scale_shape = [c]
-
-            np.random.seed(123)
-            x = np.random.random_sample(shape).astype(np.float32)
-            scale = np.random.random_sample(scale_shape).astype(np.float32)
-            bias = np.random.random_sample(scale_shape).astype(np.float32)
-            mean = np.zeros(scale_shape).astype(np.float32)
-            variance = np.ones(scale_shape).astype(np.float32)
-
-            # run forward
-            y, saved_mean, var_ref = _reference_training(x, scale, bias,
-                                                         epsilon, data_layout)
-            mean_out = saved_mean * (1. - momentum) + momentum * mean
-            variance_out = var_ref * (1. - momentum) + momentum * variance
-            saved_variance = 1. / np.sqrt(var_ref + epsilon)
-            
-            # run backward
-            y_grad = np.random.random_sample(shape).astype(np.float32)
-            x_grad, scale_grad, bias_grad = _reference_grad(
-                x, y_grad, scale, saved_mean, var_ref, epsilon, data_layout)
-
-            var_dict = locals()
-            var_dict['y@GRAD'] = y_grad
-
-            var_names = [
-                'x', 'scale', 'bias', 'mean', 'variance', 'y', 'saved_mean',
-                'saved_variance'
-            ]
-            ground_truth = {name: var_dict[name] for name in var_names}
-
-            program = fluid.Program()
-            with fluid.program_guard(program):
-                block = program.global_block()
-                for name in ground_truth:
-                    block.create_var(
-                        name=name,
-                        dtype='float32',
-                        shape=ground_truth[name].shape)
-                bn_op = block.append_op(
-                    type="batch_norm",
-                    inputs={
-                        "X": block.var('x'),
-                        "Scale": block.var('scale'),
-                        "Bias": block.var('bias'),
-                        "Mean": block.var('mean'),
-                        "Variance": block.var('variance')
-                    },
-                    outputs={
-                        "Y": block.var('y'),
-                        "MeanOut": block.var('mean'),  # share the same memory
-                        "VarianceOut":
-                        block.var('variance'),  # share the same memory
-                        "SavedMean": block.var('saved_mean'),
-                        "SavedVariance": block.var('saved_variance')
-                    },
-                    attrs={
-                        "momentum": momentum,
-                        "epsilon": epsilon,
-                        "is_test": False,
-                        "data_layout": data_layout
-                    })
-                block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
-
-                # generate backward op_desc
-                grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
-                    bn_op.desc, set(), [])
-                grad_op_desc = grad_op_desc_list[0]
-                new_op_desc = block.desc.append_op()
-                new_op_desc.copy_from(grad_op_desc)
-                for var_name in grad_op_desc.output_arg_names():
-                    block.desc.var(var_name.encode("ascii"))
-                grad_op_desc.infer_var_type(block.desc)
-                grad_op_desc.infer_shape(block.desc)
-                for arg in grad_op_desc.output_arg_names():
-                    grad_var = block.desc.find_var(arg.encode("ascii"))
-                    grad_var.set_dtype(core.VarDesc.VarType.FP32)
-
-                exe = fluid.Executor(place)
-                out = exe.run(
-                    program,
-                    feed={
-                        name: var_dict[name]
-                        for name in
-                        ['x', 'scale', 'bias', 'mean', 'variance', 'y@GRAD']
-                    },
-                    fetch_list=[
-                        'y', 'mean', 'variance', 'saved_mean', 'saved_variance',
-                        'x@GRAD', 'scale@GRAD', 'bias@GRAD'
-                    ])
-
-            self.__assert_close(y, out[0], "y")
-            self.__assert_close(mean_out, out[1], "mean")
-            self.__assert_close(variance_out, out[2], "variance", 1e-3)
-            self.__assert_close(saved_mean, out[3], "saved_mean")
-            self.__assert_close(saved_variance, out[4], "saved_variance", 1e-3)
-            self.__assert_close(x_grad, out[5], "x_grad")
-            self.__assert_close(scale_grad, out[6], "scale_grad")
-            self.__assert_close(bias_grad, out[7], "bias_grad")
-
-            print "op test forward passed: ", str(place), data_layout
-
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
-            for data_format in ["NCHW", "NHWC"]:
-                test_with_place(place, data_format, [2, 3, 4, 5])
-
-
-class TestMKLDNNBatchNormOpTraining(OpTest):
-    def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
-
-    def test_forward_backward(self):
-        def test_with_place(place, data_layout, shape):
-            # attr
-            epsilon = 0.00001
-            momentum = 0.9
-
-        if len(shape) == 2:
-            x_shape = shape
-            c = shape[1]
+    def test_with_place(self, place, use_mkldnn, data_layout, shape):
+        # attr
+        epsilon = 0.00001
+        momentum = 0.9
+        if data_layout == "NCHW":
+            n, c, h, w = shape[0], shape[1], shape[2], shape[3]
         else:
-            # n, h, w, c = 2, 3, 4, 2
             n, h, w, c = shape[0], shape[1], shape[2], shape[3]
-            if data_layout == "NHWC" or data_layout == "AnyLayout":
-                x_shape = [n, h, w, c]
-            elif data_layout == "NCHW":
-                x_shape = [n, c, h, w]
-            else:
-                raise ValueError("Unknown data type.")
         scale_shape = [c]
 
-        x_val = np.random.random_sample(x_shape).astype(np.float32)
-        scale_val = np.random.random_sample(scale_shape).astype(np.float32)
-        bias_val = np.random.random_sample(scale_shape).astype(np.float32)
-
+        np.random.seed(123)
+        x = np.random.random_sample(shape).astype(np.float32)
+        scale = np.random.random_sample(scale_shape).astype(np.float32)
+        bias = np.random.random_sample(scale_shape).astype(np.float32)
         mean = np.zeros(scale_shape).astype(np.float32)
         variance = np.ones(scale_shape).astype(np.float32)
 
         # run forward
-        y_out, saved_mean, var_ref = _reference_training(
-            x_val, scale_val, bias_val, epsilon, data_layout)
-
-        # update moving mean and variance
+        y, saved_mean, var_ref = _reference_training(x, scale, bias, epsilon,
+                                                     data_layout)
         mean_out = saved_mean * (1. - momentum) + momentum * mean
         variance_out = var_ref * (1. - momentum) + momentum * variance
         saved_variance = 1. / np.sqrt(var_ref + epsilon)
 
-        #  for gradient test
-        # y_grad = np.ones(x_shape).astype(np.float32)
-        y_grad = np.zeros(x_shape).astype(np.float32)
-        if len(y_grad.shape) == 2:
-            y_grad[0, 0] = 1.
-        else:
-            y_grad[0, 0, 0, 0] = 1.
-        # y_grad = np.random.random_sample(x_shape).astype(np.float32)
-        x_grad_ref, scale_grad_ref, bias_grad_ref = _reference_grad(
-            x_val, y_grad, scale_val, saved_mean, var_ref, epsilon, data_layout)
-
-        scope = core.Scope()
-
-        # create input
-        x_tensor = create_or_get_tensor(scope, "x_val", x_val, place)
-        scale_tensor = create_or_get_tensor(scope, "scale_val", scale_val,
-                                            place)
-        bias_tensor = create_or_get_tensor(scope, "bias_val", bias_val, place)
-        mean_tensor = create_or_get_tensor(scope, "mean", mean, place)
-        variance_tensor = create_or_get_tensor(scope, "variance", variance,
-                                               place)
-
-        # create output
-        y_tensor = create_or_get_tensor(scope, "y_out", None, place)
-        saved_mean_tensor = create_or_get_tensor(scope, "saved_mean", None,
-                                                 place)
-        saved_variance_tensor = create_or_get_tensor(scope, "saved_variance",
-                                                     None, place)
-        mean_out_tensor = mean_tensor
-        variance_out_tensor = variance_tensor
-
-        batch_norm_op = Operator(
-            "batch_norm",
-            # inputs
-            X="x_val",
-            Scale="scale_val",
-            Bias="bias_val",
-            Mean="mean",
-            Variance="variance",
-            # outputs
-            Y="y_out",
-            MeanOut="mean",
-            VarianceOut="variance",
-            SavedMean="saved_mean",
-            SavedVariance="saved_variance",
-            # attrs
-            is_test=False,
-            use_mkldnn=use_mkldnn,
-            data_layout=data_layout,
-            momentum=momentum,
-            epsilon=epsilon)
-
-        batch_norm_op.run(scope, place)
-
-        # check forward result
-        self.__assert_close(y_tensor, y_out, "y_out")
-        self.__assert_close(saved_mean_tensor, saved_mean, "saved_mean")
-        self.__assert_close(saved_variance_tensor, var_ref, "saved_variance")
-        self.__assert_close(mean_out_tensor, mean_out, "mean_out")
-        if isinstance(place, core.CUDAPlace):
-            atol = 5e-2
-        else:
-            atol = 1e-4
-        self.__assert_close(variance_out_tensor, variance_out, "variance_out",
-                            atol)
-        print "op test forward passed: ", str(
-            place), data_layout, "use_mkldnn: ", use_mkldnn
-
         # run backward
-        batch_norm_op_grad = get_backward_op(scope, batch_norm_op, set())
-        set_output_grad(
-            scope,
-            ["y_out", "mean", "variance", "saved_mean", "saved_variance"],
-            place,
-            feed_dict={"y_out": y_grad})
-        batch_norm_op_grad.run(scope, place)
+        y_grad = np.random.random_sample(shape).astype(np.float32)
+        x_grad, scale_grad, bias_grad = _reference_grad(
+            x, y_grad, scale, saved_mean, var_ref, epsilon, data_format)
 
-        x_grad_tensor = create_or_get_tensor(scope,
-                                             grad_var_name("x_val"), None,
-                                             place)
-        scale_grad_tensor = create_or_get_tensor(scope,
-                                                 grad_var_name("scale_val"),
-                                                 None, place)
-        bias_grad_tensor = create_or_get_tensor(scope,
-                                                grad_var_name("bias_val"), None,
-                                                place)
+        var_dict = locals()
+        var_dict['y@GRAD'] = y_grad
 
-        # check gradient output
-        self.__assert_close(x_grad_tensor, x_grad_ref, "x_grad")
-        self.__assert_close(scale_grad_tensor, scale_grad_ref, "scale_grad")
-        self.__assert_close(bias_grad_tensor, bias_grad_ref, "bias_grad")
-        print "op test backward passed: ", str(
-            place), data_layout, "use_mkldnn: ", use_mkldnn
+        var_names = [
+            'x', 'scale', 'bias', 'mean', 'variance', 'y', 'saved_mean',
+            'saved_variance'
+        ]
+        ground_truth = {name: var_dict[name] for name in var_names}
+
+        program = fluid.Program()
+        with fluid.program_guard(program):
+            block = program.global_block()
+            for name in ground_truth:
+                block.create_var(
+                    name=name, dtype='float32', shape=ground_truth[name].shape)
+            bn_op = block.append_op(
+                type="batch_norm",
+                inputs={
+                    "X": block.var('x'),
+                    "Scale": block.var('scale'),
+                    "Bias": block.var('bias'),
+                    "Mean": block.var('mean'),
+                    "Variance": block.var('variance')
+                },
+                outputs={
+                    "Y": block.var('y'),
+                    "MeanOut": block.var('mean'),  # share the same memory
+                    "VarianceOut":
+                    block.var('variance'),  # share the same memory
+                    "SavedMean": block.var('saved_mean'),
+                    "SavedVariance": block.var('saved_variance')
+                },
+                attrs={
+                    "momentum": momentum,
+                    "epsilon": epsilon,
+                    "is_test": False,
+                    "data_layout": data_layout,
+                    "use_mkldnn": use_mkldnn
+                })
+            block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
+
+            # generate backward op_desc
+            grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+                bn_op.desc, set(), [])
+            grad_op_desc = grad_op_desc_list[0]
+            new_op_desc = block.desc.append_op()
+            new_op_desc.copy_from(grad_op_desc)
+            for var_name in grad_op_desc.output_arg_names():
+                block.desc.var(var_name.encode("ascii"))
+            grad_op_desc.infer_var_type(block.desc)
+            grad_op_desc.infer_shape(block.desc)
+            for arg in grad_op_desc.output_arg_names():
+                grad_var = block.desc.find_var(arg.encode("ascii"))
+                grad_var.set_dtype(core.VarDesc.VarType.FP32)
+
+            exe = fluid.Executor(place)
+            out = exe.run(
+                program,
+                feed={
+                    name: var_dict[name]
+                    for name in
+                    ['x', 'scale', 'bias', 'mean', 'variance', 'y@GRAD']
+                },
+                fetch_list=[
+                    'y', 'mean', 'variance', 'saved_mean', 'saved_variance',
+                    'x@GRAD', 'scale@GRAD', 'bias@GRAD'
+                ])
+
+        self.__assert_close(y, out[0], "y")
+        self.__assert_close(mean_out, out[1], "mean")
+        self.__assert_close(variance_out, out[2], "variance", 1e-3)
+        self.__assert_close(saved_mean, out[3], "saved_mean")
+        self.__assert_close(saved_variance, out[4], "saved_variance", 1e-3)
+        self.__assert_close(x_grad, out[5], "x_grad")
+        self.__assert_close(scale_grad, out[6], "scale_grad")
+        self.__assert_close(bias_grad, out[7], "bias_grad")
+
+        print "op test forward passed: ", str(place), data_layout
 
     def test_forward_backward(self):
+
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
             places.append(core.CUDAPlace(0))
 
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                self.check_with_place(place, False, data_format, [2, 3, 4, 5])
-                self.check_with_place(place, False, data_format, [2, 3])
+                self.test_with_place(place, False, data_format, [2, 3, 4, 5])
 
 
 class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
@@ -558,7 +413,7 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
         place = core.CPUPlace()
 
         for data_format in ["NCHW"]:
-            self.check_with_place(place, True, data_format, [2, 3, 4, 5])
+            self.test_with_place(place, True, data_format, [2, 3, 4, 5])
 
 
 if __name__ == '__main__':
