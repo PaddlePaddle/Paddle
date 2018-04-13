@@ -132,8 +132,8 @@ copy(inference_lib DEPS paddle_fluid_shared paddle_fluid
 
 set(module "platform")
 copy(platform_lib DEPS profiler_py_proto
-  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details
+  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload
 )
 
 set(module "string")
