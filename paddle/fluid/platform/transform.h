@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 #ifdef __NVCC__
+#include "thrust/device_ptr.h"
 #include "thrust/execution_policy.h"
 #include "thrust/transform.h"
 #endif
