@@ -39,6 +39,7 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
+option(WITH_TENSORRT    "Compile PaddlePaddle with TensorRT support."   OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -128,6 +129,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/tensorrt)  # download tensorrt package
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -179,6 +181,7 @@ set(EXTERNAL_LIBS
 
 if(WITH_GPU)
     include(cuda)
+    set(WITH_TENSORRT ON)
 endif(WITH_GPU)
 
 if(WITH_AMD_GPU)
