@@ -12,32 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "paddle/fluid/framework/details/ssa_graph.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/details/send_op_handle.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-class SSAGraphExecutor {
-  DISABLE_COPY_AND_ASSIGN(SSAGraphExecutor);
 
- public:
-  // Steal graph inside
-  explicit SSAGraphExecutor(std::unique_ptr<SSAGraph> &&graph);
+SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
+                           const Scope *local_scope,
+                           const platform::Place &place)
+    : op_(framework::OpRegistry::CreateOp(op_desc)),
+      local_scope_(local_scope),
+      place_(place) {}
 
-  virtual ~SSAGraphExecutor();
+void SendOpHandle::RunImpl() {
+  // Wait input done
+  for (auto *in : inputs_) {
+    auto &p = static_cast<VarHandle *>(in)->place_;
+    if (in->DebugString() == "dummy") {  // HACK
+      continue;
+    }
+    in->generated_op_->Wait(dev_ctxes_[p]);
+  }
+  op_->Run(*local_scope_, place_);
+}
 
-  virtual FeedFetchList Run(const std::vector<std::string> &fetch_tensors) = 0;
-
- protected:
-  std::unique_ptr<SSAGraph> graph_;
-};
+std::string SendOpHandle::Name() const { return "send"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -14,30 +14,37 @@
 
 #pragma once
 
-#include <memory>
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/details/ssa_graph.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-class SSAGraphExecutor {
-  DISABLE_COPY_AND_ASSIGN(SSAGraphExecutor);
 
- public:
-  // Steal graph inside
-  explicit SSAGraphExecutor(std::unique_ptr<SSAGraph> &&graph);
+struct SendOpHandle : public OpHandleBase {
+  std::unique_ptr<OperatorBase> op_;
+  const Scope* local_scope_;
+  const platform::Place& place_;
 
-  virtual ~SSAGraphExecutor();
+  SendOpHandle(const framework::OpDesc& op_desc, const Scope* local_scope,
+               const platform::Place& place);
 
-  virtual FeedFetchList Run(const std::vector<std::string> &fetch_tensors) = 0;
+  std::string Name() const override;
+
+  // Delay and buffer nccl_all_reduce together can significantly increase
+  // performance. Disable this feature by returning false.
+  bool IsMultiDeviceTransfer() override { return false; };
 
  protected:
-  std::unique_ptr<SSAGraph> graph_;
+  void RunImpl() override;
 };
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
