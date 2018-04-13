@@ -74,13 +74,10 @@ void GatherOpHandle::RunImpl() {
     auto in_handle = static_cast<VarHandle *>(in);
     auto in_p = in_handle->place_;
     in_places.push_back(in_p);
-    PADDLE_ENFORCE_LT(in_handle->scope_idx_, local_scopes_.size(),
-                      "%s is not the the local_scopes ", in_handle->name_);
     PADDLE_ENFORCE_EQ(in_p.which(), pre_place.which(),
-                      "The place of input should be the same.");
-    auto *s = local_scopes_[in_handle->scope_idx_];
-    auto in_var = s->FindVar(in_handle->name_);
-
+                      "Places must be all on CPU or all on CUDA.");
+    auto in_var =
+        local_scopes_.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
     auto &in_sr = in_var->Get<framework::SelectedRows>();
 
     PADDLE_ENFORCE_EQ(in_sr.value().type(), pre_in.value().type(),
