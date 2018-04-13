@@ -45,6 +45,12 @@ ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
 # install glide
 RUN curl -s -q https://glide.sh/get | sh
 
+# Install TensorRT
+RUN wget -qO- http://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
+    tar -xz -C /usr/local && \
+    cp -rf /usr/local/TensorRT/include /usr/local && \
+    cp -rf /usr/local/TensorRT/lib /usr/local
+
 # git credential to skip password typing
 RUN git config --global credential.helper store
 

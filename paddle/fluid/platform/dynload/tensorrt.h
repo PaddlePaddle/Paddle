@@ -55,8 +55,8 @@ extern void* tensorrt_dso_handle;
 #endif
 
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
-  __macro(nvinfer1::createInferBuilder);    \
-  __macro(nvinfer1::createInferRuntime);
+  __macro(createInferBuilder);    \
+  __macro(createInferRuntime);
 
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
 
