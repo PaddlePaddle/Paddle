@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -50,12 +51,45 @@ class SelectedRows {
 
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
-  /**
-   * get the index of id in rows
+  /*
+   * @brief wheter has the specified key in the table.
+   *
+   * @return true if the key is exists.
    */
-  int64_t index(int64_t id) const {
-    auto it = std::find(rows_.begin(), rows_.end(), id);
-    PADDLE_ENFORCE(it != rows_.end(), "id should be in rows");
+  bool HasKey(int64_t key) const;
+
+  /*
+   * @brief Get a value by the specified key, if the
+   * key does not exists, this function would throw an exception.
+   *
+   * @return a sliced tensor
+   */
+  Tensor Get(int64_t key) const;
+
+  /*
+   * @brief Set a key-value pair into the table.
+   *  This function will double the value memory if it's not engouth.
+   *
+   * @note:
+   *    1. The first dim of the value should be 1
+   *    2. The value should be initialized and the data type
+   *       should be the same with the table.
+   *
+   * @return true if the key is a new one, otherwise false
+   *
+   */
+  bool Set(int64_t key, const Tensor& value);
+
+  /*
+   * @brief Get the index of key in rows
+   *
+   * @return -1 if the key does not exists.
+   */
+  int64_t Index(int64_t key) const {
+    auto it = std::find(rows_.begin(), rows_.end(), key);
+    if (it == rows_.end()) {
+      return static_cast<int64_t>(-1);
+    }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
   }
 

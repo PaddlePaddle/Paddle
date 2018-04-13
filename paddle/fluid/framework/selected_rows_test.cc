@@ -17,7 +17,7 @@ namespace framework {
 
 class SelectedRowsTester : public ::testing::Test {
  public:
-  virtual void SetUp() override {
+  void SetUp() override {
     std::vector<int64_t> rows{0, 4, 7};
     int64_t height = 10;
     int64_t row_numel = 100;
@@ -57,6 +57,27 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
   ASSERT_EQ(selected_rows_->height(), dst_tensor.height());
   ASSERT_EQ(selected_rows_->value().dims(), dst_tensor.value().dims());
   ASSERT_EQ(selected_rows_->GetCompleteDims(), dst_tensor.GetCompleteDims());
+}
+
+TEST_F(SelectedRowsTester, Table) {
+  platform::CPUPlace cpu;
+  SelectedRows table;
+
+  int64_t key = 10000;
+  framework::Tensor value;
+  value.Resize(framework::make_ddim({1, 100}));
+  auto ptr = value.mutable_data<float>(cpu);
+  ptr[0] = static_cast<float>(10);
+
+  ASSERT_EQ(table.rows().size(), static_cast<size_t>(0));
+  ASSERT_EQ(table.HasKey(key), false);
+
+  table.Set(key, value);
+
+  ASSERT_EQ(table.rows().size(), static_cast<size_t>(1));
+  ASSERT_EQ(table.HasKey(key), true);
+  ASSERT_EQ(table.value().dims()[0], static_cast<int64_t>(2));
+  ASSERT_EQ(table.Get(key).data<float>()[0], static_cast<float>(10));
 }
 
 }  // namespace framework
