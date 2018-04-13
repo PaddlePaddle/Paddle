@@ -29,7 +29,7 @@ def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
         else:
             x = np.reshape(x, (x.shape[0], 1, 1, x.shape[1]))
 
-    if data_format == "NCHW" or data_format == "AnyLayout":
+    if data_format == "NCHW":
         n, c, h, w = x.shape
         mean_tile = np.reshape(mean, (1, c, 1, 1))
         mean_tile = np.tile(mean_tile, (n, 1, h, w))
@@ -55,7 +55,7 @@ def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
 def _reference_training(x, scale, offset, epsilon, data_format):
     x_shape = x.shape
 
-    if data_format == "NCHW" or data_format == "AnyLayout":
+    if data_format == "NCHW":
         n, c, h, w = x.shape
         x_square = x * x
         x_square_sum = np.sum(x_square, (0, 2, 3))
@@ -169,7 +169,7 @@ class TestBatchNormOpInference(unittest.TestCase):
             c = x_shape[1]
         else:
             n, h, w, c = shape[0], shape[1], shape[2], shape[3]
-            if data_layout == "NHWC" or data_layout == "AnyLayout":
+            if data_layout == "NHWC":
                 x_shape = [n, h, w, c]
             elif data_layout == "NCHW":
                 x_shape = [n, c, h, w]
