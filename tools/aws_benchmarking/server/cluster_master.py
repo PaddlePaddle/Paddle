@@ -27,8 +27,17 @@ import paramiko
 
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
+
 # You must have aws_access_key_id, aws_secret_access_key, region set in
 # ~/.aws/credentials and ~/.aws/config
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -125,6 +134,12 @@ parser.add_argument(
 
 parser.add_argument(
     '--master_server_ip', type=str, default="", help="master server private ip")
+
+parser.add_argument(
+    '--no_clean_up',
+    type=str2bool,
+    default=False,
+    help="whether to clean up after training")
 
 args = parser.parse_args()
 
@@ -414,6 +429,9 @@ def create_trainers(kickoff_cmd, pserver_endpoints_str):
 
 
 def cleanup(task_name):
+    if args.no_clean_up:
+        logging.info("no clean up option set, going to leave the setup running")
+        return
     #shutdown all ec2 instances
     print("going to clean up " + task_name + " instances")
     instances_response = ec2client.describe_instances(Filters=[{
