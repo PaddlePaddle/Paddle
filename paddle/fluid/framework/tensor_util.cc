@@ -11,8 +11,10 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-
 #include "paddle/fluid/framework/tensor_util.h"
+#include <algorithm>
+#include <limits>
+#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -65,8 +67,6 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     auto ctx_place = ctx.GetPlace();
     PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
-    auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
-    PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
     memory::Copy(
         dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
