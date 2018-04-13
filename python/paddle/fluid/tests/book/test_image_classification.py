@@ -226,16 +226,17 @@ def infer(use_cuda, save_dirname=None):
         batch_size = 1
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
+        # Use inference_transpiler to speedup
+        inference_transpiler_program = inference_program.clone()
+        t = fluid.InferenceTranspiler()
+        t.transpile(inference_transpiler_program, inference_scope, place)
+
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
 
-        # Use inference_transpiler to speedup
-        t = fluid.InferenceTranspiler()
-        inference_transpiler_program = t.transpile(inference_program,
-                                                   inference_scope, place)
         transpiler_results = exe.run(inference_transpiler_program,
                                      feed={feed_target_names[0]: tensor_img},
                                      fetch_list=fetch_targets)

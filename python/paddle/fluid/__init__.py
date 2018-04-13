@@ -67,6 +67,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + [
     'clip',
     'SimpleDistributeTranspiler',
     'DistributeTranspiler',
+    'InferenceTranspiler',
     'memory_optimize',
     'release_memory',
     'profiler',
