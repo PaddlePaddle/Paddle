@@ -14,17 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
+#include <type_traits>
+
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/place.h"
 
-#include <algorithm>
-#include <type_traits>
 #ifdef __NVCC__
-#include <thrust/execution_policy.h>
-#include <thrust/transform.h>
-#include "paddle/fluid/platform/details/device_ptr_cast.h"
+#include "thrust/execution_policy.h"
+#include "thrust/transform.h"
 #endif
 
 namespace paddle {
@@ -70,8 +70,9 @@ struct Transform<platform::CUDADeviceContext> {
     auto place = context.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
     thrust::transform(thrust::cuda::par.on(context.stream()),
-                      details::DevPtrCast(first), details::DevPtrCast(last),
-                      details::DevPtrCast(result), op);
+                      thrust::device_pointer_cast(first),
+                      thrust::device_pointer_cast(last),
+                      thrust::device_pointer_cast(result), op);
   }
 
   template <typename InputIter1, typename InputIter2, typename OutputIter,
@@ -82,9 +83,10 @@ struct Transform<platform::CUDADeviceContext> {
     auto place = context.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place), "It must use GPU place.");
     thrust::transform(thrust::cuda::par.on(context.stream()),
-                      details::DevPtrCast(first1), details::DevPtrCast(last1),
-                      details::DevPtrCast(first2), details::DevPtrCast(result),
-                      op);
+                      thrust::device_pointer_cast(first1),
+                      thrust::device_pointer_cast(last1),
+                      thrust::device_pointer_cast(first2),
+                      thrust::device_pointer_cast(result), op);
   }
 };
 #endif
