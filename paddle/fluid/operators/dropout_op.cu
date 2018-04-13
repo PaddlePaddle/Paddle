@@ -24,21 +24,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void RandomGenerator(const size_t n, const int seed,
-                                const float dropout_prob, const T* src,
-                                T* mask_data, T* dst) {
-  thrust::minstd_rand rng;
-  rng.seed(seed);
-  thrust::uniform_real_distribution<float> dist(0, 1);
-
+__global__ void RandomGenerator(const size_t n, const T* src,
+                                const T* cpu_mask_data, T* mask_data, T* dst) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
-    rng.discard(idx);
-    if (dist(rng) < dropout_prob) {
-      mask_data[idx] = static_cast<T>(0);
-    } else {
-      mask_data[idx] = static_cast<T>(1);
-    }
+    mask_data[idx] = cpu_mask_data[idx];
     dst[idx] = mask_data[idx] * src[idx];
   }
 }
@@ -66,12 +56,24 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       std::random_device rnd;
       int seed =
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+      std::minstd_rand engine;
+      engine.seed(seed);
+      size_t size = framework::product(mask->dims());
+      framework::Vector<T> cpu_mask(size);
+      for (size_t i = 0; i < size; ++i) {
+        if (dist(engine) < dropout_prob) {
+          cpu_mask[i] = 0;
+        } else {
+          cpu_mask[i] = 1;
+        }
+      }
 
       int threads = 512;
       int grid = (x->numel() + threads - 1) / threads;
       RandomGenerator<
           T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-          size, seed, dropout_prob, x_data, mask_data, y_data);
+          size, x_data, cpu_mask.CUDAData(context.GetPlace()), mask_data,
+          y_data);
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
