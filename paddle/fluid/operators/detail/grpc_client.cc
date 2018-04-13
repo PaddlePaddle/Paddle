@@ -65,9 +65,8 @@ bool RPCClient::AsyncSendVariable(const std::string& ep,
 }
 
 void ProcGetResponse(const VarHandle& var_h,
-                     // const sendrecv::VariableMessage& ret_msg) {
                      const ::grpc::ByteBuffer& ret_msg) {
-  framework::Variable* outvar = NULL;
+  framework::Variable* outvar = nullptr;
   DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar);
 }
 
