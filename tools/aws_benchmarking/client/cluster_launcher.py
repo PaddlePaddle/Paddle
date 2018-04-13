@@ -26,6 +26,16 @@ import paramiko
 from scp import SCPClient
 import requests
 
+
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
     '--key_name', type=str, default="", help="required, key pair name")
@@ -116,6 +126,12 @@ parser.add_argument(
     type=str,
     default="putcn/paddle_aws_master:latest",
     help="master docker image id")
+
+parser.add_argument(
+    '--no_clean_up',
+    type=str2bool,
+    default=False,
+    help="whether to clean up after training")
 
 args = parser.parse_args()
 
@@ -347,7 +363,8 @@ def create():
     del args_to_pass.master_docker_image
     del args_to_pass.master_server_public_ip
     for arg, value in sorted(vars(args_to_pass).iteritems()):
-        kick_off_cmd += ' --%s %s' % (arg, value)
+        if value:
+            kick_off_cmd += ' --%s %s' % (arg, value)
 
     logging.info(kick_off_cmd)
     stdin, stdout, stderr = ssh_client.exec_command(command=kick_off_cmd)
