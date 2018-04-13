@@ -26,14 +26,26 @@ namespace p = paddle::platform;
 // test data amount
 const f::DDim kDims = {20, 20};
 
-class GatherTester : public ::testing::Test {
- public:
+struct TestGatherOpHandle {
+  std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
+  std::vector<Scope*> local_scopes_;
+  Scope g_scope_;
+  std::unique_ptr<OpHandleBase> op_handle_;
+  std::vector<std::unique_ptr<VarHandleBase>> vars_;
+  std::vector<p::Place> gpu_list_;
+
+  void WaitAll() {
+    for (size_t j = 0; j < ctxs_.size(); ++j) {
+      ctxs_[j]->Wait();
+    }
+  }
+
   void InitCtxOnGpu(bool use_gpu) {
     if (use_gpu) {
 #ifdef PADDLE_WITH_CUDA
       int count = p::GetCUDADeviceCount();
       if (count <= 1) {
-        LOG(WARNING) << "Cannot test multi-gpu Gather, because the CUDA "
+        LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
                         "device count is "
                      << count;
         exit(0);
@@ -56,57 +68,51 @@ class GatherTester : public ::testing::Test {
     }
   }
 
-  void InitGatherOp(int input_scope_idx) {
+  void InitGatherOp(size_t input_scope_idx) {
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
-      local_scope_.push_back(&g_scope_.NewScope());
-      local_scope_[j]->Var("input");
+      local_scopes_.push_back(&(g_scope_.NewScope()));
+      local_scopes_[j]->Var("out");
     }
-    local_scope_[input_scope_idx]->Var("out");
+    local_scopes_[input_scope_idx]->Var("input");
 
-    gather_op_handle_ = new f::details::GatherOpHandle(local_scope_, gpu_list_);
-
-    f::details::VarHandle* out_var_handle = new f::details::VarHandle();
-    out_var_handle->place_ = gpu_list_[input_scope_idx];
-    out_var_handle->name_ = "out";
-    out_var_handle->version_ = 2;
-    out_var_handle->scope_idx_ = input_scope_idx;
-    out_var_handle->generated_op_ = gather_op_handle_;
-    gather_op_handle_->AddOutput(out_var_handle);
-
+    op_handle_.reset(new GatherOpHandle(local_scopes_, gpu_list_));
+    // add input
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
-      gather_op_handle_->dev_ctxes_[gpu_list_[j]] = ctxs_[j];
-      f::details::VarHandle* in_var_handle = new f::details::VarHandle();
+      op_handle_->dev_ctxes_[gpu_list_[j]] = ctxs_[j].get();
+      vars_.emplace_back(new VarHandle());
+      VarHandle* in_var_handle = static_cast<VarHandle*>(vars_.back().get());
       in_var_handle->place_ = gpu_list_[j];
       in_var_handle->name_ = "input";
       in_var_handle->version_ = 1;
       in_var_handle->scope_idx_ = j;
       in_var_handle->generated_op_ = nullptr;
-      gather_op_handle_->AddInput(in_var_handle);
+      op_handle_->AddInput(in_var_handle);
     }
-  }
-  void GatherOpDestroy() {
-    for (auto in : gather_op_handle_->inputs_) {
-      delete in;
-    }
-    for (auto out : gather_op_handle_->outputs_) {
-      delete out;
-    }
-    delete gather_op_handle_;
-    for (size_t j = 0; j < ctxs_.size(); ++j) {
-      delete ctxs_[j];
-    }
+
+    // add dummy var
+    vars_.emplace_back(new DummyVarHandle());
+    DummyVarHandle* in_dummy_var_handle =
+        static_cast<DummyVarHandle*>(vars_.back().get());
+    in_dummy_var_handle->generated_op_ = nullptr;
+    op_handle_->AddInput(in_dummy_var_handle);
+
+    // add output
+    vars_.emplace_back(new VarHandle());
+    VarHandle* out_var_handle = static_cast<VarHandle*>(vars_.back().get());
+    out_var_handle->place_ = gpu_list_[input_scope_idx];
+    out_var_handle->name_ = "out";
+    out_var_handle->version_ = 2;
+    out_var_handle->scope_idx_ = input_scope_idx;
+    op_handle_->AddOutput(out_var_handle);
+
+    // add dummy var
+    vars_.emplace_back(new DummyVarHandle());
+    DummyVarHandle* dummy_var_handle =
+        static_cast<DummyVarHandle*>(vars_.back().get());
+    op_handle_->AddOutput(dummy_var_handle);
   }
 
-  void WaitAll() {
-    for (size_t j = 0; j < ctxs_.size(); ++j) {
-      ctxs_[j]->Wait();
-    }
-  }
-
-  void TestGatherSelectedRows() {
-    int output_scope_idx = 0;
-    InitGatherOp(output_scope_idx);
-
+  void TestGatherSelectedRows(size_t output_scope_idx) {
     int height = kDims[0] * 2;
     std::vector<int64_t> rows{0, 1, 2, 3, 3, 0, 14, 7, 3, 1,
                               2, 4, 6, 3, 1, 1, 1,  1, 3, 7};
@@ -117,7 +123,7 @@ class GatherTester : public ::testing::Test {
 
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
          ++input_scope_idx) {
-      auto in_var = local_scope_[input_scope_idx]->Var("input");
+      auto in_var = local_scopes_[input_scope_idx]->Var("input");
       auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -130,13 +136,21 @@ class GatherTester : public ::testing::Test {
       value->Resize(kDims);
     }
 
-    gather_op_handle_->Run(false);
+    auto out_var = local_scopes_[output_scope_idx]->Var("out");
+    auto out_selected_rows = out_var->GetMutable<f::SelectedRows>();
+
+    auto in_var = local_scopes_[output_scope_idx]->Var("input");
+    auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
+
+    out_selected_rows->mutable_value()->ShareDataWith(
+        in_selected_rows->value());
+
+    op_handle_->Run(false);
 
     WaitAll();
 
     p::CPUPlace cpu_place;
 
-    auto out_var = local_scope_[output_scope_idx]->Var("out");
     auto& out_select_rows = out_var->Get<f::SelectedRows>();
     auto rt = out_select_rows.value();
 
@@ -152,28 +166,25 @@ class GatherTester : public ::testing::Test {
     for (int64_t j = 0; j < f::product(kDims); ++j) {
       ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
     }
-
-    GatherOpDestroy();
   }
-
- public:
-  f::Scope g_scope_;
-  std::vector<p::DeviceContext*> ctxs_;
-  std::vector<f::Scope*> local_scope_;
-  std::vector<p::Place> gpu_list_;
-  f::details::GatherOpHandle* gather_op_handle_;
 };
 
-TEST_F(GatherTester, TestCPUGatherTestSelectedRows) {
-  InitCtxOnGpu(false);
-  TestGatherSelectedRows();
+TEST(GatherTester, TestCPUGatherTestSelectedRows) {
+  TestGatherOpHandle test_op;
+  size_t input_scope_idx = 0;
+  test_op.InitCtxOnGpu(false);
+  test_op.InitGatherOp(input_scope_idx);
+  test_op.TestGatherSelectedRows(input_scope_idx);
 }
 
 #ifdef PADDLE_WITH_CUDA
 
-TEST_F(GatherTester, TestGPUGatherTestSelectedRows) {
-  InitCtxOnGpu(true);
-  TestGatherSelectedRows();
+TEST(GatherTester, TestGPUGatherTestSelectedRows) {
+  TestGatherOpHandle test_op;
+  size_t input_scope_idx = 0;
+  test_op.InitCtxOnGpu(false);
+  test_op.InitGatherOp(input_scope_idx);
+  test_op.TestGatherSelectedRows(input_scope_idx);
 }
 #endif
 }  // namespace details

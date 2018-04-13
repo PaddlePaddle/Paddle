@@ -17,20 +17,12 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/var_handle.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-
-// GetTensorFromVar is used in broadcast_op handle and gather_op handle, so it
-// should be placed in a commonplace. I don't find an appropriate place, so I
-// temporarily place it in op_handle.
-Tensor *GetTensorFromVar(Variable *in_var);
 
 constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
 
