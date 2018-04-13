@@ -478,6 +478,9 @@ def kickoff_pserver(host, pserver_endpoints_str):
             TASK_NAME=args.task_name,
             COMMAND=args.pserver_command,
             TRAINER_COUNT=args.trainer_count,
+            TRAINER_INDEX=0,
+            # there is no way to use 0.0.0.0:port to start pserver
+            # has to docker --network="host" with host ip to make this work
             SERVER_ENDPOINT=host + ":" + str(args.pserver_port),
             MASTER_ENDPOINT=args.master_server_ip + ":" +
             str(args.master_server_port))
@@ -588,7 +591,7 @@ def start_server(args):
                 logging.info("Received request to return status")
                 with open(args.log_path + "master.log", "r") as logfile:
                     self.wfile.write(logfile.read().strip())
-            elif request_path == "/list_logs":
+            elif request_path == "/list_logs" or request_path == "/logs":
                 self._set_headers()
                 self.wfile.write("\n".join(log_files))
             elif "/log/" in request_path:
