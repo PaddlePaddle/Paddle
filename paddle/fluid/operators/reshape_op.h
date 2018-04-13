@@ -60,7 +60,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
   static framework::DDim ValidateShape(const std::vector<int> shape,
                                        const framework::DDim &in_dims) {
     const int64_t in_size = framework::product(in_dims);
-    // only one dimension canbe set to -1, whose size will be automatically
+    // only one dimension can be set to -1, whose size will be automatically
     // infered.
     const int64_t unk_dim_val = -1;
     const int64_t copy_dim_val = 0;
@@ -119,13 +119,15 @@ class ReshapeKernel : public framework::OpKernel<T> {
     auto *shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
 
     framework::DDim out_dims = out->dims();
+
     if (shape_tensor) {
       auto *shape_data = shape_tensor->data<int>();
+      framework::Tensor cpu_shape_tensor;
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        framework::Tensor cpu_shape_tensor;
         TensorCopy(*shape_tensor, platform::CPUPlace(), ctx.device_context(),
                    &cpu_shape_tensor);
         shape_data = cpu_shape_tensor.data<int>();
+        ctx.device_context().Wait();
       }
       auto shape =
           std::vector<int>(shape_data, shape_data + shape_tensor->numel());
