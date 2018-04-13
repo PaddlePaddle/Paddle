@@ -49,8 +49,8 @@ parser.add_argument(
 parser.add_argument(
     '--pserver_instance_type',
     type=str,
-    default="p2.8xlarge",
-    help="your pserver instance type, p2.8xlarge by default")
+    default="c5.2xlarge",
+    help="your pserver instance type, c5.2xlarge by default")
 parser.add_argument(
     '--trainer_instance_type',
     type=str,
@@ -68,12 +68,19 @@ parser.add_argument(
     default="ami-da2c1cbf",
     help="ami id for system image, default one has nvidia-docker ready, \
     use ami-1ae93962 for us-east-2")
+
+parser.add_argument(
+    '--pserver_command', type=str, default="", help="pserver start command")
+
 parser.add_argument(
     '--trainer_image_id',
     type=str,
     default="ami-da2c1cbf",
     help="ami id for system image, default one has nvidia-docker ready, \
     use ami-1ae93962 for us-west-2")
+
+parser.add_argument(
+    '--trainer_command', type=str, default="", help="trainer start command")
 
 parser.add_argument(
     '--availability_zone',
@@ -103,6 +110,12 @@ parser.add_argument(
 
 parser.add_argument(
     '--master_server_public_ip', type=str, help="master server public ip")
+
+parser.add_argument(
+    '--master_docker_image',
+    type=str,
+    default="putcn/paddle_aws_master:latest",
+    help="master docker image id")
 
 args = parser.parse_args()
 
@@ -322,14 +335,16 @@ def create():
     # set arguments and start docker
     kick_off_cmd = "docker run -d -v /home/ubuntu/.aws:/root/.aws/"
     kick_off_cmd += " -v /home/ubuntu/" + args.key_name + ".pem:/root/" + args.key_name + ".pem"
+    kick_off_cmd += " -v /home/ubuntu/logs/:/root/logs/"
     kick_off_cmd += " -p " + str(args.master_server_port) + ":" + str(
         args.master_server_port)
-    kick_off_cmd += " putcn/paddle_aws_master"
+    kick_off_cmd += " " + args.master_docker_image
 
     args_to_pass = copy.copy(args)
     args_to_pass.action = "serve"
     del args_to_pass.pem_path
     del args_to_pass.security_group_ids
+    del args_to_pass.master_docker_image
     del args_to_pass.master_server_public_ip
     for arg, value in sorted(vars(args_to_pass).iteritems()):
         kick_off_cmd += ' --%s %s' % (arg, value)

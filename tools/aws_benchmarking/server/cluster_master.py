@@ -53,8 +53,8 @@ parser.add_argument(
 parser.add_argument(
     '--pserver_instance_type',
     type=str,
-    default="p2.8xlarge",
-    help="your pserver instance type, p2.8xlarge by default")
+    default="c5.2xlarge",
+    help="your pserver instance type, c5.2xlarge by default")
 parser.add_argument(
     '--trainer_instance_type',
     type=str,
@@ -98,10 +98,16 @@ parser.add_argument(
     help="pserver bash file path")
 
 parser.add_argument(
+    '--pserver_command', type=str, default="", help="pserver start command")
+
+parser.add_argument(
     '--trainer_bash_file',
     type=str,
     default=os.path.join(os.path.dirname(__file__), "trainer.sh.template"),
     help="trainer bash file path")
+
+parser.add_argument(
+    '--trainer_command', type=str, default="", help="trainer start command")
 
 parser.add_argument(
     '--action', type=str, default="serve", help="create|cleanup|serve")
@@ -124,8 +130,12 @@ args = parser.parse_args()
 
 ec2client = boto3.client('ec2')
 
+args.log_path = os.path.join(os.path.dirname(__file__), "logs/")
+
 logging.basicConfig(
-    filename='master.log', level=logging.INFO, format='%(asctime)s %(message)s')
+    filename=args.log_path + 'master.log',
+    level=logging.INFO,
+    format='%(asctime)s %(message)s')
 
 log_files = ["master.log"]
 
@@ -304,7 +314,7 @@ def create_pservers():
 def log_to_file(source, filename):
     if not filename in log_files:
         log_files.append(filename)
-    with open(filename, "a") as log_file:
+    with open(args.log_path + filename, "a") as log_file:
         for line in iter(source.readline, ""):
             log_file.write(line)
 
@@ -335,6 +345,8 @@ def create_trainers(kickoff_cmd, pserver_endpoints_str):
             DOCKER_IMAGE=args.docker_image,
             TRAINER_INDEX=str(trainer_index),
             TASK_NAME=args.task_name,
+            TRAINER_COUNT=args.trainer_count,
+            COMMAND=args.trainer_command,
             MASTER_ENDPOINT=args.master_server_ip + ":" +
             str(args.master_server_port))
         logging.info(cmd)
@@ -446,6 +458,9 @@ def kickoff_pserver(host, pserver_endpoints_str):
             DOCKER_IMAGE=args.docker_image,
             PSERVER_PORT=args.pserver_port,
             TASK_NAME=args.task_name,
+            COMMAND=args.pserver_command,
+            TRAINER_COUNT=args.trainer_count,
+            SERVER_ENDPOINT=host + ":" + str(args.pserver_port),
             MASTER_ENDPOINT=args.master_server_ip + ":" +
             str(args.master_server_port))
         logging.info(cmd)
@@ -553,14 +568,17 @@ def start_server(args):
             if request_path == "/status" or request_path == "/master_logs":
                 self._set_headers()
                 logging.info("Received request to return status")
-                with open("master.log", "r") as logfile:
+                with open(args.log_path + "master.log", "r") as logfile:
                     self.wfile.write(logfile.read().strip())
             elif request_path == "/list_logs":
                 self._set_headers()
                 self.wfile.write("\n".join(log_files))
             elif "/log/" in request_path:
-                log_file_path = request_path.replace("/log/")
-                with open(log_file_path, "r") as logfile:
+                self._set_headers()
+                log_file_path = request_path.replace("/log/", "")
+                logging.info("requesting log file path is" + args.log_path +
+                             log_file_path)
+                with open(args.log_path + log_file_path, "r") as logfile:
                     self.wfile.write(logfile.read().strip())
             else:
                 self.do_404()
@@ -631,11 +649,4 @@ if __name__ == "__main__":
         create_cluster()
         server_thread.join()
     elif args.action == "test":
-        init_args()
-        if not args.subnet_id:
-            logging.info("creating subnet for this task")
-        args.subnet_id = create_subnet()
-        logging.info("subnet %s created" % (args.subnet_id))
-        create_trainers(
-            kickoff_cmd=script_to_str(args.trainer_bash_file),
-            pserver_endpoints_str="11.22.33.44:5476")
+        start_server(args)
