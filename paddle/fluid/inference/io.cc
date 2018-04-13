@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-// Temporarilly add this function for exposing framework::InitDevices() when
+// Temporarily add this function for exposing framework::InitDevices() when
 // linking the inference shared library.
 void Init(bool init_p2p) { framework::InitDevices(init_p2p); }
 
