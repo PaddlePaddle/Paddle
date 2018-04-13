@@ -196,10 +196,12 @@ void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
-      VLOG(10) << op->Name() << " : " << op->DebugString();
+      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       op->Run(use_event_);
+      VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->outputs_);
+      VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (platform::EnforceNotMet ex) {
       exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {

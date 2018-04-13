@@ -103,19 +103,19 @@ void NCCLAllReduceOpHandle::RunImpl() {
               ncclSum, comm, stream));
         });
       }
-
-      platform::NCCLGroupGuard guard;
-      for (auto &call : all_reduce_calls) {
-        call();
-      }
+      this->RunAndRecordEvent([&] {
+        platform::NCCLGroupGuard guard;
+        for (auto &call : all_reduce_calls) {
+          call();
+        }
+      });
     } else {  // Special handle CPU only Operator's gradient. Like CRF
-      framework::LoDTensor trg;
+      auto &trg =
+          *this->local_scopes_[0]->Var()->GetMutable<framework::LoDTensor>();
 
       // Reduce All Tensor to trg in CPU
       ReduceLoDTensor func(lod_tensors, &trg);
       VisitDataType(ToDataType(lod_tensors[0].type()), func);
-
-      // Copy trg to GPU
     }
   }
 }
