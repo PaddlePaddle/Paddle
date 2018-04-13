@@ -81,6 +81,9 @@ class InferenceTranspiler:
             current_op = self.block.ops[i]
             # TODO(luotao1): consider only conv2d now. fc would be delt later.
             if current_op.type in ['conv2d']:
+                # TODO(luotao1): consider single chain network now. 
+                # For branch network, we counldn't use block.ops[i + 1] as 
+                # the judgment condition.
                 next_op = self.block.ops[i + 1]
                 # conv2d without bias
                 if (next_op.type == 'batch_norm'):
