@@ -24,6 +24,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
+
 class OpHandleBase {
  private:
   DISABLE_COPY_AND_ASSIGN(OpHandleBase);

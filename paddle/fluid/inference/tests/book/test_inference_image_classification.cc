@@ -15,6 +15,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
+#include "paddle/fluid/platform/float16.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_int32(batch_size, 1, "Batch size of input data");
