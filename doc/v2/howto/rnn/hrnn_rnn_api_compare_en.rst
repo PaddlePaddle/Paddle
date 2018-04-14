@@ -98,7 +98,7 @@ This example is intended to implement two fully-equivalent full-connected RNNs u
 
 * As for single-layer RNN, input is a full time series, e.g. \ :code:`[4, 5, 2, 0, 9, 8, 1, 4]`\ .
 
-* As for hierarchical RNN, input is a hierarchial time series which elements are arbitrarily combination of data in single-layer RNN, e.g. \ :code:`[ [4, 5, 2], [0, 9], [8, 1, 4]]`. 
+* As for hierarchical RNN, input is a hierarchical time series which elements are arbitrarily combination of data in single-layer RNN, e.g. \ :code:`[ [4, 5, 2], [0, 9], [8, 1, 4]]`. 
 
 model configuration
 ------------------
@@ -150,21 +150,21 @@ model configuration
 
 Similar to Example 2's configuration, Example 3's configuration uses single-layer and hierarchical RNN to implement 2 fully-equivalent full-connected RNNs. 
 
-* 单层RNN\:
+* single-layer RNN\:
 
 ..  literalinclude:: ../../../../paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.py
     :language: python
     :lines: 42-59
     :linenos:
 
-* 双层RNN\ \:
+* hierarchical RNN\ \:
 
 ..  literalinclude:: ../../../../paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py
     :language: python
     :lines: 41-80
     :linenos:
 
-In the above code, the usage of single-layer and hierarchical RNNs are similar to Example 2, which difference is that it processes 2 inputs simultaneously. As for the hierarchical RNN, the lengths of the 2 input's subsequences are not equal. But we use the parameter \ :code:`targetInlink`\ to set the outper layer's \ :code:`recurrent_group`\ 's output format, so the shape of outer layer's output is the same as the shape of \ :code:`emb2`\ . 
+In the above code, the usage of single-layer and hierarchical RNNs are similar to Example 2, which difference is that it processes 2 inputs simultaneously. As for the hierarchical RNN, the lengths of the 2 input's subsequences are not equal. But we use the parameter \ :code:`targetInlink` \ to set the outper layer's \ :code:`recurrent_group` \ 's output format, so the shape of outer layer's output is the same as the shape of \ :code:`emb2`\ . 
 
 
 Glossary
@@ -175,51 +175,51 @@ Glossary
 Memory
 ------
 
-Memory是PaddlePaddle实现RNN时候使用的一个概念。RNN即时间递归神经网络，通常要求时间步之间具有一些依赖性，即当前时间步下的神经网络依赖前一个时间步神经网络中某一个神经元输出。如下图所示。
+Memory is a concept when PaddlePaddle is implementing RNN. RNN, recurrent neural network, usually requires some dependency between time steps, that is, the neural network in current time step depends on one of the neurons in the neural network in previous time steps, as the following figure shows: 
 
 ..  graphviz:: src/glossary_rnn.dot
 
-上图中虚线的连接，即是跨越时间步的网络连接。PaddlePaddle在实现RNN的时候，将这种跨越时间步的连接用一个特殊的神经网络单元实现。这个神经网络单元就叫Memory。Memory可以缓存上一个时刻某一个神经元的输出，然后在下一个时间步输入给另一个神经元。使用Memory的RNN实现便如下图所示。
+The dotted connections in the figure, is the network connections across time steps. When PaddlePaddle is implementing RNN, this connection accross time steps is implemented using a special neural network unit, called Memory. Memory can cache the output of one of the neurons in previous time step, then can be passed to another neuron in next time step. The implementation of an RNN using Memory is as follows: 
 
 ..  graphviz:: src/glossary_rnn_with_memory.dot
 
-使用这种方式，PaddlePaddle可以比较简单的判断哪些输出是应该跨越时间步的，哪些不是。
+With this method, PaddlePaddle can easily determine which outputs should cross time steps, and which should not. 
 
 ..  _glossary_timestep:
 
-时间步
+time step
 ------
 
-参考时间序列。
+refers to time series
 
 
 ..  _glossary_sequence:
 
-时间序列
+time series
 --------
 
-时间序列(time series)是指一系列的特征数据。这些特征数据之间的顺序是有意义的。即特征的数组，而不是特征的集合。而这每一个数组元素，或者每一个系列里的特征数据，即为一个时间步(time step)。值得注意的是，时间序列、时间步的概念，并不真正的和『时间』有关。只要一系列特征数据中的『顺序』是有意义的，即为时间序列的输入。
+Time series is a series of featured data. The order among these featured data is meaningful. So it is a list of features, not a set of features. As for each element of this list, or the featured data in each series, is called a time step. It must be noted that, the concepts of time series and time steps, are not necessarrily related to "time". As long as the "order" in a series of featured data is meaningful, it can be the input of time series. 
 
-举例说明，例如文本分类中，我们通常将一句话理解成一个时间序列。比如一句话中的每一个单词，会变成词表中的位置。而这一句话就可以表示成这些位置的数组。例如 :code:`[9, 2, 3, 5, 3]` 。
+For example, in text classification task, we regard a sentence as a time series. So, each word in the sentence can become the index of the word in the word table. So this sentence can be represented as a list of these indices, e.g.:code:`[9, 2, 3, 5, 3]` . 
 
-关于时间序列(time series)的更详细准确的定义，可以参考 `维基百科页面 Time series <https://en.wikipedia.org/wiki/Time_series>`_ 或者 `维基百科中文页面 时间序列 <https://zh.wikipedia.org/wiki/%E6%99%82%E9%96%93%E5%BA%8F%E5%88%97>`_ 。
+For a more detailed and accurate definition of the time series, please refer to `Wikipedia of Time series <https://en.wikipedia.org/wiki/Time_series>`_  or `Chinese Wikipedia of time series <https://zh.wikipedia.org/wiki/%E6%99%82%E9%96%93%E5%BA%8F%E5%88%97>`_  . 
 
-另外，Paddle中经常会将时间序列成为 :code:`Sequence` 。他们在Paddle的文档和API中是一个概念。 
+In additioin, Paddle always calls time series as :code:`Sequence` . They are a same concept in Paddle's documentations and APIs. 
 
 ..  _glossary_RNN:
 
 RNN
 ---
 
-RNN 在PaddlePaddle的文档中，一般表示 :code:`Recurrent neural network`，即时间递归神经网络。详细介绍可以参考 `维基百科页面 Recurrent neural network <https://en.wikipedia.org/wiki/Recurrent_neural_network>`_ 或者 `中文维基百科页面 <https://zh.wikipedia.org/wiki/%E9%80%92%E5%BD%92%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C>`_ 中关于时间递归神经网络的介绍。
+In PaddlePaddle's documentations, RNN is usually represented as :code:`Recurrent neural network` . For more information, please refer to `Wikipedia Recurrent neural network <https://en.wikipedia.org/wiki/Recurrent_neural_network>`_ or `Chinese Wikipedia <https://zh.wikipedia.org/wiki/%E9%80%92%E5%BD%92%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C>`_ . 
 
-RNN 一般在PaddlePaddle中，指对于一个时间序列输入数据，每一个时间步之间的神经网络具有一定的相关性。例如，某一个神经元的一个输入为上一个时间步网络中某一个神经元的输出。或者，从每一个时间步来看，神经网络的网络结构中具有有向环结构。
+In PaddlePaddle, RNN usually means, for the input data of a time series, the neural network between each time steps has a certain relevance. For example, the input of a certain neuron is the output of a certain neuron in the neural network of the last time step. Or, as for each time step, the network structure of the neural network has a directed ring structure. 
 
-..  _glossary_双层RNN:
+..  _glossary_hierarchical_RNN:
 
-双层RNN
+hierarchical RNN
 -------
 
-双层RNN顾名思义，即RNN之间有一次嵌套关系。输入数据整体上是一个时间序列，而对于每一个内层特征数据而言，也是一个时间序列。即二维数组，或者数组的数组这个概念。 而双层RNN是可以处理这种输入数据的网络结构。
+Hierarchical RNN, as the name suggests, means there is a nested relationship in RNNs. The input data is a time series, but for each of the inner featured data, it is also a time series, namely 2-dimentional array, or, array of array. Hierarchical RNN is a neural network that can process this type of input data. 
 
-例如，对于段落的文本分类，即将一段话进行分类。我们将一段话看成句子的数组，每个句子又是单词的数组。这便是一种双层RNN的输入数据。而将这个段落的每一句话用lstm编码成一个向量，再对每一句话的编码向量用lstm编码成一个段落的向量。再对这个段落向量进行分类，即为这个双层RNN的网络结构。
+For example, the task of text classification of a paragragh, meaning to classify a paragraph of sentences. We can treat a paragraph as an array of sentences, and each sentence is an array of words. This is a type of the input data for the hierarchical RNN. We encode each sentence of this paragraph into a vector using LSTM, then encode each of the encoded vectors into a vector of this paragraph using LSTM. Finally we use this paragraph vector perform classification, which is the neural network structure of this hierarchical RNN. 
