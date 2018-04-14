@@ -134,7 +134,7 @@ Example 3：hierarchical RNN with unequal length inputs
 
 **unequal length inputs** means in the multiple input sequences of recurrent_group, the lengths of subsequences can be unequal. But the output of the sequence, needs to be consistent with one of the input sequences. Using \ :red:`targetInlink`\ can help you specify which of the input sequences and the output sequence can be consistent, by default is the first input. 
 
-The configurations of Example 3 are \ `sequence_rnn_multi_unequalength_inputs <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.py>`_\ and \ `sequence_nest_rnn_multi_unequalength_inputs <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py>`_\ . 
+The configurations of Example 3 are \ `sequence_rnn_multi_unequalength_inputs <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.py>`_ \ and \ `sequence_nest_rnn_multi_unequalength_inputs <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py>`_\ . 
 
 The data for the configurations of Example 3's single-layer RNN and hierarchical RNN are exactly the same. 
 
