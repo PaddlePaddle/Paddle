@@ -223,3 +223,4 @@ hierarchical RNN
 Hierarchical RNN, as the name suggests, means there is a nested relationship in RNNs. The input data is a time series, but for each of the inner featured data, it is also a time series, namely 2-dimentional array, or, array of array. Hierarchical RNN is a neural network that can process this type of input data. 
 
 For example, the task of text classification of a paragragh, meaning to classify a paragraph of sentences. We can treat a paragraph as an array of sentences, and each sentence is an array of words. This is a type of the input data for the hierarchical RNN. We encode each sentence of this paragraph into a vector using LSTM, then encode each of the encoded vectors into a vector of this paragraph using LSTM. Finally we use this paragraph vector perform classification, which is the neural network structure of this hierarchical RNN. 
+
