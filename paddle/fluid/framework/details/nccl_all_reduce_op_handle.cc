@@ -80,8 +80,10 @@ void NCCLAllReduceOpHandle::RunImpl() {
 
     if (platform::is_gpu_place(lod_tensors[0].place())) {
       std::vector<std::function<void()>> all_reduce_calls;
+      std::vector<platform::Place> places;
       for (size_t i = 0; i < local_scopes_.size(); ++i) {
         auto &p = places_[i];
+        places.emplace_back(p);
         auto &lod_tensor = lod_tensors[i];
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
 
@@ -103,12 +105,11 @@ void NCCLAllReduceOpHandle::RunImpl() {
               ncclSum, comm, stream));
         });
       }
-      this->RunAndRecordEvent([&] {
-        platform::NCCLGroupGuard guard;
-        for (auto &call : all_reduce_calls) {
-          call();
-        }
-      });
+
+      platform::NCCLGroupGuard guard;
+      for (size_t i = 0; i < places.size(); ++i) {
+        RunAndRecordEvent(places[i], [&] { all_reduce_calls[i](); });
+      }
     } else {  // Special handle CPU only Operator's gradient. Like CRF
       auto &trg =
           *this->local_scopes_[0]->Var()->GetMutable<framework::LoDTensor>();
