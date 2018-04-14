@@ -99,9 +99,11 @@ void BroadcastOpHandle::RunImpl() {
       PADDLE_THROW("Var should be LoDTensor or SelectedRows.");
     }
 
-    Tensor *out_tensor = GetTensorFromVar(out_var);
-    paddle::framework::TensorCopy(*in_tensor, out_p, *(dev_ctxes_[in_place]),
-                                  out_tensor);
+    auto dev_ctx = dev_ctxes_[out_p];
+    RunAndRecordEvent(out_p, [in_tensor, out_var, dev_ctx, out_p] {
+      Tensor *out_tensor = GetTensorFromVar(out_var);
+      paddle::framework::TensorCopy(*in_tensor, out_p, *(dev_ctx), out_tensor);
+    });
   }
 }
 
