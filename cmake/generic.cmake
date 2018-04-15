@@ -330,9 +330,13 @@ function(hip_library TARGET_NAME)
         target_link_libraries(${TARGET_NAME} /opt/rocm/hip/lib/libhip_hcc.so /opt/rocm/hip/lib/libhip_device.a)
 	find_fluid_modules(${TARGET_NAME})
       endif()
-      if (hip_library_DEPS)
-	add_dependencies(${TARGET_NAME} ${hip_library_DEPS})
-	target_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
+      if("${hip_library_DEPS}" MATCHES "ARCHIVE_START")
+        # Support linking flags: --whole-archive (Linux) / -force_load (MacOS).
+        # WARNING: Please don't use ARCHIVE_START&ARCHIVE_END if TARGET_NAME will be linked by other libraries.
+        target_circle_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
+        list(REMOVE_ITEM hip_library_DEPS ARCHIVE_START ARCHIVE_END)
+      else()
+        target_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
       endif()
       # cpplint code style
       foreach(source_file ${hip_library_SRCS})

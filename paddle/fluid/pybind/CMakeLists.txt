@@ -2,9 +2,9 @@ if(WITH_PYTHON)
   if(WITH_AMD_GPU)
     hip_library(paddle_pybind SHARED
       SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc
-      DEPS pybind python proto_desc memory executor prune init profiler feed_fetch_method
+      DEPS ARCHIVE_START pybind python proto_desc memory executor prune init profiler feed_fetch_method
            parallel_executor
-      ${GLOB_OP_LIB})
+      ${GLOB_OP_LIB} ARCHIVE_END)
   else()
     cc_library(paddle_pybind SHARED
       SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc
