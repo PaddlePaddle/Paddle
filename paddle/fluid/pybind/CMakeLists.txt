@@ -9,8 +9,8 @@ if(WITH_PYTHON)
   if(WITH_AMD_GPU)
     hip_library(paddle_pybind SHARED
       SRCS ${PYBIND_SRCS}
-      DEPS ${PYBIND_DEPS}
-      ${GLOB_OP_LIB})
+      DEPS ARCHIVE_START ${PYBIND_DEPS}
+      ${GLOB_OP_LIB} ARCHIVE_END)
   else()
     cc_library(paddle_pybind SHARED
       SRCS ${PYBIND_SRCS}

@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < argc; ++i) {
     new_argv.push_back(argv[i]);
   }
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   new_argv.push_back(
       strdup("--tryfromenv=fraction_of_gpu_memory_to_use,use_pinned_memory"));
 #else
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
   paddle::memory::Used(paddle::platform::CPUPlace());
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   paddle::memory::Used(paddle::platform::CUDAPlace(0));
 #endif
 

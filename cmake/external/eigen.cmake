@@ -17,7 +17,7 @@ if(WITH_AMD_GPU)
         extern_eigen3
         ${EXTERNAL_PROJECT_LOG_ARGS}
         GIT_REPOSITORY  "https://github.com/sabreshao/hipeigen.git"
-        GIT_TAG         0cba03ff9f8f9f70bbd92ac5857b031aa8fed6f9
+        GIT_TAG         7cb2b6e5a4b4a1efe658abb215cd866c6fb2275e
         PREFIX          ${EIGEN_SOURCE_DIR}
         UPDATE_COMMAND  ""
         CONFIGURE_COMMAND ""
