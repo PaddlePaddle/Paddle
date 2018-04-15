@@ -307,7 +307,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
         # run backward
         y_grad = np.random.random_sample(shape).astype(np.float32)
         x_grad, scale_grad, bias_grad = _reference_grad(
-            x, y_grad, scale, saved_mean, var_ref, epsilon, data_format)
+            x, y_grad, scale, saved_mean, var_ref, epsilon, data_layout)
 
         var_dict = locals()
         var_dict['y@GRAD'] = y_grad
