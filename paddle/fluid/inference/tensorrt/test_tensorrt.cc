@@ -17,6 +17,9 @@
 #include "NvInfer.h"
 #include "cuda.h"
 #include "cuda_runtime_api.h"
+#include "paddle/fluid/platform/dynload/tensorrt.h"
+
+namespace dy = paddle::platform::dynload;
 
 class Logger : public nvinfer1::ILogger {
  public:
@@ -52,6 +55,18 @@ class ScopedWeights {
   nvinfer1::Weights w;
 };
 
+// Fix the dynload issue, the following two API are implemented in TensorRT's
+// header file, cannot load from the dynamic library. So create our own
+// implementation and directly trigger the method from the dynamic library.
+nvinfer1::IBuilder* createInferBuilder(nvinfer1::ILogger& logger) {
+  return static_cast<nvinfer1::IBuilder*>(
+      dy::createInferBuilder_INTERNAL(&logger, NV_TENSORRT_VERSION));
+}
+nvinfer1::IRuntime* createInferRuntime(nvinfer1::ILogger& logger) {
+  return static_cast<nvinfer1::IRuntime*>(
+      dy::createInferRuntime_INTERNAL(&logger, NV_TENSORRT_VERSION));
+}
+
 const char* kInputTensor = "input";
 const char* kOutputTensor = "output";
 
@@ -59,7 +74,7 @@ const char* kOutputTensor = "output";
 nvinfer1::IHostMemory* CreateNetwork() {
   Logger logger;
   // Create the engine.
-  nvinfer1::IBuilder* builder = nvinfer1::createInferBuilder(logger);
+  nvinfer1::IBuilder* builder = createInferBuilder(logger);
   ScopedWeights weights(2.);
   ScopedWeights bias(3.);
 
@@ -121,7 +136,7 @@ TEST(TensorrtTest, BasicFunction) {
 
   // Use the model to create an engine and an execution context.
   Logger logger;
-  nvinfer1::IRuntime* runtime = nvinfer1::createInferRuntime(logger);
+  nvinfer1::IRuntime* runtime = createInferRuntime(logger);
   nvinfer1::ICudaEngine* engine =
       runtime->deserializeCudaEngine(model->data(), model->size(), nullptr);
   model->destroy();

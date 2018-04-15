@@ -198,7 +198,7 @@ void* GetNCCLDsoHandle() {
 #endif
 }
 
-void* GetTensorRtDsoHandler() {
+void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
 #else

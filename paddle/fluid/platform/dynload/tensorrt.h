@@ -19,6 +19,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
@@ -27,22 +28,28 @@ namespace dynload {
 extern std::once_flag tensorrt_dso_flag;
 extern void* tensorrt_dso_handle;
 
+// using nvinfer1::createInferBuilder;
+// using nvinfer1::createInferRuntime;
+
 #ifdef PADDLE_USE_DSO
 
-#define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name)                  \
-  struct DynLoad__##__name {                                        \
-    template <typename... Args>                                     \
-    auto operator()(Args... args) -> decltype(__name(args...)) {    \
-      using tensorrt_func = decltype(__name(args...)) (*)(Args...); \
-      std::call_once(tensorrt_dso_flag, []() {                      \
-        tensorrt_dso_handle =                                       \
-            paddle::platform::dynload::GetTensorRtDsoHandle();      \
-      });                                                           \
-      void* p_##__name = dlsym(tensorrt_dso_handle, #__name);       \
-      return reinterpret_cast<tensorrt_func>(p_##__name)(args...);  \
-    }                                                               \
-  };                                                                \
+#define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name)                      \
+  struct DynLoad__##__name {                                            \
+    template <typename... Args>                                         \
+    auto operator()(Args... args) -> decltype(__name(args...)) {        \
+      using tensorrt_func = decltype(__name(args...)) (*)(Args...);     \
+      std::call_once(tensorrt_dso_flag, []() {                          \
+        tensorrt_dso_handle =                                           \
+            paddle::platform::dynload::GetTensorRtDsoHandle();          \
+        PADDLE_ENFORCE(tensorrt_dso_handle, "load tensorrt so failed"); \
+      });                                                               \
+      void* p_##__name = dlsym(tensorrt_dso_handle, #__name);           \
+      PADDLE_ENFORCE(p_##__name, "load %s failed", #__name);            \
+      return reinterpret_cast<tensorrt_func>(p_##__name)(args...);      \
+    }                                                                   \
+  };                                                                    \
   extern DynLoad__##__name __name
+
 #else
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name) \
   struct DynLoad__##__name {                       \
@@ -55,8 +62,8 @@ extern void* tensorrt_dso_handle;
 #endif
 
 #define TENSORRT_RAND_ROUTINE_EACH(__macro) \
-  __macro(createInferBuilder);    \
-  __macro(createInferRuntime);
+  __macro(createInferBuilder_INTERNAL);     \
+  __macro(createInferRuntime_INTERNAL);
 
 TENSORRT_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP)
 
