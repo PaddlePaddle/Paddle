@@ -158,11 +158,13 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
 class TestBatchNormOpInference(unittest.TestCase):
     def setUp(self):
         self.dtype = np.float32
+        self.use_cudnn = False
+        self.use_mkldnn = False
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
-    def check_with_place(self, place, use_mkldnn, data_layout, dtype, shape):
+    def check_with_place(self, place, data_layout, dtype, shape):
         epsilon = 0.00001
         if len(shape) == 2:
             x_shape = shape
@@ -229,7 +231,8 @@ class TestBatchNormOpInference(unittest.TestCase):
             SavedVariance="saved_variance",
             # attrs
             is_test=True,
-            use_mkldnn=use_mkldnn,
+            use_mkldnn=self.use_mkldnn,
+            use_cudnn=self.use_cudnn,
             data_layout=data_layout,
             epsilon=epsilon)
 
@@ -251,15 +254,16 @@ class TestBatchNormOpInference(unittest.TestCase):
 
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                self.check_with_place(place, False, data_format, self.dtype,
+                self.check_with_place(place, data_format, self.dtype,
                                       [2, 3, 4, 5])
-                self.check_with_place(place, False, data_format, self.dtype,
-                                      [2, 3])
+                self.check_with_place(place, data_format, self.dtype, [2, 3])
 
 
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
         self.dtype = np.float16
+        self.use_cudnn = False
+        self.use_mkldnn = False
 
     def test_check_output(self):
         places = []
@@ -270,17 +274,20 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                self.check_with_place(place, False, data_format, self.dtype,
+                self.check_with_place(place, data_format, self.dtype,
                                       [2, 3, 4, 5])
-                self.check_with_place(place, False, data_format, self.dtype,
-                                      [2, 3])
+                self.check_with_place(place, data_format, self.dtype, [2, 3])
 
 
 class TestBatchNormOpTraining(unittest.TestCase):
+    def setUp(self):
+        self.use_cudnn = False
+        self.use_mkldnn = False
+
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.allclose(np.array(tensor), np_array, atol=atol)
 
-    def test_with_place(self, place, use_mkldnn, data_layout, shape):
+    def test_with_place(self, place, data_layout, shape):
         # attr
         epsilon = 0.00001
         momentum = 0.9
@@ -346,7 +353,8 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "epsilon": epsilon,
                     "is_test": False,
                     "data_layout": data_layout,
-                    "use_mkldnn": use_mkldnn
+                    "use_mkldnn": self.use_mkldnn,
+                    "use_cudnn": self.use_cudnn
                 })
             block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
@@ -396,24 +404,31 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                self.test_with_place(place, False, data_format, [2, 3, 4, 5])
+                self.test_with_place(place, data_format, [2, 3, 4, 5])
 
 
 class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
+    def setUp(self):
+        self.use_cudnn = False
+        self.use_mkldnn = True
+
     def test_check_output(self):
         place = core.CPUPlace()
 
         for data_format in ["NCHW"]:
-            self.check_with_place(place, True, data_format, self.dtype,
-                                  [2, 3, 4, 5])
+            self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
 
 
 class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
+    def setUp(self):
+        self.use_cudnn = False
+        self.use_mkldnn = True
+
     def test_forward_backward(self):
         place = core.CPUPlace()
 
         for data_format in ["NCHW"]:
-            self.test_with_place(place, True, data_format, [2, 3, 4, 5])
+            self.test_with_place(place, data_format, [2, 3, 4, 5])
 
 
 if __name__ == '__main__':
