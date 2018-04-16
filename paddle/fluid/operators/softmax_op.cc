@@ -97,6 +97,9 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "Disable epsilon adding to softmax results. Used by MKLDNN.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Softmax Operator.
 
