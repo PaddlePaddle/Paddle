@@ -18,16 +18,22 @@ limitations under the License. */
 #error device_ptr_cast must be include by .cu file
 #endif
 
-#include <thrust/device_ptr.h>
+#include <type_traits>  // For std::remove_pointer and std::is_pointer.
+
+#include "thrust/device_ptr.h"
 
 namespace paddle {
 namespace platform {
 namespace details {
+
+// PointerToThrustDevicePtr has two speicalizations, one casts a (CUDA
+// device) pointer into thrust::device_ptr, the other keeps rest types
+// un-casted.
 template <typename T, bool is_ptr>
-struct DevicePtrCast;
+struct PointerToThrustDevicePtr;
 
 template <typename T>
-struct DevicePtrCast<T, true> {
+struct PointerToThrustDevicePtr<T, true> {
   using ELEM = typename std::remove_pointer<T>::type;
   using RTYPE = thrust::device_ptr<ELEM>;
 
@@ -37,17 +43,26 @@ struct DevicePtrCast<T, true> {
 };
 
 template <typename T>
-struct DevicePtrCast<T, false> {
+struct PointerToThrustDevicePtr<T, false> {
   using RTYPE = T;
   inline RTYPE operator()(RTYPE it) const { return it; }
 };
 
-// Cast T to thrust::device_ptr if T is a pointer.
-// Otherwise, e.g., T is a iterator, return T itself.
+// CastToCUDATransformIterator casts a pointer to thrust::device_ptr
+// so it could be used as the iterator of thrust::transform.  It
+// doesn't cast other types.
+//
+// We need CastToCUDATransformIterator because it is often that we
+// want to use device memory pointers as transform iterators, e.g., to
+// transform a block of float32 to float16.  In this case, we want
+// CastToCUDATransformIterator to cast float16/32 pointers to
+// thrust::device_ptr, otherwise they cannot work as the iterator
+// required by thrust::transform.  At the same time, we don't want to
+// cast thrust::device_ptr to thrust::device_ptr repeatedly.
 template <typename T>
-auto DevPtrCast(T t) ->
-    typename DevicePtrCast<T, std::is_pointer<T>::value>::RTYPE {
-  DevicePtrCast<T, std::is_pointer<T>::value> cast;
+auto CastToCUDATransformIterator(T t) ->
+    typename PointerToThrustDevicePtr<T, std::is_pointer<T>::value>::RTYPE {
+  PointerToThrustDevicePtr<T, std::is_pointer<T>::value> cast;
   return cast(t);
 }
 
