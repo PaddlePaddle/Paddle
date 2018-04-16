@@ -158,7 +158,6 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
 class TestBatchNormOpInference(unittest.TestCase):
     def setUp(self):
         self.dtype = np.float32
-        self.use_cudnn = False
         self.use_mkldnn = False
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
@@ -232,7 +231,6 @@ class TestBatchNormOpInference(unittest.TestCase):
             # attrs
             is_test=True,
             use_mkldnn=self.use_mkldnn,
-            use_cudnn=self.use_cudnn,
             data_layout=data_layout,
             epsilon=epsilon)
 
@@ -262,7 +260,6 @@ class TestBatchNormOpInference(unittest.TestCase):
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
         self.dtype = np.float16
-        self.use_cudnn = False
         self.use_mkldnn = False
 
     def test_check_output(self):
@@ -281,7 +278,6 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
 class TestBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
-        self.use_cudnn = False
         self.use_mkldnn = False
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
@@ -354,7 +350,6 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "is_test": False,
                     "data_layout": data_layout,
                     "use_mkldnn": self.use_mkldnn,
-                    "use_cudnn": self.use_cudnn
                 })
             block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
@@ -409,7 +404,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
 class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
-        self.use_cudnn = False
+        self.dtype = np.float32
         self.use_mkldnn = True
 
     def test_check_output(self):
@@ -421,7 +416,6 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
 
 class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
     def setUp(self):
-        self.use_cudnn = False
         self.use_mkldnn = True
 
     def test_forward_backward(self):
