@@ -8,7 +8,7 @@ For synchronous and asynchronous training, the differences are mostly in the log
 
 The training process of synchronous training is:
 
-![lookup table training](./src/sync_distributed_training.png)
+![synchronous distributed training](./src/sync_distributed_training.png)
 
 1. Pserver
 	1. set `barrier_condition_` to 0 and waits for trainers to send gradient.
@@ -35,12 +35,12 @@ In the above process. There are two barriers for all trainers to synchronize wit
 
 The training process of asynchronous training can be:
 
-![lookup table training](./src/async_distributed_training.png)
+![asynchronous distributed training](./src/async_distributed_training.png)
 
 1. Pserver:
 	1. Each parameter has a queue to receive its gradient from trainers.
 	1. Each parameter has a thread to read data from the queue and run optimize block, using the gradient to optimize the parameter.
-	1. Use a independente thread to handle RPC call `GetVariable` for trainers to get parameters back.(Maybe here we should use a thread pool to speed up the parameter fetch.)
+	1. Using an independent thread to handle RPC call `GetVariable` for trainers to get parameters back.(Maybe here we should use a thread pool to speed up fetching the parameters.)
 
 1. Trainer:
 	1. Trainer read a batch of data. Run forward and backward with local parameter copy and get the gradients for parameters.
