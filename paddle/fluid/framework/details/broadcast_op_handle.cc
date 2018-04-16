@@ -34,40 +34,21 @@ BroadcastOpHandle::BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
     : local_scopes_(local_scopes), places_(places) {}
 
 void BroadcastOpHandle::RunImpl() {
-  // the input may have dummy var.
-  std::vector<VarHandle *> in_var_handle;
-  for (auto *in : inputs_) {
-    auto *out_handle = dynamic_cast<VarHandle *>(in);
-    if (out_handle) {
-      in_var_handle.push_back(out_handle);
-    }
-  }
+  // the input and output may have dummy var.
+  std::vector<VarHandle *> in_var_handle = GetValidVarHandles(inputs_);
+  std::vector<VarHandle *> out_var_handles = GetValidVarHandles(outputs_);
+
   PADDLE_ENFORCE_EQ(in_var_handle.size(), 1,
                     "The number of input should be one.");
-
-  // the output may have dummy var.
-  std::vector<VarHandle *> out_var_handles;
-  for (auto *out : outputs_) {
-    auto *out_handle = dynamic_cast<VarHandle *>(out);
-    if (out_handle) {
-      out_var_handles.push_back(out_handle);
-    }
-  }
-
   PADDLE_ENFORCE_EQ(
       out_var_handles.size(), places_.size(),
       "The number of output should equal to the number of places.");
 
-  // Wait input done, this Wait is asynchronous operation
-  auto &in_place = in_var_handle[0]->place_;
-  if (in_var_handle[0]->generated_op_) {
-    for (auto *out : out_var_handles) {
-      auto &out_p = out->place_;
-      in_var_handle[0]->generated_op_->Wait(dev_ctxes_[out_p]);
-    }
-  }
+  // Wait input done, this Wait is asynchronous operationplatform::Place
+  // &in_place;
+  WaitEvents(out_var_handles, in_var_handle);
 
-  //
+  auto in_place = in_var_handle[0]->place_;
   auto in_scope_idx = in_var_handle[0]->scope_idx_;
   auto in_var =
       local_scopes_.at(in_scope_idx)->FindVar(in_var_handle[0]->name_);
@@ -105,6 +86,29 @@ void BroadcastOpHandle::RunImpl() {
       paddle::framework::TensorCopy(*in_tensor, out_p, *(dev_ctx), out_tensor);
     });
   }
+}
+
+void BroadcastOpHandle::WaitEvents(
+    const std::vector<VarHandle *> &out_var_handles,
+    const std::vector<VarHandle *> &in_var_handle) {
+  if (in_var_handle[0]->generated_op_) {
+    for (auto *out : out_var_handles) {
+      auto &out_p = out->place_;
+      in_var_handle[0]->generated_op_->Wait(dev_ctxes_[out_p]);
+    }
+  }
+}
+
+std::vector<VarHandle *> BroadcastOpHandle::GetValidVarHandles(
+    const std::vector<VarHandleBase *> &inputs) {
+  std::vector<VarHandle *> in_var_handle;
+  for (auto *in : inputs) {
+    auto *out_handle = dynamic_cast<VarHandle *>(in);
+    if (out_handle) {
+      in_var_handle.push_back(out_handle);
+    }
+  }
+  return in_var_handle;
 }
 
 std::string BroadcastOpHandle::Name() const { return "broadcast"; }
