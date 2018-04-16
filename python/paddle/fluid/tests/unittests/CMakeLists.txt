@@ -1,10 +1,13 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-# The fully connected test is removed whe the WITH_MKLDNN flag is OFF
-# Because the fully connected layer has only one kernel (MKLDNN)
+# The MKLDNN tests are skiped when the MKLDNN flag is OFF
 if(NOT WITH_MKLDNN)
-    list(REMOVE_ITEM TEST_OPS test_fc_op)
+    foreach(src ${TEST_OPS})
+        if(${src} MATCHES ".*_mkldnn_op$")
+            list(REMOVE_ITEM TEST_OPS ${src})
+        endif()
+    endforeach()
 endif(NOT WITH_MKLDNN)
 
 if(NOT WITH_DISTRIBUTE)
