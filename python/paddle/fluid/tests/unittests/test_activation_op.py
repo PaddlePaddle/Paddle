@@ -361,10 +361,7 @@ class TestCeil(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+    # The same reason with TestFloor
 
     def init_dtype(self):
         pass
@@ -396,10 +393,8 @@ class TestFloor(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+    # the gradient on floor, ceil, round is undefined.
+    # we return zero as gradient, but the numpy return nan 
 
     def init_dtype(self):
         pass
@@ -500,11 +495,6 @@ class TestRound(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
     def init_dtype(self):
         pass
