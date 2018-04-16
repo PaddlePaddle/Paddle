@@ -206,18 +206,19 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   feed_dict={}):
         main = fluid.Program()
         startup = fluid.Program()
+        startup.random_seed = 1  # Fix random seed
         with fluid.program_guard(main, startup):
             loss = method(use_feed=len(feed_dict) > 0)
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
             if memory_opt:
                 fluid.memory_optimize(main)
-
             place = fluid.CUDAPlace(0)
             startup_exe = fluid.Executor(place)
             startup_exe.run(startup)
 
-            exe = fluid.ParallelExecutor(True, loss_name=loss.name)
+            exe = fluid.ParallelExecutor(
+                True, loss_name=loss.name, allow_op_delay=allow_op_delay)
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
