@@ -12,32 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/send_op_handle.h"
+#pragma once
+
+#include <map>
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-SendOpHandle::SendOpHandle(const framework::OpDesc &op_desc,
-                           const Scope *local_scope,
-                           const platform::Place &place)
-    : op_(framework::OpRegistry::CreateOp(op_desc)),
-      local_scope_(local_scope),
-      place_(place) {}
+struct GatherOpHandle : public OpHandleBase {
+  const std::vector<Scope *> &local_scopes_;
+  const std::vector<platform::Place> &places_;
 
-void SendOpHandle::RunImpl() {
-  // Wait input done
-  for (auto *in : inputs_) {
-    auto &p = static_cast<VarHandle *>(in)->place_;
-    if (in->DebugString() == "dummy") {  // HACK
-      continue;
-    }
-    in->generated_op_->Wait(dev_ctxes_[p]);
-  }
-  this->RunAndRecordEvent([&] { op_->Run(*local_scope_, place_); });
-}
+  GatherOpHandle(const std::vector<Scope *> &local_scopes,
+                 const std::vector<platform::Place> &places);
 
-std::string SendOpHandle::Name() const { return "send"; }
+  std::string Name() const override;
+
+  bool IsMultiDeviceTransfer() override { return false; };
+
+ protected:
+  void RunImpl() override;
+};
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
