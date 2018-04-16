@@ -162,7 +162,7 @@ inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
   return *this;
 }
 
-inline Tensor& Tensor::ShareDataWith(Tensor* src, size_t offset) {
+inline Tensor& Tensor::ShareDataWith(const Tensor* src, size_t offset) {
   // NOTE: data size is determined by current tensor shape and data type
   src->check_memory_size();
   PADDLE_ENFORCE_EQ(src->type(), this->type(),
@@ -170,7 +170,7 @@ inline Tensor& Tensor::ShareDataWith(Tensor* src, size_t offset) {
   auto place = src->place();
   auto type = src->type();
   size_t size = src->numel() * SizeOfType(src->type());
-  auto* ref = static_cast<uint8_t*>(src->mutable_data(place)) + offset;
+  auto* ref = src->data<uint8_t>() + offset;
   if (platform::is_cpu_place(place)) {
     holder_.reset(new SharedPlaceholderImpl<platform::CPUPlace>(
         boost::get<platform::CPUPlace>(place), ref, size, type));
