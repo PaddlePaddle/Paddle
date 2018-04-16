@@ -5,9 +5,10 @@
 For the typical synchronous distributed training, some significant steps are as follows:
 
 1. A Trainer will compute the gradients and SEND them to the Parameter Server(PServer) nodes.
-1. After the PServer node received gradients came from all the Trainers,
-it would apply the gradient to the respective variables, and using an optimize algorithms(SGD,
-Momentment...) to update the parameters.
+1. After the PServer node received gradients came from all the Trainers, It will aggregate the
+gradient variables for the same parameter into one gradient variable and then apply the aggregated
+gradient to the respective parameter, finally using an optimize algorithms(SGD, Monument...)
+to update the parameters.
 1. The Trainer would wait for the PServers finished the optimize stage, and GET the parameters from PServer,
 so all the Trainers would get the same parameters.
 
@@ -38,7 +39,7 @@ mini-batch.
 ### Trainer
 
 - For the multiple devices distributed training, we need to aggregate the gradient
-variables which placed on different devices firstly, and then schedule a `SendVars` Operator to
+variables which placed on different devices firstly and then schedule a `SendVars` Operator to
 send the gradient variables to the multiple PServer instances.
 - Schedule `FetchVars` operator to fetch the latest parameter from PServer before running
 the forward ops.
