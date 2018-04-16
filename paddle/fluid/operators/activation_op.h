@@ -52,19 +52,6 @@ class ActivationKernel
       *attr.second = context.Attr<float>(attr.first);
     }
     functor(*place, x, out);
-
-    std::vector<T> vec;
-    framework::TensorToVector<T>(*context.Output<framework::Tensor>("Out"),
-                                 context.device_context(), &vec);
-
-    // std::cout << std::typeid(T);
-
-    for (size_t i = 0; i < vec.size(); i++) {
-      // std::cout << t << std::endl;
-      // printf("vector:%ld %f\n",i, vec[i]);
-      // float a = vec[i];
-      // std::cout << vec[i] << " ";
-    }
   }
 };
 
