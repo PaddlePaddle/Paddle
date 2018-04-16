@@ -54,6 +54,7 @@ Training nodes will run your `ENTRYPOINT` script with the following environment 
  - `TRAINERS`: trainer count
  - `SERVER_ENDPOINT`: current server end point if the node role is a pserver
  - `TRAINER_INDEX`: an integer to identify the index of current trainer if the node role is a trainer.
+ - `PADDLE_INIT_TRAINER_ID`: same as above
 
  Now we have a working distributed training script which takes advantage of node environment variables and docker file to generate the training image. Run the following command:
 
@@ -81,8 +82,7 @@ putcn/paddle_aws_client \
 --action create \
 --key_name <your key pare name> \
 --security_group_id <your security group id> \
---pserver_image_id <your pserver image id> \
---trainer_image_id <your trainer images id> \
+--docker_image myreponame/paddle_benchmark \
 --pserver_count 2 \
 --trainer_count 2
 ```
@@ -146,7 +146,7 @@ When the training is finished, pservers and trainers will be terminated. All the
 Master exposes 4 major services:
 
  - GET `/status`: return master log
- - GET `/list_logs`: return list of log file names
+ - GET `/logs`: return list of log file names
  - GET `/log/<logfile name>`: return a particular log by log file name
  - POST `/cleanup`: teardown the whole setup
 
