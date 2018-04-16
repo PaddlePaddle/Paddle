@@ -1,4 +1,4 @@
-## Asynchronous training design doc
+## distributed training overview doc
 
 Currently Paddle Fluid use parameter server architecture to support distributed training.
 
