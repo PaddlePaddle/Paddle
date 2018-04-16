@@ -98,6 +98,9 @@ class Tensor {
   /*! The internal of two tensors share the same memory block. */
   inline Tensor& ShareDataWith(const Tensor& src);
 
+  /*! Share part of the memory of the two tensors */
+  inline Tensor& ShareDataWith(Tensor* src, size_t offset);
+
   /**
    * @brief  Return a sub-tensor of the given tensor.
    *
@@ -165,6 +168,32 @@ class Tensor {
 
     /*! the pointer of memory block. */
     std::unique_ptr<uint8_t, memory::PODDeleter<uint8_t, Place>> ptr_;
+
+    /*! the place of memory block. */
+    platform::Place place_;
+
+    /*! the size of memory block. */
+    size_t size_;
+
+    /* the current type of memory */
+    std::type_index type_;
+  };
+
+  template <typename Place>
+  struct SharedPlaceholderImpl : public Placeholder {
+    SharedPlaceholderImpl(Place place, uint8_t* data, size_t size,
+                          std::type_index type)
+        : ptr_(data), place_(place), size_(size), type_(type) {}
+
+    virtual size_t size() const { return size_; }
+    virtual platform::Place place() const { return place_; }
+    virtual void* ptr() const { return static_cast<void*>(ptr_); }
+    virtual std::type_index type() const { return type_; }
+    virtual void set_type(std::type_index type) { type_ = type; }
+    virtual void set_place(platform::Place place) { place_ = place; }
+
+    /*! the pointer of memory block. */
+    uint8_t* ptr_;
 
     /*! the place of memory block. */
     platform::Place place_;

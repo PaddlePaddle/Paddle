@@ -162,6 +162,37 @@ inline Tensor& Tensor::ShareDataWith(const Tensor& src) {
   return *this;
 }
 
+inline Tensor& Tensor::ShareDataWith(Tensor* src, size_t offset) {
+  // NOTE: data size is determined by current tensor shape and data type
+  src->check_memory_size();
+  PADDLE_ENFORCE_EQ(src->type(), this->type(),
+                    "tensor data type must be the same when sharing data");
+  auto place = src->place();
+  auto type = src->type();
+  size_t size = src->numel() * SizeOfType(src->type());
+  auto* ref = static_cast<uint8_t*>(src->mutable_data(place)) + offset;
+  if (platform::is_cpu_place(place)) {
+    holder_.reset(new SharedPlaceholderImpl<platform::CPUPlace>(
+        boost::get<platform::CPUPlace>(place), ref, size, type));
+  } else if (platform::is_gpu_place(place) ||
+             platform::is_cuda_pinned_place(place)) {
+#ifndef PADDLE_WITH_CUDA
+    PADDLE_THROW(
+        "CUDAPlace or CUDAPinnedPlace is not supported in CPU-only mode.");
+  }
+#else
+    if (platform::is_gpu_place(place)) {
+      holder_.reset(new SharedPlaceholderImpl<platform::CUDAPlace>(
+          boost::get<platform::CUDAPlace>(place), ref, size, type));
+    } else if (platform::is_cuda_pinned_place(place)) {
+      holder_.reset(new SharedPlaceholderImpl<platform::CUDAPinnedPlace>(
+          boost::get<platform::CUDAPinnedPlace>(place), ref, size, type));
+    }
+  }
+#endif
+  return *this;
+}
+
 inline Tensor Tensor::Slice(int begin_idx, int end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,
