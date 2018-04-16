@@ -74,10 +74,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   std::vector<float> out_vec;
   TensorToVector(*out_tensor, ctx, &out_vec);
   ctx.Wait();
-  for (int i = 0; i < out_vec.size(); ++i) {
-    std::cout << out_vec[i] << " ";
-  }
-  std::cout << std::endl;
 
   std::vector<float> std_out = {
       0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1,
