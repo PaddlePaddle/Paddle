@@ -510,6 +510,11 @@ All parameter, weight, gradient are variables in Paddle.
              return &self.GetLocalScopes();
            },
            py::return_value_policy::reference)
+      .def("local_scopes_len",
+           [](ParallelExecutor &self) { return self.GetLocalScopes().size(); })
+      .def("local_scope", [](ParallelExecutor &self,
+                             size_t i) { return self.GetLocalScopes()[i]; },
+           py::return_value_policy::reference)
       .def("run", &ParallelExecutor::Run);
 
   BindRecordIOWriter(&m);
