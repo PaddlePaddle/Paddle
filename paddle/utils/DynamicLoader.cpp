@@ -32,6 +32,8 @@ DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
 
 DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
 
+DEFINE_string(tensorrt_dir, "", "Specify path for loading libnvinfer.so.");
+
 static inline std::string join(const std::string& part1,
                                const std::string& part2) {
   // directory separator
