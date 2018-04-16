@@ -62,6 +62,11 @@ class OpHandleBase {
   virtual bool IsMultiDeviceTransfer() { return false; }
 
  protected:
+  void RunAndRecordEvent(const std::function<void()> &callback);
+
+  void RunAndRecordEvent(platform::Place p,
+                         const std::function<void()> &callback);
+
   virtual void RunImpl() = 0;
 };
 
