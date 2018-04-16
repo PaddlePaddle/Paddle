@@ -2,12 +2,14 @@
 
 Currently Paddle Fluid use parameter server architecture to support distributed training. The architecture is:
 
-![lookup table training](./src/distributed_training.png)
+
 
 ### Synchronous training
 For synchronous and asynchronous training, the differences are mostly in the logic of parameter server. Now we have already support synchronous training.
 
 The training process of synchronous training is:
+
+![lookup table training](./src/sync_distributed_training.png)
 
 1. Pserver
 	1. set `barrier_condition_` to 0 and waits for trainers to send gradient.
@@ -33,6 +35,8 @@ The training process of synchronous training is:
 In the above process. There are two barriers for all trainers to synchronize with each other. In asynchronous training, these two barriers are not needed. The trainer can just send gradients to pserver and then get parameters back.
 
 The training process of asynchronous training can be:
+
+![lookup table training](./src/async_distributed_training.png)
 
 1. Pserver:
 	1. Each parameter has a queue to receive its gradient from trainers.
