@@ -121,7 +121,7 @@ void ReduceOpHandle::RunImpl() {
         auto &p = in_places[i];
         auto &lod_tensor = lod_tensors[i];
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
-        auto &nccl_ctx = nccl_ctxs_.at(dev_id);
+        auto &nccl_ctx = nccl_ctxs_->at(dev_id);
         auto stream = nccl_ctx.stream();
         auto comm = nccl_ctx.comm_;
 

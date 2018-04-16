@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/details/nccl_all_reduce_op_handle.h"
 #include <algorithm>
-#include "paddle/fluid/framework/details/reduce_util.h"
+#include "paddle/fluid/framework/details/reduce_and_gather.h"
 
 namespace paddle {
 namespace framework {
