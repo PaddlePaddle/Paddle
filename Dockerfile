@@ -57,7 +57,7 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN pip install --upgrade pip && \
+RUN pip install --upgrade pip==9.0.3 && \
     pip install -U wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark
