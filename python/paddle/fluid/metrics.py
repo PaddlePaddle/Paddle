@@ -177,7 +177,7 @@ class ChunkEvaluator(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(ChunkEvalutor, self).__init__(name)
+        super(ChunkEvaluator, self).__init__(name)
         self.num_infer_chunks = 0
         self.num_label_chunks = 0
         self.num_correct_chunks = 0
