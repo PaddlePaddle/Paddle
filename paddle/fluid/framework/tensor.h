@@ -99,7 +99,7 @@ class Tensor {
   inline Tensor& ShareDataWith(const Tensor& src);
 
   /*! Share part of the memory of the two tensors */
-  inline Tensor& ShareDataWith(Tensor* src, size_t offset);
+  inline Tensor& ShareDataWith(const Tensor* src, size_t offset);
 
   /**
    * @brief  Return a sub-tensor of the given tensor.
@@ -181,19 +181,21 @@ class Tensor {
 
   template <typename Place>
   struct SharedPlaceholderImpl : public Placeholder {
-    SharedPlaceholderImpl(Place place, uint8_t* data, size_t size,
+    SharedPlaceholderImpl(Place place, const uint8_t* data, size_t size,
                           std::type_index type)
         : ptr_(data), place_(place), size_(size), type_(type) {}
 
     virtual size_t size() const { return size_; }
     virtual platform::Place place() const { return place_; }
-    virtual void* ptr() const { return static_cast<void*>(ptr_); }
+    virtual void* ptr() const {
+      return const_cast<void*>(static_cast<const void*>(ptr_));
+    }
     virtual std::type_index type() const { return type_; }
     virtual void set_type(std::type_index type) { type_ = type; }
     virtual void set_place(platform::Place place) { place_ = place; }
 
     /*! the pointer of memory block. */
-    uint8_t* ptr_;
+    const uint8_t* ptr_;
 
     /*! the place of memory block. */
     platform::Place place_;
