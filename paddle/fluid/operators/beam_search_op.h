@@ -18,6 +18,8 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #endif
 
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 
