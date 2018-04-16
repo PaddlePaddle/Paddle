@@ -61,7 +61,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   f::AttributeMap attrs;
   float dropout_prob = 0.5;
-  attrs.insert({"is_test", 1}) attrs.insert({"fix_seed", 1});
+  attrs.insert({"is_test", 1});
+  attrs.insert({"fix_seed", 1});
   attrs.insert({"seed", 3});
   attrs.insert({"dropout_prob", dropout_prob});
   auto dropout_op = f::OpRegistry::CreateOp(
