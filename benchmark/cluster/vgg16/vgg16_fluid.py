@@ -254,7 +254,6 @@ def main():
             pserver_prog = t.get_pserver_program(current_endpoint)
             pserver_startup = t.get_startup_program(current_endpoint,
                                                     pserver_prog)
-
             exe.run(pserver_startup)
             exe.run(pserver_prog)
         elif training_role == "TRAINER":
