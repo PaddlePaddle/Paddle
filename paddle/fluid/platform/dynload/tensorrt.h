@@ -28,9 +28,6 @@ namespace dynload {
 extern std::once_flag tensorrt_dso_flag;
 extern void* tensorrt_dso_handle;
 
-// using nvinfer1::createInferBuilder;
-// using nvinfer1::createInferRuntime;
-
 #ifdef PADDLE_USE_DSO
 
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_WRAP(__name)                      \

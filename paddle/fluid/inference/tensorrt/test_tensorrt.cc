@@ -55,9 +55,9 @@ class ScopedWeights {
   nvinfer1::Weights w;
 };
 
-// Fix the dynload issue, the following two API are implemented in TensorRT's
-// header file, cannot load from the dynamic library. So create our own
-// implementation and directly trigger the method from the dynamic library.
+// The following two API are implemented in TensorRT's header file, cannot load
+// from the dynamic library. So create our own implementation and directly
+// trigger the method from the dynamic library.
 nvinfer1::IBuilder* createInferBuilder(nvinfer1::ILogger& logger) {
   return static_cast<nvinfer1::IBuilder*>(
       dy::createInferBuilder_INTERNAL(&logger, NV_TENSORRT_VERSION));
