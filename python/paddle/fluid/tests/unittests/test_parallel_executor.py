@@ -204,13 +204,13 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   batch_size=None,
                                   allow_op_delay=False,
                                   feed_dict={},
-                                  random_seed=None,
+                                  seed=None,
                                   use_parallel_executor=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             if seed is not None:
-                startup.random_seed(random_seed)
+                startup.random_seed = seed
             loss = method(use_feed=len(feed_dict) > 0)
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
@@ -278,9 +278,9 @@ class TestMNIST(TestParallelExecutorBase):
 
     def test_simple_fc_parallel_accuracy(self):
         single_first_loss, single_last_loss = self.check_network_convergence(
-            simple_fc_net, random_seed=0, use_parallel_executor=False)
+            simple_fc_net, seed=0, use_parallel_executor=False)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
-            simple_fc_net, random_seed=0, use_parallel_executor=True)
+            simple_fc_net, seed=0, use_parallel_executor=True)
         print("FUCK")
         print('single_first_loss=', single_first_loss)
         print('single_last_loss=', single_last_loss)
