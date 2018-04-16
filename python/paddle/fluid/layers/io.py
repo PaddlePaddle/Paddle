@@ -283,7 +283,7 @@ def open_recordio_file(filename,
                        lod_levels,
                        dtypes,
                        pass_num=1,
-                       for_parallel=False):
+                       for_parallel=True):
     """
     Open a RecordIO file
 
@@ -357,7 +357,7 @@ def open_files(filenames,
                thread_num,
                buffer_size=None,
                pass_num=1,
-               for_parallel=False):
+               for_parallel=True):
     """
     Open files
 
