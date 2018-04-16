@@ -180,8 +180,12 @@ set(EXTERNAL_LIBS
 
 if(WITH_GPU)
     include(cuda)
-    set(WITH_TENSORRT ON)
 endif(WITH_GPU)
+
+# TensorRT depends on GPU.
+if (NOT WITH_GPU)
+  set(WITH_TENSORRT OFF)
+endif()
 
 if(WITH_AMD_GPU)
     find_package(HIP)
