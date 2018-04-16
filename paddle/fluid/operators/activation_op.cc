@@ -476,6 +476,7 @@ namespace ops = paddle::operators;
   __macro(sigmoid, Sigmoid);          \
   __macro(logsigmoid, LogSigmoid);    \
   __macro(exp, Exp);                  \
+  __macro(relu, Relu);                \
   __macro(tanh, Tanh);                \
   __macro(softshrink, SoftShrink);    \
   __macro(sqrt, Sqrt);                \
