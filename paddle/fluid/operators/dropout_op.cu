@@ -75,8 +75,8 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
           size, x_data, cpu_mask.CUDAData(context.GetPlace()), mask_data,
           y_data);
     } else {
-      auto X = EigenMatrix<T>::Reshape(*x, 1);
-      auto Y = EigenMatrix<T>::Reshape(*y, 1);
+      auto X = EigenVector<T>::Flatten(*x);
+      auto Y = EigenVector<T>::Flatten(*y);
       Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
   }

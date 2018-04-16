@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <unistd.h>
+#include <iostream>
 
 #include <string>
 #include <thread>  // NOLINT
@@ -61,8 +62,8 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   f::AttributeMap attrs;
   float dropout_prob = 0.5;
-  attrs.insert({"is_test", 1});
-  attrs.insert({"fix_seed", 1});
+  attrs.insert({"is_test", false});
+  attrs.insert({"fix_seed", true});
   attrs.insert({"seed", 3});
   attrs.insert({"dropout_prob", dropout_prob});
   auto dropout_op = f::OpRegistry::CreateOp(
@@ -73,6 +74,10 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   std::vector<float> out_vec;
   TensorToVector(*out_tensor, ctx, &out_vec);
   ctx.Wait();
+  for (int i = 0; i < out_vec.size(); ++i) {
+    std::cout << out_vec[i] << " ";
+  }
+  std::cout << std::endl;
 
   std::vector<float> std_out = {
       0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1,
