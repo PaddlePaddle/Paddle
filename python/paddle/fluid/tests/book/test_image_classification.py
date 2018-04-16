@@ -226,6 +226,9 @@ def infer(use_cuda, save_dirname=None):
                           fetch_list=fetch_targets)
         print("infer results: ", results[0])
 
+        fluid.io.save_inference_model(save_dirname, feed_target_names,
+                                      fetch_targets, exe, inference_program)
+
 
 def main(net_type, use_cuda, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
@@ -239,17 +242,17 @@ def main(net_type, use_cuda, is_local=True):
 
 
 class TestImageClassification(unittest.TestCase):
-    def test_vgg_cuda(self):
-        with self.scope_prog_guard():
-            main('vgg', use_cuda=True)
+    #def test_vgg_cuda(self):
+    #    with self.scope_prog_guard():
+    #        main('vgg', use_cuda=True)
 
-    def test_resnet_cuda(self):
-        with self.scope_prog_guard():
-            main('resnet', use_cuda=True)
+    #def test_resnet_cuda(self):
+    #    with self.scope_prog_guard():
+    #        main('resnet', use_cuda=True)
 
-    def test_vgg_cpu(self):
-        with self.scope_prog_guard():
-            main('vgg', use_cuda=False)
+    #def test_vgg_cpu(self):
+    #    with self.scope_prog_guard():
+    #        main('vgg', use_cuda=False)
 
     def test_resnet_cpu(self):
         with self.scope_prog_guard():
