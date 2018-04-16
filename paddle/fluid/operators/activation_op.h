@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -51,6 +52,19 @@ class ActivationKernel
       *attr.second = context.Attr<float>(attr.first);
     }
     functor(*place, x, out);
+
+    std::vector<T> vec;
+    framework::TensorToVector<T>(*context.Output<framework::Tensor>("Out"),
+                                 context.device_context(), &vec);
+
+    // std::cout << std::typeid(T);
+
+    for (size_t i = 0; i < vec.size(); i++) {
+      // std::cout << t << std::endl;
+      // printf("vector:%ld %f\n",i, vec[i]);
+      // float a = vec[i];
+      // std::cout << vec[i] << " ";
+    }
   }
 };
 
@@ -688,6 +702,7 @@ struct PowFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
+    std::cout << "pow";
     out.device(d) = x.pow(static_cast<T>(factor));
   }
 };
