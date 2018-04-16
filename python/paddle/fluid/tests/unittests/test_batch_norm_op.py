@@ -230,8 +230,8 @@ class TestBatchNormOpInference(unittest.TestCase):
             SavedVariance="saved_variance",
             # attrs
             is_test=True,
-            use_mkldnn=self.use_mkldnn,
             data_layout=data_layout,
+            use_mkldnn=self.use_mkldnn,
             epsilon=epsilon)
 
         batch_norm_op.run(scope, place)
@@ -283,7 +283,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.allclose(np.array(tensor), np_array, atol=atol)
 
-    def test_with_place(self, place, data_layout, shape):
+    def check_with_place(self, place, data_layout, shape):
         # attr
         epsilon = 0.00001
         momentum = 0.9
@@ -301,16 +301,14 @@ class TestBatchNormOpTraining(unittest.TestCase):
         variance = np.ones(scale_shape).astype(np.float32)
 
         # run forward
-        y, saved_mean, var_ref = _reference_training(x, scale, bias, epsilon,
-                                                     data_layout)
+        y, saved_mean, saved_variance = _reference_training(
+            x, scale, bias, epsilon, data_layout)
         mean_out = saved_mean * (1. - momentum) + momentum * mean
-        variance_out = var_ref * (1. - momentum) + momentum * variance
-        saved_variance = 1. / np.sqrt(var_ref + epsilon)
-
+        variance_out = saved_variance * (1. - momentum) + momentum * variance
         # run backward
         y_grad = np.random.random_sample(shape).astype(np.float32)
         x_grad, scale_grad, bias_grad = _reference_grad(
-            x, y_grad, scale, saved_mean, var_ref, epsilon, data_layout)
+            x, y_grad, scale, saved_mean, saved_variance, epsilon, data_layout)
 
         var_dict = locals()
         var_dict['y@GRAD'] = y_grad
@@ -349,7 +347,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "epsilon": epsilon,
                     "is_test": False,
                     "data_layout": data_layout,
-                    "use_mkldnn": self.use_mkldnn,
+                    "use_mkldnn": self.use_mkldnn
                 })
             block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
@@ -392,14 +390,13 @@ class TestBatchNormOpTraining(unittest.TestCase):
         print "op test forward passed: ", str(place), data_layout
 
     def test_forward_backward(self):
-
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("batch_norm"):
             places.append(core.CUDAPlace(0))
 
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                self.test_with_place(place, data_format, [2, 3, 4, 5])
+                self.check_with_place(place, data_format, [2, 3, 4, 5])
 
 
 class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
@@ -408,10 +405,9 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
         self.use_mkldnn = True
 
     def test_check_output(self):
+        data_format = "NCHW"
         place = core.CPUPlace()
-
-        for data_format in ["NCHW"]:
-            self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+        self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
 
 
 class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
@@ -419,10 +415,9 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
         self.use_mkldnn = True
 
     def test_forward_backward(self):
+        data_format = "NCHW"
         place = core.CPUPlace()
-
-        for data_format in ["NCHW"]:
-            self.test_with_place(place, data_format, [2, 3, 4, 5])
+        self.check_with_place(place, data_format, [2, 3, 4, 5])
 
 
 if __name__ == '__main__':
