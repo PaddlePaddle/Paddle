@@ -18,85 +18,65 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class ActivationOp : public framework::OperatorWithKernel {
+template <bool use_mkldnn = false>
+class BaseActivationOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    if (use_mkldnn) {
+      framework::LibraryType library{framework::LibraryType::kPlain};
+#ifdef PADDLE_WITH_MKLDNN
+      if (library == framework::LibraryType::kPlain &&
+          platform::CanMKLDNNBeUsed(ctx)) {
+        library = framework::LibraryType::kMKLDNN;
+      }
+#endif
+      framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+      return framework::OpKernelType(
+          framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
+          ctx.GetPlace(), layout, library);
+    } else {
+      return framework::OperatorWithKernel::GetExpectedKernelType(ctx);
+    }
+  }
+};
+
+template <bool use_mkldnn>
+class ActivationOp : public BaseActivationOp<use_mkldnn> {
+ public:
+  using BaseActivationOp<use_mkldnn>::BaseActivationOp;
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
-class ActivationOpGrad : public framework::OperatorWithKernel {
+template <bool use_mkldnn = false>
+class ActivationOpGrad : public BaseActivationOp<use_mkldnn> {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
+  using BaseActivationOp<use_mkldnn>::BaseActivationOp;
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
   }
 };
 
-class SigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
+template <typename T>
+class ActivationOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Sigmoid operator");
-    AddOutput("Out", "Output of Sigmoid operator");
-    AddComment(R"DOC(
-Sigmoid Activation Operator
+  ActivationOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", string::Sprintf("Input of %s operator", T::Type));
+    AddOutput("Out", string::Sprintf("Output of %s operator", T::Type));
+    AddComment(string::Sprintf(R"DOC(
+%s Activation Operator
 
-$$out = \frac{1}{1 + e^{-x}}$$
+$$%s$$
 
-)DOC");
-  }
-};
-
-class LogSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  LogSigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of LogSigmoid operator");
-    AddOutput("Out", "Output of LogSigmoid operator");
-    AddComment(R"DOC(
-Logsigmoid Activation Operator
-
-$$out = \log \frac{1}{1 + e^{-x}}$$
-
-)DOC");
-  }
-};
-
-class ExpOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  ExpOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Exp operator");
-    AddOutput("Out", "Output of Exp operator");
-    AddComment(R"DOC(
-Exp Activation Operator.
-
-$out = e^x$
-
-)DOC");
-  }
-};
-
-class ReluOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  ReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Relu operator");
-    AddOutput("Out", "Output of Relu operator");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddComment(R"DOC(
-Relu Activation Operator.
-
-$out = \max(x, 0)$
-
-)DOC");
+)DOC",
+                               T::Type, T::Equation));
   }
 };
 
@@ -111,61 +91,6 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
 LeakyRelu Activation Operator.
 
 $out = \max(x, \alpha * x)$
-
-)DOC");
-  }
-};
-
-class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  SoftShrinkOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Softshrink operator");
-    AddOutput("Out", "Output of Softshrink operator");
-    AddAttr<float>("lambda", "non-negative offset").SetDefault(0.5f);
-    AddComment(R"DOC(
-Softshrink Activation Operator.
-
-$$
-out = \begin{cases} 
-    x - \lambda, \text{if } x > \lambda \\
-    x + \lambda, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
-
-)DOC");
-  }
-};
-
-class TanhOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  TanhOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Tanh operator");
-    AddOutput("Out", "Output of Tanh operator");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddComment(R"DOC(
-Tanh Activation Operator.
-
-$$out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
-
-)DOC");
-  }
-};
-
-class TanhShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  TanhShrinkOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of TanhShrink operator");
-    AddOutput("Out", "Output of TanhShrink operator");
-    AddComment(R"DOC(
-TanhShrink Activation Operator.
-
-$$out = x - \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC");
   }
@@ -189,194 +114,6 @@ out = \begin{cases}
     0,  \text{otherwise}
     \end{cases}
 $$
-
-)DOC");
-  }
-};
-
-class SqrtOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  SqrtOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Sqrt operator");
-    AddOutput("Out", "Output of Sqrt operator");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddComment(R"DOC(
-Sqrt Activation Operator.
-
-$out = \sqrt{x}$
-
-)DOC");
-  }
-};
-
-class AbsOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  AbsOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Abs operator");
-    AddOutput("Out", "Output of Abs operator");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddComment(R"DOC(
-Abs Activation Operator.
-
-$out = |x|$
-
-)DOC");
-  }
-};
-
-class CeilOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  CeilOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Ceil operator");
-    AddOutput("Out", "Output of Ceil operator");
-    AddComment(R"DOC(
-Ceil Activation Operator.
-
-$out = ceil(x)$
-
-)DOC");
-  }
-};
-
-class FloorOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  FloorOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Floor operator");
-    AddOutput("Out", "Output of Floor operator");
-    AddComment(R"DOC(
-Floor Activation Operator.
-
-$out = floor(x)$
-
-)DOC");
-  }
-};
-
-class CosOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  CosOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Cosine operator");
-    AddOutput("Out", "Output of Cosine operator");
-    AddComment(R"DOC(
-Cosine Activation Operator.
-
-$out = cos(x)$
-
-)DOC");
-  }
-};
-
-class SinOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  SinOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Sine operator");
-    AddOutput("Out", "Output of Sine operator");
-    AddComment(R"DOC(
-Sine Activation Operator.
-
-$out = sin(x)$
-
-)DOC");
-  }
-};
-
-class RoundOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  RoundOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Round operator");
-    AddOutput("Out", "Output of Round operator");
-    AddComment(R"DOC(
-Round Activation Operator.
-
-$out = [x]$
-
-)DOC");
-  }
-};
-
-class ReciprocalOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  ReciprocalOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Reciprocal operator");
-    AddOutput("Out", "Output of Reciprocal operator");
-    AddComment(R"DOC(
-Reciprocal Activation Operator.
-
-$$out = \frac{1}{x}$$
-
-)DOC");
-  }
-};
-
-class LogOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  LogOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Log operator");
-    AddOutput("Out", "Output of Log operator");
-    AddComment(R"DOC(
-Log Activation Operator.
-
-$out = \ln(x)$
-
-Natural logarithm of x.
-
-)DOC");
-  }
-};
-
-class SquareOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  SquareOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Square operator");
-    AddOutput("Out", "Output of Square operator");
-    AddComment(R"DOC(
-Square Activation Operator.
-
-$out = x^2$
-
-)DOC");
-  }
-};
-
-class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  SoftplusOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Softplus operator");
-    AddOutput("Out", "Output of Softplus operator");
-    AddComment(R"DOC(
-Softplus Activation Operator.
-
-$out = \ln(1 + e^{x})$
-
-)DOC");
-  }
-};
-
-class SoftsignOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  SoftsignOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
-    AddInput("X", "Input of Softsign operator");
-    AddOutput("Out", "Output of Softsign operator");
-    AddComment(R"DOC(
-Softsign Activation Operator.
-
-$$out = \frac{x}{1 + |x|}$$
 
 )DOC");
   }
@@ -558,95 +295,61 @@ $$out = \frac{x}{1 + e^{- \beta x}}$$
 
 namespace ops = paddle::operators;
 
-REGISTER_OP(sigmoid, ops::ActivationOp, ops::SigmoidOpMaker, sigmoid_grad,
-            ops::ActivationOpGrad);
+#define REGISTER_ACTIVATION_EX(op_type, maker, use_mkldnn)                   \
+  REGISTER_OP(op_type, ops::ActivationOp<use_mkldnn>, maker, op_type##_grad, \
+              ops::ActivationOpGrad<use_mkldnn>)
 
-REGISTER_OP(logsigmoid, ops::ActivationOp, ops::LogSigmoidOpMaker,
-            logsigmoid_grad, ops::ActivationOpGrad);
+#define REGISTER_ACTIVATION_WITH_EQUATION(op_type, equation, use_mkldnn) \
+  struct op_type##OpMakerTrait {                                         \
+    static constexpr char Type[] = #op_type;                             \
+    static constexpr char Equation[] = equation;                         \
+  };                                                                     \
+  using op_type##Maker = ops::ActivationOpMaker<op_type##OpMakerTrait>;  \
+  REGISTER_ACTIVATION_EX(op_type, op_type##Maker, use_mkldnn)
 
-REGISTER_OP(exp, ops::ActivationOp, ops::ExpOpMaker, exp_grad,
-            ops::ActivationOpGrad);
+#define REGISTER_ACTIVATION(op_type, equation) \
+  REGISTER_ACTIVATION_WITH_EQUATION(op_type, equation, false)
 
-REGISTER_OP(relu, ops::ActivationWithMKLDNNOp, ops::ReluOpMaker, relu_grad,
-            ops::ActivationWithMKLDNNOpGrad);
+#define REGISTER_MKLDNN_ACTIVATION(op_type, equation) \
+  REGISTER_ACTIVATION_WITH_EQUATION(op_type, equation, true)
 
-REGISTER_OP(tanh, ops::ActivationWithMKLDNNOp, ops::TanhOpMaker, tanh_grad,
-            ops::ActivationWithMKLDNNOpGrad);
+REGISTER_ACTIVATION(sigmoid, R"DOC(out = \\frac{1}{1 + e^{-x}})DOC");
+REGISTER_ACTIVATION(logsigmoid, R"DOC(out = \\log \\frac{1}{1 + e^{-x}})DOC");
+REGISTER_ACTIVATION(exp, R"DOC(out = e^x)DOC");
+REGISTER_MKLDNN_ACTIVATION(relu, R"DOC(out = \max(x, 0))DOC");
+REGISTER_MKLDNN_ACTIVATION(
+    tanh, R"DOC(out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}})DOC");
+REGISTER_ACTIVATION(tanh_shrink,
+                    R"DOC(out = x - \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}})DOC");
+REGISTER_ACTIVATION(softshrink, R"DOC(out = \begin{cases}
+    x - \lambda, \text{if } x > \lambda \\
+    x + \lambda, \text{if } x < -\lambda \\
+    0,  \text{otherwise}
+    \end{cases})DOC");
 
-REGISTER_OP(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
-            tanh_shrink_grad, ops::ActivationOpGrad);
-
-REGISTER_OP(softshrink, ops::ActivationOp, ops::SoftShrinkOpMaker,
-            softshrink_grad, ops::ActivationOpGrad);
-
-REGISTER_OP(sqrt, ops::ActivationWithMKLDNNOp, ops::SqrtOpMaker, sqrt_grad,
-            ops::ActivationWithMKLDNNOpGrad);
-
-REGISTER_OP(abs, ops::ActivationWithMKLDNNOp, ops::AbsOpMaker, abs_grad,
-            ops::ActivationWithMKLDNNOpGrad);
-
-REGISTER_OP(ceil, ops::ActivationOp, ops::CeilOpMaker, ceil_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(floor, ops::ActivationOp, ops::FloorOpMaker, floor_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(cos, ops::ActivationOp, ops::CosOpMaker, cos_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(sin, ops::ActivationOp, ops::SinOpMaker, sin_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(round, ops::ActivationOp, ops::RoundOpMaker, round_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(reciprocal, ops::ActivationOp, ops::ReciprocalOpMaker,
-            reciprocal_grad, ops::ActivationOpGrad);
-
-REGISTER_OP(log, ops::ActivationOp, ops::LogOpMaker, log_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(square, ops::ActivationOp, ops::SquareOpMaker, square_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(softplus, ops::ActivationOp, ops::SoftplusOpMaker, softplus_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(softsign, ops::ActivationOp, ops::SoftsignOpMaker, softsign_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(brelu, ops::ActivationOp, ops::BReluOpMaker, brelu_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(leaky_relu, ops::ActivationOp, ops::LeakyReluOpMaker,
-            leaky_relu_grad, ops::ActivationOpGrad);
-
-REGISTER_OP(soft_relu, ops::ActivationOp, ops::SoftReluOpMaker, soft_relu_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(elu, ops::ActivationOp, ops::ELUOpMaker, elu_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(relu6, ops::ActivationOp, ops::Relu6OpMaker, relu6_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(pow, ops::ActivationOp, ops::PowOpMaker, pow_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(stanh, ops::ActivationOp, ops::STanhOpMaker, stanh_grad,
-            ops::ActivationOpGrad);
-
-REGISTER_OP(hard_shrink, ops::ActivationOp, ops::HardShrinkOpMaker,
-            hard_shrink_grad, ops::ActivationOpGrad);
-
-REGISTER_OP(thresholded_relu, ops::ActivationOp, ops::ThresholdedReluOpMaker,
-            thresholded_relu_grad, ops::ActivationOpGrad);
-
-REGISTER_OP(hard_sigmoid, ops::ActivationOp, ops::HardSigmoidOpMaker,
-            hard_sigmoid_grad, ops::ActivationOpGrad);
-
-REGISTER_OP(swish, ops::ActivationOp, ops::SwishOpMaker, swish_grad,
-            ops::ActivationOpGrad);
+REGISTER_MKLDNN_ACTIVATION(sqrt, R"DOC(out = \sqrt{x})DOC");
+REGISTER_MKLDNN_ACTIVATION(abs, R"DOC(out = |x|)DOC");
+REGISTER_ACTIVATION(ceil, R"DOC(out = ceil(x))DOC");
+REGISTER_ACTIVATION(floor, R"DOC(out = floor(x))DOC");
+REGISTER_ACTIVATION(cos, R"DOC(out = cos(x))DOC");
+REGISTER_ACTIVATION(sin, R"DOC(out = sin(x))DOC");
+REGISTER_ACTIVATION(round, R"DOC(out = [x])DOC");
+REGISTER_ACTIVATION(reciprocal, R"DOC(out = \frac{1}{x})DOC");
+REGISTER_ACTIVATION(log, R"DOC(out = log(x))DOC");
+REGISTER_ACTIVATION(square, R"DOC(out = x^2)DOC");
+REGISTER_ACTIVATION(softplus, R"DOC(out = \ln(1 + e^{x}))DOC");
+REGISTER_ACTIVATION(softsign, R"DOC(out = \frac{x}{1 + |x|})DOC");
+REGISTER_ACTIVATION_EX(brelu, ops::BReluOpMaker, false);
+REGISTER_ACTIVATION_EX(leaky_relu, ops::LeakyReluOpMaker, false);
+REGISTER_ACTIVATION_EX(soft_relu, ops::SoftReluOpMaker, false);
+REGISTER_ACTIVATION_EX(elu, ops::ELUOpMaker, false);
+REGISTER_ACTIVATION_EX(relu6, ops::Relu6OpMaker, false);
+REGISTER_ACTIVATION_EX(pow, ops::PowOpMaker, false);
+REGISTER_ACTIVATION_EX(stanh, ops::STanhOpMaker, false);
+REGISTER_ACTIVATION_EX(hard_shrink, ops::HardShrinkOpMaker, false);
+REGISTER_ACTIVATION_EX(thresholded_relu, ops::ThresholdedReluOpMaker, false);
+REGISTER_ACTIVATION_EX(hard_sigmoid, ops::HardSigmoidOpMaker, false);
+REGISTER_ACTIVATION_EX(swish, ops::SwishOpMaker, false);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)   \
   REGISTER_OP_CPU_KERNEL(                                                 \
