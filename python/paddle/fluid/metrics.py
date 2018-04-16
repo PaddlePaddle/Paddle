@@ -169,7 +169,7 @@ class Accuracy(MetricBase):
         return self.value / self.weight
 
 
-class ChunkEvalutor(MetricBase):
+class ChunkEvaluator(MetricBase):
     """
     Accumulate counter numbers output by chunk_eval from mini-batches and
     compute the precision recall and F1-score using the accumulated counter
