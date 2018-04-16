@@ -229,13 +229,13 @@ class TestParallelExecutorBase(unittest.TestCase):
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
-            first_loss, = exe.run([loss.name], feed_dict=feed_dict)
+            first_loss, = exe.run([loss.name], feed=feed_dict)
             first_loss = numpy.array(first_loss)
 
             for i in xrange(iter):
-                exe.run([], feed_dict=feed_dict)
+                exe.run([], feed=feed_dict)
 
-            last_loss, = exe.run([loss.name], feed_dict=feed_dict)
+            last_loss, = exe.run([loss.name], feed=feed_dict)
             end = time.time()
 
             if batch_size is not None:
@@ -277,11 +277,10 @@ class TestMNIST(TestParallelExecutorBase):
                                       "label": label})
 
     def test_simple_fc_parallel_accuracy(self):
-        single_first_loss, single_last_loss = self.check_network_convergence(
-            simple_fc_net, seed=0, use_parallel_executor=False)
-        parallel_first_loss, parallel_last_loss = self.check_network_convergence(
-            simple_fc_net, seed=0, use_parallel_executor=True)
-        print("FUCK")
+        #single_first_loss, single_last_loss = self.check_network_convergence(
+        #    simple_fc_net, seed=0, use_parallel_executor=False)
+        #parallel_first_loss, parallel_last_loss = self.check_network_convergence(
+        #    simple_fc_net, seed=0, use_parallel_executor=True)
         print('single_first_loss=', single_first_loss)
         print('single_last_loss=', single_last_loss)
         print('parallel_first_loss=', parallel_first_loss)
@@ -515,10 +514,10 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 share_vars_from=train_exe)
 
             for i in xrange(5):
-                test_loss, = test_exe.run([loss.name], feed_dict=feed_dict)
+                test_loss, = test_exe.run([loss.name], feed=feed_dict)
                 test_loss = numpy.array(test_loss)
 
-                train_loss, = train_exe.run([loss.name], feed_dict=feed_dict)
+                train_loss, = train_exe.run([loss.name], feed=feed_dict)
                 train_loss = numpy.array(train_loss)
                 self.assertTrue(
                     numpy.allclose(
@@ -668,5 +667,5 @@ class TestCRFModel(unittest.TestCase):
             for i in xrange(10):
                 cur_batch = next(data)
                 print map(numpy.array,
-                          pe.run(feed_dict=feeder.feed(cur_batch),
+                          pe.run(feed=feeder.feed(cur_batch),
                                  fetch_list=[avg_cost.name]))[0]
