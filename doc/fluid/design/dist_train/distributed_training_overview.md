@@ -1,4 +1,4 @@
-## distributed training overview doc
+## Distributed training overview doc
 
 Currently Paddle Fluid use parameter server architecture to support distributed training.
 
@@ -40,7 +40,7 @@ The training process of asynchronous training can be:
 1. Pserver:
 	1. Each parameter has a queue to receive its gradient from trainers.
 	1. Each parameter has a thread to read data from the queue and run optimize block, using the gradient to optimize the parameter.
-	1. Has an RPC interface for trainers to get parameters back.
+	1. Use a independente thread to handle RPC call `GetVariable` for trainers to get parameters back.(Maybe here we should use a thread pool to speed up the parameter fetch.)
 
 1. Trainer:
 	1. Trainer read a batch of data. Run forward and backward with local parameter copy and get the gradients for parameters.
