@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import math
-
 import numpy as np
+import os
+import time
+import unittest
+
 import paddle
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
-from paddle.fluid.initializer import init_on_cpu
-import contextlib
-import time
-import unittest
-import os
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
 word_dict_len = len(word_dict)

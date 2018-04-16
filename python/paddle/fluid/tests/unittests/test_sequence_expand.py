@@ -47,8 +47,10 @@ class TestSequenceExpand(OpTest):
             x_len = x_idx[i] - x_idx[i - 1]
             if repeat_num > 0:
                 x_sub = x_data[x_idx[i - 1]:x_idx[i], :]
-                x_sub = np.repeat(x_sub, repeat_num, axis=0)
-                out = np.vstack((out, x_sub))
+                stacked_x_sub = x_sub
+                for r in range(repeat_num - 1):
+                    stacked_x_sub = np.vstack((stacked_x_sub, x_sub))
+                out = np.vstack((out, stacked_x_sub))
                 if x_lod is not None:
                     for j in xrange(repeat_num):
                         out_lod[0].append(out_lod[0][-1] + x_len)
@@ -101,11 +103,11 @@ class TestSequenceExpandCase3(TestSequenceExpand):
 
 class TestSequenceExpandCase4(TestSequenceExpand):
     def set_data(self):
-        data = [0.1, 0.3, 0.2, 0.15, 0.25, 0.2, 0.15, 0.25, 0.1, 0.3]
+        data = np.random.uniform(0.1, 1, [5 * 2, 1])
         x_data = np.array(data).reshape([5, 2]).astype('float32')
         x_lod = [[0, 2, 5]]
-        y_data = np.random.uniform(0.1, 1, [2, 1]).astype('float32')
-        y_lod = [[0, 1, 2], [0, 1, 2]]
+        y_data = np.random.uniform(0.1, 1, [3, 1]).astype('float32')
+        y_lod = [[0, 1, 3], [0, 1, 3]]
         self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
 
 
