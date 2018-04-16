@@ -58,7 +58,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
       std::minstd_rand engine;
       engine.seed(seed);
-      size_t size = framework::product(mask->dims());
+      std::uniform_real_distribution<float> dist(0, 1);
       framework::Vector<T> cpu_mask(size);
       for (size_t i = 0; i < size; ++i) {
         if (dist(engine) < dropout_prob) {
