@@ -13,30 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
-#include "paddle/fluid/framework/details/gather_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-std::vector<VarHandle *> GetValidVarHandle(
-    const std::vector<VarHandleBase *> &inputs) {
-  std::vector<VarHandle *> in_var_handles;
-  for (auto *in : inputs) {
-    auto *in_handle = dynamic_cast<VarHandle *>(in);
-    if (in_handle) {
-      in_var_handles.push_back(in_handle);
-    }
-  }
-  return in_var_handles;
-}
-
 void ReduceOpHandle::RunImpl() {
   // the input and output may have dummy var.
-  std::vector<VarHandle *> in_var_handles = GetValidVarHandle(inputs_);
-  std::vector<VarHandle *> out_var_handles = GetValidVarHandle(outputs_);
+  std::vector<VarHandle *> in_var_handles = GetValidVarHandles(inputs_);
+  std::vector<VarHandle *> out_var_handles = GetValidVarHandles(outputs_);
 
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
@@ -45,15 +31,10 @@ void ReduceOpHandle::RunImpl() {
                     "The number of output should be one.");
 
   // Wait input done, this Wait is asynchronous operation
-  if (in_var_handles[0]->generated_op_) {
-    for (auto *in : in_var_handles) {
-      auto &in_p = in->place_;
-      in_var_handles[0]->generated_op_->Wait(dev_ctxes_[in_p]);
-    }
-  }
+  WaitEvents(in_var_handles);
 
   // check in the same place
-  auto in_0_handle = static_cast<VarHandle *>(in_var_handles[0]);
+  auto in_0_handle = in_var_handles[0];
   auto pre_place = in_0_handle->place_;
 
   std::vector<platform::Place> in_places;
@@ -120,6 +101,7 @@ void ReduceOpHandle::RunImpl() {
       for (size_t i = 0; i < local_scopes_.size(); ++i) {
         auto &p = in_places[i];
         auto &lod_tensor = lod_tensors[i];
+
         int dev_id = boost::get<platform::CUDAPlace>(p).device;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
         auto stream = nccl_ctx.stream();
@@ -139,17 +121,40 @@ void ReduceOpHandle::RunImpl() {
         });
       }
 
-      platform::NCCLGroupGuard guard;
-      for (auto &call : all_reduce_calls) {
-        call();
-      }
+      this->RunAndRecordEvent([&] {
+        platform::NCCLGroupGuard guard;
+        for (auto &call : all_reduce_calls) {
+          call();
+        }
+      });
 #else
       PADDLE_THROW("CUDA is not support.");
 #endif
     } else {
-      PADDLE_THROW("Error");
+      PADDLE_THROW("Place should be CPUPlace or CUDAPlace.");
     }
   }
+}
+
+void ReduceOpHandle::WaitEvents(
+    const std::vector<VarHandle *> &in_var_handles) {
+  if (in_var_handles[0]->generated_op_) {
+    for (auto *in : in_var_handles) {
+      in_var_handles[0]->generated_op_->Wait(dev_ctxes_[in->place_]);
+    }
+  }
+}
+
+std::vector<VarHandle *> ReduceOpHandle::GetValidVarHandles(
+    const std::vector<VarHandleBase *> &inputs) {
+  std::vector<VarHandle *> in_var_handles;
+  for (auto *in : inputs) {
+    auto *in_handle = dynamic_cast<VarHandle *>(in);
+    if (in_handle) {
+      in_var_handles.push_back(in_handle);
+    }
+  }
+  return in_var_handles;
 }
 std::string ReduceOpHandle::Name() const { return "reduce"; }
 }  // namespace details
