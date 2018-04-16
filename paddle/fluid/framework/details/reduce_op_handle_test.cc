@@ -44,7 +44,9 @@ struct TestReduceOpHandle {
       ctxs_[j]->Wait();
     }
 #ifdef PADDLE_WITH_CUDA
-    nccl_ctxs_->WaitAll();
+    if (nccl_ctxs_) {
+      nccl_ctxs_->WaitAll();
+    }
 #endif
   }
 
@@ -64,6 +66,7 @@ struct TestReduceOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new p::CUDADeviceContext(p));
       }
+      nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
 #else
       PADDLE_THROW("CUDA is not support.");
 #endif
@@ -74,10 +77,10 @@ struct TestReduceOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new p::CPUDeviceContext(p));
       }
-    }
 #ifdef PADDLE_WITH_CUDA
-    nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
+      nccl_ctxs_.reset(nullptr);
 #endif
+    }
   }
 
   void InitReduceOp(size_t input_scope_idx) {
@@ -87,15 +90,27 @@ struct TestReduceOpHandle {
     }
     local_scopes_[input_scope_idx]->Var("input");
 
+    if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
-    op_handle_.reset(new ReduceOpHandle(local_scopes_, gpu_list_, *nccl_ctxs_));
+      op_handle_.reset(
+          new ReduceOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
 #else
-    op_handle_.reset(new ReduceOpHandle(local_scopes_, gpu_list_));
+      PADDLE_THROW("CUDA is not support.");
 #endif
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      op_handle_.reset(
+          new ReduceOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
+#else
+      op_handle_.reset(new ReduceOpHandle(local_scopes_, gpu_list_));
+#endif
+    }
 
     // add input
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
-      op_handle_->dev_ctxes_[gpu_list_[j]] = ctxs_[j].get();
+      if (!use_gpu_) {
+        op_handle_->dev_ctxes_[gpu_list_[j]] = ctxs_[j].get();
+      }
       vars_.emplace_back(new VarHandle());
       VarHandle *in_var_handle = static_cast<VarHandle *>(vars_.back().get());
       in_var_handle->place_ = gpu_list_[j];
@@ -236,25 +251,31 @@ TEST(ReduceTester, TestCPUReduceTestSelectedRows) {
   test_op.InitReduceOp(input_scope_idx);
   test_op.TestReduceSelectedRows(input_scope_idx);
 }
+TEST(ReduceTester, TestCPUReduceTestLodTensor) {
+  TestReduceOpHandle test_op;
+  size_t input_scope_idx = 0;
+  test_op.InitCtxOnGpu(false);
+  test_op.InitReduceOp(input_scope_idx);
+  test_op.TestReduceLodTensors(input_scope_idx);
+}
+#ifdef PADDLE_WITH_CUDA
 
-// #ifdef PADDLE_WITH_CUDA
-//
-// TEST(ReduceTester, TestGPUReduceTestSelectedRows) {
-//  TestReduceOpHandle test_op;
-//  size_t input_scope_idx = 0;
-//  test_op.InitCtxOnGpu(true);
-//  test_op.InitReduceOp(input_scope_idx);
-//  test_op.TestReduceSelectedRows(input_scope_idx);
-// }
-//
-// TEST(ReduceTester, TestCPUReduceTestLodTensor) {
-//  TestReduceOpHandle test_op;
-//  size_t input_scope_idx = 0;
-//  test_op.InitCtxOnGpu(true);
-//  test_op.InitReduceOp(input_scope_idx);
-//  test_op.TestReduceLodTensors(input_scope_idx);
-// }
-// #endif
+TEST(ReduceTester, TestGPUReduceTestSelectedRows) {
+  TestReduceOpHandle test_op;
+  size_t input_scope_idx = 0;
+  test_op.InitCtxOnGpu(true);
+  test_op.InitReduceOp(input_scope_idx);
+  test_op.TestReduceSelectedRows(input_scope_idx);
+}
+
+TEST(ReduceTester, TestGPUReduceTestLodTensor) {
+  TestReduceOpHandle test_op;
+  size_t input_scope_idx = 0;
+  test_op.InitCtxOnGpu(true);
+  test_op.InitReduceOp(input_scope_idx);
+  test_op.TestReduceLodTensors(input_scope_idx);
+}
+#endif
 
 }  // namespace details
 }  // namespace framework
