@@ -15,9 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include <string>
 #include "paddle/fluid/framework/data_layout.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -114,11 +111,6 @@ class BatchNormOp : public framework::OperatorWithKernel {
                       "Variance input should be of float type");
 
     framework::LibraryType library_{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
-    if (platform::CanCUDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kCUDNN;
-    }
-#endif
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
@@ -126,8 +118,6 @@ class BatchNormOp : public framework::OperatorWithKernel {
     }
 #endif
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    // TODO(tpatejko): op registrar cannot find a batch norm kernel
-    // when data format is different than Any.
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                    library_);
@@ -146,7 +136,7 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
                          "'epsilon' should be between 0.0 and 0.001.");
         });
-    AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
+    AddAttr<std::string>("data_layout", "").SetDefault("AnyLayout");
     AddInput("X", "The input tensor");
     AddInput("Scale",
              "Scale is a 1-dimensional tensor of size C "
@@ -175,14 +165,9 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "Variance of the current mini batch, "
               "will apply to output when training")
         .AsIntermediate();
-    AddAttr<bool>(
-        "use_cudnn",
-        "(bool, default false) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(false);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-
     AddComment(R"DOC(
 Batch Normalization.
 
@@ -217,7 +202,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-
     const int sample_size = x->numel() / N / C;
 
     auto *y = ctx.Output<Tensor>("Y");
@@ -290,11 +274,12 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           ctx.Input<Tensor>("Variance")->data<T>(), C);
       inv_std = (var_arr + epsilon).sqrt().inverse();
     } else {
-      EigenVectorArrayMap<T> saved_var_arr(
+      EigenVectorArrayMap<T> saved_inv_std(
           ctx.Output<Tensor>("SavedVariance")->data<T>(), C);
-      inv_std = (saved_var_arr + epsilon).sqrt().inverse();
+      // inverse SavedVariance first, gradient will use it too.
+      saved_inv_std = (saved_inv_std + epsilon).inverse().sqrt();
+      inv_std = saved_inv_std;
     }
-
     ConstEigenVectorArrayMap<T> mean_arr(
         is_test ? ctx.Input<Tensor>("Mean")->data<T>()
                 : ctx.Output<Tensor>("SavedMean")->data<T>(),
@@ -344,7 +329,6 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("X"));
     PADDLE_ENFORCE(ctx->HasInput("Scale"), "");
-    PADDLE_ENFORCE(ctx->HasInput("Bias"), "");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")), "");
     PADDLE_ENFORCE(ctx->HasInput("SavedMean"), "");
     PADDLE_ENFORCE(ctx->HasInput("SavedVariance"), "");
@@ -384,11 +368,6 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     }
 
     framework::LibraryType library_{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
-    if (platform::CanCUDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kCUDNN;
-    }
-#endif
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
@@ -396,8 +375,6 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
     }
 #endif
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    // TODO(tpatejko): op registrar cannot find a batch norm kernel
-    // when data format is different than Any.
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
@@ -410,12 +387,12 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const float epsilon = ctx.Attr<float>("epsilon");
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
-    const auto *saved_variance = ctx.Input<Tensor>("SavedVariance");
+    // SavedVariance have been reverted in forward operator
+    const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
@@ -429,15 +406,11 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
-
     const int sample_size = x->numel() / N / C;
 
     ConstEigenVectorArrayMap<T> scale_arr(scale->data<T>(), C);
     ConstEigenVectorArrayMap<T> mean_arr(saved_mean->data<T>(), C);
-    ConstEigenVectorArrayMap<T> var_arr(saved_variance->data<T>(), C);
-
-    Eigen::Array<T, Eigen::Dynamic, 1> inv_var_arr =
-        (var_arr + epsilon).inverse().sqrt();
+    ConstEigenVectorArrayMap<T> inv_var_arr(saved_inv_variance->data<T>(), C);
 
     // init output
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
