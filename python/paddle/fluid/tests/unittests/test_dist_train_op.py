@@ -33,16 +33,17 @@ class TestSendOp(unittest.TestCase):
         p.daemon = True
         p.start()
 
-        time.sleep(8)
+        time.sleep(10)
         with open("/tmp/paddle.selected_port", "r") as fn:
             selected_port = int(fn.readlines()[0])
         self.init_client(place, selected_port)
-        # FIXME(typhoonzero): find a way to gracefully shutdown the server.
-        os.system("kill -9 %d" % p.pid)
-        p.join()
 
         self.run_local(place)
         self.assertTrue(numpy.allclose(self.local_out, self.dist_out))
+
+        # FIXME(typhoonzero): find a way to gracefully shutdown the server.
+        os.system("kill -9 %d" % p.pid)
+        p.join()
 
     def init_serv(self, place):
         main = fluid.Program()
