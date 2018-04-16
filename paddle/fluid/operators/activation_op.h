@@ -15,7 +15,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -689,7 +688,6 @@ struct PowFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    std::cout << "pow";
     out.device(d) = x.pow(static_cast<T>(factor));
   }
 };

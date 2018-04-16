@@ -40,7 +40,7 @@ def _decay_step_counter(begin=0):
     return global_step
 
 
-def nmt_nist_decay(learning_rate, d_model, warmup_steps):
+def nmt_nist_decay(d_model, warmup_steps):
     """Apply decay to learning rate.
 
     ```python
@@ -51,10 +51,8 @@ def nmt_nist_decay(learning_rate, d_model, warmup_steps):
     ```
 
     Args:
-        learning_rate: A scalar float32 value or a Variable. This
-          will be the initial learning rate during training
-        d_model:
-        warmup_steps:
+        d_model(Variable): A super parameter.
+        warmup_steps(Variable): A super parameter.
 
     Returns:
         The decayed learning rate.

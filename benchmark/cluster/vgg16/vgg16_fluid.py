@@ -148,8 +148,6 @@ def main():
     with fluid.program_guard(inference_program):
         inference_program = fluid.io.get_inference_program(batch_acc)
 
-    debuger.draw_block_graphviz(inference_program.blocks[0], path="./infer.dot")
-
     # Optimization
     optimizer = fluid.optimizer.Adam(learning_rate=args.learning_rate)
     optimize_ops, params_grads = optimizer.minimize(avg_cost)
@@ -257,8 +255,6 @@ def main():
             pserver_startup = t.get_startup_program(current_endpoint,
                                                     pserver_prog)
 
-            debuger.draw_block_graphviz(
-                pserver_prog.blocks[0], path="./pserver.dot")
             exe.run(pserver_startup)
             exe.run(pserver_prog)
         elif training_role == "TRAINER":
