@@ -203,10 +203,14 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   iter=10,
                                   batch_size=None,
                                   allow_op_delay=False,
-                                  feed_dict={}):
+                                  feed_dict={},
+                                  random_seed=None,
+                                  use_parallel_executor=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
+            if seed is not None:
+                startup.random_seed(random_seed)
             loss = method(use_feed=len(feed_dict) > 0)
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
@@ -217,7 +221,11 @@ class TestParallelExecutorBase(unittest.TestCase):
             startup_exe = fluid.Executor(place)
             startup_exe.run(startup)
 
-            exe = fluid.ParallelExecutor(True, loss_name=loss.name)
+            if use_parallel_executor:
+                exe = fluid.ParallelExecutor(True, loss_name=loss.name)
+            else:
+                exe = fluid.Executor(place=place)
+
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
@@ -238,6 +246,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
             print first_loss, last_loss
             # self.assertGreater(first_loss[0], last_loss[0])
+            return first_loss, last_loss
 
 
 class TestMNIST(TestParallelExecutorBase):
@@ -266,6 +275,17 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_network_convergence(
             simple_fc_net, feed_dict={"image": img,
                                       "label": label})
+
+    def test_simple_fc_parallel_accuracy(self):
+        single_first_loss, single_last_loss = self.check_network_convergence(
+            simple_fc_net, random_seed=0, use_parallel_executor=False)
+        parallel_first_loss, parallel_last_loss = self.check_network_convergence(
+            simple_fc_net, random_seed=0, use_parallel_executor=True)
+        print("FUCK")
+        print('single_first_loss=', single_first_loss)
+        print('single_last_loss=', single_last_loss)
+        print('parallel_first_loss=', parallel_first_loss)
+        print('parallel_last_loss=', parallel_last_loss)
 
     def test_batchnorm_fc(self):
         self.check_network_convergence(fc_with_batchnorm)
