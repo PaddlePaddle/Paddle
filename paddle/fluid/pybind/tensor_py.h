@@ -190,7 +190,6 @@ void PyCUDATensorSetFromArray(
       static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
   paddle::platform::GpuMemcpyAsync(dst, array.data(), sizeof(T) * array.size(),
                                    cudaMemcpyHostToDevice, dev_ctx->stream());
-  dev_ctx->Wait();
 }
 
 template <>
