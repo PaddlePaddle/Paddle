@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
@@ -41,9 +42,10 @@ inline int ConvOutputSize(int input_size, int filter_size, int dilation,
 
   return output_size;
 }
-inline bool IsExpand(std::vector<int64_t>& filter_dim,
-                     std::vector<int>& strides, std::vector<int>& paddings,
-                     std::vector<int>& dilations) {
+inline bool IsExpand(const std::vector<int64_t>& filter_dim,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& dilations) {
   bool filter_1 = true, strides_1 = true, padding_0 = true, dilation_1 = true;
   for (size_t j = 0; j < strides.size(); ++j) {
     filter_1 = filter_1 && (static_cast<int>(filter_dim[j + 2]) == 1);
