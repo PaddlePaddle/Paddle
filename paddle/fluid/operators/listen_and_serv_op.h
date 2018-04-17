@@ -30,7 +30,7 @@ namespace operators {
 constexpr char kOptimizeBlock[] = "OptimizeBlock";
 constexpr char kPrefetchBlock[] = "PrefetchBlock";
 
-void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service);
+void RunServer(std::shared_ptr<detail::SyncGRPCServer> service);
 
 class ListenAndServOp : public framework::OperatorBase {
  public:
@@ -47,7 +47,7 @@ class ListenAndServOp : public framework::OperatorBase {
                const platform::Place &dev_place) const override;
 
  protected:
-  mutable std::shared_ptr<detail::AsyncGRPCServer> rpc_service_;
+  mutable std::shared_ptr<detail::SyncGRPCServer> rpc_service_;
   mutable std::shared_ptr<std::thread> server_thread_;
 };
 
