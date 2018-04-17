@@ -5,9 +5,11 @@ In a large scale machine learning setup where the size of the training data is h
 
 Polyak and Juditsky (1992) showed that the test performance of simple average of parameters obtained by Stochastic Gradient Descent (SGD) is as good as that of parameter values that are obtained by training the model over and over again, over the training dataset.
 
-Hence, to accelerate the speed of Stochastic Gradient Descent, Averaged Stochastic Gradient Descent (ASGD) was proposed in Polyak and Juditsky (1992). For ASGD, the running average of parameters obtained by SGD, is used as the estimator for <img src="./images/theta_star.gif"/><br/> . The averaging is done as follows:
+Hence, to accelerate the speed of Stochastic Gradient Descent, Averaged Stochastic Gradient Descent (ASGD) was proposed in Polyak and Juditsky (1992). For ASGD, the running average of parameters obtained by SGD, is used as the estimator for <img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/theta_star.gif"/><br/> . The averaging is done as follows:
 
-<img src="./images/asgd.gif" align="center"/><br/>
+<p align="center">
+<img src="https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/asgd.gif"><br />
+</p>
 
 We propose averaging for any optimizer similar to how ASGD performs it, as mentioned above.
 

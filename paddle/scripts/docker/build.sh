@@ -53,6 +53,7 @@ function cmake_gen() {
         -DWITH_FAST_BUNDLE_TEST=ON
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -78,6 +79,7 @@ EOF
         -DWITH_TESTING=${WITH_TESTING:-ON} \
         -DWITH_FAST_BUNDLE_TEST=ON \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 }
 
@@ -102,7 +104,9 @@ EOF
         # make install should also be test when unittest
         make install -j `nproc`
         pip install /usr/local/opt/paddle/share/wheels/*.whl
-        paddle version
+        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
+            paddle version
+        fi
     fi
 }
 
@@ -123,9 +127,8 @@ EOF
             -DWITH_AVX=${WITH_AVX:-ON} \
             -DWITH_SWIG_PY=ON \
             -DWITH_STYLE_CHECK=OFF
-        make -j `nproc` gen_proto_py framework_py_proto
-        make -j `nproc` copy_paddle_pybind
-        make -j `nproc` paddle_docs paddle_docs_cn paddle_api_docs
+
+        make -j `nproc` paddle_docs paddle_apis
         popd
     fi
 
@@ -182,16 +185,24 @@ EOF
         NCCL_DEPS=""
     fi
 
+    if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
+        PADDLE_VERSION="paddle version"
+        CMD='"paddle", "version"'
+    else
+        PADDLE_VERSION="true"
+        CMD='"true"'
+    fi
+
     cat >> /paddle/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip && \
+        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip==9.0.3 && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
-        paddle version && \
+        ${PADDLE_VERSION} && \
         ldconfig
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
@@ -199,7 +210,7 @@ EOF
     ADD go/cmd/pserver/pserver /usr/bin/
     ADD go/cmd/master/master /usr/bin/
     # default command shows the paddle version and exit
-    CMD ["paddle", "version"]
+    CMD [${CMD}]
 EOF
 }
 
@@ -220,7 +231,7 @@ function gen_fluid_inference_lib() {
     Deploying fluid inference library ...
     ========================================
 EOF
-        make inference_lib_dist
+        make -j `nproc` inference_lib_dist
     fi
 }
 

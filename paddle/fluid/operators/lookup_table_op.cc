@@ -51,9 +51,8 @@ class LookupTableOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
-        ctx.device_context());
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -79,12 +78,15 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(boolean, default false) "
                   "Sparse update.")
         .SetDefault(false);
+    AddAttr<bool>("is_distributed",
+                  "(boolean, default false) distributed lookup table.")
+        .SetDefault(false);
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "
                      "If the value is -1, it makes no effect to lookup. "
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
-        .SetDefault(-1);
+        .SetDefault(kNoPadding);
     AddComment(R"DOC(
 Lookup Table Operator.
 
@@ -124,9 +126,8 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<LoDTensor>("W")->type()),
-        ctx.device_context());
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 

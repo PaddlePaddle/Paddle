@@ -260,6 +260,36 @@ $out = floor(x)$
   }
 };
 
+class CosOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  CosOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Cosine operator");
+    AddOutput("Out", "Output of Cosine operator");
+    AddComment(R"DOC(
+Cosine Activation Operator.
+
+$out = cos(x)$
+
+)DOC");
+  }
+};
+
+class SinOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  SinOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+    AddInput("X", "Input of Sine operator");
+    AddOutput("Out", "Output of Sine operator");
+    AddComment(R"DOC(
+Sine Activation Operator.
+
+$out = sin(x)$
+
+)DOC");
+  }
+};
+
 class RoundOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   RoundOpMaker(OpProto *proto, OpAttrChecker *op_checker)
@@ -561,6 +591,12 @@ REGISTER_OP(ceil, ops::ActivationOp, ops::CeilOpMaker, ceil_grad,
 REGISTER_OP(floor, ops::ActivationOp, ops::FloorOpMaker, floor_grad,
             ops::ActivationOpGrad);
 
+REGISTER_OP(cos, ops::ActivationOp, ops::CosOpMaker, cos_grad,
+            ops::ActivationOpGrad);
+
+REGISTER_OP(sin, ops::ActivationOp, ops::SinOpMaker, sin_grad,
+            ops::ActivationOpGrad);
+
 REGISTER_OP(round, ops::ActivationOp, ops::RoundOpMaker, round_grad,
             ops::ActivationOpGrad);
 
@@ -626,14 +662,3 @@ REGISTER_OP(swish, ops::ActivationOp, ops::SwishOpMaker, swish_grad,
                                 ops::grad_functor<double>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);
-
-REGISTER_OP_CPU_KERNEL(relu,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::ReluFunctor<float>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::ReluFunctor<double>>);
-REGISTER_OP_CPU_KERNEL(
-    relu_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                         ops::ReluGradFunctor<float>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::ReluGradFunctor<double>>);

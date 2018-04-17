@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/detail/variable_response.h"
-#include <string.h>
+
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "paddle/fluid/operators/detail/send_recv.pb.h"
 #include "paddle/fluid/operators/detail/sendrecvop_utils.h"
 
@@ -48,6 +52,8 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
              void* dest, int size) {
   const void* data = NULL;
   int size_to_write = 0;
+  int length = size;
+  int total_written = 0;
 
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
@@ -56,16 +62,21 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
     platform::CPUPlace cpu;
 
     char* p = reinterpret_cast<char*>(dest);
-    while (size > 0) {
+    while (total_written < length) {
       if (!input->GetDirectBufferPointer(&data, &size_to_write)) {
         return false;
       }
-
+      // NOTE: if raw buffer is large and have two neighbor fields of raw
+      // buffers GetDirectBufferPointer can get all of them, use length to
+      // truncate it.
+      if (total_written + size_to_write > length) {
+        size_to_write = length - total_written;
+      }
       memory::Copy(boost::get<platform::CUDAPlace>(place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
       p += size_to_write;
-      size -= size_to_write;
+      total_written += size_to_write;
 
       input->Skip(size_to_write);
     }
@@ -77,16 +88,21 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
   }
 
   char* p = reinterpret_cast<char*>(dest);
-  while (size > 0) {
+  while (total_written < length) {
     if (!input->GetDirectBufferPointer(&data, &size_to_write)) {
       return false;
+    }
+    // NOTE: if raw buffer is large and have two neighbor fields of raw buffers
+    // GetDirectBufferPointer can get all of them, use length to truncate it.
+    if (total_written + size_to_write > length) {
+      size_to_write = length - total_written;
     }
     // TODO(gongwb): can we avoid copy?
     platform::CPUPlace cpu;
     memory::Copy(cpu, reinterpret_cast<void*>(p), cpu, data, size_to_write);
 
     p += size_to_write;
-    size -= size_to_write;
+    total_written += size_to_write;
 
     input->Skip(size_to_write);
   }
@@ -96,7 +112,8 @@ bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
 
 bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
-    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
@@ -132,11 +149,17 @@ inline framework::DDim GetDims(
 
 bool VariableResponse::CopySelectRowsTensorData(
     ::google::protobuf::io::CodedInputStream* input,
-    const platform::DeviceContext& ctx, framework::DDim& dims, int length) {
+    const platform::DeviceContext& ctx, const framework::DDim& dims,
+    int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
+  slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
+  PADDLE_ENFORCE_EQ(
+      static_cast<size_t>(tensor->numel()),
+      length / framework::SizeOfType(
+                   paddle::operators::detail::ToTypeIndex(meta_.data_type())));
   void* tensor_data = tensor->mutable_data(
       ctx.GetPlace(),
       paddle::operators::detail::ToTypeIndex(meta_.data_type()));
@@ -153,6 +176,8 @@ bool VariableResponse::CopySelectRowsData(
     const platform::DeviceContext& ctx, int length) {
   auto var = scope_->FindVar(meta_.varname());
   auto* slr = var->GetMutable<framework::SelectedRows>();
+  slr->mutable_rows()->resize(length /
+                              framework::SizeOfType(typeid(int64_t)));  // int64
   int64_t* rows_data = slr->mutable_rows()->data();
 
   // copy rows CPU data, GPU data will be copied lazily.
@@ -233,7 +258,6 @@ int VariableResponse::Parse(Source* source) {
       if (tag != 0) {
         return -1;
       }
-
       return 0;
     }
 
@@ -336,6 +360,14 @@ int VariableResponse::Parse(Source* source) {
         }
         break;
       }
+      case sendrecv::VariableMessage::kSlrHeightFieldNumber: {
+        uint64_t v = 0;
+        if ((wt != WIRETYPE_VARINT) || !input.ReadVarint64(&v)) {
+          return tag;
+        }
+        meta_.set_slr_height(static_cast<int64_t>(v));
+        break;
+      }
       case sendrecv::VariableMessage::kSerializedFieldNumber: {
         PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
                         meta_.type() == sendrecv::LOD_TENSOR) &&
@@ -382,6 +414,20 @@ int VariableResponse::Parse(Source* source) {
         if (!CopySelectRowsData(&input, *dev_ctx_, length)) {
           return tag;
         }
+        break;
+      }
+      case sendrecv::VariableMessage::kOutVarnameFieldNumber: {
+        uint32_t length;
+        if ((wt != WIRETYPE_LENGTH_DELIMITED) || !input.ReadVarint32(&length)) {
+          return tag;
+        }
+
+        std::string temp;
+        if (!input.ReadString(&temp, length)) {
+          return tag;
+        }
+
+        meta_.set_out_varname(temp);
         break;
       }
 

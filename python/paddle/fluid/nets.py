@@ -98,7 +98,7 @@ def img_conv_group(input,
             use_mkldnn=use_mkldnn)
 
         if conv_with_batchnorm[i]:
-            tmp = layers.batch_norm(input=tmp, act=conv_act)
+            tmp = layers.batch_norm(input=tmp, act=conv_act, in_place=True)
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
                 tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)

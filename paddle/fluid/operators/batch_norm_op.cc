@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include <string>
 #include "paddle/fluid/framework/data_layout.h"
 
 namespace paddle {

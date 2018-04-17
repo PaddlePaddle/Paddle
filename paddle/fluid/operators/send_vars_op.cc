@@ -12,34 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <future>  // NOLINT
 #include <ostream>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-
-#include <future>
 #include "paddle/fluid/operators/detail/grpc_client.h"
+#include "paddle/fluid/operators/send_recv_util.h"
 
 namespace paddle {
 namespace operators {
-static bool NeedSend(const framework::Scope& scope,
-                     const std::string& varname) {
-  auto* var = scope.FindVar(varname);
-  PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
-                          varname);
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().IsInitialized();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().rows().size() > 0UL;
-  } else {
-    PADDLE_THROW(
-        "Variable type in send side should be in "
-        "[LodTensor, SelectedRows]");
-  }
-  return false;
-}
 
 class SendVarsOp : public framework::OperatorBase {
  public:
@@ -53,7 +36,7 @@ class SendVarsOp : public framework::OperatorBase {
     auto ins = Inputs("X");
 
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    int sync_send = Attr<int>("sync_sent");
+    int sync_send = Attr<int>("sync_send");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
@@ -95,7 +78,7 @@ Send operator
 
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
-    AddAttr<int>("ync_send",
+    AddAttr<int>("sync_send",
                  "(int, default 0)"
                  "sync send or async send.")
         .SetDefault(0);

@@ -30,7 +30,7 @@ Scope is an association of a name to variable. All variables belong to `Scope`. 
 
    Variable can not belong to many scopes. If you want to use variables from parent scope, you can use `parent scope`.
 
-1. Scope should destruct all Variables inside it when itself is destructed. User can never store `Variable` pointer somewhere else. 
+1. Scope should destruct all Variables inside it when itself is destructed. User can never store `Variable` pointer somewhere else.
 
    Because Variable can only be got from Scope. When destroying Scope, we also need to destroy all the Variables in it. If user store `Variable` pointer to private data member or some global variable, the pointer will be an invalid pointer when associated `Scope` is destroyed.
 
@@ -78,7 +78,7 @@ In `Scope` class, there is a private data member called `parent_`. `parent_` is 
 
 A local scope is very useful when we implement Recurrent Neural Network. Each timestep of an RNN should be a `Net`. Each `Net` of timestep (`StepNet` for short) should use an independent local scope. Just like variables in a while loop is inside a local scope in programming languages. By using a single `StepNet` and changing local scope, we can implement an RNN easily.
 
-# Interface Design
+## Interface Design
 
 ```cpp
 class Variable {

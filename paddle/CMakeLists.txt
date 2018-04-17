@@ -1,4 +1,4 @@
-if(NOT WITH_FLUID)
+if(NOT WITH_FLUID_ONLY)
   add_subdirectory(cuda)
   add_subdirectory(function)
   add_subdirectory(utils)
@@ -24,6 +24,6 @@ if(NOT WITH_FLUID)
 endif()
 
 add_subdirectory(testing)
-if(NOT MOBILE_INFERENCE AND NOT ANDROID AND NOT IOS)
+if(NOT MOBILE_INFERENCE AND NOT RPI)
   add_subdirectory(fluid)
 endif()

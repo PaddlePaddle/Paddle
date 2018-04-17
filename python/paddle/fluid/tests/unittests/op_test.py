@@ -334,7 +334,7 @@ class OpTest(unittest.TestCase):
                     np.allclose(
                         actual_t, expect_t, atol=atol),
                     "Output (" + out_name + ") has diff at " + str(place) +
-                    str(actual_t) + str(expect_t))
+                    str(actual_t) + "\n" + str(expect_t))
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.lod(), expect[1],
                                          "Output (" + out_name +
@@ -568,6 +568,6 @@ class OpTest(unittest.TestCase):
 
         fetch_list = [g for p, g in param_grad_list]
         executor = Executor(place)
-        return map(
-            np.array,
-            executor.run(prog, feed_dict, fetch_list, return_numpy=False))
+        return map(np.array,
+                   executor.run(prog, feed_dict, fetch_list,
+                                return_numpy=False))

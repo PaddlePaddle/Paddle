@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <chrono>
+#include <chrono>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/strided_memcpy.h"

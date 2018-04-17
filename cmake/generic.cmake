@@ -195,14 +195,7 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
-      if("${cc_library_DEPS}" MATCHES "ARCHIVE_START")
-        # Support linking flags: --whole-archive (Linux) / -force_load (MacOS).
-        # WARNING: Please don't use ARCHIVE_START&ARCHIVE_END if TARGET_NAME will be linked by other libraries.
-        target_circle_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
-        list(REMOVE_ITEM cc_library_DEPS ARCHIVE_START ARCHIVE_END)
-      else()
-        target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
-      endif()
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()
     
@@ -243,15 +236,11 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    # Support linking flags: --whole-archive (Linux) / -force_load (MacOS)
-    target_circle_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags glog)
-    if("${cc_test_DEPS}" MATCHES "ARCHIVE_START")
-      list(REMOVE_ITEM cc_test_DEPS ARCHIVE_START ARCHIVE_END)
-    endif()
-    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main paddle_memory gtest gflags glog)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
     add_test(NAME ${TARGET_NAME}
              COMMAND ${TARGET_NAME} ${cc_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endfunction(cc_test)
 
@@ -311,8 +300,8 @@ function(nv_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main paddle_memory gtest gflags glog)
-    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main paddle_memory gtest gflags glog)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main memory gtest gflags glog)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main memory gtest gflags glog)
     add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
 endfunction(nv_test)
@@ -387,8 +376,8 @@ function(hip_test TARGET_NAME)
     endif()
     add_executable(${TARGET_NAME} ${_cmake_options} ${_generated_files} ${_sources})
     set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
-    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
-    add_dependencies(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main paddle_memory gtest gflags)
+    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
+    add_dependencies(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
     add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
 endfunction(hip_test)
@@ -561,9 +550,9 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python ${py_test_ENVS}
+             COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endfunction()
 
@@ -587,6 +576,9 @@ function(grpc_library TARGET_NAME)
   get_filename_component(PROTO_WE ${grpc_library_PROTO} NAME_WE)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
+  #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
+  # somehow it didn't. line 602 to 604 is to patching this. Leaving this here 
+  # for now to enable dist CI.
   protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
   set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
   set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.h")
@@ -597,6 +589,9 @@ function(grpc_library TARGET_NAME)
           COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
           ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
           --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}" "${ABS_PROTO}"
+          COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+          ARGS --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
+          "${ABS_PROTO}"
           DEPENDS "${ABS_PROTO}" ${PROTOBUF_PROTOC_EXECUTABLE} extern_grpc)
 
   # FIXME(typhoonzero): grpc generated code do not generate virtual-dtor, mark it
