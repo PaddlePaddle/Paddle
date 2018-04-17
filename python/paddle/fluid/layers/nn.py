@@ -178,10 +178,11 @@ def fc(input,
             inputs={"Input": input,
                     "W": w},
             outputs={"Out": tmp},
-            attrs={"use_mkldnn": use_mkldnn,
-                   "is_test": is_test,
-                   "bias_attr": bias_attr
-                  })
+            attrs={
+                "use_mkldnn": use_mkldnn,
+                "is_test": is_test,
+                "bias_attr": bias_attr
+            })
         return helper.append_activation(tmp)
     else:
         for input_var, param_attr in helper.iter_inputs_and_params():
