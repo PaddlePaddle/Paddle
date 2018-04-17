@@ -128,8 +128,10 @@ class ParallelExecutor(object):
 
         Args:
             fetch_list(list): The fetched variable names
-            feed(list|dict|None): The feed variables. If the feed is a dict, tensors in that dict will be splitted
-                into each devices. If the feed is a list, each element of the list will be copied to each device.
+            feed(list|dict|None): The feed variables. If the feed is a dict,
+                tensors in that dict will be splitted into each devices. If
+                the feed is a list, each element of the list will be copied
+                to each device.
             feed_dict: Alias for feed parameter, for backward compatibility.
 
         Returns: fetched result list.
