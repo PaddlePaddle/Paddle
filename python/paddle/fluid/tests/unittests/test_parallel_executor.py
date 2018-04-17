@@ -203,31 +203,32 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   iter=10,
                                   batch_size=None,
                                   allow_op_delay=False,
-                                  feed_dict={}):
+                                  feed_dict=None):
         main = fluid.Program()
         startup = fluid.Program()
+        startup.random_seed = 1  # Fix random seed
         with fluid.program_guard(main, startup):
-            loss = method(use_feed=len(feed_dict) > 0)
+            loss = method(use_feed=feed_dict is not None)
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
             if memory_opt:
                 fluid.memory_optimize(main)
-
             place = fluid.CUDAPlace(0)
             startup_exe = fluid.Executor(place)
             startup_exe.run(startup)
 
-            exe = fluid.ParallelExecutor(True, loss_name=loss.name)
+            exe = fluid.ParallelExecutor(
+                True, loss_name=loss.name, allow_op_delay=allow_op_delay)
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
-            first_loss, = exe.run([loss.name], feed_dict=feed_dict)
+            first_loss, = exe.run([loss.name], feed=feed_dict)
             first_loss = numpy.array(first_loss)
 
             for i in xrange(iter):
-                exe.run([], feed_dict=feed_dict)
+                exe.run([], feed=feed_dict)
 
-            last_loss, = exe.run([loss.name], feed_dict=feed_dict)
+            last_loss, = exe.run([loss.name], feed=feed_dict)
             end = time.time()
 
             if batch_size is not None:
@@ -505,3 +506,148 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                         train_loss, test_loss, atol=1e-8),
                     "Train loss: " + str(train_loss) + "\n Test loss:" +
                     str(test_loss))
+
+
+import paddle.dataset.conll05 as conll05
+import paddle.fluid as fluid
+
+word_dict, verb_dict, label_dict = conll05.get_dict()
+word_dict_len = len(word_dict)
+label_dict_len = len(label_dict)
+pred_dict_len = len(verb_dict)
+mark_dict_len = 2
+word_dim = 32
+mark_dim = 5
+hidden_dim = 512
+depth = 8
+mix_hidden_lr = 1e-3
+embedding_name = 'emb'
+
+
+def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
+            **ignored):
+    # 8 features
+    predicate_embedding = fluid.layers.embedding(
+        input=predicate,
+        size=[pred_dict_len, word_dim],
+        dtype='float32',
+        param_attr='vemb')
+
+    mark_embedding = fluid.layers.embedding(
+        input=mark, size=[mark_dict_len, mark_dim], dtype='float32')
+
+    word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
+    emb_layers = [
+        fluid.layers.embedding(
+            size=[word_dict_len, word_dim],
+            input=x,
+            param_attr=fluid.ParamAttr(
+                name=embedding_name, trainable=False)) for x in word_input
+    ]
+    emb_layers.append(predicate_embedding)
+    emb_layers.append(mark_embedding)
+
+    hidden_0_layers = [
+        fluid.layers.fc(input=emb, size=hidden_dim, act='tanh')
+        for emb in emb_layers
+    ]
+
+    hidden_0 = fluid.layers.sums(input=hidden_0_layers)
+
+    lstm_0 = fluid.layers.dynamic_lstm(
+        input=hidden_0,
+        size=hidden_dim,
+        candidate_activation='relu',
+        gate_activation='sigmoid',
+        cell_activation='sigmoid')
+
+    # stack L-LSTM and R-LSTM with direct edges
+    input_tmp = [hidden_0, lstm_0]
+
+    for i in range(1, depth):
+        mix_hidden = fluid.layers.sums(input=[
+            fluid.layers.fc(input=input_tmp[0], size=hidden_dim, act='tanh'),
+            fluid.layers.fc(input=input_tmp[1], size=hidden_dim, act='tanh')
+        ])
+
+        lstm = fluid.layers.dynamic_lstm(
+            input=mix_hidden,
+            size=hidden_dim,
+            candidate_activation='relu',
+            gate_activation='sigmoid',
+            cell_activation='sigmoid',
+            is_reverse=((i % 2) == 1))
+
+        input_tmp = [mix_hidden, lstm]
+
+    feature_out = fluid.layers.sums(input=[
+        fluid.layers.fc(input=input_tmp[0], size=label_dict_len, act='tanh'),
+        fluid.layers.fc(input=input_tmp[1], size=label_dict_len, act='tanh')
+    ])
+
+    return feature_out
+
+
+class TestCRFModel(unittest.TestCase):
+    def test_all(self):
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            word = fluid.layers.data(
+                name='word_data', shape=[1], dtype='int64', lod_level=1)
+            predicate = fluid.layers.data(
+                name='verb_data', shape=[1], dtype='int64', lod_level=1)
+            ctx_n2 = fluid.layers.data(
+                name='ctx_n2_data', shape=[1], dtype='int64', lod_level=1)
+            ctx_n1 = fluid.layers.data(
+                name='ctx_n1_data', shape=[1], dtype='int64', lod_level=1)
+            ctx_0 = fluid.layers.data(
+                name='ctx_0_data', shape=[1], dtype='int64', lod_level=1)
+            ctx_p1 = fluid.layers.data(
+                name='ctx_p1_data', shape=[1], dtype='int64', lod_level=1)
+            ctx_p2 = fluid.layers.data(
+                name='ctx_p2_data', shape=[1], dtype='int64', lod_level=1)
+            mark = fluid.layers.data(
+                name='mark_data', shape=[1], dtype='int64', lod_level=1)
+            feature_out = db_lstm(**locals())
+            target = fluid.layers.data(
+                name='target', shape=[1], dtype='int64', lod_level=1)
+            crf_cost = fluid.layers.linear_chain_crf(
+                input=feature_out,
+                label=target,
+                param_attr=fluid.ParamAttr(
+                    name='crfw', learning_rate=1e-1))
+            avg_cost = fluid.layers.mean(crf_cost)
+
+            sgd_optimizer = fluid.optimizer.SGD(
+                learning_rate=fluid.layers.exponential_decay(
+                    learning_rate=0.01,
+                    decay_steps=100000,
+                    decay_rate=0.5,
+                    staircase=True))
+            sgd_optimizer.minimize(avg_cost)
+
+            train_data = paddle.batch(
+                paddle.reader.shuffle(
+                    paddle.dataset.conll05.test(), buf_size=8192),
+                batch_size=16)
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(startup)
+
+            pe = fluid.ParallelExecutor(use_cuda=True, loss_name=avg_cost.name)
+
+            feeder = fluid.DataFeeder(
+                feed_list=[
+                    word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate,
+                    mark, target
+                ],
+                place=fluid.CPUPlace())
+
+            data = train_data()
+            for i in xrange(10):
+                cur_batch = next(data)
+                print map(numpy.array,
+                          pe.run(feed=feeder.feed(cur_batch),
+                                 fetch_list=[avg_cost.name]))[0]
