@@ -35,8 +35,8 @@ class SGDOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "Learning rate should have 1 element");
     auto param_dim = ctx->GetInputDim("Param");
-    // TODO(qijun): check dimensions of Param and Grad at complie
-    // and run time.
+    // TODO(qijun): check dimensions of Param and Grad at compile
+    // and runtime.
     ctx->SetOutputDim("ParamOut", param_dim);
   }
 

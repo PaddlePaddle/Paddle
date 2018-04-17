@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
 namespace paddle {
@@ -40,6 +43,10 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
+
+ private:
+  void CreateOpHandleIOs(SSAGraph *result, const OpDesc &op,
+                         const platform::Place &p, const size_t &i) const;
 
  private:
   std::string loss_var_name_;

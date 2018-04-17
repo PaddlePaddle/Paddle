@@ -100,7 +100,7 @@ function(op_library TARGET)
     endif()
 
     # Define operators that don't need pybind here.
-    foreach(manual_pybind_op "net_op" "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
+    foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -199,7 +199,6 @@ else()
     set(DEPS_OPS ${DEPS_OPS} send_op prefetch_op recv_op listen_and_serv_op send_vars_op send_barrier_op)
 endif()
 
-op_library(cond_op DEPS framework_proto tensor net_op)
 op_library(cross_entropy_op DEPS cross_entropy)
 op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
 op_library(softmax_op DEPS softmax)
@@ -246,9 +245,17 @@ op_library(channel_send_op DEPS concurrency)
 op_library(channel_recv_op DEPS concurrency)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
+
+# The fully connected layer is deleted when the WITH_MKLDNN flag is OFF
+# Because the fully connected layer has only one MKLDNN's operator
+if(NOT WITH_MKLDNN)
+    list(REMOVE_ITEM GENERAL_OPS fc_op)
+endif(NOT WITH_MKLDNN)
+
 foreach(src ${GENERAL_OPS})
     op_library(${src})
 endforeach()
+
 file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
 
 add_subdirectory(reader)
@@ -259,7 +266,6 @@ endforeach()
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
-cc_test(net_op_test SRCS net_op_test.cc DEPS net_op)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
 cc_test(beam_search_op_test SRCS beam_search_op_test.cc DEPS lod_tensor beam_search_op)

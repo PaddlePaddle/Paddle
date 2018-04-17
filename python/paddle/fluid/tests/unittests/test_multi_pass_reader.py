@@ -44,7 +44,7 @@ class TestMultipleReader(unittest.TestCase):
                 shapes=[(-1, 784), (-1, 1)],
                 lod_levels=[0, 0],
                 dtypes=['float32', 'int64'])
-            data_file = fluid.layers.create_multi_pass_reader(
+            data_file = fluid.layers.io.multi_pass(
                 reader=data_file, pass_num=self.pass_num)
             img, label = fluid.layers.read_file(data_file)
 
@@ -57,8 +57,12 @@ class TestMultipleReader(unittest.TestCase):
             exe.run(fluid.default_startup_program())
 
             batch_count = 0
-            while not data_file.eof():
-                img_val, = exe.run(fetch_list=[img])
+            while True:
+                try:
+                    img_val, = exe.run(fetch_list=[img])
+                except fluid.core.EnforceNotMet as ex:
+                    self.assertIn("There is no next data.", ex.message)
+                    break
                 batch_count += 1
                 self.assertLessEqual(img_val.shape[0], self.batch_size)
             data_file.reset()

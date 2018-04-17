@@ -15,13 +15,15 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/details/ssa_graph.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-
 class SSAGraphExecutor {
   DISABLE_COPY_AND_ASSIGN(SSAGraphExecutor);
 

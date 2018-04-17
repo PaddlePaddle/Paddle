@@ -48,13 +48,13 @@ class ParallelExecutor {
            const std::string& fetched_var_name,
            const std::unordered_map<std::string, LoDTensor>& feed_tensors);
 
+  void BCastParamsToGPUs(const std::unordered_set<std::string>& vars) const;
+
  private:
   void SplitTensorToPlaces(
       const std::unordered_map<std::string, LoDTensor>& feed_tensors);
 
   ParallelExecutorPrivate* member_;
-
-  void BCastParamsToGPUs(const std::unordered_set<std::string>& vars) const;
 };
 
 }  // namespace framework

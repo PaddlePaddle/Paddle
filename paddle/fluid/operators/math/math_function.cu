@@ -39,12 +39,13 @@ void gemm<platform::CUDADeviceContext, float16>(
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
 
-  float h_alpha = static_cast<float>(alpha);
-  float h_beta = static_cast<float>(beta);
-
   // TODO(kexinzhao): add processing code for compute capability < 53 case
   PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
                     "cublas fp16 gemm requires GPU compute capability >= 53");
+
+#if CUDA_VERSION >= 8000
+  float h_alpha = static_cast<float>(alpha);
+  float h_beta = static_cast<float>(beta);
 
   cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
@@ -56,7 +57,7 @@ void gemm<platform::CUDADeviceContext, float16>(
     PADDLE_ENFORCE(platform::dynload::cublasSetMathMode(context.cublas_handle(),
                                                         CUBLAS_DEFAULT_MATH));
   }
-#endif
+#endif  // CUDA_VERSION >= 9000
 
   // cublasHgemm does true FP16 computation which is slow for non-Volta
   // GPUs. So use cublasGemmEx instead which does pesudo FP16 computation:
@@ -66,6 +67,18 @@ void gemm<platform::CUDADeviceContext, float16>(
       context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, B,
       CUDA_R_16F, ldb, A, CUDA_R_16F, lda, &h_beta, C, CUDA_R_16F, N,
       CUDA_R_32F, algo));
+#else
+  // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
+  const half h_alpha = static_cast<const half>(alpha);
+  const half h_beta = static_cast<const half>(beta);
+  const half* h_A = reinterpret_cast<const half*>(A);
+  const half* h_B = reinterpret_cast<const half*>(B);
+  half* h_C = reinterpret_cast<half*>(C);
+
+  PADDLE_ENFORCE(platform::dynload::cublasHgemm(
+      context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
+      h_A, lda, &h_beta, h_C, N));
+#endif  // CUDA_VERSION >= 8000
 }
 
 template <>
@@ -255,6 +268,7 @@ void batched_gemm<platform::CUDADeviceContext, float16>(
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float16 alpha, const float16* A, const float16* B, const float16 beta,
     float16* C, const int batchCount, const int strideA, const int strideB) {
+#if CUDA_VERSION >= 8000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -275,9 +289,13 @@ void batched_gemm<platform::CUDADeviceContext, float16>(
   // TODO(kexinzhao): add processing code for compute capability < 53 case
   PADDLE_ENFORCE_GE(context.GetComputeCapability(), 53,
                     "cublas Hgemm requires GPU compute capability >= 53");
+
   PADDLE_ENFORCE(platform::dynload::cublasHgemmStridedBatched(
       context.cublas_handle(), cuTransB, cuTransA, N, M, K, &h_alpha, h_B, ldb,
       strideB, h_A, lda, strideA, &h_beta, h_C, ldc, strideC, batchCount));
+#else
+  PADDLE_ENFORCE(false, "HgemmStridedBatched is not supported on cuda <= 7.5");
+#endif
 }
 
 template <>
@@ -286,6 +304,7 @@ void batched_gemm<platform::CUDADeviceContext, float>(
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const float alpha, const float* A, const float* B, const float beta,
     float* C, const int batchCount, const int strideA, const int strideB) {
+#if CUDA_VERSION >= 8000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -300,6 +319,9 @@ void batched_gemm<platform::CUDADeviceContext, float>(
   PADDLE_ENFORCE(platform::dynload::cublasSgemmStridedBatched(
       context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
       strideB, A, lda, strideA, &beta, C, ldc, strideC, batchCount));
+#else
+  PADDLE_ENFORCE(false, "SgemmStridedBatched is not supported on cuda <= 7.5");
+#endif
 }
 
 template <>
@@ -308,6 +330,7 @@ void batched_gemm<platform::CUDADeviceContext, double>(
     const CBLAS_TRANSPOSE transB, const int M, const int N, const int K,
     const double alpha, const double* A, const double* B, const double beta,
     double* C, const int batchCount, const int strideA, const int strideB) {
+#if CUDA_VERSION >= 8000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -322,6 +345,9 @@ void batched_gemm<platform::CUDADeviceContext, double>(
   PADDLE_ENFORCE(platform::dynload::cublasDgemmStridedBatched(
       context.cublas_handle(), cuTransB, cuTransA, N, M, K, &alpha, B, ldb,
       strideB, A, lda, strideA, &beta, C, ldc, strideC, batchCount));
+#else
+  PADDLE_ENFORCE(false, "DgemmStridedBatched is not supported on cuda <= 7.5");
+#endif
 }
 
 template <>

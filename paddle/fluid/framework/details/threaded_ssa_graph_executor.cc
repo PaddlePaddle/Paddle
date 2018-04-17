@@ -136,12 +136,6 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     ready_ops.clear();
   };
 
-  // Create local scopes.
-  for (auto &scope : local_scopes_) {
-    auto &local_scope = scope->NewScope();
-    *scope->Var("@TMP_SCOPE@")->GetMutable<Scope *>() = &local_scope;
-  }
-
   // Step 3. Execution
   while (!pending_vars.empty() || !ready_ops.empty() || !delayed_ops.empty()) {
     // 1. Run All Ready ops
@@ -189,34 +183,10 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   PADDLE_ENFORCE(ready_ops.empty());
   PADDLE_ENFORCE(delayed_ops.empty());
   PADDLE_ENFORCE(blocked_by_delayed_ops.empty());
-  ++computation_count_;
-
-  auto sync_computation = [&] {
-    computation_count_ = 0;
-    // Wait All computational streams
-    for (auto p : this->places_) {
-      platform::DeviceContextPool::Instance().Get(p)->Wait();
-    }
-    for (auto &scope : local_scopes_) {
-      scope->DropKids();
-    }
-  };
 
   // Wait FetchOps.
   if (!fetch_ops.empty()) {
     fetch_ops.clear();
-    sync_computation();
-  }
-
-  if (computation_count_ == max_async_computation) {
-    sync_computation();
-  }
-
-  // NOTE: the temp scope can be dropped lazily if needed.
-  // Drop tmp scopes;
-  for (auto &scope : local_scopes_) {
-    auto &kid = *scope->Var("@TMP_SCOPE@")->GetMutable<Scope *>();
-    kid = nullptr;
   }
 
   return fetch_data;
@@ -226,10 +196,12 @@ void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
-      VLOG(10) << op->Name() << " : " << op->DebugString();
+      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
       op->Run(use_event_);
+      VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->outputs_);
+      VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (platform::EnforceNotMet ex) {
       exception_.reset(new platform::EnforceNotMet(ex));
     } catch (...) {
