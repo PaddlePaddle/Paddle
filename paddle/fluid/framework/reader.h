@@ -14,13 +14,12 @@
 
 #pragma once
 
+#include <memory>
+#include <vector>
+
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/place.h"
-
-#include <memory>
-#include <thread>
-#include <vector>
 
 namespace paddle {
 namespace framework {
@@ -30,8 +29,6 @@ class ReaderBase {
   virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
 
   virtual void ReInit() = 0;
-
-  virtual bool HasNext() const = 0;
 
   virtual ~ReaderBase();
 };
@@ -43,8 +40,6 @@ class DecoratedReader : public ReaderBase {
   }
 
   void ReInit() override { reader_->ReInit(); }
-
-  bool HasNext() const override { return reader_->HasNext(); }
 
  protected:
   ReaderBase* reader_;
@@ -79,8 +74,6 @@ class ReaderHolder {
     PADDLE_ENFORCE_NOT_NULL(reader_);
     reader_->ReInit();
   }
-
-  bool HasNext() const { return reader_->HasNext(); }
 
  private:
   std::unique_ptr<ReaderBase> reader_;

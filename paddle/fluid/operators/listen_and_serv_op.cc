@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <ostream>
-#include <thread>
+#include <thread>  // NOLINT
+#include <vector>
 
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 
@@ -88,8 +89,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   auto ins = Inputs("X");
   auto fan_in = Attr<int>("Fanin");
-  auto *block = Attr<framework::BlockDesc *>(kOptimizeBlock);
-  auto *program = block->Program();
+  auto *optimize_block = Attr<framework::BlockDesc *>(kOptimizeBlock);
+  auto *prefetch_block = Attr<framework::BlockDesc *>(kPrefetchBlock);
+  auto *program = optimize_block->Program();
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
@@ -97,18 +99,25 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Executor executor(dev_place);
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
-    block_list.push_back(blkid);
+    if (blkid != prefetch_block->ID()) {
+      block_list.push_back(blkid);
+    }
   }
-  auto prepared = executor.Prepare(*program, block_list);
+  auto optimize_prepared = executor.Prepare(*program, block_list);
   // Insert placeholder for block0 which holds current op itself.
-  prepared.insert(prepared.begin(),
-                  std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
+  optimize_prepared.insert(
+      optimize_prepared.begin(),
+      std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
   rpc_service_->SetScope(&recv_scope);
   rpc_service_->SetDevCtx(&dev_ctx);
   // TODO(qiao) set proper fields for table lookup and update
   rpc_service_->SetExecutor(&executor);
-  rpc_service_->SetPrefetchBlkdId(0);
+  VLOG(3) << "prefetch block id is " << prefetch_block->ID();
+  auto prefetch_prepared = executor.Prepare(*program, prefetch_block->ID());
+  rpc_service_->SetPrefetchBlkdId(prefetch_block->ID());
+  rpc_service_->SetPrefetchPreparedCtx(prefetch_prepared.get());
+  prefetch_prepared.release();
   rpc_service_->SetProgram(program);
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
@@ -166,16 +175,18 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     parallel_blkids.push_back(1);
     double ts = detail::GetTimestamp();
     for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
-      if (program->Block(blkid).Parent() != last_parent_blkid) {
-        ParallelExecuteBlocks(parallel_blkids, &executor, prepared, program,
-                              &recv_scope);
-        parallel_blkids.clear();
-        last_parent_blkid = program->Block(blkid).Parent();
+      if (blkid != prefetch_block->ID()) {
+        if (program->Block(blkid).Parent() != last_parent_blkid) {
+          ParallelExecuteBlocks(parallel_blkids, &executor, optimize_prepared,
+                                program, &recv_scope);
+          parallel_blkids.clear();
+          last_parent_blkid = program->Block(blkid).Parent();
+        }
+        parallel_blkids.push_back(blkid);
       }
-      parallel_blkids.push_back(blkid);
     }
-    ParallelExecuteBlocks(parallel_blkids, &executor, prepared, program,
-                          &recv_scope);
+    ParallelExecuteBlocks(parallel_blkids, &executor, optimize_prepared,
+                          program, &recv_scope);
     VLOG(2) << "run all blocks spent " << detail::GetTimestamp() - ts << "(ms)";
 
     // Reset the received sparse variables, the sum operator would not
@@ -211,6 +222,8 @@ from send_op and send back variables to recv_op.
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
     AddAttr<framework::BlockDesc *>(kOptimizeBlock,
                                     "BlockID to run on server side.");
+    AddAttr<framework::BlockDesc *>(kPrefetchBlock,
+                                    "prefetch block to run on server side.");
     AddAttr<int>("Fanin", "How many clients send to this server.")
         .SetDefault(1);
   }

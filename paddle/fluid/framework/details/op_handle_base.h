@@ -24,6 +24,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
+
 class OpHandleBase {
  private:
   DISABLE_COPY_AND_ASSIGN(OpHandleBase);
@@ -60,6 +62,11 @@ class OpHandleBase {
   virtual bool IsMultiDeviceTransfer() { return false; }
 
  protected:
+  void RunAndRecordEvent(const std::function<void()> &callback);
+
+  void RunAndRecordEvent(platform::Place p,
+                         const std::function<void()> &callback);
+
   virtual void RunImpl() = 0;
 };
 

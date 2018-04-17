@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <future>
+#include <future>  // NOLINT
 #include <ostream>
 
 #include "paddle/fluid/framework/data_type.h"
@@ -50,8 +50,8 @@ class PrefetchOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
-        VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << "to get "
-                << outs[i] << "back";
+        VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
+                << outs[i] << " back";
         rpc_client->AsyncPrefetchVariable(epmap[i], ctx, scope, ins[i],
                                           outs[i]);
       } else {
@@ -71,7 +71,7 @@ class PrefetchOpMaker : public framework::OpProtoAndCheckerMaker {
               "(RPCClient) The RPC client object which will be"
               "initialized at most once.");
     AddOutput("Out",
-              "(SelectedRows) result "
+              "(LoDTensor) result "
               "to be fetched from parameter server")
         .AsDuplicable();
     AddAttr<std::vector<std::string>>(
