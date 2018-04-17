@@ -20,6 +20,7 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
+import nn
 
 __all__ = ['accuracy', 'auc']
 
@@ -30,14 +31,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
     The output is the top_k inputs and their indices.
     """
     helper = LayerHelper("accuracy", **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype="int64")
-    helper.append_op(
-        type="top_k",
-        inputs={"X": [input]},
-        outputs={"Out": [topk_out],
-                 "Indices": [topk_indices]},
-        attrs={"k": k})
+    topk_out, topk_indices = nn.top_k(input, k=k)
     acc_out = helper.create_tmp_variable(dtype="float32")
     if correct is None:
         correct = helper.create_tmp_variable(dtype="int64")
