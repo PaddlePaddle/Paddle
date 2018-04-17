@@ -15,8 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_softmax_op.h"
 #include <string>
 
-#include <string>
-
 namespace paddle {
 namespace operators {
 
