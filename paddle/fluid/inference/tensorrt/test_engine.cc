@@ -20,7 +20,9 @@ TEST(TensorrtEngine, add_layer) {
   float raw_bias[size] = {0.3, 0.4};
 
   TensorrtEngine::Weight weight(data_type::kFLOAT, weight, size);
-  engine_.DeclInput("x", data_type::kFLOAT, dim_type{1, 1, 1});
-  TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, size, weight, bias)
+  engine_.DeclInput("x", data_type::kFLOAT, dim_type{1, 1, 2});
+  auto* fc_layer =
+      TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, size, weight, bias);
+  engine_->DeclOutput("y", fc_layer, 0);
   engine_.FreezeNetwork();
 }

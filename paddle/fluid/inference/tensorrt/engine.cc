@@ -35,6 +35,14 @@ virtual ~TensorrtEngine() {
   SAFE_DESTROY(infer_engine_)
   SAFE_DESTROY(infer_builder_)
   SAFE_DESTROY(infer_network_)
+
+  // clean buffer
+  for (auto& buffer : buffers_) {
+    if (buffer != nullptr) {
+      PADDLE_ENFORCE_EQ(0, cudaFree(buffer));
+      buffer = nullptr;
+    }
+  }
 }
 
 namespace {
@@ -96,7 +104,7 @@ void TensorrtEngine::FreezeNetwork() {
   infer_context_ = infer_engine_->createExecutionContext();
 
   // allocate GPU buffers.
-  buffers_.resize(buffer_sizes_.size());
+  buffers_.resize(buffer_sizes_.size(), nullptr);
   for (const auto& item : buffer_sizes_) {
     int slot_offset = infer_engine_->getBindingIndex(item.first.c_str());
     PADDLE_ENFORCE_EQ(0, cudaMalloc(&buffers_, item.second));

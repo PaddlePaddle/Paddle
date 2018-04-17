@@ -110,6 +110,10 @@ class TensorrtEngine : public EngineBase {
 // Add an layer__ into engine__ with args ARGS.
 // For example:
 //   TRT_ENGINE_ADD_LAYER(xxx, FullyConnected, input, dim, weights, bias)
+//
+// Reference
+// https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#charRNN_define_network
+//
 // will add a fully connected layer into the engine.
 // TensorRT has too many layers, so that is not wise to add member functions for
 // them, and an macro like this is more extensible when underlying TensorRT
