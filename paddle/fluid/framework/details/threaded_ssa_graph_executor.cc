@@ -33,13 +33,6 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       running_ops_(0),
       allow_op_delay_(allow_op_delay) {}
 
-void ThreadedSSAGraphExecutor::RunDelayedOps(
-    const std::unordered_set<OpHandleBase *> &delayed_ops) {
-  for (auto op : delayed_ops) {
-    op->Run(use_event_);
-  }
-}
-
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
