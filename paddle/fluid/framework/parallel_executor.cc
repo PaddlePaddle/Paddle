@@ -163,7 +163,9 @@ void ParallelExecutor::Run(
   SplitTensorToPlaces(feed_tensors);
 
   // Create local scopes.
-  for (auto &scope : member_->local_scopes_) {
+  for (auto it = member_->local_scopes_.rbegin();
+       it != member_->local_scopes_.rend(); ++it) {
+    auto &scope = *it;
     Scope &local_scope = scope->NewScope();
     *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
         &local_scope;
