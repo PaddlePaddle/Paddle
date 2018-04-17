@@ -31,8 +31,8 @@ them while they are all calculated.
 instances and then send them.
 1. PServer would run an `Optimize Block` using a specified optimize algorithm to update
 the specified parameter.
-1. The trainer will fetch the parameter before running forward Op which depends on the specified
-parameter.
+1. The trainer will fetch latest parameter from PServer before running forward Op which depends
+on the specified parameter.
 1. Broadcast the received variable into multiple GPU cards and continue to run the next
 mini-batch.
 
