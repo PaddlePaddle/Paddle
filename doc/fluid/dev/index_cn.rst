@@ -4,6 +4,7 @@
 .. toctree::
   :maxdepth: 1
 
+  api_doc_std_cn.md
   new_op_cn.md
   new_op_kernel.md
   use_eigen_cn.md
