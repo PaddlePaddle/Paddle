@@ -198,7 +198,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip && \
+        apt-get install -y wget python-pip dmidecode python-tk && pip install -U pip==9.0.3 && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
