@@ -63,10 +63,9 @@ ParallelExecutor::ParallelExecutor(
   // Step 1. Bcast the params to devs.
   // Create local scopes
   if (local_scopes.empty()) {
-    // Shared the first scope to global scope
-    member_->local_scopes_.push_back(member_->global_scope_);
+    local_scopes.emplace_back(scope);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.push_back(&scope->NewScope());
+      member_->local_scopes_.emplace_back(&scope->NewScope());
     }
   } else {
     PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
@@ -165,7 +164,9 @@ void ParallelExecutor::Run(
   SplitTensorToPlaces(feed_tensors);
 
   // Create local scopes.
-  for (auto &scope : member_->local_scopes_) {
+  for (auto it = member_->local_scopes_.rbegin();
+       it < member_->local_scopes_.rend(); ++it) {
+    auto *scope = *it;
     Scope &local_scope = scope->NewScope();
     *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
         &local_scope;
@@ -179,7 +180,7 @@ void ParallelExecutor::Run(
         InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
                            std::get<1>(name_type_pair));
       } else {
-        InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
+        InitializeVariable(local_scope.Var(std::get<0>(name_type_pair)),
                            std::get<1>(name_type_pair));
       }
     }
