@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #pragma once
+
 #include <vector>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
@@ -39,24 +40,27 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const Tensor* in = ctx.Input<Tensor>("X");
     LoDTensor* out = ctx.Output<LoDTensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-    // TODO(wanghaoshuang): Add layout checker after 'set_layout'
-    // being available for python API
-    // PADDLE_ENFORCE_EQ(in->layout(), framework::DataLayout::kNCHW,
-    //                  "Input(X) layout must be NCHW");
+
+    auto kernels = ctx.Attr<std::vector<int>>("kernels");
+    auto strides = ctx.Attr<std::vector<int>>("strides");
+    auto paddings = ctx.Attr<std::vector<int>>("paddings");
     auto in_dim = in->dims();
     int batch_size = in_dim[0];
     int img_channels = in_dim[1];
     int img_height = in_dim[2];
     int img_width = in_dim[3];
-
-    auto kernels = ctx.Attr<std::vector<int>>("kernels");
-    auto strides = ctx.Attr<std::vector<int>>("strides");
-    auto paddings = ctx.Attr<std::vector<int>>("paddings");
     int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
                                          paddings[2], strides[0]);
     int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
                                         paddings[3], strides[1]);
+
+    out->mutable_data<T>({batch_size * output_height * output_width,
+                          img_channels * kernels[0] * kernels[1]},
+                         ctx.GetPlace());
+    // TODO(wanghaoshuang): Add layout checker after 'set_layout'
+    // being available for python API
+    // PADDLE_ENFORCE_EQ(in->layout(), framework::DataLayout::kNCHW,
+    //                  "Input(X) layout must be NCHW");
 
     const std::vector<int> dilations({1, 1});
 
