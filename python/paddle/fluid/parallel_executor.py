@@ -130,7 +130,8 @@ class ParallelExecutor(object):
           or numpy array.
         :return: fetched value list.
         """
-        feed = feed_dict
+        if feed == {}:
+            feed = feed_dict
         if not isinstance(feed, dict):
             raise TypeError("feed should be a dict")
 
