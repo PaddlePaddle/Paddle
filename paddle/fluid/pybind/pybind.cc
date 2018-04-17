@@ -514,9 +514,10 @@ All parameter, weight, gradient are variables in Paddle.
              return &self.GetLocalScopes();
            },
            py::return_value_policy::reference)
-      .def("local_scope", [](ParallelExecutor &self,
-                             size_t i) { return self.GetLocalScopes()[i]; },
-           py::return_value_policy::reference)
+      .def("feed_tensors_into_local_scopes",
+           &ParallelExecutor::FeedTensorsIntoLocalScopes)
+      .def("feed_and_split_tensor_into_local_scopes",
+           &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
       .def("run", &ParallelExecutor::Run);
 
   BindRecordIOWriter(&m);
