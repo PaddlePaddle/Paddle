@@ -136,7 +136,7 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
                          "'epsilon' should be between 0.0 and 0.001.");
         });
-    AddAttr<std::string>("data_layout", "").SetDefault("AnyLayout");
+    AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddInput("X", "The input tensor");
     AddInput("Scale",
              "Scale is a 1-dimensional tensor of size C "
