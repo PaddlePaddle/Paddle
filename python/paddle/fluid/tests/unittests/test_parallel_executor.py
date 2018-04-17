@@ -223,7 +223,6 @@ class TestParallelExecutorBase(unittest.TestCase):
         with fluid.program_guard(main, startup):
             if seed is not None:
                 startup.random_seed = seed
-                main.random_seed = seed
             loss = method(use_feed=len(feed_dict) > 0)
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)

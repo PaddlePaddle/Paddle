@@ -16,6 +16,7 @@ import core
 import multiprocessing
 import framework
 import executor
+import warnings
 
 __all__ = ['ParallelExecutor']
 
@@ -130,6 +131,10 @@ class ParallelExecutor(object):
           or numpy array.
         :return: fetched value list.
         """
+        if not feed_dict == {}:
+            warnings.warn(
+                "The 'feed_dict' of ParallelExecutor.run() is deprecated. Please use 'feed' instead."
+            )
         if feed == {}:
             feed = feed_dict
         if not isinstance(feed, dict):
