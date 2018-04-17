@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 
+#include <string>
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -37,11 +39,13 @@ void ScaleLossGradOpHandle::RunImpl() {
     *tmp = coeff_;
   } else {
 #ifdef PADDLE_WITH_CUDA
-    auto stream =
-        static_cast<platform::CUDADeviceContext *>(this->dev_ctxes_[place_])
-            ->stream();
-    memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
-                 platform::CPUPlace(), &coeff_, sizeof(float), stream);
+    this->RunAndRecordEvent([&] {
+      auto stream =
+          static_cast<platform::CUDADeviceContext *>(this->dev_ctxes_[place_])
+              ->stream();
+      memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
+                   platform::CPUPlace(), &coeff_, sizeof(float), stream);
+    });
 #endif
   }
 }

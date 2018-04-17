@@ -34,7 +34,7 @@ void SendOpHandle::RunImpl() {
     }
     in->generated_op_->Wait(dev_ctxes_[p]);
   }
-  op_->Run(*local_scope_, place_);
+  this->RunAndRecordEvent([&] { op_->Run(*local_scope_, place_); });
 }
 
 std::string SendOpHandle::Name() const { return "send"; }

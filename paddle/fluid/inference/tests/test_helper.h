@@ -89,7 +89,7 @@ void CheckError(const paddle::framework::LoDTensor& output1,
   EXPECT_EQ(count, 0U) << "There are " << count << " different elements.";
 }
 
-template <typename Place, bool CreateVars = true>
+template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
@@ -175,8 +175,15 @@ void TestInference(const std::string& dirname,
     }
 
     // Ignore the profiling results of the first run
-    executor.Run(*inference_program, scope, feed_targets, fetch_targets,
-                 CreateVars);
+    std::unique_ptr<paddle::framework::ExecutorPrepareContext> ctx;
+    if (PrepareContext) {
+      ctx = executor.Prepare(*inference_program, 0);
+      executor.RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets,
+                                  CreateVars);
+    } else {
+      executor.Run(*inference_program, scope, feed_targets, fetch_targets,
+                   CreateVars);
+    }
 
     // Enable the profiler
     paddle::platform::EnableProfiler(state);
@@ -187,8 +194,15 @@ void TestInference(const std::string& dirname,
           "run_inference",
           paddle::platform::DeviceContextPool::Instance().Get(place));
 
-      executor.Run(*inference_program, scope, feed_targets, fetch_targets,
-                   CreateVars);
+      if (PrepareContext) {
+        // Note: if you change the inference_program, you need to call
+        // executor.Prepare() again to get a new ExecutorPrepareContext.
+        executor.RunPreparedContext(ctx.get(), scope, feed_targets,
+                                    fetch_targets, CreateVars);
+      } else {
+        executor.Run(*inference_program, scope, feed_targets, fetch_targets,
+                     CreateVars);
+      }
     }
 
     // Disable the profiler and print the timing information
