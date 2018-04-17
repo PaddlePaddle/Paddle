@@ -340,6 +340,16 @@ class TestBook(unittest.TestCase):
             print(layers.lod_reset(x=x, y=y))
         print(str(program))
 
+    def test_label_smooth(self):
+        program = Program()
+        with program_guard(program):
+            label = layers.data(name="label", shape=[1], dtype="float32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
+            smooth_label = layers.label_smooth(
+                label=one_hot_label, epsilon=0.1, dtype="float32")
+            self.assertIsNotNone(smooth_label)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
