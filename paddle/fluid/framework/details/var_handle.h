@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_set>
+#include <utility>
 
 #include "paddle/fluid/platform/place.h"
 
@@ -33,10 +34,10 @@ struct VarHandleBase {
 
   // The operator who generate this variable. nullptr if the variable
   // is a root node.
-  OpHandleBase *generated_op_;
+  OpHandleBase* generated_op_{nullptr};
 
   // Operators which depend on this variable ready.
-  std::unordered_set<OpHandleBase *> pending_ops_;
+  std::unordered_set<OpHandleBase*> pending_ops_;
 };
 
 // VarHandle is actually a single version of Runtime Variable.
@@ -46,6 +47,13 @@ struct VarHandleBase {
 // NOTE: runtime variables have place.
 struct VarHandle : public VarHandleBase {
   std::string DebugString() const override;
+
+  VarHandle(size_t version, size_t scope_index, std::string name,
+            platform::Place place)
+      : version_(version),
+        scope_idx_(scope_index),
+        name_(std::move(name)),
+        place_(std::move(place)) {}
 
   // version field currently is not used, however, just store the version to
   // debug easily.
