@@ -155,13 +155,9 @@ void ParallelExecutor::BCastParamsToGPUs(
 #endif
 }
 
-void ParallelExecutor::Run(
-    const std::vector<std::string> &fetch_tensors,
-    const std::string &fetched_var_name,
-    const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
+void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
+                           const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
-  SplitTensorToPlaces(feed_tensors);
-
   // Create local scopes.
   for (auto &scope : member_->local_scopes_) {
     Scope &local_scope = scope->NewScope();
@@ -195,14 +191,28 @@ void ParallelExecutor::Run(
     auto &local_scope =
         *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
     scope->DeleteScope(local_scope);
-    local_scope = nullptr;
   }
 }
 
-void ParallelExecutor::SplitTensorToPlaces(
-    const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
-  for (auto it : feed_tensors) {
-    auto lod_tensors = it.second.SplitLoDTensor(member_->places_);
+void ParallelExecutor::FeedTensorsIntoLocalScopes(
+    const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
+  PADDLE_ENFORCE_EQ(member_->local_scopes_.size(), tensors.size());
+
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    auto &map = tensors[i];
+    auto *scope = member_->local_scopes_[i];
+    for (auto &pair : map) {
+      auto *trg = scope->Var(pair.first)->GetMutable<LoDTensor>();
+      trg->ShareDataWith(pair.second);
+      trg->set_lod(pair.second.lod());
+    }
+  }
+}
+
+void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
+    const std::unordered_map<std::string, LoDTensor> &tensors) {
+  for (auto pair : tensors) {
+    auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
     PADDLE_ENFORCE_EQ(
         member_->places_.size(), lod_tensors.size(),
         "The number of samples of current batch is less than the count of "
@@ -211,7 +221,7 @@ void ParallelExecutor::SplitTensorToPlaces(
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?
       auto t =
-          member_->local_scopes_[j]->Var(it.first)->GetMutable<LoDTensor>();
+          member_->local_scopes_[j]->Var(pair.first)->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
     }
