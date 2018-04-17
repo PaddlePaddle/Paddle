@@ -13,26 +13,35 @@
 # limitations under the License.
 
 import numpy as np
-import os
-import shutil
+from framework import Program
+from executor import global_scope
 from . import core
 
 
 class InferenceTranspiler:
-    def transpile(self, program, scope, place):
+    def transpile(self, program, place, scope=None):
         '''
         Transpile the program. Support only fuse batch normalization now.
 
         :param program: program to transpile 
         :type program: Program
-        :param scope: inference scope 
-        :type scope: Scope
         :param place: inference place 
         :type place: Place
+        :param scope: inference scope 
+        :type scope: Scope or None
         '''
-        self.fuse_batch_norm(program, scope, place)
+        if not isinstance(program, Program):
+            raise TypeError("program should be as Program type")
+        if not isinstance(place, core.CPUPlace) and not isinstance(
+                place, core.CUDAPlace):
+            raise TypeError("place should be as CPUPlace/CUDAPlace type")
+        if scope is None:
+            scope = global_scope()
+        if not isinstance(scope, core.Scope):
+            raise TypeError("scope should be as Scope type or None")
+        self.fuse_batch_norm(program, place, scope)
 
-    def fuse_batch_norm(self, program, scope, place):
+    def fuse_batch_norm(self, program, place, scope):
         '''
         Transpile the program by fused batch normalization.
  
@@ -66,10 +75,10 @@ class InferenceTranspiler:
 
         :param program: program to transpile 
         :type program: Program
-        :param scope: inference scope 
-        :type scope: Scope
         :param place: inference place 
         :type place: Place
+        :param scope: inference scope 
+        :type scope: Scope
         '''
         self.scope = scope
         self.place = place
