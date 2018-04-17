@@ -64,9 +64,9 @@ ParallelExecutor::ParallelExecutor(
   // Create local scopes
   if (local_scopes.empty()) {
     // Shared the first scope to global scope
-    member_->local_scopes_.emplace_back(member_->global_scope_);
+    member_->local_scopes_.push_back(member_->global_scope_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(&scope->NewScope());
+      member_->local_scopes_.push_back(&scope->NewScope());
     }
   } else {
     PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
