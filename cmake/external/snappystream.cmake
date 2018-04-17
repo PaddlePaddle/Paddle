@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-IF(MOBILE_INFERENCE)
+IF(MOBILE_INFERENCE OR RPI)
     return()
 ENDIF()
 
@@ -21,9 +20,11 @@ include (ExternalProject)
 
 # NOTE: snappy is needed when linking with recordio
 
-SET(SNAPPYSTREAM_SOURCES_DIR ${THIRD_PARTY_PATH}/snappy_stream)
-SET(SNAPPYSTREAM_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy_stream)
-SET(SNAPPYSTREAM_INCLUDE_DIR "${SNAPPYSTREAM_INSTALL_DIR}/include/" CACHE PATH "snappy stream include directory." FORCE)
+set(SNAPPYSTREAM_SOURCES_DIR ${THIRD_PARTY_PATH}/snappy_stream)
+set(SNAPPYSTREAM_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy_stream)
+set(SNAPPYSTREAM_INCLUDE_DIR "${SNAPPYSTREAM_INSTALL_DIR}/include" CACHE PATH "snappy stream include directory." FORCE)
+
+set(SNAPPYSTREAM_LIBRARIES "${SNAPPYSTREAM_INSTALL_DIR}/lib/libsnappystream.a")
 
 ExternalProject_Add(
         extern_snappystream
@@ -51,8 +52,9 @@ ExternalProject_Add(
 )
 
 add_library(snappystream STATIC IMPORTED GLOBAL)
-set_property(TARGET snappystream PROPERTY IMPORTED_LOCATION
-        "${SNAPPYSTREAM_INSTALL_DIR}/lib/libsnappystream.a")
+set_property(TARGET snappystream PROPERTY IMPORTED_LOCATION ${SNAPPYSTREAM_LIBRARIES})
 
-include_directories(${SNAPPYSTREAM_INCLUDE_DIR})
+include_directories(${SNAPPYSTREAM_INCLUDE_DIR}) # For snappysteam to include its own headers.
+include_directories(${THIRD_PARTY_PATH}/install) # For Paddle to include snappy stream headers.
+
 add_dependencies(snappystream extern_snappystream)

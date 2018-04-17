@@ -25,6 +25,8 @@ __activations__ = [
     'abs',
     'ceil',
     'floor',
+    'cos',
+    'sin',
     'round',
     'reciprocal',
     'log',
@@ -47,7 +49,6 @@ __activations__ = [
 __all__ = [
     'mean',
     'mul',
-    'reshape',
     'scale',
     'sigmoid_cross_entropy_with_logits',
     'elementwise_add',

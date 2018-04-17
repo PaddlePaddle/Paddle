@@ -14,13 +14,14 @@
 
 import unittest
 import paddle.fluid.core as core
+from paddle.fluid.framework import Program
 
 
 class TestOpDesc(unittest.TestCase):
     def test_op_desc(self):
-        prog = core.ProgramDesc()
-        self.assertIsNotNone(prog)
-        block = prog.block(0)
+        program_desc = core.ProgramDesc()
+        self.assertIsNotNone(program_desc)
+        block = program_desc.block(0)
         self.assertIsNotNone(block)
         op = block.append_op()
         self.assertIsNotNone(op)
@@ -66,7 +67,7 @@ class TestOpDesc(unittest.TestCase):
 
         self.assertEqual(8, len(op.attr_names()))
 
-        op.set_block_attr("block_attr", prog.block(0))
+        op.set_block_attr("block_attr", program_desc.block(0))
         self.assertEqual(0, op.block_attr("block_attr"))
 
         mul_op = block.append_op()
@@ -87,20 +88,20 @@ class TestProgramDesc(unittest.TestCase):
         del program_desc
 
     def test_append_block(self):
-        prog_desc = core.ProgramDesc()
-        self.assertIsNotNone(prog_desc)
-        block_root = prog_desc.block(0)
+        program_desc = core.ProgramDesc()
+        self.assertIsNotNone(program_desc)
+        block_root = program_desc.block(0)
         self.assertIsNotNone(block_root)
         self.assertEqual(block_root.id, 0)
-        block1 = prog_desc.append_block(block_root)
-        block2 = prog_desc.append_block(block1)
+        block1 = program_desc.append_block(block_root)
+        block2 = program_desc.append_block(block1)
         self.assertIsNotNone(block1)
         self.assertEqual(block1.id, block2.parent)
         self.assertEqual(block_root.id, block1.parent)
-        block3 = prog_desc.append_block(block_root)
+        block3 = program_desc.append_block(block_root)
         self.assertEqual(block3.parent, block_root.id)
-        self.assertEqual(prog_desc.block(1).id, 1)
-        self.assertEqual(4, prog_desc.num_blocks())
+        self.assertEqual(program_desc.block(1).id, 1)
+        self.assertEqual(4, program_desc.num_blocks())
 
 
 class TestVarDesc(unittest.TestCase):
@@ -161,9 +162,9 @@ class TestVarDesc(unittest.TestCase):
 
 class TestBlockDesc(unittest.TestCase):
     def test_add_var(self):
-        prog = core.ProgramDesc()
-        self.assertIsNotNone(prog)
-        block = prog.block(0)
+        program_desc = core.ProgramDesc()
+        self.assertIsNotNone(program_desc)
+        block = program_desc.block(0)
         self.assertIsNotNone(block)
         var1 = block.var("var1")
         var2 = block.var("var2")
@@ -174,9 +175,9 @@ class TestBlockDesc(unittest.TestCase):
         self.assertEqual(var2_re, var2)
 
     def test_add_op(self):
-        prog = core.ProgramDesc()
-        self.assertIsNotNone(prog)
-        block = prog.block(0)
+        program_desc = core.ProgramDesc()
+        self.assertIsNotNone(program_desc)
+        block = program_desc.block(0)
         self.assertIsNotNone(block)
         op1 = block.append_op()
         op2 = block.append_op()
@@ -185,6 +186,28 @@ class TestBlockDesc(unittest.TestCase):
         for idx in xrange(0, block.op_size()):
             all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op1, op2])
+
+    def test_remove_op(self):
+        program = Program()
+        program_desc = program.desc
+        self.assertIsNotNone(program_desc)
+        block = program_desc.block(0)
+        self.assertIsNotNone(block)
+
+        op0 = block.append_op()
+        op1 = block.append_op()
+        op2 = block.append_op()
+        op0.set_type("test")
+        op1.set_type("test")
+        op2.set_type("test")
+
+        block.remove_op(1, 2)
+        program.sync_with_cpp()
+
+        all_ops = []
+        for idx in xrange(0, block.op_size()):
+            all_ops.append(block.op(idx))
+        self.assertEqual(all_ops, [op0, op2])
 
 
 if __name__ == '__main__':

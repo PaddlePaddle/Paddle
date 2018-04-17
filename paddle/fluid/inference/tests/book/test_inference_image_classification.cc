@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
 #include "gflags/gflags.h"
+#include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -35,10 +35,8 @@ TEST(inference, image_classification) {
   paddle::framework::LoDTensor input;
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
-  SetupTensor<float>(input,
-                     {FLAGS_batch_size, 3, 32, 32},
-                     static_cast<float>(0),
-                     static_cast<float>(1));
+  SetupTensor<float>(&input, {FLAGS_batch_size, 3, 32, 32},
+                     static_cast<float>(0), static_cast<float>(1));
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
@@ -48,7 +46,7 @@ TEST(inference, image_classification) {
 
   // Run inference on CPU
   LOG(INFO) << "--- CPU Runs: ---";
-  TestInference<paddle::platform::CPUPlace>(
+  TestInference<paddle::platform::CPUPlace, false, true>(
       dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat);
   LOG(INFO) << output1.dims();
 
@@ -59,7 +57,7 @@ TEST(inference, image_classification) {
 
   // Run inference on CUDA GPU
   LOG(INFO) << "--- GPU Runs: ---";
-  TestInference<paddle::platform::CUDAPlace>(
+  TestInference<paddle::platform::CUDAPlace, false, true>(
       dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat);
   LOG(INFO) << output2.dims();
 

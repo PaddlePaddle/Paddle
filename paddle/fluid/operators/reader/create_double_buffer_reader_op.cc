@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <thread>
+#include <thread>  // NOLINT
+
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
@@ -20,56 +21,64 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-static constexpr size_t kDoubleBufferSize = 2;
+// 'Double buffer' means we shall maintain two batches of input data at the same
+// time. So the kCacheSize shoul be at least 2.
+static constexpr size_t kCacheSize = 2;
+// There will be two bacthes out of the channel during training:
+// 1. the one waiting to be sent to the channel
+// 2. the one just be received from the channel, which is also being used by
+// subsequent operators.
+// So the channel size should be kChacheSize - 2
+static constexpr size_t kChannelSize = 0;  // kCacheSize - 2
 
 class DoubleBufferReader : public framework::DecoratedReader {
  public:
-  struct Item {
-    Item() : ctx_(nullptr) {}
-
-    std::vector<framework::LoDTensor> payloads_;
-    platform::DeviceContext* ctx_;
-  };
-
   explicit DoubleBufferReader(
       ReaderBase* reader, platform::Place target_place = platform::CPUPlace())
       : DecoratedReader(reader), place_(target_place) {
-    for (size_t i = 0; i < kDoubleBufferSize; ++i) {
-      if (platform::is_gpu_place(place_)) {
+    cpu_tensor_cache_.resize(kCacheSize);
+    gpu_tensor_cache_.resize(kCacheSize);
 #ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(place_)) {
+      for (size_t i = 0; i < kCacheSize; ++i) {
         ctxs_.emplace_back(new platform::CUDADeviceContext(
             boost::get<platform::CUDAPlace>(place_)));
-#endif
       }
     }
-
-    start_thread();
-  }
-
-  void start_thread() {
-    buffer_ = framework::MakeChannel<Item>(kDoubleBufferSize);
-    prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
+#endif
+    StartPrefetcher();
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
   void ReInit() override;
 
-  ~DoubleBufferReader() {
-    buffer_->Close();
-    prefetcher_.join();
-    delete buffer_;
-  }
-
-  bool HasNext() const override;
+  ~DoubleBufferReader() { EndPrefetcher(); }
 
  private:
+  bool HasNext() const;
+
+  void StartPrefetcher() {
+    channel_ = framework::MakeChannel<size_t>(kChannelSize);
+    prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
+  }
+
+  void EndPrefetcher() {
+    channel_->Close();
+    if (prefetcher_.joinable()) {
+      prefetcher_.join();
+    }
+    delete channel_;
+    channel_ = nullptr;
+  }
+
   void PrefetchThreadFunc();
 
   std::thread prefetcher_;
-  framework::Channel<Item>* buffer_;
+  framework::Channel<size_t>* channel_;
   platform::Place place_;
+  std::vector<std::vector<framework::LoDTensor>> cpu_tensor_cache_;
+  std::vector<std::vector<framework::LoDTensor>> gpu_tensor_cache_;
   std::vector<std::unique_ptr<platform::DeviceContext>> ctxs_;
-  mutable Item local_buffer_;
 };
 
 class CreateDoubleBufferReaderOp : public framework::OperatorBase {
@@ -79,14 +88,19 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
-                                        ->Get<framework::ReaderHolder>();
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
+    if (out->Get() != nullptr) {
+      return;
+    }
+    const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
+                                        ->Get<framework::ReaderHolder>();
 
     auto place_str = Attr<std::string>("place");
     platform::Place place;
-    if (place_str == "CPU") {
+    if (place_str == "AUTO") {
+      place = dev_place;
+    } else if (place_str == "CPU") {
       place = platform::CPUPlace();
     } else {
       std::istringstream sin(place_str);
@@ -117,74 +131,72 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
       enum_range.insert(string::Sprintf("CUDA:%d", i));
     }
     enum_range.insert("CPU");
-    AddAttr<std::string>("place", "The double buffer place, default is CPU")
-        .SetDefault("CPU")
+    enum_range.insert("AUTO");
+    AddAttr<std::string>("place", "The double buffer place")
+        .SetDefault("AUTO")
         .InEnum({enum_range});
   }
 };
 
 void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  if (!HasNext()) {
-    PADDLE_THROW("There is no next data!");
-  }
-
-  if (local_buffer_.payloads_.empty()) {
-    buffer_->Receive(&local_buffer_);
-  }
-  *out = local_buffer_.payloads_;
-  local_buffer_.payloads_.clear();
-  if (local_buffer_.ctx_) {
-    local_buffer_.ctx_->Wait();
+  out->clear();
+  if (HasNext()) {
+    size_t cached_tensor_id;
+    channel_->Receive(&cached_tensor_id);
+    if (platform::is_gpu_place(place_)) {
+      *out = gpu_tensor_cache_[cached_tensor_id];
+      ctxs_[cached_tensor_id]->Wait();
+    } else {
+      // CPU place
+      *out = cpu_tensor_cache_[cached_tensor_id];
+    }
   }
 }
 
 void DoubleBufferReader::ReInit() {
   reader_->ReInit();
-  buffer_->Close();
-  prefetcher_.join();
-  delete buffer_;
-  start_thread();
+  EndPrefetcher();
+  StartPrefetcher();
+}
+
+bool DoubleBufferReader::HasNext() const {
+  while (!channel_->IsClosed() && !channel_->CanReceive()) {
+  }
+  return channel_->CanReceive();
 }
 
 void DoubleBufferReader::PrefetchThreadFunc() {
   VLOG(5) << "A new prefetch thread starts.";
-  size_t gpu_ctx_offset = 0;
-  while (reader_->HasNext()) {
-    Item batch;
-    reader_->ReadNext(&batch.payloads_);
-    if (platform::is_gpu_place(place_)) {
-      std::vector<framework::LoDTensor> gpu_batch;
-      auto& gpu_ctx = this->ctxs_[gpu_ctx_offset++];
-      gpu_ctx_offset %= this->ctxs_.size();
-      gpu_batch.resize(batch.payloads_.size());
-      for (size_t i = 0; i < batch.payloads_.size(); ++i) {
-        framework::TensorCopy(batch.payloads_[i], place_, *gpu_ctx,
-                              &gpu_batch[i]);
-        gpu_batch[i].set_lod(batch.payloads_[i].lod());
-      }
-      batch.ctx_ = gpu_ctx.get();
-      std::swap(gpu_batch, batch.payloads_);
+  size_t cached_tensor_id = 0;
+  while (true) {
+    auto& cpu_batch = cpu_tensor_cache_[cached_tensor_id];
+    reader_->ReadNext(&cpu_batch);
+    if (cpu_batch.empty()) {
+      // The underlying reader have no next data.
+      break;
     }
-
+    if (platform::is_gpu_place(place_)) {
+      auto& gpu_batch = gpu_tensor_cache_[cached_tensor_id];
+      auto* gpu_ctx = ctxs_[cached_tensor_id].get();
+      gpu_batch.resize(cpu_batch.size());
+      for (size_t i = 0; i < cpu_batch.size(); ++i) {
+        framework::TensorCopy(cpu_batch[i], place_, *gpu_ctx, &gpu_batch[i]);
+        gpu_batch[i].set_lod(cpu_batch[i].lod());
+      }
+    }
     try {
-      buffer_->Send(&batch);
+      size_t tmp = cached_tensor_id;
+      channel_->Send(&tmp);
     } catch (paddle::platform::EnforceNotMet e) {
       VLOG(5) << "WARNING: The double buffer channel has been closed. The "
                  "prefetch thread will terminate.";
       break;
     }
+    ++cached_tensor_id;
+    cached_tensor_id %= kCacheSize;
   }
-  buffer_->Close();
+  channel_->Close();
   VLOG(5) << "Prefetch thread terminates.";
-}
-
-bool DoubleBufferReader::HasNext() const {
-  if (local_buffer_.payloads_.empty()) {
-    bool ok = buffer_->Receive(&local_buffer_);
-    return ok;
-  } else {
-    return true;
-  }
 }
 
 }  // namespace reader

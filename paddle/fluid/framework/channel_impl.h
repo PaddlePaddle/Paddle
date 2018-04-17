@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <stddef.h>  // for size_t
 #include <atomic>
-#include <condition_variable>
+#include <condition_variable>  // NOLINT
 #include <deque>
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -38,7 +38,7 @@ class ChannelImpl : public paddle::framework::Channel<T> {
   virtual void Unlock();
   virtual bool IsClosed();
   virtual void Close();
-  ChannelImpl(size_t);
+  explicit ChannelImpl(size_t);
   virtual ~ChannelImpl();
 
   virtual void AddToSendQ(const void *referrer, T *data,
@@ -60,7 +60,7 @@ class ChannelImpl : public paddle::framework::Channel<T> {
     const void *referrer;  // TODO(thuan): figure out better way to do this
     std::function<bool(ChannelAction)> callback;
 
-    QueueMessage(T *item)
+    explicit QueueMessage(T *item)
         : data(item), cond(std::make_shared<std::condition_variable_any>()) {}
 
     QueueMessage(T *item, std::shared_ptr<std::condition_variable_any> cond)
@@ -85,6 +85,21 @@ class ChannelImpl : public paddle::framework::Channel<T> {
     recv_ctr--;
     destructor_cond_.notify_all();
     return value;
+  }
+
+  std::shared_ptr<QueueMessage> get_first_message(
+      std::deque<std::shared_ptr<QueueMessage>> *queue, ChannelAction action) {
+    while (!queue->empty()) {
+      // Check whether this message was added by Select
+      // If this was added by Select then execute the callback
+      // to check if you can execute this message. The callback
+      // can return false if some other case was executed in Select.
+      // In that case just discard this QueueMessage and process next.
+      std::shared_ptr<QueueMessage> m = queue->front();
+      queue->pop_front();
+      if (m->callback == nullptr || m->callback(action)) return m;
+    }
+    return nullptr;
   }
 
   size_t cap_;
@@ -123,44 +138,27 @@ void ChannelImpl<T>::Send(T *item) {
 
   // If channel is closed, throw exception
   if (closed_) {
-    lock.unlock();
     send_return();
+    lock.unlock();
     PADDLE_THROW("Cannot send on closed channel");
   }
 
   // If there is a receiver, directly pass the value we want
   // to send to the receiver, bypassing the channel buffer if any
   if (!recvq.empty()) {
-    std::shared_ptr<QueueMessage> m = recvq.front();
-    recvq.pop_front();
-    // Do the data transfer
-    // We will do this data transfer if either of the following
-    // cases are true
-    // 1. callback == nullptr // This means it was a regular channel send
-    // 2. callback returns true
-    bool do_send = true;
-    if (m->callback != nullptr) do_send = m->callback(ChannelAction::SEND);
-    if (do_send)
+    std::shared_ptr<QueueMessage> m =
+        get_first_message(&recvq, ChannelAction::SEND);
+
+    if (m != nullptr) {
       *(m->data) = std::move(*item);
-    else {
-      // We cannot do the data transfer because
-      // this QueueMessage was added by Select
-      // and some other case was executed.
-      // So call the Send function again.
-      // We do not care about notifying other
-      // because they would have been notified
-      // by the executed select case.
-      lock.unlock();
+      m->Notify();
+      send_return();
+      return;
+    } else {
       Send(item);
       send_return();
       return;
     }
-
-    // Wake up the blocked process and unlock
-    m->Notify();
-    lock.unlock();
-    send_return();
-    return;
   }
 
   // Unbuffered channel will always bypass this
@@ -169,8 +167,6 @@ void ChannelImpl<T>::Send(T *item) {
   if (buf_.size() < cap_) {
     // Copy to buffer
     buf_.push_back(std::move(*item));
-    // Release lock and return true
-    lock.unlock();
     send_return();
     return;
   }
@@ -181,8 +177,8 @@ void ChannelImpl<T>::Send(T *item) {
   sendq.push_back(m);
   m->Wait(lock);
   if (m->chan_closed) {
-    lock.unlock();
     send_return();
+    lock.unlock();
     PADDLE_THROW("Cannot send on closed channel");
   }
   send_return();
@@ -195,39 +191,38 @@ bool ChannelImpl<T>::Receive(T *item) {
 
   // If channel is closed and buffer is empty or
   // channel is unbuffered
-  if (closed_ && buf_.empty()) {
-    lock.unlock();
-    return recv_return(false);
-  }
+  if (closed_ && buf_.empty()) return recv_return(false);
 
   // If there is a sender, directly receive the value we want
-  // from the sender, bypassing the channel buffer if any
+  // from the sender. In case of a buffered channel, read from
+  // buffer and move front of send queue to the buffer
   if (!sendq.empty()) {
-    std::shared_ptr<QueueMessage> m = sendq.front();
-    sendq.pop_front();
-    // Do the data transfer
-    // We will do this data transfer if either of the following
-    // cases are true
-    // 1. callback == nullptr // This means it was a regular channel send
-    // 2. callback returns true
-    bool do_receive = true;
-    if (m->callback != nullptr)
-      do_receive = m->callback(ChannelAction::RECEIVE);
-    if (do_receive)
-      *item = std::move(*(m->data));
-    else
-      // We cannot do the data transfer because
-      // this QueueMessage was added by Select
-      // and some other case was executed.
-      // So call the Receive function again.
-      // We do not care about notifying other
-      // because they would have been notified
-      // by the executed select case.
-      return recv_return(Receive(item));
-
-    // Wake up the blocked process and unlock
-    m->Notify();
-    lock.unlock();
+    std::shared_ptr<QueueMessage> m =
+        get_first_message(&sendq, ChannelAction::RECEIVE);
+    if (buf_.size() > 0) {
+      // Case 1 : Channel is Buffered
+      // Do Data transfer from front of buffer
+      // and add a QueueMessage to the buffer
+      *item = std::move(buf_.front());
+      buf_.pop_front();
+      // If first message from sendq is not null
+      // add it to the buffer and notify it
+      if (m != nullptr) {
+        // Copy to buffer
+        buf_.push_back(std::move(*(m->data)));
+        m->Notify();
+      }  // Ignore if there is no first message
+    } else {
+      // Case 2: Channel is Unbuffered
+      // Do data transfer from front of SendQ
+      // If front is nullptr, then recursively call itself
+      if (m != nullptr) {
+        *item = std::move(*(m->data));
+        m->Notify();
+      } else {
+        return recv_return(Receive(item));
+      }
+    }
     return recv_return(true);
   }
 
@@ -236,8 +231,7 @@ bool ChannelImpl<T>::Receive(T *item) {
     // Directly read from buffer
     *item = std::move(buf_.front());
     buf_.pop_front();
-    // Release lock and return true
-    lock.unlock();
+    // return true
     return recv_return(true);
   }
 

@@ -17,9 +17,15 @@ limitations under the License. */
 #include <fstream>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/pybind/pybind.h"
 
 namespace paddle {
 namespace inference {
+
+// Temporarily add this function for exposing framework::InitDevices() when
+// linking the inference shared library.
+void Init(bool init_p2p) { framework::InitDevices(init_p2p); }
 
 void ReadBinaryFile(const std::string& filename, std::string& contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
@@ -41,8 +47,7 @@ bool IsPersistable(const framework::VarDesc* var) {
   return false;
 }
 
-void LoadPersistables(framework::Executor& executor,
-                      framework::Scope& scope,
+void LoadPersistables(framework::Executor& executor, framework::Scope& scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
                       const std::string& param_filename) {
@@ -108,10 +113,8 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor& executor,
 }
 
 std::unique_ptr<framework::ProgramDesc> Load(
-    framework::Executor& executor,
-    framework::Scope& scope,
-    const std::string& prog_filename,
-    const std::string& param_filename) {
+    framework::Executor& executor, framework::Scope& scope,
+    const std::string& prog_filename, const std::string& param_filename) {
   std::string model_filename = prog_filename;
   std::string program_desc_str;
   ReadBinaryFile(model_filename, program_desc_str);

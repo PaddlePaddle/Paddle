@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lrn_op.h"
+#include <string>
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -214,7 +215,10 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddAttr<bool>("is_test", "").SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "Turns on memory optimization that optimizes away "
+                  "unnecessary memory allocations. Used by MKLDNN.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Local Response Normalization Operator.

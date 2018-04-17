@@ -8,12 +8,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/fluid/platform/float16.h"
+
+#include <vector>
+
+#include "gtest/gtest.h"
 #include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-
-#include <gtest/gtest.h>
 
 namespace paddle {
 namespace platform {
@@ -74,24 +75,27 @@ TEST(float16, conversion_cpu) {
 
   // Conversion operator
   EXPECT_EQ(Eigen::half(float16(1.0f)).x, 0x3c00);
-  EXPECT_EQ(float(float16(0.5f)), 0.5f);
-  EXPECT_NEAR(double(float16(0.33333)), 0.33333, 0.0001);
-  EXPECT_EQ(int(float16(-1)), -1);
-  EXPECT_EQ(bool(float16(true)), true);
+  EXPECT_EQ(static_cast<float>(float16(0.5f)), 0.5f);
+  EXPECT_NEAR(static_cast<double>(float16(0.33333)), 0.33333, 0.0001);
+  EXPECT_EQ(static_cast<int>(float16(-1)), -1);
+  EXPECT_EQ(static_cast<bool>(float16(true)), true);
 }
 
 TEST(float16, arithmetic_cpu) {
-  EXPECT_EQ(float(float16(1) + float16(1)), 2);
-  EXPECT_EQ(float(float16(5) + float16(-5)), 0);
-  EXPECT_NEAR(float(float16(0.33333f) + float16(0.66667f)), 1.0f, 0.001);
-  EXPECT_EQ(float(float16(3) - float16(5)), -2);
-  EXPECT_NEAR(float(float16(0.66667f) - float16(0.33333f)), 0.33334f, 0.001);
-  EXPECT_NEAR(float(float16(3.3f) * float16(2.0f)), 6.6f, 0.01);
-  EXPECT_NEAR(float(float16(-2.1f) * float16(-3.0f)), 6.3f, 0.01);
-  EXPECT_NEAR(float(float16(2.0f) / float16(3.0f)), 0.66667f, 0.001);
-  EXPECT_EQ(float(float16(1.0f) / float16(2.0f)), 0.5f);
-  EXPECT_EQ(float(-float16(512.0f)), -512.0f);
-  EXPECT_EQ(float(-float16(-512.0f)), 512.0f);
+  EXPECT_EQ(static_cast<float>(float16(1) + float16(1)), 2);
+  EXPECT_EQ(static_cast<float>(float16(5) + float16(-5)), 0);
+  EXPECT_NEAR(static_cast<float>(float16(0.33333f) + float16(0.66667f)), 1.0f,
+              0.001);
+  EXPECT_EQ(static_cast<float>(float16(3) - float16(5)), -2);
+  EXPECT_NEAR(static_cast<float>(float16(0.66667f) - float16(0.33333f)),
+              0.33334f, 0.001);
+  EXPECT_NEAR(static_cast<float>(float16(3.3f) * float16(2.0f)), 6.6f, 0.01);
+  EXPECT_NEAR(static_cast<float>(float16(-2.1f) * float16(-3.0f)), 6.3f, 0.01);
+  EXPECT_NEAR(static_cast<float>(float16(2.0f) / float16(3.0f)), 0.66667f,
+              0.001);
+  EXPECT_EQ(static_cast<float>(float16(1.0f) / float16(2.0f)), 0.5f);
+  EXPECT_EQ(static_cast<float>(-float16(512.0f)), -512.0f);
+  EXPECT_EQ(static_cast<float>(-float16(-512.0f)), 512.0f);
 }
 
 TEST(float16, comparison_cpu) {
@@ -135,6 +139,11 @@ TEST(float16, lod_tensor_cpu) {
     data_ptr[i] = input_data[i];
     EXPECT_EQ(data_ptr[i].x, input_data[i].x);
   }
+}
+
+TEST(float16, print) {
+  float16 a = float16(1.0f);
+  std::cout << a << std::endl;
 }
 
 }  // namespace platform

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <thread>  // NOLINT
+
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
@@ -19,22 +21,23 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-class MultipleReader : public framework::ReaderBase {
+class MultiFileReader : public framework::ReaderBase {
  public:
-  MultipleReader(const std::vector<std::string>& file_names,
-                 const std::vector<framework::DDim>& dims, size_t thread_num)
-      : file_names_(file_names), dims_(dims) {
+  MultiFileReader(const std::vector<std::string>& file_names,
+                  const std::vector<framework::DDim>& dims, size_t thread_num,
+                  size_t buffer_size)
+      : file_names_(file_names), dims_(dims), buffer_size_(buffer_size) {
     prefetchers_.resize(thread_num);
     StartNewScheduler();
   }
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
-  bool HasNext() const override;
   void ReInit() override;
 
-  ~MultipleReader() { EndScheduler(); }
+  ~MultiFileReader() { EndScheduler(); }
 
  private:
+  bool HasNext();
   void StartNewScheduler();
   void EndScheduler();
   void ScheduleThreadFunc();
@@ -44,40 +47,36 @@ class MultipleReader : public framework::ReaderBase {
   std::vector<framework::DDim> dims_;
   std::thread scheduler_;
   std::vector<std::thread> prefetchers_;
+  size_t buffer_size_;
   framework::Channel<size_t>* waiting_file_idx_;
   framework::Channel<size_t>* available_thread_idx_;
   framework::Channel<std::vector<framework::LoDTensor>>* buffer_;
-  mutable std::vector<framework::LoDTensor> local_buffer_;
 };
 
-void MultipleReader::ReadNext(std::vector<framework::LoDTensor>* out) {
-  if (!HasNext()) {
-    PADDLE_THROW("There is no next data!");
+void MultiFileReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+  out->clear();
+  if (HasNext()) {
+    buffer_->Receive(out);
   }
-
-  if (local_buffer_.empty()) {
-    buffer_->Receive(&local_buffer_);
-  }
-  *out = local_buffer_;
-  local_buffer_.clear();
 }
 
-bool MultipleReader::HasNext() const {
-  return local_buffer_.empty() ? buffer_->Receive(&local_buffer_) : true;
-}
-
-void MultipleReader::ReInit() {
+void MultiFileReader::ReInit() {
   EndScheduler();
-  local_buffer_.clear();
   StartNewScheduler();
 }
 
-void MultipleReader::StartNewScheduler() {
+bool MultiFileReader::HasNext() {
+  while (!buffer_->IsClosed() && !buffer_->CanReceive()) {
+  }
+  return buffer_->CanReceive();
+}
+
+void MultiFileReader::StartNewScheduler() {
   size_t thread_num = prefetchers_.size();
   waiting_file_idx_ = framework::MakeChannel<size_t>(file_names_.size());
   available_thread_idx_ = framework::MakeChannel<size_t>(thread_num);
   buffer_ =
-      framework::MakeChannel<std::vector<framework::LoDTensor>>(thread_num);
+      framework::MakeChannel<std::vector<framework::LoDTensor>>(buffer_size_);
 
   for (size_t i = 0; i < file_names_.size(); ++i) {
     waiting_file_idx_->Send(&i);
@@ -90,7 +89,7 @@ void MultipleReader::StartNewScheduler() {
   scheduler_ = std::thread([this] { ScheduleThreadFunc(); });
 }
 
-void MultipleReader::EndScheduler() {
+void MultiFileReader::EndScheduler() {
   available_thread_idx_->Close();
   buffer_->Close();
   waiting_file_idx_->Close();
@@ -102,8 +101,8 @@ void MultipleReader::EndScheduler() {
   delete waiting_file_idx_;
 }
 
-void MultipleReader::ScheduleThreadFunc() {
-  VLOG(5) << "MultipleReader schedule thread starts.";
+void MultiFileReader::ScheduleThreadFunc() {
+  VLOG(5) << "MultiFileReader schedule thread starts.";
   size_t completed_thread_num = 0;
   size_t thread_idx;
   while (available_thread_idx_->Receive(&thread_idx)) {
@@ -135,17 +134,20 @@ void MultipleReader::ScheduleThreadFunc() {
       p.join();
     }
   }
-  VLOG(5) << "MultipleReader schedule thread terminates.";
+  VLOG(5) << "MultiFileReader schedule thread terminates.";
 }
 
-void MultipleReader::PrefetchThreadFunc(std::string file_name,
-                                        size_t thread_idx) {
+void MultiFileReader::PrefetchThreadFunc(std::string file_name,
+                                         size_t thread_idx) {
   VLOG(5) << "The prefetch thread of file '" << file_name << "' starts.";
   std::unique_ptr<framework::ReaderBase> reader =
       CreateReaderByFileName(file_name, dims_);
-  while (reader->HasNext()) {
+  while (true) {
     std::vector<framework::LoDTensor> ins;
     reader->ReadNext(&ins);
+    if (ins.empty()) {
+      break;
+    }
     try {
       buffer_->Send(&ins);
     } catch (paddle::platform::EnforceNotMet e) {
@@ -176,17 +178,19 @@ class OpenFilesOp : public framework::OperatorBase {
     const auto& ranks = Attr<std::vector<int>>("ranks");
     PADDLE_ENFORCE(!shape_concat.empty() && !ranks.empty());
     PADDLE_ENFORCE_EQ(std::accumulate(ranks.begin(), ranks.end(), 0),
-                      int(shape_concat.size()),
+                      static_cast<int>(shape_concat.size()),
                       "The accumulate of all ranks should be equal to the "
                       "shape concat's length.");
     const auto& file_names = Attr<std::vector<std::string>>("file_names");
     PADDLE_ENFORCE(!file_names.empty(), "No file to be read!");
     const size_t thread_num = Attr<int>("thread_num");
+    const size_t buffer_size = Attr<int>("buffer_size");
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    out->Reset(new MultipleReader(
-        file_names, RestoreShapes(shape_concat, ranks), thread_num));
+    out->Reset(new MultiFileReader(file_names,
+                                   RestoreShapes(shape_concat, ranks),
+                                   thread_num, buffer_size));
   }
 };
 
@@ -197,11 +201,12 @@ class OpenFilesOpMaker : public FileReaderMakerBase {
     AddAttr<std::vector<std::string>>("file_names", "Files to be read.");
     AddAttr<int>("thread_num", "The maximal concurrent prefetch thread number.")
         .GreaterThan(0);
+    AddAttr<int>("buffer_size", "The size of prefetch buffer.").GreaterThan(0);
 
     AddComment(R"DOC(
       OpenFiles Operator
 
-      An OpenFilesOp creates a MultipleReader, which is able to 
+      An OpenFilesOp creates a MultiFileReader, which is able to 
       read data multi-threaded from multiple files.
     )DOC");
   }

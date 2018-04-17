@@ -1,6 +1,6 @@
-### Design Doc: Switch
+# Design Doc: Switch
 
-### Background
+## Background
 
 Many programming languages provide `switch` as a generalization of `if-elif-else`.  We want to add it to Fluid.
 
@@ -19,7 +19,7 @@ with switch() as switch:
         fluid.print("Case 3")
 ```
 
-### The Semantics
+## The Semantics
 
 1. A `switch` control-flow checks cases one-by-one.
 1. The condition of each case is a boolean value, which is a scalar, and differs from the `fluid.if_else` control-flow, which condition could be a vector of boolean values.

@@ -1,6 +1,12 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
+# The fully connected test is removed whe the WITH_MKLDNN flag is OFF
+# Because the fully connected layer has only one kernel (MKLDNN)
+if(NOT WITH_MKLDNN)
+    list(REMOVE_ITEM TEST_OPS test_fc_op)
+endif(NOT WITH_MKLDNN)
+
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
 endif(NOT WITH_DISTRIBUTE)
@@ -22,13 +28,16 @@ function(py_test_modules TARGET_NAME)
     set(multiValueArgs MODULES DEPS ARGS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_PYTHON_BUILD_DIR}/lib-python ${py_test_modules_ENVS}
+             COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
              ${PYTHON_EXECUTABLE} -u -m unittest --verbose ${py_test_modules_MODULES} ${py_test_modules_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endfunction()
 
+list(REMOVE_ITEM TEST_OPS test_sequence_expand)
+
 # test time consuming OPs in a separate process for expliot parallism
+list(REMOVE_ITEM TEST_OPS test_parallel_executor)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dyn_rnn)
 list(REMOVE_ITEM TEST_OPS test_mul_op)
@@ -63,7 +72,10 @@ else()
     endforeach(TEST_OP)
 endif(WITH_FAST_BUNDLE_TEST)
 
+#
+py_test_modules(test_sequence_expand MODULES test_sequence_expand)
 # tests with high overhead
+py_test_modules(test_parallel_executor MODULES test_parallel_executor)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR})
 py_test_modules(test_train_dyn_rnn MODULES test_dyn_rnn)
 py_test_modules(test_mul_op MODULES test_mul_op)
