@@ -28,10 +28,10 @@ the parameter `w1` as an example to introduce the steps:
 1. For each gradient variables, they may distribute on different GPU card and aggregate
 them while they are all calculated.
 1. Split the gradient variable into multiple blocks according to the number of PServer
-instances and then sent them.
+instances and then send them.
 1. PServer would run an `Optimize Block` using a specified optimize algorithm to update
 the specified parameter.
-1. The trainer will fetch the parameter before running forward Op depends on the specified
+1. The trainer will fetch the parameter before running forward Op which depends on the specified
 parameter.
 1. Broadcast the received variable into multiple GPU cards and continue to run the next
 mini-batch.
@@ -44,7 +44,7 @@ send the gradient variables to the multiple PServer instances.
 - Schedule `FetchVars` operator to fetch the latest parameter from PServer before running
 the forward ops.
 - There could be a large number of gradient variables to be sent, so we need to use another
-thread pool(IO Threadpool) which a number of the schedulable threads is larger than the
+thread pool(IO Threadpool) whose a number of the schedulable threads is larger than the
 computing thread pool to avoid competitive the thread resources with computing.
 
 ### Parameter Server
@@ -52,7 +52,7 @@ computing thread pool to avoid competitive the thread resources with computing.
 <img src="./src/async_pserver.png" width="750"/>
 
 - There should be multiple trainer instances want to optimize the same parameter at
-the same time, to avoid the pollution, we need one `BlockingQueue` for each gradient
+the same time, to avoid the racing, we need one `BlockingQueue` for each gradient
 variable to process them one by one.
 - We need a `Map` structure to map a gradient variable name to the `OptimizeBlock` which
 can optimize the respective parameter.
