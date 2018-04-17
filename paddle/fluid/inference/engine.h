@@ -35,7 +35,8 @@ namespace paddle {
  */
 class EngineBase {
  public:
-  using PbType = framework::protobuf::BlockDesc;
+  // TODO fix it latter
+  using PbType = int;  // proto::BlockDesc;
 
   // Build the model and do some preparation, for example, in TensorRT, run
   // createInferBuilder, buildCudaEngine.

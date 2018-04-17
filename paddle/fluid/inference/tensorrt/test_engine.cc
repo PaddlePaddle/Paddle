@@ -1,28 +1,49 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
-#include <gtest/testing.h>
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+
+namespace paddle {
 
 class TensorrtEngineTest : public ::testing::Test {
  protected:
-  void SetUp() override { engine_ = new TensorrtEngine(10, 1 << 20); }
+  void SetUp() override {
+    ASSERT_EQ(0, cudaStreamCreate(&stream_));
+    engine_ = new TensorrtEngine(1, 1 << 10, &stream_);
+    engine_->InitNetwork();
+  }
 
-  void TearDown() override { delete engine_; }
+  void TearDown() override {
+    delete engine_;
+    cudaStreamDestroy(stream_);
+  }
 
- private:
+ protected:
   TensorrtEngine* engine_;
+  cudaStream_t stream_;
 };
 
-TEST(TensorrtEngine, add_layer) {
-  engine_.InitNetwork();
-  const int size = 2;
+TEST_F(TensorrtEngineTest, add_layer) {
+  const int size = 1;
 
-  float raw_weight[size] = {0.1, 0.2};  // Weight in CPU memory.
-  float raw_bias[size] = {0.3, 0.4};
+  float raw_weight[size] = {2.};  // Weight in CPU memory.
+  float raw_bias[size] = {3.};
 
-  TensorrtEngine::Weight weight(data_type::kFLOAT, weight, size);
-  engine_.DeclInput("x", data_type::kFLOAT, dim_type{1, 1, 2});
-  auto* fc_layer =
-      TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, size, weight, bias);
-  engine_->DeclOutput("y", fc_layer, 0);
-  engine_.FreezeNetwork();
+  LOG(INFO) << "create weights";
+  TensorrtEngine::Weight weight(TensorrtEngine::data_type::kFLOAT, raw_weight,
+                                size);
+  TensorrtEngine::Weight bias(TensorrtEngine::data_type::kFLOAT, raw_bias,
+                              size);
+  auto* x = engine_->DeclInput("x", TensorrtEngine::data_type::kFLOAT,
+                               nvinfer1::DimsCHW{1, 1, 1});
+  auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, size,
+                                        weight.get(), bias.get());
+
+  engine_->DeclOutput(fc_layer, 0, "y");
+  LOG(INFO) << "freeze network";
+  engine_->FreezeNetwork();
 }
+
+}  // namespace paddle

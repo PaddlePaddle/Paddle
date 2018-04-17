@@ -15,6 +15,7 @@
 #pragma once
 
 #include <NvInfer.h>
+#include <unordered_map>
 #include "paddle/fluid/inference/engine.h"
 
 namespace paddle {
@@ -37,7 +38,7 @@ namespace paddle {
 class TensorrtEngine : public EngineBase {
  public:
   using data_type = nvinfer1::DataType;
-  using dim_type = nvinfer1::DimsCHW;
+  using dim_type = nvinfer1::Dims;
 
   // Weight is model parameter.
   class Weight {
@@ -73,13 +74,17 @@ class TensorrtEngine : public EngineBase {
                                const dim_type& dim);
   // Set the offset-th output from a layer as the network's output, and set its
   // name.
-  void DeclOutput(ILayer* layer, int offset, const std ::string& name);
+  void DeclOutput(nvinfer1::ILayer* layer, int offset,
+                  const std ::string& name);
 
   // GPU memory address for a tensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted
   // data directly to the buffer to save data copy overhead.
   // NOTE this should be used after calling `FreezeNetwork`.
-  void* buffer(const std::string& name);
+  void*& buffer(const std::string& name);
+
+  nvinfer1::ICudaEngine* engine() { return infer_engine_; }
+  nvinfer1::INetworkDefinition* network() { return infer_network_; }
 
   // Fill an input from CPU memory with name and size.
   void SetInputFromCPU(const std::string& name, void* data, size_t size);
@@ -88,9 +93,6 @@ class TensorrtEngine : public EngineBase {
   void SetInputFromGPU(const std::string& name, void* data, size_t size);
   // Get an output called name.
   void* GetOutput(const std::string& name);
-
-  // helper functions to configure the network
-  nvinfer1::INetworkDefinition* network() { return infer_network_; }
 
  private:
   int max_batch_;
@@ -119,6 +121,6 @@ class TensorrtEngine : public EngineBase {
 // them, and an macro like this is more extensible when underlying TensorRT
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ARGS...) \
-  engine__->add##layer__(ARGS)
+  engine__->network()->add##layer__(ARGS)
 
 }  // namespace paddle
