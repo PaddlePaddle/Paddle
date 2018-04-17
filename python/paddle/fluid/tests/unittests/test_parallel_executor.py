@@ -203,12 +203,12 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   iter=10,
                                   batch_size=None,
                                   allow_op_delay=False,
-                                  feed_dict={}):
+                                  feed_dict=None):
         main = fluid.Program()
         startup = fluid.Program()
         startup.random_seed = 1  # Fix random seed
         with fluid.program_guard(main, startup):
-            loss = method(use_feed=len(feed_dict) > 0)
+            loss = method(use_feed=feed_dict is not None)
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
             if memory_opt:
@@ -222,13 +222,13 @@ class TestParallelExecutorBase(unittest.TestCase):
             if batch_size is not None:
                 batch_size *= fluid.core.get_cuda_device_count()
             begin = time.time()
-            first_loss, = exe.run([loss.name], feed_dict=feed_dict)
+            first_loss, = exe.run([loss.name], feed=feed_dict)
             first_loss = numpy.array(first_loss)
 
             for i in xrange(iter):
-                exe.run([], feed_dict=feed_dict)
+                exe.run([], feed=feed_dict)
 
-            last_loss, = exe.run([loss.name], feed_dict=feed_dict)
+            last_loss, = exe.run([loss.name], feed=feed_dict)
             end = time.time()
 
             if batch_size is not None:
@@ -649,5 +649,5 @@ class TestCRFModel(unittest.TestCase):
             for i in xrange(10):
                 cur_batch = next(data)
                 print map(numpy.array,
-                          pe.run(feed_dict=feeder.feed(cur_batch),
+                          pe.run(feed=feeder.feed(cur_batch),
                                  fetch_list=[avg_cost.name]))[0]
