@@ -60,7 +60,7 @@ __all__ = [
     'edit_distance',
     'l2_normalize',
     'matmul',
-    'top_k',
+    'topk',
     'warpctc',
     'sequence_reshape',
     'transpose',
@@ -2572,7 +2572,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
-def top_k(input, k):
+def topk(input, k):
     """
     This operator is used to find values and indices of the k largest entries
     for the last dimension.
@@ -2598,7 +2598,7 @@ def top_k(input, k):
     Examples:
         .. code-block:: python
 
-            top5_values, top5_indices = layers.top_k(input, k=5)
+            top5_values, top5_indices = layers.topk(input, k=5)
     """
     shape = input.shape
     if k < 1 and k >= shape[-1]:
@@ -2760,7 +2760,7 @@ def ctc_greedy_decoder(input, blank, name=None):
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
-    _, topk_indices = top_k(input, k=1)
+    _, topk_indices = topk(input, k=1)
 
     # ctc align op
     ctc_out = helper.create_tmp_variable(dtype="int64")

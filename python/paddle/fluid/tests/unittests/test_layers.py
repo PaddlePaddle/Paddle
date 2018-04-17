@@ -354,7 +354,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             data = layers.data(name="label", shape=[200], dtype="float32")
-            values, indices = layers.top_k(data, k=5)
+            values, indices = layers.topk(data, k=5)
             self.assertIsNotNone(values)
             self.assertIsNotNone(indices)
         print(str(program))
