@@ -473,6 +473,12 @@ multiplex
 ..  autofunction:: paddle.fluid.layers.multiplex
     :noindex:
 
+label_smooth
+------------
+
+..  autofunction:: paddle.fluid.layers.label_smooth
+    :noindex:
+
 ops
 ===
 

@@ -35,7 +35,9 @@ void ComputationOpHandle::RunImpl() {
     }
   }
 
-  op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
+  this->RunAndRecordEvent([this] {
+    op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
+  });
 }
 
 std::string ComputationOpHandle::Name() const { return op_->Type(); }

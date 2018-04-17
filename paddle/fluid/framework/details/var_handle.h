@@ -50,6 +50,7 @@ struct VarHandle : public VarHandleBase {
   // version field currently is not used, however, just store the version to
   // debug easily.
   size_t version_;
+  size_t scope_idx_;
   std::string name_;
   platform::Place place_;
 };
