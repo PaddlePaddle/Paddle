@@ -219,6 +219,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
         main = fluid.Program()
         startup = fluid.Program()
+        startup.random_seed = 1  # Fix random seed
         with fluid.program_guard(main, startup):
             if seed is not None:
                 startup.random_seed = seed
@@ -228,13 +229,13 @@ class TestParallelExecutorBase(unittest.TestCase):
             adam.minimize(loss)
             if memory_opt:
                 fluid.memory_optimize(main)
-
             place = fluid.CUDAPlace(0)
             startup_exe = fluid.Executor(place)
             startup_exe.run(startup)
 
             if use_parallel_executor:
-                exe = fluid.ParallelExecutor(True, loss_name=loss.name)
+                exe = fluid.ParallelExecutor(
+                    True, loss_name=loss.name, allow_op_delay=allow_op_delay)
             else:
                 exe = fluid.Executor(place=place)
 
