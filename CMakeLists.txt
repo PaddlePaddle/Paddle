@@ -179,6 +179,7 @@ set(EXTERNAL_LIBS
 
 if(WITH_GPU)
     include(cuda)
+    include(tensorrt)
 endif(WITH_GPU)
 
 if(WITH_AMD_GPU)

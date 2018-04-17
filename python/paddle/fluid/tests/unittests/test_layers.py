@@ -32,7 +32,6 @@ class TestBook(unittest.TestCase):
             cost = layers.square_error_cost(input=y_predict, label=y)
             avg_cost = layers.mean(cost)
             self.assertIsNotNone(avg_cost)
-            program.append_backward(avg_cost)
 
         print(str(program))
 
@@ -93,8 +92,6 @@ class TestBook(unittest.TestCase):
             predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
             cost = layers.cross_entropy(input=predict, label=label)
             avg_cost = layers.mean(cost)
-
-            program.append_backward(avg_cost)
 
         print(str(program))
 
@@ -341,6 +338,16 @@ class TestBook(unittest.TestCase):
             y = layers.data(
                 name='y', shape=[10, 20], dtype='float32', lod_level=2)
             print(layers.lod_reset(x=x, y=y))
+        print(str(program))
+
+    def test_label_smooth(self):
+        program = Program()
+        with program_guard(program):
+            label = layers.data(name="label", shape=[1], dtype="float32")
+            one_hot_label = layers.one_hot(input=label, depth=10)
+            smooth_label = layers.label_smooth(
+                label=one_hot_label, epsilon=0.1, dtype="float32")
+            self.assertIsNotNone(smooth_label)
         print(str(program))
 
 
