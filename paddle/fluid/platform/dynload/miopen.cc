@@ -12,42 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include <algorithm>
-#include <condition_variable>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
-#include "paddle/fluid/platform/device_context.h"
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/rccl.h"
-#else
-#include "paddle/fluid/platform/dynload/nccl.h"
-#endif
+#include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace platform {
-constexpr int kInvalidGPUId = -1;
+namespace dynload {
+std::once_flag miopen_dso_flag;
+void* miopen_dso_handle = nullptr;
 
-struct Communicator {
-  Communicator() {}
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-  int GetCommId(int device_id) const;
+MIOPEN_DNN_ROUTINE_EACH(DEFINE_WRAP);
 
-  void InitAll(const std::vector<int>& gpus);
+#ifdef PADDLE_USE_DSO
+bool HasMIOpen() {
+  std::call_once(miopen_dso_flag,
+                 []() { miopen_dso_handle = GetMIOpenDsoHandle(); });
+  return miopen_dso_handle != nullptr;
+}
 
-#ifdef PADDLE_WITH_HIP
-  const std::vector<rcclComm_t>& comms() const;
+void EnforceMIOpenLoaded(const char* fn_name) {
+  PADDLE_ENFORCE(miopen_dso_handle != nullptr,
+                 "Cannot load miopen shared library. Cannot invoke method %s",
+                 fn_name);
+}
 #else
-  const std::vector<ncclComm_t>& comms() const;
+bool HasMIOpen() { return true; }
 #endif
-};
 
+}  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

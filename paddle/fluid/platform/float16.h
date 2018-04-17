@@ -21,6 +21,10 @@ limitations under the License. */
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif  // PADDLE_WITH_HIP
+
 #ifdef __GNUC__
 #define PADDLE_GNUC_VER (__GNUC__ * 10 + __GNUC_MINOR__)
 #else

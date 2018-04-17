@@ -13,6 +13,8 @@ add_custom_command(TARGET profiler_py_proto POST_BUILD
 
 if(WITH_GPU)
   cc_library(enforce SRCS enforce.cc DEPS)
+elseif(WITH_AMD_GPU)
+  cc_library(enforce SRCS enforce.cc DEPS)
 else()
   cc_library(enforce SRCS enforce.cc)
 endif()
@@ -22,6 +24,7 @@ cc_library(cpu_info SRCS cpu_info.cc DEPS gflags glog enforce)
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
 nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
+hip_library(gpu_info SRCS gpu_info_hip.cc DEPS gflags glog enforce)
 
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
@@ -30,6 +33,8 @@ add_subdirectory(dynload)
 
 IF(WITH_GPU)
     set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
+ELSEIF(WITH_AMD_GPU)
+    set(GPU_CTX_DEPS dynload_hip dynamic_loader)
 ELSE()
     set(GPU_CTX_DEPS)
 ENDIF()
@@ -45,13 +50,19 @@ ENDIF()
 cc_library(device_context SRCS device_context.cc DEPS malloc
     place eigen3 ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
+hip_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
 nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
+hip_test(miopen_helper_test SRCS miopen_helper_test.cc DEPS dynload_hip)
 nv_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
+hip_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto ${GPU_CTX_DEPS})
 cc_library(profiler SRCS profiler.cc DEPS device_context device_tracer)
 cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
-nv_test(float16_gpu_test SRCS float16_test.cu)
-cc_test(float16_test SRCS float16_test.cc)
+# These tests depends on framework support, will be enabled later.
+if(NOT WITH_AMD_GPU)
+  nv_test(float16_gpu_test SRCS float16_test.cu)
+  cc_test(float16_test SRCS float16_test.cc)
+endif()

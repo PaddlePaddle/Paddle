@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#else
 #include <cuda.h>
+#endif
 
 namespace paddle {
 namespace platform {

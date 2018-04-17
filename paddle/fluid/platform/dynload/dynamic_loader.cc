@@ -49,6 +49,17 @@ DEFINE_string(
     tensorrt_dir, "",
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
+DEFINE_string(rocm_dir, "",
+              "Specify path for loading rocm library, such as libhipblas, "
+              "libhiprand, miopen. If default, "
+              "dlopen will search rocm from LD_LIBRARY_PATH");
+
+DEFINE_string(rccl_dir, "",
+              "Specify path for loading nccl library, such as libcublas, "
+              "libcurand. For instance, /opt/rocm/lib. If default, "
+              "dlopen will search rocm from LD_LIBRARY_PATH");
+
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -204,6 +215,22 @@ void* GetTensorRtDsoHandle() {
 #else
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so");
 #endif
+}
+
+void* GetMIOpenDsoHandle(){
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libMIOpen.so", false);
+}
+
+void* GetHipblasDsoHandle(){
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipblas.so");
+}
+
+void* GetHiprandDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhiprand.so");
+}
+
+void* GetRCCLDsoHandle() {
+  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so");
 }
 
 }  // namespace dynload

@@ -22,6 +22,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/place.h"
 
+#ifdef __HIPCC__
+#include <algorithm>
+#include <type_traits>
+#include <thrust/system/cuda/detail/par.h>
+#include <thrust/execution_policy.h>
+#include <thrust/transform.h>
+#include "paddle/fluid/platform/details/cuda_transform_iterator_cast.h"
+#endif
 #ifdef __NVCC__
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
@@ -76,7 +84,7 @@ struct Transform<platform::CPUDeviceContext> {
   }
 };
 
-#ifdef __NVCC__
+#if (defined(__HIPCC__) || defined(__NVCC))
 template <>
 struct Transform<platform::CUDADeviceContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>

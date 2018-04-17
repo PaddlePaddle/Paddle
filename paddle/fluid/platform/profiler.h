@@ -42,6 +42,11 @@ class Event {
   int device() const { return device_; }
 #endif
 
+#ifdef PADDLE_WITH_HIP
+  hipEvent_t event() const { return event_; }
+  int device() const { return device_; }
+#endif
+
   double CpuElapsedMs(const Event& e) const;
   double CudaElapsedMs(const Event& e) const;
 
@@ -53,6 +58,10 @@ class Event {
   bool has_cuda_;
 #ifdef PADDLE_WITH_CUDA
   cudaEvent_t event_ = nullptr;
+  int device_ = -1;
+#endif
+#ifdef PADDLE_WITH_HIP
+  hipEvent_t event_ = nullptr;
   int device_ = -1;
 #endif
 };

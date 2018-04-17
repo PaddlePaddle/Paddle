@@ -19,7 +19,11 @@ namespace paddle {
 namespace platform {
 namespace {
 // TODO(panyx0718): Where to destroy them.
+#ifdef PADDLE_WITH_HIP
+std::unique_ptr<std::vector<rcclComm_t>> global_comms;
+#else
 std::unique_ptr<std::vector<ncclComm_t>> global_comms;
+#endif
 std::unique_ptr<std::unordered_map<int, int>> comm_id_map;
 bool inited = false;
 size_t last_num_gpus = -1;
@@ -42,21 +46,37 @@ void Communicator::InitAll(const std::vector<int>& gpus) {
   if (global_comms) {
     for (size_t i = 0; i < global_comms->size(); ++i) {
       // FIXME(dzh) : PADDLE_ENFORCE return void
+#ifdef PADDLE_WITH_HIP
+      dynload::rcclCommDestroy((*global_comms)[i]);
+#else
       dynload::ncclCommDestroy((*global_comms)[i]);
+#endif
     }
   }
+#ifdef PADDLE_WITH_HIP
+  global_comms.reset(new std::vector<rcclComm_t>());
+#else
   global_comms.reset(new std::vector<ncclComm_t>());
+#endif
   comm_id_map.reset(new std::unordered_map<int, int>());
   global_comms->resize(gpus.size());
   for (size_t i = 0; i < gpus.size(); ++i) {
     (*comm_id_map)[gpus[i]] = i;
   }
   PADDLE_ENFORCE(
+#ifdef PADDLE_WITH_HIP
+      dynload::rcclCommInitAll(global_comms->data(), (int)gpus.size(), (int*)gpus.data()));
+#else
       dynload::ncclCommInitAll(global_comms->data(), gpus.size(), gpus.data()));
+#endif
   inited = true;
 }
 
+#ifdef PADDLE_WITH_HIP
+const std::vector<rcclComm_t>& Communicator::comms() const {
+#else
 const std::vector<ncclComm_t>& Communicator::comms() const {
+#endif
   std::lock_guard<std::mutex> guard(comm_mu);
   return *global_comms;
 }
