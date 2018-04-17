@@ -63,7 +63,7 @@ ParallelExecutor::ParallelExecutor(
   // Step 1. Bcast the params to devs.
   // Create local scopes
   if (local_scopes.empty()) {
-    local_scopes.emplace_back(scope);
+    member_->local_scopes_.emplace_back(scope);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
       member_->local_scopes_.emplace_back(&scope->NewScope());
     }
