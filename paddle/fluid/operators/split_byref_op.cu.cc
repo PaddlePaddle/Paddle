@@ -15,4 +15,5 @@ limitations under the License. */
 #include "paddle/fluid/operators/split_byref_op.h"
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    split, ops::SplitByrefOpKernel<paddle::platform::CUDADeviceContext, float>);
+    split_byref,
+    ops::SplitByrefOpKernel<paddle::platform::CUDADeviceContext, float>);
