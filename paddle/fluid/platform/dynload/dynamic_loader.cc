@@ -45,6 +45,10 @@ DEFINE_string(nccl_dir, "",
 
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 
+DEFINE_string(
+    tensorrt_dir, "",
+    "Specify path for loading tensorrt library, such as libnvinfer.so.");
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -191,6 +195,14 @@ void* GetNCCLDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.so");
+#endif
+}
+
+void* GetTensorRtDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so");
 #endif
 }
 
