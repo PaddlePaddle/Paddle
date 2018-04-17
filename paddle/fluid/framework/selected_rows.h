@@ -62,9 +62,10 @@ class SelectedRows {
    * @brief Get a value by the specified key, if the
    * key does not exists, this function would throw an exception.
    *
-   * @return a sliced tensor
+   * @return true if the Get operation successed.
    */
-  Tensor Get(int64_t key) const;
+
+  bool Get(int64_t key, framework::Tensor* tensor, int64_t row = 0) const;
 
   /*
    * @brief Set a key-value pair into the table.
