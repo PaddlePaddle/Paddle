@@ -32,14 +32,16 @@ namespace operators {
     }                                                                   \
   }
 
-#define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME)                     \
+#define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)        \
   class OP_NAME##GradMaker : public framework::SingleGradOpDescMaker { \
    public:                                                             \
+    using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;     \
+                                                                       \
    protected:                                                          \
     std::unique_ptr<framework::OpDesc> Apply() const override {        \
       auto *op = new framework::OpDesc();                              \
-      op->SetType(#OP_NAME "_grad");                                   \
-      op->SetInput("Out", Input("Out"));                               \
+      op->SetType(#KERNEL_TYPE "_grad");                               \
+      op->SetInput("Out", Output("Out"));                              \
       op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));  \
                                                                        \
       op->SetAttrMap(Attrs());                                         \
@@ -452,56 +454,64 @@ REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
 // variable
 // is used in gradient operator.
 // The operator name written in lowercase intentionally.
-REGISTER_ACTIVATION_OP_GRAD_MAKER(sigmoid);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(exp);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(relu);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(tanh);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(sqrt);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(ceil);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(floor);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(reciprocal);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(relu6);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(soft_relu);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(hard_sigmoid);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Sigmoid, sigmoid);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Exp, exp);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Relu, relu);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Tanh, tanh);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Sqrt, sqrt);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Ceil, ceil);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Floor, floor);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Reciprocal, reciprocal);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(Relu6, relu6);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(SoftRelu, soft_relu);
+REGISTER_ACTIVATION_OP_GRAD_MAKER(HardSigmoid, hard_sigmoid);
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
+#define REGISTER_INPLACE_ACTIVATION_OP(act_type, op_name)               \
+  REGISTER_OPERATOR(act_type, ops::ActivationOp, ops::op_name##OpMaker, \
+                    ops::op_name##GradMaker);                           \
+  REGISTER_OPERATOR(act_type##grad, ops::ActivationOpGrad)
+
 #define REGISTER_ACTIVATION_OP(act_type, op_name)                 \
   REGISTER_OP(act_type, ops::ActivationOp, ops::op_name##OpMaker, \
               act_type##_grad, ops::ActivationOpGrad);
 
-#define FOR_EACH_OP_FUNCTOR(__macro)  \
-  __macro(sigmoid, Sigmoid);          \
-  __macro(logsigmoid, LogSigmoid);    \
-  __macro(exp, Exp);                  \
-  __macro(relu, Relu);                \
-  __macro(tanh, Tanh);                \
-  __macro(softshrink, SoftShrink);    \
-  __macro(sqrt, Sqrt);                \
-  __macro(abs, Abs);                  \
-  __macro(ceil, Ceil);                \
-  __macro(floor, Floor);              \
-  __macro(cos, Cos);                  \
-  __macro(sin, Sin);                  \
-  __macro(round, Round);              \
-  __macro(reciprocal, Reciprocal);    \
-  __macro(log, Log);                  \
-  __macro(square, Square);            \
-  __macro(brelu, BRelu);              \
-  __macro(soft_relu, SoftRelu);       \
-  __macro(pow, Pow);                  \
-  __macro(stanh, STanh);              \
-  __macro(softplus, Softplus);        \
-  __macro(softsign, Softsign);        \
-  __macro(relu6, Relu6);              \
-  __macro(leaky_relu, LeakyRelu);     \
-  __macro(tanh_shrink, TanhShrink);   \
-  __macro(elu, ELU);                  \
-  __macro(hard_shrink, HardShrink);   \
-  __macro(hard_sigmoid, HardSigmoid); \
-  __macro(swish, Swish);              \
+#define FOR_EACH_INPLACE_OP_FUNCTOR(__macro) \
+  __macro(sigmoid, Sigmoid);                 \
+  __macro(relu, Relu);                       \
+  __macro(exp, Exp);                         \
+  __macro(tanh, Tanh);                       \
+  __macro(ceil, Ceil);                       \
+  __macro(floor, Floor);                     \
+  __macro(sqrt, Sqrt);                       \
+  __macro(soft_relu, SoftRelu);              \
+  __macro(relu6, Relu6);                     \
+  __macro(reciprocal, Reciprocal);           \
+  __macro(hard_sigmoid, HardSigmoid);
+
+#define FOR_EACH_OP_FUNCTOR(__macro) \
+  __macro(logsigmoid, LogSigmoid);   \
+  __macro(softshrink, SoftShrink);   \
+  __macro(abs, Abs);                 \
+  __macro(cos, Cos);                 \
+  __macro(sin, Sin);                 \
+  __macro(round, Round);             \
+  __macro(log, Log);                 \
+  __macro(square, Square);           \
+  __macro(brelu, BRelu);             \
+  __macro(pow, Pow);                 \
+  __macro(stanh, STanh);             \
+  __macro(softplus, Softplus);       \
+  __macro(softsign, Softsign);       \
+  __macro(leaky_relu, LeakyRelu);    \
+  __macro(tanh_shrink, TanhShrink);  \
+  __macro(elu, ELU);                 \
+  __macro(hard_shrink, HardShrink);  \
+  __macro(swish, Swish);             \
   __macro(thresholded_relu, ThresholdedRelu);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)   \
@@ -518,4 +528,5 @@ namespace ops = paddle::operators;
                                 ops::grad_functor<double>>);
 
 FOR_EACH_OP_FUNCTOR(REGISTER_ACTIVATION_OP);
+FOR_EACH_INPLACE_OP_FUNCTOR(REGISTER_INPLACE_ACTIVATION_OP);
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);
