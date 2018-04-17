@@ -125,7 +125,7 @@ TEST(BeamSearchDecodeOp, PackTwoStepsFistStep) {
 
   BeamSearchDecoder<float> helper;
   beamnode_vector_list = helper.PackTwoSteps(
-      ids[0], scores[0], beamnode_vector_list, &sentence_vector_list);
+      ids[0], scores[0], &beamnode_vector_list, &sentence_vector_list);
   ASSERT_EQ(beamnode_vector_list.size(), 2UL);
   ASSERT_EQ(beamnode_vector_list[0].size(), 2UL);
   ASSERT_EQ(beamnode_vector_list[1].size(), 4UL);
@@ -167,7 +167,7 @@ TEST(BeamSearchDecodeOp, PackTwoSteps) {
 
   BeamSearchDecoder<float> helper1;
   beamnode_vector_list = helper1.PackTwoSteps(
-      ids[0], scores[0], beamnode_vector_list, &sentence_vector_list);
+      ids[0], scores[0], &beamnode_vector_list, &sentence_vector_list);
 
   ASSERT_EQ(sentence_vector_list[0].size(), 1UL);
   ASSERT_EQ(sentence_vector_list[1].size(), 0UL);
