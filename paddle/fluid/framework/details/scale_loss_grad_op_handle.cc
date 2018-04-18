@@ -30,10 +30,11 @@ ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
 
 void ScaleLossGradOpHandle::RunImpl() {
   std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name_;
+  auto &local_scope = *scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
 
-  float *tmp =
-      scope_->FindVar(var_name)->GetMutable<LoDTensor>()->mutable_data<float>(
-          make_ddim({1}), place_);
+  float *tmp = local_scope.FindVar(var_name)
+                   ->GetMutable<LoDTensor>()
+                   ->mutable_data<float>(make_ddim({1}), place_);
 
   if (platform::is_cpu_place(place_)) {
     *tmp = coeff_;
