@@ -825,7 +825,7 @@ class DistributeTranspiler:
                 for v in splited_vars:
                     sections.append(v.shape[0])
                 program.global_block().append_op(
-                    type="split",
+                    type="split_byref",
                     inputs={"X": orig_var},
                     outputs={"Out": splited_vars},
                     attrs={"sections": sections}  # assume split evenly
