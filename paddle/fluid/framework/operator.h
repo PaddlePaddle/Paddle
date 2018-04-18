@@ -98,12 +98,7 @@ class OperatorBase {
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
 
-  virtual bool IsNetOp() const { return false; }
-
   virtual bool SupportGPU() const { return false; }
-
-  /// rename inputs outputs name
-  void Rename(const std::string& old_name, const std::string& new_name);
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
