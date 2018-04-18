@@ -89,6 +89,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
+    ops::GPUDropoutKernel<plat::CUDADeviceContext, double>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(dropout_grad,
+                        ops::DropoutGradKernel<plat::CUDADeviceContext, double>,
                         ops::DropoutGradKernel<plat::CUDADeviceContext, float>);
