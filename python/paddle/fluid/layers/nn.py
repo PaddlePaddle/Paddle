@@ -88,6 +88,7 @@ def fc(input,
        bias_attr=None,
        use_mkldnn=False,
        act=None,
+       is_test=False,
        name=None):
     """
     **Fully Connected Layer**
@@ -134,6 +135,7 @@ def fc(input,
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
             of this layer. If it is set to None, no bias will be added to the output units.
         act (str, default None): Activation to be applied to the output of this layer.
+        is_test(bool): A flag indicating whether execution is in test phase.
         use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
             library is installed. Default: False
         name (str, default None): The name of this layer.
@@ -177,8 +179,11 @@ def fc(input,
             inputs={"Input": input,
                     "W": w},
             outputs={"Out": tmp},
-            attrs={"use_mkldnn": use_mkldnn,
-                   "bias_attr": bias_attr})
+            attrs={
+                "use_mkldnn": use_mkldnn,
+                "is_test": is_test,
+                "bias_attr": bias_attr
+            })
         return helper.append_activation(tmp)
     else:
         for input_var, param_attr in helper.iter_inputs_and_params():
