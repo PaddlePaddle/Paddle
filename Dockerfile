@@ -46,11 +46,7 @@ ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
 RUN curl -s -q https://glide.sh/get | sh
 
 # Install TensorRT
-<<<<<<< HEAD
-# The unnecessary files has been removed to make the library small.
-=======
 # The unnecessary files has been removed to make the library small. It only contains include and lib now.
->>>>>>> 61f4baa13a890069f4ed116c9b226327674fcb1f
 RUN wget -qO- http://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
     tar -xz -C /usr/local && \
     cp -rf /usr/local/TensorRT/include /usr && \
