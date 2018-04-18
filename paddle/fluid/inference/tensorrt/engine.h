@@ -67,8 +67,7 @@ class TensorrtEngine : public EngineBase {
                                const dim_type& dim);
   // Set the offset-th output from a layer as the network's output, and set its
   // name.
-  void DeclOutput(nvinfer1::ILayer* layer, int offset,
-                  const std ::string& name);
+  void DeclOutput(nvinfer1::ILayer* layer, int offset, const std::string& name);
 
   // GPU memory address for a tensor with specific name. One can operate on
   // these memory directly for acceleration, for example, output the converted
