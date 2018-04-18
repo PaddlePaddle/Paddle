@@ -39,7 +39,7 @@ class ListenAndServOp : public framework::OperatorBase {
                   const framework::VariableNameMap &outputs,
                   const framework::AttributeMap &attrs);
 
-  int GetSelectedPort();
+  int GetSelectedPort() const;
 
   void Stop() override;
 
