@@ -39,7 +39,6 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FOUND})
-option(WITH_TENSORRT    "Compile PaddlePaddle with TensorRT support."   OFF)
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_TESTING     "Compile PaddlePaddle with unit testing"        OFF)
 option(WITH_SWIG_PY     "Compile PaddlePaddle with inference api"       ON)
@@ -180,12 +179,8 @@ set(EXTERNAL_LIBS
 
 if(WITH_GPU)
     include(cuda)
+    include(tensorrt)
 endif(WITH_GPU)
-
-# TensorRT depends on GPU.
-if (NOT WITH_GPU)
-  set(WITH_TENSORRT OFF)
-endif()
 
 if(WITH_AMD_GPU)
     find_package(HIP)
