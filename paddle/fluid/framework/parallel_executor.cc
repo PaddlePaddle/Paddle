@@ -63,13 +63,14 @@ ParallelExecutor::ParallelExecutor(
   // Step 1. Bcast the params to devs.
   // Create local scopes
   if (local_scopes.empty()) {
-    for (size_t i = 0; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.push_back(&scope->NewScope());
+    member_->local_scopes_.emplace_back(member_->global_scope_);
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
+      member_->local_scopes_.emplace_back(&scope->NewScope());
     }
   } else {
     PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
     for (size_t i = 0; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.push_back(local_scopes[i]);
+      member_->local_scopes_.emplace_back(local_scopes[i]);
     }
   }
 
@@ -159,7 +160,9 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
   // Create local scopes.
-  for (auto &scope : member_->local_scopes_) {
+  for (auto it = member_->local_scopes_.rbegin();
+       it != member_->local_scopes_.rend(); ++it) {
+    auto &scope = *it;
     Scope &local_scope = scope->NewScope();
     *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
         &local_scope;
@@ -173,7 +176,7 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
         InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
                            std::get<1>(name_type_pair));
       } else {
-        InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
+        InitializeVariable(local_scope.Var(std::get<0>(name_type_pair)),
                            std::get<1>(name_type_pair));
       }
     }
