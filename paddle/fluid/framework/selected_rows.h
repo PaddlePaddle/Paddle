@@ -35,7 +35,7 @@ class SelectedRows {
    *
    *  HasKey(key), whether the sparse table has the specified key.
    *  Set(key, value), set a key-value pair into the sparse table.
-   *  Get(key, value*, offset), get a value by key and apply it to the given
+   *  Get(keys, value*), get value by given key list and apply it to the given
    * value pointer
    *    with the specified offset.
    *
@@ -75,13 +75,12 @@ class SelectedRows {
   bool HasKey(int64_t key) const;
 
   /*
-   * @brief Get a value by the specified key, if the
-   * key does not exists, this function would throw an exception.
+   * @brief Get value by the key list, if the
    *
-   * @return true if the Get operation successed.
+   * @return a list of keys which does not exists in table
    */
-
-  bool Get(int64_t key, framework::Tensor* tensor, int64_t offset = 0) const;
+  std::vector<int64_t> Get(std::vector<int64_t> keys,
+                           framework::Tensor* tensor) const;
 
   /*
    * @brief Set a key-value pair into the table.
