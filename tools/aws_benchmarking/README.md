@@ -84,7 +84,8 @@ putcn/paddle_aws_client \
 --security_group_id <your security group id> \
 --docker_image myreponame/paddle_benchmark \
 --pserver_count 2 \
---trainer_count 2
+--trainer_count 2 \
+--trainer_command batch_size:20,is_local:no
 ```
 
 Now just wait until you see this:
