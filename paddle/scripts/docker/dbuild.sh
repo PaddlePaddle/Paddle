@@ -50,9 +50,9 @@ function cmake_gen() {
         -DCUDNN_ROOT=/usr/
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON}
         -DWITH_TESTING=${WITH_TESTING:-ON}
-        -DWITH_FAST_BUNDLE_TEST=ON
+        -DWITH_FAST_BUNDLE_TEST=OFF
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=O
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
     ========================================
 EOF
@@ -77,7 +77,7 @@ EOF
         -DCUDNN_ROOT=/usr/ \
         -DWITH_STYLE_CHECK=${WITH_STYLE_CHECK:-ON} \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
-        -DWITH_FAST_BUNDLE_TEST=ON \
+        -DWITH_FAST_BUNDLE_TEST=OFF \
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
