@@ -20,7 +20,7 @@ from ..initializer import init_on_cpu
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
-    'polynomial_decay', 'piecewise_decay', 'nmt_nist_decay'
+    'polynomial_decay', 'piecewise_decay', 'noam_decay'
 ]
 """
 When training a model, it's often useful to decay the
@@ -40,7 +40,7 @@ def _decay_step_counter(begin=0):
     return global_step
 
 
-def nmt_nist_decay(d_model, warmup_steps):
+def noam_decay(d_model, warmup_steps):
     """Apply decay to learning rate.
 
     ```python
@@ -51,7 +51,8 @@ def nmt_nist_decay(d_model, warmup_steps):
     ```
 
     Args:
-        d_model(Variable): A super parameter.
+        d_model(Variable): The dimensionality of input and output of model.
+            Reference: https://arxiv.org/pdf/1706.03762.pdf
         warmup_steps(Variable): A super parameter.
 
     Returns:
