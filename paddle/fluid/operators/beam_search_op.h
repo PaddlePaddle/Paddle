@@ -192,6 +192,13 @@ std::ostream& operator<<(std::ostream& os, const BeamSearch::Item& item);
 
 std::string ItemToString(const BeamSearch::Item& item);
 
+class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker{
+ public:
+   MulOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+      : OpProtoAndCheckerMaker(proto, op_checker){
+      }
+}
+
 class BeamSearchOp : public framework::OperatorBase {
  public:
   BeamSearchOp(const std::string& type,
