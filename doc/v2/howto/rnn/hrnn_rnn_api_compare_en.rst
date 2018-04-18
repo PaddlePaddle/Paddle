@@ -4,7 +4,7 @@
 API comparision between RNN and hierarchical RNN
 #####################
 
-This article takes PaddlePaddle's hierarchical RNN unit test as an example. We will use multiple pairs of seperately uses of single-layer and hierarchical RNNs as the network configuration that have same effects to explain how to use hierarchical RNNs. All of the examples in this article only describe the API interface of the hierarchical RNN, while we do not use this hierarchical RNN to solve practical problems. If you want to understand the use of hierarchical RNN in specific issues, please refer to \ :ref:`algo_hrnn_demo`\ 。The unit test file used in this article's example is \ `test_RecurrentGradientMachine.cpp <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
+This article takes PaddlePaddle's hierarchical RNN unit test as an example. We will use several examples to illestrate the usage of single-layer and hierarchical RNNs. Each example has two model configurations, one for single-layer, and the other for hierarchical RNN. Although the implementations are different, both the two model configurations' effects are the same. All of the examples in this article only describe the API interface of the hierarchical RNN, while we do not use this hierarchical RNN to solve practical problems. If you want to understand the use of hierarchical RNN in specific issues, please refer to \ :ref:`algo_hrnn_demo`\ 。The unit test file used in this article's example is \ `test_RecurrentGradientMachine.cpp <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
 
 Example 1：Hierarchical RNN without Memory between subsequences
 ================================
@@ -20,7 +20,7 @@ In this example, the network configuration of single-layer RNNs and hierarchical
 Reading hierarchical sequence data
 ----------------
 
-Firstly, the original data in this example are as follows \:
+Firstly, the original data in this example is as follows \:
 
 - The original data in this example has 10 samples. Each of the sample includes two components: a lable(all 2 here), and a word-segmented sentence. This data is used by single RNN as well. 
 
@@ -54,7 +54,7 @@ Secondly, as for these two types of different input data formats, the contrast o
 
 - As for the same data, the DataProvider code for hierarchical time series. Its description is as follows: 
 
-  - DataProvider returns two lists of data, that are "sentences" and "lables", corresponding to the sentences and lables in each group in the original data of hierarchical time series. 
+  - DataProvider returns two lists of data, that are "sentences" and "labels", corresponding to the sentences and labels in each group in the original data of hierarchical time series. 
   - "sentences" comes from the hierarchical time series original data. As it contains every sentences in each group internally, and each sentences are represented by a list of word table indices, so its data type is integer_value_sub_sequence, which is hierarchical time series. 
   - "labels" is the categorical lable of each sentence, so it is a sigle-layer time series. 
 
@@ -62,7 +62,7 @@ Secondly, as for these two types of different input data formats, the contrast o
 Model configuration
 ------------------------------------------
 
-Firstly, let's look at the configuration of single-layer RNN. The hightlight part of line 9 to line 15 is the usage of single-layer RNN. Here we use the pre-defined RNN process function in PaddlePaddle. In this function, for each time step, RNN passes through an LSTM network. 
+Firstly, let's look at the configuration of single-layer RNN. The hightlighted part of line 9 to line 15 is the usage of single-layer RNN. Here we use the pre-defined RNN process function in PaddlePaddle. In this function, for each time step, RNN passes through an LSTM network. 
 
 ..  literalinclude:: ../../../../paddle/gserver/tests/sequence_layer_group.conf
     :language: python
@@ -73,9 +73,9 @@ Firstly, let's look at the configuration of single-layer RNN. The hightlight par
 
 Secondly, let's look at the model configuration of hierarchical RNN which has the same semantic meaning. \:
 
-* Many layers in PaddlePaddle does not care about whether the input is time series or not, e.g. \ :code:`embedding_layer`\ . In these layers, every operation is processed on each time step. 
+* Most layers in PaddlePaddle do not care about whether the input is time series or not, e.g. \ :code:`embedding_layer`\ . In these layers, every operation is processed on each time step. 
 
-* In the hightlight part of line 7 to line 26 of this configuration, we transforms the hierarchical time series data into single-layer time series data, then process each single-layer time series. 
+* In the hightlighted part of line 7 to line 26 of this configuration, we transform the hierarchical time series data into single-layer time series data, then process each single-layer time series. 
 
   * Use the function \ :code:`recurrent_group`\ to transform. Input sequences need to be passed in when transforming. As we want to transform hierarchical time series into single-layer sequences, we need to lable the input data as \ :code:`SubsequenceInput`\ .
   
@@ -94,7 +94,7 @@ Secondly, let's look at the model configuration of hierarchical RNN which has th
 Example 2：Hierarchical RNN with Memory between subsequences
 ================================
 
-This example is intended to implement two fully-equivalent full-connected RNNs using single-layer RNN and hierarchical RNN. 
+This example is intended to implement two fully-equivalent fully-connected RNNs using single-layer RNN and hierarchical RNN. 
 
 * As for single-layer RNN, input is a full time series, e.g. \ :code:`[4, 5, 2, 0, 9, 8, 1, 4]`\ .
 
@@ -105,7 +105,7 @@ model configuration
 
 We select the different parts between single-layer RNN and hierarchical RNN configurations, to compare and analyze the reason why they have same semantic meanings. 
 
-- single-layer RNN：passes through a simple recurrent_group. For each time step, the current input y and the last time step's output rnn_state pass through a full-connected layer. 
+- single-layer RNN：passes through a simple recurrent_group. For each time step, the current input y and the last time step's output rnn_state pass through a fully-connected layer. 
 
 ..  literalinclude:: ../../../../paddle/gserver/tests/sequence_rnn.conf
     :language: python
@@ -148,7 +148,7 @@ The data for the configurations of Example 3's single-layer RNN and hierarchical
 model configuration
 --------
 
-Similar to Example 2's configuration, Example 3's configuration uses single-layer and hierarchical RNN to implement 2 fully-equivalent full-connected RNNs. 
+Similar to Example 2's configuration, Example 3's configuration uses single-layer and hierarchical RNN to implement 2 fully-equivalent fully-connected RNNs. 
 
 * single-layer RNN\:
 
