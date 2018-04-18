@@ -258,6 +258,8 @@ def script_to_str(file_path):
 
 
 def run_instances(image_id, instance_type, count, role, cmd=""):
+    if count == 0:
+        return []
     response = ec2client.run_instances(
         ImageId=image_id,
         InstanceType=instance_type,
@@ -344,7 +346,6 @@ def parse_command(command_raw, defaults={}):
         if ":" in seg:
             parameters = seg.split(":")
             parameter_map[parameters[0]] = parameters[1]
-            #seg = "--" + seg.replace(":", " ")
         else:
             commands_processed.append(seg)
     for key, val in parameter_map.iteritems():
