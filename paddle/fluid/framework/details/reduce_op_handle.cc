@@ -91,7 +91,6 @@ void ReduceOpHandle::RunImpl() {
     if (paddle::platform::is_cpu_place(pre_place)) {
       ReduceLoDTensor func(lod_tensors, trg);
       VisitDataType(ToDataType(lod_tensors[0].type()), func);
-
     } else if (paddle::platform::is_gpu_place(pre_place)) {
 #ifdef PADDLE_WITH_CUDA
       auto out_p = out_var_handles[0]->place_;
