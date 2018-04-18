@@ -32,7 +32,7 @@ namespace operators {
           .SetDefault(false);                                              \
       AddComment(#OP_COMMENT);                                             \
     }                                                                      \
-  };
+  }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
   class OP_NAME##GradMaker                                                   \
@@ -53,7 +53,7 @@ namespace operators {
       op->SetOutput(::paddle::framework::GradVarName("X"), InputGrad("X"));  \
       return std::unique_ptr<::paddle::framework::OpDesc>(op);               \
     }                                                                        \
-  };
+  }
 
 class ActivationOp : public framework::OperatorWithKernel {
  public:
@@ -509,9 +509,11 @@ namespace ops = paddle::operators;
                     ::paddle::operators::OP_NAME##GradMaker);       \
   REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
 
-#define REGISTER_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                 \
-  REGISTER_OP(KERNEL_TYPE, ops::ActivationOp, ops::OP_NAME##OpMaker, \
-              KERNEL_TYPE##_grad, ops::ActivationOpGrad);
+#define REGISTER_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                    \
+  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,     \
+                    ::paddle::operators::OP_NAME##OpMaker,              \
+                    ::paddle::framework::DefaultGradOpDescMaker<true>); \
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)   \
   REGISTER_OP_CPU_KERNEL(                                                 \
