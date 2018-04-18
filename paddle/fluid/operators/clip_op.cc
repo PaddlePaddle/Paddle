@@ -82,8 +82,8 @@ class ClipOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(clip, ops::ClipOp, ops::ClipOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad);
 REGISTER_OP_CPU_KERNEL(
     clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

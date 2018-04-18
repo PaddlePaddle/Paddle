@@ -154,8 +154,8 @@ https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     roi_pool,
     ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
