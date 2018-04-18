@@ -90,7 +90,7 @@ struct TestBroadcastOpHandle {
     op_handle_->AddInput(dummy_var_handle);
 
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
-      op_handle_->dev_ctxes_[gpu_list_[j]] = ctxs_[j].get();
+      op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
       VarHandle* out_var_handle = new VarHandle(2, j, "out", gpu_list_[j]);
       vars_.emplace_back(out_var_handle);
       op_handle_->AddOutput(out_var_handle);
