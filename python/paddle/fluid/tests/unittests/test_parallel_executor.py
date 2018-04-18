@@ -513,6 +513,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
     def test_parallel_testing(self):
         main = fluid.Program()
         startup = fluid.Program()
+        startup.random_seed = 1
         with fluid.program_guard(main, startup):
             loss = simple_fc_net(True)
             test_program = main.clone(for_test=True)
