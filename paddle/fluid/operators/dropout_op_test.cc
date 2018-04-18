@@ -88,11 +88,6 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   }
 }
 
-// TODO(wyi): Due to
-// https://github.com/PaddlePaddle/Paddle/issues/9507, I temporarily
-// disable this test to remove the prevention of the merge of
-// unrelated PRs.
-
 TEST(Dropout, CPUDense) {
   f::Scope scope;
   p::CPUPlace place;
@@ -100,9 +95,15 @@ TEST(Dropout, CPUDense) {
   Compare(&scope, ctx);
 }
 
+// TODO(wyi, dzhwinter): Due to
+// https://github.com/PaddlePaddle/Paddle/issues/9507, I temporarily
+// disable this test to remove the prevention of the merge of
+// unrelated PRs.
+/*
 TEST(Dropout, GPUDense) {
   f::Scope scope;
   p::CUDAPlace place;
   p::CUDADeviceContext ctx(place);
   Compare(&scope, ctx);
 }
+*/
