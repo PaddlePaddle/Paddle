@@ -1,10 +1,13 @@
 file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-# The fully connected test is removed whe the WITH_MKLDNN flag is OFF
-# Because the fully connected layer has only one kernel (MKLDNN)
+# The MKLDNN tests are skiped when the MKLDNN flag is OFF
 if(NOT WITH_MKLDNN)
-    list(REMOVE_ITEM TEST_OPS test_fc_op)
+    foreach(src ${TEST_OPS})
+        if(${src} MATCHES ".*_mkldnn_op$")
+            list(REMOVE_ITEM TEST_OPS ${src})
+        endif()
+    endforeach()
 endif(NOT WITH_MKLDNN)
 
 if(NOT WITH_DISTRIBUTE)
@@ -63,6 +66,7 @@ list(REMOVE_ITEM TEST_OPS test_registry)
 list(REMOVE_ITEM TEST_OPS test_fetch_var)
 list(REMOVE_ITEM TEST_OPS test_parallel_op)
 list(REMOVE_ITEM TEST_OPS test_dynrnn_static_input)
+list(REMOVE_ITEM TEST_OPS test_dist_train)
 
 # tests that can be bundled together in one python process for speed.
 if(WITH_FAST_BUNDLE_TEST)
@@ -102,3 +106,4 @@ py_test_modules(test_registry MODULES test_registry)
 py_test_modules(test_fetch_var MODULES test_fetch_var)
 py_test_modules(test_dynrnn_static_input MODULES test_dynrnn_static_input)
 py_test_modules(test_parallel_op MODULES test_parallel_op)
+py_test_modules(test_dist_train MODULES test_dist_train)

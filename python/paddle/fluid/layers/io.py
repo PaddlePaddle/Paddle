@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .. import core
-from ..framework import convert_np_dtype_to_dtype_, default_main_program, default_startup_program
+from ..framework import convert_np_dtype_to_dtype_, default_main_program, default_startup_program, Program
 from ..unique_name import generate as unique_name
 from control_flow import BlockGuard
 from ..layer_helper import LayerHelper
@@ -158,6 +158,7 @@ class ListenAndServ(object):
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()
+        empty_block = Program().global_block()
 
         parent_block.append_op(
             type='listen_and_serv',
@@ -166,11 +167,12 @@ class ListenAndServ(object):
             attrs={
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
-                'OptimizeBlock': current_block
+                'OptimizeBlock': current_block,
+                'PrefetchBlock': empty_block
             })
 
 
-def Send(endpoints, send_vars, get_vars):
+def Send(endpoints, send_vars, get_vars=None):
     """
     Send layer
 
@@ -184,7 +186,6 @@ def Send(endpoints, send_vars, get_vars):
     side when server have finished running server side program.
     """
     assert (type(send_vars) == list)
-    assert (type(get_vars) == list)
 
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
@@ -192,6 +193,11 @@ def Send(endpoints, send_vars, get_vars):
     helper = LayerHelper("Send", **locals())
     rpc_client_var = default_main_program().global_block().create_var(
         name="RPC_CLIENT_VAR", persistable=True, type=core.VarDesc.VarType.RAW)
+    if not get_vars:
+        get_vars = []
+        for s in send_vars:
+            v = helper.create_tmp_variable(dtype=s.dtype, stop_gradient=True)
+            get_vars.append(v)
 
     helper.append_op(
         type="send",
@@ -200,6 +206,7 @@ def Send(endpoints, send_vars, get_vars):
                  "RPCClient": rpc_client_var},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
+    return get_vars
 
 
 def Recv(endpoints, get_vars):

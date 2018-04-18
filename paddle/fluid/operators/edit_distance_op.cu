@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/edit_distance_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/gpu_info.h"

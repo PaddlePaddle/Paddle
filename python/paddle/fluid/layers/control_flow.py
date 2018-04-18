@@ -32,7 +32,6 @@ __all__ = [
     'Switch',
     'lod_rank_table',
     'max_sequence_len',
-    'topk',
     'lod_tensor_to_array',
     'array_to_lod_tensor',
     'increment',
@@ -749,43 +748,6 @@ def max_sequence_len(rank_table):
         inputs={"RankTable": rank_table},
         outputs={"Out": res})
     return res
-
-
-def topk(input, k):
-    """
-    **topk**
-
-    This function performs the operation that selects the k entries in the input
-    vector and outputs their values and indices as vectors. Thus topk_out[j] is
-    the j-th largest entry in input, and its index is topk_indices[j]
-
-    Args:
-        input (Variable|list): The input tensor that has all the data.
-        k (int): The number of top elements that the function will pick.
-
-    Returns:
-        Variable: The variable of type array that contains the k largest entries
-                  from input.
-        Variable: The variable of type array that contains the indices of k
-                  largest entries from input.
-
-    Examples:
-        .. code-block:: python
-
-          x = fluid.layers.data(name='x', shape=[10])
-          k = 5
-          array = fluid.layers.topk(x, k)
-    """
-    helper = LayerHelper('topk', **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype='int64')
-    helper.append_op(
-        type='top_k',
-        inputs={'X': [input]},
-        outputs={'Out': [topk_out],
-                 'Indices': [topk_indices]},
-        attrs={'k': k})
-    return topk_out, topk_indices
 
 
 def lod_tensor_to_array(x, table):

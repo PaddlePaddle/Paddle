@@ -505,11 +505,19 @@ All parameter, weight, gradient are variables in Paddle.
                                   scope, local_scopes, allow_op_delay);
            })
       .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
+      // NOTE: even we return a vec<Scope*>* to Python use reference policy.
+      // We still cannot get local_scope from this vector, since the element
+      // of vec<Scope*> will be freed by Python GC. We can only return Scope*
+      // one by one and mark them as reference.
       .def("local_scopes",
            [](ParallelExecutor &self) -> std::vector<Scope *> * {
              return &self.GetLocalScopes();
            },
            py::return_value_policy::reference)
+      .def("feed_tensors_into_local_scopes",
+           &ParallelExecutor::FeedTensorsIntoLocalScopes)
+      .def("feed_and_split_tensor_into_local_scopes",
+           &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
       .def("run", &ParallelExecutor::Run);
 
   BindRecordIOWriter(&m);

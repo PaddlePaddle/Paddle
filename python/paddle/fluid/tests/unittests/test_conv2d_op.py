@@ -373,22 +373,5 @@ class TestDepthwiseConv2(TestConv2dOp):
 #     def init_op_type(self):
 #         self.op_type = "conv_cudnn"
 
-
-#----------------Conv2dMKLDNN----------------
-class TestMKLDNN(TestConv2dOp):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNWithPad(TestWithPad):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNWithStride(TestWithStride):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
 if __name__ == '__main__':
     unittest.main()
