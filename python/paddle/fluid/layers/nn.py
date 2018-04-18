@@ -60,6 +60,7 @@ __all__ = [
     'edit_distance',
     'l2_normalize',
     'matmul',
+    'topk',
     'warpctc',
     'sequence_reshape',
     'transpose',
@@ -2576,6 +2577,53 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     return out
 
 
+def topk(input, k):
+    """
+    This operator is used to find values and indices of the k largest entries
+    for the last dimension.
+
+    If the input is a vector (rank=1), finds the k largest entries in the vector
+    and outputs their values and indices as vectors. Thus values[j] is the j-th
+    largest entry in input, and its index is indices[j].
+
+    If the input is a Tensor with higher rank, this operator computes the top k
+    entries along the last dimension.
+
+    Args:
+        input(Variable): The input variable which can be a vector or Tensor with
+            higher rank.
+        k(int): An integer value to specify the top k largest elements.
+
+    Returns:
+        values(Variable): The k largest elements along each last dimensional
+            slice.
+        indices(Variable): The indices of values within the last dimension of
+            input.
+
+    Examples:
+        .. code-block:: python
+
+            top5_values, top5_indices = layers.topk(input, k=5)
+    """
+    shape = input.shape
+    if k < 1 and k >= shape[-1]:
+        raise ValueError("k must be greater than 0 and less than %d." %
+                         (shape[-1]))
+
+    helper = LayerHelper("top_k", **locals())
+    values = helper.create_tmp_variable(dtype=input.dtype)
+    indices = helper.create_tmp_variable(dtype="int64")
+    helper.append_op(
+        type="top_k",
+        inputs={"X": [input]},
+        outputs={"Out": [values],
+                 "Indices": [indices]},
+        attrs={"k": k})
+    values.stop_gradient = True
+    indices.stop_gradient = True
+    return values, indices
+
+
 def edit_distance(input, label, normalized=True, ignored_tokens=None,
                   name=None):
     """
@@ -2717,15 +2765,7 @@ def ctc_greedy_decoder(input, blank, name=None):
             cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
-    # top 1 op
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype="int64")
-    helper.append_op(
-        type="top_k",
-        inputs={"X": [input]},
-        outputs={"Out": [topk_out],
-                 "Indices": [topk_indices]},
-        attrs={"k": 1})
+    _, topk_indices = topk(input, k=1)
 
     # ctc align op
     ctc_out = helper.create_tmp_variable(dtype="int64")
