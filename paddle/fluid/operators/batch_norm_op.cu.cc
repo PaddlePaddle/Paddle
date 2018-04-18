@@ -56,7 +56,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
-#if 0
+#if 1
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -78,11 +78,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     miopenTensorDescriptor_t bn_param_desc_;
     miopenBatchNormMode_t mode_;
 
-    MIOPEN_ENFORCE(platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
-    MIOPEN_ENFORCE(
+    PADDLE_ENFORCE(platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
+    PADDLE_ENFORCE(
         platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
-
-#if 0
+#endif
+# if 0
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
                  << "CUDNN_BN_MIN_EPSILON. Setting it to "
@@ -90,7 +90,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 #endif
-#if 0
+# if 0
     mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 #else
     mode_ = miopenBNSpatial;
@@ -112,11 +112,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
         PADDLE_THROW("miopen only supports 4D tensors, dim=%d not allowed", dims.size());
     }
     // Need review.
-    MIOPEN_ENFORCE(platform::dynload::miopenSet4dTensorDescriptor(
+    PADDLE_ENFORCE(platform::dynload::miopenSet4dTensorDescriptor(
         data_desc_, MIOpenDataType<T>::type,
         dims.data()[0], dims.data()[1], dims.data()[2], dims.data()[3]));
     // Note: PERSISTENT not implemented for inference
-    MIOPEN_ENFORCE(platform::dynload::miopenDeriveBNTensorDescriptor(
+    PADDLE_ENFORCE(platform::dynload::miopenDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -143,16 +143,16 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       PADDLE_ENFORCE_EQ(est_var->dims()[0], C);
 
       // Need review
-      MIOPEN_ENFORCE(platform::dynload::miopenBatchNormalizationForwardInference(
+      PADDLE_ENFORCE(platform::dynload::miopenBatchNormalizationForwardInference(
           handle,
           // Note: PERSISTENT not implemented for inference
           miopenBNSpatial, (void*)MIOpenDataType<T>::kOne(),
-          (void*)MIOpenDataType<T>::kZero(), data_desc_, x->template data<T>(),
-          data_desc_, y->template mutable_data<T>(ctx.GetPlace()),
-          bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
-          bias->template data<BatchNormParamType<T>>(),
-          est_mean->template data<BatchNormParamType<T>>(),
-          est_var->template data<BatchNormParamType<T>>(), epsilon));
+          (void*)MIOpenDataType<T>::kZero(), data_desc_, (const void*)x->template data<T>(),
+          data_desc_, (void*)y->template mutable_data<T>(ctx.GetPlace()),
+          bn_param_desc_, (void*)scale->template data<BatchNormParamType<T>>(),
+          (void*)bias->template data<BatchNormParamType<T>>(),
+          (void*)est_mean->template data<BatchNormParamType<T>>(),
+          (void*)est_var->template data<BatchNormParamType<T>>(), epsilon));
     } else {
       // Run training mode.
       // obtain running mean and running inv var, and see if we need to
@@ -174,27 +174,26 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 
       double this_factor = 1. - momentum;
 
-      MIOPEN_ENFORCE(platform::dynload::miopenBatchNormalizationForwardTraining(
+      PADDLE_ENFORCE(platform::dynload::miopenBatchNormalizationForwardTraining(
           handle, mode_, (void*)MIOpenDataType<T>::kOne(), (void*)MIOpenDataType<T>::kZero(),
-          data_desc_, (void*)x->template data<T>(), data_desc_,
-          y->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
-          scale->template data<BatchNormParamType<T>>(),
-          bias->template data<BatchNormParamType<T>>(), this_factor,
-          mean_out->template mutable_data<BatchNormParamType<T>>(
+          data_desc_, (const void*)x->template data<T>(), data_desc_,
+          (void*)y->template mutable_data<T>(ctx.GetPlace()), bn_param_desc_,
+          (void*)scale->template data<BatchNormParamType<T>>(),
+          (void*)bias->template data<BatchNormParamType<T>>(), this_factor,
+          (void*)mean_out->template mutable_data<BatchNormParamType<T>>(
               ctx.GetPlace()),
-          variance_out->template mutable_data<BatchNormParamType<T>>(
+          (void*)variance_out->template mutable_data<BatchNormParamType<T>>(
               ctx.GetPlace()),
-          epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
+          epsilon, (void*)saved_mean->template mutable_data<BatchNormParamType<T>>(
                        ctx.GetPlace()),
-          saved_variance->template mutable_data<BatchNormParamType<T>>(
+          (void*)saved_variance->template mutable_data<BatchNormParamType<T>>(
               ctx.GetPlace())));
     }
 
     // clean when exit.
-    MIOPEN_ENFORCE(platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
-    MIOPEN_ENFORCE(
+    PADDLE_ENFORCE(platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE(
         platform::dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
-#endif
   }
 };
 
@@ -228,8 +227,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     miopenTensorDescriptor_t bn_param_desc_;
     miopenBatchNormMode_t mode_;
 
-    MIOPEN_ENFORCE(platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
-    MIOPEN_ENFORCE(
+    PADDLE_ENFORCE(platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
+    PADDLE_ENFORCE(
         platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
 #if 0
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
@@ -259,11 +258,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     {
         PADDLE_THROW("miopen only supports 4D tensors, dim=%d not allowed", dims.size());
     }
-    MIOPEN_ENFORCE(platform::dynload::miopenSet4dTensorDescriptor(
+    PADDLE_ENFORCE(platform::dynload::miopenSet4dTensorDescriptor(
         data_desc_, MIOpenDataType<T>::type,
         dims.data()[0], dims.data()[1], dims.data()[2], dims.data()[3]));
 
-    MIOPEN_ENFORCE(platform::dynload::miopenDeriveBNTensorDescriptor(
+    PADDLE_ENFORCE(platform::dynload::miopenDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 
     // init output
@@ -281,7 +280,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const void *saved_var_data = saved_var->template data<T>();
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    MIOPEN_ENFORCE(platform::dynload::miopenBatchNormalizationBackward(
+    PADDLE_ENFORCE(platform::dynload::miopenBatchNormalizationBackward(
         dev_ctx.miopen_handle(), mode_, MIOpenDataType<T>::kOne(),
         MIOpenDataType<T>::kZero(), MIOpenDataType<T>::kOne(),
         MIOpenDataType<T>::kZero(), data_desc_, x->template data<T>(),
@@ -293,8 +292,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         saved_mean_data, saved_var_data));
 
     // clean when exit.
-    MIOPEN_ENFORCE(platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
-    MIOPEN_ENFORCE(
+    PADDLE_ENFORCE(platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE(
         platform::dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
   }
 };

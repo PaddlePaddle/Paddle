@@ -125,7 +125,8 @@ CUDNN_DNN_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(miopenFindConvolutionBackwardDataAlgorithm);       \
   __macro(miopenFindConvolutionBackwardWeightsAlgorithm);     \
   __macro(miopenConvolutionBackwardWeightsGetWorkSpaceSize);    \
-  __macro(miopenConvolutionBackwardDataGetWorkSpaceSize);
+  __macro(miopenConvolutionBackwardDataGetWorkSpaceSize);  \
+  __macro(miopenConvolutionForwardGetWorkspaceSize);
 CUDNN_DNN_ROUTINE_EACH_AFTER_R3(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 // APIs available after R4:
