@@ -143,10 +143,8 @@ void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
   for (size_t i = 0; i < places_.size(); ++i) {
     auto &p = places_[i];
     auto &vars = result->vars_[i][og];
-    if (vars.empty()) {  // This device has no data. continue.
-      continue;
-    }
-    auto &prev_grad = vars[vars.size() - 1];
+    PADDLE_ENFORCE(!vars.empty());
+    auto &prev_grad = vars.back();
     op_handle->AddInput(prev_grad.get());
 
     auto var = new VarHandle(vars.size() - 1, i, og, p);
