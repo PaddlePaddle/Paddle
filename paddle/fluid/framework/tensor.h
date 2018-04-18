@@ -98,9 +98,6 @@ class Tensor {
   /*! The internal of two tensors share the same memory block. */
   inline Tensor& ShareDataWith(const Tensor& src);
 
-  /*! Share part of the memory of the two tensors */
-  inline Tensor& ShareDataWith(const Tensor* src, size_t offset);
-
   /**
    * @brief  Return a sub-tensor of the given tensor.
    *
