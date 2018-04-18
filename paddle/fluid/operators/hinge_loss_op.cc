@@ -104,8 +104,8 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     hinge_loss,
     ops::HingeLossKernel<paddle::platform::CPUDeviceContext, float>);

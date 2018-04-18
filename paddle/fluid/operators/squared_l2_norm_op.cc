@@ -69,8 +69,8 @@ $$Out = \sum_{i} X_{i}^2$$
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(squared_l2_norm, ops::SquaredL2NormOp,
                   ops::SquaredL2NormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_norm,
     ops::SquaredL2NormKernel<paddle::platform::CPUDeviceContext, float>);

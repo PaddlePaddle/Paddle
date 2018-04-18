@@ -217,8 +217,8 @@ class GRUGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(gru, ops::GRUOp, ops::GRUOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(gru_grad, ops::GRUGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(gru_grad, ops::GRUGradOp);
 REGISTER_OP_CPU_KERNEL(
     gru, ops::GRUKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GRUKernel<paddle::platform::CPUDeviceContext, double>);

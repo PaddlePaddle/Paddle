@@ -191,24 +191,24 @@ class ReduceProdOpMaker : public ReduceOpMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ops::ReduceSumOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp);
 
 REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, ops::ReduceMeanOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp);
 
 REGISTER_OPERATOR(reduce_max, ops::ReduceOp, ops::ReduceMaxOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(reduce_max_grad, ops::ReduceGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_max_grad, ops::ReduceGradOp);
 
 REGISTER_OPERATOR(reduce_min, ops::ReduceOp, ops::ReduceMinOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(reduce_min_grad, ops::ReduceGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_min_grad, ops::ReduceGradOp);
 
 REGISTER_OPERATOR(reduce_prod, ops::ReduceOp, ops::ReduceProdOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(reduce_prod_grad, ops::ReduceGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reduce_prod_grad, ops::ReduceGradOp);
 
 #define REGISTER_REDUCE_CPU_KERNEL(reduce_type, functor, grad_functor)         \
   REGISTER_OP_CPU_KERNEL(reduce_type,                                          \

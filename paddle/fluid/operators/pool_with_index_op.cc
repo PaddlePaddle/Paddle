@@ -260,8 +260,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
                   ops::MaxPool2dWithIndexOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     max_pool2d_with_index,
@@ -273,12 +273,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
                                     int>,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, double,
-                                    int>)
+                                    int>);
 
 REGISTER_OPERATOR(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
                   ops::MaxPool3dWithIndexOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     max_pool3d_with_index,
@@ -290,4 +290,4 @@ REGISTER_OP_CPU_KERNEL(
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
                                     int>,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, double,
-                                    int>)
+                                    int>);
