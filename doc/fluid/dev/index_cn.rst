@@ -4,6 +4,8 @@
 .. toctree::
   :maxdepth: 1
 
+  contribute_to_paddle_cn.md
+  write_docs_cn.md
   api_doc_std_cn.md
   new_op_cn.md
   new_op_kernel.md

@@ -53,7 +53,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   };
 
   auto InsertPendingOp = [&pending_ops](OpHandleBase &op_instance) {
-    pending_ops.insert({&op_instance, op_instance.inputs_.size()});
+    pending_ops.insert({&op_instance, op_instance.Inputs().size()});
   };
 
   // Transform SSAGraph to pending_ops & pending_vars
@@ -69,7 +69,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   }
 
   for (auto &op : graph_->ops_) {
-    if (op->inputs_.empty()) {  // Special case, Op has no input.
+    if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op.get());
     } else {
       InsertPendingOp(*op);
@@ -99,7 +99,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     fetch_ops.emplace_back(op);
 
     for (auto &p : places_) {
-      op->dev_ctxes_[p] = fetch_ctxs_.Get(p);
+      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
     }
 
     for (auto *var : vars) {
@@ -180,7 +180,7 @@ void ThreadedSSAGraphExecutor::RunOp(
       op->Run(use_event_);
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
-      ready_var_q->Extend(op->outputs_);
+      ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (platform::EnforceNotMet ex) {
       exception_.reset(new platform::EnforceNotMet(ex));
