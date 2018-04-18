@@ -29,9 +29,7 @@ namespace framework {
 namespace details {
 
 struct BroadcastOpHandle : public OpHandleBase {
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
-
+ public:
   BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places);
 
@@ -41,10 +39,12 @@ struct BroadcastOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
-
   void WaitInputVarGenerated(const VarHandle &in_var);
-};
 
+ private:
+  const std::vector<Scope *> &local_scopes_;
+  const std::vector<platform::Place> &places_;
+};
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
