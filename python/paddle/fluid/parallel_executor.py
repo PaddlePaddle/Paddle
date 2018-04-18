@@ -16,6 +16,7 @@ import core
 import multiprocessing
 import framework
 import executor
+import warnings
 import sys
 
 __all__ = ['ParallelExecutor']
@@ -62,8 +63,8 @@ class ParallelExecutor(object):
                   main_program=test_program,
                   share_vars_from=train_exe)
 
-              train_loss, = train_exe.run([loss.name], feed_dict=feed_dict)
-              test_loss, = test_exe.run([loss.name], feed_dict=feed_dict)
+              train_loss, = train_exe.run([loss.name], feed=feed_dict)
+              test_loss, = test_exe.run([loss.name], feed=feed_dict)
         """
 
         self._places = []
@@ -103,8 +104,8 @@ class ParallelExecutor(object):
 
         self.persistable_vars = [
             v.name
-            for v in filter(lambda var: \
-                var.persistable and var.type != core.VarDesc.VarType.RAW,
+            for v in filter(
+                lambda var: var.persistable and var.type != core.VarDesc.VarType.RAW,
                 main.list_vars())
         ]
 
@@ -163,7 +164,7 @@ class ParallelExecutor(object):
         Returns: fetched result list.
 
         """
-        if feed is None:
+        if feed is None and feed_dict is not None:
             feed = feed_dict
             print >> sys.stderr, "`feed_dict` is deprecated. Please use `feed=`"
 
