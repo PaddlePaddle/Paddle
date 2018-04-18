@@ -53,6 +53,11 @@ struct VarHandle : public VarHandleBase {
   size_t scope_idx_;
   std::string name_;
   platform::Place place_;
+
+  bool operator==(const VarHandle &o) const {
+    return o.generated_op_ == generated_op_ && o.name_ == name_ &&
+           o.scope_idx_ == scope_idx_;
+  }
 };
 
 // Dummy Variable. It is used to represent dependencies between operators

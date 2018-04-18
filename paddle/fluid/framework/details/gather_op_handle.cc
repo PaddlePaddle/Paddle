@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/gather_op_handle.h"
+#include "paddle/fluid/framework/details/container_cast.h"
+#include "paddle/fluid/framework/details/variable_visitor.h"
 
 namespace paddle {
 namespace framework {
@@ -24,16 +26,22 @@ GatherOpHandle::GatherOpHandle(const std::vector<Scope *> &local_scopes,
 
 void GatherOpHandle::RunImpl() {
   // the input and output may have dummy var.
-  std::vector<VarHandle *> in_var_handles = GetValidVarHandles(inputs_);
-  std::vector<VarHandle *> out_var_handles = GetValidVarHandles(outputs_);
+  auto in_var_handles = DynamicCast<VarHandle>(inputs_);
 
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
       "The number of output should equal to the number of places.");
-  PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
-                    "The number of output should be one.");
 
-  auto in_0_handle = static_cast<VarHandle *>(in_var_handles[0]);
+  VarHandle *out_var_handle;
+  {
+    auto out_var_handles = DynamicCast<VarHandle>(outputs_);
+
+    PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
+                      "The number of output should be one.");
+    out_var_handle = out_var_handles.front();
+  }
+
+  auto in_0_handle = in_var_handles[0];
   auto pre_in_var =
       local_scopes_[in_0_handle->scope_idx_]->FindVar(in_0_handle->name_);
   auto pre_place = in_0_handle->place_;
@@ -41,11 +49,11 @@ void GatherOpHandle::RunImpl() {
   PADDLE_ENFORCE(pre_in_var->IsType<framework::SelectedRows>(),
                  "Currently, gather_op only can gather SelectedRows.");
 
-  PADDLE_ENFORCE_EQ(out_var_handles[0]->place_.which(), pre_place.which(),
+  PADDLE_ENFORCE_EQ(out_var_handle->place_.which(), pre_place.which(),
                     "The place of input and output should be the same.");
 
   // Wait input done, this Wait is asynchronous operation
-  WaitEvents(in_var_handles);
+  WaitInputVarGenerated(in_var_handles);
 
   std::vector<int64_t> out_rows;
   std::vector<Tensor> in_tensors;
@@ -53,13 +61,12 @@ void GatherOpHandle::RunImpl() {
 
   auto &pre_in = pre_in_var->Get<framework::SelectedRows>();
   // gather the inputs
-  for (auto *in : in_var_handles) {
-    auto in_handle = static_cast<VarHandle *>(in);
+  for (auto *in_handle : in_var_handles) {
     auto in_p = in_handle->place_;
     in_places.push_back(in_p);
     PADDLE_ENFORCE_EQ(in_p.which(), pre_place.which(),
                       "Places must be all on CPU or all on CUDA.");
-    auto in_var =
+    auto *in_var =
         local_scopes_.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
     auto &in_sr = in_var->Get<framework::SelectedRows>();
 
@@ -70,17 +77,16 @@ void GatherOpHandle::RunImpl() {
     PADDLE_ENFORCE_EQ(pre_in.GetCompleteDims(), in_sr.GetCompleteDims(),
                       "The dims of inputs is not consistent.");
 
-    auto in_sr_rows = in_sr.rows();
+    auto &in_sr_rows = in_sr.rows();
     out_rows.insert(out_rows.end(), in_sr_rows.begin(), in_sr_rows.end());
 
     in_tensors.emplace_back(in_sr.value());
   }
 
   // write the output
-  auto &out_place = out_var_handles[0]->place_;
-  auto out_scope_idx = out_var_handles[0]->scope_idx_;
-  auto out_var =
-      local_scopes_[out_scope_idx]->FindVar(out_var_handles[0]->name_);
+  auto &out_place = out_var_handle->place_;
+  auto out_scope_idx = out_var_handle->scope_idx_;
+  auto out_var = local_scopes_[out_scope_idx]->FindVar(out_var_handle->name_);
 
   auto out = out_var->GetMutable<framework::SelectedRows>();
   out->set_height(pre_in.height());
@@ -106,25 +112,15 @@ void GatherOpHandle::RunImpl() {
   });
 }
 
-void GatherOpHandle::WaitEvents(
+void GatherOpHandle::WaitInputVarGenerated(
     const std::vector<VarHandle *> &in_var_handles) {
   for (auto *in : in_var_handles) {
     if (in->generated_op_) {
-      in->generated_op_->Wait(dev_ctxes_[in->place_]);
+      for (auto pair : dev_ctxes_) {
+        in->generated_op_->Wait(pair.second);
+      }
     }
   }
-}
-
-std::vector<VarHandle *> GatherOpHandle::GetValidVarHandles(
-    const std::vector<VarHandleBase *> &inputs) {
-  std::vector<VarHandle *> in_var_handles;
-  for (auto *in : inputs) {
-    auto *in_handle = dynamic_cast<VarHandle *>(in);
-    if (in_handle) {
-      in_var_handles.push_back(in_handle);
-    }
-  }
-  return in_var_handles;
 }
 
 std::string GatherOpHandle::Name() const { return "gather"; }

@@ -42,10 +42,7 @@ struct GatherOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
-  std::vector<VarHandle *> GetValidVarHandles(
-      const std::vector<VarHandleBase *> &);
-
-  void WaitEvents(const std::vector<VarHandle *> &in_var_handles);
+  void WaitInputVarGenerated(const std::vector<VarHandle *> &in_var_handles);
 };
 
 }  // namespace details
