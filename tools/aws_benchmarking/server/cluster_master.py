@@ -337,7 +337,7 @@ def log_to_file(source, filename):
 
 def parse_command(command_raw, defaults={}):
     if not command_raw:
-        return ""
+        command_raw = ""
     commands_processed = []
     parameter_map = copy.copy(defaults)
     for seg in command_raw.split(","):
@@ -348,7 +348,7 @@ def parse_command(command_raw, defaults={}):
         else:
             commands_processed.append(seg)
     for key, val in parameter_map.iteritems():
-        commands_processed.append("--" + key + " " + val)
+        commands_processed.append("--" + key + " " + str(val))
     return " ".join(commands_processed)
 
 
