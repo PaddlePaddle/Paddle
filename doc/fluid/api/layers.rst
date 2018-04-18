@@ -815,3 +815,8 @@ zeros
 ..  autofunction:: paddle.fluid.layers.zeros
     :noindex:
 
+topk
+----
+
+..  autofunction:: paddle.fluid.layers.topk
+    :noindex:
