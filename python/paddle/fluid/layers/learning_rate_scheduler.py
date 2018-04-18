@@ -52,7 +52,8 @@ def noam_decay(d_model, warmup_steps):
 
     Args:
         d_model(Variable): The dimensionality of input and output of model.
-            Reference: https://arxiv.org/pdf/1706.03762.pdf
+            Reference: attention is all you need
+                https://arxiv.org/pdf/1706.03762.pdf
         warmup_steps(Variable): A super parameter.
 
     Returns:
