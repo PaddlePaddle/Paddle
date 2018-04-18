@@ -56,11 +56,10 @@ TEST_F(TensorrtEngineTest, add_layer) {
   engine_->Execute(1);
 
   LOG(INFO) << "to get output";
-  void* y_v = engine_->GetOutput("y");
+  // void* y_v =
   float y_cpu;
+  engine_->GetOutputInCPU("y", &y_cpu, sizeof(float));
 
-  ASSERT_EQ(0, cudaMemcpyAsync(static_cast<void*>(&y_cpu), y_v, sizeof(float),
-                               cudaMemcpyDeviceToHost, stream_));
   LOG(INFO) << "to checkout output";
   ASSERT_EQ(y_cpu, x_v * 2 + 3);
 }

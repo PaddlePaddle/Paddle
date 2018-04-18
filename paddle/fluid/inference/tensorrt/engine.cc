@@ -14,16 +14,17 @@ size_t AccumDims(nvinfer1::Dims dims) {
   size_t num = dims.nbDims == 0 ? 0 : 1;
   for (int i = 0; i < dims.nbDims; i++) {
     PADDLE_ENFORCE_GT(dims.d[i], 0);
+    LOG(INFO) << "dim.d: " << i << " " << dims.d[i];
     num *= dims.d[i];
   }
   return num;
 }
 
 const int kDataTypeSize[] = {
-    32,  // kFLOAT
-    16,  // kHALF
-    8,   // kINT8
-    32   // kINT32
+    4,  // kFLOAT
+    2,  // kHALF
+    1,  // kINT8
+    4   // kINT32
 };
 
 void TensorrtEngine::Build(const PbType& paddle_model) {
@@ -140,6 +141,22 @@ void TensorrtEngine::DeclOutput(nvinfer1::ILayer* layer, int offset,
   //  * data_size;
 }
 
+void* TensorrtEngine::GetOutputInGPU(const std::string& name) {
+  return buffer(name);
+}
+
+void TensorrtEngine::GetOutputInCPU(const std::string& name, void* dst,
+                                    size_t max_size) {
+  // determine data size
+  auto it = buffer_sizes_.find(name);
+  PADDLE_ENFORCE(it != buffer_sizes_.end());
+  PADDLE_ENFORCE_GT(it->second, 0);
+  PADDLE_ENFORCE_GE(max_size, it->second);
+
+  PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(dst, buffer(name), it->second,
+                                       cudaMemcpyDeviceToHost, *stream_));
+}
+
 void*& TensorrtEngine::buffer(const std::string& name) {
   PADDLE_ENFORCE(infer_engine_ != nullptr, "call freezenetwork first.");
   auto it = buffer_sizes_.find(name);
@@ -153,10 +170,6 @@ void TensorrtEngine::SetInputFromCPU(const std::string& name, void* data,
   void* buf = buffer(name);
   PADDLE_ENFORCE_EQ(
       0, cudaMemcpyAsync(buf, data, size, cudaMemcpyHostToDevice, *stream_));
-}
-
-void* TensorrtEngine::GetOutput(const std::string& name) {
-  return buffer(name);
 }
 
 }  // namespace paddle

@@ -26,15 +26,6 @@ namespace paddle {
  *
  * There are two alternative ways to use it, one is  to build from a paddle
  * protobuf model, another way is to manully construct the network.
- *
- *  TensorEngine some_engine(max_batch, max_workspace);
- *  some_engine.Build(some_paddle_model);
- *  for (auto &batch : some_batch_datas) {
- *    // for all i
- *    some_engine.SetInput("input_i", &batch[i], sizeof(float) *
- * batch[i].size()); some_engine.Execute(); some_engine.GetOutput("output_j");
- * // for all j
- *  }
  */
 class TensorrtEngine : public EngineBase {
  public:
@@ -60,6 +51,7 @@ class TensorrtEngine : public EngineBase {
 
   virtual ~TensorrtEngine();
 
+  // TODO(Superjomn) implement it latter when graph segmentation is supported.
   virtual void Build(const PbType& paddle_model) override;
 
   virtual void Execute(int batch_size) override;
@@ -84,16 +76,20 @@ class TensorrtEngine : public EngineBase {
   // NOTE this should be used after calling `FreezeNetwork`.
   void*& buffer(const std::string& name);
 
-  nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
-  nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
-
   // Fill an input from CPU memory with name and size.
   void SetInputFromCPU(const std::string& name, void* data, size_t size);
-  // TODO(Superjomn) is this method necessary given that raw_input(xxx) can be
+  // TODO(Superjomn) is this method necessary given that buffer(xxx) can be
   // accessed directly. Fill an input from GPU memory with name and size.
   void SetInputFromGPU(const std::string& name, void* data, size_t size);
-  // Get an output called name.
-  void* GetOutput(const std::string& name);
+  // Get an output called name, the output of tensorrt is in GPU, so this method
+  // will just return the output's GPU memory address.
+  void* GetOutputInGPU(const std::string& name);
+  // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
+  // to CPU.
+  void GetOutputInCPU(const std::string& name, void* dst, size_t max_size);
+
+  nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
+  nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
  private:
   int max_batch_;
