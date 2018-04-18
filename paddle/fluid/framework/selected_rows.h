@@ -24,6 +24,22 @@ namespace paddle {
 namespace framework {
 
 class SelectedRows {
+  /*
+   * @brief We can use the SelectedRows structure to reproduce a sparse table.
+   *  A sparse table is a key-value structure that the key is an `int64_t`
+   * number,
+   *  and the value is a Tensor which the first dimension is 0.
+   *  You can use the following interface to operate the sparse table, and you
+   * can find
+   *  some detail information from the comments of each interface:
+   *
+   *  HasKey(key), whether the sparse table has the specified key.
+   *  Set(key, value), set a key-value pair into the sparse table.
+   *  Get(key, value*, offset), get a value by key and apply it to the given
+   * value pointer
+   *    with the specified offset.
+   *
+   */
  public:
   SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
       : rows_(rows), height_(height) {
