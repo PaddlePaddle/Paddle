@@ -42,7 +42,6 @@ def _decay_step_counter(begin=0):
 
 def noam_decay(d_model, warmup_steps):
     """Apply decay to learning rate.
-
     ```python
     lr_value = np.power(d_model, -0.5) * np.min([
             np.power(current_steps, -0.5),
