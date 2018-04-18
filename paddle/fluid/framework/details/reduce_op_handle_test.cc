@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -86,9 +85,16 @@ struct TestReduceOpHandle {
   void InitReduceOp(size_t input_scope_idx) {
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
-      local_scopes_[j]->Var("out");
+      Scope &local_scope = local_scopes_.back()->NewScope();
+      *local_scopes_.back()
+           ->Var(details::kLocalExecScopeName)
+           ->GetMutable<Scope *>() = &local_scope;
+      local_scope.Var("out");
     }
-    local_scopes_[input_scope_idx]->Var("input");
+    local_scopes_[input_scope_idx]
+        ->Var(details::kLocalExecScopeName)
+        ->Get<Scope *>()
+        ->Var("input");
 
     if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
@@ -148,7 +154,10 @@ struct TestReduceOpHandle {
 
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
          ++input_scope_idx) {
-      auto in_var = local_scopes_[input_scope_idx]->Var("input");
+      auto in_var = local_scopes_[input_scope_idx]
+                        ->Var(details::kLocalExecScopeName)
+                        ->Get<Scope *>()
+                        ->Var("input");
       auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
@@ -161,10 +170,16 @@ struct TestReduceOpHandle {
       value->Resize(kDims);
     }
 
-    auto out_var = local_scopes_[output_scope_idx]->Var("out");
+    auto out_var = local_scopes_[output_scope_idx]
+                       ->Var(details::kLocalExecScopeName)
+                       ->Get<Scope *>()
+                       ->Var("out");
     auto out_selected_rows = out_var->GetMutable<f::SelectedRows>();
 
-    auto in_var = local_scopes_[output_scope_idx]->Var("input");
+    auto in_var = local_scopes_[output_scope_idx]
+                      ->Var(details::kLocalExecScopeName)
+                      ->Get<Scope *>()
+                      ->Var("input");
     auto in_selected_rows = in_var->GetMutable<f::SelectedRows>();
 
     out_selected_rows->mutable_value()->ShareDataWith(
@@ -202,7 +217,10 @@ struct TestReduceOpHandle {
 
     for (size_t input_scope_idx = 0; input_scope_idx < gpu_list_.size();
          ++input_scope_idx) {
-      auto in_var = local_scopes_[input_scope_idx]->Var("input");
+      auto in_var = local_scopes_[input_scope_idx]
+                        ->Var(details::kLocalExecScopeName)
+                        ->Get<Scope *>()
+                        ->Var("input");
       auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
       in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
       in_lod_tensor->set_lod(lod);
@@ -211,10 +229,16 @@ struct TestReduceOpHandle {
           send_vector, *(ctxs_[input_scope_idx]), in_lod_tensor);
     }
 
-    auto out_var = local_scopes_[output_scope_idx]->Var("out");
+    auto out_var = local_scopes_[output_scope_idx]
+                       ->Var(details::kLocalExecScopeName)
+                       ->Get<Scope *>()
+                       ->Var("out");
     auto out_lodtensor = out_var->GetMutable<f::LoDTensor>();
 
-    auto in_var = local_scopes_[output_scope_idx]->Var("input");
+    auto in_var = local_scopes_[output_scope_idx]
+                      ->Var(details::kLocalExecScopeName)
+                      ->Get<Scope *>()
+                      ->Var("input");
     auto in_lodtensor = in_var->Get<f::LoDTensor>();
 
     out_lodtensor->ShareDataWith(in_lodtensor);

@@ -59,10 +59,8 @@ struct ReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
-  std::vector<VarHandle *> GetValidVarHandles(
-      const std::vector<VarHandleBase *> &inputs);
 
-  void WaitEvents(const std::vector<VarHandle *> &in_var_handles);
+  void WaitInputVarGenerated(const std::vector<VarHandle *> &in_var_handles);
 };
 
 }  // namespace details
