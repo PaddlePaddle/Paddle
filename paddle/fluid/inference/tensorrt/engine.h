@@ -15,6 +15,7 @@
 #pragma once
 
 #include <NvInfer.h>
+#include <memory>
 #include <unordered_map>
 #include "paddle/fluid/inference/engine.h"
 
@@ -83,8 +84,8 @@ class TensorrtEngine : public EngineBase {
   // NOTE this should be used after calling `FreezeNetwork`.
   void*& buffer(const std::string& name);
 
-  nvinfer1::ICudaEngine* engine() { return infer_engine_; }
-  nvinfer1::INetworkDefinition* network() { return infer_network_; }
+  nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
+  nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
   // Fill an input from CPU memory with name and size.
   void SetInputFromCPU(const std::string& name, void* data, size_t size);
@@ -99,14 +100,21 @@ class TensorrtEngine : public EngineBase {
   int max_workspace_;
   cudaStream_t* stream_;
 
-  nvinfer1::IBuilder* infer_builder_{nullptr};
-  nvinfer1::INetworkDefinition* infer_network_{nullptr};
-  nvinfer1::ICudaEngine* infer_engine_{nullptr};
-  nvinfer1::IExecutionContext* infer_context_{nullptr};
-
   std::vector<void*> buffers_;
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
+
+  template <typename T>
+  struct Destroyer {
+    void operator()(T* x) { x->destroy(); }
+  };
+
+  template <typename T>
+  using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
+  infer_ptr<nvinfer1::IBuilder> infer_builder_;
+  infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
+  infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
+  infer_ptr<nvinfer1::IExecutionContext> infer_context_;
 };  // class TensorrtEngine
 
 // Add an layer__ into engine__ with args ARGS.
@@ -121,6 +129,6 @@ class TensorrtEngine : public EngineBase {
 // them, and an macro like this is more extensible when underlying TensorRT
 // library add new layer supports.
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ARGS...) \
-  engine__->network()->add##layer__(ARGS)
+  engine__->network()->add##layer__(ARGS);
 
 }  // namespace paddle
