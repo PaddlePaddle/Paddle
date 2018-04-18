@@ -38,7 +38,8 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
     int img_channels = in_dim[1];
-    ctx->SetOutputDim("Out", {-1, img_channels * kernels[0] * kernels[1]});
+    ctx->SetOutputDim("Out",
+                      {in_dim[0], img_channels * kernels[0] * kernels[1]});
   }
 };
 
