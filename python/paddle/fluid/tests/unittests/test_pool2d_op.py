@@ -317,36 +317,5 @@ class TestCeilModeCase4(TestCase2):
         self.ceil_mode = True
 
 
-#--------------------test pool2d MKLDNN--------------------
-class TestMKLDNNCase1(TestPool2d_Op):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase2(TestCase1):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase3(TestCase2):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase4(TestCase3):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase5(TestCase4):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNCase6(TestCase5):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
 if __name__ == '__main__':
     unittest.main()

@@ -14,7 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/beam_search_op.h"
 
+#include <algorithm>
 #include <map>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
