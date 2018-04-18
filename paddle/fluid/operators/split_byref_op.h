@@ -26,15 +26,14 @@ class SplitByrefOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    auto in_stride = framework::stride_numel(in->dims());
     auto place = ctx.GetPlace();
 
-    size_t input_offset = 0;
+    size_t row_offset = 0;
     for (size_t i = 0; i < outs.size(); ++i) {
       // NOTE: no need to call mutable_data here to allocate memory.
       auto* out = outs[i];
-      out->ShareDataWith(in, input_offset);
-      input_offset += out->numel() * framework::SizeOfType(out->type());
+      *out = std::move(in->Slice(row_offset, out->dims()[0]));
+      row_offset += out->dims()[0];
     }
   }
 };
