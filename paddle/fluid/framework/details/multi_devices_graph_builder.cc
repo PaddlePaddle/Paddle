@@ -60,7 +60,8 @@ void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
                                                 const platform::Place &p,
                                                 const size_t &i) const {
   auto *op_handle = result->ops_.back().get();
-  op_handle->dev_ctxes_[p] = platform::DeviceContextPool::Instance().Get(p);
+  op_handle->SetDeviceContext(p,
+                              platform::DeviceContextPool::Instance().Get(p));
 
   auto var_names = op.InputArgumentNames();
 
