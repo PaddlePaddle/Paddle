@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <fstream>
 #include <ostream>
 #include <thread>  // NOLINT
 #include <vector>
@@ -67,7 +68,7 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::AttributeMap &attrs)
     : OperatorBase(type, inputs, outputs, attrs) {}
 
-int ListenAndServOp::GetSelectedPort() {
+int ListenAndServOp::GetSelectedPort() const {
   return rpc_service_->GetSelectedPort();
 }
 
@@ -99,7 +100,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   framework::Executor executor(dev_place);
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
-    if (blkid != prefetch_block->ID()) {
+    if (blkid != static_cast<size_t>(prefetch_block->ID())) {
       block_list.push_back(blkid);
     }
   }
@@ -121,10 +122,14 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->SetProgram(program);
   // start the server listening after all member initialized.
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
-  // FIXME(typhoonzero): do we need to wait until the server port is ready?
+  VLOG(3) << "wait server thread to become ready...";
   sleep(5);
+  // Write to a file of server selected port for python use.
+  std::ofstream port_file;
+  port_file.open("/tmp/paddle.selected_port");
+  port_file << rpc_service_->GetSelectedPort();
+  port_file.close();
 
-  // TODO(typhoonzero): change this to a while_op for every cluster-batch.
   bool exit_flag = false;
   // Record received sparse variables, so that
   // we could reset those after execute optimize program
@@ -175,7 +180,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     parallel_blkids.push_back(1);
     double ts = detail::GetTimestamp();
     for (size_t blkid = 2; blkid < num_blocks; ++blkid) {
-      if (blkid != prefetch_block->ID()) {
+      if (blkid != static_cast<size_t>(prefetch_block->ID())) {
         if (program->Block(blkid).Parent() != last_parent_blkid) {
           ParallelExecuteBlocks(parallel_blkids, &executor, optimize_prepared,
                                 program, &recv_scope);

@@ -44,16 +44,22 @@ class ParallelExecutor {
 
   std::vector<Scope*>& GetLocalScopes();
 
+  /**
+   * Feed tensors to local scopes. The size of tensors should be equal to the
+   * size of local scopes.
+   */
+  void FeedTensorsIntoLocalScopes(
+      const std::vector<std::unordered_map<std::string, LoDTensor>>& tensors);
+
+  void FeedAndSplitTensorIntoLocalScopes(
+      const std::unordered_map<std::string, LoDTensor>& tensors);
+
   void Run(const std::vector<std::string>& fetch_tensors,
-           const std::string& fetched_var_name,
-           const std::unordered_map<std::string, LoDTensor>& feed_tensors);
+           const std::string& fetched_var_name);
 
   void BCastParamsToGPUs(const std::unordered_set<std::string>& vars) const;
 
  private:
-  void SplitTensorToPlaces(
-      const std::unordered_map<std::string, LoDTensor>& feed_tensors);
-
   ParallelExecutorPrivate* member_;
 };
 
