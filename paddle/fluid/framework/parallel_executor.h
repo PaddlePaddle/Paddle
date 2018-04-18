@@ -42,6 +42,8 @@ class ParallelExecutor {
                             const std::vector<Scope*>& local_scopes,
                             bool allow_op_delay);
 
+  ~ParallelExecutor();
+
   std::vector<Scope*>& GetLocalScopes();
 
   /**
