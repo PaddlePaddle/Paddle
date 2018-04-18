@@ -180,15 +180,6 @@ OperatorBase::OperatorBase(const std::string& type,
   CheckAllInputOutputSet();
 }
 
-std::vector<std::string> OperatorBase::InputVars() const {
-  std::vector<std::string> ret_val;
-  for (auto& o : inputs_) {
-    ret_val.reserve(ret_val.size() + o.second.size());
-    ret_val.insert(ret_val.end(), o.second.begin(), o.second.end());
-  }
-  return ret_val;
-}
-
 std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
   std::vector<std::string> ret_val;
   if (has_intermediate) {
