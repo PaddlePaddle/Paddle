@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/split_byref_op.h"
 #include "paddle/fluid/operators/split_op.h"
 
 namespace paddle {
 namespace operators {
 using framework::Tensor;
 
-class SplitOp : public framework::OperatorWithKernel {
+class SplitByrefOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -29,7 +30,6 @@ class SplitOp : public framework::OperatorWithKernel {
                       "Outputs(Out) of SplitOp should not be empty.");
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
-    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
     size_t num = static_cast<size_t>(ctx->Attrs().Get<int>("num"));
     std::vector<int> sections = static_cast<std::vector<int>>(
         ctx->Attrs().Get<std::vector<int>>("sections"));
@@ -38,14 +38,14 @@ class SplitOp : public framework::OperatorWithKernel {
     outs_dims.reserve(outs_number);
 
     if (num > 0) {
-      int64_t in_axis_dim = in_dims[axis];
+      int64_t in_axis_dim = in_dims[0];
       PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
                         "tensor split does not result"
                         " in an equal division");
       size_t out_axis_dim = in_axis_dim / num;
       for (size_t i = 0; i < outs_number; ++i) {
         auto dim = in_dims;
-        dim[axis] = out_axis_dim;
+        dim[0] = out_axis_dim;
         outs_dims.push_back(dim);
       }
     } else if (sections.size() > 0) {
@@ -54,43 +54,27 @@ class SplitOp : public framework::OperatorWithKernel {
                         "should be equal to output size.");
       for (size_t i = 0; i < outs_number; ++i) {
         auto dim = in_dims;
-        dim[axis] = sections[i];
+        dim[0] = sections[i];
         outs_dims.push_back(dim);
       }
     }
     ctx->SetOutputsDim("Out", outs_dims);
-    if (axis != 0) {
-      // Only pass LoD when not spliting along the first dim.
-      for (size_t i = 0; i < outs_number; ++i) {
-        ctx->ShareLoD("X", "Out", 0, i);
-      }
-    }
   }
 };
 
-class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
+class SplitByrefOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitOpMaker(OpProto *proto, OpAttrChecker *op_checker)
+  SplitByrefOpMaker(OpProto *proto, OpAttrChecker *op_checker)
       : OpProtoAndCheckerMaker(proto, op_checker) {
     AddInput("X", "(Tensor) Input tensor of the split operator.");
     AddOutput("Out", "(Tensor) Output tensors of the split operator.")
         .AsDuplicable();
     AddComment(R"DOC(
-Split operator
+SplitByref operator
 
-This operator splits the input tensor into multiple sub-tensors.
-
-Example:
-  Input = [[1,2],
-           [3,4],
-           [5,6]]
-  sections = [2,1]
-  axis = 0
-  Output[0] = [[1,2],
-               [3,4]]
-  Output[1] = [[5,6]]
-
-    )DOC");
+Split source tensor to sevaral tensors by axis 0. No copy in this operator
+is performed, output tensor shares the same blocks of memory.
+)DOC");
     AddAttr<std::vector<int>>("sections",
                               "(vector<int>) "
                               "the length of each output along the "
@@ -101,10 +85,6 @@ Example:
                  "Number of sub-tensors. This must evenly divide "
                  "Input.dims()[axis]")
         .SetDefault(0);
-    AddAttr<int>("axis",
-                 "(int, default 0) "
-                 "The axis which the input will be splited on.")
-        .SetDefault(0);
   }
 };
 
@@ -112,8 +92,10 @@ Example:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+// NOTE: concat op default axis must be 0!
 USE_CPU_ONLY_OP(concat);
 
-REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker, ops::SplitGradMaker);
-REGISTER_OP_CPU_KERNEL(split,
-                       ops::SplitOpKernel<paddle::platform::CPUPlace, float>);
+REGISTER_OPERATOR(split_byref, ops::SplitByrefOp, ops::SplitByrefOpMaker,
+                  ops::SplitGradMaker);
+REGISTER_OP_CPU_KERNEL(
+    split_byref, ops::SplitByrefOpKernel<paddle::platform::CPUPlace, float>);
