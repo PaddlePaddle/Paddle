@@ -469,8 +469,6 @@ REGISTER_ACTIVATION_OP_GRAD_MAKER(HardSigmoid, hard_sigmoid);
 
 namespace ops = paddle::operators;
 
-void DummyFunctor() {}
-
 #define FOR_EACH_INPLACE_OP_FUNCTOR(__macro) \
   __macro(Sigmoid, sigmoid);                 \
   __macro(Relu, relu);                       \

@@ -648,7 +648,7 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"threshold", &threshold}};
   }
-  bool Inplace() const { return IsInplace("softrelu"); }
+  bool Inplace() const { return IsInplace("soft_relu"); }
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
