@@ -141,5 +141,10 @@ TEST(float16, lod_tensor_cpu) {
   }
 }
 
+TEST(float16, print) {
+  float16 a = float16(1.0f);
+  std::cout << a << std::endl;
+}
+
 }  // namespace platform
 }  // namespace paddle

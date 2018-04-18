@@ -21,4 +21,7 @@ endif()
 
 if(WITH_TESTING)
   add_subdirectory(tests/book)
+  if (TENSORRT_FOUND)
+    add_subdirectory(tensorrt)
+  endif()
 endif()
