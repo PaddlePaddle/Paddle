@@ -127,7 +127,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_concat, ops::SequenceConcatOp,
                   ops::SequenceConcatOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<
-                      false> /*setfalsetodisableemptygrad*/);
+                      false> /* set false to disable empty grad */);
 REGISTER_OPERATOR(sequence_concat_grad, ops::SequenceConcatGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_concat,
