@@ -20,13 +20,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     elementwise_max,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_max_grad,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
-                                  int64_t>);
+    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, int>)
