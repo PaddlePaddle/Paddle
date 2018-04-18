@@ -105,10 +105,10 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<
-                      false> /* set false to disable empty grad */)
-REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad)
+                      false> /*setfalsetodisableemptygrad*/);
+REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>)
+    concat, ops::ConcatKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>)
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, float>);

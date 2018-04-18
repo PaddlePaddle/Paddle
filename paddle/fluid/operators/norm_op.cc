@@ -86,8 +86,8 @@ class NormOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(norm_grad, ops::NormOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(norm_grad, ops::NormOpGrad);
 REGISTER_OP_CPU_KERNEL(
     norm, ops::NormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::NormKernel<paddle::platform::CPUDeviceContext, double, float>);
