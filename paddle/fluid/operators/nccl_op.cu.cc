@@ -135,7 +135,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
       auto* x = ctx.Input<LoDTensor>("X");
       VLOG(3) << "gpu : " << gpu_id << " invoke Bcast. send " << x->numel();
       PADDLE_ENFORCE(platform::dynload::ncclBcast(
-          reinterpret_cast<void*>(x->data<T>()), x->numel(),
+          reinterpret_cast<void*>(const_cast<T*>(x->data<T>())), x->numel(),
           NCCLTypeWrapper<T>::type, root, comm->comms().at(idx),
           ctx.cuda_device_context().stream()));
       VLOG(3) << "gpu : " << gpu_id << " finished Bcast.";
