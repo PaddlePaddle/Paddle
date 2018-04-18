@@ -203,7 +203,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   iter=50,
                                   batch_size=None,
                                   allow_op_delay=False,
-                                  feed_dict={},
+                                  feed_dict=None,
                                   seed=None,
                                   use_parallel_executor=True):
         def run_executor(exe, feed, fetch_list, program=None):
@@ -223,7 +223,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         with fluid.program_guard(main, startup):
             if seed is not None:
                 startup.random_seed = seed
-            loss = method(use_feed=len(feed_dict) > 0)
+            loss = method(use_feed=feed_dict is not None)
             adam = fluid.optimizer.Adam()
             adam.minimize(loss)
             if memory_opt:
