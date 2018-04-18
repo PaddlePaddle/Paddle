@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/expand_op.h"
 
+#include <vector>
+
 namespace paddle {
 namespace operators {
 
@@ -128,8 +130,9 @@ class ExpandGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(expand, ops::ExpandOp, ops::ExpandOpMaker, expand_grad,
-            ops::ExpandGradOp);
+REGISTER_OPERATOR(expand, ops::ExpandOp, ops::ExpandOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>)
+REGISTER_OPERATOR(expand_grad, ops::ExpandGradOp)
 REGISTER_OP_CPU_KERNEL(
     expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
