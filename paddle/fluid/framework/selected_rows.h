@@ -81,7 +81,7 @@ class SelectedRows {
    * @return true if the Get operation successed.
    */
 
-  bool Get(int64_t key, framework::Tensor* tensor, int64_t row = 0) const;
+  bool Get(int64_t key, framework::Tensor* tensor, int64_t offset = 0) const;
 
   /*
    * @brief Set a key-value pair into the table.
