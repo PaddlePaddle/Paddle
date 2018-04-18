@@ -85,7 +85,7 @@ putcn/paddle_aws_client \
 --docker_image myreponame/paddle_benchmark \
 --pserver_count 2 \
 --trainer_count 2 \
---trainer_command batch_size:20,is_local:no
+--trainer_command batch_size:20,local:no,device:CPU
 ```
 
 Now just wait until you see this:
