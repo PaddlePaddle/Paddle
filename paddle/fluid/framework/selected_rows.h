@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace paddle {
 namespace framework {
