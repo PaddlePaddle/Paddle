@@ -14,35 +14,18 @@
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <vector>
-
-#include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-struct BroadcastOpHandle : public OpHandleBase {
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
+class VariableVisitor {
+ public:
+  static Tensor &GetMutableTensor(Variable *var);
 
-  BroadcastOpHandle(const std::vector<Scope *> &local_scopes,
-                    const std::vector<platform::Place> &places);
-
-  std::string Name() const override;
-
-  bool IsMultiDeviceTransfer() override { return false; };
-
- protected:
-  void RunImpl() override;
-
-  void WaitInputVarGenerated(const VarHandle &in_var);
+  static void ShareDimsAndLoD(const Variable &src, Variable *trg);
 };
 
 }  // namespace details
