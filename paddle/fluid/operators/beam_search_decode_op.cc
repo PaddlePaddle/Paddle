@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/beam_search_decode_op.h"
+#include <string>
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {

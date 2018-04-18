@@ -39,20 +39,19 @@ inline ncclDataType_t ToNCCLDataType(std::type_index type) {
 
 class NCCLGroupGuard {
  public:
+  static std::mutex &NCCLMutex() {
+    static std::mutex mtx;
+    return mtx;
+  }
+
   inline NCCLGroupGuard() {
-    mutex().lock();
+    NCCLMutex().lock();
     PADDLE_ENFORCE(dynload::ncclGroupStart());
   }
 
   inline ~NCCLGroupGuard() {
     PADDLE_ENFORCE(dynload::ncclGroupEnd());
-    mutex().unlock();
-  }
-
- private:
-  static std::mutex &mutex() {
-    static std::mutex mtx;
-    return mtx;
+    NCCLMutex().unlock();
   }
 };
 
@@ -67,26 +66,6 @@ struct NCCLContext {
 
   int device_id() const {
     return boost::get<platform::CUDAPlace>(ctx_->GetPlace()).device;
-  }
-
-  static void InitNCCLContext(std::unordered_map<int, NCCLContext> *contexts,
-                              const std::vector<platform::Place> &places) {
-    std::vector<ncclComm_t> comms;
-    std::vector<int> devs;
-    comms.resize(contexts->size());
-    devs.reserve(contexts->size());
-
-    for (auto &p : places) {
-      devs.push_back(boost::get<platform::CUDAPlace>(p).device);
-    }
-
-    PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
-        &comms[0], static_cast<int>(contexts->size()), &devs[0]));
-
-    int i = 0;
-    for (auto &dev_id : devs) {
-      contexts->at(dev_id).comm_ = comms[i++];
-    }
   }
 };
 
@@ -107,18 +86,21 @@ struct NCCLContextMap {
         "NCCL Context Map does not support contain two or more same device");
 
     if (places.size() > 1) {
-      std::vector<ncclComm_t> comms;
-      comms.resize(order_.size());
-
-      PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
-          &comms[0], static_cast<int>(order_.size()), &order_[0]));
-
+      std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
+      {
+        std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
+        PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
+            comms.get(), static_cast<int>(order_.size()), order_.data()));
+      }
       int i = 0;
       for (auto &dev_id : order_) {
         contexts_.at(dev_id).comm_ = comms[i++];
       }
     }
   }
+
+  NCCLContextMap(const NCCLContextMap &other) = delete;
+  NCCLContextMap &operator=(const NCCLContextMap &other) = delete;
 
   CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
