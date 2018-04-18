@@ -176,34 +176,6 @@ class Tensor {
     std::type_index type_;
   };
 
-  template <typename Place>
-  struct SharedPlaceholderImpl : public Placeholder {
-    SharedPlaceholderImpl(Place place, const uint8_t* data, size_t size,
-                          std::type_index type)
-        : ptr_(data), place_(place), size_(size), type_(type) {}
-
-    virtual size_t size() const { return size_; }
-    virtual platform::Place place() const { return place_; }
-    virtual void* ptr() const {
-      return const_cast<void*>(static_cast<const void*>(ptr_));
-    }
-    virtual std::type_index type() const { return type_; }
-    virtual void set_type(std::type_index type) { type_ = type; }
-    virtual void set_place(platform::Place place) { place_ = place; }
-
-    /*! the pointer of memory block. */
-    const uint8_t* ptr_;
-
-    /*! the place of memory block. */
-    platform::Place place_;
-
-    /*! the size of memory block. */
-    size_t size_;
-
-    /* the current type of memory */
-    std::type_index type_;
-  };
-
   /*! holds the memory block if allocated. */
   std::shared_ptr<Placeholder> holder_;
 
