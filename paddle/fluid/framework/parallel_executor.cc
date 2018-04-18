@@ -44,6 +44,7 @@ class ParallelExecutorPrivate {
 #endif
 
   std::vector<std::tuple<std::string, proto::VarType::Type, bool>> var_types_;
+  bool own_local_scope;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
@@ -63,13 +64,16 @@ ParallelExecutor::ParallelExecutor(
   // Step 1. Bcast the params to devs.
   // Create local scopes
   if (local_scopes.empty()) {
-    for (size_t i = 0; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.push_back(&scope->NewScope());
+    member_->own_local_scope = true;
+    member_->local_scopes_.emplace_back(member_->global_scope_);
+    for (size_t i = 1; i < member_->places_.size(); ++i) {
+      member_->local_scopes_.emplace_back(&scope->NewScope());
     }
   } else {
+    member_->own_local_scope = false;
     PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
     for (size_t i = 0; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.push_back(local_scopes[i]);
+      member_->local_scopes_.emplace_back(local_scopes[i]);
     }
   }
 
@@ -155,15 +159,13 @@ void ParallelExecutor::BCastParamsToGPUs(
 #endif
 }
 
-void ParallelExecutor::Run(
-    const std::vector<std::string> &fetch_tensors,
-    const std::string &fetched_var_name,
-    const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
+void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
+                           const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
-  SplitTensorToPlaces(feed_tensors);
-
   // Create local scopes.
-  for (auto &scope : member_->local_scopes_) {
+  for (auto it = member_->local_scopes_.rbegin();
+       it != member_->local_scopes_.rend(); ++it) {
+    auto &scope = *it;
     Scope &local_scope = scope->NewScope();
     *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
         &local_scope;
@@ -177,7 +179,7 @@ void ParallelExecutor::Run(
         InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
                            std::get<1>(name_type_pair));
       } else {
-        InitializeVariable(scope->Var(std::get<0>(name_type_pair)),
+        InitializeVariable(local_scope.Var(std::get<0>(name_type_pair)),
                            std::get<1>(name_type_pair));
       }
     }
@@ -195,14 +197,28 @@ void ParallelExecutor::Run(
     auto &local_scope =
         *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>();
     scope->DeleteScope(local_scope);
-    local_scope = nullptr;
   }
 }
 
-void ParallelExecutor::SplitTensorToPlaces(
-    const std::unordered_map<std::string, LoDTensor> &feed_tensors) {
-  for (auto it : feed_tensors) {
-    auto lod_tensors = it.second.SplitLoDTensor(member_->places_);
+void ParallelExecutor::FeedTensorsIntoLocalScopes(
+    const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
+  PADDLE_ENFORCE_EQ(member_->local_scopes_.size(), tensors.size());
+
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    auto &map = tensors[i];
+    auto *scope = member_->local_scopes_[i];
+    for (auto &pair : map) {
+      auto *trg = scope->Var(pair.first)->GetMutable<LoDTensor>();
+      trg->ShareDataWith(pair.second);
+      trg->set_lod(pair.second.lod());
+    }
+  }
+}
+
+void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
+    const std::unordered_map<std::string, LoDTensor> &tensors) {
+  for (auto pair : tensors) {
+    auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
     PADDLE_ENFORCE_EQ(
         member_->places_.size(), lod_tensors.size(),
         "The number of samples of current batch is less than the count of "
@@ -211,9 +227,17 @@ void ParallelExecutor::SplitTensorToPlaces(
     for (size_t j = 0; j < member_->places_.size(); ++j) {
       // TODO(panxy0718): Do I need to delete this var?
       auto t =
-          member_->local_scopes_[j]->Var(it.first)->GetMutable<LoDTensor>();
+          member_->local_scopes_[j]->Var(pair.first)->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
+    }
+  }
+}
+
+ParallelExecutor::~ParallelExecutor() {
+  if (member_->own_local_scope) {
+    for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
+      member_->global_scope_->DeleteScope(member_->local_scopes_[i]);
     }
   }
 }
