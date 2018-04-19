@@ -19,4 +19,4 @@ REGISTER_OP_CUDA_KERNEL(
     increment, ops::IncrementKernel<paddle::platform::CUDADeviceContext, float>,
     ops::IncrementKernel<paddle::platform::CUDADeviceContext, double>,
     ops::IncrementKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::IncrementKernel<paddle::platform::CUDADeviceContext, int64_t>)
+    ops::IncrementKernel<paddle::platform::CUDADeviceContext, int64_t>);
