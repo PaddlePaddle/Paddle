@@ -70,7 +70,7 @@ struct VarLink {
   int dev_idx_;
   std::string var_name_;
   VarHandle *var_handle_;
-  std::vector<std::unique_ptr<VarLink>> children_;
+  std::vector<VarLink *> children_;
 };
 
 void GetLeavesOfTopVar(VarLink *top_var,
@@ -79,7 +79,7 @@ void GetLeavesOfTopVar(VarLink *top_var,
     leaves->insert(top_var->var_handle_);
   } else if (top_var) {
     for (auto &vars : top_var->children_) {
-      GetLeavesOfTopVar(vars.get(), leaves);
+      GetLeavesOfTopVar(vars, leaves);
     }
   }
 }
@@ -121,7 +121,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   bool multi_devices = places_.size() > 1;
 
   // TODO(zcd) release memory
-  std::vector<VarLink *> link_vars;
+  std::vector<std::unique_ptr<VarLink>> link_vars;
   std::unordered_map<VarHandle *, VarLink *> var_link;
   std::unordered_map<VarHandle *, VarLink *> ogs_link;
 
@@ -160,9 +160,9 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
             auto out_var_handle = static_cast<VarHandle *>(out_var);
             link_vars.emplace_back(
                 new VarLink(out_var_handle->name_, out_var_handle, dev_id));
-            var_link[var_in_var]->children_.emplace_back(link_vars.back());
-            var_link[out_var_handle] =
-                var_link[var_in_var]->children_.back().get();
+            var_link[var_in_var]->children_.emplace_back(
+                link_vars.back().get());
+            var_link[out_var_handle] = var_link[var_in_var]->children_.back();
           }
           continue;
         }
@@ -209,8 +209,8 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
               PADDLE_ENFORCE(ogs_link.count(var) == 0 &&
                              var_link.count(var) == 0);
               link_vars.emplace_back(new VarLink(og, var, dst_dev_id));
-              var_link[var] = link_vars.back();
-              ogs_link[var] = link_vars.back();
+              var_link[var] = link_vars.back().get();
+              ogs_link[var] = link_vars.back().get();
             }
           }
         }
