@@ -30,7 +30,7 @@ namespace detail = paddle::operators::detail;
 
 USE_OP(lookup_table);
 
-std::unique_ptr<detail::AsyncGRPCServer> rpc_service_;
+std::unique_ptr<detail::SyncGRPCServer> rpc_service_;
 
 framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
@@ -89,7 +89,7 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
 }
 
 void StartServer(const std::string& endpoint) {
-  rpc_service_.reset(new detail::AsyncGRPCServer(endpoint));
+  rpc_service_.reset(new detail::SyncGRPCServer(endpoint));
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;

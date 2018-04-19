@@ -22,23 +22,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void RunServer(std::shared_ptr<detail::AsyncGRPCServer> service) {
+void RunServer(std::shared_ptr<detail::SyncGRPCServer> service) {
   service->RunSyncUpdate();
   VLOG(4) << "RunServer thread end";
-}
-
-static void CreateTensorFromMessageType(framework::Variable *var,
-                                        sendrecv::VarType var_type) {
-  if (var_type == sendrecv::VarType::LOD_TENSOR) {
-    var->GetMutable<framework::LoDTensor>();
-  } else if (var_type == sendrecv::VarType::SELECTED_ROWS) {
-    var->GetMutable<framework::SelectedRows>();
-  } else {
-    PADDLE_THROW(
-        "VariableMessage type %d is not in "
-        "[LoDTensor, SelectedRows]",
-        var_type);
-  }
 }
 
 static void ParallelExecuteBlocks(
@@ -85,7 +71,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   if (!rpc_service_) {
     std::string endpoint = Attr<std::string>("endpoint");
-    rpc_service_.reset(new detail::AsyncGRPCServer(endpoint));
+    rpc_service_.reset(new detail::SyncGRPCServer(endpoint));
   }
 
   auto ins = Inputs("X");
@@ -112,11 +98,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   rpc_service_->SetScope(&recv_scope);
   rpc_service_->SetDevCtx(&dev_ctx);
-  // TODO(qiao) set proper fields for table lookup and update
   rpc_service_->SetExecutor(&executor);
   VLOG(3) << "prefetch block id is " << prefetch_block->ID();
   auto prefetch_prepared = executor.Prepare(*program, prefetch_block->ID());
-  rpc_service_->SetPrefetchBlkdId(prefetch_block->ID());
   rpc_service_->SetPrefetchPreparedCtx(prefetch_prepared.get());
   prefetch_prepared.release();
   rpc_service_->SetProgram(program);

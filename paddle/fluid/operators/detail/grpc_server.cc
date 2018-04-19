@@ -181,10 +181,9 @@ class RequestPrefetch final : public RequestBase {
   framework::Executor* executor_;
   framework::ProgramDesc* program_;
   framework::ExecutorPrepareContext* prefetch_ctx_;
-  int blkid_;
 };
 
-void AsyncGRPCServer::WaitClientGet(int count) {
+void SyncGRPCServer::WaitClientGet(int count) {
   int fetch_barriers = 0;
   while (fetch_barriers < count) {
     auto msg = var_get_queue_.Pop();
@@ -194,7 +193,7 @@ void AsyncGRPCServer::WaitClientGet(int count) {
   }
 }
 
-void AsyncGRPCServer::RunSyncUpdate() {
+void SyncGRPCServer::RunSyncUpdate() {
   ::grpc::ServerBuilder builder;
   builder.AddListeningPort(address_, ::grpc::InsecureServerCredentials(),
                            &selected_port_);
@@ -211,21 +210,21 @@ void AsyncGRPCServer::RunSyncUpdate() {
             << " selected port: " << selected_port_;
 
   std::function<void()> send_register =
-      std::bind(&AsyncGRPCServer::TryToRegisterNewSendOne, this);
+      std::bind(&SyncGRPCServer::TryToRegisterNewSendOne, this);
   std::function<void()> get_register =
-      std::bind(&AsyncGRPCServer::TryToRegisterNewGetOne, this);
+      std::bind(&SyncGRPCServer::TryToRegisterNewGetOne, this);
   std::function<void()> prefetch_register =
-      std::bind(&AsyncGRPCServer::TryToRegisterNewPrefetchOne, this);
+      std::bind(&SyncGRPCServer::TryToRegisterNewPrefetchOne, this);
 
   // TODO(wuyi): Run these "HandleRequest" in thread pool
   t_send_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
+      new std::thread(std::bind(&SyncGRPCServer::HandleRequest, this,
                                 cq_send_.get(), "cq_send", send_register)));
   t_get_.reset(
-      new std::thread(std::bind(&AsyncGRPCServer::HandleRequest, this,
+      new std::thread(std::bind(&SyncGRPCServer::HandleRequest, this,
                                 cq_get_.get(), "cq_get", get_register)));
   t_prefetch_.reset(new std::thread(
-      std::bind(&AsyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
+      std::bind(&SyncGRPCServer::HandleRequest, this, cq_prefetch_.get(),
                 "cq_prefetch", prefetch_register)));
   // wait server
   server_->Wait();
@@ -234,7 +233,7 @@ void AsyncGRPCServer::RunSyncUpdate() {
   t_prefetch_->join();
 }
 
-void AsyncGRPCServer::ShutdownQueue() {
+void SyncGRPCServer::ShutdownQueue() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   cq_send_->Shutdown();
   cq_get_->Shutdown();
@@ -242,13 +241,13 @@ void AsyncGRPCServer::ShutdownQueue() {
 }
 
 // This URL explains why shutdown is complicate:
-void AsyncGRPCServer::ShutDown() {
+void SyncGRPCServer::ShutDown() {
   is_shut_down_ = true;
   ShutdownQueue();
   server_->Shutdown();
 }
 
-void AsyncGRPCServer::TryToRegisterNewSendOne() {
+void SyncGRPCServer::TryToRegisterNewSendOne() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
     VLOG(3) << "shutdown, do not TryToRegisterNewSendOne";
@@ -259,7 +258,7 @@ void AsyncGRPCServer::TryToRegisterNewSendOne() {
   VLOG(4) << "Create RequestSend status:" << send->Status();
 }
 
-void AsyncGRPCServer::TryToRegisterNewGetOne() {
+void SyncGRPCServer::TryToRegisterNewGetOne() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
     VLOG(3) << "shutdown, do not TryToRegisterNewGetOne";
@@ -270,7 +269,7 @@ void AsyncGRPCServer::TryToRegisterNewGetOne() {
   VLOG(4) << "Create RequestGet status:" << get->Status();
 }
 
-void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
+void SyncGRPCServer::TryToRegisterNewPrefetchOne() {
   std::unique_lock<std::mutex> lock(cq_mutex_);
   if (is_shut_down_) {
     VLOG(3) << "shutdown, do not TryToRegisterNewPrefetchOne";
@@ -284,9 +283,9 @@ void AsyncGRPCServer::TryToRegisterNewPrefetchOne() {
 }
 
 // FIXME(typhoonzero): change cq_name to enum.
-void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
-                                    const std::string& cq_name,
-                                    std::function<void()> TryToRegisterNewOne) {
+void SyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
+                                   const std::string& cq_name,
+                                   std::function<void()> TryToRegisterNewOne) {
   TryToRegisterNewOne();
 
   void* tag = NULL;
@@ -335,13 +334,13 @@ void AsyncGRPCServer::HandleRequest(::grpc::ServerCompletionQueue* cq,
   }
 }
 
-void AsyncGRPCServer::WaitCond(int cond) {
+void SyncGRPCServer::WaitCond(int cond) {
   std::unique_lock<std::mutex> lock(this->barrier_mutex_);
   barrier_condition_.wait(lock,
                           [=] { return this->barrier_cond_step_ == cond; });
 }
 
-void AsyncGRPCServer::SetCond(int cond) {
+void SyncGRPCServer::SetCond(int cond) {
   {
     std::lock_guard<std::mutex> lock(this->barrier_mutex_);
     barrier_cond_step_ = cond;
