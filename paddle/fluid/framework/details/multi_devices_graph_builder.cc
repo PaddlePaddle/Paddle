@@ -120,8 +120,10 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   int ring = 0;
   bool multi_devices = places_.size() > 1;
 
-  std::unordered_map<VarHandle *, std::unique_ptr<VarLink>> var_link;
-  std::unordered_map<VarHandle *, std::unique_ptr<VarLink>> ogs_link;
+  // TODO(zcd) release memory
+  std::vector<VarLink *> link_vars;
+  std::unordered_map<VarHandle *, VarLink *> var_link;
+  std::unordered_map<VarHandle *, VarLink *> ogs_link;
 
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
@@ -156,10 +158,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
           // add output to var_link
           for (auto &out_var : result.ops_.back()->Outputs()) {
             auto out_var_handle = static_cast<VarHandle *>(out_var);
-            var_link[var_in_var]->children_.emplace_back(
+            link_vars.emplace_back(
                 new VarLink(out_var_handle->name_, out_var_handle, dev_id));
-            var_link[out_var_handle].reset(
-                var_link[var_in_var]->children_.back().get());
+            var_link[var_in_var]->children_.emplace_back(link_vars.back());
+            var_link[out_var_handle] =
+                var_link[var_in_var]->children_.back().get();
           }
           continue;
         }
@@ -203,9 +206,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
               vars.emplace_back(var);
               op_handle->AddOutput(var);
 
-              PADDLE_ENFORCE(ogs_link.count(var) == 0);
-              ogs_link[var].reset(new VarLink(og, var, dst_dev_id));
-              var_link[var].reset(ogs_link[var].get());
+              PADDLE_ENFORCE(ogs_link.count(var) == 0 &&
+                             var_link.count(var) == 0);
+              link_vars.emplace_back(new VarLink(og, var, dst_dev_id));
+              var_link[var] = link_vars.back();
+              ogs_link[var] = link_vars.back();
             }
           }
         }
@@ -221,7 +226,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       need_to_broadcast.insert(top_var);
       std::unordered_set<VarHandle *> leaves;
       // get the leaves of top_var
-      GetLeavesOfTopVar(vars_link.second.get(), &leaves);
+      GetLeavesOfTopVar(vars_link.second, &leaves);
 
       // add broadcast op
       if (leaves.size()) {
