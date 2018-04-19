@@ -43,6 +43,7 @@ struct GatherOpHandle : public OpHandleBase {
  private:
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;
+  void WaitInputVarGenerated(const std::vector<VarHandle *> &in_var_handles);
 };
 
 }  // namespace details
