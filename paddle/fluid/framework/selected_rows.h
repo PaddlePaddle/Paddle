@@ -14,15 +14,33 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace paddle {
 namespace framework {
 
 class SelectedRows {
+  /*
+   * @brief We can use the SelectedRows structure to reproduce a sparse table.
+   *  A sparse table is a key-value structure that the key is an `int64_t`
+   * number,
+   *  and the value is a Tensor which the first dimension is 0.
+   *  You can use the following interface to operate the sparse table, and you
+   * can find
+   *  some detail information from the comments of each interface:
+   *
+   *  HasKey(key), whether the sparse table has the specified key.
+   *  Set(key, value), set a key-value pair into the sparse table.
+   *  Get(keys, value*), get value by given key list and apply it to the given
+   * value pointer
+   *    with the specified offset.
+   *
+   */
  public:
   SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
       : rows_(rows), height_(height) {
@@ -50,12 +68,45 @@ class SelectedRows {
 
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
-  /**
-   * get the index of id in rows
+  /*
+   * @brief wheter has the specified key in the table.
+   *
+   * @return true if the key is exists.
    */
-  int64_t index(int64_t id) const {
-    auto it = std::find(rows_.begin(), rows_.end(), id);
-    PADDLE_ENFORCE(it != rows_.end(), "id should be in rows");
+  bool HasKey(int64_t key) const;
+
+  /*
+   * @brief Get value by the key list, if the
+   *
+   * @return a list of keys which does not exists in table
+   */
+  std::vector<int64_t> Get(std::vector<int64_t> keys,
+                           framework::Tensor* tensor) const;
+
+  /*
+   * @brief Set a key-value pair into the table.
+   *  This function will double the value memory if it's not engouth.
+   *
+   * @note:
+   *    1. The first dim of the value should be 1
+   *    2. The value should be initialized and the data type
+   *       should be the same with the table.
+   *
+   * @return true if the key is a new one, otherwise false
+   *
+   */
+  bool Set(int64_t key, const Tensor& value);
+
+  /*
+   * @brief Get the index of key in rows
+   *
+   * @return -1 if the key does not exists.
+   */
+  int64_t Index(int64_t key) const {
+    auto it = std::find(rows_.begin(), rows_.end(), key);
+    if (it == rows_.end()) {
+      return static_cast<int64_t>(-1);
+    }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
   }
 
