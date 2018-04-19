@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/framework.pb.h"
