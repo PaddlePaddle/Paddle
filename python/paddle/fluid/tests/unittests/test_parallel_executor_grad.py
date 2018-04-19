@@ -69,7 +69,7 @@ class CompareParallelExecutorAndParallelDo(unittest.TestCase):
             avg_loss = fluid.layers.mean(loss)
             test_program = main.clone(for_test=True)
             opt = fluid.optimizer.Momentum(
-                learning_rate=cosine_decay(0.1, 1, len(train_inputs)),
+                learning_rate=cosine_decay(0.01, 1, len(train_inputs)),
                 momentum=0.9,
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(avg_loss, startup)
@@ -111,7 +111,7 @@ class CompareParallelExecutorAndParallelDo(unittest.TestCase):
             loss = lenet(data, label)
             test_program = main.clone(for_test=True)
             opt = fluid.optimizer.Momentum(
-                learning_rate=cosine_decay(0.1, 1, len(train_inputs)),
+                learning_rate=cosine_decay(0.01, 1, len(train_inputs)),
                 momentum=0.9,
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
