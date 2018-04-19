@@ -91,7 +91,7 @@ class RequestGet final : public RequestBase {
                       framework::Scope* scope,
                       const platform::DeviceContext* dev_ctx)
       : RequestBase(service, cq, dev_ctx), responder_(&ctx_), scope_(scope) {
-    int method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
+    auto method_id = static_cast<int>(detail::GrpcMethod::kGetVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, &request_, &responder_, cq_,
                                 cq_, this);
   }
