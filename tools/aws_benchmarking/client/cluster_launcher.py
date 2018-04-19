@@ -80,7 +80,11 @@ parser.add_argument(
     use ami-1ae93962 for us-east-2")
 
 parser.add_argument(
-    '--pserver_command', type=str, default="", help="pserver start command")
+    '--pserver_command',
+    type=str,
+    default="",
+    help="pserver start command, format example: python,vgg.py,batch_size:128,is_local:yes"
+)
 
 parser.add_argument(
     '--trainer_image_id',
@@ -90,7 +94,11 @@ parser.add_argument(
     use ami-1ae93962 for us-west-2")
 
 parser.add_argument(
-    '--trainer_command', type=str, default="", help="trainer start command")
+    '--trainer_command',
+    type=str,
+    default="",
+    help="trainer start command, format example: python,vgg.py,batch_size:128,is_local:yes"
+)
 
 parser.add_argument(
     '--availability_zone',
