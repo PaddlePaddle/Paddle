@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
@@ -27,6 +27,20 @@ class NCCLContextMap;
 namespace framework {
 class Scope;
 namespace details {
+
+struct VarLink {
+  VarLink(const std::string &var_name, VarHandle *var_handel, int dev_idx) {
+    var_name_ = std::move(var_name);
+    var_handle_ = var_handel;
+    dev_idx_ = dev_idx;
+  }
+
+  int dev_idx_;
+  std::string var_name_;
+  VarHandle *var_handle_;
+  std::vector<VarLink *> children_;
+};
+
 class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  public:
 #ifdef PADDLE_WITH_CUDA
@@ -67,12 +81,25 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void CreateComputationalOps(SSAGraph *result, const OpDesc &op) const;
 
   void CreateScaleLossGradOp(SSAGraph *result) const;
+  VarHandle *CreateReduceOp(SSAGraph *result, int dst_dev_id,
+                            const std::string &og) const;
+  void CreateComputationalOp(SSAGraph *result, const OpDesc &op,
+                             int dev_id) const;
 
   bool IsParameterGradientOnce(
       const std::string &og,
       std::unordered_set<std::string> *og_has_been_broadcast) const;
 
   void InsertNCCLAllReduceOp(SSAGraph *result, const std::string &og) const;
+
+  VarHandle *GetSingleDeviceVar(
+      const std::unordered_map<VarHandle *,
+                               paddle::framework::details::VarLink *> &var_link,
+      const std::vector<std::string> &var_names, SSAGraph *result) const;
+
+  void CreateBroadcastOp(SSAGraph *result,
+                         const std::pair<VarHandle *, VarLink *> &vars_link,
+                         VarHandle *const &ge_var) const;
 };
 }  // namespace details
 }  // namespace framework

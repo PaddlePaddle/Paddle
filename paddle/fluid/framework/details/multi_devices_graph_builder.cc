@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include <utility>
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
@@ -59,19 +59,6 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     grad_names_.insert(GradVarName(p));
   }
 }
-
-struct VarLink {
-  VarLink(const std::string &var_name, VarHandle *var_handel, int dev_idx) {
-    var_name_ = std::move(var_name);
-    var_handle_ = var_handel;
-    dev_idx_ = dev_idx;
-  }
-
-  int dev_idx_;
-  std::string var_name_;
-  VarHandle *var_handle_;
-  std::vector<VarLink *> children_;
-};
 
 void GetLeavesOfTopVar(VarLink *top_var,
                        std::unordered_set<VarHandle *> *leaves) {
@@ -120,7 +107,6 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   int ring = 0;
   bool multi_devices = places_.size() > 1;
 
-  // TODO(zcd) release memory
   std::vector<std::unique_ptr<VarLink>> link_vars;
   std::unordered_map<VarHandle *, VarLink *> var_link;
   std::unordered_map<VarHandle *, VarLink *> ogs_link;
@@ -137,23 +123,11 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     } else {
       if (!is_forwarding && multi_devices && !use_nccl_allreduce_) {
         auto var_names = op->InputArgumentNames();
-        VarHandle *var_in_var = nullptr;
-        for (auto &each_var_name : var_names) {
-          for (size_t j = 0; j < places_.size(); ++j) {
-            VarHandle *var = GetLatestVarHandle(&result, each_var_name, j);
-            if (var && var_link.count(var)) {
-              var_in_var = var;
-              break;
-            }
-          }
-          if (var_in_var) break;
-        }
+        VarHandle *var_in_var =
+            GetSingleDeviceVar(var_link, var_names, &result);
         if (var_in_var) {
           int dev_id = var_link[var_in_var]->dev_idx_;
-
-          result.ops_.emplace_back(new ComputationOpHandle(
-              *op, local_scopes_[dev_id], places_[dev_id]));
-          CreateOpHandleIOs(&result, *op, places_[dev_id], dev_id);
+          CreateComputationalOp(&result, *op, dev_id);
 
           // add output to var_link
           for (auto &out_var : result.ops_.back()->Outputs()) {
@@ -180,32 +154,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
               InsertNCCLAllReduceOp(&result, og);
             } else {
               size_t dst_dev_id = (ring++) % places_.size();
-#ifdef PADDLE_WITH_CUDA
-              result.ops_.emplace_back(
-                  new ReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
-#else
-              result.ops_.emplace_back(
-                  new ReduceOpHandle(local_scopes_, places_));
-#endif
-              auto *op_handle = result.ops_.back().get();
-
-              for (size_t i = 0; i < places_.size(); ++i) {
-                auto &vars = result.vars_[i][og];
-#ifndef PADDLE_WITH_CUDA
-                auto &p = places_[i];
-                op_handle->SetDeviceContext(
-                    p, platform::DeviceContextPool::Instance().Get(p));
-#endif
-                PADDLE_ENFORCE(!vars.empty());
-                auto &prev_grad = vars.back();
-                op_handle->AddInput(prev_grad.get());
-              }
-              auto &vars = result.vars_[dst_dev_id][og];
-              auto var = new VarHandle(vars.size() - 1, dst_dev_id, og,
-                                       places_[dst_dev_id]);
-              vars.emplace_back(var);
-              op_handle->AddOutput(var);
-
+              auto var = CreateReduceOp(&result, dst_dev_id, og);
               PADDLE_ENFORCE(ogs_link.count(var) == 0 &&
                              var_link.count(var) == 0);
               link_vars.emplace_back(new VarLink(og, var, dst_dev_id));
@@ -231,31 +180,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       // add broadcast op
       if (leaves.size()) {
         for (auto &ge_var : leaves) {
-          result.ops_.emplace_back(
-              new BroadcastOpHandle(local_scopes_, places_));
-          auto *op_handle = result.ops_.back().get();
-
-          auto src_dev_id = vars_link.second->dev_idx_;
-          auto &vars = result.vars_.at(src_dev_id)[ge_var->name_];
-
-          PADDLE_ENFORCE(!vars.empty());
-          auto &prev_grad = vars.back();
-          op_handle->AddInput(prev_grad.get());
-
-          for (size_t i = 0; i < places_.size(); ++i) {
-            auto &p = places_[i];
-            auto &vars = result.vars_[i][ge_var->name_];
-
-#ifdef PADDLE_WITH_CUDA
-            op_handle->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
-#else
-            op_handle->SetDeviceContext(
-                p, platform::DeviceContextPool::Instance().Get(p));
-#endif
-            auto var = new VarHandle(vars.size() - 1, i, ge_var->name_, p);
-            vars.emplace_back(var);
-            op_handle->AddOutput(var);
-          }
+          CreateBroadcastOp(&result, vars_link, ge_var);
         }
       }
     }
@@ -279,6 +204,57 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   }
 
   return std::unique_ptr<SSAGraph>(graph);
+}
+
+void MultiDevSSAGraphBuilder::CreateBroadcastOp(
+    SSAGraph *result, const std::pair<VarHandle *, VarLink *> &vars_link,
+    VarHandle *const &ge_var) const {
+  result->ops_.emplace_back(new BroadcastOpHandle(local_scopes_, places_));
+  auto *op_handle = result->ops_.back().get();
+
+  auto src_dev_id = vars_link.second->dev_idx_;
+  auto &vars = result->vars_.at(src_dev_id)[ge_var->name_];
+
+  PADDLE_ENFORCE(!vars.empty());
+  auto &prev_grad = vars.back();
+  op_handle->AddInput(prev_grad.get());
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    auto &vars = result->vars_[i][ge_var->name_];
+
+#ifdef PADDLE_WITH_CUDA
+    op_handle->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
+#else
+    op_handle->SetDeviceContext(p,
+                                platform::DeviceContextPool::Instance().Get(p));
+#endif
+    auto var = new VarHandle(vars.size() - 1, i, ge_var->name_, p);
+    vars.emplace_back(var);
+    op_handle->AddOutput(var);
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateComputationalOp(SSAGraph *result,
+                                                    const OpDesc &op,
+                                                    int dev_id) const {
+  result->ops_.emplace_back(
+      new ComputationOpHandle(op, local_scopes_[dev_id], places_[dev_id]));
+  CreateOpHandleIOs(result, op, places_[dev_id], dev_id);
+}
+
+VarHandle *MultiDevSSAGraphBuilder::GetSingleDeviceVar(
+    const std::unordered_map<VarHandle *, VarLink *> &var_link,
+    const std::vector<std::string> &var_names, SSAGraph *result) const {
+  for (auto &each_var_name : var_names) {
+    for (size_t j = 0; j < places_.size(); ++j) {
+      VarHandle *var = GetLatestVarHandle(result, each_var_name, j);
+      if (var && var_link.count(var)) {
+        return var;
+      }
+    }
+  }
+  return nullptr;
 }
 
 void MultiDevSSAGraphBuilder::InsertNCCLAllReduceOp(
@@ -350,6 +326,35 @@ void MultiDevSSAGraphBuilder::CreateComputationalOps(SSAGraph *result,
     result->ops_.emplace_back(new ComputationOpHandle(op, s, p));
     CreateOpHandleIOs(result, op, p, scope_idx);
   }
+}
+
+VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(
+    SSAGraph *result, int dst_dev_id, const std::string &og) const {
+#ifdef PADDLE_WITH_CUDA
+  result->ops_.emplace_back(
+      new ReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
+#else
+  result->ops_.emplace_back(new ReduceOpHandle(local_scopes_, places_));
+#endif
+  auto *op_handle = result->ops_.back().get();
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &vars = result->vars_[i][og];
+#ifndef PADDLE_WITH_CUDA
+    auto &p = places_[i];
+    op_handle->SetDeviceContext(p,
+                                platform::DeviceContextPool::Instance().Get(p));
+#endif
+    PADDLE_ENFORCE(!vars.empty());
+    auto &prev_grad = vars.back();
+    op_handle->AddInput(prev_grad.get());
+  }
+  auto &vars = result->vars_[dst_dev_id][og];
+  auto var =
+      new VarHandle(vars.size() - 1, dst_dev_id, og, places_[dst_dev_id]);
+  vars.emplace_back(var);
+  op_handle->AddOutput(var);
+  return var;
 }
 
 void MultiDevSSAGraphBuilder::CreateSendOp(SSAGraph *result,
