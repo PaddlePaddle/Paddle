@@ -231,6 +231,10 @@ def infer(use_cuda, save_dirname=None):
         t = fluid.InferenceTranspiler()
         t.transpile(inference_transpiler_program, place)
 
+        # Use float16_transpiler to speedup
+        fp16_transpiler_program = inference_program.clone()
+        t.convert_to_float16(fp16_transpiler_program, place)
+
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
         results = exe.run(inference_program,
@@ -241,10 +245,19 @@ def infer(use_cuda, save_dirname=None):
                                      feed={feed_target_names[0]: tensor_img},
                                      fetch_list=fetch_targets)
 
+        fp16_results = exe.run(fp16_transpiler_program,
+                               feed={feed_target_names[0]: tensor_img},
+                               fetch_list=fetch_targets)
+
         assert len(results[0]) == len(transpiler_results[0])
         for i in range(len(results[0])):
             np.testing.assert_almost_equal(
                 results[0][i], transpiler_results[0][i], decimal=6)
+
+        assert len(results[0]) == len(fp16_results[0])
+        for i in range(len(results[0])):
+            np.testing.assert_almost_equal(
+                results[0][i], fp16_results[0][i], decimal=3)
 
         print("infer results: ", results[0])
 

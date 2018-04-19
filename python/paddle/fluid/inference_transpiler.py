@@ -121,6 +121,26 @@ class InferenceTranspiler:
         # And a better solution will be considered later.
         program = program.clone()
 
+    def convert_to_float16(self, program, place, scope=None):
+        '''
+        '''
+        if scope is None:
+            scope = global_scope()
+
+        self.scope = scope
+        self.place = place
+        self.block = program.block(0)
+        self.input_map = {}  # store the input names should be adjusted 
+
+        self._modify_feed_fetch()
+        self._convert_param_to_float16()
+        self._adjust_input()
+        self._remove_unused_var()
+        # TODO(luotao): use clone() method to flush the program.desc in force, 
+        # since some large program.desc will not be flushed immediately. 
+        # And a better solution will be considered later.
+        program = program.clone()
+
     # ====================== private transpiler functions =====================
     def _insert_bias_op(self, index, current_op, bn_op):
         '''
@@ -238,3 +258,111 @@ class InferenceTranspiler:
         for var in self.block.vars.keys():
             if var not in args:
                 self.block.remove_var(var)
+
+    def _modify_feed_fetch(self):
+        '''
+        Modify feed fetch op/vars for float16 inference.
+
+        For each feed op:
+        feed_op->feed_target_var
+        
+        Change it to:
+        feed_op->tmp_var->cast_op(from other dtype to float16)->feed_target_var
+
+        For each fetch op:
+        fetch_target_var->fetch_op
+
+        Change it to:
+        fetch_target_var->cast_op(from float16 to other dtype)->tmp_var->fetch_op
+
+        :return: None
+        '''
+        i = 0
+        while i < len(self.block.ops):
+            cur_op = self.block.ops[i]
+            if cur_op.type == "feed":
+                var_name = cur_op.output("Out")[0]
+                tmp_var_name = var_name + ".fp16"
+                var = self.block.vars[var_name]
+                tmp_var = self.block.create_var(
+                    name=tmp_var_name.encode('ascii'),
+                    type=var.type,
+                    dtype=var.dtype,
+                    shape=var.shape)
+                cur_op.rename_output(var_name, tmp_var_name)
+                self.block.insert_op(
+                    i + 1,
+                    type="cast",
+                    inputs={"X": tmp_var},
+                    outputs={"Out": var},
+                    attrs={
+                        'in_dtype': int(tmp_var.dtype),
+                        'out_dtype': int(core.VarDesc.VarType.FP16)
+                    })
+                i = i + 1
+            elif cur_op.type == "fetch":
+                var_name = cur_op.input("X")[0]
+                tmp_var_name = var_name + ".fp16"
+                var = self.block.vars[var_name]
+                tmp_var = self.block.create_var(
+                    name=tmp_var_name.encode('ascii'),
+                    type=var.type,
+                    dtype=var.dtype,
+                    shape=var.shape)
+                cur_op.rename_input(var_name, tmp_var_name)
+                self.block.insert_op(
+                    i,
+                    type="cast",
+                    inputs={"X": var},
+                    outputs={"Out": tmp_var},
+                    attrs={
+                        'in_dtype': int(core.VarDesc.VarType.FP16),
+                        'out_dtype': int(tmp_var.dtype)
+                    })
+                i = i + 1
+            i = i + 1
+
+    def _convert_param_to_float16(self):
+        def _get_no_fp16_conversion_var_names():
+            '''
+            Get the set of input variable names that shouldn't be converted to float16.
+
+            When we want to run inference in float16 mode, most parameters need to be 
+            firstly converted to float16. However, there are some parameters that 
+            shouldn't be converted to float16 because the corresponding operator 
+            requires float32 parameters even in float16 mode (when the input data is 
+            of float16 data type). Currently, the only operator that has this exclusion 
+            is the batch norm op.
+
+            :return: set of input variable names 
+            :type var_names: set         
+            '''
+            op_names = {'batch_norm'}
+            var_names = []
+            for op in self.block.ops:
+                if op.type in op_names:
+                    var_names += op.input_arg_names
+            return set(var_names)
+
+        no_conversion_vars = _get_no_fp16_conversion_var_names()
+        for var_name, var in self.block.vars.iteritems():
+            if var.persistable and var_name not in no_conversion_vars and \
+                   var.type != core.VarDesc.VarType.FEED_MINIBATCH and \
+                   var.type != core.VarDesc.VarType.FETCH_LIST:
+                fp16_var_name = var_name + ".fp16"
+                self.input_map[var_name] = fp16_var_name
+                fp16_var = self.block.create_parameter(
+                    name=fp16_var_name.encode('ascii'),
+                    type=var.type,
+                    dtype=core.VarDesc.VarType.FP16,
+                    shape=var.shape)
+
+                self.scope.var(fp16_var_name)
+                fp16_tensor = self.scope.find_var(fp16_var_name).get_tensor()
+                tensor = np.array(self.scope.find_var(var_name).get_tensor())
+                fp16_tensor.set(
+                    tensor.astype(np.float16).view(np.uint16), self.place)
+
+                # old var will be replaced by the fp16 var in program desc
+                self.input_map[var_name] = fp16_var_name
+                self.block.remove_var(var_name)
