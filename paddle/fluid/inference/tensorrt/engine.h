@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserve.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@
 #include "paddle/fluid/inference/engine.h"
 
 namespace paddle {
+namespace inference {
+namespace tensorrt {
 
 /*
  * TensorRT Engine.
@@ -126,4 +128,6 @@ class TensorrtEngine : public EngineBase {
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ARGS...) \
   engine__->network()->add##layer__(ARGS);
 
+}  // namespace tensorrt
+}  // namespace inference
 }  // namespace paddle

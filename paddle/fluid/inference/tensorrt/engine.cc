@@ -23,6 +23,8 @@
 namespace dy = paddle::platform::dynload;
 
 namespace paddle {
+namespace inference {
+namespace tensorrt {
 
 size_t AccumDims(nvinfer1::Dims dims) {
   size_t num = dims.nbDims == 0 ? 0 : 1;
@@ -186,4 +188,6 @@ void TensorrtEngine::SetInputFromCPU(const std::string& name, void* data,
       0, cudaMemcpyAsync(buf, data, size, cudaMemcpyHostToDevice, *stream_));
 }
 
+}  // namespace tensorrt
+}  // namespace inference
 }  // namespace paddle

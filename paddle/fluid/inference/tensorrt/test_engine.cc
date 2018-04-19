@@ -22,6 +22,8 @@
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
+namespace inference {
+namespace tensorrt {
 
 class TensorrtEngineTest : public ::testing::Test {
  protected:
@@ -78,4 +80,6 @@ TEST_F(TensorrtEngineTest, add_layer) {
   ASSERT_EQ(y_cpu, x_v * 2 + 3);
 }
 
+}  // namespace tensorrt
+}  // namespace inference
 }  // namespace paddle
