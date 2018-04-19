@@ -57,10 +57,7 @@ class CompareParallelExecutorAndParallelDo(unittest.TestCase):
             data = fluid.layers.data(
                 name='image', shape=[1, 28, 28], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-            devices = os.getenv("CUDA_VISIBLE_DEVICES") or ""
-            devices_num = len(devices.split(","))
-
+            devices_num = fluid.core.get_cuda_device_count()
             places = fluid.layers.get_places(devices_num)
             pd = fluid.layers.ParallelDo(places, use_nccl=True)
             with pd.do():
