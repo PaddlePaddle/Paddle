@@ -3,17 +3,17 @@
 This document will discuss changes needed in Paddle platform to support
 imperative programming.  
 
-Current users write Paddle provides a Python API that users typically 
-write their training/inference programs in.  Paddle will convert this 
-computation model into a ProgramDesc, which is executed in the C++ runtime.
+Paddle provides a Python API that users typically write their training or
+inference programs in.  Paddle will convert this program into a ProgramDesc, 
+which is later executed in the C++ runtime.
 
-With this flexibility, and no clear guidelines on how to recommended usages
-of the Python API, a Paddle program could contain a mix of pure Python API
-and Paddle Fluid API.  In addition, the deep NN logic is combined with the
-logic to run it, which could further complicate the code.
+With this flexibility, a Paddle program could contain a mix of pure Python API
+and Paddle Fluid API.  To further complicate the code, the neural network logic
+could be combined with the run logic (ie: Logic to run on a distributed 
+system).
 
-In addition, with the mix of Python and Paddle API, the ProgramDesc becomes
-impossible to be converted by Transpiler.
+The mix of Python and Paddle API also makes it impossible for a transpiler to
+convert the ProgramDesc to C++.
 
 ## Changes to support Imperative
 
@@ -58,17 +58,17 @@ network to be trained.
 
 We will need to create a `reader_loop_op`, which implement the training loop.
 
-```
+```Python
 READER_FILE_PATH =  './data.recordio'
 READER_BATCH_SIZE = 128
 TRAIN_LOOP_STEPS = 100
 MODEL_DIR = './model'
 
-reader = fluid.batch_reader(file=READER_FILE_PATH,
-                                               batch_size=READER_BATCH_SIZE,
-                                               shape=[[13], [1]], 
-                                               dtype=['float32', 'float32'],
-                                               format='recordio')
+reader = fluid.batch_reader(file=READER_FILE_PATH, 
+                            batch_size=READER_BATCH_SIZE,
+                            shape=[[13], [1]], 
+                            dtype=['float32', 'float32'],
+                            format='recordio')
 
 with reader.iterate() as (x, y):
   # Training Loop
@@ -86,8 +86,8 @@ fluid.save_model(dir=MODEL_DIR)
 ### File Readers
 
 We can utilize our existing recordio reader, batch reader, and shuffle reader 
-ops, however we will need to make some modifications to support methods to 
-check for EOF (and any additional methods used by our `reader_loop_op`)
+ops, however we will need to make some modifications to support any additional 
+methods used by our `reader_loop_op`)
 
 ### Save Model
 
@@ -97,3 +97,15 @@ will save all the parameters to a file.  With imperative fluid, we no longer
 need to create a new Program to save variables, however we can create a simple
 helper method `fluid.save_model` that will add `save`/`save_combined` operators
 in the main program.
+
+### fluid.compile
+
+TBD
+
+### Program.run
+
+TBD
+
+### Paddle Command Line
+
+TBD
