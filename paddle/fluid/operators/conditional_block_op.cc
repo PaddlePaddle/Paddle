@@ -47,7 +47,7 @@ class ConditionalOp : public framework::OperatorBase {
     if (!(ips.size() == 1UL && ips[0]->IsInitialized())) {
       PADDLE_THROW("should have one initialized input as condition");
     }
-    if (!(ips[0]->type().hash_code() == typeid(bool).hash_code() &&
+    if (!(ips[0]->type().hash_code() == typeid(bool).hash_code() &&  // NOLINT
           ips[0]->numel() == 1)) {
       PADDLE_THROW(
           "condition input's data type should be bool, "

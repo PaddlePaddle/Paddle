@@ -15,8 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/expand_op.h"
 #include <vector>
 
-#include <vector>
-
 namespace paddle {
 namespace operators {
 
