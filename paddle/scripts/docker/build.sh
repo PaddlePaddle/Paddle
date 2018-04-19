@@ -207,8 +207,14 @@ EOF
     ${DOCKERFILE_CUDNN_DSO}
     ${DOCKERFILE_GPU_ENV}
     ENV NCCL_LAUNCH_MODE PARALLEL
-    ADD go/cmd/pserver/pserver /usr/bin/
-    ADD go/cmd/master/master /usr/bin/
+EOF
+    if [[ ${WITH_GOLANG:-OFF} == "ON" ]]; then
+        cat >> /paddle/build/Dockerfile <<EOF
+        ADD go/cmd/pserver/pserver /usr/bin/
+        ADD go/cmd/master/master /usr/bin/
+EOF
+    fi
+    cat >> /paddle/build/Dockerfile <<EOF
     # default command shows the paddle version and exit
     CMD [${CMD}]
 EOF
