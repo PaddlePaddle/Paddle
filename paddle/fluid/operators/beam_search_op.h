@@ -193,7 +193,7 @@ std::ostream& operator<<(std::ostream& os, const BeamSearch::Item& item);
 std::string ItemToString(const BeamSearch::Item& item);
 
 template <typename DeviceContext, typename T>
-class BeamSearchKernel : public framework::OpKernel<T>{
+class BeamSearchOpKernel : public framework::OpKernel<T>{
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* ids_var = context.Input<framework::Tensor>("ids");
