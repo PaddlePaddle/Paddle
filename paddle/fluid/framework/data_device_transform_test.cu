@@ -116,8 +116,9 @@ TEST(Operator, CPUtoGPU) {
 
   auto cpu_op = paddle::framework::OpRegistry::CreateOp(cpu_op_desc);
   // prepare input
-  auto* in_t = scope.Var("IN1")->GetMutable<LoDTensor>();
-  auto* src_ptr = in_t->mutable_data<float>({2, 3}, CPUPlace());
+  auto* in_t = scope.Var("IN1")->GetMutable<paddle::framework::LoDTensor>();
+  auto* src_ptr =
+      in_t->mutable_data<float>({2, 3}, paddle::platform::CPUPlace());
   for (int i = 0; i < 2 * 3; ++i) {
     src_ptr[i] = static_cast<float>(i);
   }
@@ -126,7 +127,7 @@ TEST(Operator, CPUtoGPU) {
   auto* output = scope.Var("OUT1");
   cpu_op->Run(scope, cpu_place);
 
-  auto* output_ptr = output->Get<LoDTensor>().data<float>();
+  auto* output_ptr = output->Get<paddle::framework::LoDTensor>().data<float>();
   for (int i = 0; i < 2 * 3; ++i) {
     ASSERT_EQ(output_ptr[i], static_cast<float>(i) * 2);
   }
