@@ -34,12 +34,14 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
                           const std::vector<Scope *> &local_scopes,
-                          platform::NCCLContextMap *nccl_ctxs);
+                          platform::NCCLContextMap *nccl_ctxs,
+                          bool use_nccl_allreduce);
 #else
   MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
                           const std::string &loss_var_name,
                           const std::unordered_set<std::string> &params,
-                          const std::vector<Scope *> &local_scopes);
+                          const std::vector<Scope *> &local_scopes,
+                          bool use_nccl_allreduce);
 #endif
 
   std::unique_ptr<SSAGraph> Build(const ProgramDesc &program) const override;
@@ -57,7 +59,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
-
+  bool use_nccl_allreduce_;
   bool IsScaleLossOp(const OpDesc &op) const;
 
   void CreateSendOp(SSAGraph *result, const OpDesc &op) const;

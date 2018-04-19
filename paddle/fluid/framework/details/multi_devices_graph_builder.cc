@@ -37,21 +37,23 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
     const std::vector<Scope *> &local_scopes,
-    platform::NCCLContextMap *nccl_ctxs)
+    platform::NCCLContextMap *nccl_ctxs, bool use_nccl_allreduce)
     : loss_var_name_(loss_var_name),
       places_(places),
       local_scopes_(local_scopes),
-      nccl_ctxs_(nccl_ctxs) {
+      nccl_ctxs_(nccl_ctxs),
+      use_nccl_allreduce_(use_nccl_allreduce) {
 #else
 
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes)
+    const std::vector<Scope *> &local_scopes, bool use_nccl_allreduce)
     : loss_var_name_(loss_var_name),
       places_(places),
-      local_scopes_(local_scopes) {
+      local_scopes_(local_scopes),
+      use_nccl_allreduce_(use_nccl_allreduce) {
 #endif
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
@@ -121,8 +123,6 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   std::unordered_map<VarHandle *, std::unique_ptr<VarLink>> var_link;
   std::unordered_map<VarHandle *, std::unique_ptr<VarLink>> ogs_link;
 
-  bool use_nccl_allreduce = false;
-
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
     if (op->Type() == "send") {
@@ -133,7 +133,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       CreateScaleLossGradOp(&result);
       is_forwarding = false;
     } else {
-      if (!is_forwarding && multi_devices) {
+      if (!is_forwarding && multi_devices && !use_nccl_allreduce_) {
         auto var_names = op->InputArgumentNames();
         VarHandle *var_in_var = nullptr;
         for (auto &each_var_name : var_names) {
@@ -173,7 +173,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         // present.
         for (auto &og : op->OutputArgumentNames()) {
           if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
-            if (use_nccl_allreduce) {
+            if (use_nccl_allreduce_) {
               InsertNCCLAllReduceOp(&result, og);
             } else {
               size_t dst_dev_id = (ring++) % places_.size();
@@ -212,7 +212,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       }
     }
   }
-  if (multi_devices && use_nccl_allreduce) {
+  if (multi_devices && !use_nccl_allreduce_) {
     // get the output of ogs according to ogs_link
     std::unordered_set<VarHandle *> need_to_broadcast;
     for (auto &vars_link : ogs_link) {
