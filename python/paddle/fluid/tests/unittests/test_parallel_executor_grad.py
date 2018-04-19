@@ -76,6 +76,7 @@ class CompareParallelExecutorAndParallelDo(unittest.TestCase):
                 momentum=0.9,
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(avg_loss, startup)
+            fluid.memory_optimize(main)
 
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
@@ -117,6 +118,7 @@ class CompareParallelExecutorAndParallelDo(unittest.TestCase):
                 momentum=0.9,
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
+            fluid.memory_optimize(main)
 
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
@@ -133,7 +135,7 @@ class CompareParallelExecutorAndParallelDo(unittest.TestCase):
             grads = []
             test_losses = []
             for data in train_inputs:
-                loss_v, grad = pexe.run(fetch_list, feed_dict=feeder.feed(data))
+                loss_v, grad = pexe.run(fetch_list, feed=feeder.feed(data))
                 loss_v = np.array(loss_v)
                 losses.append(np.mean(loss_v))
                 grads.append(np.array(grad)[0:32, :, :, :])
