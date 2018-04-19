@@ -119,7 +119,7 @@ class OpDesc {
 
   void InferVarType(BlockDesc *block) const;
 
-  void MarkAsTarget() { desc_.set_is_target(true); }
+  void SetIsTarget(bool is_target) { desc_.set_is_target(is_target); }
 
   void Flush();
 

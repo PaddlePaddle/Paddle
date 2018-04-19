@@ -19,4 +19,4 @@ using CUDA = paddle::platform::CUDADeviceContext;
 
 REGISTER_OP_CUDA_KERNEL(cumsum, ops::CumKernel<CUDA, ops::CumsumFunctor<float>>,
                         ops::CumKernel<CUDA, ops::CumsumFunctor<double>>,
-                        ops::CumKernel<CUDA, ops::CumsumFunctor<int>>)
+                        ops::CumKernel<CUDA, ops::CumsumFunctor<int>>);

@@ -161,8 +161,8 @@ class MulGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

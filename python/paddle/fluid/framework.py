@@ -1070,6 +1070,12 @@ class Program(object):
         for t in targets:
             if not isinstance(t, Operator):
                 if isinstance(t, Variable):
+                    if t.op is None:
+                        global_block = self.global_block()
+                        for op in global_block.ops:
+                            if t.name in op.output_arg_names:
+                                t.op = op
+                                break
                     t = t.op
                 else:
                     raise ValueError(("All targets of prune() can only be "

@@ -274,8 +274,8 @@ class LSTMGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstm, ops::LSTMOp, ops::LSTMOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
 REGISTER_OP_CPU_KERNEL(
     lstm, ops::LSTMKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LSTMKernel<paddle::platform::CPUDeviceContext, double>);

@@ -154,8 +154,8 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(cos_sim, ops::CosSimOp, ops::CosSimOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
 REGISTER_OP_CPU_KERNEL(
     cos_sim, ops::CosSimKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

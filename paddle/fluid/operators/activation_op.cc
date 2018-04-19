@@ -559,125 +559,125 @@ $$out = \frac{x}{1 + e^{- \beta x}}$$
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sigmoid, ops::ActivationOp, ops::SigmoidOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(sigmoid_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sigmoid_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(logsigmoid, ops::ActivationOp, ops::LogSigmoidOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(logsigmoid_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(logsigmoid_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(exp, ops::ActivationOp, ops::ExpOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(exp_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(exp_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(relu, ops::ActivationWithMKLDNNOp, ops::ReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(relu_grad, ops::ActivationWithMKLDNNOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(relu_grad, ops::ActivationWithMKLDNNOpGrad);
 
 REGISTER_OPERATOR(tanh, ops::ActivationWithMKLDNNOp, ops::TanhOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(tanh_grad, ops::ActivationWithMKLDNNOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(tanh_grad, ops::ActivationWithMKLDNNOpGrad);
 
 REGISTER_OPERATOR(tanh_shrink, ops::ActivationOp, ops::TanhShrinkOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(tanh_shrink_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(tanh_shrink_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(softshrink, ops::ActivationOp, ops::SoftShrinkOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(softshrink_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(softshrink_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(sqrt, ops::ActivationWithMKLDNNOp, ops::SqrtOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(sqrt_grad, ops::ActivationWithMKLDNNOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sqrt_grad, ops::ActivationWithMKLDNNOpGrad);
 
 REGISTER_OPERATOR(abs, ops::ActivationWithMKLDNNOp, ops::AbsOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(abs_grad, ops::ActivationWithMKLDNNOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(abs_grad, ops::ActivationWithMKLDNNOpGrad);
 
 REGISTER_OPERATOR(ceil, ops::ActivationOp, ops::CeilOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(ceil_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(ceil_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(floor, ops::ActivationOp, ops::FloorOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(floor_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(floor_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(cos, ops::ActivationOp, ops::CosOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(cos_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(cos_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(sin, ops::ActivationOp, ops::SinOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(sin_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sin_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(round, ops::ActivationOp, ops::RoundOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(round_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(round_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(reciprocal, ops::ActivationOp, ops::ReciprocalOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(reciprocal_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reciprocal_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(log, ops::ActivationOp, ops::LogOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(log_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(log_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(square, ops::ActivationOp, ops::SquareOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(square_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(square_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(softplus, ops::ActivationOp, ops::SoftplusOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(softplus_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(softplus_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(softsign, ops::ActivationOp, ops::SoftsignOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(softsign_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(softsign_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(brelu, ops::ActivationOp, ops::BReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(brelu_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(brelu_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(leaky_relu, ops::ActivationOp, ops::LeakyReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(soft_relu, ops::ActivationOp, ops::SoftReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(soft_relu_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(soft_relu_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(elu, ops::ActivationOp, ops::ELUOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(relu6, ops::ActivationOp, ops::Relu6OpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(relu6_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(relu6_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(pow, ops::ActivationOp, ops::PowOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(pow_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(pow_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(stanh, ops::ActivationOp, ops::STanhOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(stanh_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(stanh_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(hard_shrink, ops::ActivationOp, ops::HardShrinkOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(hard_shrink_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(hard_shrink_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(thresholded_relu, ops::ActivationOp,
                   ops::ThresholdedReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(thresholded_relu_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(thresholded_relu_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(hard_sigmoid, ops::ActivationOp, ops::HardSigmoidOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(hard_sigmoid_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(hard_sigmoid_grad, ops::ActivationOpGrad);
 
 REGISTER_OPERATOR(swish, ops::ActivationOp, ops::SwishOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(swish_grad, ops::ActivationOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(swish_grad, ops::ActivationOpGrad);
 
 #define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)   \
   REGISTER_OP_CPU_KERNEL(                                                 \

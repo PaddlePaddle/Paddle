@@ -114,8 +114,8 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp);
 REGISTER_OP_CPU_KERNEL(reshape, ops::ReshapeKernel<CPU, float>,
                        ops::ReshapeKernel<CPU, double>,
                        ops::ReshapeKernel<CPU, int>,
