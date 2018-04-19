@@ -23,22 +23,37 @@ from . import core
 import unique_name
 
 __all__ = [
-    'Block',
-    'Variable',
-    'Program',
-    'Operator',
-    'default_startup_program',
-    'default_main_program',
-    'program_guard',
-    'switch_startup_program',
-    'switch_main_program',
-    'get_var',
+    'Block', 'Variable', 'Program', 'Operator', 'default_startup_program',
+    'default_main_program', 'program_guard', 'switch_startup_program',
+    'switch_main_program', 'get_var', 'np_dtype_to_fluid_dtype'
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+
+
+def np_dtype_to_fluid_dtype(input):
+    """Change the dtype of float16 numpy array
+
+    numpy float16 is binded to paddle::platform::float16 
+    in tensor_py.h via the help of uint16 data type since
+    the internal memory representation of float16 is 
+    uint16_t in paddle and np.uint16 in numpy, which are
+    themselves binded together by pybind.
+
+    Args:
+        input: input numpy array
+
+    Returns:
+        input: The dtype of input will be changed to np.uint16 if 
+            it is originally np.float16, such that the internal memory
+            of input will be reinterpreted as of dtype np.uint16. 
+    """
+    if input.dtype == np.float16:
+        input.dtype = np.uint16
+    return input
 
 
 def grad_var_name(var_name):

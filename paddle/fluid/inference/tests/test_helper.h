@@ -31,7 +31,9 @@ void SetupTensor(paddle::framework::LoDTensor* input,
 
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
   for (int i = 0; i < input->numel(); ++i) {
-    input_ptr[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
+    input_ptr[i] =
+        static_cast<T>(uniform_dist(rng) * static_cast<double>(upper - lower) +
+                       static_cast<double>(lower));
   }
 }
 
@@ -133,12 +135,12 @@ void TestInference(const std::string& dirname,
       std::string prog_filename = "__model_combined__";
       std::string param_filename = "__params_combined__";
       inference_program = paddle::inference::Load(
-          executor, *scope, dirname + "/" + prog_filename,
+          executor, scope, dirname + "/" + prog_filename,
           dirname + "/" + param_filename);
     } else {
       // Parameters are saved in separate files sited in the specified
       // `dirname`.
-      inference_program = paddle::inference::Load(executor, *scope, dirname);
+      inference_program = paddle::inference::Load(executor, scope, dirname);
     }
   }
   // Disable the profiler and print the timing information

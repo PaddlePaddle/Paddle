@@ -52,14 +52,14 @@ class Executor {
    *  Scope
    */
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
-           bool create_local_scope = true, bool create_vars = true);
+           bool create_local_scope = true, bool create_vars = true) const;
 
   void Run(const ProgramDesc& program, Scope* scope,
-           std::map<std::string, const LoDTensor*>& feed_targets,
-           std::map<std::string, LoDTensor*>& fetch_targets,
+           const std::map<std::string, const LoDTensor*>& feed_targets,
+           const std::map<std::string, LoDTensor*>& fetch_targets,
            bool create_vars = true,
            const std::string& feed_holder_name = "feed",
-           const std::string& fetch_holder_name = "fetch");
+           const std::string& fetch_holder_name = "fetch") const;
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id);
@@ -67,18 +67,19 @@ class Executor {
   static std::vector<std::shared_ptr<ExecutorPrepareContext>> Prepare(
       const ProgramDesc& program, const std::vector<int>& block_ids);
 
-  void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
+  void CreateVariables(const ProgramDesc& pdesc, Scope* scope,
+                       int block_id) const;
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
-                          bool create_vars = true);
+                          bool create_vars = true) const;
 
-  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                          std::map<std::string, const LoDTensor*>& feed_targets,
-                          std::map<std::string, LoDTensor*>& fetch_targets,
-                          bool create_vars = true,
-                          const std::string& feed_holder_name = "feed",
-                          const std::string& fetch_holder_name = "fetch");
+  void RunPreparedContext(
+      ExecutorPrepareContext* ctx, Scope* scope,
+      const std::map<std::string, const LoDTensor*>& feed_targets,
+      const std::map<std::string, LoDTensor*>& fetch_targets,
+      bool create_vars = true, const std::string& feed_holder_name = "feed",
+      const std::string& fetch_holder_name = "fetch") const;
 
  private:
   const platform::Place place_;

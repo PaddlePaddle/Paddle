@@ -94,7 +94,7 @@ static void CheckTensorNANOrInf(const std::string& name,
 }
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
-                               int block_id) {
+                               int block_id) const {
   auto& global_block = pdesc.Block(block_id);
 
   const Scope* ancestor_scope = scope;
@@ -131,7 +131,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
-                   bool create_local_scope, bool create_vars) {
+                   bool create_local_scope, bool create_vars) const {
   platform::RecordBlock b(block_id);
   auto ctx = Prepare(pdesc, block_id);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
@@ -226,10 +226,10 @@ static bool has_fetch_operators(
 }
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,
-                   std::map<std::string, const LoDTensor*>& feed_targets,
-                   std::map<std::string, LoDTensor*>& fetch_targets,
+                   const std::map<std::string, const LoDTensor*>& feed_targets,
+                   const std::map<std::string, LoDTensor*>& fetch_targets,
                    bool create_vars, const std::string& feed_holder_name,
-                   const std::string& fetch_holder_name) {
+                   const std::string& fetch_holder_name) const {
   platform::RecordBlock b(kProgramId);
   bool has_feed_ops =
       has_feed_operators(program.Block(0), feed_targets, feed_holder_name);
@@ -321,7 +321,8 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                                  bool create_local_scope, bool create_vars) {
+                                  bool create_local_scope,
+                                  bool create_vars) const {
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -361,9 +362,10 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx, Scope* scope,
-    std::map<std::string, const LoDTensor*>& feed_targets,
-    std::map<std::string, LoDTensor*>& fetch_targets, bool create_vars,
-    const std::string& feed_holder_name, const std::string& fetch_holder_name) {
+    const std::map<std::string, const LoDTensor*>& feed_targets,
+    const std::map<std::string, LoDTensor*>& fetch_targets, bool create_vars,
+    const std::string& feed_holder_name,
+    const std::string& fetch_holder_name) const {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
   PADDLE_ENFORCE(
@@ -378,8 +380,8 @@ void Executor::RunPreparedContext(
     if (op->Type() == kFeedOpType) {
       std::string feed_target_name = op->Output("Out")[0];
       int idx = boost::get<int>(op->GetAttr("col"));
-      SetFeedVariable(scope, *feed_targets[feed_target_name], feed_holder_name,
-                      idx);
+      SetFeedVariable(scope, *feed_targets.at(feed_target_name),
+                      feed_holder_name, idx);
     }
   }
 
@@ -390,7 +392,7 @@ void Executor::RunPreparedContext(
     if (op->Type() == kFetchOpType) {
       std::string fetch_target_name = op->Input("X")[0];
       int idx = boost::get<int>(op->GetAttr("col"));
-      *fetch_targets[fetch_target_name] =
+      *fetch_targets.at(fetch_target_name) =
           GetFetchVariable(*scope, fetch_holder_name, idx);
     }
   }

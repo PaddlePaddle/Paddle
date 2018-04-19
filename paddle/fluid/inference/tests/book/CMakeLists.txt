@@ -13,12 +13,25 @@ function(inference_test TARGET_NAME)
   else()
     list(APPEND arg_list "_")
   endif()
+
+  set(use_float16 "")
+  if(${TARGET_NAME} MATCHES "^float16")
+    if(${TARGET_NAME} MATCHES "image_classification")
+      set(use_float16 "--use_float16=true")
+    endif()
+    set(book_dir "book_float16")    
+  else()
+    set(book_dir "book")    
+  endif()
+  set(SOURCE_NAME "")
+  string(REGEX REPLACE "^float16_" "" SOURCE_NAME "${TARGET_NAME}")
+
   foreach(arg ${arg_list})
     string(REGEX REPLACE "^_$" "" arg "${arg}")
     cc_test(test_inference_${TARGET_NAME}${arg}
-        SRCS test_inference_${TARGET_NAME}.cc
+        SRCS test_inference_${SOURCE_NAME}.cc
         DEPS paddle_fluid
-        ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.inference.model)
+        ARGS --dirname=${PYTHON_TESTS_DIR}/${book_dir}/${TARGET_NAME}${arg}.inference.model ${use_float16})
     set_tests_properties(test_inference_${TARGET_NAME}${arg}
         PROPERTIES DEPENDS test_${TARGET_NAME})
   endforeach()
@@ -27,6 +40,7 @@ endfunction(inference_test)
 # This unittest is buggy!
 #inference_test(fit_a_line)
 inference_test(image_classification ARGS vgg resnet)
+inference_test(float16_image_classification ARGS vgg resnet)
 inference_test(label_semantic_roles)
 inference_test(recognize_digits ARGS mlp conv)
 inference_test(recommender_system)

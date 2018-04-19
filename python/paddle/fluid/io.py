@@ -63,12 +63,40 @@ def _clone_var_in_block_(block, var):
         persistable=True)
 
 
+def _get_no_fp16_coversion_var_names_(program):
+    """
+    Get the set of input variable names that shouldn't be converted to float16.
+
+    When we want to save the trained parameters for float16 inference, most 
+    parameters need to be firstly converted to float16 and then saved by the 
+    save op. However, there are some parameters that shouldn't be converted to 
+    float16 because the corresponding operator requires float32 parameters even
+    in float16 mode (when the input data is of float16 data type). Currently,
+    the only operator that has this exclusion is the batch norm op.
+
+    :param program: program to get the variable names
+    :type program: Program
+    :return: set of input variable names 
+    :type var_names: set
+    """
+    op_names = {'batch_norm'}
+    var_names = set()
+    for block in program.blocks:
+        for op in block.ops:
+            if op.type in op_names:
+                input_names = op.input_arg_names
+                for in_name in input_names:
+                    var_names.add(in_name)
+    return var_names
+
+
 def save_vars(executor,
               dirname,
               main_program=None,
               vars=None,
               predicate=None,
-              filename=None):
+              filename=None,
+              use_float16=False):
     """
     Save variables to directory by executor.
 
@@ -85,33 +113,46 @@ def save_vars(executor,
 
     :return: None
     """
-    if vars is None:
-        if main_program is None:
-            main_program = default_main_program()
-        if not isinstance(main_program, Program):
-            raise TypeError("program should be as Program type or None")
+    if main_program is None:
+        main_program = default_main_program()
+    if not isinstance(main_program, Program):
+        raise TypeError("program should be as Program type or None")
 
+    if vars is None:
         save_vars(
             executor,
             dirname=dirname,
             vars=filter(predicate, main_program.list_vars()),
-            filename=filename)
+            filename=filename,
+            use_float16=use_float16)
     else:
         save_program = Program()
         save_block = save_program.global_block()
-
         save_var_map = {}
+
+        # Get the names of variables that shouldn't be converted to float16 in 
+        # float16 saving mode, right now it is limited to batch norm input weights.
+        no_conversion_var_names = _get_no_fp16_coversion_var_names_(
+            main_program)
+
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
+
             new_var = _clone_var_in_block_(save_block, each_var)
+            # Determine if a variable needed to be converted to float16 before saving    
+            save_as_fp16 = use_float16 and new_var.name not in no_conversion_var_names
+
             if filename is None:
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+                    attrs={
+                        'file_path': os.path.join(dirname, new_var.name),
+                        'save_as_fp16': save_as_fp16
+                    })
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -129,7 +170,11 @@ def save_vars(executor,
         executor.run(save_program)
 
 
-def save_params(executor, dirname, main_program=None, filename=None):
+def save_params(executor,
+                dirname,
+                main_program=None,
+                filename=None,
+                use_float16=False):
     """
     Save all parameters to directory with executor.
     """
@@ -139,10 +184,15 @@ def save_params(executor, dirname, main_program=None, filename=None):
         main_program=main_program,
         vars=None,
         predicate=is_parameter,
-        filename=filename)
+        filename=filename,
+        use_float16=use_float16)
 
 
-def save_persistables(executor, dirname, main_program=None, filename=None):
+def save_persistables(executor,
+                      dirname,
+                      main_program=None,
+                      filename=None,
+                      use_float16=False):
     """
     Save all persistables to directory with executor.
     """
@@ -152,7 +202,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         main_program=main_program,
         vars=None,
         predicate=is_persistable,
-        filename=filename)
+        filename=filename,
+        use_float16=use_float16)
 
 
 def load_vars(executor,
@@ -301,7 +352,8 @@ def save_inference_model(dirname,
                          executor,
                          main_program=None,
                          model_filename=None,
-                         params_filename=None):
+                         params_filename=None,
+                         use_float16=False):
     """
     Build a model especially for inference,
     and save it to directory by the executor.
@@ -366,7 +418,12 @@ def save_inference_model(dirname,
     with open(model_filename, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())
 
-    save_persistables(executor, dirname, inference_program, params_filename)
+    save_persistables(
+        executor,
+        dirname,
+        inference_program,
+        params_filename,
+        use_float16=use_float16)
 
 
 def load_inference_model(dirname,
