@@ -68,6 +68,8 @@ class VariableResponse {
 
   framework::Variable* InitVar() {
     if (use_local_scope_) {
+      bool has_var = (scope_->FindVar(meta_.varname()) != nullptr);
+      PADDLE_ENFORCE(has_var);
       return local_scope_->Var(meta_.varname());
     } else {
       return scope_->FindVar(meta_.varname());
