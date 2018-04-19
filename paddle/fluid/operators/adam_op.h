@@ -25,17 +25,14 @@ namespace operators {
 
 namespace scatter = paddle::operators::math::scatter;
 
-struct AdamImplFlavour {};
-
-struct AdamEigen : AdamImplFlavour {};
-
-struct AdamPlain : AdamImplFlavour {};
+struct GPUAdam;
+struct CPUAdam;
 
 template <typename T, typename Flavour>
-struct AdamFunctorImpl {};
+struct AdamFunctor;
 
 template <typename T>
-struct AdamFunctorImpl<T, AdamPlain> {
+struct AdamFunctor<T, GPUAdam> {
   T beta1_;
   T beta2_;
   T epsilon_;
@@ -51,10 +48,10 @@ struct AdamFunctorImpl<T, AdamPlain> {
   const T* param_;
   T* param_out_;
 
-  AdamFunctorImpl(T beta1, T beta2, T epsilon, const T* beta1_pow,
-                  const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
-                  T* mom2_out, const T* lr, const T* grad, const T* param,
-                  T* param_out)
+  AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
+              const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
+              T* mom2_out, const T* lr, const T* grad, const T* param,
+              T* param_out)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -93,7 +90,7 @@ struct AdamFunctorImpl<T, AdamPlain> {
 };
 
 template <typename T>
-struct AdamFunctorImpl<T, AdamEigen> {
+struct AdamFunctor<T, CPUAdam> {
   T beta1_;
   T beta2_;
   T epsilon_;
@@ -109,10 +106,10 @@ struct AdamFunctorImpl<T, AdamEigen> {
   const T* param_;
   T* param_out_;
 
-  AdamFunctorImpl(T beta1, T beta2, T epsilon, const T* beta1_pow,
-                  const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
-                  T* mom2_out, const T* lr, const T* grad, const T* param,
-                  T* param_out)
+  AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
+              const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
+              T* mom2_out, const T* lr, const T* grad, const T* param,
+              T* param_out)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -157,11 +154,6 @@ struct AdamFunctorImpl<T, AdamEigen> {
     moment2_out = beta2_ * mom2 + (1 - beta2_) * g * g;
     param_out = param - lr * (moment1_out / (moment2_out.sqrt() + epsilon_));
   }
-};
-
-template <typename T, typename Flavour>
-struct AdamFunctor {
-  using flavour = AdamFunctorImpl<T, Flavour>;
 };
 
 template <typename T>
@@ -260,26 +252,33 @@ class AdamOpKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
 
-      using Flavour = AdamEigen;
-      using AdamFunctor_ = typename AdamFunctor<T, Flavour>::flavour;
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        AdamFunctor<T, CPUAdam> functor(
+            beta1, beta2, epsilon, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(),
+            mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            lr.template data<T>(), grad.template data<T>(),
+            param.template data<T>(),
+            param_out.template mutable_data<T>(ctx.GetPlace()));
+      } else if (platform::is_gpu_place(ctx.GetPlace())) {
+        AdamFunctor<T, GPUAdam> functor(
+            beta1, beta2, epsilon, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(),
+            mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            lr.template data<T>(), grad.template data<T>(),
+            param.template data<T>(),
+            param_out.template mutable_data<T>(ctx.GetPlace()));
 
-      AdamFunctor_ functor(beta1, beta2, epsilon, beta1_pow.template data<T>(),
-                           beta2_pow.template data<T>(),
-                           mom1.template data<T>(),
-                           mom1_out.template mutable_data<T>(ctx.GetPlace()),
-                           mom2.template data<T>(),
-                           mom2_out.template mutable_data<T>(ctx.GetPlace()),
-                           lr.template data<T>(), grad.template data<T>(),
-                           param.template data<T>(),
-                           param_out.template mutable_data<T>(ctx.GetPlace()));
-
-      if (std::is_same<Flavour, AdamPlain>::value) {
         platform::ForRange<DeviceContext> for_range(
             static_cast<const DeviceContext&>(ctx.device_context()),
             param.numel());
         for_range(functor);
-      } else {
-        functor(param.numel());
       }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad =
