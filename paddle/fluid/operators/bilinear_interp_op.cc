@@ -10,6 +10,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/bilinear_interp_op.h"
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -81,8 +82,10 @@ class BilinearInterpOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(bilinear_interp, ops::BilinearInterpOp, ops::BilinearInterpOpMaker,
-            bilinear_interp_grad, ops::BilinearInterpOpGrad);
+REGISTER_OPERATOR(bilinear_interp, ops::BilinearInterpOp,
+                  ops::BilinearInterpOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(bilinear_interp_grad, ops::BilinearInterpOpGrad);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::BilinearInterpKernel<float>);
 REGISTER_OP_CPU_KERNEL(bilinear_interp_grad,
                        ops::BilinearInterpGradKernel<float>);
