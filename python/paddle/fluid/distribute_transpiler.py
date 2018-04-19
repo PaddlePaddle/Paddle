@@ -420,13 +420,14 @@ class DistributeTranspiler:
 
         # append op to the current block
         per_opt_block = append_block
-        for _, opt_op in enumerate(opt_op_on_pserver):
+        for idx, opt_op in enumerate(opt_op_on_pserver):
             for _, op in enumerate(self.optimize_ops):
                 # optimizer is connected to itself
                 if ufind.is_connected(op, opt_op) and \
                     op not in global_ops:
                     __append_optimize_op__(op, per_opt_block)
-            per_opt_block = pserver_program.create_block(append_block.idx)
+            if idx == len(opt_op_on_pserver) - 1 and global_ops:
+                per_opt_block = pserver_program.create_block(append_block.idx)
 
         # append global ops
         for glb_op in global_ops:
@@ -824,7 +825,7 @@ class DistributeTranspiler:
                 for v in splited_vars:
                     sections.append(v.shape[0])
                 program.global_block().append_op(
-                    type="split",
+                    type="split_byref",
                     inputs={"X": orig_var},
                     outputs={"Out": splited_vars},
                     attrs={"sections": sections}  # assume split evenly

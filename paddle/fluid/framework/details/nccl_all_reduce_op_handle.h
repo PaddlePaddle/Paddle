@@ -27,10 +27,6 @@ namespace framework {
 namespace details {
 
 struct NCCLAllReduceOpHandle : public OpHandleBase {
-  const std::vector<Scope *> &local_scopes_;
-  const std::vector<platform::Place> &places_;
-  const platform::NCCLContextMap &nccl_ctxs_;
-
   NCCLAllReduceOpHandle(const std::vector<Scope *> &local_scopes,
                         const std::vector<platform::Place> &places,
                         const platform::NCCLContextMap &ctxs);
@@ -43,6 +39,11 @@ struct NCCLAllReduceOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+ private:
+  const std::vector<Scope *> &local_scopes_;
+  const std::vector<platform::Place> &places_;
+  const platform::NCCLContextMap &nccl_ctxs_;
 };
 
 }  // namespace details
