@@ -336,23 +336,29 @@ def save_inference_model(dirname,
 
     if main_program is None:
         main_program = default_main_program()
+    copy_program = main_program
 
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
 
     # Clear the is_target information and remove the existed feed and fetch op
-    global_block = main_program.global_block()
+    global_block = copy_program.global_block()
     for i, op in enumerate(global_block.ops):
         op.desc.set_is_target(False)
         if op.type == "feed" or op.type == "fetch":
             global_block.remove_op(i)
 
-    pruned_program = main_program.prune(targets=target_vars)
+    print("before prune")
+    copy_program.desc.flush()
+    pruned_program = copy_program.prune(targets=target_vars)
+    print("after prune")
     inference_program = pruned_program.inference_optimize()
+    print("after inference optimize")
     fetch_var_names = [v.name for v in target_vars]
 
     prepend_feed_ops(inference_program, feeded_var_names)
     append_fetch_ops(inference_program, fetch_var_names)
+    print("after prepend and append")
 
     if model_filename is not None:
         model_filename = os.path.basename(model_filename)
@@ -365,8 +371,13 @@ def save_inference_model(dirname,
 
     with open(model_filename, "wb") as f:
         f.write(inference_program.desc.serialize_to_string())
+    print("after writing the model")
+
+    with open("before_saving_fp16_vgg.txt", "w") as f:
+        f.write(str(inference_program))
 
     save_persistables(executor, dirname, inference_program, params_filename)
+    print("after save persist")
 
 
 def load_inference_model(dirname,

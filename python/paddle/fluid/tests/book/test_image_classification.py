@@ -263,7 +263,7 @@ def infer(use_cuda, save_dirname=None):
         assert len(results[0]) == len(fp16_results[0])
         for i in range(len(results[0])):
             np.testing.assert_almost_equal(
-                results[0][i], fp16_results[0][i], decimal=3)
+                results[0][i], fp16_results[0][i], decimal=2)
 
         print("infer results: ", results[0])
         print("fp16 infer results: ", fp16_results[0])

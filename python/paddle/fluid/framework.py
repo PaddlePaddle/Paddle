@@ -1083,9 +1083,12 @@ class Program(object):
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
+        print("inside python prune: before prune")
         res.desc = core.prune(self.desc, targets_idx)
+        print("inside python prune: after prune")
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res.sync_with_cpp()
+        print("inside python prune: after sync_with_cpp")
         return res
 
     def inference_optimize(self):

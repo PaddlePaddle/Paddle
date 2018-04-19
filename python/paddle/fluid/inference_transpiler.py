@@ -132,16 +132,23 @@ class InferenceTranspiler:
         self.block = program.block(0)
         self.input_map = {}  # store the input names should be adjusted 
 
+        print self.block.vars.keys()
         self._modify_feed_fetch()
+        print self.block.vars.keys()
         self._convert_param_to_float16()
+        print self.block.vars.keys()
         self._adjust_input(skip=True)
+        print self.block.vars.keys()
+        # program.desc.flush()
         self._remove_unused_var()
+        print self.block.vars.keys()
         # TODO(luotao): use clone() method to flush the program.desc in force, 
         # since some large program.desc will not be flushed immediately. 
         # And a better solution will be considered later.
-        program = program.clone()
+        # program = program.clone()
 
     # ====================== private transpiler functions =====================
+
     def _insert_bias_op(self, index, current_op, bn_op):
         '''
         Construct elementwise_add operator for adding bias 
@@ -365,11 +372,12 @@ class InferenceTranspiler:
                    var.type != core.VarDesc.VarType.FETCH_LIST:
                 fp16_var_name = var_name + ".fp16"
                 self.input_map[var_name] = fp16_var_name
-                fp16_var = self.block.create_parameter(
+                fp16_var = self.block.create_var(
                     name=fp16_var_name.encode('ascii'),
                     type=var.type,
                     dtype=core.VarDesc.VarType.FP16,
-                    shape=var.shape)
+                    shape=var.shape,
+                    persistable=var.persistable)
 
                 self.scope.var(fp16_var_name)
                 fp16_tensor = self.scope.find_var(fp16_var_name).get_tensor()
