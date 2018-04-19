@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
+#include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/send_op_handle.h"
 #include "paddle/fluid/framework/scope.h"
@@ -41,6 +43,7 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
       local_scopes_(local_scopes),
       nccl_ctxs_(nccl_ctxs) {
 #else
+
 MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
@@ -52,6 +55,30 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
 #endif
   for (auto &p : params) {
     grad_names_.insert(GradVarName(p));
+  }
+}
+
+struct VarLink {
+  VarLink(const std::string &var_name, VarHandle *var_handel, int dev_idx) {
+    var_name_ = std::move(var_name);
+    var_handle_ = var_handel;
+    dev_idx_ = dev_idx;
+  }
+
+  int dev_idx_;
+  std::string var_name_;
+  VarHandle *var_handle_;
+  std::vector<std::unique_ptr<VarLink>> children_;
+};
+
+void GetLeavesOfTopVar(VarLink *top_var,
+                       std::unordered_set<VarHandle *> *leaves) {
+  if (top_var && top_var->children_.size() == 0) {
+    leaves->insert(top_var->var_handle_);
+  } else if (top_var) {
+    for (auto &vars : top_var->children_) {
+      GetLeavesOfTopVar(vars.get(), leaves);
+    }
   }
 }
 
@@ -88,6 +115,14 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>(
       places_.size());
 
+  int ring = 0;
+  bool multi_devices = places_.size() > 1;
+
+  std::unordered_map<VarHandle *, std::unique_ptr<VarLink>> var_link;
+  std::unordered_map<VarHandle *, std::unique_ptr<VarLink>> ogs_link;
+
+  bool use_nccl_allreduce = false;
+
   bool is_forwarding = true;
   for (auto *op : program.Block(0).AllOps()) {
     if (op->Type() == "send") {
@@ -98,8 +133,39 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
       CreateScaleLossGradOp(&result);
       is_forwarding = false;
     } else {
+      if (!is_forwarding && multi_devices) {
+        auto var_names = op->InputArgumentNames();
+        VarHandle *var_in_var = nullptr;
+        for (auto &each_var_name : var_names) {
+          for (size_t j = 0; j < places_.size(); ++j) {
+            VarHandle *var = GetLatestVarHandle(&result, each_var_name, j);
+            if (var && var_link.count(var)) {
+              var_in_var = var;
+              break;
+            }
+          }
+          if (var_in_var) break;
+        }
+        if (var_in_var) {
+          int dev_id = var_link[var_in_var]->dev_idx_;
+
+          result.ops_.emplace_back(new ComputationOpHandle(
+              *op, local_scopes_[dev_id], places_[dev_id]));
+          CreateOpHandleIOs(&result, *op, places_[dev_id], dev_id);
+
+          // add output to var_link
+          for (auto &out_var : result.ops_.back()->Outputs()) {
+            auto out_var_handle = static_cast<VarHandle *>(out_var);
+            var_link[var_in_var]->children_.emplace_back(
+                new VarLink(out_var_handle->name_, out_var_handle, dev_id));
+            var_link[out_var_handle].reset(
+                var_link[var_in_var]->children_.back().get());
+          }
+          continue;
+        }
+      }
       CreateComputationalOps(&result, *op);
-      if (!is_forwarding) {
+      if (!is_forwarding && multi_devices) {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once. But there are no
         // other cases, for example, we need to adjust the gradient according to
@@ -107,7 +173,83 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
         // present.
         for (auto &og : op->OutputArgumentNames()) {
           if (IsParameterGradientOnce(og, &og_has_been_broadcast)) {
-            InsertNCCLAllReduceOp(&result, og);
+            if (use_nccl_allreduce) {
+              InsertNCCLAllReduceOp(&result, og);
+            } else {
+              size_t dst_dev_id = (ring++) % places_.size();
+#ifdef PADDLE_WITH_CUDA
+              result.ops_.emplace_back(
+                  new ReduceOpHandle(local_scopes_, places_, nccl_ctxs_));
+#else
+              result.ops_.emplace_back(
+                  new ReduceOpHandle(local_scopes_, places_));
+#endif
+              auto *op_handle = result.ops_.back().get();
+
+              for (size_t i = 0; i < places_.size(); ++i) {
+                auto &vars = result.vars_[i][og];
+#ifndef PADDLE_WITH_CUDA
+                auto &p = places_[i];
+                op_handle->SetDeviceContext(
+                    p, platform::DeviceContextPool::Instance().Get(p));
+#endif
+                PADDLE_ENFORCE(!vars.empty());
+                auto &prev_grad = vars.back();
+                op_handle->AddInput(prev_grad.get());
+              }
+              auto &vars = result.vars_[dst_dev_id][og];
+              auto var = new VarHandle(vars.size() - 1, dst_dev_id, og,
+                                       places_[dst_dev_id]);
+              vars.emplace_back(var);
+              op_handle->AddOutput(var);
+
+              PADDLE_ENFORCE(ogs_link.count(var) == 0);
+              ogs_link[var].reset(new VarLink(og, var, dst_dev_id));
+              var_link[var].reset(ogs_link[var].get());
+            }
+          }
+        }
+      }
+    }
+  }
+  if (multi_devices && use_nccl_allreduce) {
+    // get the output of ogs according to ogs_link
+    std::unordered_set<VarHandle *> need_to_broadcast;
+    for (auto &vars_link : ogs_link) {
+      auto top_var = vars_link.first;
+      PADDLE_ENFORCE(need_to_broadcast.count(top_var) == 0);
+      need_to_broadcast.insert(top_var);
+      std::unordered_set<VarHandle *> leaves;
+      // get the leaves of top_var
+      GetLeavesOfTopVar(vars_link.second.get(), &leaves);
+
+      // add broadcast op
+      if (leaves.size()) {
+        for (auto &ge_var : leaves) {
+          result.ops_.emplace_back(
+              new BroadcastOpHandle(local_scopes_, places_));
+          auto *op_handle = result.ops_.back().get();
+
+          auto src_dev_id = vars_link.second->dev_idx_;
+          auto &vars = result.vars_.at(src_dev_id)[ge_var->name_];
+
+          PADDLE_ENFORCE(!vars.empty());
+          auto &prev_grad = vars.back();
+          op_handle->AddInput(prev_grad.get());
+
+          for (size_t i = 0; i < places_.size(); ++i) {
+            auto &p = places_[i];
+            auto &vars = result.vars_[i][ge_var->name_];
+
+#ifdef PADDLE_WITH_CUDA
+            op_handle->SetDeviceContext(p, nccl_ctxs_->DevCtx(p));
+#else
+            op_handle->SetDeviceContext(
+                p, platform::DeviceContextPool::Instance().Get(p));
+#endif
+            auto var = new VarHandle(vars.size() - 1, i, ge_var->name_, p);
+            vars.emplace_back(var);
+            op_handle->AddOutput(var);
           }
         }
       }

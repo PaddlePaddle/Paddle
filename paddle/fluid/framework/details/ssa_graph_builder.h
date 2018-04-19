@@ -48,6 +48,10 @@ class SSAGraphBuilder {
                                                const platform::Place &place,
                                                size_t place_offset);
 
+  static VarHandle *GetLatestVarHandle(SSAGraph *graph,
+                                       const std::string &each_var_name,
+                                       size_t place_offset);
+
   static void CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
                              const std::string &each_var_name,
                              const platform::Place &place, size_t place_offset);
