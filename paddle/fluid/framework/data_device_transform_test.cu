@@ -103,9 +103,7 @@ static void BuildVar(const std::string& param_name,
 }
 
 TEST(Operator, CPUtoGPU) {
-  using namespace paddle::framework;
-  using namespace paddle::platform;
-  InitDevices(true);
+  paddle::framework::InitDevices(true);
 
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
@@ -153,12 +151,14 @@ TEST(Operator, CPUtoGPU) {
   VLOG(3) << "after gpu_op run";
 
   // auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
-  DeviceContextPool& pool = DeviceContextPool::Instance();
+  paddle::framework::DeviceContextPool& pool =
+      paddle::framework::DeviceContextPool::Instance();
   auto dev_ctx = pool.Get(cuda_place);
 
   paddle::framework::Tensor output_tensor;
-  TensorCopy(output2->Get<LoDTensor>(), paddle::platform::CPUPlace(), *dev_ctx,
-             &output_tensor);
+  paddle::framework::TensorCopy(output2->Get<LoDTensor>(),
+                                paddle::platform::CPUPlace(), *dev_ctx,
+                                &output_tensor);
 
   dev_ctx->Wait();
   float* output2_ptr = output_tensor.data<float>();
