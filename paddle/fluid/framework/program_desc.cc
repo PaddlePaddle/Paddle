@@ -27,10 +27,14 @@ BlockDesc *ProgramDesc::AppendBlock(const BlockDesc &parent) {
   return blocks_.back().get();
 }
 
-proto::ProgramDesc *ProgramDesc::Proto() {
+void ProgramDesc::Flush() {
   for (auto &block : blocks_) {
     block->Flush();
   }
+}
+
+proto::ProgramDesc *ProgramDesc::Proto() {
+  Flush();
   return &desc_;
 }
 
