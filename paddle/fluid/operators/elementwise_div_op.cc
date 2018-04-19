@@ -30,8 +30,10 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(elementwise_div, ops::ElementwiseOp, ops::ElementwiseDivOpMaker,
-            elementwise_div_grad, ops::ElementwiseOpGrad);
+REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
+                  ops::ElementwiseDivOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(elementwise_div_grad, ops::ElementwiseOpGrad);
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, float>,

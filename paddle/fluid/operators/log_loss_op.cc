@@ -106,8 +106,9 @@ class LogLossGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>, log_loss_grad,
-            ops::LogLossGradOp);
+REGISTER_OPERATOR(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(log_loss_grad, ops::LogLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     log_loss, ops::LogLossKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
