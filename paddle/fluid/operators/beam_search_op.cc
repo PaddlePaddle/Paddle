@@ -235,9 +235,19 @@ class BeamSearchOp : public framework::OperatorWithKernel {
             static_cast<const framework::OperatorBase&>(o)) {
     PADDLE_THROW("Not Implemented");
   }
+
  protected:
   void InferShape(const framework::InferShapeContext &ctx) const override {
-    
+    for (const std::string &arg :
+         std::vector<std::string>({"pre_ids", "ids", "scores"})) {
+      PADDLE_ENFORCE(context->HasInput(arg),
+                     "BeamSearch need input argument '%s'", arg);
+    }
+    for (const std::string &arg :
+         std::vector<std::string>({"selected_ids", "selected_scores"})) {
+      PADDLE_ENFORCE(context->HasOutput(arg),
+                     "BeamSearch need output argument '%s'", arg);
+    }
   }
 
  private:
