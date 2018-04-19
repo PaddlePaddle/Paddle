@@ -134,7 +134,7 @@ class InferenceTranspiler:
 
         self._modify_feed_fetch()
         self._convert_param_to_float16()
-        self._adjust_input()
+        self._adjust_input(skip=True)
         self._remove_unused_var()
         # TODO(luotao): use clone() method to flush the program.desc in force, 
         # since some large program.desc will not be flushed immediately. 
@@ -236,9 +236,12 @@ class InferenceTranspiler:
         # collect the renamed input
         self.input_map[bn_op.output("Y")[0]] = bias_op.output("Out")[0]
 
-    def _adjust_input(self):
+    def _adjust_input(self, skip=False):
+        skip_ops = {"cast"}
         for i in range(len(self.block.ops)):
             current_op = self.block.ops[i]
+            if skip and current_op.type in skip_ops:
+                continue
             for input_arg in current_op.input_arg_names:
                 if input_arg in self.input_map:
                     current_op.rename_input(input_arg,
@@ -279,10 +282,11 @@ class InferenceTranspiler:
         '''
 
         def find_op(var):
-            for op in self.block.ops:
-                if var.name in op.output_arg_names:
-                    var.op = op
-                    break
+            if var.op is None:
+                for op in self.block.ops:
+                    if var.name in op.output_arg_names:
+                        var.op = op
+                        break
 
         i = 0
         while i < len(self.block.ops):
@@ -295,7 +299,8 @@ class InferenceTranspiler:
                     name=tmp_var_name.encode('ascii'),
                     type=var.type,
                     dtype=core.VarDesc.VarType.FP16,
-                    shape=var.shape)
+                    shape=var.shape,
+                    persistable=var.persistable)
                 self.block.insert_op(
                     i + 1,
                     type="cast",
@@ -315,7 +320,8 @@ class InferenceTranspiler:
                     name=tmp_var_name.encode('ascii'),
                     type=var.type,
                     dtype=core.VarDesc.VarType.FP16,
-                    shape=var.shape)
+                    shape=var.shape,
+                    persistable=var.persistable)
                 find_op(var)
                 var.op.rename_output(var_name, tmp_var_name)
                 self.block.insert_op(
