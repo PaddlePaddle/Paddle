@@ -316,9 +316,17 @@ class BeamSearchInferVarType : public framework::VarTypeInference {
 */
 }  // namespace operators
 }  // namespace paddle
-
+/*
 REGISTER_OPERATOR(beam_search, paddle::operators::BeamSearchOp,
                   paddle::operators::BeamSearchProtoAndCheckerMaker,
                   paddle::operators::BeamSearchInferShape,
                   paddle::operators::BeamSearchInferVarType,
                   paddle::framework::EmptyGradOpMaker);
+*/
+namespace ops = paddle::operators;
+REGISTER_OP_WITHOUT_GRADIENT(beam_search, ops::BeamSearchOp,
+                             ops::BeamSearchOpMaker);
+REGISTER_OP_CPU_KERNEL(
+    beam_search,
+    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, double>);
