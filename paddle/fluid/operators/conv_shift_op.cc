@@ -194,8 +194,8 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv_shift, ops::ConvShiftOp, ops::ConvShiftOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);
 REGISTER_OP_CPU_KERNEL(conv_shift,
                        ops::ConvShiftKernel<paddle::platform::CPUPlace, float>);
 REGISTER_OP_CPU_KERNEL(

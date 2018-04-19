@@ -258,8 +258,8 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(linear_chain_crf, ops::LinearChainCRFOp,
                   ops::LinearChainCRFOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp);
 REGISTER_OP_CPU_KERNEL(
     linear_chain_crf,
     ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,

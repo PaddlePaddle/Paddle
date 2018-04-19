@@ -277,8 +277,8 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lrn, ops::LRNOp, ops::LRNOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
 REGISTER_OP_CPU_KERNEL(
     lrn, ops::LRNKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(

@@ -156,8 +156,8 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp);
 REGISTER_OP_CPU_KERNEL(
     lod_reset, ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, double>,
