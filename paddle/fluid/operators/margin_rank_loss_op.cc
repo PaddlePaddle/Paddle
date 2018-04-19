@@ -113,8 +113,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(margin_rank_loss, ops::MarginRankLossOp,
                   ops::MarginRankLossOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(margin_rank_loss_grad, ops::MarginRankLossGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(margin_rank_loss_grad, ops::MarginRankLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     margin_rank_loss,
     ops::MarginRankLossKernel<paddle::platform::CPUDeviceContext, float>);

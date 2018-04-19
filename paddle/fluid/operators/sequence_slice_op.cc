@@ -122,8 +122,8 @@ NOTE: The first dimension size of input, the size of offset and Length, should b
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_slice, ops::SequenceSliceOp,
                   ops::SequenceSliceOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_slice,
     ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>);

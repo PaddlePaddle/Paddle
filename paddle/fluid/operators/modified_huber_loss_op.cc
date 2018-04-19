@@ -110,8 +110,8 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(modified_huber_loss, ops::ModifiedHuberLossOp,
                   ops::ModifiedHuberLossOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(modified_huber_loss_grad, ops::ModifiedHuberLossGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(modified_huber_loss_grad, ops::ModifiedHuberLossGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     modified_huber_loss,

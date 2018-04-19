@@ -177,8 +177,8 @@ context_length, context_stride and context_start.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>)
-REGISTER_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp)
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     sequence_conv,
