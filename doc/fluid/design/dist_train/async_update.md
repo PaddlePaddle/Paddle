@@ -4,34 +4,39 @@
 
 For the typical synchronous distributed training, some significant steps are as follows:
 
-1. A Trainer will compute the gradients and SEND them to the Parameter Server(PServer) nodes.
-1. After the PServer node received gradients came from all the Trainers, It will aggregate the
+1. A trainer process will compute the gradients and **send** them to the parameter server (PS) nodes.
+1. After the PS node received gradients came from all the Trainers, It will aggregate the
 gradient variables for the same parameter into one gradient variable and then apply the aggregated
 gradient to the respective parameter, finally using an optimize algorithms(SGD, Monument...)
 to update the parameters.
-1. The Trainer would wait for the PServers finished the optimize stage, and GET the parameters from PServer,
+1. The Trainer would wait for the PS finished the optimize stage, and GET the parameters from PS,
 so all the Trainers would get the same parameters.
 
-In the synchronously distributed training, there should be a `Barrier` to synchronise the
-parameters after the optimizing stage. The performance of a distributed training job would
-depend on the slowest node if there were hundreds or thousands of training nodes in a
-Job, the performance of synchronously distributed training might be very poor because of
-the slow node. So this design doc would introduce an approach to implement
-*asynchronously* distributed training in PaddlePaddle Fluid.
+In the synchronously distributed training, there should be a **barrier** which used to wait
+all the trainer processes synchronise the parameters and then continue to the next epoch.
+The performance of an asynchronously distributed training job depends on the slowest node. For example,
+if there were hundreds or thousands of training nodes in a Job and one or more training nodes were much 
+slower then the others, all the training nodes need to wait for the slowest node to synchronise the
+parameters from PS nodes, so the performance would be very poor because of the slowest node.
+In the *asynchronous* distributed training, there is no **barrier** to synchronise the parameters,
+the optimizing stage is independently on each trainer process, this would achieve scaling and better
+throughput in a job. In this design doc, we will introduce how to implement the **asynchronous** 
+distributed training base on PaddlePaddle Fluid.
+
 
 ## Design
 
 <img src="./src/async_update.png" width="600"/>
 
-As the figure above, we describe a global view of asynchronously update process and use
+As the figure above, we describe a global view of the asynchronous update process and use
 the parameter `w1` as an example to introduce the steps:
 1. For each gradient variables, they may distribute on different GPU card and aggregate
 them while they are all calculated.
-1. Split the gradient variable into multiple blocks according to the number of PServer
+1. Split the gradient variable into multiple blocks according to the number of PS
 instances and then send them.
-1. PServer would run an `Optimize Block` using a specified optimize algorithm to update
+1. PS would run an `Optimize Block` using a specified optimize algorithm to update
 the specified parameter.
-1. The trainer will fetch latest parameter from PServer before running forward Op which depends
+1. The trainer will fetch the latest parameter from PS before running forward Op which depends
 on the specified parameter.
 1. Broadcast the received variable into multiple GPU cards and continue to run the next
 mini-batch.
@@ -40,8 +45,8 @@ mini-batch.
 
 - For the multiple devices distributed training, we need to aggregate the gradient
 variables which placed on different devices firstly and then schedule a `SendVars` Operator to
-send the gradient variables to the multiple PServer instances.
-- Schedule `FetchVars` operator to fetch the latest parameter from PServer before running
+send the gradient variables to the multiple PS instances.
+- Schedule `FetchVars` operator to fetch the latest parameter from PS before running
 the forward ops.
 - There could be a large number of gradient variables to be sent, so we need to use another
 thread pool(IO Threadpool) whose a number of the schedulable threads is larger than the
