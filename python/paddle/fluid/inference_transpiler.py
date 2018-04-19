@@ -267,16 +267,23 @@ class InferenceTranspiler:
         feed_op->feed_target_var
         
         Change it to:
-        feed_op->tmp_var->cast_op(from other dtype to float16)->feed_target_var
+        feed_op->feed_target_var->cast_op(from other dtype to float16)->tmp_var
 
         For each fetch op:
         fetch_target_var->fetch_op
 
         Change it to:
-        fetch_target_var->cast_op(from float16 to other dtype)->tmp_var->fetch_op
+        tmp_var->cast_op(from float16 to other dtype)->fetch_target_var->fetch_op
 
         :return: None
         '''
+
+        def find_op(var):
+            for op in self.block.ops:
+                if var.name in op.output_arg_names:
+                    var.op = op
+                    break
+
         i = 0
         while i < len(self.block.ops):
             cur_op = self.block.ops[i]
@@ -287,18 +294,18 @@ class InferenceTranspiler:
                 tmp_var = self.block.create_var(
                     name=tmp_var_name.encode('ascii'),
                     type=var.type,
-                    dtype=var.dtype,
+                    dtype=core.VarDesc.VarType.FP16,
                     shape=var.shape)
-                cur_op.rename_output(var_name, tmp_var_name)
                 self.block.insert_op(
                     i + 1,
                     type="cast",
-                    inputs={"X": tmp_var},
-                    outputs={"Out": var},
+                    inputs={"X": var},
+                    outputs={"Out": tmp_var},
                     attrs={
-                        'in_dtype': int(tmp_var.dtype),
-                        'out_dtype': int(core.VarDesc.VarType.FP16)
+                        'in_dtype': int(var.dtype),
+                        'out_dtype': int(tmp_var.dtype)
                     })
+                self.input_map[var_name] = tmp_var_name
                 i = i + 1
             elif cur_op.type == "fetch":
                 var_name = cur_op.input("X")[0]
@@ -307,17 +314,18 @@ class InferenceTranspiler:
                 tmp_var = self.block.create_var(
                     name=tmp_var_name.encode('ascii'),
                     type=var.type,
-                    dtype=var.dtype,
+                    dtype=core.VarDesc.VarType.FP16,
                     shape=var.shape)
-                cur_op.rename_input(var_name, tmp_var_name)
+                find_op(var)
+                var.op.rename_output(var_name, tmp_var_name)
                 self.block.insert_op(
                     i,
                     type="cast",
-                    inputs={"X": var},
-                    outputs={"Out": tmp_var},
+                    inputs={"X": tmp_var},
+                    outputs={"Out": var},
                     attrs={
-                        'in_dtype': int(core.VarDesc.VarType.FP16),
-                        'out_dtype': int(tmp_var.dtype)
+                        'in_dtype': int(tmp_var.dtype),
+                        'out_dtype': int(var.dtype)
                     })
                 i = i + 1
             i = i + 1

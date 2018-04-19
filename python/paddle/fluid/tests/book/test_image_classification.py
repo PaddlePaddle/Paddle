@@ -227,13 +227,19 @@ def infer(use_cuda, save_dirname=None):
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
         # Use inference_transpiler to speedup
-        inference_transpiler_program = inference_program.clone()
+        #inference_transpiler_program = inference_program.clone()
         t = fluid.InferenceTranspiler()
-        t.transpile(inference_transpiler_program, place)
+        #t.transpile(inference_transpiler_program, place)
 
         # Use float16_transpiler to speedup
         fp16_transpiler_program = inference_program.clone()
         t.convert_to_float16(fp16_transpiler_program, place)
+
+        with open("vgg.txt", "w") as f:
+            f.write(str(inference_program))
+
+        with open("vgg_fp16.txt", "w") as f:
+            f.write(str(fp16_transpiler_program))
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
@@ -241,18 +247,18 @@ def infer(use_cuda, save_dirname=None):
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
 
-        transpiler_results = exe.run(inference_transpiler_program,
-                                     feed={feed_target_names[0]: tensor_img},
-                                     fetch_list=fetch_targets)
+        #transpiler_results = exe.run(inference_transpiler_program,
+        #                             feed={feed_target_names[0]: tensor_img},
+        #                             fetch_list=fetch_targets)
 
         fp16_results = exe.run(fp16_transpiler_program,
                                feed={feed_target_names[0]: tensor_img},
                                fetch_list=fetch_targets)
 
-        assert len(results[0]) == len(transpiler_results[0])
-        for i in range(len(results[0])):
-            np.testing.assert_almost_equal(
-                results[0][i], transpiler_results[0][i], decimal=6)
+        #assert len(results[0]) == len(transpiler_results[0])
+        #for i in range(len(results[0])):
+        #    np.testing.assert_almost_equal(
+        #        results[0][i], transpiler_results[0][i], decimal=6)
 
         assert len(results[0]) == len(fp16_results[0])
         for i in range(len(results[0])):
@@ -260,10 +266,15 @@ def infer(use_cuda, save_dirname=None):
                 results[0][i], fp16_results[0][i], decimal=3)
 
         print("infer results: ", results[0])
+        print("fp16 infer results: ", fp16_results[0])
 
-        fluid.io.save_inference_model(save_dirname, feed_target_names,
+        #fluid.io.save_inference_model(save_dirname, feed_target_names,
+        #                              fetch_targets, exe,
+        #                              inference_transpiler_program)
+
+        fluid.io.save_inference_model("fp16_" + save_dirname, feed_target_names,
                                       fetch_targets, exe,
-                                      inference_transpiler_program)
+                                      fp16_transpiler_program)
 
 
 def main(net_type, use_cuda, is_local=True):
@@ -282,17 +293,17 @@ class TestImageClassification(unittest.TestCase):
         with self.scope_prog_guard():
             main('vgg', use_cuda=True)
 
-    def test_resnet_cuda(self):
-        with self.scope_prog_guard():
-            main('resnet', use_cuda=True)
+    #def test_resnet_cuda(self):
+    #    with self.scope_prog_guard():
+    #        main('resnet', use_cuda=True)
 
-    def test_vgg_cpu(self):
-        with self.scope_prog_guard():
-            main('vgg', use_cuda=False)
+    #def test_vgg_cpu(self):
+    #    with self.scope_prog_guard():
+    #        main('vgg', use_cuda=False)
 
-    def test_resnet_cpu(self):
-        with self.scope_prog_guard():
-            main('resnet', use_cuda=False)
+    #def test_resnet_cpu(self):
+    #    with self.scope_prog_guard():
+    #        main('resnet', use_cuda=False)
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
