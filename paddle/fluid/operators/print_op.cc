@@ -26,9 +26,6 @@ namespace operators {
 const char kForward[] = "FORWARD";
 const char kBackward[] = "BACKWARD";
 const char kBoth[] = "BOTH";
-// const std::string kForward = "FORWARD";
-// const std::string kBackward = "BACKWARD";
-// const std::string kBoth = "BOTH";
 
 struct Formater {
   std::string message;
