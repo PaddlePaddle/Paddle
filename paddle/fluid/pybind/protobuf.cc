@@ -127,6 +127,8 @@ void BindProgramDesc(pybind11::module *m) {
       .def("block", &pd::ProgramDesc::MutableBlock,
            pybind11::return_value_policy::reference)
       .def("num_blocks", &pd::ProgramDesc::Size)
+      .def("get_feed_target_names", &pd::ProgramDesc::GetFeedTargetNames)
+      .def("get_fetch_target_names", &pd::ProgramDesc::GetFetchTargetNames)
       .def("serialize_to_string", SerializeMessage<pd::ProgramDesc>)
       .def("parse_from_string",
            [](pd::ProgramDesc &program_desc, const std::string &data) {
@@ -299,6 +301,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("check_attrs", &pd::OpDesc::CheckAttrs)
       .def("infer_shape", &pd::OpDesc::InferShape)
       .def("infer_var_type", &pd::OpDesc::InferVarType)
+      .def("set_is_target", &pd::OpDesc::SetIsTarget)
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
       .def("block", &pd::OpDesc::Block,
            pybind11::return_value_policy::reference);

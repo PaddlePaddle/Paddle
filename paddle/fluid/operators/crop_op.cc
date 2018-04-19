@@ -153,7 +153,9 @@ class CropOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(crop, ops::CropOp, ops::CropOpMaker, crop_grad, ops::CropOpGrad);
+REGISTER_OPERATOR(crop, ops::CropOp, ops::CropOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
 REGISTER_OP_CPU_KERNEL(crop, ops::CropKernel<float>);
 REGISTER_OP_CPU_KERNEL(
     crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>);

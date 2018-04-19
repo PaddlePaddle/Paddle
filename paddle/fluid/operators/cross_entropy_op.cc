@@ -164,8 +164,9 @@ or not. But the output only shares the LoD information with input X.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(cross_entropy, ops::CrossEntropyOp, ops::CrossEntropyOpMaker,
-            cross_entropy_grad, ops::CrossEntropyGradientOp);
+REGISTER_OPERATOR(cross_entropy, ops::CrossEntropyOp, ops::CrossEntropyOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
 REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<float>,
                        ops::CrossEntropyOpKernel<double>);
 REGISTER_OP_CPU_KERNEL(cross_entropy_grad,

@@ -155,9 +155,10 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(sequence_softmax, ops::SequenceSoftmaxOp,
-            ops::SequenceSoftmaxOpMaker, sequence_softmax_grad,
-            ops::SequenceSoftmaxGradOp);
+REGISTER_OPERATOR(sequence_softmax, ops::SequenceSoftmaxOp,
+                  ops::SequenceSoftmaxOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(sequence_softmax_grad, ops::SequenceSoftmaxGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax,
     ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,

@@ -78,7 +78,7 @@ struct TestGatherOpHandle {
     op_handle_.reset(new GatherOpHandle(local_scopes_, gpu_list_));
     // add input
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
-      op_handle_->dev_ctxes_[gpu_list_[j]] = ctxs_[j].get();
+      op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
       auto* in_var_handle = new VarHandle(1, j, "input", gpu_list_[j]);
       vars_.emplace_back(in_var_handle);
       op_handle_->AddInput(in_var_handle);
