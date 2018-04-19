@@ -19,6 +19,7 @@ import math
 import time
 import threading
 import logging
+import copy
 
 import netaddr
 import boto3
@@ -257,6 +258,8 @@ def script_to_str(file_path):
 
 
 def run_instances(image_id, instance_type, count, role, cmd=""):
+    if count == 0:
+        return []
     response = ec2client.run_instances(
         ImageId=image_id,
         InstanceType=instance_type,
@@ -334,6 +337,22 @@ def log_to_file(source, filename):
             log_file.write(line)
 
 
+def parse_command(command_raw, defaults={}):
+    if not command_raw:
+        command_raw = ""
+    commands_processed = []
+    parameter_map = copy.copy(defaults)
+    for seg in command_raw.split(","):
+        if ":" in seg:
+            parameters = seg.split(":")
+            parameter_map[parameters[0]] = parameters[1]
+        else:
+            commands_processed.append(seg)
+    for key, val in parameter_map.iteritems():
+        commands_processed.append("--" + key + " " + str(val))
+    return " ".join(commands_processed)
+
+
 def create_trainers(kickoff_cmd, pserver_endpoints_str):
     def create_and_start_trainer(trainer_index):
         logging.info("trainer " + str(trainer_index) + " is starting")
@@ -361,7 +380,7 @@ def create_trainers(kickoff_cmd, pserver_endpoints_str):
             TRAINER_INDEX=str(trainer_index),
             TASK_NAME=args.task_name,
             TRAINER_COUNT=args.trainer_count,
-            COMMAND=args.trainer_command,
+            COMMAND=parse_command(args.trainer_command, {"device": "GPU"}),
             MASTER_ENDPOINT=args.master_server_ip + ":" +
             str(args.master_server_port))
         logging.info(cmd)
@@ -476,7 +495,7 @@ def kickoff_pserver(host, pserver_endpoints_str):
             DOCKER_IMAGE=args.docker_image,
             PSERVER_PORT=args.pserver_port,
             TASK_NAME=args.task_name,
-            COMMAND=args.pserver_command,
+            COMMAND=parse_command(args.pserver_command, {"device": "CPU"}),
             TRAINER_COUNT=args.trainer_count,
             TRAINER_INDEX=0,
             # there is no way to use 0.0.0.0:port to start pserver
