@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
+namespace inference {
 
 /*
  * EngineBase is the base class of all inference engines. An inference engine
@@ -49,4 +50,5 @@ class EngineBase {
 
 };  // class EngineBase
 
+}  // namespace inference
 }  // namespace paddle
