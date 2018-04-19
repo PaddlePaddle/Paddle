@@ -57,6 +57,20 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
+
+  bool IsScaleLossOp(const OpDesc &op) const;
+
+  void CreateSendOp(SSAGraph *result, const OpDesc &op) const;
+
+  void CreateComputationalOps(SSAGraph *result, const OpDesc &op) const;
+
+  void CreateScaleLossGradOp(SSAGraph *result) const;
+
+  bool IsParameterGradientOnce(
+      const std::string &og,
+      std::unordered_set<std::string> *og_has_been_broadcast) const;
+
+  void InsertNCCLAllReduceOp(SSAGraph *result, const std::string &og) const;
 };
 }  // namespace details
 }  // namespace framework

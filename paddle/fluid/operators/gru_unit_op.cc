@@ -198,8 +198,9 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker, gru_unit_grad,
-            ops::GRUUnitGradOp);
+REGISTER_OPERATOR(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker,
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(gru_unit_grad, ops::GRUUnitGradOp);
 REGISTER_OP_CPU_KERNEL(
     gru_unit, ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, double>);

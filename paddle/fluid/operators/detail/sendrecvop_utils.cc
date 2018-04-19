@@ -82,7 +82,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         platform::CPUPlace cpu;
         auto& gpu_dev_ctx =
             static_cast<const platform::CUDADeviceContext&>(ctx);
-        auto copy_size = tensor.memory_size();
+        auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
         payload = memory::Alloc(cpu, copy_size);
 
         memory::Copy(cpu, payload,
@@ -99,7 +99,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       } else {
         payload = tensor.data<void>();
       }
-      payload_size = tensor.memory_size();
+      payload_size = tensor.numel() * framework::SizeOfType(tensor.type());
       e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     case framework::proto::VarType_Type_SELECTED_ROWS: {
@@ -118,7 +118,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
         platform::CPUPlace cpu;
         auto& gpu_dev_ctx =
             static_cast<const platform::CUDADeviceContext&>(ctx);
-        auto copy_size = tensor->memory_size();
+        auto copy_size =
+            tensor->numel() * framework::SizeOfType(tensor->type());
         payload = memory::Alloc(cpu, copy_size);
         memory::Copy(cpu, payload,
                      boost::get<platform::CUDAPlace>(tensor->place()),
@@ -133,7 +134,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       } else {
         payload = slr->mutable_value()->data<void>();
       }
-      payload_size = tensor->memory_size();
+      payload_size = tensor->numel() * framework::SizeOfType(tensor->type());
       e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber, payload_size);
     } break;
     default:
