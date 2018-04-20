@@ -227,18 +227,18 @@ def infer(use_cuda, save_dirname=None):
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
         # Use inference_transpiler to speedup
-        #inference_transpiler_program = inference_program.clone()
+        inference_transpiler_program = inference_program.clone()
         t = fluid.InferenceTranspiler()
-        #t.transpile(inference_transpiler_program, place)
+        t.transpile(inference_transpiler_program, place)
 
         # Use float16_transpiler to speedup
-        fp16_transpiler_program = inference_program.clone()
+        fp16_transpiler_program = inference_transpiler_program.clone()
         t.convert_to_float16(fp16_transpiler_program, place)
 
-        with open("vgg.txt", "w") as f:
-            f.write(str(inference_program))
+        with open("vgg_fused_bn.txt", "w") as f:
+            f.write(str(inference_transpiler_program))
 
-        with open("vgg_fp16.txt", "w") as f:
+        with open("vgg_fused_bn_fp16.txt", "w") as f:
             f.write(str(fp16_transpiler_program))
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
@@ -247,30 +247,32 @@ def infer(use_cuda, save_dirname=None):
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
 
-        #transpiler_results = exe.run(inference_transpiler_program,
-        #                             feed={feed_target_names[0]: tensor_img},
-        #                             fetch_list=fetch_targets)
+        transpiler_results = exe.run(inference_transpiler_program,
+                                     feed={feed_target_names[0]: tensor_img},
+                                     fetch_list=fetch_targets)
+
+        assert len(results[0]) == len(transpiler_results[0])
+        for i in range(len(results[0])):
+            np.testing.assert_almost_equal(
+                results[0][i], transpiler_results[0][i], decimal=6)
+
+        print("infer results: ", results[0])
+
+        fluid.io.save_inference_model(save_dirname, feed_target_names,
+                                      fetch_targets, exe,
+                                      inference_transpiler_program)
 
         fp16_results = exe.run(fp16_transpiler_program,
                                feed={feed_target_names[0]: tensor_img},
                                fetch_list=fetch_targets)
-
-        #assert len(results[0]) == len(transpiler_results[0])
-        #for i in range(len(results[0])):
-        #    np.testing.assert_almost_equal(
-        #        results[0][i], transpiler_results[0][i], decimal=6)
 
         assert len(results[0]) == len(fp16_results[0])
         for i in range(len(results[0])):
             np.testing.assert_almost_equal(
                 results[0][i], fp16_results[0][i], decimal=2)
 
-        print("infer results: ", results[0])
-        print("fp16 infer results: ", fp16_results[0])
-
-        #fluid.io.save_inference_model(save_dirname, feed_target_names,
-        #                              fetch_targets, exe,
-        #                              inference_transpiler_program)
+        print("fused bn infer results: ", transpiler_results[0])
+        print("fused bn fp16 infer results: ", fp16_results[0])
 
         fluid.io.save_inference_model("fp16_" + save_dirname, feed_target_names,
                                       fetch_targets, exe,
