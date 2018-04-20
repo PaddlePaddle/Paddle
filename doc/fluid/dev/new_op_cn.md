@@ -147,7 +147,7 @@ class MulOp : public framework::OperatorWithKernel {
 };
 ```
 
-[`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/mul_op.cc#L22)继承自`OperatorWithKernel`。`public`成员：
+[`MulOp`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/mul_op.cc#L22)继承自`OperatorWithKernel`。`public`成员：
 
 ```cpp
 using framework::OperatorWithKernel::OperatorWithKernel;
@@ -173,7 +173,7 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
 `MulKernel`继承自`framework::OpKernel`，带有下面两个模板参数:
 
-- `typename DeviceContext`: 表示设备类型，不同设备(CPU、CUDA)共享同一个Kernel时，需加该模板参数，不共享则不加，一个不共享的例子是[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+- `typename DeviceContext`: 表示设备类型，不同设备(CPU、CUDA)共享同一个Kernel时，需加该模板参数，不共享则不加，一个不共享的例子是[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/cross_entropy_op.h#L43)。
 
 - `typename T` : 表示数据类型，如`float`, `double`等。
 
@@ -201,9 +201,9 @@ MulOp(const std::string &type, const framework::VariableNameMap &inputs,
 
 需要注意：**不同设备(CPU、CUDA)共享一个Op定义，是否则共享同一个`OpKernel`，取决于`Compute`调用的函数是否支持不同设备。**
 
-`MulOp`的CPU、CUDA实现共享同一个`Kernel`。`OpKernel`不共享的例子可以参考：[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/operators/cross_entropy_op.h#L43)。
+`MulOp`的CPU、CUDA实现共享同一个`Kernel`。`OpKernel`不共享的例子可以参考：[`OnehotCrossEntropyOpKernel`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/operators/cross_entropy_op.h#L43)。
 
-为了使`OpKernel`的计算过程书写更加简单，并且CPU、CUDA的代码可以复用，我们通常借助 Eigen unsupported Tensor模块来实现`Compute`接口。关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/howto/dev/use_eigen_cn.md)。
+为了使`OpKernel`的计算过程书写更加简单，并且CPU、CUDA的代码可以复用，我们通常借助 Eigen unsupported Tensor模块来实现`Compute`接口。关于在PaddlePaddle中如何使用Eigen库，请参考[使用文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/use_eigen_cn.md)。
 
 到此，前向Op实现完成。接下来，需要在`.cc`文件中注册该op和kernel。
 反向Op类的定义，反向OpKernel的定义与前向Op类似，这里不再赘述。**但需注意反向Op没有`ProtoMaker`**。

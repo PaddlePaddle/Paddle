@@ -65,7 +65,7 @@ For embedding layers, the gradient may have many rows containing only 0 when tra
 if the gradient uses a dense tensor to do parameter optimization,
 it could spend unnecessary memory, slow down the calculations and waste
 the bandwidth while doing distributed training.
-In Fluid, we introduce [SelectedRows](../selected_rows.md) to represent a list of rows containing
+In Fluid, we introduce [SelectedRows](../modules/selected_rows.md) to represent a list of rows containing
 non-zero gradient data. So when we do parameter optimization both locally and remotely,
 we only need to send those non-zero rows to the optimizer operators:
 
