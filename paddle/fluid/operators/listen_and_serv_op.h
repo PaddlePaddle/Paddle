@@ -41,10 +41,10 @@ class ListenAndServOp : public framework::OperatorBase {
 
   int GetSelectedPort() const;
 
-  void RunSyncUpdate(framework::Executor* executor,
-                     framework::ProgramDesc* program,
-                     framework::Scope* recv_scope,
-                     framework::BlockDesc* prefetch_block) const;
+  void RunSyncLoop(framework::Executor* executor,
+                   framework::ProgramDesc* program,
+                   framework::Scope* recv_scope,
+                   framework::BlockDesc* prefetch_block) const;
 
   void Stop() override;
 
