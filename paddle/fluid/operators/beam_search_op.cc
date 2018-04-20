@@ -223,33 +223,37 @@ class BeamSearchOpMaker
 };
 
 class BeamSearchOp : public framework::OperatorWithKernel {
+ /*
  public:
   BeamSearchOp(const std::string& type,
                const framework::VariableNameMap& inputs,
                const framework::VariableNameMap& outputs,
                const framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   BeamSearchOp(const BeamSearchOp& o)
-      : framework::OperatorBase(
+      : framework::OperatorWithKernel(
             static_cast<const framework::OperatorBase&>(o)) {
     PADDLE_THROW("Not Implemented");
   }
+ */
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(const framework::InferShapeContext &ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     for (const std::string &arg :
          std::vector<std::string>({"pre_ids", "ids", "scores"})) {
-      PADDLE_ENFORCE(context->HasInput(arg),
+      PADDLE_ENFORCE(ctx->HasInput(arg),
                      "BeamSearch need input argument '%s'", arg);
     }
     for (const std::string &arg :
          std::vector<std::string>({"selected_ids", "selected_scores"})) {
-      PADDLE_ENFORCE(context->HasOutput(arg),
+      PADDLE_ENFORCE(ctx->HasOutput(arg),
                      "BeamSearch need output argument '%s'", arg);
     }
   }
-
+/*
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
@@ -278,9 +282,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
         *selected_scores_var->GetMutable<framework::LoDTensor>();
     alg(pre_ids, &selected_ids_tensor, &selected_scores_tensor);
   }
-
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
+*/
 };
 
 
