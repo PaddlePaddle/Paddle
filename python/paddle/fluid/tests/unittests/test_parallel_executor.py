@@ -568,7 +568,8 @@ hidden_dim = 512
 depth = 8
 mix_hidden_lr = 1e-3
 embedding_name = 'emb'
-is_sparse = False
+is_sparse = True
+use_nccl_allreduce = False
 
 
 def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
@@ -688,7 +689,10 @@ class TestCRFModel(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup)
 
-            pe = fluid.ParallelExecutor(use_cuda=True, loss_name=avg_cost.name)
+            pe = fluid.ParallelExecutor(
+                use_cuda=True,
+                loss_name=avg_cost.name,
+                use_nccl_allreduce=use_nccl_allreduce)
 
             feeder = fluid.DataFeeder(
                 feed_list=[

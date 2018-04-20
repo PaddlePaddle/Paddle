@@ -60,16 +60,16 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
   }
 }
 
-void GetLeavesOfTopVar(VarLink *top_var,
-                       std::unordered_set<VarHandle *> *leaves) {
-  if (top_var && top_var->children_.size() == 0) {
-    leaves->insert(top_var->var_handle_);
-  } else if (top_var) {
-    for (auto &vars : top_var->children_) {
-      GetLeavesOfTopVar(vars, leaves);
-    }
-  }
-}
+// void GetLeavesOfTopVar(VarLink *top_var,
+//                       std::unordered_set<VarHandle *> *leaves) {
+//  if (top_var && top_var->children_.size() == 0) {
+//    leaves->insert(top_var->var_handle_);
+//  } else if (top_var) {
+//    for (auto &vars : top_var->children_) {
+//      GetLeavesOfTopVar(vars, leaves);
+//    }
+//  }
+//}
 
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
                                                 const OpDesc &op,
@@ -156,7 +156,7 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
   }
 
   // Insert BCast Ops
-  for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++i) {
+  for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
     auto &to_bcast_set = bcast_var_name_set[dev_id];
     for (auto &bcast_name : to_bcast_set) {
       CreateBroadcastOp(&result, bcast_name, dev_id);
@@ -351,6 +351,7 @@ bool MultiDevSSAGraphBuilder::IsScaleLossOp(const OpDesc &op) const {
   return op.OutputArgumentNames().size() == 1 &&
          op.OutputArgumentNames()[0] == GradVarName(loss_var_name_);
 }
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

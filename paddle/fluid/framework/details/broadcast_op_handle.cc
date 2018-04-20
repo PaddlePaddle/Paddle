@@ -44,9 +44,15 @@ void BroadcastOpHandle::RunImpl() {
   // &in_place;
   WaitInputVarGenerated(*in_var_handle);
 
-  auto *in_var = local_scopes_.at(in_var_handle->scope_idx_)
-                     ->FindVar(in_var_handle->name_);
+  std::vector<const Scope *> var_scopes;
+  for (auto *s : local_scopes_) {
+    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
+  }
+
+  auto *in_var =
+      var_scopes.at(in_var_handle->scope_idx_)->FindVar(in_var_handle->name_);
   PADDLE_ENFORCE_NOT_NULL(in_var);
+
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
   for (auto *out : out_var_handles) {
@@ -55,17 +61,16 @@ void BroadcastOpHandle::RunImpl() {
     }
 
     auto &out_p = out->place_;
-    auto *out_var = local_scopes_.at(out->scope_idx_)->FindVar(out->name_);
-
-    PADDLE_ENFORCE_EQ(out_p.which(), in_var_handle->place_.which(),
+    auto *out_var = var_scopes.at(out->scope_idx_)->FindVar(out->name_);
+    PADDLE_ENFORCE_NOT_NULL(out_var);
+    PADDLE_ENFORCE_EQ(out_p.which(), in_tensor.place().which(),
                       "Places must be all on CPU or all on CUDA.");
 
     VariableVisitor::ShareDimsAndLoD(*in_var, out_var);
-    VariableVisitor::GetMutableTensor(out_var)
-        .Resize(in_tensor.dims())
-        .mutable_data(out_p, in_tensor.type());
+    VariableVisitor::GetMutableTensor(out_var).mutable_data(out_p,
+                                                            in_tensor.type());
 
-    auto dev_ctx = dev_ctxes_[out_p];
+    auto dev_ctx = dev_ctxes_.at(out_p);
     RunAndRecordEvent(out_p, [in_tensor, out_var, dev_ctx, out_p] {
       paddle::framework::TensorCopy(
           in_tensor, out_p, *(dev_ctx),
