@@ -113,7 +113,7 @@ if (cond) {
 
 ```
 
-An equivalent PaddlePaddle program from the design doc of the [IfElseOp operator](./if_else_op.md) is as follows:
+An equivalent PaddlePaddle program from the design doc of the [IfElseOp operator](../execution/if_else_op.md) is as follows:
 
 ```python
 import paddle as pd
@@ -140,7 +140,7 @@ The difference is that variables in the C++ program contain scalar values, where
 
 ### Blocks with `for` and `RNNOp`
 
-The following RNN model in PaddlePaddle from the [RNN design doc](./rnn.md) :
+The following RNN model in PaddlePaddle from the [RNN design doc](../dynamic_rnn/rnn.md) :
 
 ```python
 x = sequence([10, 20, 30]) # shape=[None, 1]
