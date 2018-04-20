@@ -121,8 +121,39 @@ class InferenceTranspiler:
         # And a better solution will be considered later.
         program = program.clone()
 
-    def convert_to_float16(self, program, place, scope=None):
+    def float16_transpile(self, program, place, scope=None):
         '''
+        Transpile the program desc and cast the weights to float16 data type to
+        enable float16 inference.
+
+        Since the operator in a program desc will automatically choose the
+        right compute kernel to run based on the data type of the input tensor.
+        We actually don't need to change the program desc to run in float16 mode.
+
+        However, in this way, users who are used to feeding and fetching tensors 
+        of float32 data type when running typical inference may find it confusing
+        and difficult to run inference in float16 mode as they need to convert
+        input data to float16 dtype and then convert the results back to float32 
+        dtype to match the rest of code.
+
+        So this function appends cast ops to the program desc where necessary so 
+        that users are able to run inference in float16 mode while providing input 
+        tensor (feed_holder) of float data type and obtaining output tensor 
+        (fetch_holder) of float data type. 
+
+        Moreover, it is desired that when we have the scope and program desc to run
+        inference in float32 mode, we can use a single API to do the necessary 
+        modification and then user can run float16 inference on the fly. To make 
+        this happen, this function also create new parameters in the scope to have the 
+        converted float16 weights and change the operators in program desc to use 
+        these new parameters.
+
+        :param program: program to transpile 
+        :type program: Program
+        :param place: inference place 
+        :type place: Place
+        :param scope: inference scope 
+        :type scope: Scope         
         '''
         if scope is None:
             scope = global_scope()
@@ -239,6 +270,21 @@ class InferenceTranspiler:
         self.input_map[bn_op.output("Y")[0]] = bias_op.output("Out")[0]
 
     def _adjust_input(self, skip=False):
+        '''
+        Change the input variable name in operators.
+
+        When we are in the process of modifying a program desc, we usually 
+        replace some variables with some other variables, where we create 
+        a dictionary input_map to record the one-to-one correspondence
+        between each old variable and the new one. 
+
+        After that, this function will search all the operators that use the 
+        old variables and change the info in op to use the new variables. There 
+        maybe some exceptions to this rule when we are using the float16 transpiler
+        and insert cast ops to cast float32 variable to float16 one. After we 
+        insert the cast op to cast var_1 to var_1_fp16, we don't want to change 
+        the input of cast op to var_1_fp16 after using this function.     
+        '''
         skip_ops = {"cast"}
         for i in range(len(self.block.ops)):
             current_op = self.block.ops[i]
@@ -382,6 +428,10 @@ class InferenceTranspiler:
             self.scope.var(fp16_var_name)
             fp16_tensor = self.scope.find_var(fp16_var_name).get_tensor()
             tensor = np.array(self.scope.find_var(var.name).get_tensor())
+            # After the old tensor data is converted to np.float16, view(np.uint16)
+            # is used so that the internal memory of the numpy array will be 
+            # reinterpreted to be of np.uint16 data type, which is binded to fluid 
+            # float16 data type via the help of pybind in tensor_py.h. 
             fp16_tensor.set(
                 tensor.astype(np.float16).view(np.uint16), self.place)
 
