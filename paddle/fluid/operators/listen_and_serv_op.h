@@ -41,10 +41,6 @@ class ListenAndServOp : public framework::OperatorBase {
 
   int GetSelectedPort() const;
 
-  void PreparePrefetchCtx(framework::Executor* executor,
-                          framework::BlockDesc* prefetch_block,
-                          framework::ProgramDesc* program) const;
-
   void RunSyncUpdate(framework::Executor* executor,
                      framework::ProgramDesc* program,
                      framework::Scope* recv_scope,
