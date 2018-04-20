@@ -89,7 +89,7 @@ void AsyncListenAndServOp::RunImpl(const framework::Scope &scope,
   std::unordered_map<std::string, int32_t> grad_to_id;
   std::unordered_map<int32_t, std::string> id_to_grad;
 
-  auto grad_map_str = Attr<std::vector<std::string>>("grad_map");
+  auto grad_map_str = Attr<std::vector<std::string>>("grad_to_id");
   for (auto &grad_and_id : grad_map_str) {
     std::vector<std::string> pieces;
     split(grad_and_id, ' ', &pieces);
@@ -193,7 +193,7 @@ from send_op and send back variables to recv_op.
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
     AddAttr<std::vector<std::string>>(
-        "grad_map(['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'])",
+        "grad_to_id(['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'])",
         "a map from grad name to it's optimize block id")
         .SetDefault({});
     AddAttr<framework::BlockDesc *>(kOptimizeBlock,
