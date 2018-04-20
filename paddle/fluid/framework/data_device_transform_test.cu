@@ -152,12 +152,12 @@ TEST(Operator, CPUtoGPU) {
   VLOG(3) << "after gpu_op run";
 
   // auto* output2_ptr = output2->Get<LoDTensor>().data<float>();
-  paddle::framework::DeviceContextPool& pool =
-      paddle::framework::DeviceContextPool::Instance();
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
   auto dev_ctx = pool.Get(cuda_place);
 
   paddle::framework::Tensor output_tensor;
-  paddle::framework::TensorCopy(output2->Get<LoDTensor>(),
+  paddle::framework::TensorCopy(output2->Get<paddle::framework::LoDTensor>(),
                                 paddle::platform::CPUPlace(), *dev_ctx,
                                 &output_tensor);
 
