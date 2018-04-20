@@ -109,7 +109,7 @@ struct TestReduceOpHandle {
     // add input
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       if (!use_gpu_) {
-        op_handle_->dev_ctxes_[gpu_list_[j]] = ctxs_[j].get();
+        op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
       }
       auto *in_var_handle = new VarHandle(1, j, "input", gpu_list_[j]);
       in_var_handle->generated_op_ = nullptr;
