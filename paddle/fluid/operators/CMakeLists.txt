@@ -163,7 +163,12 @@ function(op_library TARGET)
 
     # pybind USE_OP
     if (${pybind_flag} EQUAL 0)
+      # NOTE(*): activation use macro to regist the kernels, set use_op manually.
+      if(${TARGET} STREQUAL "activation")
+        file(APPEND ${pybind_file} "USE_OP(relu);\n")
+      else()
         file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
+      endif()
     endif()
 endfunction()
 
