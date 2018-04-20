@@ -41,14 +41,19 @@ void GatherOpHandle::RunImpl() {
     out_var_handle = out_var_handles.front();
   }
 
+  std::vector<const Scope *> var_scopes;
+  for (auto *s : local_scopes_) {
+    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
+  }
+
   auto in_0_handle = in_var_handles[0];
   auto pre_in_var =
-      local_scopes_[in_0_handle->scope_idx_]->FindVar(in_0_handle->name_);
-  auto pre_place = in_0_handle->place_;
-
+      var_scopes.at(in_0_handle->scope_idx_)->FindVar(in_0_handle->name_);
+  PADDLE_ENFORCE_NOT_NULL(pre_in_var);
   PADDLE_ENFORCE(pre_in_var->IsType<framework::SelectedRows>(),
                  "Currently, gather_op only can gather SelectedRows.");
 
+  auto pre_place = in_0_handle->place_;
   PADDLE_ENFORCE_EQ(out_var_handle->place_.which(), pre_place.which(),
                     "The place of input and output should be the same.");
 
@@ -67,7 +72,7 @@ void GatherOpHandle::RunImpl() {
     PADDLE_ENFORCE_EQ(in_p.which(), pre_place.which(),
                       "Places must be all on CPU or all on CUDA.");
     auto *in_var =
-        local_scopes_.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
+        var_scopes.at(in_handle->scope_idx_)->FindVar(in_handle->name_);
     auto &in_sr = in_var->Get<framework::SelectedRows>();
 
     PADDLE_ENFORCE_EQ(in_sr.value().type(), pre_in.value().type(),
@@ -86,7 +91,7 @@ void GatherOpHandle::RunImpl() {
   // write the output
   auto &out_place = out_var_handle->place_;
   auto out_scope_idx = out_var_handle->scope_idx_;
-  auto out_var = local_scopes_[out_scope_idx]->FindVar(out_var_handle->name_);
+  auto out_var = var_scopes.at(out_scope_idx)->FindVar(out_var_handle->name_);
 
   auto out = out_var->GetMutable<framework::SelectedRows>();
   out->set_height(pre_in.height());
