@@ -60,7 +60,7 @@ class RequestSend final : public RequestBase {
                        framework::Scope* scope, ReceivedQueue* queue,
                        const platform::DeviceContext* dev_ctx)
       : RequestBase(service, cq, dev_ctx), queue_(queue), responder_(&ctx_) {
-    request_.reset(new VariableResponse(scope, dev_ctx_));
+    request_.reset(new VariableResponse(true, scope, dev_ctx_));
     int method_id = static_cast<int>(detail::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
                                 cq_, cq_, this);
@@ -133,7 +133,7 @@ class RequestPrefetch final : public RequestBase {
         executor_(executor),
         program_(program),
         prefetch_ctx_(prefetch_ctx) {
-    request_.reset(new VariableResponse(scope, dev_ctx_));
+    request_.reset(new VariableResponse(true, scope, dev_ctx_));
     int method_id = static_cast<int>(detail::GrpcMethod::kPrefetchVariable);
     service_->RequestAsyncUnary(method_id, &ctx_, request_.get(), &responder_,
                                 cq_, cq_, this);
