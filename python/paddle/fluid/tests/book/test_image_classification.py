@@ -100,7 +100,7 @@ def vgg16_bn_drop(input):
     return fc2
 
 
-def train(net_type, use_cuda, save_dirname, is_local):
+def train(net_type, use_cuda, save_dirname, is_local, use_float16=False):
     classdim = 10
     data_shape = [3, 32, 32]
 
@@ -139,6 +139,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    if use_float16:
+        use_float16 &= fluid.core.is_float16_supported(place)
+
     exe = fluid.Executor(place)
     feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
 
@@ -171,8 +174,10 @@ def train(net_type, use_cuda, save_dirname, is_local):
                                float(avg_loss_value), float(acc_value)))
 
                     if acc_value > 0.01:  # Low threshold for speeding up CI
-                        fluid.io.save_inference_model(save_dirname, ["pixel"],
-                                                      [predict], exe)
+                        fluid.io.save_inference_model(
+                            save_dirname, ["pixel"], [predict],
+                            exe,
+                            use_float16=use_float16)
                         return
 
     if is_local:
@@ -253,14 +258,18 @@ def infer(use_cuda, save_dirname=None):
                                       inference_transpiler_program)
 
 
-def main(net_type, use_cuda, is_local=True):
+def main(net_type, use_cuda, is_local=True, use_float16=False):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
-    # Directory for saving the trained model
-    save_dirname = "image_classification_" + net_type + ".inference.model"
+    # float16 inference can only run on cuda GPU
+    use_float16 &= use_cuda
 
-    train(net_type, use_cuda, save_dirname, is_local)
+    # Directory for saving the trained model
+    fp16_tag = "float16_" if use_float16 else ""
+    save_dirname = fp16_tag + "image_classification_" + net_type + ".inference.model"
+
+    train(net_type, use_cuda, save_dirname, is_local, use_float16)
     infer(use_cuda, save_dirname)
 
 
@@ -272,6 +281,14 @@ class TestImageClassification(unittest.TestCase):
     def test_resnet_cuda(self):
         with self.scope_prog_guard():
             main('resnet', use_cuda=True)
+
+    def test_vgg_cuda_fp16(self):
+        with self.scope_prog_guard():
+            main('vgg', use_cuda=True, use_float16=True)
+
+    def test_resnet_cuda_fp16(self):
+        with self.scope_prog_guard():
+            main('resnet', use_cuda=True, use_float16=True)
 
     def test_vgg_cpu(self):
         with self.scope_prog_guard():
