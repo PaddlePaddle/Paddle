@@ -91,7 +91,7 @@ std::vector<std::string> Scope::LocalVarNames() const {
   return known_vars;
 }
 
-void Scope::DeleteScope(Scope* scope) {
+void Scope::DeleteScope(Scope* scope) const {
   std::unique_lock<std::mutex> lock(mutex_);
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
