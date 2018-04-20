@@ -103,7 +103,7 @@ void ReduceOpHandle::RunImpl() {
 #ifdef PADDLE_WITH_CUDA
       auto out_p = out_var_handle->place_;
       int root = boost::get<platform::CUDAPlace>(out_p).device;
-      VLOG(2) << "is_gpu_place " << root;
+      VLOG(2) << "is_gpu_place " << root << " " << out_var_handle->name_;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
@@ -120,8 +120,8 @@ void ReduceOpHandle::RunImpl() {
           recvbuffer = trg->mutable_data(out_var_handle->place_);
         }
 
-        int type = platform::ToNCCLDataType(lod_tensor.type()) VLOG(2)
-                   << p << " " << dev_id << " " << lod_tensor.numel();
+        int type = platform::ToNCCLDataType(lod_tensor.type());
+        VLOG(2) << p << " " << dev_id << " " << lod_tensor.numel();
         all_reduce_calls.emplace_back([=] {
           PADDLE_ENFORCE(platform::dynload::ncclReduce(
               buffer, recvbuffer, static_cast<size_t>(lod_tensor.numel()),
